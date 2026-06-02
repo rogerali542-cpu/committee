@@ -3565,7 +3565,7 @@ function publishNow(id) {
   alert('已在期限内公示，会议纪要与决定已同步至「信息公开」，全体业主可见。');
 }
 
-// ══ 公示及时性考核（评分项）══════════════
+// ══ 公示情况统计 ══════════════════════════
 function publishScore() {
   const applicable = meetings.filter(m => m.stage === 'ended' && m.compliance !== 'invalid');
   let ontime = 0, overdue = 0, pending = 0;
@@ -3575,27 +3575,23 @@ function publishScore() {
     else if (s === 'overdue' || s === 'late') overdue++;
     else pending++;
   });
-  const FULL = 10, PER = 2;                 // 满分10，每逾期1场扣2分
-  const score = Math.max(0, FULL - PER * overdue);
-  return { total: applicable.length, ontime, overdue, pending, score, full: FULL };
+  return { total: applicable.length, ontime, overdue, pending };
 }
 function refreshPublishScore() {
   const el = document.getElementById('publish-score');
   if (!el) return;
   const s = publishScore();
-  const cls = s.overdue > 0 ? 'has-overdue' : 'all-ok';
+  const cls = s.overdue > 0 ? 'has-overdue' : '';
   el.className = 'publish-score ' + cls;
   el.innerHTML = `
     <div class="ps-head">
-      <span class="ps-title">会议公示及时性考核</span>
-      <span class="ps-score">${s.score}<i>/${s.full}分</i></span>
+      <span class="ps-title">会议公示情况</span>
     </div>
     <div class="ps-stats">
-      <span class="ps-stat ok">按时 ${s.ontime}</span>
-      <span class="ps-stat bad">逾期 ${s.overdue}</span>
+      <span class="ps-stat ok">按时公示 ${s.ontime}</span>
+      <span class="ps-stat bad">逾期未公示 ${s.overdue}</span>
       <span class="ps-stat wait">待公示 ${s.pending}</span>
-    </div>
-    <div class="ps-rule">规定：会议结束3日内公示，逾期不再补公示，每逾期1场扣${2}分</div>`;
+    </div>`;
 }
 
 // ══ 信息公开（对外展示）══════════════════
