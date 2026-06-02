@@ -1508,6 +1508,11 @@
     .cdc-fill { height: 100%; background: linear-gradient(90deg,#FFCC44,#FFA800); border-radius: 4px; transition: width 0.4s; }
     .cdc-count { font-size: 12px; color: #888; width: 28px; text-align: right; flex-shrink: 0; }
     .cdc-footer { font-size: 11px; color: #aaa; margin-top: 6px; }
+    .nodate-warn {
+      background: #FFF4E5; border: 1px solid #FBE3C0; border-radius: 10px;
+      padding: 10px 12px; font-size: 12px; color: #E67E22;
+      line-height: 1.5; margin-bottom: 10px;
+    }
 
     /* ══ 主任·出席总览（进行中）══ */
     .chair-overview {
@@ -2415,18 +2420,21 @@ function ensureDelivery(m) {
 
 // 计算会前通知截止日（会议前7天）与剩余天数
 function noticeInfo(m) {
+  const d = ensureDelivery(m);
+  const noticeDone   = d.filter(x => x.notice).length;
+  const materialDone = d.filter(x => x.material).length;
+  if (!m.date) {
+    return { deadlineStr: '待定', daysLeft: null, noticeDone, materialDone, total: d.length, allDone: false, noDate: true };
+  }
   const meetingDate = new Date(m.date + 'T00:00:00');
   const deadline = new Date(meetingDate);
   deadline.setDate(deadline.getDate() - 7);
   const msDay = 86400000;
   const daysLeft = Math.ceil((deadline - TODAY) / msDay);
-  const d = ensureDelivery(m);
-  const noticeDone   = d.filter(x => x.notice).length;
-  const materialDone = d.filter(x => x.material).length;
   const allDone = noticeDone === d.length && materialDone === d.length;
   return {
     deadlineStr: `${deadline.getFullYear()}-${String(deadline.getMonth()+1).padStart(2,'0')}-${String(deadline.getDate()).padStart(2,'0')}`,
-    daysLeft, noticeDone, materialDone, total: d.length, allDone
+    daysLeft, noticeDone, materialDone, total: d.length, allDone, noDate: false
   };
 }
 
@@ -2549,6 +2557,7 @@ function emptyHTML(label) {
 function summaryLine(m) {
   if (m.stage === 'preparing') {
     const info = noticeInfo(m);
+    if (info.noDate) return `<span class="mc-sum-tag warn">⚠ 日期待定，需补填后发通知</span>`;
     const cls = info.allDone ? 'ok' : info.daysLeft < 0 ? 'bad' : 'warn';
     const tip = info.allDone ? '' : `<span class="mc-sum-tip">截止 ${info.deadlineStr}</span>`;
     return `<span class="mc-sum-tag ${cls}">📨 通知 ${info.noticeDone}/${info.total} · 📎 材料 ${info.materialDone}/${info.total}</span>${tip}`;
@@ -2587,7 +2596,7 @@ function meetingCard(m) {
         <span class="stage-pill ${invalid ? 'invalid' : m.stage}">${invalid ? '会议无效' : stageLabel(m.stage)}</span>
       </div>
       <div class="mc-meta-compact">
-        <span>📅 ${m.date} ${m.time}</span>
+        <span>📅 ${m.date ? m.date + ' ' + m.time : '日期待定'}</span>
         <span class="mc-dot">·</span>
         <span>📍 ${m.location}</span>
         <span class="mc-dot">·</span>
@@ -2777,12 +2786,16 @@ function detailChair(m) {
 
 function chairPreparingView(m) {
   const info = noticeInfo(m);
-  const ready = info.allDone;
-  const deadline = info.daysLeft >= 0
-    ? `截止 ${info.deadlineStr}（还有 ${info.daysLeft} 天）`
+  const canStart = info.allDone && !info.noDate;
+  const deadlineText = info.noDate ? '请先设置会议日期'
+    : info.daysLeft >= 0 ? `截止 ${info.deadlineStr}（还有 ${info.daysLeft} 天）`
     : `截止 ${info.deadlineStr}（已逾期 ${Math.abs(info.daysLeft)} 天）`;
   return `
     <div class="detail-blocks">
+      ${info.noDate ? `
+        <div class="nodate-warn">
+          ⚠ 会议日期尚未设置，请点击「编辑」补填日期后再发送通知
+        </div>` : ''}
       <div class="chair-delivery-card">
         <div class="cdc-title">会前通知送达进度</div>
         <div class="cdc-row">
@@ -2795,13 +2808,13 @@ function chairPreparingView(m) {
           <div class="cdc-bar"><div class="cdc-fill" style="width:${info.materialDone/info.total*100}%"></div></div>
           <span class="cdc-count">${info.materialDone}/${info.total}</span>
         </div>
-        <div class="cdc-footer">${deadline}</div>
+        <div class="cdc-footer">${deadlineText}</div>
       </div>
     </div>
     <div class="detail-action-row">
       <button class="btn btn-ghost" onclick="removeMeeting(${m.id})">取消会议</button>
       <button class="btn btn-outline">编辑</button>
-      <button class="btn ${ready?'btn-primary':'btn-disabled'}" onclick="tryAdvance(${m.id})">开始会议</button>
+      <button class="btn ${canStart?'btn-primary':'btn-disabled'}" ${canStart?`onclick="tryAdvance(${m.id})"`:''}>开始会议</button>
     </div>`;
 }
 
@@ -3741,7 +3754,7 @@ function recreateMeeting(m) {
   meetings.unshift({
     id: nextId++,
     title: m.title.replace(/（重新召开）$/, '') + '（重新召开）',
-    date: m.date, time: m.time, location: m.location,
+    date: '', time: m.time, location: m.location,
     participants: m.participants, stage: 'preparing', desc: m.desc,
   });
 }
