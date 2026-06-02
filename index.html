@@ -1407,6 +1407,144 @@
       margin: 10px 12px 0; padding-top: 10px; border-top: 1px solid #eee;
     }
 
+    /* ══ 委员·我的参会操作（步骤流程）══ */
+    .my-steps-card {
+      background: #fff; border-radius: 14px; padding: 16px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 10px;
+    }
+    .msc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .msc-title { font-size: 14px; font-weight: 600; color: #333; }
+    .msc-progress {
+      font-size: 12px; font-weight: 600; color: #FFA800;
+      background: #FFF6E5; padding: 3px 10px; border-radius: 10px;
+    }
+    .step-item { display: flex; gap: 12px; padding-bottom: 16px; }
+    .step-item.last { padding-bottom: 0; }
+    .step-num-wrap {
+      display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+    }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .step-item.done   .step-num { background: #27AE60; color: #fff; }
+    .step-item.active .step-num { background: #FFA800; color: #fff; }
+    .step-item.locked .step-num { background: #e8e8e8; color: #bbb; }
+    .step-line {
+      flex: 1; width: 2px; background: #f0f0f0; margin: 4px 0 0; min-height: 12px;
+    }
+    .step-item.done   .step-line { background: #A9DFBF; }
+    .step-item.active .step-line { background: #FFD580; }
+    .step-body { flex: 1; padding-top: 2px; }
+    .step-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .step-item.done   .step-title { color: #27AE60; }
+    .step-item.active .step-title { color: #333; }
+    .step-item.locked .step-title { color: #ccc; }
+    .step-done-row {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: #27AE60;
+    }
+    .step-locked-tip { font-size: 12px; color: #ccc; }
+    .step-sub-tip { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+    .step-btn {
+      padding: 9px 0; border-radius: 10px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; width: 100%; transition: opacity 0.15s;
+    }
+    .step-btn:active { opacity: 0.8; }
+    .step-btn.primary { background: linear-gradient(135deg,#FFCC44,#FFA800); color: #fff; }
+    .member-topic-card {
+      background: #f8f8f8; border-radius: 10px; padding: 10px; margin-bottom: 8px;
+    }
+    .member-topic-card:last-child { margin-bottom: 0; }
+    .mv-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+    .mv-label { font-size: 11px; color: #999; }
+    .mv-choice { font-size: 12px; font-weight: 600; }
+    .mv-choice.for     { color: #27AE60; }
+    .mv-choice.against { color: #E74C3C; }
+    .mv-choice.abstain { color: #95A5A6; }
+    .completion-card {
+      background: #EAF7EF; border-radius: 12px; padding: 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      text-align: center; margin-bottom: 10px;
+    }
+    .completion-card .cc-icon {
+      width: 32px; height: 32px; border-radius: 50%; background: #27AE60; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700;
+    }
+    .completion-card .cc-title { font-size: 14px; font-weight: 600; color: #27AE60; }
+    .completion-card .cc-sub   { font-size: 12px; color: #52BE80; }
+
+    /* ══ 委员·我的通知状态（准备阶段）══ */
+    .my-delivery-card {
+      background: #fff; border-radius: 14px; padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .mdc-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 10px; }
+    .mdc-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid #f5f5f5;
+    }
+    .mdc-row:last-of-type { border-bottom: none; }
+    .mdc-label { font-size: 12px; color: #666; }
+    .mdc-status { font-size: 12px; font-weight: 600; }
+    .mdc-status.ok { color: #27AE60; }
+    .mdc-status.no { color: #bbb; }
+    .mdc-tip { font-size: 11px; color: #aaa; margin-top: 8px; line-height: 1.5; }
+
+    /* ══ 主任·送达总览（准备阶段）══ */
+    .chair-delivery-card {
+      background: #fff; border-radius: 14px; padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .cdc-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 10px; }
+    .cdc-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .cdc-label { font-size: 12px; color: #666; width: 68px; flex-shrink: 0; }
+    .cdc-bar  { flex: 1; height: 7px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .cdc-fill { height: 100%; background: linear-gradient(90deg,#FFCC44,#FFA800); border-radius: 4px; transition: width 0.4s; }
+    .cdc-count { font-size: 12px; color: #888; width: 28px; text-align: right; flex-shrink: 0; }
+    .cdc-footer { font-size: 11px; color: #aaa; margin-top: 6px; }
+
+    /* ══ 主任·出席总览（进行中）══ */
+    .chair-overview {
+      background: #fff; border-radius: 14px; padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 10px;
+    }
+    .co-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 10px; }
+    .co-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .co-label { font-size: 12px; color: #666; width: 28px; flex-shrink: 0; }
+    .co-bar   { flex: 1; height: 7px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .co-fill  { height: 100%; border-radius: 4px; transition: width 0.4s; }
+    .co-fill.ok { background: linear-gradient(90deg,#27AE60,#2ECC71); }
+    .co-fill.no { background: linear-gradient(90deg,#E74C3C,#EC7063); }
+    .co-count { font-size: 12px; color: #888; width: 28px; text-align: right; flex-shrink: 0; }
+    .co-checks { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee; }
+    .co-check-row { display: flex; align-items: center; gap: 7px; padding: 4px 0; }
+    .co-check-icon {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+    .co-check-icon.ok { background: #27AE60; }
+    .co-check-icon.no { background: #E74C3C; }
+    .co-check-label  { flex: 1; font-size: 12px; color: #555; }
+    .co-check-detail { font-size: 11px; }
+    .co-check-detail.ok { color: #27AE60; }
+    .co-check-detail.no { color: #E74C3C; }
+
+    /* ══ 主任·会议控制 ══ */
+    .chair-control {
+      background: #fff; border-radius: 14px; padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .cc2-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+    .cc2-note  { font-size: 11px; color: #888; margin-bottom: 12px; line-height: 1.5; }
+    .cc2-btns  { display: flex; gap: 8px; justify-content: flex-end; }
+
   </style>
 </head>
 <body>
@@ -2475,6 +2613,9 @@ function openDetail(id) {
   go('meeting-detail');
 }
 
+// 角色判断
+const isChair = () => currentUser.role === '主任' || currentUser.role === '副主任';
+
 function renderDetailPage() {
   if (!currentMeetingId) return;
   const m = meetings.find(x => x.id === currentMeetingId);
@@ -2483,14 +2624,13 @@ function renderDetailPage() {
   document.getElementById('detail-header-title').textContent = m.title;
 
   const recorderCls = isRecorder() ? 'recorder' : '';
-  const roleCls     = isRecorder() ? 'rec' : '';
-  let html = `
+  document.getElementById('detail-scroll').innerHTML = `
     <div class="detail-user-bar ${recorderCls}" onclick="openIdentity()">
       <div class="id-left">
         <span class="id-avatar ${recorderCls}">${currentUser.name.charAt(0)}</span>
         <div class="id-info">
-          <div class="id-name">${currentUser.name} <span class="id-role ${roleCls}">${currentUser.role}</span></div>
-          <div class="id-tip">当前登录身份 · 点击切换</div>
+          <div class="id-name">${currentUser.name} <span class="id-role ${isRecorder()?'rec':''}">${currentUser.role}</span></div>
+          <div class="id-tip">演示模式 · 点击切换视角</div>
         </div>
       </div>
       <svg class="id-switch" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
@@ -2501,17 +2641,257 @@ function renderDetailPage() {
       <div class="di-row"><span class="di-k">👥</span>${m.participants} 人参会</div>
       ${m.desc ? `<div class="di-row di-desc"><span class="di-k">📋</span>${m.desc}</div>` : ''}
     </div>
-    <div class="detail-blocks">`;
+    ${isRecorder() ? detailRecorder(m) : isChair() ? detailChair(m) : detailMember(m)}`;
+}
 
+// ══════════════════════════════════════
+// 委员视图
+// ══════════════════════════════════════
+function detailMember(m) {
+  if (m.stage === 'preparing') return memberPreparingView(m);
+  if (m.stage === 'ongoing')   return memberOngoingView(m);
+  return memberEndedView(m);
+}
+
+function memberPreparingView(m) {
+  const d = ensureDelivery(m);
+  const me = d.find(x => x.name === currentUser.name);
+  if (!me) return `<div class="detail-blocks"><div class="my-delivery-card" style="text-align:center;color:#aaa;padding:20px 0;">你不在本会委员名单中</div></div>`;
+  return `
+    <div class="detail-blocks">
+      <div class="my-delivery-card">
+        <div class="mdc-title">我的通知送达状态</div>
+        <div class="mdc-row">
+          <span class="mdc-label">📨 会议通知</span>
+          <span class="mdc-status ${me.notice?'ok':'no'}">${me.notice?'✓ 已送达':'○ 未送达'}</span>
+        </div>
+        <div class="mdc-row">
+          <span class="mdc-label">📎 会议材料</span>
+          <span class="mdc-status ${me.material?'ok':'no'}">${me.material?'✓ 已送达':'○ 未送达'}</span>
+        </div>
+        ${!me.notice||!me.material ? `<div class="mdc-tip">通知和材料由记录员负责送达，如有疑问请联系记录员</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function memberStepsInner(m) {
+  const r = ensureRecord(m);
+  const me = r.attendance.find(a => a.name === currentUser.name);
+  if (!me) return `<div style="text-align:center;color:#aaa;padding:20px 0;font-size:13px;">你不在本次会议委员名单中</div>`;
+
+  const s1 = me.signedIn;
+  const s2 = me.signed;
+  const topics = r.topics || [];
+  const allVoted = topics.length === 0 || topics.every(tp => tp.votes[currentUser.name]);
+  const allDone = s1 && s2 && allVoted;
+  const doneCount = [s1, s2, allVoted].filter(Boolean).length;
+
+  const step1Body = s1
+    ? `<div class="step-done-row">✓ 已签到</div>`
+    : `<button class="step-btn primary" onclick="selfToggle(${m.id},'signedIn')">📍 我要签到</button>`;
+
+  const step2Body = !s1
+    ? `<div class="step-locked-tip">请先完成签到</div>`
+    : s2
+      ? `<div class="step-done-row">✓ 已签字</div>`
+      : `<div class="step-sub-tip">签字表示本人确认会议记录</div>
+         <button class="step-btn primary" onclick="selfToggle(${m.id},'signed')">✍ 我要签字</button>`;
+
+  let step3Body = '';
+  if (!s1) {
+    step3Body = `<div class="step-locked-tip">请先完成签到</div>`;
+  } else if (topics.length === 0) {
+    step3Body = `<div class="step-locked-tip" style="color:#bbb;">本次会议暂无表决议题</div>`;
+  } else {
+    step3Body = topics.map(tp => {
+      const myVote = tp.votes[currentUser.name];
+      return `
+        <div class="member-topic-card">
+          <div class="tp-head">
+            <span class="tp-type ${tp.type==='major'?'major':'decision'}">${tp.type==='major'?'重大事项':'决定事项'}</span>
+            <span class="tp-title">${tp.title}</span>
+          </div>
+          <div class="vote-actions" style="margin-top:8px;">
+            <span class="vbtn for ${myVote==='for'?'on':''}"     onclick="vote(${m.id},${tp.id},'for')">赞成</span>
+            <span class="vbtn ag  ${myVote==='against'?'on':''}" onclick="vote(${m.id},${tp.id},'against')">反对</span>
+            <span class="vbtn ab  ${myVote==='abstain'?'on':''}" onclick="vote(${m.id},${tp.id},'abstain')">弃权</span>
+          </div>
+          ${myVote ? `<div class="vote-mine">我已投：${voteLabel(myVote)} · 可点击更改</div>` : `<div class="vote-mine">尚未对本议题投票</div>`}
+        </div>`;
+    }).join('');
+  }
+
+  const completionCard = allDone ? `
+    <div class="completion-card">
+      <div class="cc-icon">✓</div>
+      <div class="cc-title">本次参会操作已完成</div>
+      <div class="cc-sub">已签到 · 已签字${topics.length>0?` · 已对${topics.length}项议题投票`:''}</div>
+    </div>` : '';
+
+  return `
+    <div class="my-steps-card">
+      <div class="msc-header">
+        <span class="msc-title">我的参会操作</span>
+        <span class="msc-progress">${doneCount}/3</span>
+      </div>
+      <div class="step-item ${s1?'done':'active'}">
+        <div class="step-num-wrap"><span class="step-num">${s1?'✓':'1'}</span><div class="step-line"></div></div>
+        <div class="step-body"><div class="step-title">签到确认</div>${step1Body}</div>
+      </div>
+      <div class="step-item ${!s1?'locked':s2?'done':'active'}">
+        <div class="step-num-wrap"><span class="step-num">${s2?'✓':'2'}</span><div class="step-line"></div></div>
+        <div class="step-body"><div class="step-title">签字确认</div>${step2Body}</div>
+      </div>
+      <div class="step-item ${!s1?'locked':allVoted?'done':'active'} last">
+        <div class="step-num-wrap"><span class="step-num">${allVoted?'✓':'3'}</span></div>
+        <div class="step-body"><div class="step-title">议题表决</div>${step3Body}</div>
+      </div>
+    </div>
+    ${completionCard}`;
+}
+
+function memberOngoingView(m) {
+  return `<div class="detail-blocks">${memberStepsInner(m)}</div>`;
+}
+
+function memberEndedView(m) {
   const invalid = m.compliance === 'invalid';
-  if (m.stage === 'preparing')     html += noticeBlock(m);
-  else if (m.stage === 'ongoing')  html += recordBlock(m);
-  else { html += complianceBlock(m); if (!invalid) html += publishBlock(m); }
+  return `
+    <div class="detail-blocks">
+      ${complianceBlock(m)}
+      ${invalid ? '' : publishBlock(m)}
+    </div>
+    <div class="detail-action-row">
+      <button class="btn btn-ghost" onclick="openMinutes(${m.id},'meeting-detail')">${invalid?'查看记录':'查看纪要'}</button>
+    </div>`;
+}
 
-  html += `</div>
-    <div class="detail-action-row">${actionBtns(m)}</div>`;
+// ══════════════════════════════════════
+// 主任 / 副主任视图
+// ══════════════════════════════════════
+function detailChair(m) {
+  if (m.stage === 'preparing') return chairPreparingView(m);
+  if (m.stage === 'ongoing')   return chairOngoingView(m);
+  return chairEndedView(m);
+}
 
-  document.getElementById('detail-scroll').innerHTML = html;
+function chairPreparingView(m) {
+  const info = noticeInfo(m);
+  const ready = info.allDone;
+  const deadline = info.daysLeft >= 0
+    ? `截止 ${info.deadlineStr}（还有 ${info.daysLeft} 天）`
+    : `截止 ${info.deadlineStr}（已逾期 ${Math.abs(info.daysLeft)} 天）`;
+  return `
+    <div class="detail-blocks">
+      <div class="chair-delivery-card">
+        <div class="cdc-title">会前通知送达进度</div>
+        <div class="cdc-row">
+          <span class="cdc-label">📨 会议通知</span>
+          <div class="cdc-bar"><div class="cdc-fill" style="width:${info.noticeDone/info.total*100}%"></div></div>
+          <span class="cdc-count">${info.noticeDone}/${info.total}</span>
+        </div>
+        <div class="cdc-row">
+          <span class="cdc-label">📎 会议材料</span>
+          <div class="cdc-bar"><div class="cdc-fill" style="width:${info.materialDone/info.total*100}%"></div></div>
+          <span class="cdc-count">${info.materialDone}/${info.total}</span>
+        </div>
+        <div class="cdc-footer">${deadline}</div>
+      </div>
+    </div>
+    <div class="detail-action-row">
+      <button class="btn btn-ghost" onclick="removeMeeting(${m.id})">取消会议</button>
+      <button class="btn btn-outline">编辑</button>
+      <button class="btn ${ready?'btn-primary':'btn-disabled'}" onclick="tryAdvance(${m.id})">开始会议</button>
+    </div>`;
+}
+
+function chairOngoingView(m) {
+  const r = ensureRecord(m);
+  const total = r.attendance.length;
+  const need  = Math.floor(total/2)+1;
+  const signedIn = r.attendance.filter(a=>a.signedIn).length;
+  const signed   = r.attendance.filter(a=>a.signed).length;
+  const res = recordCheck(m);
+  const er  = endResult(m);
+
+  let endBtn, controlNote;
+  if (er.level==='valid') {
+    endBtn = `<button class="btn btn-primary" onclick="tryEnd(${m.id})">结束会议</button>`;
+    controlNote = '所有核查项通过，可正常结束会议';
+  } else if (er.level==='invalid') {
+    endBtn = `<button class="btn btn-danger" onclick="tryEnd(${m.id})">判定会议无效</button>`;
+    controlNote = '签到人数未过半，会议不成立';
+  } else {
+    endBtn = `<button class="btn btn-warn" onclick="tryEnd(${m.id})">带标注结束</button>`;
+    controlNote = er.notes.join('；');
+  }
+
+  return `
+    <div class="detail-blocks">${memberStepsInner(m)}</div>
+    <div class="detail-blocks">
+      <div class="chair-overview">
+        <div class="co-title">会议出席总览</div>
+        <div class="co-row">
+          <span class="co-label">签到</span>
+          <div class="co-bar"><div class="co-fill ${signedIn>=need?'ok':'no'}" style="width:${signedIn/total*100}%"></div></div>
+          <span class="co-count">${signedIn}/${total}</span>
+        </div>
+        <div class="co-row">
+          <span class="co-label">签字</span>
+          <div class="co-bar"><div class="co-fill ${signed>=need?'ok':'no'}" style="width:${signed/total*100}%"></div></div>
+          <span class="co-count">${signed}/${total}</span>
+        </div>
+        <div class="co-checks">
+          ${res.checks.map(c=>`
+            <div class="co-check-row">
+              <span class="co-check-icon ${c.ok?'ok':'no'}">${c.ok?'✓':'✕'}</span>
+              <span class="co-check-label">${c.label}</span>
+              <span class="co-check-detail ${c.ok?'ok':'no'}">${c.detail}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="chair-control">
+        <div class="cc2-title">会议控制</div>
+        <div class="cc2-note">${controlNote}</div>
+        <div class="cc2-btns">
+          <button class="btn btn-outline" onclick="openMinutes(${m.id},'meeting-detail')">查看纪要草稿</button>
+          ${endBtn}
+        </div>
+      </div>
+    </div>`;
+}
+
+function chairEndedView(m) {
+  const invalid = m.compliance === 'invalid';
+  return `
+    <div class="detail-blocks">
+      ${complianceBlock(m)}
+      ${invalid ? '' : publishBlock(m)}
+    </div>
+    <div class="detail-action-row">
+      <button class="btn btn-ghost" onclick="openMinutes(${m.id},'meeting-detail')">${invalid?'查看记录':'查看纪要'}</button>
+    </div>`;
+}
+
+// ══════════════════════════════════════
+// 记录员视图（完整操作视图）
+// ══════════════════════════════════════
+function detailRecorder(m) {
+  if (m.stage === 'preparing') return `<div class="detail-blocks">${noticeBlock(m)}</div>`;
+  if (m.stage === 'ongoing')   return `<div class="detail-blocks">${recordBlock(m)}</div>
+    <div class="detail-action-row">
+      <button class="btn btn-outline" onclick="openMinutes(${m.id},'meeting-detail')">查看纪要草稿</button>
+    </div>`;
+  // ended
+  const invalid = m.compliance === 'invalid';
+  return `
+    <div class="detail-blocks">
+      ${complianceBlock(m)}
+      ${invalid ? '' : publishBlock(m)}
+    </div>
+    <div class="detail-action-row">
+      <button class="btn btn-ghost" onclick="openMinutes(${m.id},'meeting-detail')">${invalid?'查看记录':'查看纪要'}</button>
+    </div>`;
 }
 
 function renderList() {
