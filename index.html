@@ -477,6 +477,8 @@
       border-left: 3px solid #FFA800;
     }
     .identity-bar.recorder { border-left-color: #9B59B6; }
+    .identity-bar.owner    { border-left-color: #27AE60; }
+    .identity-bar.property { border-left-color: #2980B9; }
     .id-left { display: flex; align-items: center; gap: 10px; }
     .id-avatar {
       width: 38px; height: 38px; border-radius: 50%;
@@ -485,12 +487,16 @@
       font-size: 16px; font-weight: 600; flex-shrink: 0;
     }
     .identity-bar.recorder .id-avatar { background: linear-gradient(135deg,#BB8FCE,#9B59B6); }
+    .identity-bar.owner    .id-avatar { background: linear-gradient(135deg,#58D68D,#27AE60); }
+    .identity-bar.property .id-avatar { background: linear-gradient(135deg,#5DADE2,#2980B9); }
     .id-name { font-size: 14px; font-weight: 600; color: #333; }
     .id-role {
       font-size: 10px; font-weight: 500; color: #FFA800;
       background: #FFF6E5; padding: 1px 7px; border-radius: 8px; margin-left: 2px;
     }
     .identity-bar.recorder .id-role { color: #9B59B6; background: #F5EEF8; }
+    .identity-bar.owner    .id-role { color: #27AE60; background: #EAFAF1; }
+    .identity-bar.property .id-role { color: #2980B9; background: #EBF5FB; }
     .id-tip { font-size: 11px; color: #bbb; margin-top: 2px; }
     .id-switch { width: 20px; height: 20px; fill: #ccc; }
 
@@ -508,7 +514,10 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; font-weight: 600; flex-shrink: 0;
     }
-    .io-avatar.rec { background: linear-gradient(135deg,#BB8FCE,#9B59B6); }
+    .io-avatar.rec      { background: linear-gradient(135deg,#BB8FCE,#9B59B6); }
+    .io-avatar.owner    { background: linear-gradient(135deg,#58D68D,#27AE60); }
+    .io-avatar.property { background: linear-gradient(135deg,#5DADE2,#2980B9); }
+    .identity-group-label { font-size:11px;color:#bbb;font-weight:500;padding:6px 4px 2px;letter-spacing:0.5px; }
     .io-info { flex: 1; }
     .io-name { font-size: 14px; font-weight: 500; color: #333; }
     .io-role { font-size: 11px; color: #999; margin-top: 1px; }
@@ -1550,13 +1559,86 @@
     .cc2-note  { font-size: 11px; color: #888; margin-bottom: 12px; line-height: 1.5; }
     .cc2-btns  { display: flex; gap: 8px; justify-content: flex-end; }
 
+  
+    /* ══ 登录页 ══ */
+    #page-login { background:linear-gradient(160deg,#FFCC44 0%,#FFA800 100%); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:60px 20px 30px; }
+    .login-logo { width:72px;height:72px;border-radius:20px;background:rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:16px; }
+    .login-logo svg { width:40px;height:40px;fill:#5C3D00; }
+    .login-title { font-size:22px;font-weight:700;color:#5C3D00;margin-bottom:4px; }
+    .login-sub { font-size:13px;color:#7B5A00;margin-bottom:32px; }
+    .login-card { width:100%;background:#fff;border-radius:20px;padding:20px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.12); }
+    .login-group-label { font-size:11px;color:#bbb;font-weight:600;letter-spacing:0.5px;padding:0 4px 8px; }
+    .login-group-label.mt { margin-top:12px; }
+    .login-opt { display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer;border:1.5px solid #f0f0f0;margin-bottom:8px;transition:border-color 0.15s; }
+    .login-opt:active { background:#FFFBF0;border-color:#FFA800; }
+    .login-avatar { width:40px;height:40px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#FFCC44,#FFA800);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center; }
+    .login-avatar.rec      { background:linear-gradient(135deg,#BB8FCE,#9B59B6); }
+    .login-avatar.owner    { background:linear-gradient(135deg,#58D68D,#27AE60); }
+    .login-avatar.property { background:linear-gradient(135deg,#5DADE2,#2980B9); }
+    .login-info { flex:1; }
+    .login-name { font-size:14px;font-weight:600;color:#333; }
+    .login-role-badge { display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:8px;margin-left:6px;background:#FFF6E5;color:#FFA800; }
+    .login-role-badge.rec      { background:#F5EEF8;color:#9B59B6; }
+    .login-role-badge.owner    { background:#EAFAF1;color:#27AE60; }
+    .login-role-badge.property { background:#EBF5FB;color:#2980B9; }
+    .login-desc { font-size:11px;color:#999;margin-top:2px; }
+    .login-arrow { color:#ccc;font-size:18px;flex-shrink:0; }
+    /* ══ 个人中心 ══ */
+    #page-profile { background:#f5f5f5; }
+    .profile-scroll { flex:1;overflow-y:auto;padding-bottom:80px; }
+    .profile-header { background:linear-gradient(160deg,#FFCC44 0%,#FFA800 100%);padding:50px 20px 30px;display:flex;flex-direction:column;align-items:center; }
+    .profile-avatar { width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.35);color:#5C3D00;font-size:32px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-bottom:12px;border:3px solid rgba(255,255,255,0.6); }
+    .profile-name { font-size:20px;font-weight:700;color:#5C3D00;margin-bottom:6px; }
+    .profile-role-chip { font-size:12px;font-weight:600;padding:3px 14px;border-radius:20px;background:rgba(255,255,255,0.45);color:#5C3D00; }
+    .profile-section { margin:12px 12px 0;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+    .profile-section-title { font-size:12px;color:#999;font-weight:500;padding:12px 16px 4px; }
+    .profile-row { display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-top:1px solid #f5f5f5; }
+    .pr-label { font-size:14px;color:#555; }
+    .pr-value { font-size:14px;color:#333;font-weight:500; }
+    .pr-value.role-tag { font-size:12px;font-weight:600;padding:2px 10px;border-radius:10px;background:#FFF6E5;color:#FFA800; }
+    .pr-value.role-tag.rec      { background:#F5EEF8;color:#9B59B6; }
+    .pr-value.role-tag.owner    { background:#EAFAF1;color:#27AE60; }
+    .pr-value.role-tag.property { background:#EBF5FB;color:#2980B9; }
+    .perm-list { padding:0 16px 12px; }
+    .perm-item { display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;color:#555;border-top:1px solid #f5f5f5; }
+    .perm-dot { width:8px;height:8px;border-radius:50%;background:#27AE60;flex-shrink:0; }
+    .perm-dot.no { background:#E0E0E0; }
+    .logout-btn { margin:16px 12px;width:calc(100% - 24px);padding:14px;background:#fff;border-radius:14px;color:#E74C3C;font-size:15px;font-weight:600;text-align:center;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+
   </style>
 </head>
 <body>
 <div class="phone">
 
 <!-- ██████████ PAGE: MAIN ██████████ -->
-<div id="page-main" class="page active">
+<!-- ██████████ PAGE: 登录 ██████████ -->
+<div id="page-login" class="page active">
+  <div class="login-logo">
+    <svg viewBox="0 0 24 24"><path d="M12 2L4 5v6c0 5.25 3.4 10.15 8 11.35C16.6 21.15 20 16.25 20 11V5L12 2z"/></svg>
+  </div>
+  <div class="login-title">业委专区</div>
+  <div class="login-sub">请选择登录身份</div>
+  <div class="login-card">
+    <div class="login-group-label">业委会内部</div>
+    <div id="login-internal-list"></div>
+    <div class="login-group-label mt">外部身份</div>
+    <div id="login-external-list"></div>
+  </div>
+</div>
+
+<!-- ██████████ PAGE: 个人中心 ██████████ -->
+<div id="page-profile" class="page">
+  <div class="sub-header">
+    <div class="back-btn" onclick="go('main')">
+      <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+    </div>
+    <div class="sub-header-title">个人中心</div>
+    <div style="width:32px;"></div>
+  </div>
+  <div class="profile-scroll" id="profile-scroll"></div>
+</div>
+
+<div id="page-main" class="page">
   <div class="main-scroll">
     <div class="header">
       <div class="header-top">
@@ -1822,7 +1904,7 @@
       <svg viewBox="0 0 24 24" fill="none"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="#FFA800"/></svg>
       <span style="color:#FFA800;">业委专区</span>
     </div>
-    <div class="nav-item">
+    <div class="nav-item" onclick="go('profile')">
       <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" fill="#ccc"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" fill="none" stroke="#ccc" stroke-width="2"/></svg>
       <span>个人中心</span>
     </div>
@@ -2400,15 +2482,45 @@ const committeeMembers = [
   { name:'杨国华', role:'委员' },
 ];
 
-// 可登录身份 = 全体委员 + 记录员（记录员可代录线下结果、上传纸质佐证）
+// 可登录身份
 const identities = [
   ...committeeMembers,
   { name:'秘书小李', role:'记录员' },
+  { name:'测试业主', role:'业主' },
+  { name:'物业张经理', role:'物业' },
 ];
-// 当前登录身份（混合模式：委员各自在线操作）
-let currentUser = committeeMembers[0];
-const isRecorder = () => currentUser.role === '记录员';
-const isSelf = (memberName) => currentUser.name === memberName;
+
+// ── Auth ──────────────────────────────────
+function loadUser() {
+  try {
+    const s = localStorage.getItem('yeweiUser');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return null;
+}
+function saveUser(u) { localStorage.setItem('yeweiUser', JSON.stringify(u)); }
+function clearUser() { localStorage.removeItem('yeweiUser'); }
+
+let currentUser = loadUser() || null;
+
+const isRecorder    = () => currentUser && currentUser.role === '记录员';
+const isOwner       = () => currentUser && currentUser.role === '业主';
+const isPropertyMgmt= () => currentUser && currentUser.role === '物业';
+const isExternal    = () => isOwner() || isPropertyMgmt();
+const isSelf = (memberName) => currentUser && currentUser.name === memberName;
+
+function identityClass() {
+  if (isRecorder())     return 'recorder';
+  if (isOwner())        return 'owner';
+  if (isPropertyMgmt()) return 'property';
+  return '';
+}
+function ioAvatarClass(u) {
+  if (u.role === '记录员') return 'rec';
+  if (u.role === '业主')   return 'owner';
+  if (u.role === '物业')   return 'property';
+  return '';
+}
 
 // 惰性初始化每位委员的送达状态（通知 + 材料）
 function ensureDelivery(m) {
@@ -2442,6 +2554,7 @@ function noticeInfo(m) {
 function go(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
+  if (page === 'profile') { renderProfile(); return; }
   if (page === 'committee') { refreshStats(); refreshPublishScore(); renderList(); }
   if (page === 'meeting-hub') { refreshHubBadge(); }
   if (page === 'info-public') { renderInfoPublic(); }
@@ -2461,22 +2574,26 @@ function renderIdentityBar() {
 }
 function openIdentity() {
   const list = document.getElementById('identity-list');
-  list.innerHTML = identities.map(u => `
-    <div class="identity-opt ${u.name===currentUser.name?'on':''}" onclick="setIdentity('${u.name}')">
-      <span class="io-avatar ${u.role==='记录员'?'rec':''}">${u.name.charAt(0)}</span>
-      <div class="io-info">
-        <div class="io-name">${u.name}</div>
-        <div class="io-role">${u.role}${u.role==='记录员'?' · 可代录/上传佐证':''}</div>
-      </div>
+  const internal = identities.filter(u => u.role !== '业主' && u.role !== '物业');
+  const external = identities.filter(u => u.role === '业主' || u.role === '物业');
+  function optHTML(u) {
+    const cls = ioAvatarClass(u);
+    const note = u.role==='记录员'?' · 可代录/上传佐证':u.role==='业主'?' · 只读':u.role==='物业'?' · 接待视角':'';
+    return `<div class="identity-opt ${u.name===currentUser.name?'on':''}" onclick="setIdentity('${u.name}')">
+      <span class="io-avatar ${cls}">${u.name.charAt(0)}</span>
+      <div class="io-info"><div class="io-name">${u.name}</div><div class="io-role">${u.role}${note}</div></div>
       ${u.name===currentUser.name?'<span class="io-check">✓</span>':''}
-    </div>
-  `).join('');
+    </div>`;
+  }
+  list.innerHTML = '<div class="identity-group-label">业委会内部</div>' + internal.map(optHTML).join('') +
+    '<div class="identity-group-label" style="margin-top:6px;">外部身份（测试）</div>' + external.map(optHTML).join('');
   document.getElementById('identity-overlay').classList.add('show');
 }
 function closeIdentity() { document.getElementById('identity-overlay').classList.remove('show'); }
 function closeIdentityIfBg(e) { if (e.target === document.getElementById('identity-overlay')) closeIdentity(); }
 function setIdentity(name) {
   currentUser = identities.find(u => u.name === name);
+  saveUser(currentUser);
   closeIdentity();
   refreshCurrent();
 }
@@ -2622,6 +2739,79 @@ function openDetail(id) {
   go('meeting-detail');
 }
 
+
+// ── 登录 ──────────────────────────────────
+function renderLoginPage() {
+  const internal = identities.filter(u => u.role !== '业主' && u.role !== '物业');
+  const external = identities.filter(u => u.role === '业主' || u.role === '物业');
+  const roleDesc = { '主任':'负责召集主持会议', '副主任':'协助主任开展工作', '委员':'参与表决和签字', '记录员':'记录并上传佐证', '业主':'查看公开信息', '物业':'接待工单处理' };
+  function optHTML(u) {
+    const cls = ioAvatarClass(u);
+    return `<div class="login-opt" onclick="doLogin('${u.name}')">
+      <div class="login-avatar ${cls}">${u.name.charAt(0)}</div>
+      <div class="login-info">
+        <div class="login-name">${u.name}<span class="login-role-badge ${cls}">${u.role}</span></div>
+        <div class="login-desc">${roleDesc[u.role]||''}</div>
+      </div>
+      <div class="login-arrow">›</div>
+    </div>`;
+  }
+  document.getElementById('login-internal-list').innerHTML = internal.map(optHTML).join('');
+  document.getElementById('login-external-list').innerHTML = external.map(optHTML).join('');
+}
+
+function doLogin(name) {
+  currentUser = identities.find(u => u.name === name);
+  saveUser(currentUser);
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-main').classList.add('active');
+  refreshStats(); renderList();
+}
+
+function doLogout() {
+  clearUser();
+  currentUser = null;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-login').classList.add('active');
+  renderLoginPage();
+}
+
+// ── 个人中心 ──────────────────────────────
+function renderProfile() {
+  if (!currentUser) { doLogout(); return; }
+  const cls = identityClass();
+  const perms = {
+    '主任':    ['召集会议','主持表决','签署决定','审阅纪要'],
+    '副主任':  ['召集会议','主持表决','签署决定','审阅纪要'],
+    '委员':    ['参与表决','出席签字','查看会议资料'],
+    '记录员':  ['代录签到','上传佐证','管理纪要'],
+    '业主':    ['查看公示信息','查看会议决议'],
+    '物业':    ['查看公示信息','处理接待工单'],
+  };
+  const myPerms = perms[currentUser.role] || [];
+  const allPerms = ['召集会议','主持表决','签署决定','代录签到','上传佐证','参与表决','出席签字','查看公示信息','处理接待工单'];
+  document.getElementById('profile-scroll').innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar">${currentUser.name.charAt(0)}</div>
+      <div class="profile-name">${currentUser.name}</div>
+      <div class="profile-role-chip">${currentUser.role}</div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-title">账号信息</div>
+      <div class="profile-row"><span class="pr-label">姓名</span><span class="pr-value">${currentUser.name}</span></div>
+      <div class="profile-row"><span class="pr-label">身份</span><span class="pr-value role-tag ${cls}">${currentUser.role}</span></div>
+      <div class="profile-row"><span class="pr-label">小区</span><span class="pr-value">阳光家园</span></div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-section-title">权限说明</div>
+      <div class="perm-list">
+        ${myPerms.map(p => `<div class="perm-item"><span class="perm-dot"></span>${p}</div>`).join('')}
+      </div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">退出登录</button>
+  `;
+  document.getElementById('page-profile').classList.add('active');
+}
 // 角色判断
 const isChair = () => currentUser.role === '主任' || currentUser.role === '副主任';
 
@@ -2632,13 +2822,13 @@ function renderDetailPage() {
 
   document.getElementById('detail-header-title').textContent = m.title;
 
-  const recorderCls = isRecorder() ? 'recorder' : '';
+  const idCls = identityClass();
   document.getElementById('detail-scroll').innerHTML = `
-    <div class="detail-user-bar ${recorderCls}" onclick="openIdentity()">
+    <div class="detail-user-bar ${idCls}" onclick="openIdentity()">
       <div class="id-left">
-        <span class="id-avatar ${recorderCls}">${currentUser.name.charAt(0)}</span>
+        <span class="id-avatar ${idCls}">${currentUser.name.charAt(0)}</span>
         <div class="id-info">
-          <div class="id-name">${currentUser.name} <span class="id-role ${isRecorder()?'rec':''}">${currentUser.role}</span></div>
+          <div class="id-name">${currentUser.name} <span class="id-role ${idCls}">${currentUser.role}</span></div>
           <div class="id-tip">演示模式 · 点击切换视角</div>
         </div>
       </div>
@@ -2650,9 +2840,48 @@ function renderDetailPage() {
       <div class="di-row"><span class="di-k">👥</span>${m.participants} 人参会</div>
       ${m.desc ? `<div class="di-row di-desc"><span class="di-k">📋</span>${m.desc}</div>` : ''}
     </div>
-    ${isRecorder() ? detailRecorder(m) : isChair() ? detailChair(m) : detailMember(m)}`;
+    ${isRecorder() ? detailRecorder(m) : isOwner() ? detailExternal(m,"业主") : isPropertyMgmt() ? detailExternal(m,"物业") : isChair() ? detailChair(m) : detailMember(m)}\`;
 }
 
+
+// ══ 外部身份只读视图 ══════════════════════════════════════
+function detailExternal(m, role) {
+  const color = role==='业主'?'#27AE60':'#2980B9';
+  const bg    = role==='业主'?'#EAFAF1':'#EBF5FB';
+  const icon  = role==='业主'?'🏠':'🏢';
+  const stageText = {preparing:'筹备中',ongoing:'进行中',ended:'已结束'}[m.stage]||m.stage;
+  let decisionHTML = '';
+  if (m.stage==='ended' && m.publish && m.publish.published && m.record) {
+    const decisions = (m.record.topics||[]).filter(t=>t.type==='decision');
+    if (decisions.length) {
+      decisionHTML = `<div class="my-delivery-card" style="margin-top:10px;">
+        <div class="mdc-title">📋 会议决议（已公示）</div>
+        ${decisions.map(t=>{
+          const vals=Object.values(t.votes||{});
+          const forN=vals.filter(v=>v==='for').length;
+          const agN=vals.filter(v=>v==='against').length;
+          return `<div class="mdc-row" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <span class="mdc-label" style="font-weight:600;color:#333;">${t.title}</span>
+            <span style="font-size:11px;color:#27AE60;">赞成 ${forN} · 反对 ${agN}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+  }
+  return `<div class="detail-blocks">
+    <div style="background:${bg};border-radius:12px;padding:12px 14px;border-left:3px solid ${color};margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:600;color:${color};">${icon} ${role}视角 · 只读</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">仅展示对外公开信息，不可操作</div>
+    </div>
+    <div class="my-delivery-card">
+      <div class="mdc-title">会议状态</div>
+      <div class="mdc-row"><span class="mdc-label">📌 当前阶段</span><span class="mdc-status ok">${stageText}</span></div>
+      ${m.publish?`<div class="mdc-row"><span class="mdc-label">📢 公示</span><span class="mdc-status ${m.publish.published?'ok':'no'}">${m.publish.published?'已公示（'+m.publish.publishDate+'）':'未公示'}</span></div>`:''}
+    </div>
+    ${decisionHTML}
+    ${m.stage!=='ended'?'<div style="text-align:center;color:#bbb;font-size:12px;padding:16px 0;">会议结束公示后可查看决议</div>':''}
+  </div>`;
+}
 // ══════════════════════════════════════
 // 委员视图
 // ══════════════════════════════════════
@@ -5126,8 +5355,15 @@ function lcUndo() {
 }
 
 // ── Init ──────────────────────────────────
-refreshStats();
-renderList();
+// ── 启动 ──────────────────────────────────
+if (loadUser()) {
+  currentUser = loadUser();
+  document.getElementById('page-login').classList.remove('active');
+  document.getElementById('page-main').classList.add('active');
+  refreshStats(); renderList();
+} else {
+  renderLoginPage();
+}
 </script>
 </div>
 </body>
