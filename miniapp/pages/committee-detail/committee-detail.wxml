@@ -1,0 +1,475 @@
+<scroll-view scroll-y class="page">
+  <view wx:if="{{detail}}">
+    <!-- 任务横幅（结束阶段隐藏） -->
+    <view class="task-banner {{detail.taskLevel}}" wx:if="{{detail.stage !== 'ended'}}">
+      <text class="tb-title">{{detail.taskTitle}}</text>
+      <text class="tb-items" wx:if="{{detail.taskItemsText}}">{{detail.taskItemsText}}</text>
+      <text class="tb-flow">当前：{{detail.flowNodeText}}</text>
+      <text class="tb-hint" wx:if="{{detail.taskHint}}">{{detail.taskHint}}</text>
+    </view>
+
+    <!-- 会议基本信息（结束阶段隐藏） -->
+    <view class="info-card" wx:if="{{detail.stage !== 'ended'}}">
+      <view class="info-row"><text class="info-k">📅</text>{{detail.meetingDate}} {{detail.meetingTime}}</view>
+      <view class="info-row"><text class="info-k">📍</text>{{detail.location}}</view>
+      <view class="info-row"><text class="info-k">📋</text>{{detail.description || '（无）'}}</view>
+    </view>
+
+    <view class="proxy-entry" wx:if="{{userView === 'chair' && detail.stage !== 'ended'}}">
+      <view class="proxy-entry-copy">
+        <text class="proxy-entry-title">代录</text>
+        <text class="proxy-entry-desc">{{detail.stage === 'ongoing' ? '为无法自行操作的成员代签到或代投票' : '会议开始后可用'}}</text>
+      </view>
+      <button class="proxy-entry-btn {{detail.stage === 'ongoing' ? '' : 'disabled'}}" bindtap="openProxyRecorder">代录</button>
+    </view>
+
+    <view class="notice-draft-card" wx:if="{{detail.stage === 'preparing' && detail.noticeDraft}}">
+      <view class="nd-head">
+        <text class="nd-title">会议通知草稿</text>
+        <text class="nd-status">待确认</text>
+      </view>
+      <text class="nd-content">{{detail.noticeDraft.content}}</text>
+    </view>
+
+    <!-- 会议材料（准备阶段，所有人可见） -->
+    <view class="materials-card" wx:if="{{detail.stage === 'preparing' && detail.materials && detail.materials.length}}">
+      <text class="mt-title">会议材料（{{detail.materials.length}}）</text>
+      <view wx:for="{{detail.materials}}" wx:key="name" class="mt-item">
+        <text class="mt-name">{{item.name}}</text>
+        <text class="mt-size">{{item.sizeText || ''}}</text>
+      </view>
+    </view>
+
+    <!-- ══════════ 委员 和 主任/副主任 共用：个人操作 ══════════ -->
+    <block wx:if="{{userView === 'member' || userView === 'chair'}}">
+      <!-- 准备阶段：送达状态 -->
+      <block wx:if="{{detail.stage === 'preparing' && detail.delivery}}">
+        <view class="my-delivery-card">
+          <text class="mdc-title">会议通知</text>
+          <text class="mdc-big {{detail.delivery.allDone ? 'ok' : ''}}">{{detail.delivery.allDone ? '已送达，等待会议开始' : '尚未送达，请等待主任发送通知'}}</text>
+        </view>
+      </block>
+
+      <!-- 进行中：分步向导 -->
+      <block wx:if="{{detail.stage === 'ongoing' && detail.record}}">
+        <!-- 步骤指示器 -->
+        <view class="wizard-stepper">
+          <view class="ws-step {{currentStep >= 1 ? 'done' : 'active'}}" bindtap="goStep" data-step="1">
+            <text class="ws-num">{{step1Done ? '✓' : '1'}}</text><text class="ws-label">签到</text>
+          </view>
+          <view class="ws-line {{currentStep >= 2 ? 'done' : ''}}"></view>
+          <view class="ws-step {{currentStep >= 2 ? (step2Done ? 'done' : 'active') : 'locked'}}" bindtap="{{step1Done ? 'goStep' : ''}}" data-step="2">
+            <text class="ws-num">{{step2Done ? '✓' : '2'}}</text><text class="ws-label">签字</text>
+          </view>
+          <view class="ws-line {{currentStep >= 3 ? 'done' : ''}}"></view>
+          <view class="ws-step {{currentStep >= 3 ? (step3Done ? 'done' : 'active') : 'locked'}}" bindtap="{{step2Done ? 'goStep' : ''}}" data-step="3">
+            <text class="ws-num">{{step3Done ? '✓' : '3'}}</text><text class="ws-label">表决</text>
+          </view>
+        </view>
+
+        <!-- 全部完成 → 只显示完成卡片 -->
+        <block wx:if="{{stepAllDone}}">
+          <view class="completion-card">
+            <view class="cc-icon">✓</view>
+            <text class="cc-title">本次参会操作全部完成</text>
+            <text class="cc-sub">签到 ✓ · 签字 ✓ · 表决 ✓</text>
+            <text class="cc-time">{{step3Time}}</text>
+          </view>
+        </block>
+
+        <!-- 未完成 → 显示当前步骤 -->
+        <block wx:else>
+          <!-- 步骤1：签到 -->
+          <view class="wizard-card" wx:if="{{currentStep === 1}}">
+            <text class="wc-title">📍 会议签到确认</text>
+            <text class="wc-desc">本人确认出席本次业主委员会会议</text>
+            <view class="wc-info">
+              <text>会议：{{detail.title}}</text>
+              <text>时间：{{detail.meetingDate}} {{detail.meetingTime}}</text>
+              <text>地点：{{detail.location}}</text>
+            </view>
+            <button wx:if="{{!step1Done && detail.perms.canSignIn}}" class="wc-confirm" bindtap="confirmStep1">确认签到</button>
+            <view wx:else class="wc-done-banner">✓ 签到已确认，{{step1Time}}</view>
+          </view>
+
+          <!-- 步骤2：签字 -->
+          <view class="wizard-card" wx:if="{{currentStep === 2 && !step2Done}}">
+            <text class="wc-title">✍ 会议记录签字确认</text>
+            <text class="wc-desc">本人确认本次会议记录内容无误，同意签字</text>
+            <view class="wc-info">
+              <text class="wc-check">✓ 签到已完成 — {{step1Time}}</text>
+            </view>
+            <button wx:if="{{detail.perms.canSign}}" class="wc-confirm" bindtap="confirmStep2">确认签字</button>
+          </view>
+          <!-- 回到步骤2但已完成 → 只读 -->
+          <view class="wizard-card" wx:if="{{currentStep === 2 && step2Done}}">
+            <text class="wc-title">✍ 会议记录签字确认</text>
+            <view class="wc-done-banner">✓ 签字已确认，{{step2Time}} — 不可修改</view>
+          </view>
+
+          <!-- 步骤3：表决（未完成时显示操作区） -->
+          <view class="wizard-card" wx:if="{{currentStep === 3 && !step3Done}}">
+            <text class="wc-title">🗳️ 议题表决</text>
+            <text class="wc-desc">对以下议题逐一投票，确认后不可更改</text>
+            <view class="wc-info">
+              <text class="wc-check">✓ 签到已完成 · ✓ 签字已完成</text>
+            </view>
+            <block wx:if="{{detail.record.topics.length === 0}}">
+              <text class="wc-empty">本次会议暂无表决议题</text>
+              <button class="wc-confirm" bindtap="confirmStep3">完成参会</button>
+            </block>
+            <block wx:else>
+              <view class="topic-card" wx:for="{{detail.record.topics}}" wx:for-item="topic" wx:key="id">
+                <view class="tp-head">
+                  <text class="tp-type {{topic.type === 'major' ? 'major' : 'decision'}}">{{topic.type === 'major' ? '重大事项' : '决定事项'}}</text>
+                  <text wx:if="{{topic.decisionType === 'multi_choice'}}" class="tp-type multi">多选一</text>
+                  <text class="tp-title">{{topic.title}}</text>
+                </view>
+
+                <!-- simple 表决 -->
+                <block wx:if="{{topic.decisionType !== 'multi_choice'}}">
+                  <view wx:if="{{!topic.myVote}}" class="vote-btns">
+                    <text class="vbtn for" bindtap="vote" data-topic-id="{{topic.id}}" data-choice="for_vote">赞成</text>
+                    <text class="vbtn ag" bindtap="vote" data-topic-id="{{topic.id}}" data-choice="against">反对</text>
+                    <text class="vbtn ab" bindtap="vote" data-topic-id="{{topic.id}}" data-choice="abstain">弃权</text>
+                  </view>
+                  <view wx:else class="vote-locked">
+                    <text class="vote-mine-done">✓ {{topic.myVote === 'for_vote' ? '赞成' : topic.myVote === 'against' ? '反对' : '弃权'}}</text>
+                  </view>
+                  <view class="vote-bars">
+                    <text class="vb-line">👍{{topic.forVotes}} 👎{{topic.agVotes}} ⚪{{topic.abVotes}}（需≥{{topic.need}}）</text>
+                  </view>
+                </block>
+
+                <!-- multi_choice 表决 -->
+                <block wx:else>
+                  <view wx:if="{{!topic.myVote}}" class="option-list">
+                    <view class="opt-row" wx:for="{{topic.options}}" wx:for-item="opt" wx:key="id" bindtap="vote" data-topic-id="{{topic.id}}" data-selected-id="{{opt.id}}">
+                      <view class="opt-radio {{topic.myVote == opt.id ? 'on' : ''}}">
+                        <view wx:if="{{topic.myVote == opt.id}}" class="opt-dot"></view>
+                      </view>
+                      <text class="opt-label">{{opt.label}}</text>
+                    </view>
+                  </view>
+                  <view wx:else class="vote-locked">
+                    <text class="vote-mine-done">✓ 已选择：{{topic.myVoteLabel.label}}</text>
+                  </view>
+                  <view class="option-bars">
+                    <text wx:for="{{topic.options}}" wx:for-item="o" wx:key="id" class="ob-line">{{o.label}} {{o.votes}}票</text>
+                  </view>
+                </block>
+              </view>
+              <button wx:if="{{detail.perms.canVote}}" class="wc-confirm" bindtap="confirmStep3">确认表决，不可更改</button>
+              <text wx:else style="display:block;text-align:center;color:#E74C3C;padding:12px;">⚠ 你未被授权参与表决</text>
+            </block>
+          </view>
+          <!-- 回到步骤3但已完成 → 只读 -->
+          <view class="wizard-card" wx:if="{{currentStep === 3 && step3Done}}">
+            <text class="wc-title">🗳️ 议题表决</text>
+            <view class="wc-done-banner">✓ 表决已确认，{{step3Time}} — 不可修改</view>
+            <view class="topic-card" wx:for="{{detail.record.topics}}" wx:for-item="topic" wx:key="id">
+              <text wx:if="{{topic.decisionType === 'multi_choice'}}">{{topic.title}}：{{topic.myVoteLabel ? topic.myVoteLabel.label : '已投票'}}</text>
+              <text wx:else>{{topic.title}}：{{topic.myVote === 'for_vote' ? '赞成' : topic.myVote === 'against' ? '反对' : '弃权'}}</text>
+            </view>
+          </view>
+        </block>
+
+      </block>
+
+    </block>
+
+    <!-- ══════════ 结束阶段 ══════════ -->
+    <block wx:if="{{detail.stage === 'ended'}}">
+      <!-- 委员：简洁结论 -->
+      <block wx:if="{{userView === 'member'}}">
+        <view class="ar-verdict {{detail.compliance}}">
+          <view class="arv-icon">{{detail.compliance === 'valid' ? '✓' : detail.compliance === 'flawed' ? '!' : '✕'}}</view>
+          <view class="arv-info">
+            <text class="arv-title">{{detail.title}}</text>
+            <text class="arv-meta">{{detail.meetingDate}} {{detail.meetingTime}} · {{detail.location}}</text>
+            <text class="arv-result">{{detail.compliance === 'valid' ? '会议有效' : detail.compliance === 'flawed' ? '有效（带说明）' : '会议无效'}} · {{detail.publish && detail.publish.published ? '已公示归档' : detail._archived ? '已归档' : '待公示'}}</text>
+            <text class="arv-reason" wx:if="{{detail.complianceReason}}">{{detail.complianceReason}}</text>
+          </view>
+        </view>
+        <button class="btn btn-ghost" size="mini" bindtap="viewMinutes">查看会议纪要</button>
+      </block>
+
+      <!-- 主任：完整归档 -->
+      <block wx:if="{{userView === 'chair'}}">
+        <view class="ar-card {{detail.compliance}}">
+          <view class="arc-head">
+            <view class="arch-icon">{{detail.compliance === 'valid' ? '✓' : detail.compliance === 'flawed' ? '!' : '✕'}}</view>
+            <view class="arch-info">
+              <text class="arch-title">{{detail.title}}</text>
+              <text class="arch-sub">{{detail.meetingDate}} {{detail.meetingTime}} · {{detail.location}}</text>
+              <text class="arch-result">{{detail.compliance === 'valid' ? '会议有效' : detail.compliance === 'flawed' ? '有效（带说明）' : '会议无效'}} · {{detail.publish && detail.publish.published ? '已公示归档' : detail._archived ? '已归档' : '待公示'}}</text>
+              <text class="arch-reason" wx:if="{{detail.complianceReason}}">{{detail.complianceReason}}</text>
+            </view>
+          </view>
+          <view class="arc-fix">
+            <text class="arcf-label">判定有误？</text>
+            <text class="arcf-chip {{detail.compliance === 'valid' ? 'on' : ''}}" bindtap="markCompliance" data-status="valid">有效</text>
+            <text class="arcf-chip {{detail.compliance === 'flawed' ? 'on' : ''}}" bindtap="markCompliance" data-status="flawed">瑕疵</text>
+            <text class="arcf-chip {{detail.compliance === 'invalid' ? 'on' : ''}}" bindtap="markCompliance" data-status="invalid">无效</text>
+          </view>
+          <view class="arc-list">
+            <view class="arcl-row" bindtap="viewNoticeDraft" wx:if="{{detail.noticeDraft}}">
+              <view class="arcl-icon notice">📄</view><view class="arcl-info"><text class="arcl-name">会议通知</text><text class="arcl-meta">创建时自动生成</text></view><text class="arcl-arrow">›</text>
+            </view>
+            <view class="arcl-row" wx:if="{{detail.record}}">
+              <view class="arcl-icon sign">📋</view><view class="arcl-info"><text class="arcl-name">签到记录</text><text class="arcl-meta">{{detail.record.signedInCount}}/{{detail.record.attendances.length}} 人签到，{{detail.record.signedCount}}/{{detail.record.attendances.length}} 人签字</text></view><text class="arcl-arrow">›</text>
+            </view>
+            <view class="arcl-row" wx:if="{{detail.record && detail.record.topics.length}}">
+              <view class="arcl-icon vote">🗳️</view><view class="arcl-info"><text class="arcl-name">表决记录</text><text class="arcl-meta">{{detail.record.topics.length}} 项议题，{{detail.record.topicsPassed || 0}} 项通过</text></view><text class="arcl-arrow">›</text>
+            </view>
+            <view class="arcl-row" wx:if="{{detail.materials && detail.materials.length}}">
+              <view class="arcl-icon mat">📎</view><view class="arcl-info"><text class="arcl-name">会议材料</text><text class="arcl-meta">{{detail.materials.length}} 份附件</text></view><text class="arcl-arrow">›</text>
+            </view>
+            <view class="arcl-row" wx:if="{{detail.record && detail.record.evidences && detail.record.evidences.length}}">
+              <view class="arcl-icon ev">🖼️</view><view class="arcl-info"><text class="arcl-name">线下佐证</text><text class="arcl-meta">{{detail.record.evidences.length}} 张照片</text></view><text class="arcl-arrow">›</text>
+            </view>
+            <view class="arcl-row" bindtap="viewMinutes">
+              <view class="arcl-icon min">📝</view><view class="arcl-info"><text class="arcl-name">会议纪要</text><text class="arcl-meta">自动生成，可查看导出</text></view><text class="arcl-arrow">›</text>
+            </view>
+            <view class="arcl-row" wx:for="{{detail.archiveExtras}}" wx:for-item="ae" wx:key="id" wx:if="{{detail.archiveExtras && detail.archiveExtras.length}}">
+              <view class="arcl-icon extra">📎</view><view class="arcl-info"><text class="arcl-name">{{ae.fileName}}</text><text class="arcl-meta">补充归档</text></view><text class="arcl-del" bindtap="removeArchiveExtra" data-ae-id="{{ae.id}}">×</text>
+            </view>
+          </view>
+          <view class="arc-add" bindtap="addArchiveExtra"><text>+ 补充归档材料</text></view>
+        </view>
+        <view class="ar-publish" wx:if="{{detail.compliance !== 'invalid'}}">
+          <view wx:if="{{detail.publish && detail.publish.published}}" class="arp-done"><text class="arp-check">✓</text><text>已于 {{detail.publish.publishDate}} 公示，归档完成</text></view>
+          <view wx:elif="{{detail._archived}}" class="arp-done"><text class="arp-check">✓</text><text>已归档（未公示）</text></view>
+          <block wx:else>
+            <button class="btn btn-primary" style="width:100%;" bindtap="publishNow">发起公示</button>
+            <text class="ar-skip" bindtap="archiveDirect">直接归档，不公示</text>
+          </block>
+        </view>
+        <view class="ar-publish invalid" wx:else><text>会议无效，无需公示，资料留档备查</text></view>
+      </block>
+    </block>
+
+    <!-- ══════════ 主任/副主任视图 ══════════ -->
+    <block wx:if="{{userView === 'chair'}}">
+      <!-- 准备阶段 -->
+      <block wx:if="{{detail.stage === 'preparing' && detail.delivery}}">
+        <view class="chair-delivery-card">
+          <text class="cdc-title">会前通知</text>
+          <text class="cdc-status {{detail.delivery.allDone ? 'ok' : ''}}">{{detail.delivery.allDone ? '已送达' : '待送达'}}</text>
+          <text class="cdc-footer">{{detail.delivery.noDate ? '请先设置会议日期' : (detail.delivery.daysLeft >= 0 ? '截止 '+detail.delivery.deadlineStr+'（还剩'+detail.delivery.daysLeft+'天）' : '截止 '+detail.delivery.deadlineStr+'（已逾期）')}}</text>
+        </view>
+        <view class="action-row" wx:if="{{!detail.delivery.allDone}}">
+          <button class="btn btn-primary" size="mini" bindtap="sendAll">一键全部送达</button>
+        </view>
+        <view class="threshold-note" wx:if="{{!detail.delivery.allDone}}">
+          <text>须完成通知送达方可开始会议</text>
+        </view>
+        <view class="action-row">
+          <button class="btn btn-ghost" size="mini" bindtap="removeMeeting">取消会议</button>
+          <button class="btn btn-outline" size="mini" catchtap="showWip">编辑</button>
+          <button class="btn {{detail.delivery.allDone ? 'btn-primary' : 'btn-disabled'}}" size="mini" bindtap="startMeeting">开始会议</button>
+        </view>
+        <view class="threshold-note ok" wx:if="{{detail.delivery.allDone}}">
+          <text>通知已送达，可以开始会议</text>
+        </view>
+      </block>
+
+      <!-- 进行中 -->
+      <block wx:if="{{detail.stage === 'ongoing' && detail.record}}">
+        <view class="chair-overview">
+          <text class="co-title">会议出席总览</text>
+          <view class="co-row">
+            <text class="co-label">签到</text>
+            <view class="co-bar"><view class="co-fill {{detail.record.checks[0].ok ? 'ok' : 'no'}}" style="width:{{detail.record.signedInPct}}%"></view></view>
+            <text class="co-count">{{detail.record.signedInCount}}/{{detail.record.attendances.length}}</text>
+          </view>
+          <view class="co-row">
+            <text class="co-label">签字</text>
+            <view class="co-bar"><view class="co-fill {{detail.record.checks[1].ok ? 'ok' : 'no'}}" style="width:{{detail.record.signedPct}}%"></view></view>
+            <text class="co-count">{{detail.record.signedCount}}/{{detail.record.attendances.length}}</text>
+          </view>
+          <view class="co-checks">
+            <view class="co-check-row" wx:for="{{detail.record.checks}}" wx:key="label">
+              <text class="co-check-icon {{item.ok ? 'ok' : 'no'}}">{{item.ok ? '✓' : '✕'}}</text>
+              <text class="co-check-label">{{item.label}}</text>
+              <text class="co-check-detail {{item.ok ? 'ok' : 'no'}}">{{item.detail}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="chair-control">
+          <text class="cc2-title">会议控制</text>
+          <text class="cc2-note">{{detail.taskHint}}</text>
+          <view class="cc2-btns">
+            <button class="btn btn-outline" size="mini" bindtap="viewMinutes">查看纪要草稿</button>
+            <button class="btn {{detail.taskLevel === 'todo' ? 'btn-primary' : 'btn-warn'}}" size="mini" bindtap="endMeeting">结束会议</button>
+          </view>
+        </view>
+      </block>
+
+    </block>
+
+    <!-- ══════════ 委员/主任共用：会议记录管理 ══════════ -->
+    <block wx:if="{{userView === 'chair' || userView === 'member'}}">
+
+      <block wx:if="{{detail.stage === 'ongoing' && detail.record}}">
+        <view class="flag-row">
+          <view class="flag-item" bindtap="toggleFlag" data-flag="hasDecision">
+            <text>含"作出决定"内容</text>
+            <switch checked="{{detail.record.hasDecision}}" color="#FFA800"/>
+          </view>
+          <view class="flag-item" bindtap="toggleFlag" data-flag="hasMajorIssue">
+            <text>含"重大事项"</text>
+            <switch checked="{{detail.record.hasMajorIssue}}" color="#FFA800"/>
+          </view>
+        </view>
+        <view wx:if="{{detail.record.hasMajorIssue}}" class="juwei-row">
+          <text>居委会委员：{{detail.record.juweiName}}</text>
+          <text class="fu-chip {{detail.record.juweiSigned ? 'on' : ''}}" bindtap="toggleJuwei">{{detail.record.juweiSigned ? '✓ 已签字' : '签字'}}</text>
+        </view>
+        <!-- 议题管理 -->
+        <text class="section-title" style="margin-top:12px;">议题表决（{{detail.record.topics.length}}）<text class="add-link" bindtap="openAddTopic">+ 添加</text></text>
+        <view wx:for="{{detail.record.topics}}" wx:key="id" class="topic-card">
+          <view class="tp-head">
+            <text class="tp-type {{item.type === 'major' ? 'major' : 'decision'}}">{{item.type === 'major' ? '重大事项' : '决定事项'}}</text>
+            <text wx:if="{{item.decisionType === 'multi_choice'}}" class="tp-type multi">多选一</text>
+            <text class="tp-title">{{item.title}}</text>
+            <text class="tp-del" bindtap="removeTopic" data-topic-id="{{item.id}}">×</text>
+          </view>
+          <block wx:if="{{item.decisionType === 'multi_choice'}}">
+            <view class="option-bars">
+              <text wx:for="{{item.options}}" wx:key="id" class="ob-line">{{item.label}} {{item.votes}}票</text>
+            </view>
+          </block>
+          <block wx:else>
+            <view class="vote-bars">
+              <text class="vb-line">👍 {{item.forVotes}} · 👎 {{item.agVotes}} · ⚪ {{item.abVotes}}（需≥{{item.need}}）</text>
+            </view>
+          </block>
+          <text class="tp-status {{item.passed ? 'pass' : ''}}">{{item.text}}</text>
+        </view>
+        <view wx:if="{{detail.record.topics.length === 0}}" style="text-align:center;color:#ccc;font-size:12px;padding:12px 0;">暂无议题，点击右上角添加</view>
+
+        <!-- 佐证管理 -->
+        <text class="section-title" style="margin-top:12px;">📎 线下纸质佐证 <text class="add-link" bindtap="addEvidence">+ 上传</text></text>
+        <view wx:if="{{detail.record.evidences.length}}">
+          <view wx:for="{{detail.record.evidences}}" wx:key="id" class="ev-item">
+            <text>{{item.fileName}}</text>
+            <text class="tp-del" bindtap="removeEvidence" data-ev-id="{{item.id}}">×</text>
+          </view>
+        </view>
+        <view wx:else><text style="font-size:11px;color:#bbb;">暂无佐证，点击右上角上传</text></view>
+      </block>
+
+    </block>
+
+    <!-- ══════════ 外部视图 ══════════ -->
+    <block wx:if="{{userView === 'owner' || userView === 'property'}}">
+      <view class="ext-banner {{userView}}">
+        <text>{{userView === 'owner' ? '🏠 业主视角·只读' : '🏢 物业视角·只读'}}</text>
+        <text class="ext-sub">仅展示对外公开信息，不可操作</text>
+      </view>
+      <block wx:if="{{detail.stage === 'ended' && detail.compliance !== 'invalid' && detail.publish && detail.publish.published}}">
+        <button class="btn btn-ghost" size="mini" bindtap="viewMinutes">查看公示纪要</button>
+      </block>
+      <block wx:else>
+        <text class="ext-hint">会议结束公示后可查看决议</text>
+      </block>
+    </block>
+  </view>
+</scroll-view>
+
+<!-- 添加议题弹窗 -->
+<view wx:if="{{addTopicVisible}}" class="modal-mask" bindtap="closeAddTopic">
+  <view class="form-sheet" catchtap="noop" style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
+    <view class="sheet-head">
+      <text class="sheet-title">添加议题</text>
+      <text class="sheet-close" bindtap="closeAddTopic">×</text>
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">议题名称</text>
+      <input class="form-input large" value="{{newTopicForm.title}}" data-field="title" bindinput="onTopicFormInput" placeholder="输入议题名称" placeholder-class="input-placeholder" />
+    </view>
+
+    <view class="form-group">
+      <text class="form-label">表决类型</text>
+      <view class="type-row">
+        <text class="type-chip {{newTopicForm.decisionType === 'simple' ? 'on' : ''}}" bindtap="pickDecisionType" data-type="simple">普通表决</text>
+        <text class="type-chip {{newTopicForm.decisionType === 'multi_choice' ? 'on' : ''}}" bindtap="pickDecisionType" data-type="multi_choice">多选一</text>
+      </view>
+    </view>
+
+    <view wx:if="{{newTopicForm.decisionType === 'multi_choice'}}" class="form-group">
+      <text class="form-label">选项（每行一个，第一个为默认选项）</text>
+      <textarea class="form-textarea" value="{{newTopicForm.optionsText}}" data-field="optionsText" bindinput="onTopicFormInput" placeholder="每行写一个选项，如：&#10;完全更换为智能门禁&#10;保留现有门禁，加装人脸识别&#10;暂不改造，维持现状" placeholder-class="input-placeholder" style="min-height:90px;height:90px;" />
+    </view>
+
+    <view class="sheet-actions">
+      <button class="btn btn-ghost" bindtap="closeAddTopic">取消</button>
+      <button class="btn btn-primary" bindtap="submitAddTopic">确认添加</button>
+    </view>
+  </view>
+</view>
+
+<!-- 代录弹层 -->
+<view wx:if="{{proxyVisible}}" class="modal-mask" bindtap="closeProxyRecorder">
+  <view class="form-sheet proxy-sheet" catchtap="noop">
+    <view class="sheet-head">
+      <text class="sheet-title">会议代录</text>
+      <text class="sheet-close" bindtap="closeProxyRecorder">×</text>
+    </view>
+
+    <view class="proxy-tabs">
+      <text class="proxy-tab {{proxyAction === 'signIn' ? 'on' : ''}}" bindtap="pickProxyAction" data-action="signIn">代签到</text>
+      <text class="proxy-tab {{proxyAction === 'vote' ? 'on' : ''}}" bindtap="pickProxyAction" data-action="vote">代投票</text>
+    </view>
+
+    <view wx:if="{{proxyAction === 'vote'}}" class="proxy-section">
+      <text class="form-label">选择议题</text>
+      <view class="proxy-topic-list">
+        <text wx:for="{{detail.record.topics}}" wx:key="id" class="proxy-topic {{proxyTopicId == item.id ? 'on' : ''}}" bindtap="pickProxyTopic" data-topic-id="{{item.id}}">{{item.title}}</text>
+      </view>
+      <block wx:for="{{detail.record.topics}}" wx:for-item="topic" wx:key="id">
+        <view wx:if="{{proxyTopicId == topic.id && topic.decisionType !== 'multi_choice'}}" class="proxy-choice-row">
+          <text class="proxy-choice for {{proxyChoice === 'for_vote' ? 'on' : ''}}" bindtap="pickProxyChoice" data-choice="for_vote">赞成</text>
+          <text class="proxy-choice ag {{proxyChoice === 'against' ? 'on' : ''}}" bindtap="pickProxyChoice" data-choice="against">反对</text>
+          <text class="proxy-choice ab {{proxyChoice === 'abstain' ? 'on' : ''}}" bindtap="pickProxyChoice" data-choice="abstain">弃权</text>
+        </view>
+        <view wx:if="{{proxyTopicId == topic.id && topic.decisionType === 'multi_choice'}}" class="proxy-option-list">
+          <view class="proxy-option {{proxySelectedId == opt.id ? 'on' : ''}}" wx:for="{{topic.options}}" wx:for-item="opt" wx:key="id" bindtap="pickProxyOption" data-selected-id="{{opt.id}}">
+            <text>{{opt.label}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="proxy-section">
+      <text class="form-label">选择代录对象</text>
+      <input class="form-input" value="{{proxyKeyword}}" bindinput="onProxyKeywordInput" placeholder="搜索姓名或房号" placeholder-class="input-placeholder" />
+      <scroll-view scroll-y class="proxy-target-list">
+        <view wx:for="{{proxyTargets}}" wx:key="memberId" class="proxy-target {{item.checked ? 'on' : ''}} {{item.disabled ? 'disabled' : ''}}" bindtap="toggleProxyTarget" data-member-id="{{item.memberId}}">
+          <view class="proxy-check">{{item.checked ? '✓' : ''}}</view>
+          <view class="proxy-person">
+            <text class="proxy-name">{{item.name}}</text>
+            <text class="proxy-meta">{{item.role}}{{item.roomNumber ? ' · ' + item.roomNumber : ''}}</text>
+          </view>
+          <text wx:if="{{item.disabledText}}" class="proxy-state">{{item.disabledText}}</text>
+        </view>
+        <view wx:if="{{!proxyTargets.length}}" class="proxy-empty">没有匹配人员</view>
+      </scroll-view>
+    </view>
+
+    <view class="proxy-section">
+      <text class="form-label">代录凭证</text>
+      <view class="proof-picker" bindtap="pickProxyProof">
+        <text class="proof-main">{{proxyProofName || '上传现场照片、授权截图或纸质凭证'}}</text>
+        <text class="proof-action">{{proxyProofName ? '重新选择' : '选择图片'}}</text>
+      </view>
+    </view>
+
+    <view class="proxy-submit-row">
+      <text class="proxy-count">已选 {{proxySelectedCount}} 人</text>
+      <button class="btn btn-primary proxy-submit" loading="{{proxySubmitting}}" bindtap="submitProxyAction">提交代录</button>
+    </view>
+  </view>
+</view>
