@@ -1,0 +1,90 @@
+server:
+  port: 8080
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: ywh-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/ywh_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: "your-db-password"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  servlet:
+    multipart:
+      # 默认仅 1MB，会议录音文件远超此值，放大上限
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+# JWT
+jwt:
+  secret: change-me-to-a-random-secret-at-least-256-bits-long-for-hs256
+  expiration: 604800000  # 7 days in ms
+
+# 微信小程序
+wx:
+  miniapp:
+    appid: your-appid-here
+    secret: your-secret-here
+
+# 豆包（火山引擎）。真实密钥请用环境变量注入，勿写进本文件提交。
+doubao:
+  # 录音文件识别大模型（volc.bigasr.auc）。
+  asr:
+    enabled: ${DOUBAO_ASR_ENABLED:true}      # false 则回退到桩（演示转写）
+    app-key: ${DOUBAO_ASR_APP_KEY:}
+    access-token: ${DOUBAO_ASR_ACCESS_TOKEN:}
+    secret-key: ${DOUBAO_ASR_SECRET_KEY:}
+    resource-id: ${DOUBAO_ASR_RESOURCE_ID:volc.bigasr.auc}
+    model-name: ${DOUBAO_ASR_MODEL_NAME:bigmodel}
+    submit-url: ${DOUBAO_ASR_SUBMIT_URL:https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit}
+    query-url: ${DOUBAO_ASR_QUERY_URL:https://openspeech.bytedance.com/api/v3/auc/bigmodel/query}
+    default-format: mp3
+  # 豆包大模型（整理/润色 + 转写纠错）——需另配方舟 Ark 的 API Key，与上面 ASR 是两套凭证。
+  llm:
+    enabled: ${DOUBAO_LLM_ENABLED:false}
+    api-key: ${DOUBAO_LLM_API_KEY:}
+    model: ${DOUBAO_LLM_MODEL:}
+    base-url: ${DOUBAO_LLM_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+  # 豆包多模态向量化（方舟 Ark embedding）——与 LLM 共用 Ark API Key。
+  embedding:
+    enabled: ${DOUBAO_EMBEDDING_ENABLED:false}
+    api-key: ${DOUBAO_EMBEDDING_API_KEY:${DOUBAO_LLM_API_KEY:}}
+    url: ${DOUBAO_EMBEDDING_URL:https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal}
+    model: ${DOUBAO_EMBEDDING_MODEL:doubao-embedding-vision-251215}
+    dimensions: ${DOUBAO_EMBEDDING_DIMENSIONS:1024}
+
+# 音频存储：录音/上传的音频落地后给豆包拉取。
+# ⚠️ public-base-url 必须是火山引擎能访问的【公网地址】；局域网/localhost 豆包拉不到。
+# 生产建议换成对象存储(TOS)：实现 AudioStorageService 的 TOS 版即可，接口不变。
+storage:
+  audio:
+    dir: ${STORAGE_AUDIO_DIR:./data/audio}
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:http://your-public-host:8080}
+
+# Swagger
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /api-docs
+
+logging:
+  level:
+    com.ywh: DEBUG
+    org.springframework.security: INFO
