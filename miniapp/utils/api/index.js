@@ -8,7 +8,6 @@ var core = require('./core');
 var auth = require('./auth');
 var dashboard = require('./dashboard');
 var committee = require('./committee');
-var ownerMeeting = require('./owner-meeting');
 var reception = require('./reception');
 var learning = require('./learning');
 var publicInfo = require('./public-info');
@@ -29,14 +28,24 @@ module.exports = {
 
   // Committee
   committeeList: committee.committeeList,
+  committeeArchiveList: committee.committeeArchiveList,
+  committeeArchive: committee.committeeArchive,
+  committeeRevokeArchive: committee.committeeRevokeArchive,
+  committeeAddArchiveExtra: committee.committeeAddArchiveExtra,
   committeeDetail: committee.committeeDetail,
+  committeeMembers: committee.committeeMembers,
   committeeCreate: committee.committeeCreate,
+  committeeUpdate: committee.committeeUpdate,
   committeeAdvance: committee.committeeAdvance,
   committeeToggleDelivery: committee.committeeToggleDelivery,
+  committeeMarkDeliveryRead: committee.committeeMarkDeliveryRead,
   committeeSendAll: committee.committeeSendAll,
   committeeToggleAttend: committee.committeeToggleAttend,
   committeeSelfToggle: committee.committeeSelfToggle,
   committeeSignAll: committee.committeeSignAll,
+  committeeExportAttendance: committee.committeeExportAttendance,
+  committeeClaimRecorder: committee.committeeClaimRecorder,
+  committeeResetRecorder: committee.committeeResetRecorder,
   committeeAddTopic: committee.committeeAddTopic,
   committeeRemoveTopic: committee.committeeRemoveTopic,
   committeeVote: committee.committeeVote,
@@ -47,31 +56,22 @@ module.exports = {
   committeeAddEvidence: committee.committeeAddEvidence,
   committeeRemoveEvidence: committee.committeeRemoveEvidence,
   committeePublish: committee.committeePublish,
+  committeeWithdrawPublish: committee.committeeWithdrawPublish,
   committeeMinutes: committee.committeeMinutes,
+  committeeMinutesRevisions: committee.committeeMinutesRevisions,
+  committeeUpdateMinutes: committee.committeeUpdateMinutes,
   committeeStats: committee.committeeStats,
   committeePublishScore: committee.committeePublishScore,
   committeeRemove: committee.committeeRemove,
   committeeCompliance: committee.committeeCompliance,
-
-  // Owner Meetings
-  omList: ownerMeeting.omList,
-  omDetail: ownerMeeting.omDetail,
-  omCreate: ownerMeeting.omCreate,
-  omAdvance: ownerMeeting.omAdvance,
-  omToggleNotify: ownerMeeting.omToggleNotify,
-  omNotifyAll: ownerMeeting.omNotifyAll,
-  omToggleBallot: ownerMeeting.omToggleBallot,
-  omBallotAll: ownerMeeting.omBallotAll,
-  omAdjustCount: ownerMeeting.omAdjustCount,
-  omToggleSupervisor: ownerMeeting.omToggleSupervisor,
-  omToggleProcess: ownerMeeting.omToggleProcess,
-  omAddTopic: ownerMeeting.omAddTopic,
-  omVoteAdj: ownerMeeting.omVoteAdj,
-  omAddEvidence: ownerMeeting.omAddEvidence,
-  omPublish: ownerMeeting.omPublish,
-  omStats: ownerMeeting.omStats,
-  omRemove: ownerMeeting.omRemove,
-  omRemoveEvidence: ownerMeeting.omRemoveEvidence,
+  committeeAddMaterial: committee.committeeAddMaterial,
+  committeeRemoveMaterial: committee.committeeRemoveMaterial,
+  committeeUpdateNotice: committee.committeeUpdateNotice,
+  committeeQuickUploadRecording: committee.committeeQuickUploadRecording,
+  committeeQuickRecordingStatus: committee.committeeQuickRecordingStatus,
+  committeeQuickExtract: committee.committeeQuickExtract,
+  committeeQuickTranscript: committee.committeeQuickTranscript,
+  committeeQuickConfirm: committee.committeeQuickConfirm,
 
   // Reception
   receptionSystem: reception.receptionSystem,
@@ -80,6 +80,11 @@ module.exports = {
   receptionCreate: reception.receptionCreate,
   receptionUpdateResolution: reception.receptionUpdateResolution,
   receptionToggleFollow: reception.receptionToggleFollow,
+  receptionDispatch: reception.receptionDispatch,
+  receptionPropertyStart: reception.receptionPropertyStart,
+  receptionPropertyReply: reception.receptionPropertyReply,
+  receptionPropertyTasks: reception.receptionPropertyTasks,
+  receptionPropertyPublic: reception.receptionPropertyPublic,
   receptionStats: reception.receptionStats,
   receptionRemove: reception.receptionRemove,
   receptionAddEvidence: reception.receptionAddEvidence,
@@ -96,6 +101,11 @@ module.exports = {
   learningRemoveEvidence: learning.learningRemoveEvidence,
   learningSignIn: learning.learningSignIn,
   learningNotifyAll: learning.learningNotifyAll,
+
+  // Notifications
+  notificationList: require('./notifications').notificationList,
+  notificationRead: require('./notifications').notificationRead,
+  notificationReadAll: require('./notifications').notificationReadAll,
 
   // Public Info
   publicInfo: publicInfo.publicInfo

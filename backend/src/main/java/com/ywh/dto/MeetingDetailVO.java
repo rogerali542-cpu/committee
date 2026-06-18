@@ -1,6 +1,7 @@
 package com.ywh.dto;
 
 import com.ywh.enums.ComplianceStatus;
+import com.ywh.enums.MeetingMode;
 import com.ywh.enums.MeetingStage;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class MeetingDetailVO {
     private String description;
     private MeetingStage stage;
     private ComplianceStatus compliance;
+    private MeetingMode meetingMode;   // normal / quick
     private List<String> invalidNotes;
 
     // Current user's task summary
@@ -33,10 +35,17 @@ public class MeetingDetailVO {
     private String userRole;
     private String userView;    // chair, member, recorder, owner, property
 
-    // Delivery info (preparing stage)
+    // 通知后锁定（规则8）：coreLocked=true 时重大字段（日期/时间/地点/参会范围）应锁定，修改需重新通知
+    private Boolean coreLocked;
+    private String notifiedAt;
+
+    // Delivery info
     private DeliveryInfoVO delivery;
 
-    // Record info (ongoing stage)
+    // 当前用户（委员）自己的送达/已读状态（准备阶段）
+    private MyDeliveryVO myDelivery;
+
+    // Record info
     private RecordInfoVO record;
 
     // Publish info (ended stage)
@@ -52,8 +61,9 @@ public class MeetingDetailVO {
     public static class DeliveryInfoVO {
         private String deadlineStr;
         private Integer daysLeft;
-        private Integer noticeDone;
-        private Integer materialDone;
+        private Integer noticeDone;       // 主任已送达通知的人数
+        private Integer materialDone;     // 主任已送达材料的人数
+        private Integer readDone;         // 委员已读通知的人数
         private Integer total;
         private Boolean allDone;
         private Boolean noDate;
@@ -66,7 +76,16 @@ public class MeetingDetailVO {
             private String role;
             private Boolean noticeDelivered;
             private Boolean materialDelivered;
+            private Boolean noticeRead;       // 该委员是否已读通知
         }
+    }
+
+    @Data
+    public static class MyDeliveryVO {
+        private Boolean noticeDelivered;
+        private Boolean materialDelivered;
+        private Boolean noticeRead;
+        private Boolean materialRead;
     }
 
     @Data
@@ -75,6 +94,9 @@ public class MeetingDetailVO {
         private Boolean hasMajorIssue;
         private String juweiName;
         private Boolean juweiSigned;
+        private Long recorderRoleId;   // 当前录音负责人（null=暂无）
+        private String recorderName;
+        private String recordingUrl;   // 会议录音存档地址（会后回放/下载）
         private List<AttendanceVO> attendances;
         private List<TopicVO> topics;
         private List<EvidenceVO> evidences;
@@ -101,6 +123,7 @@ public class MeetingDetailVO {
             private Long id;
             private String title;
             private String type;
+            private Boolean voteRequired;
             private Integer forVotes;
             private Integer agVotes;
             private Integer abVotes;
@@ -114,6 +137,13 @@ public class MeetingDetailVO {
             private String myVote;
             private Long mySelectedId;
             private Map<String, Object> myVoteLabel;
+            // 留痕（规则6）
+            private String source;        // live=现场新增
+            private String createdByName;
+            private String createdAt;
+            // 实名表决（规则5）
+            private Boolean realNameVote;
+            private List<Map<String, Object>> voterChoices;  // 仅实名表决时填充：{name, choice/label}
         }
 
         @Data
@@ -138,6 +168,14 @@ public class MeetingDetailVO {
         private String deadlineStr;
         private Integer daysLeft;
         private String scoreState;   // ontime, late, overdue, pending
+        // 公示状态机（见 产品边界定稿.md §5）
+        private String status;       // pending, published, withdrawn
+        private String publishedBy;
+        private String publishedAt;
+        private Boolean withdrawn;
+        private String withdrawnBy;
+        private String withdrawnAt;
+        private String withdrawReason;
     }
 
     @Data
@@ -154,5 +192,14 @@ public class MeetingDetailVO {
         private Long userRoleId;
         private String name;
         private String role;
+        private String roomNumber;
+    }
+
+    @Data
+    public static class MinutesRevisionVO {
+        private Integer versionNo;
+        private String editorName;
+        private String createdAt;
+        private String content;
     }
 }

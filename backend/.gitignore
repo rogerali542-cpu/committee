@@ -1,0 +1,6 @@
+target/
+*.log
+
+# 含密钥（豆包/数据库/JWT），勿提交。需要共享结构时另存 application.yml.example 用占位符。
+src/main/resources/application.yml
+src/main/resources/application-local.yml

@@ -1,0 +1,194 @@
+package com.ywh.service;
+
+import com.ywh.entity.*;
+import com.ywh.enums.LearningType;
+import com.ywh.enums.MeetingStage;
+import com.ywh.repository.*;
+import com.ywh.util.SecurityUtils;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class LearningService {
+
+    private final LearningRecordRepository repo;
+    private final LearningEvidenceRepository evRepo;
+    private final LearningSignInRepository signInRepo;
+
+    public List<Map<String, Object>> list(String type, String stage) {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        MeetingStage lStage = stage != null ? MeetingStage.valueOf(stage) : null;
+
+        // "training" = street + special 组合筛选
+        boolean isTraining = "training".equals(type);
+        List<LearningType> types = isTraining
+                ? List.of(LearningType.street, LearningType.special)
+                : List.of(type != null ? LearningType.valueOf(type) : LearningType.internal);
+
+        List<LearningRecord> records;
+        if (lStage != null) {
+            records = isTraining
+                    ? repo.findByCommunityIdAndTypeInAndStageOrderByDateDesc(communityId, types, lStage)
+                    : repo.findByCommunityIdAndTypeAndStageOrderByDateDesc(communityId, types.get(0), lStage);
+        } else {
+            records = isTraining
+                    ? repo.findByCommunityIdAndTypeInOrderByDateDesc(communityId, types)
+                    : repo.findByCommunityIdAndTypeOrderByDateDesc(communityId, types.get(0));
+        }
+
+        return records.stream().map(r -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", r.getId());
+            m.put("title", r.getTitle());
+            m.put("date", r.getDate());
+            m.put("time", r.getTime());
+            m.put("location", r.getLocation());
+            m.put("trainer", r.getTrainer());
+            m.put("description", r.getDescription());
+            m.put("type", r.getType().name());
+            m.put("stage", r.getStage().name());
+            m.put("progress", r.getProgress());
+            m.put("attendees", r.getAttendees());
+            m.put("notified", r.getNotified());
+            // 佐证
+            List<LearningEvidence> evs = evRepo.findByRecordId(r.getId());
+            m.put("evidences", evs.stream().map(ev -> {
+                Map<String, Object> em = new HashMap<>();
+                em.put("id", ev.getId());
+                em.put("fileName", ev.getFileName());
+                em.put("fileType", ev.getFileType());
+                return em;
+            }).collect(Collectors.toList()));
+            // 签到
+            List<LearningSignIn> signs = signInRepo.findByRecordId(r.getId());
+            Map<String, Boolean> signIns = new LinkedHashMap<>();
+            for (LearningSignIn s : signs) signIns.put(s.getRealName(), s.getSignedIn());
+            m.put("signIns", signIns);
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    public Map<String, Object> getCounts(String type) {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        LearningType lType = type != null ? LearningType.valueOf(type) : LearningType.internal;
+        List<LearningRecord> records = repo.findByCommunityIdAndTypeOrderByDateDesc(communityId, lType);
+        Map<String, Object> counts = new HashMap<>();
+        counts.put("pending", records.stream().filter(r -> r.getStage() == MeetingStage.preparing).count());
+        counts.put("ongoing", records.stream().filter(r -> r.getStage() == MeetingStage.ongoing).count());
+        counts.put("ended", records.stream().filter(r -> r.getStage() == MeetingStage.ended).count());
+        return counts;
+    }
+
+    @Transactional
+    public Map<String, Object> create(Map<String, Object> req) {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        String typeStr = (String) req.getOrDefault("type", "internal");
+        LearningType lType = LearningType.internal;
+        try { lType = LearningType.valueOf(typeStr); } catch (Exception ignored) {}
+
+        LearningRecord r = LearningRecord.builder()
+                .community(Community.builder().id(communityId).build())
+                .title((String) req.getOrDefault("title", "新建学习"))
+                .date(req.get("date") != null ? LocalDate.parse(req.get("date").toString()) : LocalDate.now())
+                .time(req.get("time") != null ? LocalTime.parse(req.get("time").toString()) : LocalTime.of(14, 0))
+                .location((String) req.getOrDefault("location", ""))
+                .trainer((String) req.getOrDefault("trainer", ""))
+                .description((String) req.getOrDefault("description", ""))
+                .attendees((String) req.getOrDefault("attendees", ""))
+                .type(lType)
+                .stage(MeetingStage.preparing)
+                .progress(0)
+                .notified(false)
+                .build();
+        r = repo.save(r);
+
+        // 根据参训人员生成签到表
+        String attendees = (String) req.getOrDefault("attendees", "");
+        if (attendees != null && !attendees.isEmpty()) {
+            for (String name : attendees.split("[,，、\\s]+")) {
+                String n = name.trim();
+                if (!n.isEmpty()) {
+                    LearningSignIn si = LearningSignIn.builder()
+                            .recordId(r.getId()).realName(n).signedIn(false).build();
+                    signInRepo.save(si);
+                }
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", r.getId());
+        return result;
+    }
+
+    @Transactional
+    public void remove(Long id) {
+        repo.deleteById(id);
+    }
+
+    @Transactional
+    public void startLearning(Long id) {
+        LearningRecord r = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
+        r.setStage(MeetingStage.ongoing);
+        r.setProgress(10);
+        // 重置签到状态
+        List<LearningSignIn> signs = signInRepo.findByRecordId(id);
+        for (LearningSignIn s : signs) { s.setSignedIn(false); s.setSignedAt(null); }
+        signInRepo.saveAll(signs);
+        repo.save(r);
+    }
+
+    @Transactional
+    public void finishLearning(Long id) {
+        LearningRecord r = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
+        r.setStage(MeetingStage.ended);
+        r.setProgress(100);
+        repo.save(r);
+    }
+
+    // 通知全员
+    @Transactional
+    public void notifyAll(Long id) {
+        LearningRecord r = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
+        r.setNotified(true);
+        repo.save(r);
+    }
+
+    // 签到
+    @Transactional
+    public void signIn(Long id) {
+        UserRoleEntity currentUser = SecurityUtils.getCurrentUserRole();
+        String realName = currentUser.getRealName();
+        LearningSignIn si = signInRepo.findByRecordIdAndRealName(id, realName).orElse(null);
+        if (si != null) {
+            si.setSignedIn(!si.getSignedIn());
+            si.setSignedAt(si.getSignedIn() ? LocalDateTime.now() : null);
+            signInRepo.save(si);
+        }
+    }
+
+    // 佐证
+    @Transactional
+    public Map<String, Object> addEvidence(Long id, String fileName, String fileType) {
+        LearningEvidence ev = LearningEvidence.builder()
+                .recordId(id).fileName(fileName).fileType(fileType).build();
+        ev = evRepo.save(ev);
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", ev.getId());
+        m.put("fileName", ev.getFileName());
+        m.put("fileType", ev.getFileType());
+        return m;
+    }
+
+    @Transactional
+    public void removeEvidence(Long id, Long evId) {
+        evRepo.deleteById(evId);
+    }
+}

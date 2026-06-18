@@ -2,6 +2,7 @@ package com.ywh.controller;
 
 import com.ywh.annotation.RequireRole;
 import com.ywh.dto.CreateMeetingRequest;
+import com.ywh.dto.DeliverySendRequest;
 import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
@@ -28,6 +29,11 @@ public class CommitteeController {
         return Result.ok(service.listMeetings(stage));
     }
 
+    @GetMapping("/members")
+    public Result<List<MeetingDetailVO.MemberSummaryVO>> members() {
+        return Result.ok(service.listCommitteeMembers());
+    }
+
     @GetMapping("/{id}")
     public Result<MeetingDetailVO> detail(@PathVariable Long id) {
         return Result.ok(service.getDetail(id));
@@ -48,8 +54,9 @@ public class CommitteeController {
 
     @PostMapping("/{id}/advance")
     @RequireRole({"主任", "副主任"})
-    public Result<Void> advance(@PathVariable Long id, @RequestParam String action) {
-        service.advanceStage(id, action);
+    public Result<Void> advance(@PathVariable Long id, @RequestParam String action,
+                                @RequestParam(required = false) String mode) {
+        service.advanceStage(id, action, mode);
         return Result.ok();
     }
 
@@ -61,10 +68,17 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @PostMapping("/{id}/delivery/read")
+    public Result<Void> markDeliveryRead(@PathVariable Long id) {
+        service.markDeliveryRead(id);
+        return Result.ok();
+    }
+
     @PostMapping("/{id}/delivery/send-all")
     @RequireRole({"主任", "副主任", "委员"})
-    public Result<Void> sendAll(@PathVariable Long id) {
-        service.sendAll(id);
+    public Result<Void> sendAll(@PathVariable Long id,
+                                @RequestBody(required = false) DeliverySendRequest req) {
+        service.sendAll(id, req == null ? null : req.getMemberIds());
         return Result.ok();
     }
 
@@ -82,6 +96,12 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @GetMapping("/{id}/attendance/export")
+    @RequireRole({"主任", "副主任", "记录员"})
+    public Result<Map<String, Object>> exportAttendance(@PathVariable Long id) {
+        return Result.ok(service.exportAttendanceCsv(id));
+    }
+
     @PostMapping("/{id}/attendance/sign-all")
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> signAll(@PathVariable Long id) {
@@ -95,8 +115,9 @@ public class CommitteeController {
                                          @RequestParam String title,
                                          @RequestParam String type,
                                          @RequestParam(required = false) String decisionType,
-                                         @RequestParam(required = false) String options) {
-        return Result.ok(service.addTopic(id, title, type, decisionType, options));
+                                         @RequestParam(required = false) String options,
+                                         @RequestParam(required = false, defaultValue = "false") Boolean realNameVote) {
+        return Result.ok(service.addTopic(id, title, type, decisionType, options, realNameVote));
     }
 
     @DeleteMapping("/{id}/topics/{topicId}")
@@ -166,9 +187,29 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @PostMapping("/{id}/publish/withdraw")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> withdrawPublish(@PathVariable Long id, @RequestBody Map<String, Object> req) {
+        service.withdrawPublish(id, req == null ? null : (String) req.get("reason"));
+        return Result.ok();
+    }
+
     @GetMapping("/{id}/minutes")
     public Result<String> minutes(@PathVariable Long id) {
         return Result.ok(service.generateMinutes(id));
+    }
+
+    @GetMapping("/{id}/minutes/revisions")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
+    public Result<List<MeetingDetailVO.MinutesRevisionVO>> minutesRevisions(@PathVariable Long id) {
+        return Result.ok(service.listMinutesRevisions(id));
+    }
+
+    @PutMapping("/{id}/minutes")
+    @RequireRole({"主任", "副主任", "记录员"})
+    public Result<Void> updateMinutes(@PathVariable Long id, @RequestBody Map<String, Object> req) {
+        service.updateMinutes(id, req == null ? null : (String) req.get("text"));
+        return Result.ok();
     }
 
     @GetMapping("/stats")

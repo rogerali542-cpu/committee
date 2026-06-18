@@ -25,11 +25,11 @@ public class RecordAttendance {
     @JoinColumn(name = "user_role_id", nullable = false)
     private UserRoleEntity userRole;
 
-    @Column(name = "signed_in", nullable = false)
-    private Boolean signedIn;
+    @Column(name = "confirmed", nullable = false)
+    private Boolean signedIn;  // DB: confirmed（确认参会）
 
-    @Column(nullable = false)
-    private Boolean signed;
+    @Column(name = "attested", nullable = false)
+    private Boolean signed;    // DB: attested（确认签字）
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "operator_id")

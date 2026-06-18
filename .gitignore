@@ -1,0 +1,16 @@
+# 依赖
+node_modules/
+
+# 本地工具/日志
+*.log
+.codex-static-server*.js
+.codex-static-server*.log
+
+# 本地 agent 配置与记忆
+.claude/
+
+# 后端录音/音频数据（可能含隐私，勿提交）
+backend/data/
+
+# 构建产物
+backend/target/

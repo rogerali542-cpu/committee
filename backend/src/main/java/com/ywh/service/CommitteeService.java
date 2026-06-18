@@ -5,6 +5,7 @@ import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.MeetingDetailVO.*;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
+import com.ywh.dto.quick.QuickConfirmRequest;
 import com.ywh.entity.*;
 import com.ywh.enums.*;
 import com.ywh.repository.*;
@@ -33,6 +34,7 @@ public class CommitteeService {
     private final TopicVoteRepository voteRepo;
     private final RecordEvidenceRepository evidenceRepo;
     private final MeetingPublishRepository publishRepo;
+    private final MinutesRevisionRepository minutesRevisionRepo;
     private final UserRoleRepository userRoleRepo;
     private final ObjectMapper objectMapper;
 
@@ -42,14 +44,19 @@ public class CommitteeService {
     public List<Map<String, Object>> listMeetings(String stage) {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         UserRoleEntity currentUr = SecurityUtils.getCurrentUserRole();
+        // 物业不参与小区行政，不开放业委会会议
+        if (currentUr.getRole().isPropertyMgmt()) {
+            return Collections.emptyList();
+        }
 
         List<CommitteeMeeting> meetings;
         if (isExternal(currentUr)) {
-            // External: only published ended meetings with valid compliance
-            meetings = meetingRepo.findByCommunityIdAndStageAndComplianceNotOrderByCreatedAtDesc(
-                    communityId, MeetingStage.valueOf(stage), ComplianceStatus.invalid);
+            // External: meetings ever published — currently public ones show content,
+            // withdrawn/voided ones show a tombstone (内容不可见但保留状态)。见 §5
+            meetings = meetingRepo.findByCommunityIdAndStageOrderByCreatedAtDesc(
+                    communityId, MeetingStage.valueOf(stage));
             meetings = meetings.stream()
-                    .filter(m -> getPublish(m).getPublished())
+                    .filter(m -> externalCanSeeMeeting(currentUr, m))
                     .collect(Collectors.toList());
         } else if (isChair(currentUr) || isRecorder(currentUr)) {
             // Chair/recorder: see all
@@ -83,8 +90,30 @@ public class CommitteeService {
             card.put("compliance", m.getCompliance() != null ? m.getCompliance().name() : null);
             card.put("summaryLine", getRoleSummaryLine(m, currentUr));
             card.put("roleView", getRoleView(currentUr));
+            // 简洁模式「我要办理」按 progress 筛选；「资料库」按 publish 显示徽标
+            Map<String, Object> prog = getCardProgress(m, currentUr);
+            card.put("progress", prog.get("pct"));
+            card.put("progressLabel", prog.get("label"));
+            card.put("publish", m.getStage() == MeetingStage.ended
+                    && m.getCompliance() != ComplianceStatus.invalid ? getPublishInfo(m) : null);
+            // 待办用：准备阶段、通知已送达我但我尚未查看 → 生成"查看会议通知"待办
+            card.put("myNoticeUnread", isNoticeUnreadForMe(m, currentUr));
             return card;
         }).collect(Collectors.toList());
+    }
+
+    /** 准备阶段 + 通知已送达当前用户但其尚未查看 → true。供待办聚合。 */
+    private boolean isNoticeUnreadForMe(CommitteeMeeting m, UserRoleEntity ur) {
+        if (m.getStage() != MeetingStage.preparing || ur == null) return false;
+        return deliveryRepo.findByMeetingIdAndUserRoleId(m.getId(), ur.getId())
+                .map(d -> Boolean.TRUE.equals(d.getNoticeDelivered()) && d.getNoticeReadAt() == null)
+                .orElse(false);
+    }
+
+    public List<MemberSummaryVO> listCommitteeMembers() {
+        return findCommitteeMembers(SecurityUtils.getCurrentCommunityId()).stream()
+                .map(this::toMemberSummary)
+                .collect(Collectors.toList());
     }
 
     // ===== Detail =====
@@ -93,8 +122,17 @@ public class CommitteeService {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (ur.getRole().isPropertyMgmt()) {
+            throw new IllegalArgumentException("物业不参与小区行政事务，无权查看业委会会议");
+        }
         String roleView = getRoleView(ur);
         Map<String, Object> taskSummary = getTaskSummary(m, ur);
+        boolean hideInternalRecord = isExternal(ur) && !canSeePublished(ur, m);
+
+        PublishInfoVO publishInfo = m.getStage() == MeetingStage.ended ? getPublishInfo(m) : null;
+        if (publishInfo != null && isExternal(ur)) {
+            redactPublishForExternal(publishInfo);
+        }
 
         return MeetingDetailVO.builder()
                 .id(m.getId())
@@ -105,17 +143,21 @@ public class CommitteeService {
                 .description(m.getDescription())
                 .stage(m.getStage())
                 .compliance(m.getCompliance())
+                .meetingMode(m.getMeetingMode())
                 .userRole(ur.getRole().name())
                 .userView(roleView)
+                .coreLocked(m.getStage() != MeetingStage.preparing || m.getNotifiedAt() != null)
+                .notifiedAt(m.getNotifiedAt() != null ? m.getNotifiedAt().toString() : null)
                 .taskLevel((String) taskSummary.get("level"))
                 .taskTitle((String) taskSummary.get("title"))
                 .taskItems((List<String>) taskSummary.get("items"))
                 .taskHint((String) taskSummary.get("hint"))
                 .flowNodeText(getFlowNodeText(m))
-                .delivery(m.getStage() == MeetingStage.preparing ? getDeliveryInfo(m) : null)
-                .record(m.getStage() != MeetingStage.preparing ? getRecordInfo(m) : null)
-                .publish(m.getStage() == MeetingStage.ended ? getPublishInfo(m) : null)
-                .members(getMemberSummaries(m))
+                .delivery(hideInternalRecord ? null : getDeliveryInfo(m))
+                .myDelivery(hideInternalRecord ? null : getMyDelivery(m, ur))
+                .record(hideInternalRecord ? null : getRecordInfo(m))
+                .publish(publishInfo)
+                .members(hideInternalRecord ? null : getMemberSummaries(m))
                 .build();
     }
 
@@ -124,6 +166,7 @@ public class CommitteeService {
     public CommitteeMeeting createMeeting(CreateMeetingRequest req) {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         Long userId = SecurityUtils.getCurrentUserId();
+        List<CreateMeetingRequest.TopicRequest> meetingTopics = normalizeCreateTopics(req.getTopics());
         CommitteeMeeting m = CommitteeMeeting.builder()
                 .community(Community.builder().id(communityId).build())
                 .title(req.getTitle())
@@ -136,24 +179,22 @@ public class CommitteeService {
                 .build();
         m = meetingRepo.save(m);
 
-        // Initialize deliveries for all committee members
-        List<UserRoleEntity> committeeMembers = userRoleRepo.findByCommunityIdAndRoleIn(
-                communityId, List.of("主任", "副主任", "委员"));
-        for (UserRoleEntity member : committeeMembers) {
-            deliveryRepo.save(MeetingDelivery.builder()
-                    .meeting(m)
-                    .userRole(member)
-                    .noticeDelivered(false)
-                    .materialDelivered(false)
-                    .build());
-        }
+        MeetingRecord record = MeetingRecord.builder()
+                .meeting(m)
+                .hasDecision(true)
+                .hasMajorIssue(meetingTopics.stream().anyMatch(t -> "major".equals(t.getType())))
+                .juweiName("王红梅（社区居委会）")
+                .juweiSigned(false)
+                .build();
+        record = recordRepo.save(record);
+        savePresetTopics(record, meetingTopics);
 
         return m;
     }
 
     // ===== Advance Stage =====
     @Transactional
-    public void advanceStage(Long meetingId, String action) {
+    public void advanceStage(Long meetingId, String action, String mode) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
 
@@ -165,14 +206,21 @@ public class CommitteeService {
                 throw new IllegalArgumentException("请先设置会议日期");
             }
             List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(meetingId);
+            if (deliveries.isEmpty()) {
+                throw new IllegalArgumentException("请先选择应参会人员并发送会议通知");
+            }
             boolean allNoticesDone = deliveries.stream().allMatch(MeetingDelivery::getNoticeDelivered);
             boolean allMaterialsDone = deliveries.stream().allMatch(MeetingDelivery::getMaterialDelivered);
             if (!allNoticesDone || !allMaterialsDone) {
                 throw new IllegalArgumentException("通知和材料尚未全部送达，不可开始会议");
             }
             // Initialize record
-            initRecord(m);
+            MeetingRecord record = initRecord(m);
+            if (topicRepo.findByRecordIdOrderBySortOrder(record.getId()).isEmpty()) {
+                throw new IllegalArgumentException("请先补充会议议题；快速模式需要围绕预设议题进行录音识别");
+            }
             m.setStage(MeetingStage.ongoing);
+            m.setMeetingMode(MeetingMode.quick);
 
         } else if ("end".equals(action)) {
             if (m.getStage() != MeetingStage.ongoing) {
@@ -200,6 +248,7 @@ public class CommitteeService {
                         .orElse(MeetingPublish.builder()
                                 .meeting(m)
                                 .published(false)
+                                .withdrawn(false)
                                 .build());
                 publishRepo.save(pub);
             }
@@ -215,16 +264,67 @@ public class CommitteeService {
         if ("notice".equals(field)) d.setNoticeDelivered(!d.getNoticeDelivered());
         else if ("material".equals(field)) d.setMaterialDelivered(!d.getMaterialDelivered());
         deliveryRepo.save(d);
+        markNotifiedIfComplete(meetingId);
+    }
+
+    /** 委员打开会议详情 → 回写自己的已读时间（仅对已送达内容、且尚未读时记一次）。 */
+    @Transactional
+    public void markDeliveryRead(Long meetingId) {
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        deliveryRepo.findByMeetingIdAndUserRoleId(meetingId, ur.getId()).ifPresent(d -> {
+            boolean changed = false;
+            if (Boolean.TRUE.equals(d.getNoticeDelivered()) && d.getNoticeReadAt() == null) {
+                d.setNoticeReadAt(LocalDateTime.now());
+                changed = true;
+            }
+            if (Boolean.TRUE.equals(d.getMaterialDelivered()) && d.getMaterialReadAt() == null) {
+                d.setMaterialReadAt(LocalDateTime.now());
+                changed = true;
+            }
+            if (changed) deliveryRepo.save(d);
+        });
     }
 
     @Transactional
-    public void sendAll(Long meetingId) {
-        List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(meetingId);
-        for (MeetingDelivery d : deliveries) {
-            d.setNoticeDelivered(true);
-            d.setMaterialDelivered(true);
+    public void sendAll(Long meetingId, List<Long> memberIds) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (meeting.getStage() != MeetingStage.preparing) {
+            throw new IllegalArgumentException("仅准备阶段可以发送会议通知");
         }
+        if (memberIds == null || memberIds.isEmpty()) {
+            throw new IllegalArgumentException("请选择需要通知并应参会的委员");
+        }
+
+        List<UserRoleEntity> members = resolveMeetingMembers(meeting.getCommunity().getId(), memberIds);
+        deliveryRepo.deleteByMeetingId(meetingId);
+        List<MeetingDelivery> deliveries = members.stream()
+                .map(member -> MeetingDelivery.builder()
+                        .meeting(meeting)
+                        .userRole(member)
+                        .noticeDelivered(true)
+                        .materialDelivered(true)
+                        .build())
+                .collect(Collectors.toList());
         deliveryRepo.saveAll(deliveries);
+        markNotifiedIfComplete(meetingId);
+    }
+
+    /** 全部通知送达后记录"通知完成"时间，触发重大字段锁定（规则8）。 */
+    private void markNotifiedIfComplete(Long meetingId) {
+        List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(meetingId);
+        boolean allNotified = !deliveries.isEmpty()
+                && deliveries.stream().allMatch(MeetingDelivery::getNoticeDelivered);
+        CommitteeMeeting m = meetingRepo.findById(meetingId).orElse(null);
+        if (m == null) return;
+        if (allNotified && m.getNotifiedAt() == null) {
+            m.setNotifiedAt(LocalDateTime.now());
+            meetingRepo.save(m);
+        } else if (!allNotified && m.getNotifiedAt() != null) {
+            // 撤回送达 → 解除锁定
+            m.setNotifiedAt(null);
+            meetingRepo.save(m);
+        }
     }
 
     // ===== Attendance (sign-in/sign) =====
@@ -232,7 +332,7 @@ public class CommitteeService {
     public void toggleAttendance(Long meetingId, Long userRoleId, String field) {
         MeetingRecord record = getRecord(meetingId);
         RecordAttendance a = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), userRoleId)
-                .orElseThrow(() -> new IllegalArgumentException("签到记录不存在"));
+                .orElseThrow(() -> new IllegalArgumentException("参会记录不存在"));
         if ("signedIn".equals(field)) {
             a.setSignedIn(true);
             a.setOperator(SecurityUtils.getCurrentUserRole());
@@ -280,10 +380,25 @@ public class CommitteeService {
     // ===== Topics & Votes =====
     @Transactional
     public RecordTopic addTopic(Long meetingId, String title, String type,
-                                 String decisionType, String options) {
+                                 String decisionType, String options, Boolean realNameVote) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        // 规则8：议题为进行中现场新增
+        if (m.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅会议进行中可新增议题");
+        }
+        TopicType tType = parseAgendaType(type);
+        // 规则6：重大事项不可现场新增，应列入会前通知或下次会议议题
+        if (tType == TopicType.major) {
+            throw new IllegalArgumentException("重大事项不可现场新增表决；请列入会前通知或下次会议议题");
+        }
+        if (tType == TopicType.notice || tType == TopicType.discussion) {
+            decisionType = "none";
+            options = null;
+        }
         MeetingRecord record = getRecord(meetingId);
-        TopicType tType = "major".equals(type) ? TopicType.major : TopicType.decision;
         String dt = decisionType != null && !decisionType.isEmpty() ? decisionType : "simple";
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         RecordTopic topic = RecordTopic.builder()
                 .record(record)
                 .title(title)
@@ -291,6 +406,10 @@ public class CommitteeService {
                 .decisionType(dt)
                 .optionsJson(options)
                 .sortOrder((int) topicRepo.findByRecordIdOrderBySortOrder(record.getId()).size() + 1)
+                .source("live")
+                .createdById(ur != null ? ur.getId() : null)
+                .createdByName(ur != null ? ur.getRealName() : null)
+                .realNameVote(Boolean.TRUE.equals(realNameVote))
                 .build();
         return topicRepo.save(topic);
     }
@@ -304,9 +423,20 @@ public class CommitteeService {
 
     @Transactional
     public void vote(Long meetingId, Long topicId, String choice, Long selectedId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅会议进行中可投票");
+        }
         RecordTopic topic = topicRepo.findById(topicId)
                 .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
         Long urId = SecurityUtils.getCurrentUserId();
+        MeetingRecord record = topic.getRecord();
+        RecordAttendance attendance = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), urId)
+                .orElseThrow(() -> new IllegalArgumentException("请先确认参会后再投票"));
+        if (!Boolean.TRUE.equals(attendance.getSignedIn())) {
+            throw new IllegalArgumentException("请先确认参会后再投票");
+        }
         // 已投过票则不可更改
         TopicVote existing = voteRepo.findByTopicIdAndUserRoleId(topicId, urId).orElse(null);
         if (existing != null) {
@@ -326,19 +456,84 @@ public class CommitteeService {
             vote.setChoice(VoteChoice.valueOf(choice));
         }
         voteRepo.save(vote);
+    }
 
-        // Also mark as signed in if not already
-        MeetingRecord record = topic.getRecord();
-        attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), urId)
-                .ifPresent(a -> {
-                    if (!Boolean.TRUE.equals(a.getSignedIn())) {
-                        a.setSignedIn(true);
-                        a.setOperator(SecurityUtils.getCurrentUserRole());
-                        a.setIsProxy(false);
-                        a.setOperatedAt(LocalDateTime.now());
-                    }
-                    attendanceRepo.save(a);
-                });
+    @Transactional
+    public void applyQuickConfirm(Long meetingId, QuickConfirmRequest req) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (meeting.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅进行中的会议可以确认快速识别结果");
+        }
+        if (meeting.getMeetingMode() != MeetingMode.quick) {
+            throw new IllegalArgumentException("仅快速模式会议可以确认识别结果");
+        }
+        MeetingRecord record = getRecord(meetingId);
+        List<RecordAttendance> signedIn = attendanceRepo.findByRecordId(record.getId()).stream()
+                .filter(RecordAttendance::getSignedIn)
+                .collect(Collectors.toList());
+        if (signedIn.isEmpty()) {
+            throw new IllegalArgumentException("请先完成入会签到");
+        }
+        List<QuickConfirmRequest.TopicResult> results = Optional.ofNullable(req)
+                .map(QuickConfirmRequest::getTopics)
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(r -> r != null && Boolean.TRUE.equals(r.getConfirmed()) && r.getTopicId() != null)
+                .collect(Collectors.toList());
+        Map<Long, RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId()).stream()
+                .collect(Collectors.toMap(RecordTopic::getId, t -> t));
+        long voteTopicCount = topics.values().stream().filter(this::isVoteTopic).count();
+        if (results.size() < topics.size()) {
+            throw new IllegalArgumentException("请先确认全部议题识别结果");
+        }
+        try {
+            record.setQuickConfirmJson(objectMapper.writeValueAsString(req));
+            recordRepo.save(record);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("保存快速会议确认结果失败");
+        }
+        if (voteTopicCount == 0) {
+            return;
+        }
+        for (QuickConfirmRequest.TopicResult result : results) {
+            RecordTopic topic = topics.get(result.getTopicId());
+            if (topic == null) {
+                throw new IllegalArgumentException("议题不属于本次会议");
+            }
+            if (!isVoteTopic(topic)) {
+                continue;
+            }
+            int forVotes = Optional.ofNullable(result.getForVotes()).orElse(0);
+            int agVotes = Optional.ofNullable(result.getAgVotes()).orElse(0);
+            int abVotes = Optional.ofNullable(result.getAbVotes()).orElse(0);
+            if (forVotes < 0 || agVotes < 0 || abVotes < 0 || forVotes + agVotes + abVotes != signedIn.size()) {
+                throw new IllegalArgumentException("请填写与签到人数一致的表决票数");
+            }
+            // Quick mode stores aggregate counts from the recording confirmation.
+            // It must not create synthetic per-member votes.
+            voteRepo.deleteAll(voteRepo.findByTopicId(topic.getId()));
+        }
+    }
+
+    private VoteChoice quickResultToChoice(String result) {
+        if ("rejected".equals(result)) return VoteChoice.against;
+        if ("abstain".equals(result) || "unclear".equals(result)) return VoteChoice.abstain;
+        return VoteChoice.for_vote;
+    }
+
+    private Map<Long, QuickConfirmRequest.TopicResult> quickConfirmTopicMap(MeetingRecord record) {
+        if (record == null || record.getQuickConfirmJson() == null || record.getQuickConfirmJson().isBlank()) {
+            return Collections.emptyMap();
+        }
+        try {
+            QuickConfirmRequest req = objectMapper.readValue(record.getQuickConfirmJson(), QuickConfirmRequest.class);
+            return Optional.ofNullable(req.getTopics()).orElse(Collections.emptyList()).stream()
+                    .filter(t -> t != null && t.getTopicId() != null)
+                    .collect(Collectors.toMap(QuickConfirmRequest.TopicResult::getTopicId, t -> t, (a, b) -> a));
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
     }
 
     @Transactional(readOnly = true)
@@ -411,6 +606,74 @@ public class CommitteeService {
         recordRepo.save(record);
     }
 
+    // ===== 录音负责人（advisory，进行中协调用） =====
+    /** 当前用户认领"录音负责人"（需已确认参会）。 */
+    @Transactional
+    public void claimRecorder(Long meetingId) {
+        MeetingRecord record = getRecord(meetingId);
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        ensureSignedIn(record, ur.getId());
+        record.setRecorder(ur);
+        recordRepo.save(record);
+    }
+
+    /** 重置录音负责人（异常兜底，仅主任/副主任）：清空后可重新有人认领并重录。 */
+    @Transactional
+    public void resetRecorder(Long meetingId) {
+        MeetingRecord record = getRecord(meetingId);
+        record.setRecorder(null);
+        recordRepo.save(record);
+    }
+
+    /** 录音上传后把存档地址落库（会后可回放/下载）。重录覆盖为最新。 */
+    @Transactional
+    public void saveRecordingUrl(Long meetingId, String url) {
+        MeetingRecord record = getRecord(meetingId);
+        record.setRecordingUrl(url);
+        recordRepo.save(record);
+    }
+
+    private void ensureSignedIn(MeetingRecord record, Long userRoleId) {
+        RecordAttendance a = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), userRoleId)
+                .orElseThrow(() -> new IllegalArgumentException("不在本次会议名单中"));
+        if (!Boolean.TRUE.equals(a.getSignedIn())) {
+            throw new IllegalArgumentException("请先确认参会再负责录音");
+        }
+    }
+
+    // ===== 导出签到名单（CSV，仅姓名为主，不含房号） =====
+    public Map<String, Object> exportAttendanceCsv(Long meetingId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        MeetingRecord record = getRecord(meetingId);
+        List<RecordAttendance> present = attendanceRepo.findByRecordId(record.getId()).stream()
+                .filter(RecordAttendance::getSignedIn)
+                .collect(Collectors.toList());
+        StringBuilder sb = new StringBuilder("﻿"); // UTF-8 BOM，Excel 直接识别中文
+        sb.append("序号,姓名,角色,确认参会时间\n");
+        int i = 1;
+        for (RecordAttendance a : present) {
+            String time = a.getOperatedAt() != null ? a.getOperatedAt().toString().replace('T', ' ') : "";
+            sb.append(i++).append(',')
+              .append(csv(a.getUserRole().getRealName())).append(',')
+              .append(csv(a.getUserRole().getRole().name())).append(',')
+              .append(csv(time)).append('\n');
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("fileName", (m.getTitle() != null ? m.getTitle() : "会议") + "-签到名单.csv");
+        result.put("content", sb.toString());
+        result.put("count", present.size());
+        return result;
+    }
+
+    private String csv(String v) {
+        if (v == null) return "";
+        if (v.contains(",") || v.contains("\"") || v.contains("\n")) {
+            return '"' + v.replace("\"", "\"\"") + '"';
+        }
+        return v;
+    }
+
     // ===== Evidence =====
     @Transactional
     public void addEvidence(Long meetingId, String fileName, String fileType) {
@@ -438,8 +701,41 @@ public class CommitteeService {
         }
         MeetingPublish pub = publishRepo.findByMeetingId(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("公示记录不存在"));
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         pub.setPublished(true);
         pub.setPublishDate(TODAY);
+        pub.setPublishedById(ur.getId());
+        pub.setPublishedByName(ur.getRealName());
+        pub.setPublishedAt(LocalDateTime.now());
+        // 重新公示：清除撤回标记
+        pub.setWithdrawn(false);
+        publishRepo.save(pub);
+        // 快照本次公示的纪要版本，使"历史版本"能定位到被公示的内容
+        snapshotRevision(meetingId, generateMinutes(meetingId));
+    }
+
+    /**
+     * 撤回公示（见 产品边界定稿.md §5）。必须填写原因并留痕，不丢历史。
+     */
+    @Transactional
+    public void withdrawPublish(Long meetingId, String reason) {
+        meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("撤回公示必须填写原因");
+        }
+        MeetingPublish pub = publishRepo.findByMeetingId(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("公示记录不存在"));
+        if (!Boolean.TRUE.equals(pub.getPublished())) {
+            throw new IllegalArgumentException("该纪要尚未公示，无需撤回");
+        }
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        pub.setPublished(false);
+        pub.setWithdrawn(true);
+        pub.setWithdrawnById(ur.getId());
+        pub.setWithdrawnByName(ur.getRealName());
+        pub.setWithdrawnAt(LocalDateTime.now());
+        pub.setWithdrawReason(reason.trim());
         publishRepo.save(pub);
     }
 
@@ -447,7 +743,17 @@ public class CommitteeService {
     public String generateMinutes(Long meetingId) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (ur.getRole().isPropertyMgmt()) {
+            throw new IllegalArgumentException("物业不参与小区行政事务，无权查看业委会会议");
+        }
+        if (isExternal(ur) && !canSeePublished(ur, m)) {
+            throw new IllegalArgumentException("会议纪要尚未公示，暂不可查看");
+        }
         MeetingRecord record = getRecord(meetingId);
+        if (record.getMinutesText() != null && !record.getMinutesText().isBlank()) {
+            return record.getMinutesText();
+        }
         List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
         List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
 
@@ -455,14 +761,14 @@ public class CommitteeService {
         int need = total / 2 + 1;
         List<RecordAttendance> present = attendances.stream().filter(RecordAttendance::getSignedIn).toList();
         List<RecordAttendance> absent = attendances.stream().filter(a -> !a.getSignedIn()).toList();
-        int signedN = (int) attendances.stream().filter(RecordAttendance::getSigned).count();
         String host = attendances.stream()
                 .filter(a -> a.getUserRole().getRole().isChair())
                 .findFirst()
                 .map(a -> a.getUserRole().getRealName())
                 .orElse(attendances.get(0).getUserRole().getRealName());
         boolean presentHalf = present.size() >= need;
-        boolean hasVote = !topics.isEmpty();
+        List<RecordTopic> voteTopics = topics.stream().filter(this::isVoteTopic).collect(Collectors.toList());
+        boolean hasVote = !voteTopics.isEmpty();
         boolean draft = m.getStage() != MeetingStage.ended;
 
         Map<String, Object> er = m.getStage() == MeetingStage.ended
@@ -482,7 +788,11 @@ public class CommitteeService {
         sb.append("一、参会情况\n");
         sb.append("应到委员 ").append(total).append(" 人，实到 ").append(present.size()).append(" 人，");
         sb.append(presentHalf ? "已过半，达到法定人数" : "未过半，未达法定人数").append("。\n");
-        sb.append("出席：").append(present.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
+        // 人员名单：应到=送达（通知）名单，实到=签到名单
+        sb.append("应到名单（通知送达）：")
+          .append(attendances.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
+        sb.append("实到名单（确认参会）：")
+          .append(present.isEmpty() ? "无" : present.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
         if (!absent.isEmpty()) {
             sb.append("缺席：").append(absent.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
         }
@@ -490,25 +800,31 @@ public class CommitteeService {
             sb.append("列席：").append(record.getJuweiName()).append("（居委会委员）\n");
         }
         sb.append("\n二、会议议题\n");
-        sb.append(m.getDescription() != null ? m.getDescription() : "（无）").append("\n");
+        int agendaIdx = 1;
+        for (RecordTopic tp : topics) {
+            sb.append(agendaIdx++).append(". 【").append(topicTypeLabel(tp)).append("】").append(tp.getTitle()).append("\n");
+        }
+        if (m.getDescription() != null && !m.getDescription().isBlank()) {
+            sb.append("补充说明：").append(m.getDescription()).append("\n");
+        }
 
         if (hasVote) {
             sb.append("\n三、表决情况\n");
             int idx = 1;
-            for (RecordTopic tp : topics) {
+            for (RecordTopic tp : voteTopics) {
                 List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
                 int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
                 int agV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.against).count();
                 int abV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.abstain).count();
                 String statusText = getTopicStatusText(tp, total, forV, agV, abV);
-                sb.append(idx).append(". 【").append(tp.getType() == TopicType.major ? "重大事项" : "决定事项").append("】").append(tp.getTitle()).append("\n");
+                sb.append(idx).append(". 【").append(topicTypeLabel(tp)).append("】").append(tp.getTitle()).append("\n");
                 sb.append("   赞成 ").append(forV).append(" 票，反对 ").append(agV).append(" 票，弃权 ").append(abV).append(" 票（赞成需≥").append(need).append("）。表决结果：").append(statusText).append("。\n");
                 idx++;
             }
         }
 
-        sb.append("\n").append(hasVote ? "四" : "三").append("、签字确认\n");
-        sb.append("会议记录经 ").append(signedN).append("/").append(total).append(" 名委员签字确认。\n");
+        sb.append("\n").append(hasVote ? "四" : "三").append("、参会确认\n");
+        sb.append("本次会议经 ").append(present.size()).append("/").append(total).append(" 名委员确认参会。\n");
         if (record.getHasMajorIssue()) {
             sb.append("重大事项").append(record.getJuweiSigned() ? "已" : "尚未").append("由居委会委员（").append(record.getJuweiName()).append("）签字。\n");
         }
@@ -517,6 +833,61 @@ public class CommitteeService {
         sb.append(concText).append("\n");
 
         return sb.toString();
+    }
+
+    @Transactional
+    public void updateMinutes(Long meetingId, String text) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("Meeting not found"));
+        MeetingPublish pub = getPublish(m);
+        if (Boolean.TRUE.equals(pub.getPublished())) {
+            throw new IllegalArgumentException("Published minutes cannot be edited directly. Please withdraw or create a revision.");
+        }
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException("Minutes text cannot be empty");
+        }
+        MeetingRecord record = getRecord(meetingId);
+        record.setMinutesText(text);
+        recordRepo.save(record);
+        snapshotRevision(meetingId, text);
+    }
+
+    /** 追加一条纪要修订快照，版本号自增；内容与上一版相同则跳过。见 §5 */
+    private void snapshotRevision(Long meetingId, String content) {
+        MinutesRevision last = minutesRevisionRepo
+                .findFirstByMeetingIdOrderByVersionNoDesc(meetingId).orElse(null);
+        if (last != null && Objects.equals(last.getContent(), content)) {
+            return;
+        }
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        minutesRevisionRepo.save(MinutesRevision.builder()
+                .meetingId(meetingId)
+                .versionNo(last == null ? 1 : last.getVersionNo() + 1)
+                .content(content)
+                .editorId(ur != null ? ur.getId() : null)
+                .editorName(ur != null ? ur.getRealName() : null)
+                .build());
+    }
+
+    /** 纪要修订版本历史，仅治理角色可见。见 §5 */
+    @Transactional(readOnly = true)
+    public List<MinutesRevisionVO> listMinutesRevisions(Long meetingId) {
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (isExternal(ur)) {
+            throw new IllegalArgumentException("无权查看纪要修订历史");
+        }
+        meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        return minutesRevisionRepo.findByMeetingIdOrderByVersionNoDesc(meetingId).stream()
+                .map(r -> {
+                    MinutesRevisionVO vo = new MinutesRevisionVO();
+                    vo.setVersionNo(r.getVersionNo());
+                    vo.setEditorName(r.getEditorName());
+                    vo.setCreatedAt(r.getCreatedAt() != null ? r.getCreatedAt().toString() : null);
+                    vo.setContent(r.getContent());
+                    return vo;
+                })
+                .collect(Collectors.toList());
     }
 
     // ===== Stats =====
@@ -585,18 +956,61 @@ public class CommitteeService {
 
     // ================= Private Helpers =================
 
-    private void initRecord(CommitteeMeeting m) {
-        MeetingRecord record = MeetingRecord.builder()
-                .meeting(m)
-                .hasDecision(false)
-                .hasMajorIssue(false)
-                .juweiName("王红梅（社区居委会）")
-                .juweiSigned(false)
-                .build();
-        record = recordRepo.save(record);
+    private List<UserRoleEntity> findCommitteeMembers(Long communityId) {
+        return userRoleRepo.findByCommunityIdAndRoleIn(communityId, List.of("主任", "副主任", "委员"));
+    }
+
+    private List<UserRoleEntity> resolveMeetingMembers(Long communityId, List<Long> memberIds) {
+        List<UserRoleEntity> members = findCommitteeMembers(communityId);
+        if (memberIds == null) {
+            if (members.isEmpty()) {
+                throw new IllegalArgumentException("未找到可通知的业委会成员");
+            }
+            return members;
+        }
+        if (memberIds.isEmpty()) {
+            throw new IllegalArgumentException("请选择通知对象");
+        }
+        Set<Long> selectedIds = new LinkedHashSet<>(memberIds);
+        List<UserRoleEntity> selected = members.stream()
+                .filter(member -> selectedIds.contains(member.getId()))
+                .collect(Collectors.toList());
+        if (selected.isEmpty()) {
+            throw new IllegalArgumentException("请选择有效的通知对象");
+        }
+        return selected;
+    }
+
+    private MemberSummaryVO toMemberSummary(UserRoleEntity member) {
+        MemberSummaryVO ms = new MemberSummaryVO();
+        ms.setUserRoleId(member.getId());
+        ms.setName(member.getRealName());
+        ms.setRole(member.getRole().name());
+        ms.setRoomNumber(member.getRoomNumber());
+        return ms;
+    }
+
+    private MeetingRecord initRecord(CommitteeMeeting m) {
+        MeetingRecord record = recordRepo.findByMeetingId(m.getId()).orElse(null);
+        if (record == null) {
+            record = MeetingRecord.builder()
+                    .meeting(m)
+                    .hasDecision(true)
+                    .hasMajorIssue(false)
+                    .juweiName("王红梅（社区居委会）")
+                    .juweiSigned(false)
+                    .build();
+            record = recordRepo.save(record);
+        }
 
         List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(m.getId());
+        List<Long> existingUserRoleIds = attendanceRepo.findByRecordId(record.getId()).stream()
+                .map(a -> a.getUserRole().getId())
+                .toList();
         for (MeetingDelivery d : deliveries) {
+            if (existingUserRoleIds.contains(d.getUserRole().getId())) {
+                continue;
+            }
             attendanceRepo.save(RecordAttendance.builder()
                     .record(record)
                     .userRole(d.getUserRole())
@@ -604,6 +1018,86 @@ public class CommitteeService {
                     .signed(false)
                     .build());
         }
+        return record;
+    }
+
+    private List<CreateMeetingRequest.TopicRequest> normalizeCreateTopics(List<CreateMeetingRequest.TopicRequest> rawTopics) {
+        List<CreateMeetingRequest.TopicRequest> topics = Optional.ofNullable(rawTopics).orElse(Collections.emptyList()).stream()
+                .filter(t -> t != null && t.getTitle() != null && !t.getTitle().trim().isEmpty())
+                .collect(Collectors.toList());
+        if (topics.isEmpty()) {
+            throw new IllegalArgumentException("请至少添加一个会议议题；快速模式需要围绕预设议题进行录音识别");
+        }
+        for (CreateMeetingRequest.TopicRequest topic : topics) {
+            TopicType agendaType = parseAgendaType(topic.getType());
+            String decisionType = topic.getDecisionType() != null && !topic.getDecisionType().isBlank()
+                    ? topic.getDecisionType()
+                    : "simple";
+            if (agendaType == TopicType.notice || agendaType == TopicType.discussion) {
+                decisionType = "none";
+                topic.setOptions(null);
+            }
+            topic.setDecisionType(decisionType);
+            if ("multi_choice".equals(decisionType)) {
+                List<Map<String, Object>> options = Optional.ofNullable(topic.getOptions()).orElse(Collections.emptyList()).stream()
+                        .filter(o -> o != null && o.get("label") != null && !String.valueOf(o.get("label")).trim().isEmpty())
+                        .collect(Collectors.toList());
+                if (options.size() < 2) {
+                    throw new IllegalArgumentException("多选一议题至少需要两个有效选项：" + topic.getTitle());
+                }
+                topic.setOptions(options);
+            }
+        }
+        return topics;
+    }
+
+    private void savePresetTopics(MeetingRecord record, List<CreateMeetingRequest.TopicRequest> topics) {
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        int sort = 1;
+        for (CreateMeetingRequest.TopicRequest reqTopic : topics) {
+            TopicType type = parseAgendaType(reqTopic.getType());
+            RecordTopic topic = RecordTopic.builder()
+                    .record(record)
+                    .title(reqTopic.getTitle().trim())
+                    .type(type)
+                    .decisionType(reqTopic.getDecisionType())
+                    .optionsJson(toOptionsJson(reqTopic.getOptions()))
+                    .sortOrder(sort++)
+                    .source("preset")
+                    .createdById(ur != null ? ur.getId() : null)
+                    .createdByName(ur != null ? ur.getRealName() : null)
+                    .realNameVote(Boolean.TRUE.equals(reqTopic.getRealNameVote()))
+                    .build();
+            topicRepo.save(topic);
+        }
+    }
+
+    private String toOptionsJson(List<Map<String, Object>> options) {
+        if (options == null || options.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(options);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("议题选项格式错误");
+        }
+    }
+
+    private TopicType parseAgendaType(String type) {
+        if ("notice".equals(type)) return TopicType.notice;
+        if ("discussion".equals(type)) return TopicType.discussion;
+        if ("major".equals(type)) return TopicType.major;
+        return TopicType.decision;
+    }
+
+    private boolean isVoteTopic(RecordTopic topic) {
+        return topic != null && topic.getType() != TopicType.notice && topic.getType() != TopicType.discussion;
+    }
+
+    private String topicTypeLabel(RecordTopic topic) {
+        if (topic == null || topic.getType() == null) return "议题";
+        if (topic.getType() == TopicType.notice) return "通报事项";
+        if (topic.getType() == TopicType.discussion) return "讨论事项";
+        if (topic.getType() == TopicType.major) return "重大表决";
+        return "表决事项";
     }
 
     private void createRecreation(CommitteeMeeting m) {
@@ -619,8 +1113,12 @@ public class CommitteeService {
         recreation = meetingRepo.save(recreation);
 
         // Init deliveries
-        List<UserRoleEntity> committeeMembers = userRoleRepo.findByCommunityIdAndRoleIn(
-                m.getCommunity().getId(), List.of("主任", "副主任", "委员"));
+        List<UserRoleEntity> committeeMembers = deliveryRepo.findByMeetingId(m.getId()).stream()
+                .map(MeetingDelivery::getUserRole)
+                .collect(Collectors.toList());
+        if (committeeMembers.isEmpty()) {
+            committeeMembers = findCommitteeMembers(m.getCommunity().getId());
+        }
         for (UserRoleEntity member : committeeMembers) {
             deliveryRepo.save(MeetingDelivery.builder()
                     .meeting(recreation)
@@ -697,7 +1195,7 @@ public class CommitteeService {
         }
 
         if (!duplicated.isEmpty()) {
-            throw new IllegalArgumentException("以下成员已签到，不能重复代录：" + String.join("、", duplicated));
+            throw new IllegalArgumentException("以下成员已确认参会，不能重复代录：" + String.join("、", duplicated));
         }
         attendanceRepo.saveAll(toSave);
     }
@@ -717,7 +1215,7 @@ public class CommitteeService {
             RecordAttendance attendance = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), memberId)
                     .orElseThrow(() -> new IllegalArgumentException("代录对象不在本次会议名单中"));
             if (!Boolean.TRUE.equals(attendance.getSignedIn())) {
-                invalid.add(attendance.getUserRole().getRealName() + "未签到");
+                invalid.add(attendance.getUserRole().getRealName() + "未确认参会");
                 continue;
             }
             if (voteRepo.findByTopicIdAndUserRoleId(topic.getId(), memberId).isPresent()) {
@@ -749,14 +1247,15 @@ public class CommitteeService {
 
     private MeetingPublish getPublish(CommitteeMeeting m) {
         return publishRepo.findByMeetingId(m.getId())
-                .orElse(MeetingPublish.builder().meeting(m).published(false).build());
+                .orElse(MeetingPublish.builder().meeting(m).published(false).withdrawn(false).build());
     }
 
     private DeliveryInfoVO getDeliveryInfo(CommitteeMeeting m) {
         List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(m.getId());
-        int noticeDone = (int) deliveries.stream().filter(MeetingDelivery::getNoticeDelivered).count();
-        int materialDone = (int) deliveries.stream().filter(MeetingDelivery::getMaterialDelivered).count();
-        boolean allDone = noticeDone == deliveries.size() && materialDone == deliveries.size();
+        int noticeDone = (int) deliveries.stream().filter(d -> Boolean.TRUE.equals(d.getNoticeDelivered())).count();
+        int materialDone = (int) deliveries.stream().filter(d -> Boolean.TRUE.equals(d.getMaterialDelivered())).count();
+        int readDone = (int) deliveries.stream().filter(d -> d.getNoticeReadAt() != null).count();
+        boolean allDone = !deliveries.isEmpty() && noticeDone == deliveries.size() && materialDone == deliveries.size();
 
         LocalDate meetingDate = m.getMeetingDate();
         String deadlineStr = "待定";
@@ -775,6 +1274,7 @@ public class CommitteeService {
                     md.setRole(d.getUserRole().getRole().name());
                     md.setNoticeDelivered(d.getNoticeDelivered());
                     md.setMaterialDelivered(d.getMaterialDelivered());
+                    md.setNoticeRead(d.getNoticeReadAt() != null);
                     return md;
                 }).collect(Collectors.toList());
 
@@ -783,11 +1283,27 @@ public class CommitteeService {
         vo.setDaysLeft(daysLeft);
         vo.setNoticeDone(noticeDone);
         vo.setMaterialDone(materialDone);
+        vo.setReadDone(readDone);
         vo.setTotal(deliveries.size());
         vo.setAllDone(allDone);
         vo.setNoDate(meetingDate == null);
         vo.setMemberDeliveries(memberDeliveries);
         return vo;
+    }
+
+    /** 当前用户在准备阶段的个人送达/已读状态；不在送达名单内则返回 null。 */
+    private MyDeliveryVO getMyDelivery(CommitteeMeeting m, UserRoleEntity ur) {
+        if (m.getStage() != MeetingStage.preparing || ur == null) return null;
+        return deliveryRepo.findByMeetingIdAndUserRoleId(m.getId(), ur.getId())
+                .map(d -> {
+                    MyDeliveryVO vo = new MyDeliveryVO();
+                    vo.setNoticeDelivered(d.getNoticeDelivered());
+                    vo.setMaterialDelivered(d.getMaterialDelivered());
+                    vo.setNoticeRead(d.getNoticeReadAt() != null);
+                    vo.setMaterialRead(d.getMaterialReadAt() != null);
+                    return vo;
+                })
+                .orElse(null);
     }
 
     private RecordInfoVO getRecordInfo(CommitteeMeeting m) {
@@ -814,6 +1330,7 @@ public class CommitteeService {
             return av;
         }).collect(Collectors.toList());
 
+        Map<Long, QuickConfirmRequest.TopicResult> quickConfirmTopics = quickConfirmTopicMap(record);
         List<RecordInfoVO.TopicVO> topicVOs = topics.stream().map(tp -> {
             List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
             int need = total / 2 + 1;
@@ -822,10 +1339,22 @@ public class CommitteeService {
             int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
             int agV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.against).count();
             int abV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.abstain).count();
+            QuickConfirmRequest.TopicResult quickResult = quickConfirmTopics.get(tp.getId());
+            int countedVotes = votes.size();
+            if (quickResult != null && quickResult.getForVotes() != null) {
+                forV = Optional.ofNullable(quickResult.getForVotes()).orElse(0);
+                agV = Optional.ofNullable(quickResult.getAgVotes()).orElse(0);
+                abV = Optional.ofNullable(quickResult.getAbVotes()).orElse(0);
+                countedVotes = forV + agV + abV;
+            }
+            boolean voteRequired = isVoteTopic(tp);
             boolean passed;
             String statusText;
 
-            if ("multi_choice".equals(decisionType)) {
+            if (!voteRequired) {
+                passed = true;
+                statusText = tp.getType() == TopicType.notice ? "通报记录" : "讨论记录";
+            } else if ("multi_choice".equals(decisionType)) {
                 Map<Long, Integer> counts = new HashMap<>();
                 votes.stream()
                         .filter(v -> v.getSelectedId() != null)
@@ -844,7 +1373,7 @@ public class CommitteeService {
                 passed = leadingVotes >= need;
                 statusText = passed
                         ? "决议通过：" + Optional.ofNullable(leadingOption).map(o -> String.valueOf(o.get("label"))).orElse("")
-                        : (votes.size() < total ? "待继续表决" : "决议未通过");
+                        : (countedVotes < total ? "待继续表决" : "决议未通过");
             } else {
                 passed = forV >= need;
                 statusText = getTopicStatusText(tp, total, forV, agV, abV);
@@ -854,6 +1383,7 @@ public class CommitteeService {
             tv.setId(tp.getId());
             tv.setTitle(tp.getTitle());
             tv.setType(tp.getType().name());
+            tv.setVoteRequired(voteRequired);
             tv.setDecisionType(decisionType);
             tv.setOptions(options);
             tv.setForVotes(forV);
@@ -862,7 +1392,7 @@ public class CommitteeService {
             tv.setTotal(total);
             tv.setNeed(need);
             tv.setPassed(passed);
-            tv.setStatus(passed ? "passed" : (votes.size() < total ? "pending" : "failed"));
+            tv.setStatus(!voteRequired ? "recorded" : (passed ? "passed" : (countedVotes < total ? "pending" : "failed")));
             tv.setText(statusText);
 
             TopicVote myVote = votes.stream()
@@ -876,6 +1406,30 @@ public class CommitteeService {
                 } else if (myVote.getChoice() != null) {
                     tv.setMyVote(myVote.getChoice().name());
                 }
+            }
+
+            // 留痕（规则6）
+            tv.setSource(tp.getSource());
+            tv.setCreatedByName(tp.getCreatedByName());
+            tv.setCreatedAt(tp.getCreatedAt() != null ? tp.getCreatedAt().toString() : null);
+            // 实名表决（规则5）：仅实名议题公开个人选择，否则不暴露
+            boolean realName = Boolean.TRUE.equals(tp.getRealNameVote());
+            tv.setRealNameVote(realName);
+            if (realName) {
+                List<Map<String, Object>> voterChoices = votes.stream().map(v -> {
+                    Map<String, Object> vc = new HashMap<>();
+                    vc.put("name", v.getUserRole().getRealName());
+                    if (v.getSelectedId() != null) {
+                        vc.put("choice", String.valueOf(v.getSelectedId()));
+                        Map<String, Object> opt = findOption(options, v.getSelectedId());
+                        vc.put("label", opt != null ? opt.get("label") : null);
+                    } else if (v.getChoice() != null) {
+                        vc.put("choice", v.getChoice().name());
+                    }
+                    vc.put("isProxy", Boolean.TRUE.equals(v.getIsProxy()));
+                    return vc;
+                }).collect(Collectors.toList());
+                tv.setVoterChoices(voterChoices);
             }
             return tv;
         }).collect(Collectors.toList());
@@ -891,28 +1445,14 @@ public class CommitteeService {
         // Check results
         int need = total / 2 + 1;
         int signedIn = (int) attendances.stream().filter(RecordAttendance::getSignedIn).count();
-        int signed = (int) attendances.stream().filter(RecordAttendance::getSigned).count();
 
         List<RecordInfoVO.CheckVO> checks = new ArrayList<>();
         RecordInfoVO.CheckVO c1 = new RecordInfoVO.CheckVO();
-        c1.setLabel("委员签到过半");
+        c1.setLabel("委员确认参会过半");
         c1.setDetail(signedIn + "/" + total + "（需≥" + need + "）");
         c1.setOk(signedIn >= need);
         checks.add(c1);
 
-        RecordInfoVO.CheckVO c2 = new RecordInfoVO.CheckVO();
-        c2.setLabel("会议记录委员签字过半");
-        c2.setDetail(signed + "/" + total + "（需≥" + need + "）");
-        c2.setOk(signed >= need);
-        checks.add(c2);
-
-        if (record.getHasDecision()) {
-            RecordInfoVO.CheckVO c3 = new RecordInfoVO.CheckVO();
-            c3.setLabel("决定事项·过半委员签字");
-            c3.setDetail(signed + "/" + total + "（需≥" + need + "）");
-            c3.setOk(signed >= need);
-            checks.add(c3);
-        }
         if (record.getHasMajorIssue()) {
             RecordInfoVO.CheckVO c4 = new RecordInfoVO.CheckVO();
             c4.setLabel("重大事项·居委会委员签字");
@@ -937,6 +1477,9 @@ public class CommitteeService {
         vo.setHasMajorIssue(record.getHasMajorIssue());
         vo.setJuweiName(record.getJuweiName());
         vo.setJuweiSigned(record.getJuweiSigned());
+        vo.setRecorderRoleId(record.getRecorder() != null ? record.getRecorder().getId() : null);
+        vo.setRecorderName(record.getRecorder() != null ? record.getRecorder().getRealName() : null);
+        vo.setRecordingUrl(record.getRecordingUrl());
         vo.setAttendances(attendanceVOs);
         vo.setTopics(topicVOs);
         vo.setEvidences(evidenceVOs);
@@ -966,18 +1509,23 @@ public class CommitteeService {
         vo.setDeadlineStr(deadline.toString());
         vo.setDaysLeft(daysLeft);
         vo.setScoreState(scoreState);
+        // 公示状态机
+        boolean withdrawn = Boolean.TRUE.equals(pub.getWithdrawn());
+        vo.setStatus(Boolean.TRUE.equals(pub.getPublished()) ? "published" : withdrawn ? "withdrawn" : "pending");
+        vo.setPublishedBy(pub.getPublishedByName());
+        vo.setPublishedAt(pub.getPublishedAt() != null ? pub.getPublishedAt().toString() : null);
+        vo.setWithdrawn(withdrawn);
+        vo.setWithdrawnBy(pub.getWithdrawnByName());
+        vo.setWithdrawnAt(pub.getWithdrawnAt() != null ? pub.getWithdrawnAt().toString() : null);
+        vo.setWithdrawReason(pub.getWithdrawReason());
         return vo;
     }
 
     private List<MemberSummaryVO> getMemberSummaries(CommitteeMeeting m) {
         List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(m.getId());
-        return deliveries.stream().map(d -> {
-            MemberSummaryVO ms = new MemberSummaryVO();
-            ms.setUserRoleId(d.getUserRole().getId());
-            ms.setName(d.getUserRole().getRealName());
-            ms.setRole(d.getUserRole().getRole().name());
-            return ms;
-        }).collect(Collectors.toList());
+        return deliveries.stream()
+                .map(d -> toMemberSummary(d.getUserRole()))
+                .collect(Collectors.toList());
     }
 
     private List<Map<String, Object>> parseTopicOptions(RecordTopic topic) {
@@ -1024,23 +1572,18 @@ public class CommitteeService {
         int need = total / 2 + 1;
 
         int signedIn = (int) attendances.stream().filter(RecordAttendance::getSignedIn).count();
-        int signed = (int) attendances.stream().filter(RecordAttendance::getSigned).count();
 
         Map<String, Object> result = new HashMap<>();
         List<String> notes = new ArrayList<>();
 
         if (signedIn < need) {
-            notes.add("未达法定人数：仅 " + signedIn + "/" + total + " 名委员签到（需≥" + need + "），会议不成立");
+            notes.add("未达法定人数：仅 " + signedIn + "/" + total + " 名委员确认参会（需≥" + need + "），会议不成立");
             result.put("level", "invalid");
             result.put("notes", notes);
             result.put("conclusion", "会议未达法定人数，会议不成立，本次决议不生效。");
             return result;
         }
 
-        if (signed < need) {
-            notes.add((record.getHasDecision() ? "决定事项记录待补正" : "会议记录待补正")
-                    + "：委员签字未过半（" + signed + "/" + total + "，需≥" + need + "）");
-        }
         if (record.getHasMajorIssue() && !record.getJuweiSigned()) {
             notes.add("重大事项记录待补正：缺居委会委员签字");
         }
@@ -1052,23 +1595,25 @@ public class CommitteeService {
 
         // Resolution check
         List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
-        for (RecordTopic tp : topics) {
+        List<RecordTopic> voteTopics = topics.stream().filter(this::isVoteTopic).collect(Collectors.toList());
+        int requiredVoteCount = m.getMeetingMode() == MeetingMode.quick ? signedIn : total;
+        for (RecordTopic tp : voteTopics) {
             List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
             int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
             if (forV < need) {
                 int voted = votes.size();
-                if (voted < total) {
-                    notes.add("\"" + tp.getTitle() + "\"尚未完成表决（已投 " + voted + "/" + total + "，赞成 " + forV + "/" + need + "）");
+                if (voted < requiredVoteCount) {
+                    notes.add("\"" + tp.getTitle() + "\"尚未完成表决（已投 " + voted + "/" + requiredVoteCount + "，赞成 " + forV + "/" + need + "）");
                 } else {
                     notes.add("\"" + tp.getTitle() + "\"未通过（赞成 " + forV + "/" + need + "）");
                 }
             }
         }
 
-        boolean allComplete = signed >= need
+        boolean allComplete = signedIn >= need
                 && (!record.getHasMajorIssue() || record.getJuweiSigned())
                 && !evidences.isEmpty()
-                && topics.stream().allMatch(tp -> {
+                && voteTopics.stream().allMatch(tp -> {
                     List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
                     int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
                     return forV >= need;
@@ -1101,8 +1646,7 @@ public class CommitteeService {
             RecordInfoVO info = getRecordInfo(m);
             int total = info.getAttendances().size();
             long signedIn = info.getAttendances().stream().filter(RecordInfoVO.AttendanceVO::getSignedIn).count();
-            long signed = info.getAttendances().stream().filter(RecordInfoVO.AttendanceVO::getSigned).count();
-            if (signedIn < total || signed < total) return "进行中 · 签到/签字确认中";
+            if (signedIn < total) return "进行中 · 确认参会中";
             return evaluateEndResult(m).get("level").equals("valid") ? "进行中 · 可结束会议" : "进行中 · 记录补正中";
         }
         if (ComplianceStatus.invalid == m.getCompliance()) return "已结束 · 未成立归档";
@@ -1117,9 +1661,12 @@ public class CommitteeService {
         if (isExternal(ur)) {
             summary.put("level", "readonly");
             summary.put("title", "只读状态");
-            if (m.getStage() == MeetingStage.ended && m.getCompliance() != ComplianceStatus.invalid
-                    && getPublish(m).getPublished()) {
+            if (canSeePublished(ur, m)) {
                 summary.put("items", List.of("可查看已公示纪要与决定"));
+            } else if (Boolean.TRUE.equals(getPublish(m).getWithdrawn())) {
+                summary.put("items", List.of("该纪要已撤回公示"));
+            } else if (m.getCompliance() == ComplianceStatus.invalid && wasEverPublished(m)) {
+                summary.put("items", List.of("该会议已作废"));
             } else {
                 summary.put("items", List.of("会议尚未公示"));
             }
@@ -1143,7 +1690,7 @@ public class CommitteeService {
             s.put("level", "ok");
             s.put("title", "流程正常");
             s.put("items", List.of("暂无待补事项"));
-            s.put("hint", m.getStage() == MeetingStage.ended ? "可查看纪要、公示和归档状态。" : "可继续查看送达、签到、签字和佐证状态。");
+            s.put("hint", m.getStage() == MeetingStage.ended ? "可查看纪要、公示和归档状态。" : "可继续查看送达、确认参会和佐证状态。");
         }
         return s;
     }
@@ -1153,14 +1700,13 @@ public class CommitteeService {
         if (m.getStage() == MeetingStage.preparing) {
             DeliveryInfoVO info = getDeliveryInfo(m);
             if (Boolean.TRUE.equals(info.getNoDate())) labels.add("补填会议日期");
+            if (info.getTotal() == 0) labels.add("选择通知对象并发送通知");
             if (info.getNoticeDone() < info.getTotal()) labels.add("补送 " + (info.getTotal() - info.getNoticeDone()) + " 人通知");
             if (info.getMaterialDone() < info.getTotal()) labels.add("补送 " + (info.getTotal() - info.getMaterialDone()) + " 人材料");
         } else if (m.getStage() == MeetingStage.ongoing) {
             RecordInfoVO info = getRecordInfo(m);
             long unsignedIn = info.getAttendances().stream().filter(a -> !a.getSignedIn()).count();
-            long unsigned = info.getAttendances().stream().filter(a -> !a.getSigned()).count();
-            if (unsignedIn > 0) labels.add("代录 " + unsignedIn + " 人签到");
-            if (unsigned > 0) labels.add("代录 " + unsigned + " 人签字");
+            if (unsignedIn > 0) labels.add("代录 " + unsignedIn + " 人确认参会");
             if (Boolean.TRUE.equals(info.getHasMajorIssue()) && !Boolean.TRUE.equals(info.getJuweiSigned())) {
                 labels.add("补录居委会签字");
             }
@@ -1179,6 +1725,7 @@ public class CommitteeService {
             DeliveryInfoVO info = getDeliveryInfo(m);
             List<String> items = new ArrayList<>();
             if (Boolean.TRUE.equals(info.getNoDate())) items.add("补填会议日期");
+            if (info.getTotal() == 0) items.add("选择通知对象并发送通知");
             if (info.getNoticeDone() < info.getTotal()) items.add((info.getTotal() - info.getNoticeDone()) + " 人通知未送达");
             if (info.getMaterialDone() < info.getTotal()) items.add((info.getTotal() - info.getMaterialDone()) + " 人材料未送达");
             if (!items.isEmpty()) {
@@ -1262,7 +1809,7 @@ public class CommitteeService {
                     s.put("level", "ok");
                     s.put("title", "已处理");
                     s.put("items", List.of("通知和材料已送达"));
-                    s.put("hint", "等待会议开始后再进行签到、签字或表决。");
+                    s.put("hint", "等待会议开始后再进行确认参会或表决。");
                 }
             }
         } else if (m.getStage() == MeetingStage.ongoing) {
@@ -1276,8 +1823,7 @@ public class CommitteeService {
                 s.put("hint", "");
             } else {
                 List<String> items = new ArrayList<>();
-                if (!myAtt.getSignedIn()) items.add("我要签到");
-                if (myAtt.getSignedIn() && !myAtt.getSigned()) items.add("我要签字");
+                if (!myAtt.getSignedIn()) items.add("我要确认参会");
                 List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
                 for (RecordTopic tp : topics) {
                     TopicVote vote = voteRepo.findByTopicIdAndUserRoleId(tp.getId(), ur.getId()).orElse(null);
@@ -1304,6 +1850,40 @@ public class CommitteeService {
         return s;
     }
 
+    /**
+     * 卡片进度（与小程序 utils/api/helpers.js getPersonalProgress 口径一致）：
+     * 准备阶段→0/待开始；已结束→100/已归档；进行中→按本人确认参会+表决完成度算 0/50/100。
+     * 简洁模式「我要办理」用 progress∈[0,100) 判定是否需要我处理。
+     */
+    private Map<String, Object> getCardProgress(CommitteeMeeting m, UserRoleEntity ur) {
+        Map<String, Object> r = new HashMap<>();
+        if (m.getStage() == MeetingStage.preparing) {
+            r.put("pct", 0); r.put("label", "⏳ 待开始"); return r;
+        }
+        if (m.getStage() == MeetingStage.ended) {
+            r.put("pct", 100); r.put("label", "📄 已归档"); return r;
+        }
+        // ongoing：本人是否确认参会 + 是否表决完所有议题
+        boolean signedIn = false;
+        boolean allVoted = false;
+        MeetingRecord record = recordRepo.findByMeetingId(m.getId()).orElse(null);
+        if (record != null) {
+            RecordAttendance myAtt = attendanceRepo
+                    .findByRecordIdAndUserRoleId(record.getId(), ur.getId()).orElse(null);
+            signedIn = myAtt != null && Boolean.TRUE.equals(myAtt.getSignedIn());
+            List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+            allVoted = topics.isEmpty()
+                    ? signedIn
+                    : topics.stream().allMatch(tp ->
+                        voteRepo.findByTopicIdAndUserRoleId(tp.getId(), ur.getId()).isPresent());
+        }
+        int done = (signedIn ? 1 : 0) + (allVoted ? 1 : 0);
+        if (done == 0) { r.put("pct", 0); r.put("label", "🔴 待确认参会"); }
+        else if (done == 1) { r.put("pct", 50); r.put("label", "🔶 待表决"); }
+        else { r.put("pct", 100); r.put("label", "✅ 已完成"); }
+        return r;
+    }
+
     private String getRoleSummaryLine(CommitteeMeeting m, UserRoleEntity ur) {
         if (isChair(ur)) return getChairSummaryLine(m);
         Map<String, Object> taskSummary = getTaskSummary(m, ur);
@@ -1317,14 +1897,14 @@ public class CommitteeService {
         if (m.getStage() == MeetingStage.preparing) {
             DeliveryInfoVO info = getDeliveryInfo(m);
             if (Boolean.TRUE.equals(info.getNoDate())) return "⚠ 日期待定，需补填后发通知";
+            if (info.getTotal() == 0) return "📨 待选择通知对象并发送通知";
             return "📨 通知 " + info.getNoticeDone() + "/" + info.getTotal() + " · 📎 材料 " + info.getMaterialDone() + "/" + info.getTotal();
         }
         if (m.getStage() == MeetingStage.ongoing) {
             RecordInfoVO info = getRecordInfo(m);
             int total = info.getAttendances().size();
             long signedIn = info.getAttendances().stream().filter(RecordInfoVO.AttendanceVO::getSignedIn).count();
-            long signed = info.getAttendances().stream().filter(RecordInfoVO.AttendanceVO::getSigned).count();
-            return "签到 " + signedIn + "/" + total + " · 签字 " + signed + "/" + total;
+            return "确认参会 " + signedIn + "/" + total;
         }
         if (ComplianceStatus.invalid == m.getCompliance()) return "✕ 会议不成立";
         PublishInfoVO pi = getPublishInfo(m);
@@ -1353,6 +1933,45 @@ public class CommitteeService {
     }
     private static boolean isExternal(UserRoleEntity ur) {
         return ur.getRole().isExternal();
+    }
+    private boolean isPublicMinutes(CommitteeMeeting m) {
+        if (m.getStage() != MeetingStage.ended || m.getCompliance() == ComplianceStatus.invalid) {
+            return false;
+        }
+        MeetingPublish pub = getPublish(m);
+        return Boolean.TRUE.equals(pub.getPublished());
+    }
+
+    /**
+     * 外部角色能否看到该会议的公示内容（见 产品边界定稿.md §2.1）。
+     * - 业主：纪要公示后可见。
+     * - 物业：不参与小区行政，一律不开放。
+     */
+    private boolean canSeePublished(UserRoleEntity ur, CommitteeMeeting m) {
+        if (ur.getRole().isPropertyMgmt()) return false;
+        return isPublicMinutes(m);
+    }
+
+    /** 对外部角色脱敏：仅保留状态，隐藏操作人/撤回原因等管理信息（见 §5）。 */
+    private void redactPublishForExternal(PublishInfoVO vo) {
+        vo.setPublishedBy(null);
+        vo.setWithdrawnBy(null);
+        vo.setWithdrawnAt(null);
+        vo.setWithdrawReason(null);
+    }
+
+    /** 该会议是否曾被公示过（撤回/作废后此标记仍为真）。 */
+    private boolean wasEverPublished(CommitteeMeeting m) {
+        return getPublish(m).getPublishedAt() != null;
+    }
+
+    /**
+     * 外部角色在列表/详情中能否看到该会议——含已撤回/已作废的 tombstone（见 §5）。
+     * 物业不参与行政，一律不可见；业主仅能看到曾公示过的会议。
+     */
+    private boolean externalCanSeeMeeting(UserRoleEntity ur, CommitteeMeeting m) {
+        if (ur.getRole().isPropertyMgmt()) return false;
+        return wasEverPublished(m);
     }
     private static String getRoleView(UserRoleEntity ur) {
         if (isChair(ur)) return "chair";

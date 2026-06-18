@@ -304,6 +304,54 @@
     }
     .meeting-card.card-invalid .mc-title { color: #999; }
     .empty-mini { font-size: 12px; color: #ccc; text-align: center; padding: 16px 0; }
+    .role-list-intro {
+      margin: 0 0 10px; padding: 10px 12px;
+      background: #fff; border-radius: 12px; border-left: 3px solid #FFA800;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .role-list-intro.public { border-left-color: #27AE60; }
+    .role-list-intro-title { font-size: 13px; font-weight: 700; color: #333; }
+    .role-list-intro-sub { font-size: 11px; color: #999; margin-top: 2px; line-height: 1.5; }
+    .role-list-cta {
+      margin-top: 8px; display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 700; color: #27AE60;
+      background: #EAFAF1; border-radius: 14px; padding: 5px 10px;
+      cursor: pointer;
+    }
+    .role-list-section { margin-top: 12px; }
+    .role-section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2px 8px;
+    }
+    .role-section-title { font-size: 13px; font-weight: 700; color: #555; }
+    .role-section-count { font-size: 11px; color: #bbb; }
+    .role-sum-tag {
+      display: inline-flex; align-items: center; max-width: 100%;
+      font-size: 11px; font-weight: 700; border-radius: 12px; padding: 4px 8px;
+      white-space: normal; line-height: 1.35;
+    }
+    .role-sum-tag.todo { color: #E67E22; background: #FFF4E5; }
+    .role-sum-tag.wait { color: #8E6D1E; background: #FFF8E8; }
+    .role-sum-tag.warn { color: #E74C3C; background: #FDECEA; }
+    .role-sum-tag.ok { color: #27AE60; background: #EAFAF1; }
+    .role-sum-tag.public { color: #2980B9; background: #EBF5FB; }
+    .role-sum-tip { display: block; font-size: 11px; color: #aaa; margin-top: 4px; line-height: 1.45; }
+    .permission-note {
+      display: flex; align-items: flex-start; gap: 7px;
+      margin-top: 10px; padding: 9px 10px; border-radius: 10px;
+      background: #F8F9FA; border: 1px solid #eee;
+      font-size: 11px; color: #888; line-height: 1.5;
+    }
+    .permission-note .pn-icon {
+      width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #EAF2FB; color: #2980B9; font-size: 10px; font-weight: 700;
+      margin-top: 1px;
+    }
+    .permission-note.warn {
+      background: #FFF8E8; border-color: #F4E1B8; color: #8E6D1E;
+    }
+    .permission-note.warn .pn-icon { background: #FFE6B8; color: #B7791F; }
 
     .mc-meta { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
     .meta-line {
@@ -635,6 +683,38 @@
     }
     .dchip.lock { opacity: 0.45; cursor: not-allowed; }
 
+    /* ══ 详情页任务摘要 ══ */
+    .task-banner {
+      margin: 10px 12px 0; padding: 12px 14px; border-radius: 14px;
+      background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      border-left: 3px solid #FFA800;
+    }
+    .task-banner.todo { background: #FFF9EF; border-left-color: #E67E22; }
+    .task-banner.wait { background: #FFFBF0; border-left-color: #D9A529; }
+    .task-banner.warn { background: #FFF5F3; border-left-color: #E74C3C; }
+    .task-banner.ok { background: #F3FBF6; border-left-color: #27AE60; }
+    .task-banner.readonly { background: #F4F8FB; border-left-color: #2980B9; }
+    .task-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .task-dot {
+      width: 20px; height: 20px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .task-banner.todo .task-dot { background: #E67E22; }
+    .task-banner.wait .task-dot { background: #D9A529; }
+    .task-banner.warn .task-dot { background: #E74C3C; }
+    .task-banner.ok .task-dot { background: #27AE60; }
+    .task-banner.readonly .task-dot { background: #2980B9; }
+    .task-title { font-size: 13px; font-weight: 700; color: #333; }
+    .task-items { font-size: 14px; font-weight: 700; color: #333; line-height: 1.45; }
+    .task-flow {
+      display: inline-block; margin-top: 7px; padding: 4px 8px;
+      border-radius: 8px; background: rgba(255,255,255,0.62);
+      color: #777; font-size: 11px; line-height: 1.45;
+    }
+    .task-flow b { color: #555; }
+    .task-hint { font-size: 11px; color: #999; line-height: 1.5; margin-top: 4px; }
+
     /* ══ 分级判定按钮 ══ */
     .btn-danger { background: #E74C3C; color: #fff; }
     .btn-warn   { background: #E67E22; color: #fff; }
@@ -654,6 +734,16 @@
     .compliance-block.valid   .cb-head { color: #27AE60; }
     .compliance-block.flawed  .cb-head { color: #E67E22; }
     .compliance-block.invalid .cb-head { color: #E74C3C; }
+    .cb-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 9px; }
+    .cb-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      background: rgba(255,255,255,0.55); border-radius: 8px; padding: 7px 8px;
+    }
+    .cb-label { font-size: 11px; color: #999; flex-shrink: 0; }
+    .cb-value { font-size: 11px; color: #555; font-weight: 600; line-height: 1.45; text-align: right; }
+    .cb-value.ok { color: #27AE60; }
+    .cb-value.warn { color: #E67E22; }
+    .cb-value.bad { color: #E74C3C; }
     .cb-icon {
       width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
@@ -1395,7 +1485,7 @@
     .detail-user-bar {
       display: flex; align-items: center; justify-content: space-between;
       margin: 12px 12px 0; padding: 10px 14px;
-      background: #fff; border-radius: 14px; cursor: pointer;
+      background: #fff; border-radius: 14px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 3px solid #FFA800;
     }
     .detail-user-bar.recorder { border-left-color: #9B59B6; }
@@ -1561,14 +1651,34 @@
 
   
     /* ══ 登录页 ══ */
-    #page-login { background:linear-gradient(160deg,#FFCC44 0%,#FFA800 100%); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:60px 20px 30px; }
+    #page-login {
+      position:fixed; top:0; left:50%; transform:translateX(-50%);
+      width:375px; height:100vh; z-index:999;
+      background:linear-gradient(160deg,#FFCC44 0%,#FFA800 100%);
+      flex-direction:column; align-items:center; justify-content:flex-start;
+      padding:60px 20px 30px; overflow-y:auto;
+      transition:transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease;
+    }
+    #page-login.slide-out {
+      transform:translateX(-50%) translateY(-100%); opacity:0; pointer-events:none;
+    }
     .login-logo { width:72px;height:72px;border-radius:20px;background:rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:16px; }
     .login-logo svg { width:40px;height:40px;fill:#5C3D00; }
     .login-title { font-size:22px;font-weight:700;color:#5C3D00;margin-bottom:4px; }
     .login-sub { font-size:13px;color:#7B5A00;margin-bottom:32px; }
     .login-card { width:100%;background:#fff;border-radius:20px;padding:20px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.12); }
-    .login-group-label { font-size:11px;color:#bbb;font-weight:600;letter-spacing:0.5px;padding:0 4px 8px; }
-    .login-group-label.mt { margin-top:12px; }
+    .login-group-btn { display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;cursor:pointer;background:#fff;margin-bottom:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);transition:transform 0.15s; }
+    .login-group-btn:active { transform:scale(0.98); }
+    .login-group-icon { width:44px;height:44px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px; }
+    .login-group-icon.internal { background:#FFF3DC; }
+    .login-group-icon.external { background:#E8F8F5; }
+    .login-group-info { flex:1; }
+    .login-group-name { font-size:15px;font-weight:600;color:#333; }
+    .login-group-desc { font-size:12px;color:#999;margin-top:2px; }
+    .login-group-arrow { font-size:20px;color:#ccc;transition:transform 0.25s;flex-shrink:0; }
+    .login-group-arrow.open { transform:rotate(90deg); }
+    .login-group-list { overflow:hidden;max-height:0;transition:max-height 0.3s ease; }
+    .login-group-list.open { max-height:600px;margin-bottom:8px; }
     .login-opt { display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer;border:1.5px solid #f0f0f0;margin-bottom:8px;transition:border-color 0.15s; }
     .login-opt:active { background:#FFFBF0;border-color:#FFA800; }
     .login-avatar { width:40px;height:40px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#FFCC44,#FFA800);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center; }
@@ -1599,11 +1709,31 @@
     .pr-value.role-tag.rec      { background:#F5EEF8;color:#9B59B6; }
     .pr-value.role-tag.owner    { background:#EAFAF1;color:#27AE60; }
     .pr-value.role-tag.property { background:#EBF5FB;color:#2980B9; }
-    .perm-list { padding:0 16px 12px; }
-    .perm-item { display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;color:#555;border-top:1px solid #f5f5f5; }
-    .perm-dot { width:8px;height:8px;border-radius:50%;background:#27AE60;flex-shrink:0; }
-    .perm-dot.no { background:#E0E0E0; }
-    .logout-btn { margin:16px 12px;width:calc(100% - 24px);padding:14px;background:#fff;border-radius:14px;color:#E74C3C;font-size:15px;font-weight:600;text-align:center;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+    .profile-stats-row { display:flex;margin:0 12px;background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden; }
+    .profile-stat { flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:3px; }
+    .profile-stat:not(:last-child) { border-right:1px solid #f0f0f0; }
+    .profile-stat-num { font-size:20px;font-weight:700;color:#333; }
+    .profile-stat-label { font-size:11px;color:#999; }
+    .profile-menu-row { display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-top:1px solid #f5f5f5; }
+    .profile-menu-row:first-of-type { border-top:none; }
+    .profile-menu-row:active { background:#f9f9f9; }
+    .pm-icon { width:36px;height:36px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px; }
+    .pm-label { flex:1;font-size:14px;color:#333; }
+    .pm-value { font-size:13px;color:#bbb; }
+    .pm-arrow { color:#ccc;font-size:18px; }
+    .profile-section-header { font-size:12px;color:#aaa;font-weight:500;padding:16px 16px 4px;letter-spacing:0.3px; }
+    .logout-btn { margin:16px 12px 24px;width:calc(100% - 24px);padding:14px;background:#fff;border-radius:14px;color:#E74C3C;font-size:15px;font-weight:600;text-align:center;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,0.06); }
+
+    /* 权限管理 */
+    .admin-scroll { flex:1; overflow-y:auto; padding:12px; }
+    .admin-card { background:#fff; border-radius:14px; padding:14px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    .ac-head { display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .ac-name { font-size:15px; font-weight:600; color:#333; }
+    .ac-role { font-size:12px; background:#FFF6E5; color:#FFA800; padding:2px 10px; border-radius:8px; }
+    .ac-expand { margin-left:auto; font-size:12px; color:#ccc; }
+    .ac-body { display:none; margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0; }
+    .ac-body.open { display:block; }
+    .ac-perm { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #fafafa; font-size:13px; color:#555; }
 
   </style>
 </head>
@@ -1619,10 +1749,24 @@
   <div class="login-title">业委专区</div>
   <div class="login-sub">请选择登录身份</div>
   <div class="login-card">
-    <div class="login-group-label">业委会内部</div>
-    <div id="login-internal-list"></div>
-    <div class="login-group-label mt">外部身份</div>
-    <div id="login-external-list"></div>
+    <div class="login-group-btn" onclick="toggleLoginGroup('internal')">
+      <div class="login-group-icon internal">🏛️</div>
+      <div class="login-group-info">
+        <div class="login-group-name">业委会内部</div>
+        <div class="login-group-desc">委员、主任、记录员</div>
+      </div>
+      <div class="login-group-arrow" id="arrow-internal">›</div>
+    </div>
+    <div class="login-group-list" id="login-internal-list"></div>
+    <div class="login-group-btn" onclick="toggleLoginGroup('external')">
+      <div class="login-group-icon external">🏠</div>
+      <div class="login-group-info">
+        <div class="login-group-name">外部身份</div>
+        <div class="login-group-desc">业主、物业（测试用）</div>
+      </div>
+      <div class="login-group-arrow" id="arrow-external">›</div>
+    </div>
+    <div class="login-group-list" id="login-external-list"></div>
   </div>
 </div>
 
@@ -2142,6 +2286,19 @@
   </div>
 </div>
 
+
+<!-- ██████████ PAGE: 业主大会·详情 ██████████ -->
+<div id="page-owners-meeting-detail" class="page">
+  <div class="sub-header">
+    <div class="back-btn" onclick="go('owners-meeting')">
+      <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+    </div>
+    <div class="sub-header-title" id="om-detail-title">大会详情</div>
+    <div style="width:32px;"></div>
+  </div>
+  <div class="detail-scroll" id="om-detail-scroll"></div>
+</div>
+
 <!-- ██████████ PAGE: 接待记录 ██████████ -->
 <div id="page-reception" class="page">
   <div class="sub-header">
@@ -2396,7 +2553,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">参会人数</label>
-        <input class="form-input" id="f-participants" type="number" placeholder="7" min="1" />
+        <div class="form-input" id="f-participants-display" style="background:#f9f9f9;color:#aaa;cursor:default;"></div>
       </div>
     </div>
     <div class="form-group">
@@ -2424,6 +2581,16 @@
     <div class="identity-list" id="identity-list"></div>
     <div class="btn-cancel-row" onclick="closeIdentity()">取消</div>
   </div>
+<!-- ██████████ PAGE: 权限管理 ██████████ -->
+<div id="page-admin" class="page">
+  <div class="sub-header" style="background:linear-gradient(160deg,#5D6D7E,#2C3E50);">
+    <div class="back-btn" style="background:rgba(255,255,255,0.3);" onclick="go('profile')">
+      <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" fill="#fff"/></svg>
+    </div>
+    <div class="sub-header-title" style="color:#fff;">权限管理</div>
+    <div style="width:32px;"></div>
+  </div>
+  <div class="admin-scroll" id="admin-scroll"></div>
 </div>
 
 <script>
@@ -2484,11 +2651,48 @@ const committeeMembers = [
 
 // 可登录身份
 const identities = [
+  { name:'系统管理员', role:'管理员' },
   ...committeeMembers,
   { name:'秘书小李', role:'记录员' },
   { name:'测试业主', role:'业主' },
   { name:'物业张经理', role:'物业' },
 ];
+
+// ── 权限系统 ──────────────────────────────
+const ROLE_DEFAULT_PERMS = {
+  '主任':   ['committee.*','owner.*','reception.*','view.*'],
+  '副主任': ['committee.*','owner.*','reception.*','view.*'],
+  '委员':   ['committee.sign_in','committee.sign','committee.vote','view.internal','view.public'],
+  '记录员': ['committee.delivery','committee.evidence','committee.topic','committee.juwei','committee.sign_all','owner.data_entry','view.internal','view.public'],
+  '业主':   ['view.public'],
+  '物业':   ['view.public','reception.property_feedback'],
+  '管理员': ['*'],
+};
+
+const ALL_PERMS = ['committee.sign_in','committee.sign','committee.vote','committee.create','committee.advance','committee.delivery','committee.evidence','committee.topic','committee.juwei','committee.sign_all','committee.publish','owner.create','owner.advance','owner.data_entry','owner.publish','reception.manage','reception.property_feedback','view.internal','view.public'];
+
+function loadPermOverrides() {
+  try { const s = localStorage.getItem('yeweiPermOverrides'); return s ? JSON.parse(s) : {}; } catch(e) { return {}; }
+}
+function savePermOverrides(o) { localStorage.setItem('yeweiPermOverrides', JSON.stringify(o)); }
+let permOverrides = loadPermOverrides();
+
+function can(permCode) {
+  if (!currentUser) return false;
+  const role = currentUser.role;
+  const defaults = ROLE_DEFAULT_PERMS[role] || [];
+  const overrides = permOverrides[currentUser.name] || {};
+  // 覆写优先
+  if (permCode in overrides) return overrides[permCode];
+  // 通配 *
+  if (defaults.includes('*')) return true;
+  // 精确匹配或前缀匹配
+  for (const d of defaults) {
+    if (d === permCode) return true;
+    if (d.endsWith('.*') && permCode.startsWith(d.replace('.*','.'))) return true;
+  }
+  return false;
+}
 
 // ── Auth ──────────────────────────────────
 function loadUser() {
@@ -2503,13 +2707,16 @@ function clearUser() { localStorage.removeItem('yeweiUser'); }
 
 let currentUser = loadUser() || null;
 
-const isRecorder    = () => currentUser && currentUser.role === '记录员';
-const isOwner       = () => currentUser && currentUser.role === '业主';
-const isPropertyMgmt= () => currentUser && currentUser.role === '物业';
-const isExternal    = () => isOwner() || isPropertyMgmt();
+const isChair        = () => currentUser && (currentUser.role === '主任' || currentUser.role === '副主任' || currentUser.role === '管理员');
+const isRecorder     = () => can('committee.delivery') && !can('committee.sign_in');
+const isOwner        = () => currentUser && currentUser.role === '业主';
+const isPropertyMgmt = () => currentUser && currentUser.role === '物业';
+const isExternal     = () => !can('view.internal') && can('view.public');
+const isAdmin        = () => currentUser && currentUser.role === '管理员';
 const isSelf = (memberName) => currentUser && currentUser.name === memberName;
 
 function identityClass() {
+  if (isAdmin())        return 'admin';
   if (isRecorder())     return 'recorder';
   if (isOwner())        return 'owner';
   if (isPropertyMgmt()) return 'property';
@@ -2519,6 +2726,7 @@ function ioAvatarClass(u) {
   if (u.role === '记录员') return 'rec';
   if (u.role === '业主')   return 'owner';
   if (u.role === '物业')   return 'property';
+  if (u.role === '管理员') return 'admin';
   return '';
 }
 
@@ -2555,12 +2763,15 @@ function go(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   if (page === 'profile') { renderProfile(); return; }
-  if (page === 'committee') { refreshStats(); refreshPublishScore(); renderList(); }
+  if (page === 'profile') { renderProfile(); return; }
+  if (page === 'committee') { refreshStats(); refreshPublishScore(); renderList(); syncCommitteeActions(); }
   if (page === 'meeting-hub') { refreshHubBadge(); }
   if (page === 'info-public') { renderInfoPublic(); }
   if (page === 'owners-meeting') { refreshOwnerStats(); renderOwnerList(); }
+  if (page === 'owners-meeting-detail') { renderOwnerDetailPage(); }
   if (page === 'reception') { renderReceptionSystem(); refreshReceptionStats(); renderReceptionList(); }
   if (page === 'learning') { renderLearning(); }
+  if (page === 'admin') { renderAdmin(); }
   if (page === 'meeting-detail') { renderDetailPage(); }
 }
 
@@ -2573,6 +2784,12 @@ function renderIdentityBar() {
   bar.classList.toggle('recorder', isRecorder());
 }
 function openIdentity() {
+  if (
+    document.getElementById('page-committee').classList.contains('active') ||
+    document.getElementById('page-meeting-detail').classList.contains('active')
+  ) {
+    return;
+  }
   const list = document.getElementById('identity-list');
   const internal = identities.filter(u => u.role !== '业主' && u.role !== '物业');
   const external = identities.filter(u => u.role === '业主' || u.role === '物业');
@@ -2671,6 +2888,271 @@ function emptyHTML(label) {
     </div>`;
 }
 
+function meetingDateValue(m) {
+  if (!m.date) return 0;
+  return new Date(`${m.date}T${m.time || '00:00'}`).getTime() || 0;
+}
+
+function todoPriority(m) {
+  if (m.stage === 'ongoing') return 1;
+  if (m.stage === 'preparing') return 2;
+  return 3;
+}
+
+function sortTodoItems(a, b) {
+  const pa = todoPriority(a.meeting);
+  const pb = todoPriority(b.meeting);
+  if (pa !== pb) return pa - pb;
+  return meetingDateValue(b.meeting) - meetingDateValue(a.meeting);
+}
+
+function sortMeetingsRecent(a, b) {
+  return meetingDateValue(b.meeting || b) - meetingDateValue(a.meeting || a);
+}
+
+function getMeetingTodoForUser(m) {
+  const labels = [];
+  if (!currentUser) return { todo:false, labels };
+
+  if (isOwner() || isPropertyMgmt()) {
+    const visible = m.stage === 'ended' && m.compliance !== 'invalid' && ensurePublish(m).published;
+    return { todo:false, labels: visible ? ['已公示'] : [] };
+  }
+
+  if (isRecorder()) {
+    if (m.stage === 'preparing') {
+      const info = noticeInfo(m);
+      if (info.noDate) labels.push('补填会议日期');
+      if (info.noticeDone < info.total) labels.push(`补送 ${info.total - info.noticeDone} 人通知`);
+      if (info.materialDone < info.total) labels.push(`补送 ${info.total - info.materialDone} 人材料`);
+    } else if (m.stage === 'ongoing') {
+      const r = ensureRecord(m);
+      const unsignedIn = r.attendance.filter(a => !a.signedIn).length;
+      const unsigned = r.attendance.filter(a => !a.signed).length;
+      if (unsignedIn) labels.push(`代录 ${unsignedIn} 人签到`);
+      if (unsigned) labels.push(`代录 ${unsigned} 人签字`);
+      if (r.hasMajorIssue && !r.juweiSigned) labels.push('补录居委会签字');
+      if (!r.evidence || r.evidence.length === 0) labels.push('上传线下佐证');
+    } else if (m.stage === 'ended' && m.compliance !== 'invalid') {
+      const pi = publishInfo(m);
+      if (pi.scoreState === 'pending') labels.push('发起公示');
+      if (pi.scoreState === 'overdue') labels.push('逾期未公示');
+    }
+    return { todo: labels.length > 0, labels };
+  }
+
+  if (m.stage === 'preparing') {
+    const me = ensureDelivery(m).find(x => isSelf(x.name));
+    if (!me) return { todo:false, labels };
+    if (!me.notice) labels.push('待记录员送达通知');
+    if (!me.material) labels.push('待记录员送达材料');
+  } else if (m.stage === 'ongoing') {
+    const r = ensureRecord(m);
+    const me = r.attendance.find(a => isSelf(a.name));
+    if (!me) return { todo:false, labels };
+    if (!me.signedIn) labels.push('我要签到');
+    if (me.signedIn && !me.signed) labels.push('我要签字');
+    const unvoted = (r.topics || []).filter(t => !t.votes[currentUser.name]).length;
+    if (unvoted) labels.push(`待表决 ${unvoted} 项`);
+  }
+  return { todo: labels.length > 0, labels };
+}
+
+function isRelevantCommitteeMeeting(m) {
+  if (!currentUser) return false;
+  if (m.stage === 'preparing') return ensureDelivery(m).some(x => isSelf(x.name));
+  if (m.stage === 'ongoing') return ensureRecord(m).attendance.some(x => isSelf(x.name));
+  return m.stage === 'ended' && m.compliance !== 'invalid';
+}
+
+function getCommitteeListForCurrentUser() {
+  if (isChair()) return { mode:'chair' };
+
+  if (isOwner() || isPropertyMgmt()) {
+    const publicMeetings = meetings
+      .filter(m => m.stage === 'ended' && m.compliance !== 'invalid' && ensurePublish(m).published)
+      .sort((a,b) => sortMeetingsRecent(a,b))
+      .map(m => ({ meeting:m, todo:getMeetingTodoForUser(m) }));
+    return {
+      mode:'public',
+      intro:'业主委员会内部会议流程仅业委会成员可见，可查看已公示的会议纪要与决定。',
+      sections:[{ title:'已公示会议', items:publicMeetings, empty:'暂无已公示会议' }]
+    };
+  }
+
+  const source = isRecorder() ? meetings : meetings.filter(isRelevantCommitteeMeeting);
+  const items = source.map(m => ({ meeting:m, todo:getMeetingTodoForUser(m) }));
+  const pending = items.filter(x => x.todo.todo).sort(sortTodoItems);
+  const others = items.filter(x => !x.todo.todo).sort(sortMeetingsRecent);
+
+  return {
+    mode: isRecorder() ? 'recorder' : 'member',
+    intro: isRecorder()
+      ? '按流程缺口优先展示，便于补齐送达、代录、签字和佐证；会议新建、开始、结束由主任/副主任操作。'
+      : '按你的待办与关注事项优先展示；会议新建、开始、结束由主任/副主任操作。',
+    sections:[
+      { title: isRecorder() ? '流程待处理' : '我的待办与关注', items:pending, empty:'暂无待办或关注会议' },
+      { title: isRecorder() ? '其他会议' : '其他相关会议', items:others, empty:'暂无其他会议' }
+    ]
+  };
+}
+
+function renderRoleListSection(section) {
+  return `
+    <div class="role-list-section">
+      <div class="role-section-head">
+        <span class="role-section-title">${section.title}</span>
+        <span class="role-section-count">${section.items.length}</span>
+      </div>
+      ${section.items.length ? section.items.map(x => meetingCard(x.meeting)).join('') : `<div class="empty-mini">${section.empty}</div>`}
+    </div>`;
+}
+
+function renderRoleBasedCommitteeList(container) {
+  const view = getCommitteeListForCurrentUser();
+  if (view.mode === 'chair') return false;
+  const title = isRecorder() ? '记录员工作台' : isExternal() ? '公开信息' : '我的会议工作台';
+  container.innerHTML = `
+    <div class="role-list-intro ${view.mode === 'public' ? 'public' : ''}">
+      <div class="role-list-intro-title">${title}</div>
+      <div class="role-list-intro-sub">${view.intro}</div>
+      ${view.mode === 'public' ? '<div class="role-list-cta" onclick="go(\'info-public\')">查看信息公开 ›</div>' : ''}
+    </div>
+    ${view.sections.map(renderRoleListSection).join('')}`;
+  return true;
+}
+
+function taskIcon(level) {
+  if (level === 'ok') return '✓';
+  if (level === 'readonly') return 'i';
+  return '!';
+}
+
+function getMemberTaskSummary(m) {
+  const todo = getMeetingTodoForUser(m);
+  if (m.stage === 'preparing') {
+    if (todo.labels.length) {
+      return {
+        level:'wait',
+        title:'待关注',
+        items:todo.labels,
+        hint:'这一步由记录员完成送达，你暂时无需操作。'
+      };
+    }
+    return { level:'ok', title:'已处理', items:['通知和材料已送达'], hint:'等待会议开始后再进行签到、签字或表决。' };
+  }
+  if (m.stage === 'ongoing') {
+    if (todo.labels.length) {
+      return { level:'todo', title:'待处理', items:todo.labels, hint:'这是你本人可完成的会议动作。' };
+    }
+    return { level:'ok', title:'已处理', items:['我的参会操作已完成'], hint:'可继续查看会议进展和表决结果。' };
+  }
+  return { level:'readonly', title:'可查看', items:['会议已结束'], hint:'可查看会议纪要或公示结果。' };
+}
+
+function getRecorderTaskSummary(m) {
+  const todo = getMeetingTodoForUser(m);
+  if (todo.labels.length) {
+    return { level:'todo', title:'待处理', items:todo.labels, hint:'这些事项由记录员维护或补录。' };
+  }
+  if (m.stage === 'ended') {
+    return { level:'ok', title:'流程正常', items:['暂无待补事项'], hint:'可查看纪要、公示和归档状态。' };
+  }
+  return { level:'ok', title:'流程正常', items:['暂无待补事项'], hint:'可继续查看送达、签到、签字和佐证状态。' };
+}
+
+function getChairTaskSummary(m) {
+  if (m.stage === 'preparing') {
+    const info = noticeInfo(m);
+    const items = [];
+    if (info.noDate) items.push('补填会议日期');
+    if (info.noticeDone < info.total) items.push(`${info.total - info.noticeDone} 人通知未送达`);
+    if (info.materialDone < info.total) items.push(`${info.total - info.materialDone} 人材料未送达`);
+    if (items.length) {
+      items.push('暂不可开始会议');
+      return { level:'warn', title:'管理待处理', items, hint:'督促记录员完成送达后，主任/副主任才能开始会议。' };
+    }
+    return { level:'todo', title:'可推进', items:['可开始会议'], hint:'通知和材料已全部送达，可进入会议进行阶段。' };
+  }
+  if (m.stage === 'ongoing') {
+    const er = endResult(m);
+    if (er.level === 'valid') {
+      return { level:'todo', title:'可推进', items:['可结束会议'], hint:'会议有效、记录完整，决议状态已确认。' };
+    }
+    const items = er.notes.length ? er.notes : ['核查项未全部通过'];
+    if (er.level === 'flawed') items.push('可带说明结束');
+    return { level:'warn', title:'管理待处理', items, hint:'可补齐后再结束，或按会议有效性/决议有效性带说明归档。' };
+  }
+  if (m.compliance === 'invalid') {
+    return { level:'readonly', title:'已归档', items:['会议未成立记录'], hint:'不计入已召开次数，可查看记录。' };
+  }
+  const pi = publishInfo(m);
+  if (pi.scoreState === 'pending') {
+    return { level:'todo', title:'待处理', items:[`待公示，还剩 ${pi.daysLeft} 天`], hint:'会议结束后三日内应完成公示。' };
+  }
+  if (pi.scoreState === 'overdue') {
+    return { level:'warn', title:'逾期未公示', items:['已超过三日公示期限'], hint:'计入年度考核扣分。' };
+  }
+  return { level:'ok', title:'已完成', items:['会议已结束并完成公示'], hint:'可查看会议纪要与公示记录。' };
+}
+
+function getExternalTaskSummary(m) {
+  if (m.stage === 'ended' && m.compliance !== 'invalid' && ensurePublish(m).published) {
+    return { level:'readonly', title:'公开信息', items:['可查看已公示纪要与决定'], hint:'内部会议流程不可见，仅展示依法公开内容。' };
+  }
+  return { level:'readonly', title:'只读状态', items:['会议尚未公示'], hint:'会议结束并公示后才展示纪要与决定。' };
+}
+
+function getDetailTaskSummary(m) {
+  if (!currentUser) return { level:'readonly', title:'未登录', items:['请先登录'], hint:'' };
+  if (isChair()) return getChairTaskSummary(m);
+  if (isRecorder()) return getRecorderTaskSummary(m);
+  if (isOwner() || isPropertyMgmt()) return getExternalTaskSummary(m);
+  return getMemberTaskSummary(m);
+}
+
+function flowNodeText(m) {
+  if (m.stage === 'preparing') {
+    const info = noticeInfo(m);
+    if (info.noDate) return '准备阶段 · 日期待补';
+    if (!info.allDone) return '准备阶段 · 会前送达中';
+    return '准备阶段 · 待开始会议';
+  }
+
+  if (m.stage === 'ongoing') {
+    const r = ensureRecord(m);
+    const total = r.attendance.length;
+    const signedIn = r.attendance.filter(a => a.signedIn).length;
+    const signed = r.attendance.filter(a => a.signed).length;
+    const rc = resolutionCheck(m, false);
+    if (signedIn < total || signed < total) return '进行中 · 签到/签字确认中';
+    if (rc.level === 'pending') return '进行中 · 表决确认中';
+    if (rc.level === 'partial' || rc.level === 'failed') return '进行中 · 决议结果待确认';
+    return endResult(m).level === 'valid' ? '进行中 · 可结束会议' : '进行中 · 记录补正中';
+  }
+
+  if (m.compliance === 'invalid') return '已结束 · 未成立归档';
+  const pi = publishInfo(m);
+  if (pi.scoreState === 'pending') return '已结束 · 纪要待公示';
+  if (pi.scoreState === 'overdue') return '已结束 · 逾期未公示';
+  return '已结束 · 已公示归档';
+}
+
+function detailTaskBanner(m) {
+  const s = getDetailTaskSummary(m);
+  const flow = flowNodeText(m);
+  return `
+    <div class="task-banner ${s.level}">
+      <div class="task-top">
+        <span class="task-dot">${taskIcon(s.level)}</span>
+        <span class="task-title">${s.title}</span>
+      </div>
+      <div class="task-items">${s.items.join(' / ')}</div>
+      <div class="task-flow"><b>当前：</b>${flow}</div>
+      ${s.hint ? `<div class="task-hint">${s.hint}</div>` : ''}
+    </div>`;
+}
+
 function summaryLine(m) {
   if (m.stage === 'preparing') {
     const info = noticeInfo(m);
@@ -2685,17 +3167,18 @@ function summaryLine(m) {
     const signedIn = r.attendance.filter(a => a.signedIn).length;
     const signed   = r.attendance.filter(a => a.signed).length;
     const res = recordCheck(m);
-    const passN = res.checks.filter(c => c.ok).length;
-    const cls = res.allOk ? 'ok' : 'warn';
+    const rc = resolutionCheck(m, false);
+    const passN = res.requiredChecks.filter(c => c.ok).length;
+    const cls = res.allOk && (rc.level === 'passed' || rc.level === 'none') ? 'ok' : 'warn';
     return `<span class="mc-sum-tag ${cls}">签到 ${signedIn}/${total} · 签字 ${signed}/${total}</span>
-            <span class="mc-sum-tip">合规 ${passN}/${res.checks.length} 项通过</span>`;
+            <span class="mc-sum-tip">关键记录 ${passN}/${res.requiredChecks.length} · ${rc.text}</span>`;
   }
   // ended
-  const c = m.compliance || 'valid';
-  const compTag = c === 'valid'  ? `<span class="mc-sum-tag ok">✓ 会议有效</span>`
-                : c === 'flawed' ? `<span class="mc-sum-tag warn">⚠ 部分决议无效</span>`
-                :                  `<span class="mc-sum-tag bad">✕ 会议不成立</span>`;
-  if (c === 'invalid') return compTag;
+  const er = displayEndResult(m);
+  const compTag = er.level === 'valid'  ? `<span class="mc-sum-tag ok">✓ 会议有效</span>`
+                : er.level === 'flawed' ? `<span class="mc-sum-tag warn">⚠ 带说明归档</span>`
+                :                         `<span class="mc-sum-tag bad">✕ 会议不成立</span>`;
+  if (er.level === 'invalid') return compTag;
   const pi = publishInfo(m);
   const pubTag = pi.scoreState === 'ontime'  ? `<span class="mc-sum-tip pub-ok">已公示</span>`
                : pi.scoreState === 'late'    ? `<span class="mc-sum-tip pub-warn">逾期公示</span>`
@@ -2704,10 +3187,20 @@ function summaryLine(m) {
   return compTag + pubTag;
 }
 
+function roleSummaryLine(m) {
+  if (isChair()) return summaryLine(m);
+  const s = getDetailTaskSummary(m);
+  const cls = s.level === 'readonly' ? 'public' : s.level;
+  return `<span class="role-sum-tag ${cls}">${s.title}：${s.items.join(' / ')}</span>${s.hint ? `<span class="role-sum-tip">${s.hint}</span>` : ''}`;
+}
+
 function meetingCard(m) {
   const invalid = m.compliance === 'invalid';
+  const clickAction = isExternal() && m.stage === 'ended' && m.compliance !== 'invalid' && ensurePublish(m).published
+    ? `openMinutes(${m.id},'committee')`
+    : `openDetail(${m.id})`;
   return `
-    <div class="meeting-card slim${invalid ? ' card-invalid' : ''}" onclick="openDetail(${m.id})">
+    <div class="meeting-card slim${invalid ? ' card-invalid' : ''}" onclick="${clickAction}">
       <div class="mc-header">
         <div class="mc-title">${m.title}</div>
         <span class="stage-pill ${invalid ? 'invalid' : m.stage}">${invalid ? '会议无效' : stageLabel(m.stage)}</span>
@@ -2717,9 +3210,9 @@ function meetingCard(m) {
         <span class="mc-dot">·</span>
         <span>📍 ${m.location}</span>
         <span class="mc-dot">·</span>
-        <span>👥 ${m.participants}人</span>
+        <span>👥 ${committeeMembers.length}人</span>
       </div>
-      <div class="mc-summary">${summaryLine(m)}</div>
+      <div class="mc-summary">${roleSummaryLine(m)}</div>
     </div>`;
 }
 
@@ -2729,10 +3222,12 @@ function refreshCurrent() {
     renderDetailPage();
   } else {
     renderList();
+    if (document.getElementById('page-committee').classList.contains('active')) syncCommitteeActions();
   }
 }
 
 let currentMeetingId = null;
+let currentOmId = null;
 
 function openDetail(id) {
   currentMeetingId = id;
@@ -2741,6 +3236,17 @@ function openDetail(id) {
 
 
 // ── 登录 ──────────────────────────────────
+function toggleLoginGroup(group) {
+  const list = document.getElementById('login-' + group + '-list');
+  const arrow = document.getElementById('arrow-' + group);
+  const isOpen = list.classList.contains('open');
+  ['internal','external'].forEach(g => {
+    document.getElementById('login-' + g + '-list').classList.remove('open');
+    document.getElementById('arrow-' + g).classList.remove('open');
+  });
+  if (!isOpen) { list.classList.add('open'); arrow.classList.add('open'); }
+}
+
 function renderLoginPage() {
   const internal = identities.filter(u => u.role !== '业主' && u.role !== '物业');
   const external = identities.filter(u => u.role === '业主' || u.role === '物业');
@@ -2766,13 +3272,17 @@ function doLogin(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-main').classList.add('active');
   refreshStats(); renderList();
+  const loginEl = document.getElementById('page-login');
+  loginEl.classList.add('slide-out');
+  setTimeout(() => { loginEl.style.display = 'none'; }, 420);
 }
 
 function doLogout() {
   clearUser();
   currentUser = null;
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-login').classList.add('active');
+  const loginEl = document.getElementById('page-login');
+  loginEl.style.display = 'flex';
+  loginEl.classList.remove('slide-out');
   renderLoginPage();
 }
 
@@ -2780,40 +3290,154 @@ function doLogout() {
 function renderProfile() {
   if (!currentUser) { doLogout(); return; }
   const cls = identityClass();
-  const perms = {
-    '主任':    ['召集会议','主持表决','签署决定','审阅纪要'],
-    '副主任':  ['召集会议','主持表决','签署决定','审阅纪要'],
-    '委员':    ['参与表决','出席签字','查看会议资料'],
-    '记录员':  ['代录签到','上传佐证','管理纪要'],
-    '业主':    ['查看公示信息','查看会议决议'],
-    '物业':    ['查看公示信息','处理接待工单'],
-  };
-  const myPerms = perms[currentUser.role] || [];
-  const allPerms = ['召集会议','主持表决','签署决定','代录签到','上传佐证','参与表决','出席签字','查看公示信息','处理接待工单'];
-  document.getElementById('profile-scroll').innerHTML = `
-    <div class="profile-header">
-      <div class="profile-avatar">${currentUser.name.charAt(0)}</div>
-      <div class="profile-name">${currentUser.name}</div>
-      <div class="profile-role-chip">${currentUser.role}</div>
-    </div>
-    <div class="profile-section">
-      <div class="profile-section-title">账号信息</div>
-      <div class="profile-row"><span class="pr-label">姓名</span><span class="pr-value">${currentUser.name}</span></div>
-      <div class="profile-row"><span class="pr-label">身份</span><span class="pr-value role-tag ${cls}">${currentUser.role}</span></div>
-      <div class="profile-row"><span class="pr-label">小区</span><span class="pr-value">阳光家园</span></div>
-    </div>
-    <div class="profile-section">
-      <div class="profile-section-title">权限说明</div>
-      <div class="perm-list">
-        ${myPerms.map(p => `<div class="perm-item"><span class="perm-dot"></span>${p}</div>`).join('')}
-      </div>
-    </div>
-    <button class="logout-btn" onclick="doLogout()">退出登录</button>
-  `;
-  document.getElementById('page-profile').classList.add('active');
+  const role = currentUser.role;
+
+  const headerGrad = {
+    '主任':  'linear-gradient(160deg,#FFCC44 0%,#FFA800 100%)',
+    '副主任':'linear-gradient(160deg,#FFCC44 0%,#FFA800 100%)',
+    '委员':  'linear-gradient(160deg,#FFCC44 0%,#FFA800 100%)',
+    '记录员':'linear-gradient(160deg,#BB8FCE 0%,#9B59B6 100%)',
+    '业主':  'linear-gradient(160deg,#58D68D 0%,#27AE60 100%)',
+    '物业':  'linear-gradient(160deg,#5DADE2 0%,#2980B9 100%)',
+    '管理员':'linear-gradient(160deg,#5D6D7E 0%,#2C3E50 100%)',
+  }[role] || 'linear-gradient(160deg,#FFCC44 0%,#FFA800 100%)';
+
+  const lightRole = ['业主','物业','记录员','管理员'].includes(role);
+  const textColor = lightRole ? '#fff' : '#5C3D00';
+
+  const roleDesc = {
+    '主任':  '负责召集主持会议，具有最高操作权限',
+    '副主任':'协助主任开展工作，享有同等会议权限',
+    '委员':  '参与表决，出席签字，查看会议资料',
+    '记录员':'负责记录并上传会议佐证材料',
+    '业主':  '阳光家园 · 3栋2单元501室',
+    '物业':  '阳光家园物业管理处',
+    '管理员':'系统权限管理与配置',
+  }[role] || '';
+
+  // 统计数据
+  let statsHTML = '';
+  if (['主任','副主任','委员'].includes(role)) {
+    const attended = meetings.filter(m =>
+      m.record && m.record.attendance &&
+      m.record.attendance.find(a => a.name === currentUser.name && a.signedIn)
+    ).length;
+    const voted = meetings.filter(m =>
+      m.record && m.record.topics &&
+      m.record.topics.some(t => t.votes && t.votes[currentUser.name])
+    ).length;
+    const total = meetings.filter(m => m.stage === 'ended' || m.stage === 'ongoing').length;
+    statsHTML = '<div class="profile-stats-row" style="margin-top:-20px;position:relative;z-index:2;">'
+      + '<div class="profile-stat"><div class="profile-stat-num">' + total + '</div><div class="profile-stat-label">参会记录</div></div>'
+      + '<div class="profile-stat"><div class="profile-stat-num">' + voted + '</div><div class="profile-stat-label">参与表决</div></div>'
+      + '<div class="profile-stat"><div class="profile-stat-num">' + attended + '</div><div class="profile-stat-label">已签到</div></div>'
+      + '</div>';
+  }
+
+  function menuItem(icon, bg, label, value) {
+    return '<div class="profile-menu-row">'
+      + '<div class="pm-icon" style="background:' + bg + '">' + icon + '</div>'
+      + '<span class="pm-label">' + label + '</span>'
+      + (value ? '<span class="pm-value">' + value + '</span>' : '')
+      + '<span class="pm-arrow">›</span></div>';
+  }
+
+  let recordsHTML = '';
+  if (['主任','副主任','委员'].includes(role)) {
+    recordsHTML = '<div class="profile-section-header">我的记录</div><div class="profile-section">'
+      + menuItem('🗳️','#FFF3DC','我的投票记录','')
+      + menuItem('📋','#FFF3DC','参会记录','')
+      + menuItem('✍️','#FFF3DC','我的签字','')
+      + '</div>';
+  } else if (role === '记录员') {
+    recordsHTML = '<div class="profile-section-header">工作记录</div><div class="profile-section">'
+      + menuItem('📝','#F5EEF8','整理的纪要','')
+      + menuItem('📎','#F5EEF8','上传的佐证','')
+      + '</div>';
+  } else if (role === '业主') {
+    recordsHTML = '<div class="profile-section-header">我的关注</div><div class="profile-section">'
+      + menuItem('👁️','#EAFAF1','关注的会议','')
+      + menuItem('📮','#EAFAF1','我的提案','')
+      + '</div>';
+  } else if (role === '物业') {
+    recordsHTML = '<div class="profile-section-header">工作台</div><div class="profile-section">'
+      + menuItem('📬','#EBF5FB','待处理工单','')
+      + menuItem('📊','#EBF5FB','处理记录','')
+      + '</div>';
+  }
+
+  const roomRow = role === '业主' ? '<div class="profile-row"><span class="pr-label">房号</span><span class="pr-value">3栋2单元501</span></div>' : '';
+
+  document.getElementById('profile-scroll').innerHTML =
+    '<div class="profile-header" style="background:' + headerGrad + ';">'
+    + '<div class="profile-avatar" style="color:' + textColor + ';">' + currentUser.name.charAt(0) + '</div>'
+    + '<div class="profile-name" style="color:' + textColor + ';">' + currentUser.name + '</div>'
+    + '<div class="profile-role-chip" style="background:rgba(255,255,255,0.3);color:' + textColor + ';">' + role + '</div>'
+    + '<div style="font-size:12px;color:' + textColor + ';opacity:0.75;margin-top:6px;">' + roleDesc + '</div>'
+    + '</div>'
+    + statsHTML
+    + '<div class="profile-section-header">基本信息</div>'
+    + '<div class="profile-section">'
+    + '<div class="profile-row"><span class="pr-label">姓名</span><span class="pr-value">' + currentUser.name + '</span></div>'
+    + '<div class="profile-row"><span class="pr-label">身份</span><span class="pr-value role-tag ' + cls + '">' + role + '</span></div>'
+    + '<div class="profile-row"><span class="pr-label">小区</span><span class="pr-value">阳光家园</span></div>'
+    + roomRow
+    + '</div>'
+    + recordsHTML
+    + '<div class="profile-section-header">消息与通知</div>'
+    + '<div class="profile-section">' + menuItem('🔔','#FFF3DC','系统通知','') + '</div>'
+    + '<div class="profile-section-header">关于</div>'
+    + '<div class="profile-section">'
+    + (isAdmin() ? '<div class="profile-menu-row" onclick="go(\'admin\')"><div class="pm-icon" style="background:#F5EEF8;">⚙️</div><span class="pm-label">权限管理</span><span class="pm-arrow">›</span></div>' : '')
+    + menuItem('💬','#F0F0F0','意见反馈','')
+    + menuItem('ℹ️','#F0F0F0','关于系统','v1.0')
+    + '</div>'
+    + '<button class="logout-btn" onclick="doLogout()">退出登录</button>';
 }
 // 角色判断
-const isChair = () => currentUser.role === '主任' || currentUser.role === '副主任';
+function syncCommitteeActions() {
+  const canCreate = isChair();
+  const headerAction = document.querySelector('#page-committee .sub-header-action');
+  const fab = document.querySelector('#page-committee .fab');
+  const stageTabs = document.querySelector('#page-committee .stage-tabs');
+  if (headerAction) {
+    headerAction.style.visibility = canCreate ? 'visible' : 'hidden';
+    headerAction.style.pointerEvents = canCreate ? 'auto' : 'none';
+  }
+  if (fab) fab.style.display = canCreate ? '' : 'none';
+  if (stageTabs) stageTabs.style.display = canCreate ? '' : 'none';
+}
+
+function requireChairAction(action) {
+  if (can('committee.advance')) return true;
+  alert(`${action}需要管理权限`);
+  return false;
+}
+
+function requireRecorderAction(action) {
+  if (can('committee.delivery') || can('committee.evidence')) return true;
+  alert(`${action}需要记录员权限`);
+  return false;
+}
+
+function selfAttendance(r) {
+  return currentUser ? r.attendance.find(a => isSelf(a.name)) : null;
+}
+
+function canSelfOperate(r) {
+  return can('committee.sign_in') && !!selfAttendance(r);
+}
+
+function requireSelfAction(r, action) {
+  if (!can('committee.sign_in')) { alert('你未被授权参与操作'); return false; }
+  if (!canSelfOperate(r)) { alert('你不在本次会议委员名单中'); return false; }
+  return true;
+  return false;
+}
+
+function permissionNote(text, tone) {
+  return `<div class="permission-note ${tone || ''}"><span class="pn-icon">i</span><span>${text}</span></div>`;
+}
 
 function renderDetailPage() {
   if (!currentMeetingId) return;
@@ -2824,23 +3448,23 @@ function renderDetailPage() {
 
   const idCls = identityClass();
   document.getElementById('detail-scroll').innerHTML = `
-    <div class="detail-user-bar ${idCls}" onclick="openIdentity()">
+    <div class="detail-user-bar ${idCls}">
       <div class="id-left">
         <span class="id-avatar ${idCls}">${currentUser.name.charAt(0)}</span>
         <div class="id-info">
           <div class="id-name">${currentUser.name} <span class="id-role ${idCls}">${currentUser.role}</span></div>
-          <div class="id-tip">演示模式 · 点击切换视角</div>
+          <div class="id-tip">当前登录身份</div>
         </div>
       </div>
-      <svg class="id-switch" viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
     </div>
+    ${detailTaskBanner(m)}
     <div class="detail-info">
       <div class="di-row"><span class="di-k">📅</span>${m.date} &nbsp; ${m.time}</div>
       <div class="di-row"><span class="di-k">📍</span>${m.location}</div>
-      <div class="di-row"><span class="di-k">👥</span>${m.participants} 人参会</div>
+      <div class="di-row"><span class="di-k">👥</span>${committeeMembers.length} 人参会</div>
       ${m.desc ? `<div class="di-row di-desc"><span class="di-k">📋</span>${m.desc}</div>` : ''}
     </div>
-    ${isRecorder() ? detailRecorder(m) : isOwner() ? detailExternal(m,"业主") : isPropertyMgmt() ? detailExternal(m,"物业") : isChair() ? detailChair(m) : detailMember(m)}\`;
+    ${isRecorder() ? detailRecorder(m) : isOwner() ? detailExternal(m,"业主") : isPropertyMgmt() ? detailExternal(m,"物业") : isChair() ? detailChair(m) : detailMember(m)}`;
 }
 
 
@@ -2873,6 +3497,7 @@ function detailExternal(m, role) {
       <div style="font-size:12px;font-weight:600;color:${color};">${icon} ${role}视角 · 只读</div>
       <div style="font-size:11px;color:#888;margin-top:2px;">仅展示对外公开信息，不可操作</div>
     </div>
+    ${permissionNote('业主/物业仅能查看依法公示内容；会议筹备、表决、纪要维护等内部流程由业委会成员处理。')}
     <div class="my-delivery-card">
       <div class="mdc-title">会议状态</div>
       <div class="mdc-row"><span class="mdc-label">📌 当前阶段</span><span class="mdc-status ok">${stageText}</span></div>
@@ -2908,6 +3533,7 @@ function memberPreparingView(m) {
           <span class="mdc-status ${me.material?'ok':'no'}">${me.material?'✓ 已送达':'○ 未送达'}</span>
         </div>
         ${!me.notice||!me.material ? `<div class="mdc-tip">通知和材料由记录员负责送达，如有疑问请联系记录员</div>` : ''}
+        ${permissionNote('会议通知、材料送达由记录员维护；开始会议由主任/副主任操作，委员无需在准备阶段推进会议。')}
       </div>
     </div>`;
 }
@@ -2989,7 +3615,10 @@ function memberStepsInner(m) {
 }
 
 function memberOngoingView(m) {
-  return `<div class="detail-blocks">${memberStepsInner(m)}</div>`;
+  return `<div class="detail-blocks">
+    ${memberStepsInner(m)}
+    ${permissionNote('会议记录维护和线下佐证由记录员处理；结束会议由主任/副主任操作。')}
+  </div>`;
 }
 
 function memberEndedView(m) {
@@ -2998,6 +3627,7 @@ function memberEndedView(m) {
     <div class="detail-blocks">
       ${complianceBlock(m)}
       ${invalid ? '' : publishBlock(m)}
+      ${permissionNote('会议纪要公示由主任/副主任或记录员维护；委员可查看本人参会记录和已公示结果。')}
     </div>
     <div class="detail-action-row">
       <button class="btn btn-ghost" onclick="openMinutes(${m.id},'meeting-detail')">${invalid?'查看记录':'查看纪要'}</button>
@@ -3059,12 +3689,12 @@ function chairOngoingView(m) {
   let endBtn, controlNote;
   if (er.level==='valid') {
     endBtn = `<button class="btn btn-primary" onclick="tryEnd(${m.id})">结束会议</button>`;
-    controlNote = '所有核查项通过，可正常结束会议';
+    controlNote = '会议有效、记录完整，决议状态已确认，可正常结束会议';
   } else if (er.level==='invalid') {
     endBtn = `<button class="btn btn-danger" onclick="tryEnd(${m.id})">判定会议无效</button>`;
-    controlNote = '签到人数未过半，会议不成立';
+    controlNote = er.meeting.text;
   } else {
-    endBtn = `<button class="btn btn-warn" onclick="tryEnd(${m.id})">带标注结束</button>`;
+    endBtn = `<button class="btn btn-warn" onclick="tryEnd(${m.id})">带说明结束</button>`;
     controlNote = er.notes.join('；');
   }
 
@@ -3119,10 +3749,16 @@ function chairEndedView(m) {
 // 记录员视图（完整操作视图）
 // ══════════════════════════════════════
 function detailRecorder(m) {
-  if (m.stage === 'preparing') return `<div class="detail-blocks">${noticeBlock(m)}</div>`;
+  if (m.stage === 'preparing') return `<div class="detail-blocks">
+    ${noticeBlock(m)}
+    ${permissionNote('记录员负责通知、材料送达和留痕；会议开始由主任/副主任在送达完成后操作。')}
+  </div>`;
   if (m.stage === 'ongoing')   return `<div class="detail-blocks">${recordBlock(m)}</div>
     <div class="detail-action-row">
       <button class="btn btn-outline" onclick="openMinutes(${m.id},'meeting-detail')">查看纪要草稿</button>
+    </div>
+    <div class="detail-blocks" style="padding-top:0;">
+      ${permissionNote('记录员不参与表决，仅维护议题、签到签字代录、居委会签字和线下佐证。')}
     </div>`;
   // ended
   const invalid = m.compliance === 'invalid';
@@ -3130,6 +3766,7 @@ function detailRecorder(m) {
     <div class="detail-blocks">
       ${complianceBlock(m)}
       ${invalid ? '' : publishBlock(m)}
+      ${permissionNote('记录员可维护纪要、佐证和公示留痕；会议有效性推进仍由主任/副主任确认。')}
     </div>
     <div class="detail-action-row">
       <button class="btn btn-ghost" onclick="openMinutes(${m.id},'meeting-detail')">${invalid?'查看记录':'查看纪要'}</button>
@@ -3138,6 +3775,7 @@ function detailRecorder(m) {
 
 function renderList() {
   const container = document.getElementById('meeting-list');
+  if (renderRoleBasedCommitteeList(container)) return;
 
   // 会议结束页：拆为「有效会议」+「未成立记录」两区
   if (currentStage === 'ended') {
@@ -3252,12 +3890,14 @@ function toggleMembers(id) {
   refreshCurrent();
 }
 function toggleDeliver(id, idx, field) {
+  if (!requireRecorderAction('送达状态维护')) return;
   const m = meetings.find(x => x.id === id);
   const d = ensureDelivery(m);
   d[idx][field] = !d[idx][field];
   refreshCurrent();
 }
 function sendAll(id) {
+  if (!requireRecorderAction('一键送达')) return;
   const m = meetings.find(x => x.id === id);
   const d = ensureDelivery(m);
   d.forEach(x => { x.notice = true; x.material = true; });
@@ -3300,6 +3940,73 @@ function voteTally(topic, total) {
   return { forN, agN, abN, total, need, passed: forN >= need, voted: vals.length };
 }
 
+function topicDecisionStatus(topic, total) {
+  const t = voteTally(topic, total);
+  const status = t.passed ? 'passed' : (t.voted < total ? 'pending' : 'failed');
+  const text = t.passed ? (topic.type === 'major' ? '形成提请意见' : '决议通过')
+    : status === 'pending' ? '待继续表决'
+    : '决议未通过';
+  return { ...t, status, text };
+}
+
+function resolutionCheck(m, meetingInvalid) {
+  const r = ensureRecord(m);
+  const total = r.attendance.length;
+  const topics = r.topics || [];
+
+  if (meetingInvalid) {
+    return {
+      total:topics.length, passed:0, pending:0, failed:topics.length,
+      level:'invalid', text:'会议无效，本次决议不生效',
+      notes: topics.length ? ['会议未成立，所有议题均不形成有效决议'] : [],
+      topics: topics.map(tp => ({ topic:tp, ...topicDecisionStatus(tp, total) }))
+    };
+  }
+
+  if ((r.hasDecision || r.hasMajorIssue) && !topics.length) {
+    return {
+      total:0, passed:0, pending:1, failed:0,
+      level:'pending', text:'已标记有决议事项，但尚未设置表决议题',
+      notes:['已标记有决议事项，但尚未设置表决议题，暂不能形成有效决议'],
+      topics:[]
+    };
+  }
+
+  if (!topics.length) {
+    return { total:0, passed:0, pending:0, failed:0, level:'none', text:'本次会议无表决议题', notes:[], topics:[] };
+  }
+
+  const topicResults = topics.map(tp => ({ topic:tp, ...topicDecisionStatus(tp, total) }));
+  const passed = topicResults.filter(x => x.status === 'passed').length;
+  const pending = topicResults.filter(x => x.status === 'pending').length;
+  const failed = topicResults.filter(x => x.status === 'failed').length;
+  const notes = [];
+  topicResults.forEach(x => {
+    if (x.status === 'pending') {
+      notes.push(`"${x.topic.title}"尚未完成表决（已投 ${x.voted}/${x.total}，赞成 ${x.forN}/${x.need}）`);
+    } else if (x.status === 'failed') {
+      notes.push(`"${x.topic.title}"未通过（赞成 ${x.forN}/${x.need}）`);
+    }
+  });
+
+  let level, text;
+  if (pending) {
+    level = 'pending';
+    text = `${topics.length}项议题中${passed}项通过，${pending}项待表决${failed ? `，${failed}项未通过` : ''}`;
+  } else if (passed === topics.length) {
+    level = 'passed';
+    text = `${topics.length}项议题全部通过`;
+  } else if (passed > 0) {
+    level = 'partial';
+    text = `${topics.length}项议题中${passed}项通过，${failed}项未通过`;
+  } else {
+    level = 'failed';
+    text = `${topics.length}项议题均未通过，未形成有效决议`;
+  }
+
+  return { total:topics.length, passed, pending, failed, level, text, notes, topics:topicResults };
+}
+
 function recordCheck(m) {
   const r = ensureRecord(m);
   const total = r.attendance.length;
@@ -3307,14 +4014,25 @@ function recordCheck(m) {
   const signedIn = r.attendance.filter(a => a.signedIn).length;
   const signed   = r.attendance.filter(a => a.signed).length;
 
-  const checks = [
+  const requiredChecks = [
     { label:'委员签到过半',         detail:`${signedIn}/${total}（需≥${need}）`, ok: signedIn >= need },
     { label:'会议记录委员签字过半', detail:`${signed}/${total}（需≥${need}）`, ok: signed >= need },
   ];
-  if (r.hasDecision)   checks.push({ label:'决定事项·过半委员签字', detail:`${signed}/${total}（需≥${need}）`, ok: signed >= need });
-  if (r.hasMajorIssue) checks.push({ label:'重大事项·居委会委员签字', detail: r.juweiSigned ? '已签字' : '待签字', ok: r.juweiSigned });
+  if (r.hasDecision)   requiredChecks.push({ label:'决定事项·过半委员签字', detail:`${signed}/${total}（需≥${need}）`, ok: signed >= need });
+  if (r.hasMajorIssue) requiredChecks.push({ label:'重大事项·居委会委员签字', detail: r.juweiSigned ? '已签字' : '待签字', ok: r.juweiSigned });
 
-  return { checks, allOk: checks.every(c => c.ok), signedIn, signed, total, need };
+  const softChecks = [
+    { label:'线下佐证归档', detail: r.evidence && r.evidence.length ? `已上传 ${r.evidence.length} 份` : '待上传', ok: !!(r.evidence && r.evidence.length), soft:true },
+  ];
+  const checks = requiredChecks.concat(softChecks);
+  const requiredOk = requiredChecks.every(c => c.ok);
+  const softOk = softChecks.every(c => c.ok);
+  const recordLevel = requiredOk && softOk ? 'complete' : requiredOk ? 'minor' : 'incomplete';
+  const recordText = recordLevel === 'complete' ? '记录完整'
+    : recordLevel === 'minor' ? '记录有瑕疵，待补充归档'
+    : '关键记录待补正';
+
+  return { checks, requiredChecks, softChecks, allOk: requiredOk, softOk, recordLevel, recordText, signedIn, signed, total, need };
 }
 
 function recordBlock(m) {
@@ -3322,14 +4040,15 @@ function recordBlock(m) {
   const res = recordCheck(m);
   const isOpen = expandedId === m.id;
   const failCount = res.checks.filter(c => !c.ok).length;
+  const requiredFailCount = res.requiredChecks.filter(c => !c.ok).length;
 
   return `
     <div class="notice-block">
-      <div class="record-banner ${res.allOk ? 'pass' : 'fail'}">
-        <span class="nb-icon">${res.allOk ? '✓' : '!'}</span>
+      <div class="record-banner ${res.recordLevel === 'incomplete' ? 'fail' : 'pass'}">
+        <span class="nb-icon">${res.recordLevel === 'incomplete' ? '!' : '✓'}</span>
         <div class="nb-text">
-          <div class="nb-main">会议记录合规核查</div>
-          <div class="nb-sub">${res.allOk ? '全部核查项已通过，可结束会议' : `尚有 ${failCount} 项未达标`}</div>
+          <div class="nb-main">会议有效性与记录完整性核查</div>
+          <div class="nb-sub">${res.recordLevel === 'complete' ? '会议成立依据和记录材料已完整' : res.recordLevel === 'minor' ? `会议可成立，仍有 ${failCount} 项记录待补充` : `尚有 ${requiredFailCount} 项关键记录未达标`}</div>
         </div>
       </div>
 
@@ -3427,9 +4146,9 @@ function voteBlock(m) {
 function topicCard(m, tp) {
   const r = ensureRecord(m);
   const total = r.attendance.length;
-  const t = voteTally(tp, total);
-  const myVote = tp.votes[currentUser.name];
-  const canVote = !isRecorder();
+  const t = topicDecisionStatus(tp, total);
+  const myVote = currentUser ? tp.votes[currentUser.name] : null;
+  const canVote = canSelfOperate(r);
   const major = tp.type === 'major';
   return `
     <div class="topic-card ${major ? 'major' : ''}">
@@ -3438,7 +4157,7 @@ function topicCard(m, tp) {
         <span class="tp-title">${tp.title}</span>
         ${isRecorder() && !major ? `<span class="tp-del" onclick="removeTopic(${m.id},${tp.id})">×</span>` : ''}
       </div>
-      <div class="tp-status ${t.passed ? 'pass' : ''}">${t.passed ? '✓ 决议通过' : `赞成需≥${t.need}`} · 已投 ${t.voted}/${t.total}</div>
+      <div class="tp-status ${t.passed ? 'pass' : ''}">${t.passed ? `✓ ${t.text}` : `${t.text} · 赞成需≥${t.need}`} · 已投 ${t.voted}/${t.total}</div>
       <div class="vote-bars">
         <div class="vbar"><span class="vb-l">赞成</span><div class="vbar-track"><div class="vbar-fill for" style="width:${t.forN/t.total*100}%"></div></div><b>${t.forN}</b></div>
         <div class="vbar"><span class="vb-l">反对</span><div class="vbar-track"><div class="vbar-fill ag"  style="width:${t.agN/t.total*100}%"></div></div><b>${t.agN}</b></div>
@@ -3451,12 +4170,13 @@ function topicCard(m, tp) {
           <span class="vbtn ab  ${myVote==='abstain'?'on':''}" onclick="vote(${m.id},${tp.id},'abstain')">弃权</span>
         </div>
         <div class="vote-mine">${myVote ? `我已投：${voteLabel(myVote)}` : '你尚未对本议题投票'}</div>
-      ` : `<div class="vote-mine">记录员不参与表决</div>`}
+      ` : permissionNote('记录员不参与表决；可维护议题、查看票数，并上传线下佐证。')}
     </div>`;
 }
 function voteLabel(v) { return { for:'赞成', against:'反对', abstain:'弃权' }[v]; }
 
 function addTopic(id) {
+  if (!requireRecorderAction('新增议题')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   const n = r.topics.filter(t => t.type === 'decision').length + 1;
   const title = (prompt('请输入决定事项议题名称', '决定事项 ' + n) || '').trim();
@@ -3465,6 +4185,7 @@ function addTopic(id) {
   refreshCurrent();
 }
 function removeTopic(id, topicId) {
+  if (!requireRecorderAction('删除议题')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   r.topics = r.topics.filter(t => t.id !== topicId);
   refreshCurrent();
@@ -3499,7 +4220,7 @@ function memberSignList(m) {
     <div class="member-list">
       ${r.attendance.map((a,i) => {
         const mine = isSelf(a.name);
-        const canEdit = mine || isRecorder();
+        const canEdit = isRecorder() || (mine && canSelfOperate(r));
         return `
         <div class="member-row ${mine?'is-self':''}">
           <div class="member-info">
@@ -3516,6 +4237,7 @@ function memberSignList(m) {
 }
 
 function toggleFlag(id, flag) {
+  if (!requireRecorderAction('会议记录维护')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   r[flag] = !r[flag];
   if (flag === 'hasMajorIssue') {
@@ -3530,13 +4252,15 @@ function toggleFlag(id, flag) {
   refreshCurrent();
 }
 function toggleJuwei(id) {
+  if (!requireRecorderAction('居委会委员签字代录')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   r.juweiSigned = !r.juweiSigned;
   refreshCurrent();
 }
 function selfToggle(id, field) {
   const r = ensureRecord(meetings.find(x => x.id === id));
-  const me = r.attendance.find(a => isSelf(a.name));
+  if (!requireSelfAction(r, field === 'signedIn' ? '签到' : '签字')) return;
+  const me = selfAttendance(r);
   if (!me) return;
   me[field] = !me[field];
   refreshCurrent();
@@ -3544,8 +4268,9 @@ function selfToggle(id, field) {
 function toggleAttend(id, idx, field) {
   const r = ensureRecord(meetings.find(x => x.id === id));
   const a = r.attendance[idx];
-  if (!isSelf(a.name) && !isRecorder()) {
-    alert(`只能操作本人的${field==='signedIn'?'签到':'签字'}。\n如需代录，请切换为「记录员」身份。`);
+  if (!a) return;
+  if (!isRecorder() && (!canSelfOperate(r) || !isSelf(a.name))) {
+    alert(`只能操作本人的${field==='signedIn'?'签到':'签字'}。\n如需代录，请由记录员登录后处理。`);
     return;
   }
   a[field] = !a[field];
@@ -3555,26 +4280,30 @@ function toggleAttend(id, idx, field) {
 function vote(id, topicId, choice) {
   if (isRecorder()) { alert('记录员不参与表决'); return; }
   const r = ensureRecord(meetings.find(x => x.id === id));
+  if (!requireSelfAction(r, '表决')) return;
   const tp = r.topics.find(t => t.id === topicId);
   if (!tp) return;
   tp.votes[currentUser.name] = choice;
-  const me = r.attendance.find(a => isSelf(a.name));
+  const me = selfAttendance(r);
   if (me) me.signedIn = true;
   refreshCurrent();
 }
 let evSeq = 1;
 function uploadEvidence(id) {
+  if (!requireRecorderAction('上传佐证')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   const type = r.evidence.length % 2 === 0 ? '签到表' : '会议记录';
   r.evidence.push({ name:`${type}照片_${String(evSeq++).padStart(2,'0')}.jpg`, type });
   refreshCurrent();
 }
 function removeEvidence(id, idx) {
+  if (!requireRecorderAction('删除佐证')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   r.evidence.splice(idx, 1);
   refreshCurrent();
 }
 function signAll(id) {
+  if (!requireRecorderAction('全员代录')) return;
   const r = ensureRecord(meetings.find(x => x.id === id));
   r.attendance.forEach(a => { a.signedIn = true; a.signed = true; });
   if (r.hasMajorIssue) r.juweiSigned = true;
@@ -3599,12 +4328,10 @@ function openMinutes(id, from) {
   const hasVote = topics.length > 0;
 
   // 合规结论
-  let concClass, concText;
-  const level = m.stage === 'ended' ? (m.compliance || 'valid') : endResult(m).level;
-  if (level === 'valid')   { concClass = 'valid';   concText = '会议有效，会议记录合规。'; }
-  if (level === 'flawed')  { concClass = 'flawed';  concText = '会议有效，但存在无效决议（见下）。'; }
-  if (level === 'invalid') { concClass = 'invalid'; concText = '会议未达法定人数，会议不成立、决议无效。'; }
-  const invalidNotes = (m.stage === 'ended' ? (m.invalidNotes || []) : endResult(m).notes);
+  const er = m.stage === 'ended' ? displayEndResult(m) : endResult(m);
+  const concClass = er.level;
+  const concText = er.conclusion;
+  const invalidNotes = er.notes || [];
 
   const present半 = present.length >= need;
 
@@ -3630,9 +4357,9 @@ function openMinutes(id, from) {
     L.push('');
     L.push('三、表决情况');
     topics.forEach((tp, i) => {
-      const t = voteTally(tp, total);
+      const t = topicDecisionStatus(tp, total);
       L.push(`${i+1}. 【${tp.type === 'major' ? '重大事项' : '决定事项'}】${tp.title}`);
-      L.push(`   赞成 ${t.forN} 票，反对 ${t.agN} 票，弃权 ${t.abN} 票（赞成需≥${need}）。表决结果：${t.passed ? '决议通过' : '决议未通过'}。`);
+      L.push(`   赞成 ${t.forN} 票，反对 ${t.agN} 票，弃权 ${t.abN} 票（赞成需≥${need}）。表决结果：${t.text}。`);
     });
   }
   L.push('');
@@ -3642,6 +4369,9 @@ function openMinutes(id, from) {
   L.push('');
   L.push(`${hasVote ? '五' : '四'}、会议结论`);
   L.push(concText);
+  L.push(`会议有效性：${er.meeting.text}`);
+  L.push(`记录完整性：${er.record.text}`);
+  L.push(`决议有效性：${er.resolution.text}`);
   invalidNotes.forEach(n => L.push(`- ${n}`));
   if (r.evidence.length) {
     L.push('');
@@ -3681,10 +4411,10 @@ function openMinutes(id, from) {
       <div class="mn-sec">
         <div class="mn-sh">三、表决情况</div>
         ${topics.map((tp,i) => {
-          const t = voteTally(tp, total);
+          const t = topicDecisionStatus(tp, total);
           return `<div class="mn-topic">
             <p class="mn-p"><b>${i+1}.</b> <span class="mn-tag ${tp.type==='major'?'major':''}">${tp.type==='major'?'重大事项':'决定事项'}</span> ${tp.title}</p>
-            <p class="mn-p">赞成 <b>${t.forN}</b> · 反对 <b>${t.agN}</b> · 弃权 <b>${t.abN}</b>（赞成需≥${need}）　表决结果：<span class="${t.passed?'mn-ok':'mn-no'}">${t.passed ? '决议通过' : '决议未通过'}</span></p>
+            <p class="mn-p">赞成 <b>${t.forN}</b> · 反对 <b>${t.agN}</b> · 弃权 <b>${t.abN}</b>（赞成需≥${need}）　表决结果：<span class="${t.passed?'mn-ok':'mn-no'}">${t.text}</span></p>
           </div>`;
         }).join('')}
       </div>` : ''}
@@ -3698,6 +4428,11 @@ function openMinutes(id, from) {
       <div class="mn-sec">
         <div class="mn-sh">${hasVote ? '五' : '四'}、会议结论</div>
         <div class="mn-conc ${concClass}">${concText}</div>
+        <div class="cb-grid">
+          <div class="cb-row"><span class="cb-label">会议有效性</span><span class="cb-value ${resultValueClass('meeting', er.meeting)}">${er.meeting.text}</span></div>
+          <div class="cb-row"><span class="cb-label">记录完整性</span><span class="cb-value ${resultValueClass('record', er.record)}">${er.record.text}</span></div>
+          <div class="cb-row"><span class="cb-label">决议有效性</span><span class="cb-value ${resultValueClass('resolution', er.resolution)}">${er.resolution.text}</span></div>
+        </div>
         ${invalidNotes.length ? `<ul class="mn-notes">${invalidNotes.map(n=>`<li>${n}</li>`).join('')}</ul>` : ''}
       </div>
 
@@ -3854,7 +4589,8 @@ function renderInfoPublic() {
 function actionBtns(m) {
   if (m.stage === 'preparing') {
     const info = noticeInfo(m);
-    const ready = info.allDone;
+    const ready = info.allDone && !info.noDate;
+    if (!isChair()) return '';
     return `
       <button class="btn btn-ghost"   onclick="removeMeeting(${m.id})">取消</button>
       <button class="btn btn-outline">编辑</button>
@@ -3863,9 +4599,10 @@ function actionBtns(m) {
   if (m.stage === 'ongoing') {
     const er = endResult(m);
     let endBtn;
+    if (!isChair()) return `<button class="btn btn-outline" onclick="openMinutes(${m.id},'meeting-detail')">会议纪要</button>`;
     if (er.level === 'valid')        endBtn = `<button class="btn btn-primary" onclick="tryEnd(${m.id})">结束会议</button>`;
     else if (er.level === 'invalid') endBtn = `<button class="btn btn-danger"  onclick="tryEnd(${m.id})">判定会议无效</button>`;
-    else                             endBtn = `<button class="btn btn-warn"    onclick="tryEnd(${m.id})">带标注结束</button>`;
+    else                             endBtn = `<button class="btn btn-warn"    onclick="tryEnd(${m.id})">带说明结束</button>`;
     return `
       <button class="btn btn-outline" onclick="openMinutes(${m.id},'meeting-detail')">会议纪要</button>
       ${endBtn}`;
@@ -3881,18 +4618,49 @@ function stageLabel(s) {
 }
 
 // ══ 已结束会议的合规结论 ══════════════════
-function complianceBlock(m) {
+function legacyEndResult(m) {
   const c = m.compliance || 'valid';
   const notes = m.invalidNotes || [];
+  const invalid = c === 'invalid';
+  return {
+    level:c,
+    notes,
+    meeting:{ ok:!invalid, text: invalid ? '会议无效' : '会议有效' },
+    record:{ level:c === 'valid' ? 'complete' : 'legacy', text: c === 'valid' ? '记录已归档' : '记录存在说明事项' },
+    resolution:{ level: invalid ? 'invalid' : c === 'flawed' ? 'partial' : 'archived', text: invalid ? '本次决议不生效' : c === 'flawed' ? '部分决议不生效' : '决议已归档' },
+    conclusion: invalid ? '会议无效，本次决议不生效。' : c === 'flawed' ? '会议有效，但存在需说明的记录或决议事项。' : '会议有效，记录已归档。'
+  };
+}
+
+function displayEndResult(m) {
+  return m.record ? endResult(m) : legacyEndResult(m);
+}
+
+function resultValueClass(kind, value) {
+  if (kind === 'meeting') return value.ok ? 'ok' : 'bad';
+  if (kind === 'record') return value.level === 'complete' ? 'ok' : value.level === 'minor' || value.level === 'legacy' ? 'warn' : 'bad';
+  if (kind === 'resolution') return value.level === 'passed' || value.level === 'none' || value.level === 'archived' ? 'ok'
+    : value.level === 'invalid' ? 'bad' : 'warn';
+  return '';
+}
+
+function complianceBlock(m) {
+  const er = displayEndResult(m);
+  const notes = er.notes || [];
   let cls, icon, title;
-  if (c === 'valid')   { cls='valid';   icon='✓'; title='会议有效 · 记录合规'; }
-  if (c === 'flawed')  { cls='flawed';  icon='⚠'; title='会议有效 · 部分决议无效'; }
-  if (c === 'invalid') { cls='invalid'; icon='✕'; title='会议无效 · 未达法定人数'; }
+  if (er.level === 'valid')   { cls='valid';   icon='✓'; title='会议有效 · 可归档公示'; }
+  if (er.level === 'flawed')  { cls='flawed';  icon='⚠'; title='会议有效 · 需带说明归档'; }
+  if (er.level === 'invalid') { cls='invalid'; icon='✕'; title='会议无效 · 本次决议不生效'; }
   return `
     <div class="compliance-block ${cls}">
       <div class="cb-head"><span class="cb-icon">${icon}</span>${title}</div>
+      <div class="cb-grid">
+        <div class="cb-row"><span class="cb-label">会议有效性</span><span class="cb-value ${resultValueClass('meeting', er.meeting)}">${er.meeting.text}</span></div>
+        <div class="cb-row"><span class="cb-label">记录完整性</span><span class="cb-value ${resultValueClass('record', er.record)}">${er.record.text}</span></div>
+        <div class="cb-row"><span class="cb-label">决议有效性</span><span class="cb-value ${resultValueClass('resolution', er.resolution)}">${er.resolution.text}</span></div>
+      </div>
       ${notes.length ? `<ul class="cb-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>` : ''}
-      ${c === 'invalid' ? `<div class="cb-foot">已自动生成「重新召开」会议，请在准备阶段查看</div>` : ''}
+      ${er.level === 'invalid' ? `<div class="cb-foot">已自动生成「重新召开」会议，请在准备阶段查看</div>` : ''}
     </div>`;
 }
 
@@ -3905,6 +4673,7 @@ function switchTab(stage, el) {
 }
 
 function advance(id) {
+  if (!requireChairAction('推进会议阶段')) return;
   const m = meetings.find(x => x.id === id);
   if (!m) return;
   m.stage = m.stage === 'preparing' ? 'ongoing' : 'ended';
@@ -3914,7 +4683,9 @@ function advance(id) {
 }
 
 function tryAdvance(id) {
+  if (!requireChairAction('开始会议')) return;
   const m = meetings.find(x => x.id === id);
+  if (!m || m.stage !== 'preparing') return;
   const info = noticeInfo(m);
   if (!info.allDone) {
     alert(`尚未完成会前送达：\n会议通知 ${info.noticeDone}/${info.total}，会议材料 ${info.materialDone}/${info.total}。\n请先将通知和材料送达全体委员后再开始会议。`);
@@ -3924,9 +4695,9 @@ function tryAdvance(id) {
 }
 
 // ══ 分级判定结束结果 ══════════════════════
-// valid   = 完全合规，会议与决议均有效
-// flawed  = 会议成立，但部分决议无效（签字/重大事项缺失）
-// invalid = 会议不成立（签到未过半，无法定人数）
+// valid   = 会议有效、记录完整、决议均通过/无表决议题
+// flawed  = 会议有效，但记录待补正或决议未全部生效
+// invalid = 会议不成立，决议自然不生效
 function endResult(m) {
   const r = ensureRecord(m);
   const total = r.attendance.length;
@@ -3935,22 +4706,56 @@ function endResult(m) {
   const signed   = r.attendance.filter(a => a.signed).length;
 
   if (signedIn < need) {
-    return { level:'invalid', notes:[`未达法定人数：仅 ${signedIn}/${total} 名委员签到（需≥${need}），会议不成立`] };
+    const resolution = resolutionCheck(m, true);
+    const notes = [`未达法定人数：仅 ${signedIn}/${total} 名委员签到（需≥${need}），会议不成立`].concat(resolution.notes);
+    return {
+      level:'invalid',
+      notes,
+      meeting:{ ok:false, text:`会议无效：签到 ${signedIn}/${total}，未达法定人数` },
+      record:{ level:'incomplete', text:'关键记录无法证明会议成立' },
+      resolution,
+      conclusion:'会议未达法定人数，会议不成立，本次决议不生效。'
+    };
   }
+
+  const record = recordCheck(m);
   const notes = [];
+  const recordNotes = [];
   if (signed < need) {
-    notes.push(r.hasDecision
-      ? `决定事项无效：过半委员签字不足（${signed}/${total}，需≥${need}）`
-      : `会议决议无效：委员签字未过半（${signed}/${total}，需≥${need}）`);
+    recordNotes.push(r.hasDecision
+      ? `决定事项记录待补正：过半委员签字不足（${signed}/${total}，需≥${need}）`
+      : `会议记录待补正：委员签字未过半（${signed}/${total}，需≥${need}）`);
   }
   if (r.hasMajorIssue && !r.juweiSigned) {
-    notes.push('重大事项决议无效：缺居委会委员签字');
+    recordNotes.push('重大事项记录待补正：缺居委会委员签字');
   }
-  return notes.length ? { level:'flawed', notes } : { level:'valid', notes:[] };
+  record.softChecks.filter(c => !c.ok).forEach(c => recordNotes.push(`记录待补充：${c.label}（${c.detail}）`));
+
+  const resolution = resolutionCheck(m, false);
+  notes.push(...recordNotes, ...resolution.notes);
+
+  const resolutionOk = resolution.level === 'passed' || resolution.level === 'none';
+  const level = record.recordLevel === 'complete' && resolutionOk ? 'valid' : 'flawed';
+  const recordText = record.recordText;
+  const meetingText = `会议有效：签到 ${signedIn}/${total}，达到法定人数`;
+  const conclusion = level === 'valid'
+    ? `会议有效，${recordText}，${resolution.text}。`
+    : `会议有效，但${recordText === '记录完整' ? '' : recordText + '；'}${resolution.text}，相关决议按表决结果生效。`;
+
+  return {
+    level,
+    notes,
+    meeting:{ ok:true, text:meetingText },
+    record:{ level:record.recordLevel, text:recordText, notes:recordNotes },
+    resolution,
+    conclusion
+  };
 }
 
 function tryEnd(id) {
+  if (!requireChairAction('结束会议')) return;
   const m  = meetings.find(x => x.id === id);
+  if (!m || m.stage !== 'ongoing') return;
   const er = endResult(m);
 
   if (er.level === 'valid') {
@@ -3969,7 +4774,7 @@ function tryEnd(id) {
   }
 
   // flawed
-  if (!confirm(`分级判定结果：【会议成立，部分决议无效】\n\n以下决议不产生效力（其余事项仍有效）：\n${er.notes.map(n => '• ' + n).join('\n')}\n\n是否带此标注结束并归档？\n（也可点取消，补签后再结束以使决议生效）`)) return;
+  if (!confirm(`分级判定结果：【会议有效，需带说明归档】\n\n以下记录或决议事项需说明：\n${er.notes.map(n => '• ' + n).join('\n')}\n\n是否带说明结束并归档？\n（也可点取消，补齐记录或继续表决后再结束）`)) return;
   m.compliance = 'flawed'; m.invalidNotes = er.notes;
   advance(id);
 }
@@ -3980,11 +4785,12 @@ function recreateMeeting(m) {
     id: nextId++,
     title: m.title.replace(/（重新召开）$/, '') + '（重新召开）',
     date: '', time: m.time, location: m.location,
-    participants: m.participants, stage: 'preparing', desc: m.desc,
+    stage: 'preparing', desc: m.desc,
   });
 }
 
 function removeMeeting(id) {
+  if (!requireChairAction('取消会议')) return;
   meetings = meetings.filter(x => x.id !== id);
   refreshStats();
   go('committee');
@@ -3992,6 +4798,7 @@ function removeMeeting(id) {
 
 // ── Modal ─────────────────────────────────
 function openModal() {
+  if (!requireChairAction('新建业委会会议')) return;
   document.getElementById('overlay').classList.add('show');
 }
 function closeModal() {
@@ -4009,14 +4816,16 @@ function pickStage(el, stage) {
 }
 
 function resetForm() {
-  ['f-title','f-date','f-time','f-location','f-participants','f-desc'].forEach(id => {
+  ['f-title','f-date','f-time','f-location','f-desc'].forEach(id => {
     document.getElementById(id).value = id === 'f-time' ? '10:00' : '';
   });
+  document.getElementById('f-participants-display').textContent = committeeMembers.length + ' 人（委员名单固定）';
   document.querySelectorAll('.stage-pick').forEach((p,i) => p.classList.toggle('on', i===0));
   newMeetingStage = 'preparing';
 }
 
 function submitMeeting() {
+  if (!requireChairAction('新建业委会会议')) return;
   const title = document.getElementById('f-title').value.trim();
   const date  = document.getElementById('f-date').value;
   if (!title || !date) { alert('请填写会议标题和日期'); return; }
@@ -4027,7 +4836,7 @@ function submitMeeting() {
     date,
     time:         document.getElementById('f-time').value || '10:00',
     location:     document.getElementById('f-location').value.trim() || '待定',
-    participants: parseInt(document.getElementById('f-participants').value) || 7,
+    participants: committeeMembers.length,
     stage:        newMeetingStage,
     desc:         document.getElementById('f-desc').value.trim(),
   });
@@ -4267,6 +5076,43 @@ function meetingAuditLine(m) {
 function toggleMeetingAudit(id) { omAuditOpen[id] = !omAuditOpen[id]; renderOwnerList(); }
 
 // ── 渲染列表 ──────────────────────────────────
+
+// ── 业主大会详情页 ────────────────────────────
+function renderOwnerDetailPage() {
+  if (!currentOmId) { go('owners-meeting'); return; }
+  const m = ownerMeetings.find(x => x.id === currentOmId);
+  if (!m) { go('owners-meeting'); return; }
+
+  document.getElementById('om-detail-title').textContent = m.title;
+
+  const invalid = m.compliance === 'invalid';
+  const stageContent = m.stage === 'preparing'
+    ? omNoticeBlock(m)
+    : m.stage === 'ongoing'
+    ? omRecordBlock(m)
+    : omComplianceBlock(m) + (invalid ? '' : omPublishBlock(m));
+
+  document.getElementById('om-detail-scroll').innerHTML =
+    '<div class="detail-info">'
+    + '<div class="di-row"><span class="di-k">📅</span>' + m.date + ' &nbsp; ' + m.time + '</div>'
+    + '<div class="di-row"><span class="di-k">📍</span>' + m.location + '</div>'
+    + '<div class="di-row"><span class="di-k">👥</span>全体业主 ' + m.totalOwners + ' 户 · ' + (m.totalArea/10000).toFixed(2) + ' 万m²</div>'
+    + (m.desc ? '<div class="di-row di-desc"><span class="di-k">📋</span>' + m.desc + '</div>' : '')
+    + '</div>'
+    + '<div class="detail-blocks">'
+    + stageContent
+    + meetingAuditLine(m)
+    + '<div class="mc-footer" style="margin:0 0 16px;">' + omActionBtns(m) + '</div>'
+    + '</div>';
+}
+
+function refreshOmDetail() {
+  if (document.getElementById('page-owners-meeting-detail').classList.contains('active')) {
+    renderOwnerDetailPage();
+  } else {
+    renderOwnerList();
+  }
+}
 function renderOwnerList() {
   const container = document.getElementById('owners-meeting-list');
   if (ownerCurrentStage === 'ended') {
@@ -4292,40 +5138,48 @@ function renderOwnerList() {
 
 function toggleOwnerInvalidGroup() { ownerInvalidGroupOpen = !ownerInvalidGroupOpen; renderOwnerList(); }
 
+function openOmDetail(id) {
+  currentOmId = id;
+  go('owners-meeting-detail');
+}
+
 function omCard(m) {
   const invalid = m.compliance === 'invalid';
+  // 状态摘要行
+  let statusLine = '';
+  if (m.stage === 'preparing') {
+    const info = omNotifyInfo(m);
+    statusLine = '通知进度 ' + info.sent + '/' + info.total + ' 户';
+  } else if (m.stage === 'ongoing') {
+    const rec = ensureOwnerRecord(m);
+    const proc = rec.process || {};
+    const signedIn = (proc.attendance || []).filter(a => a.present).length;
+    statusLine = '已签到 ' + signedIn + ' 人';
+  } else {
+    statusLine = m.compliance === 'invalid' ? '会议未成立'
+      : (m.publish && m.publish.published ? '已公示（' + m.publish.publishDate + '）' : '待公示');
+  }
   return `
-    <div class="meeting-card${invalid?' card-invalid':''}">
+    <div class="meeting-card slim${invalid?' card-invalid':''}" onclick="openOmDetail(${m.id})" style="cursor:pointer;">
       <div class="mc-header">
         <div class="mc-title">${m.title}</div>
         <span class="stage-pill ${invalid?'invalid':m.stage}">${invalid?'大会无效':stageLabel(m.stage)}</span>
       </div>
-      <div>
+      <div style="margin-bottom:6px;">
         <span class="om-type-badge ${m.type}">${m.type==='regular'?'定期大会':'临时大会'}</span>
         ${omNeedsVote(m)
           ? '<span class="om-type-badge" style="background:#EAF7EF;color:#27AE60;">含表决</span>'
           : '<span class="om-type-badge" style="background:#f0f0f0;color:#999;">无需表决</span>'}
       </div>
-      <div class="mc-meta">
-        <div class="meta-line">
-          <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-          ${m.date} &nbsp; ${m.time}
-        </div>
-        <div class="meta-line">
-          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          ${m.location}
-        </div>
-        <div class="meta-line">
-          <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-          全体业主 ${m.totalOwners} 户 · ${(m.totalArea/10000).toFixed(2)} 万m²
-        </div>
+      <div class="mc-meta-compact">
+        <span>📅 ${m.date} ${m.time}</span>
+        <span class="mc-dot">·</span>
+        <span>📍 ${m.location}</span>
       </div>
-      ${m.desc ? `<div class="mc-desc">${m.desc}</div>` : ''}
-      ${m.stage==='preparing' ? omNoticeBlock(m)
-        : m.stage==='ongoing' ? omRecordBlock(m)
-        : omComplianceBlock(m) + (m.compliance==='invalid'?'':omPublishBlock(m))}
-      ${meetingAuditLine(m)}
-      <div class="mc-footer">${omActionBtns(m)}</div>
+      <div class="mc-summary" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${statusLine}</span>
+        <span style="color:#ccc;font-size:18px;">›</span>
+      </div>
     </div>`;
 }
 
@@ -4440,13 +5294,13 @@ function omToggleAnnounced(id) {
   const m = ownerMeetings.find(x=>x.id===id);
   if (!m.notify) m.notify={sent:0,announced:false};
   m.notify.announced = !m.notify.announced;
-  renderOwnerList();
+  refreshOmDetail();
 }
 function omNotifyAll(id) {
   const m = ownerMeetings.find(x=>x.id===id);
   if (!m.notify) m.notify={sent:0,announced:false};
   m.notify.sent = m.totalOwners;
-  renderOwnerList();
+  refreshOmDetail();
 }
 
 // ── 进行中：记录区块 ──────────────────────────
@@ -4540,18 +5394,18 @@ function omProcessBlock(m) {
 function omToggleProcess(id, key) {
   const p = ensureOwnerRecord(ownerMeetings.find(x=>x.id===id)).process;
   p[key] = !p[key];
-  renderOwnerList();
+  refreshOmDetail();
 }
 function omAdjust(id, field, delta) {
   const m = ownerMeetings.find(x=>x.id===id);
   const r = ensureOwnerRecord(m);
   const max = field==='presentOwners' ? m.totalOwners : m.totalArea;
   r[field] = Math.max(0, Math.min(max, r[field]+delta));
-  renderOwnerList();
+  refreshOmDetail();
 }
 function omToggleSupervisor(id) {
   ensureOwnerRecord(ownerMeetings.find(x=>x.id===id)).supervisorSigned ^= true;
-  renderOwnerList();
+  refreshOmDetail();
 }
 
 // ── 议题表决（双计算）────────────────────────
@@ -4621,12 +5475,12 @@ function omAddTopic(id) {
   const major = confirm('是否为重大事项？\n重大事项需双2/3通过；普通决议双过半即可。');
   r.topics.push({ id:nextOwnerTopicId++, title, type:major?'major':'ordinary',
     forOwners:0, agOwners:0, abOwners:0, forArea:0, agArea:0, abArea:0 });
-  renderOwnerList();
+  refreshOmDetail();
 }
 function omRemoveTopic(id, tid) {
   const r = ensureOwnerRecord(ownerMeetings.find(x=>x.id===id));
   r.topics = r.topics.filter(t=>t.id!==tid);
-  renderOwnerList();
+  refreshOmDetail();
 }
 function omVoteAdj(id, tid, field, delta) {
   const m = ownerMeetings.find(x=>x.id===id);
@@ -4635,7 +5489,7 @@ function omVoteAdj(id, tid, field, delta) {
   if (!tp) return;
   const max = field.includes('Area') ? m.totalArea : m.totalOwners;
   tp[field] = Math.max(0, Math.min(max, tp[field]+delta));
-  renderOwnerList();
+  refreshOmDetail();
 }
 
 // ── 线下纸质佐证 ──────────────────────────────
@@ -4660,11 +5514,11 @@ function omUploadEvidence(id) {
   const r = ensureOwnerRecord(ownerMeetings.find(x=>x.id===id));
   const types = ['签到册','投票单','公告照片','会议记录'];
   r.evidence.push({ name:`${types[omEvSeq%types.length]}_${String(omEvSeq++).padStart(2,'0')}.jpg`, type:types[(omEvSeq-1)%types.length] });
-  renderOwnerList();
+  refreshOmDetail();
 }
 function omRemoveEvidence(id, idx) {
   ensureOwnerRecord(ownerMeetings.find(x=>x.id===id)).evidence.splice(idx,1);
-  renderOwnerList();
+  refreshOmDetail();
 }
 
 // ── 已结束：合规结论 ──────────────────────────
@@ -5352,6 +6206,88 @@ function lcUndo() {
   lcUndoData = null;
   hideLcUndo();
   renderLearning();
+}
+
+// ── 权限管理 ──────────────────────────────
+const PERM_LABELS_WEB = {
+  'committee.sign_in':'签到','committee.sign':'签字','committee.vote':'投票',
+  'committee.create':'新建会议','committee.advance':'推进阶段','committee.delivery':'送达管理',
+  'committee.evidence':'上传佐证','committee.topic':'议题管理','committee.juwei':'居委会签字',
+  'committee.sign_all':'代录全员','committee.publish':'发起公示',
+  'owner.create':'新建大会','owner.advance':'推进大会','owner.data_entry':'录入大会数据','owner.publish':'公示大会',
+  'reception.manage':'管理接待','reception.property_feedback':'物业反馈',
+  'view.internal':'查看内部','view.public':'查看公示'
+};
+
+function renderAdmin() {
+  let html = '';
+  for (let i = 0; i < identities.length; i++) {
+    const u = identities[i];
+    const defs = ROLE_DEFAULT_PERMS[u.role] || [];
+    const overs = permOverrides[u.name] || {};
+    html += '<div class="admin-card">';
+    html += '<div class="ac-head" data-idx="' + i + '">';
+    html += '<span class="ac-name">' + u.name + '</span>';
+    html += '<span class="ac-role">' + u.role + '</span>';
+    html += '<span class="ac-expand">▼</span></div>';
+    html += '<div class="ac-body" style="display:none;">';
+    html += '<div style="font-size:10px;color:#aaa;margin-bottom:8px;">角色默认：' + defs.map(function(p){return p.replace('.*','.**');}).join(' / ') + '</div>';
+    for (let j = 0; j < ALL_PERMS.length; j++) {
+      const p = ALL_PERMS[j];
+      let granted = canForUser(u, p);
+      let checked = granted ? ' checked' : '';
+      let disabled = (u.name === currentUser.name) ? ' disabled' : '';
+      html += '<div class="ac-perm"><span>' + (PERM_LABELS_WEB[p]||p) + '</span>';
+      html += '<label class="switch' + (granted?' on':'') + '">';
+      html += '<input type="checkbox"' + checked + disabled + ' data-user="' + u.name + '" data-code="' + p + '">';
+      html += '<span class="knob"></span></label></div>';
+    }
+    html += '<div style="text-align:center;margin-top:8px;"><button class="btn btn-ghost" data-user="' + u.name + '">重置为角色默认</button></div>';
+    html += '</div></div>';
+  }
+  document.getElementById('admin-scroll').innerHTML = html;
+  // 事件绑定
+  document.querySelectorAll('.ac-head').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var body = this.nextElementSibling;
+      body.style.display = body.style.display === 'block' ? 'none' : 'block';
+    });
+  });
+  document.querySelectorAll('.switch input[type=checkbox]').forEach(function(el) {
+    el.addEventListener('change', function() {
+      toggleUserPerm(this.dataset.user, this.dataset.code, this.checked);
+    });
+  });
+  document.querySelectorAll('.ac-body button').forEach(function(el) {
+    el.addEventListener('click', function() {
+      resetUserPerms(this.dataset.user);
+    });
+  });
+}
+
+function canForUser(u, code) {
+  const defaults = ROLE_DEFAULT_PERMS[u.role] || [];
+  const overs = permOverrides[u.name] || {};
+  if (code in overs) return overs[code];
+  if (defaults.includes('*')) return true;
+  for (const d of defaults) {
+    if (d === code) return true;
+    if (d.endsWith('.*') && code.startsWith(d.replace('.*','.'))) return true;
+  }
+  return false;
+}
+
+function toggleUserPerm(name, code, val) {
+  if (!permOverrides[name]) permOverrides[name] = {};
+  permOverrides[name][code] = val;
+  savePermOverrides(permOverrides);
+  renderAdmin();
+}
+
+function resetUserPerms(name) {
+  delete permOverrides[name];
+  savePermOverrides(permOverrides);
+  renderAdmin();
 }
 
 // ── Init ──────────────────────────────────
