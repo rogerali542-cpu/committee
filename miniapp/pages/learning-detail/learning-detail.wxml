@@ -1,0 +1,135 @@
+<scroll-view scroll-y class="page">
+  <view wx:if="{{item}}">
+    <!-- 头部：标题 + 阶段 -->
+    <view class="detail-head">
+      <text class="dh-title">{{item.title}}</text>
+      <text class="stage-pill {{item.stage}}">{{item.stage === 'preparing' ? '待开始' : item.stage === 'ongoing' ? '进行中' : '已结束'}}</text>
+    </view>
+
+    <!-- 基本信息 -->
+    <view class="info-card">
+      <view class="field-row">
+        <text class="field-label">类型</text>
+        <text class="field-val tag {{item.type}}">{{item.type === 'internal' ? '内部学习' : item.type === 'street' ? '街镇培训' : '专项培训'}}</text>
+      </view>
+      <view class="field-row">
+        <text class="field-label">时间</text>
+        <text class="field-val">{{item.date}} {{item.time}}</text>
+      </view>
+      <view class="field-row">
+        <text class="field-label">地点</text>
+        <text class="field-val">{{item.location || '未填写'}}</text>
+      </view>
+      <view class="field-row">
+        <text class="field-label">讲师</text>
+        <text class="field-val">{{item.trainer || '未填写'}}</text>
+      </view>
+      <view class="field-row">
+        <text class="field-label">参加人员</text>
+        <text class="field-val">{{item.attendees || '未填写'}}</text>
+      </view>
+    </view>
+
+    <!-- 进度条（非待开阶段） -->
+    <view class="progress-card" wx:if="{{item.stage !== 'preparing'}}">
+      <view class="pr-head">
+        <text class="pr-label">学习进度</text>
+        <text class="pr-pct">{{item.progress}}%</text>
+      </view>
+      <view class="pr-bar"><view class="pr-fill" style="width:{{item.progress}}%"></view></view>
+    </view>
+
+    <!-- 内容说明 -->
+    <view class="content-card" wx:if="{{item.description}}">
+      <text class="cc-label">学习内容</text>
+      <text class="cc-text">{{item.description}}</text>
+    </view>
+
+    <!-- 待开阶段：通知 -->
+    <view class="sign-card" wx:if="{{item.stage === 'preparing' && item._signList.length}}">
+      <view class="sign-head">
+        <text class="sign-title">参训人员</text>
+        <text class="sign-stat {{item.notified ? 'ok' : ''}}">{{item.notified ? '已通知全员' : '待通知'}}</text>
+      </view>
+      <view class="sign-list">
+        <view wx:for="{{item._signList}}" wx:key="name" class="sign-row">
+          <text class="sign-name">{{item.name}}</text>
+        </view>
+      </view>
+      <view wx:if="{{!item.notified && canManage}}" class="sign-my">
+        <button class="btn-signin" bindtap="notifyAll">通知全员</button>
+      </view>
+    </view>
+
+    <!-- 进行中阶段：签到 -->
+    <view class="sign-card" wx:if="{{item.stage === 'ongoing' && item._signList.length}}">
+      <view class="sign-head">
+        <text class="sign-title">参训签到</text>
+        <text class="sign-stat">{{item._signedCount}}/{{item._totalCount}} 已签到</text>
+      </view>
+      <view class="sign-list">
+        <view wx:for="{{item._signList}}" wx:key="name" class="sign-row {{item.signed ? 'done' : ''}}">
+          <text class="sign-name">{{item.name}}</text>
+          <text class="sign-status {{item.signed ? 'ok' : 'wait'}}">{{item.signed ? '已签到' : '未签到'}}</text>
+        </view>
+      </view>
+      <view wx:if="{{myName && !item._isMySignIn}}" class="sign-my">
+        <button class="btn-signin" bindtap="signIn">签到确认</button>
+      </view>
+    </view>
+
+    <!-- 已结束：签到汇总 -->
+    <view class="sign-card" wx:if="{{item.stage === 'ended' && item._signList.length}}">
+      <view class="sign-head">
+        <text class="sign-title">参训签到汇总</text>
+        <text class="sign-stat ok">{{item._signedCount}}/{{item._totalCount}} 已签到</text>
+      </view>
+      <view class="sign-list">
+        <view wx:for="{{item._signList}}" wx:key="name" class="sign-row {{item.signed ? 'done' : ''}}">
+          <text class="sign-name">{{item.name}}</text>
+          <text class="sign-status {{item.signed ? 'ok' : 'wait'}}">{{item.signed ? '已签到' : '缺席'}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 佐证材料（所有阶段可上传） -->
+    <view class="ev-card">
+      <view class="ev-head">
+        <text class="ev-title">资料附件（{{item.evidences ? item.evidences.length : 0}}）</text>
+        <text wx:if="{{item.stage !== 'ended' && canManage}}" class="ev-add" bindtap="addEvidence">上传</text>
+      </view>
+      <view wx:if="{{item.evidences && item.evidences.length}}" class="ev-list">
+        <view wx:for="{{item.evidences}}" wx:for-item="ev" wx:key="id" class="ev-item">
+          <text class="ev-name">{{ev.fileName}}</text>
+          <text wx:if="{{item.stage !== 'ended' && canManage}}" class="ev-del" bindtap="removeEvidence" data-ev-id="{{ev.id}}">×</text>
+        </view>
+      </view>
+      <text wx:else class="ev-empty">
+        <block wx:if="{{item.stage === 'preparing'}}">上传培训通知、政府文件、学习材料等</block>
+        <block wx:elif="{{item.stage === 'ongoing'}}">上传签到表、现场照片、培训证书等</block>
+        <block wx:else>暂无归档资料</block>
+      </text>
+    </view>
+
+    <!-- 阶段操作 -->
+    <view class="action-card" wx:if="{{item.stage !== 'ended' && canManage}}">
+      <text class="ac-hint">{{item.stage === 'preparing' ? '准备开始本次学习' : '学习进行中，完成后确认'}}</text>
+      <button wx:if="{{item.stage === 'preparing'}}" class="btn-primary" bindtap="startLearn">开始学习</button>
+      <button wx:if="{{item.stage === 'ongoing'}}" class="btn-primary finish" bindtap="finishLearn">完成学习</button>
+    </view>
+
+    <view class="perm-note" wx:if="{{item.stage !== 'ended' && !canManage}}">
+      <text>仅主任/副主任/记录员可推进学习阶段</text>
+    </view>
+
+    <view class="done-card" wx:if="{{item.stage === 'ended'}}">
+      <text class="done-text">本次学习已完成归档</text>
+    </view>
+
+    <view class="delete-area" wx:if="{{canManage}}">
+      <text class="delete-link" bindtap="removeLearning">删除此学习记录</text>
+    </view>
+  </view>
+
+  <view wx:else class="empty-state"><text>加载中...</text></view>
+</scroll-view>

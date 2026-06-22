@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,8 +27,19 @@ public class PublicAudioController {
         byte[] data = storage.load(filename);
         return ResponseEntity.ok()
                 .contentType(contentType(filename))
+                .contentLength(data.length)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
                 .body(data);
+    }
+
+    @RequestMapping(value = "/{filename}", method = RequestMethod.HEAD)
+    public ResponseEntity<Void> head(@PathVariable String filename) {
+        byte[] data = storage.load(filename);
+        return ResponseEntity.ok()
+                .contentType(contentType(filename))
+                .contentLength(data.length)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .build();
     }
 
     private MediaType contentType(String filename) {

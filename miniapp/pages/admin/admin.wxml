@@ -1,0 +1,23 @@
+<scroll-view scroll-y class="page">
+  <view class="card" wx:for="{{users}}" wx:key="id">
+    <view class="user-head" bindtap="toggleExpand" data-id="{{item.id}}">
+      <text class="uh-name">{{item.realName}}</text>
+      <text class="uh-role">{{item.role}}</text>
+      <text class="uh-arrow">{{expandedId === item.id ? '▼' : '▶'}}</text>
+    </view>
+
+    <!-- 展开的权限面板 -->
+    <view wx:if="{{expandedId === item.id}}" class="perm-panel">
+      <text class="perm-note">角色默认：{{item.defaultPerms.join(' / ')}}</text>
+      <view class="perm-list">
+        <view class="perm-item" wx:for="{{item.allPerms}}" wx:key="code">
+          <text class="pi-name">{{item.label}}</text>
+          <switch checked="{{item.granted}}" color="#FFA800" bindchange="togglePerm" data-user-id="{{expandedId}}" data-code="{{item.code}}" disabled="{{expandedId === 99}}"/>
+        </view>
+      </view>
+      <view class="perm-actions">
+        <button class="btn btn-ghost" size="mini" bindtap="resetPerms" data-user-id="{{item.id}}">重置为角色默认</button>
+      </view>
+    </view>
+  </view>
+</scroll-view>

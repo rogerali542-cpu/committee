@@ -1,0 +1,338 @@
+<scroll-view scroll-y class="live-page" wx:if="{{detail}}">
+
+  <view class="lp-stepper">
+    <block wx:for="{{steps}}" wx:for-item="s" wx:key="key">
+      <view class="lp-step {{currentStep > index + 1 ? 'done' : (currentStep === index + 1 ? 'active' : 'locked')}}">
+        <text class="lp-step-num">{{currentStep > index + 1 ? '✓' : index + 1}}</text>
+        <text class="lp-step-label">{{s.label}}</text>
+      </view>
+      <view wx:if="{{index < steps.length - 1}}" class="lp-step-line {{currentStep > index + 1 ? 'done' : ''}}"></view>
+    </block>
+  </view>
+
+  <view class="lp-info-card">
+    <text class="lp-info-title">{{detail.title}}</text>
+    <view class="lp-info-row"><text class="lp-info-k">时间</text><text class="lp-info-v">{{detail.meetingDate}} {{detail.meetingTime}}</text></view>
+    <view class="lp-info-row"><text class="lp-info-k">地点</text><text class="lp-info-v">{{detail.location}}</text></view>
+    <view wx:if="{{detail.description}}" class="lp-info-row"><text class="lp-info-k">说明</text><text class="lp-info-v">{{detail.description}}</text></view>
+    <view class="lp-info-row top"><text class="lp-info-k">议题</text>
+      <view class="lp-agenda">
+        <block wx:if="{{detail.record.topics.length}}">
+          <view class="lp-agenda-item" wx:for="{{detail.record.topics}}" wx:key="id">
+            <text class="lp-agenda-idx">{{index + 1}}</text>
+            <text class="lp-agenda-title">{{item.title}}</text>
+            <text class="lp-agenda-tag {{item.type === 'major' ? 'major' : (item.voteRequired ? 'vote' : '')}}">{{item.type === 'major' ? '重大' : (item.voteRequired ? '表决' : '通报')}}</text>
+          </view>
+        </block>
+        <text wx:else class="lp-agenda-empty">暂无议题</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="lp-card" wx:if="{{currentStep === 1}}">
+    <text class="lp-card-step">第 1 步，共 4 步</text>
+    <text class="lp-card-title">入会签到</text>
+    <text class="lp-card-desc">确认参会后再进行录音，会议有效性会以确认参会人数为基础核查。</text>
+    <view class="qk-sign-card {{signedIn ? 'on' : ''}}">
+      <text class="qk-sign-main">{{signedIn ? '已确认参会' : '待确认参会'}}</text>
+      <text class="qk-sign-sub">{{selfAttendance ? selfAttendance.name + ' · ' + selfAttendance.role : '当前登录身份'}}</text>
+    </view>
+    <button class="lp-primary-btn" bindtap="confirmSignIn">{{signedIn ? '进入录音' : '确认参会'}}</button>
+  </view>
+
+  <view class="lp-card" wx:if="{{currentStep === 2}}">
+    <text class="lp-card-step">第 2 步，共 4 步</text>
+    <text class="lp-card-title">会议录音</text>
+    <text class="lp-card-desc">本场会议由一人完成录音，开始后锁定为录音人。请围绕会议议题展开讨论和表决。</text>
+
+    <!-- 别人已在负责录音时的温馨提示（不锁定，仅提醒避免多设备同录）-->
+    <view wx:if="{{recorderRoleId && !isRecorder}}" class="qk-recorder-role">
+      <text class="qk-rr-status">提示：{{recorderName || '一位参会人'}} 已在负责录音，尽量避免多台设备同时录制。</text>
+      <button wx:if="{{isChair}}" class="lp-ghost-btn" bindtap="resetRecorder">重置录音人</button>
+    </view>
+
+    <!-- 录音控件：任意已签到参会人可用；开始录音时自动认领为录音人 -->
+    <view class="qk-recorder">
+      <view class="qk-rec-dot {{recording ? 'on' : ''}}"></view>
+      <text class="qk-rec-time">{{timeText}}</text>
+      <text class="qk-rec-status">{{recording ? '录音中' : (tempFilePath ? '录音已保存，待上传' : (hasRecording ? '已暂停' : '尚未开始'))}}</text>
+    </view>
+    <button class="lp-primary-btn" bindtap="toggleRecord" disabled="{{uploading || polling || extracting}}">
+      {{recording ? '暂停录音' : (recorderStarted ? '继续录音' : (tempFilePath ? '重新录音' : '开始录音'))}}
+    </button>
+    <button class="lp-ghost-btn" bindtap="finishRecord" disabled="{{uploading || polling || extracting}}">
+      结束录音，上传并转写
+    </button>
+    <view class="qk-divider"><text class="qk-divider-text">或</text></view>
+    <button class="lp-ghost-btn" bindtap="chooseAudioFile" disabled="{{uploading || polling || extracting}}">
+      选择已有录音文件上传
+    </button>
+    <view class="qk-note">暂停/继续仍是同一段连续录音；不现场录音时可直接上传一段已有会议录音（需从聊天会话里选择文件）。</view>
+
+    <!-- 会议资料：人人可传/可看 -->
+    <view class="qk-grp-title">会议资料（{{materials.length}}）<text class="qk-link" bindtap="uploadMaterial">+ 上传资料</text></view>
+    <view wx:if="{{materials.length === 0}}" class="lp-empty">暂无资料，任意参会人都可上传共享</view>
+    <view wx:else>
+      <view class="qk-mat-item" wx:for="{{materials}}" wx:key="name" bindtap="previewMaterial" data-index="{{index}}">
+        <text class="qk-mat-name">{{item.name}}</text>
+        <text class="qk-mat-meta">{{item.uploaderName || ''}}{{item.sizeText ? ' · ' + item.sizeText : ''}}</text>
+        <text class="qk-mat-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 实时添加议题（主任/副主任）-->
+    <view wx:if="{{isChair}}" class="qk-rr-transfer"><text class="qk-link" bindtap="openAddTopic">+ 实时添加议题</text></view>
+  </view>
+
+  <view class="lp-card" wx:if="{{currentStep === 3}}">
+    <text class="lp-card-step">第 3 步，共 4 步</text>
+    <text class="lp-card-title">转写完成</text>
+
+    <view class="qk-gen" wx:if="{{uploading || polling || extracting}}">
+      <view class="qk-spinner"></view>
+      <text class="qk-gen-text">{{processText}}</text>
+    </view>
+    <view class="qk-gen" wx:elif="{{generated}}">
+      <view class="qk-gen-icon">✓</view>
+      <text class="qk-gen-text">{{finishText}}</text>
+      <view class="qk-note">转写文本已作为底稿保存，下一步重点核对文本与议题的匹配关系。</view>
+    </view>
+    <view class="qk-gen" wx:else>
+      <text class="qk-gen-text">{{processText}}</text>
+      <view class="qk-note">可返回上一步重新录音后再次上传。</view>
+    </view>
+
+    <view wx:if="{{generated}}" class="qk-transcript-card">
+      <view class="qk-transcript-head">
+        <view>
+          <text class="qk-transcript-title">语音转录文本</text>
+          <text class="qk-transcript-meta">{{transcript.length}} 段 · {{transcriptCharCount}} 字</text>
+        </view>
+        <text class="qk-transcript-action" bindtap="openTranscript" data-mode="short">查看</text>
+      </view>
+      <text class="qk-transcript-preview">{{transcriptPreview || '暂无可预览的转写文本'}}</text>
+    </view>
+
+    <button class="lp-primary-btn" bindtap="goConfirm" disabled="{{!generated}}">下一步：匹配议题并生成纪要依据</button>
+  </view>
+
+  <view class="lp-card" wx:if="{{currentStep === 4}}">
+    <text class="lp-card-step">最后一步</text>
+    <text class="lp-card-title">议题匹配与纪要确认</text>
+    <text class="lp-card-desc">系统会把转写文本优先匹配到创建会议时的议题。请逐项核对匹配、记录结论和表决结果，确认后作为会议纪要的结构化依据。</text>
+
+    <view class="qk-transcript-card compact">
+      <view class="qk-transcript-head">
+        <view>
+          <text class="qk-transcript-title">转录文本底稿</text>
+          <text class="qk-transcript-meta">{{transcript.length}} 段 · 用于议题匹配</text>
+        </view>
+        <text class="qk-transcript-action" bindtap="openTranscript" data-mode="short">查看文本</text>
+      </view>
+      <text class="qk-transcript-preview">{{transcriptPreview || '暂无可预览的转写文本'}}</text>
+    </view>
+
+    <view class="qk-grp-title">议题（{{presetTopics.length}}）</view>
+    <view wx:if="{{presetTopics.length === 0}}" class="lp-empty">未读取到预设议题，请返回会议详情检查创建信息</view>
+    <view class="qk-row {{t.confirmed ? 'done' : ''}}" wx:for="{{presetTopics}}" wx:for-item="t" wx:for-index="topicIndex" wx:key="id" bindtap="openTopicDetail" data-group="preset" data-idx="{{topicIndex}}">
+      <view class="qk-row-no">{{topicIndex + 1}}</view>
+      <view class="qk-row-main">
+        <text class="qk-row-title">{{t.title}}</text>
+        <view class="qk-row-meta">
+          <text class="qk-tag-type">{{t.typeLabel}}</text>
+          <text wx:if="{{t.matchedCount}}" class="qk-row-sub">命中 {{t.matchedCount}} 段</text>
+          <text wx:if="{{t.voteRequired && t.aiVote}}" class="qk-row-sub">AI票数 {{t.voteFor}}/{{t.voteAgainst}}/{{t.voteAbstain}}</text>
+        </view>
+      </view>
+      <text class="qk-row-status {{t.confirmed ? 'on' : ''}}">{{t.confirmed ? (t.voteRequired ? '✓' + t.resultLabel : '✓已记录') : '待确认'}}</text>
+      <text class="qk-row-arrow">›</text>
+    </view>
+
+    <view class="qk-grp-title">疑似新议题 · 待研判（{{aiTopics.length}}）</view>
+    <view wx:if="{{aiTopics.length === 0}}" class="lp-empty">未发现议程外的新议题</view>
+    <view class="qk-row candidate" wx:for="{{aiTopics}}" wx:for-item="t" wx:for-index="topicIndex" wx:key="id" bindtap="openTopicDetail" data-group="ai" data-idx="{{topicIndex}}">
+      <view class="qk-row-no new">新</view>
+      <view class="qk-row-main">
+        <text class="qk-row-title">{{t.title}}</text>
+        <view class="qk-row-meta"><text class="qk-row-sub">{{t.matchedCount ? '提及 ' + t.matchedCount + ' 段' : '由转写推测'}} · 待研判</text></view>
+      </view>
+      <text class="qk-row-arrow">›</text>
+    </view>
+
+    <!-- 议题详情全屏面板 -->
+    <view wx:if="{{detailOpen}}" class="qk-modal-mask" bindtap="closeTopicDetail">
+      <view class="qk-detail-sheet" catchtap="noop">
+        <view class="qk-sheet-head">
+          <text class="qk-modal-title">{{detailGroup === 'ai' ? '疑似新议题 · 研判' : '议题详情'}}</text>
+          <text class="qk-sheet-close" bindtap="closeTopicDetail">×</text>
+        </view>
+        <scroll-view scroll-y class="qk-detail-scroll">
+          <!-- 预设议题详情 -->
+          <block wx:if="{{detailGroup === 'preset'}}" wx:for="{{presetTopics}}" wx:for-item="t" wx:for-index="topicIndex" wx:key="id">
+            <view wx:if="{{topicIndex === detailIndex}}" class="qk-detail-body">
+              <text class="qk-topic-title"><text class="qk-tag-type">{{t.typeLabel}}</text>{{t.title}}</text>
+              <text class="qk-match-line">{{t.matchedCount ? '匹配到 ' + t.matchedCount + ' 段转写文本' : '未匹配到明确转写片段，请人工核对'}}</text>
+              <text class="qk-match-score">匹配置信度：{{t.matchConfidence !== null ? t.matchConfidence + '%' : '暂无'}} · {{t.reviewLevelLabel}} · 最终需人工确认</text>
+              <view class="qk-report-actions" wx:if="{{t.matchedCount}}">
+                <text class="qk-report-btn {{t.summarizing ? 'disabled' : ''}}" catchtap="summarizeTopic" data-group="preset" data-idx="{{topicIndex}}">{{t.summarizing ? '生成中...' : (t.summaryAi ? '重新生成议题报告' : 'AI 生成议题报告')}}</text>
+              </view>
+              <view class="qk-report" wx:if="{{t.summaryAi && t.summaryDraft}}">
+                <text class="qk-report-title">议题报告</text>
+                <text class="qk-report-body">{{t.summaryDraft}}</text>
+              </view>
+              <view class="qk-evidence" wx:if="{{t.segmentMatches && t.segmentMatches.length}}">
+                <view class="qk-evidence-head">
+                  <text>依据 {{t.evidenceRange || ''}} · {{t.matchedCount}} 段</text>
+                  <text class="qk-evidence-toggle" catchtap="toggleTopicEvidence" data-group="preset" data-idx="{{topicIndex}}">{{t.evidenceExpanded ? '收起依据' : '查看全部依据'}}</text>
+                </view>
+                <view class="qk-evidence-item" wx:for="{{t.visibleSegments}}" wx:for-item="seg" wx:for-index="segLoopIndex" wx:key="segmentIndex">
+                  <view class="qk-evidence-meta">
+                    <text>{{seg.time}} {{seg.speaker}}</text>
+                    <text>{{seg.levelLabel}} · {{seg.score}}%</text>
+                  </view>
+                  <text class="qk-evidence-text">{{seg.text}}</text>
+                  <text class="qk-evidence-reason" wx:if="{{seg.reasonText}}">{{seg.reasonText}}</text>
+                  <text class="qk-mini-action" catchtap="removeMatchedSegment" data-group="preset" data-topic-index="{{topicIndex}}" data-segment-index="{{seg.segmentIndex}}">移除该片段</text>
+                </view>
+                <text class="qk-evidence-more" wx:if="{{!t.evidenceExpanded && t.evidenceHiddenCount > 0}}">另有 {{t.evidenceHiddenCount}} 段依据已折叠</text>
+              </view>
+              <view wx:if="{{!t.voteRequired}}" class="qk-record-row">
+                <text class="qk-record-hint">{{t.typeLabel}} · 无需表决，核对内容后点「确认」记录即可</text>
+              </view>
+              <view class="qk-vote-box" wx:if="{{t.voteRequired}}">
+                <text class="qk-vote-rule">实到 {{voteTotal}} 人，过半需 {{voteNeed}} 票；已计 {{t.voteCounted}} 人，建议结果：{{t.resultLabel}}</text>
+                <text wx:if="{{t.aiVote}}" class="qk-vote-ai">AI 识别：同意 {{t.voteFor}} · 反对 {{t.voteAgainst}} · 弃权 {{t.voteAbstain}}（{{t.aiVoteLabel}}），请核对后确认</text>
+                <view class="qk-vote-counts">
+                  <view class="qk-vote-counter">
+                    <text>同意</text>
+                    <view><text bindtap="changeVoteCount" data-group="preset" data-idx="{{topicIndex}}" data-field="voteFor" data-delta="-1">-</text><text>{{t.voteFor}}</text><text bindtap="changeVoteCount" data-group="preset" data-idx="{{topicIndex}}" data-field="voteFor" data-delta="1">+</text></view>
+                  </view>
+                  <view class="qk-vote-counter">
+                    <text>反对</text>
+                    <view><text bindtap="changeVoteCount" data-group="preset" data-idx="{{topicIndex}}" data-field="voteAgainst" data-delta="-1">-</text><text>{{t.voteAgainst}}</text><text bindtap="changeVoteCount" data-group="preset" data-idx="{{topicIndex}}" data-field="voteAgainst" data-delta="1">+</text></view>
+                  </view>
+                  <view class="qk-vote-counter">
+                    <text>弃权</text>
+                    <view><text bindtap="changeVoteCount" data-group="preset" data-idx="{{topicIndex}}" data-field="voteAbstain" data-delta="-1">-</text><text>{{t.voteAbstain}}</text><text bindtap="changeVoteCount" data-group="preset" data-idx="{{topicIndex}}" data-field="voteAbstain" data-delta="1">+</text></view>
+                  </view>
+                </view>
+              </view>
+              <view class="qk-confirm {{t.confirmed ? 'on' : ''}}" catchtap="toggleConfirm" data-group="preset" data-idx="{{topicIndex}}">{{t.confirmed ? (t.voteRequired ? '✓ ' + t.resultLabel : '✓ 已记录') : '确认'}}</view>
+            </view>
+          </block>
+          <!-- 候选议题详情 -->
+          <block wx:if="{{detailGroup === 'ai'}}" wx:for="{{aiTopics}}" wx:for-item="t" wx:for-index="topicIndex" wx:key="id">
+            <view wx:if="{{topicIndex === detailIndex}}" class="qk-detail-body">
+              <text class="qk-topic-title"><text class="qk-tag-new">疑似新议题</text>{{t.title}}</text>
+              <text class="qk-match-line">{{t.matchedCount ? '转写中提及 ' + t.matchedCount + ' 段' : '由转写内容推测'}} · 需人工研判是否立项</text>
+              <view class="qk-report-actions" wx:if="{{t.matchedCount}}">
+                <text class="qk-report-btn {{t.summarizing ? 'disabled' : ''}}" catchtap="summarizeTopic" data-group="ai" data-idx="{{topicIndex}}">{{t.summarizing ? '生成中...' : (t.summaryAi ? '重新生成议题报告' : 'AI 生成议题报告')}}</text>
+              </view>
+              <view class="qk-report" wx:if="{{t.summaryAi && t.summaryDraft}}">
+                <text class="qk-report-title">议题报告</text>
+                <text class="qk-report-body">{{t.summaryDraft}}</text>
+              </view>
+              <view class="qk-evidence" wx:if="{{t.segmentMatches && t.segmentMatches.length}}">
+                <view class="qk-evidence-head">
+                  <text>依据 {{t.evidenceRange || ''}} · {{t.matchedCount}} 段</text>
+                  <text class="qk-evidence-toggle" catchtap="toggleTopicEvidence" data-group="ai" data-idx="{{topicIndex}}">{{t.evidenceExpanded ? '收起依据' : '查看全部依据'}}</text>
+                </view>
+                <view class="qk-evidence-item" wx:for="{{t.visibleSegments}}" wx:for-item="seg" wx:for-index="segLoopIndex" wx:key="segmentIndex">
+                  <view class="qk-evidence-meta">
+                    <text>{{seg.time}} {{seg.speaker}}</text>
+                    <text>{{seg.levelLabel}} · {{seg.score}}%</text>
+                  </view>
+                  <text class="qk-evidence-text">{{seg.text}}</text>
+                </view>
+                <text class="qk-evidence-more" wx:if="{{!t.evidenceExpanded && t.evidenceHiddenCount > 0}}">另有 {{t.evidenceHiddenCount}} 段依据已折叠</text>
+              </view>
+              <view class="qk-candidate-actions" wx:if="{{isChair}}">
+                <text class="qk-cand-btn primary" catchtap="adoptCandidate" data-idx="{{topicIndex}}">采纳为议题</text>
+                <text class="qk-cand-btn" catchtap="ignoreCandidate" data-idx="{{topicIndex}}">忽略</text>
+              </view>
+              <text wx:else class="qk-fields-hint">仅主任/副主任可研判立项</text>
+            </view>
+          </block>
+        </scroll-view>
+      </view>
+    </view>
+
+    <!-- 实时添加议题（主任/副主任）-->
+    <view wx:if="{{isChair}}" class="qk-rr-transfer"><text class="qk-link" bindtap="openAddTopic">+ 实时添加议题</text></view>
+
+    <!-- 居委会签字（重大事项时）-->
+    <view wx:if="{{detail.record.hasMajorIssue}}" class="qk-juwei">
+      <text class="qk-juwei-name">居委会委员：{{detail.record.juweiName}}</text>
+      <text class="qk-juwei-chip {{detail.record.juweiSigned ? 'on' : ''}}" bindtap="toggleJuwei">{{detail.record.juweiSigned ? '✓ 已签字' : '签字'}}</text>
+    </view>
+
+    <!-- 线下纸质佐证 -->
+    <view class="qk-grp-title">线下纸质佐证（{{detail.record.evidences.length}}）<text class="qk-link" bindtap="addEvidence">+ 上传</text></view>
+    <view wx:if="{{detail.record.evidences.length === 0}}" class="lp-empty">暂无佐证，可拍照或从相册上传</view>
+    <view wx:else>
+      <view class="qk-mat-item" wx:for="{{detail.record.evidences}}" wx:key="id">
+        <text class="qk-mat-name">{{item.fileName}}</text>
+        <text class="qk-mat-del" catchtap="removeEvidence" data-ev-id="{{item.id}}">×</text>
+      </view>
+    </view>
+
+    <view class="qk-note">这里先不生成正式纪要，只完成“录音→上传→轮询→抽取→确认”的零大模型成本流程。</view>
+
+    <button class="lp-ghost-btn" bindtap="viewMinutes">查看现有纪要草稿</button>
+    <button wx:if="{{isChair}}" class="lp-primary-btn" bindtap="endMeeting" disabled="{{ending}}">{{ending ? '生成纪要中...' : '生成纪要并结束会议'}}</button>
+    <view wx:else class="qk-wait-tip">表决确认与结束会议由主任/副主任拍板，请等待主持人操作。</view>
+  </view>
+
+  <view class="lp-nav">
+    <button class="lp-nav-btn ghost" bindtap="exitLive">退出</button>
+    <button wx:if="{{isChair}}" class="lp-nav-btn ghost" bindtap="exportAttendance">导出签到名单</button>
+  </view>
+
+  <!-- 转录文本查看 -->
+  <view wx:if="{{transcriptVisible}}" class="qk-modal-mask" bindtap="closeTranscript">
+    <view class="qk-transcript-sheet" catchtap="noop">
+      <view class="qk-sheet-head">
+        <text class="qk-modal-title">语音转录文本</text>
+        <text class="qk-sheet-close" bindtap="closeTranscript">×</text>
+      </view>
+      <view class="qk-transcript-tabs">
+        <text class="qk-transcript-tab {{transcriptMode === 'short' ? 'on' : ''}}" bindtap="switchTranscriptMode" data-mode="short">摘要</text>
+        <text class="qk-transcript-tab {{transcriptMode === 'full' ? 'on' : ''}}" bindtap="switchTranscriptMode" data-mode="full">全文</text>
+      </view>
+      <scroll-view scroll-y class="qk-transcript-scroll">
+        <view wx:if="{{transcriptMode === 'short'}}">
+          <text class="qk-transcript-body">{{transcriptPreview || '暂无摘要文本'}}</text>
+          <view class="qk-note">摘要用于快速判断转写是否完成；正式匹配仍以全文分段为依据。</view>
+        </view>
+        <view wx:else>
+          <view wx:if="{{transcript.length === 0}}" class="lp-empty">暂无转写原文</view>
+          <view class="qk-tr-list" wx:else>
+            <view class="qk-tr-seg" wx:for="{{transcript}}" wx:for-item="seg" wx:key="id">
+              <view class="qk-tr-meta"><text class="qk-tr-spk">{{seg.speaker}}</text><text class="qk-tr-time">{{seg.time}}</text></view>
+              <text class="qk-tr-text">{{seg.text}}</text>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 实时添加议题弹窗 -->
+  <view wx:if="{{addTopicVisible}}" class="qk-modal-mask" bindtap="closeAddTopic">
+    <view class="qk-modal" catchtap="noop">
+      <text class="qk-modal-title">实时添加议题</text>
+      <input class="qk-modal-input" placeholder="议题名称" value="{{newTopicForm.title}}" bindinput="onTopicFormInput" data-field="title" />
+      <view class="qk-modal-types">
+        <text class="qk-type {{newTopicForm.decisionType === 'simple' ? 'on' : ''}}" bindtap="pickDecisionType" data-type="simple">赞成/反对</text>
+        <text class="qk-type {{newTopicForm.decisionType === 'multi_choice' ? 'on' : ''}}" bindtap="pickDecisionType" data-type="multi_choice">多选一</text>
+      </view>
+      <textarea wx:if="{{newTopicForm.decisionType === 'multi_choice'}}" class="qk-modal-area" placeholder="每行一个选项" value="{{newTopicForm.optionsText}}" bindinput="onTopicFormInput" data-field="optionsText" />
+      <view class="qk-modal-btns">
+        <button class="lp-ghost-btn" bindtap="closeAddTopic">取消</button>
+        <button class="lp-primary-btn" bindtap="submitAddTopic">添加</button>
+      </view>
+      <text class="qk-modal-note">重大事项不可现场新增，请列入会前通知或下次会议。</text>
+    </view>
+  </view>
+
+</scroll-view>

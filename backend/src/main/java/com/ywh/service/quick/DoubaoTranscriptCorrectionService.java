@@ -49,6 +49,15 @@ public class DoubaoTranscriptCorrectionService implements TranscriptCorrectionSe
 
     // meetingId -> 已纠错结果（带源签名，源变了则重算）
     private final ConcurrentHashMap<Long, Cached> cache = new ConcurrentHashMap<>();
+    // 正在后台纠错的会议（按源签名去重，避免重复提交）
+    private final ConcurrentHashMap<Long, Integer> inFlight = new ConcurrentHashMap<>();
+    // 后台纠错线程池（守护线程，不阻塞 JVM 退出）
+    private final java.util.concurrent.ExecutorService pool =
+            java.util.concurrent.Executors.newFixedThreadPool(2, r -> {
+                Thread t = new Thread(r, "asr-correct");
+                t.setDaemon(true);
+                return t;
+            });
 
     private record Cached(int signature, AsrResult result) {}
 
@@ -71,15 +80,25 @@ public class DoubaoTranscriptCorrectionService implements TranscriptCorrectionSe
         Cached hit = cache.get(meetingId);
         if (hit != null && hit.signature() == sig) return hit.result();
 
-        AsrResult result;
-        try {
-            result = doCorrect(asr);
-        } catch (Exception e) {
-            log.error("[CORRECT] 纠错失败，回退原文。meetingId=" + meetingId, e);
-            result = asr;
+        // 纠错对长转写很慢（整篇 LLM），不能同步阻塞 /transcript、/extract，否则前端请求超时。
+        // 策略：本次先返回原文；后台异步纠错，完成后进缓存，下次调用即返回纠正稿。
+        final Integer prev = inFlight.put(meetingId, sig);
+        if (prev == null || prev != sig) {
+            final AsrResult src = asr;
+            pool.submit(() -> {
+                try {
+                    AsrResult r = doCorrect(src);
+                    cache.put(meetingId, new Cached(sig, r));
+                    log.info("[CORRECT] 后台纠错完成 meetingId={} 段数={}", meetingId, src.getSegments().size());
+                } catch (Exception e) {
+                    log.error("[CORRECT] 后台纠错失败，缓存原文。meetingId=" + meetingId, e);
+                    cache.put(meetingId, new Cached(sig, src)); // 缓存原文，避免反复重试
+                } finally {
+                    inFlight.remove(meetingId, sig);
+                }
+            });
         }
-        cache.put(meetingId, new Cached(sig, result));
-        return result;
+        return asr; // 纠正稿就绪前先用原文，不阻塞
     }
 
     private AsrResult doCorrect(AsrResult asr) throws Exception {

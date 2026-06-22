@@ -4,6 +4,7 @@ import com.ywh.config.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "storage.audio", name = "type", havingValue = "local", matchIfMissing = true)
 public class LocalAudioStorageService implements AudioStorageService {
 
     private final StorageProperties props;

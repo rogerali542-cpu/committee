@@ -109,13 +109,13 @@ module.exports = {
     return core.request('POST', '/api/committees/' + id + '/publish/withdraw', { reason: reason });
   },
   committeeMinutes: function (id) {
-    return core.request('GET', '/api/committees/' + id + '/minutes');
+    return core.realRequest('GET', '/api/committees/' + id + '/minutes');
   },
   committeeMinutesRevisions: function (id) {
-    return core.request('GET', '/api/committees/' + id + '/minutes/revisions');
+    return core.realRequest('GET', '/api/committees/' + id + '/minutes/revisions');
   },
   committeeUpdateMinutes: function (id, text, reason) {
-    return core.request('PUT', '/api/committees/' + id + '/minutes', { text: text, reason: reason });
+    return core.realRequest('PUT', '/api/committees/' + id + '/minutes', { text: text, reason: reason });
   },
   committeeStats: function () {
     return core.request('GET', '/api/committees/stats');
@@ -152,5 +152,17 @@ module.exports = {
   },
   committeeQuickConfirm: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/confirm', data);
+  },
+  committeeQuickPolish: function (id, data) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/polish', data);
+  },
+  committeeQuickTopicSummary: function (id, data) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/topic-summary', data);
+  },
+  committeeQuickTopicSummaryTask: function (id, data) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/topic-summary/tasks', data);
+  },
+  committeeQuickTopicSummaryTaskStatus: function (id, taskId) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/topic-summary/tasks/' + encodeURIComponent(taskId));
   }
 };

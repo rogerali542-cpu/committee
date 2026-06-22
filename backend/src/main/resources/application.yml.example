@@ -74,8 +74,18 @@ doubao:
 # 生产建议换成对象存储(TOS)：实现 AudioStorageService 的 TOS 版即可，接口不变。
 storage:
   audio:
+    # local：本地磁盘 + public-base-url；tos：上传到 TOS/S3 兼容对象存储并返回公网 URL。
+    type: ${STORAGE_AUDIO_TYPE:local}
     dir: ${STORAGE_AUDIO_DIR:./data/audio}
     public-base-url: ${STORAGE_PUBLIC_BASE_URL:http://your-public-host:8080}
+    # type=tos 时启用。bucket 对象需可被豆包匿名 GET 访问，或 public-base-url 指向可访问 CDN/网关。
+    endpoint: ${STORAGE_TOS_ENDPOINT:https://tos-cn-beijing.volces.com}
+    region: ${STORAGE_TOS_REGION:cn-beijing}
+    bucket: ${STORAGE_TOS_BUCKET:}
+    access-key: ${STORAGE_TOS_ACCESS_KEY:}
+    secret-key: ${STORAGE_TOS_SECRET_KEY:}
+    key-prefix: ${STORAGE_TOS_KEY_PREFIX:quick-audio}
+    signing-service: ${STORAGE_TOS_SIGNING_SERVICE:tos}
 
 # Swagger
 springdoc:

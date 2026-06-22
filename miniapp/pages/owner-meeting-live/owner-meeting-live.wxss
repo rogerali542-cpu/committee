@@ -1,0 +1,103 @@
+.live-page { min-height:100vh; background:#f5f5f5; padding:12px; padding-bottom:24px; box-sizing:border-box; }
+
+/* 步骤指示器 */
+.lp-stepper { display:flex; align-items:center; background:#fff; border-radius:16px; padding:16px 12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.lp-step { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
+.lp-step-num { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; background:#E5E8EC; color:#9aa3ad; }
+.lp-step.active .lp-step-num { background:#FFA800; color:#fff; }
+.lp-step.done .lp-step-num { background:#27AE60; color:#fff; }
+.lp-step-label { font-size:12px; color:#9aa3ad; }
+.lp-step.active .lp-step-label { color:#D88900; font-weight:700; }
+.lp-step.done .lp-step-label { color:#27AE60; }
+.lp-step-line { flex:1; height:2px; background:#E5E8EC; margin:0 4px; margin-bottom:18px; }
+.lp-step-line.done { background:#27AE60; }
+
+/* 引导提示 */
+.lp-hint { display:flex; gap:8px; align-items:flex-start; background:#FFF6E5; border-radius:12px; padding:12px 14px; margin-bottom:12px; }
+.lp-hint-icon { font-size:14px; line-height:1.5; }
+.lp-hint-text { font-size:13px; color:#B7791F; line-height:1.55; flex:1; }
+
+/* 大会简介 */
+.lp-brief { background:#fff; border-radius:12px; padding:12px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.lp-brief-title { display:block; font-size:15px; font-weight:700; color:#333; line-height:1.4; }
+.lp-brief-meta { display:block; font-size:12px; color:#888; margin-top:4px; }
+
+/* 步骤卡片 */
+.lp-card { background:#fff; border-radius:16px; padding:18px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.lp-card-step { display:block; font-size:12px; color:#D88900; font-weight:700; margin-bottom:8px; }
+.lp-card-title { display:block; font-size:17px; font-weight:700; color:#333; line-height:1.4; }
+.lp-card-desc { display:block; font-size:13px; color:#888; line-height:1.6; margin-top:6px; margin-bottom:14px; }
+.lp-note { font-size:13px; color:#888; line-height:1.6; margin-bottom:10px; }
+
+.lp-primary-btn { background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; border:0; border-radius:24px; font-size:15px; font-weight:700; padding:12px 0; margin-top:6px; }
+.lp-primary-btn.warn { background:#E08A00; }
+.lp-primary-btn[disabled] { background:#e3cfa6; color:#fff; }
+.lp-ghost-btn { background:#fff; color:#FFA800; border:1px solid #FFA800; border-radius:24px; font-size:14px; padding:10px 0; margin-top:6px; margin-bottom:6px; }
+.lp-empty { color:#aaa; font-size:13px; text-align:center; padding:16px 0; }
+
+/* 法定人数 */
+.lp-quorum { background:#FAFBFC; border-radius:12px; padding:14px; margin-bottom:14px; }
+.lp-q-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.lp-q-label { font-size:12px; color:#666; width:56px; flex-shrink:0; }
+.lp-q-bar { flex:1; height:8px; background:#eef0f3; border-radius:4px; overflow:hidden; }
+.lp-q-fill { height:100%; border-radius:4px; }
+.lp-q-fill.ok { background:linear-gradient(90deg,#27AE60,#2ECC71); }
+.lp-q-fill.no { background:linear-gradient(90deg,#E67E22,#F5B041); }
+.lp-q-num { font-size:12px; font-weight:700; width:60px; text-align:right; flex-shrink:0; }
+.lp-q-num.ok { color:#27AE60; }
+.lp-q-num.no { color:#E08A00; }
+.lp-q-verdict { text-align:center; font-size:13px; font-weight:700; padding:8px; border-radius:10px; margin-top:4px; }
+.lp-q-verdict.ok { background:#EAFAF1; color:#27AE60; }
+.lp-q-verdict.no { background:#FFF4E5; color:#E08A00; }
+
+/* 逐项导航 */
+.lp-topic-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.lp-tn-btn { font-size:13px; color:#FFA800; padding:4px 8px; }
+.lp-tn-btn.disabled { color:#ccc; }
+.lp-tn-pos { font-size:12px; color:#888; font-weight:600; }
+
+/* 议题卡 */
+.lp-topic { border:1px solid #eef0f3; border-radius:12px; padding:14px; margin-top:10px; }
+.lp-topic-head { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.lp-topic-type { font-size:11px; padding:2px 8px; border-radius:8px; }
+.lp-topic-type.major { background:#FDECEA; color:#E74C3C; }
+.lp-topic-type.ordinary { background:#FFF6E5; color:#FFA800; }
+.lp-topic-title { font-size:14px; font-weight:600; color:#333; width:100%; margin-top:4px; line-height:1.45; }
+
+.lp-vote-btns { display:flex; gap:8px; margin-top:12px; }
+.lp-vbtn { flex:1; text-align:center; padding:11px 0; border-radius:10px; font-size:14px; font-weight:600; }
+.lp-vbtn.for { background:#EAFAF1; color:#27AE60; }
+.lp-vbtn.ag { background:#FDEDEC; color:#C0392B; }
+.lp-vbtn.ab { background:#F4F6F7; color:#7F8C8D; }
+.lp-vote-locked { margin-top:12px; padding:10px; background:#F4F6F7; border-radius:10px; font-size:13px; color:#555; text-align:center; }
+
+.lp-prog { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; padding-top:10px; border-top:1px dashed #eef0f3; }
+.lp-prog-line { font-size:11px; color:#999; flex:1; line-height:1.5; }
+.lp-prog-tag { font-size:11px; font-weight:700; padding:2px 8px; border-radius:8px; flex-shrink:0; }
+.lp-prog-tag.ok { background:#EAFAF1; color:#27AE60; }
+.lp-prog-tag.no { background:#FFF4E5; color:#E08A00; }
+
+/* 户代表完成卡 */
+.lp-complete { display:flex; flex-direction:column; align-items:center; padding:14px 0; }
+.lp-complete-icon { width:54px; height:54px; border-radius:50%; background:#27AE60; color:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; }
+.lp-complete-title { font-size:16px; font-weight:700; color:#333; margin-top:14px; }
+.lp-complete-sub { font-size:13px; color:#888; margin-top:6px; }
+.lp-complete-tip { font-size:12px; color:#D88900; margin-top:10px; background:#FFF6E5; padding:6px 14px; border-radius:12px; }
+
+/* 主席结束·参考清单 */
+.lp-ready { background:#FAFBFC; border-radius:12px; padding:6px 12px; margin-bottom:14px; }
+.lp-ready-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #eef0f3; }
+.lp-ready-row:last-child { border-bottom:0; }
+.lp-ready-icon { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+.lp-ready-icon.ok { background:#EAFAF1; color:#27AE60; }
+.lp-ready-icon.no { background:#FFF4E5; color:#E08A00; }
+.lp-ready-label { flex:1; font-size:13px; color:#333; }
+.lp-ready-detail { font-size:12px; }
+.lp-ready-detail.ok { color:#27AE60; }
+.lp-ready-detail.no { color:#E08A00; }
+
+/* 底部导航 */
+.lp-nav { display:flex; gap:10px; margin-top:4px; }
+.lp-nav-btn { flex:1; border-radius:24px; font-size:15px; padding:11px 0; border:0; }
+.lp-nav-btn.primary { background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; font-weight:700; }
+.lp-nav-btn.ghost { background:#fff; color:#555; border:1px solid #dfe3e8; }

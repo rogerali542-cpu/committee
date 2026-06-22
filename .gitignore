@@ -5,6 +5,8 @@ node_modules/
 *.log
 .codex-static-server*.js
 .codex-static-server*.log
+project.private.config.json
+miniapp/.docx
 
 # 本地 agent 配置与记忆
 .claude/

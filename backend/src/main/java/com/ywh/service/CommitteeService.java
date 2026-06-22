@@ -5,7 +5,9 @@ import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.MeetingDetailVO.*;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
+import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.QuickConfirmRequest;
+import com.ywh.dto.quick.QuickExtractionVO;
 import com.ywh.entity.*;
 import com.ywh.enums.*;
 import com.ywh.repository.*;
@@ -466,15 +468,13 @@ public class CommitteeService {
             throw new IllegalArgumentException("仅进行中的会议可以确认快速识别结果");
         }
         if (meeting.getMeetingMode() != MeetingMode.quick) {
-            throw new IllegalArgumentException("仅快速模式会议可以确认识别结果");
+            meeting.setMeetingMode(MeetingMode.quick);
+            meetingRepo.save(meeting);
         }
         MeetingRecord record = getRecord(meetingId);
         List<RecordAttendance> signedIn = attendanceRepo.findByRecordId(record.getId()).stream()
                 .filter(RecordAttendance::getSignedIn)
                 .collect(Collectors.toList());
-        if (signedIn.isEmpty()) {
-            throw new IllegalArgumentException("请先完成入会签到");
-        }
         List<QuickConfirmRequest.TopicResult> results = Optional.ofNullable(req)
                 .map(QuickConfirmRequest::getTopics)
                 .orElse(Collections.emptyList())
@@ -484,14 +484,17 @@ public class CommitteeService {
         Map<Long, RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId()).stream()
                 .collect(Collectors.toMap(RecordTopic::getId, t -> t));
         long voteTopicCount = topics.values().stream().filter(this::isVoteTopic).count();
-        if (results.size() < topics.size()) {
-            throw new IllegalArgumentException("请先确认全部议题识别结果");
-        }
         try {
             record.setQuickConfirmJson(objectMapper.writeValueAsString(req));
             recordRepo.save(record);
         } catch (Exception e) {
             throw new IllegalArgumentException("保存快速会议确认结果失败");
+        }
+        if (results.size() < topics.size()) {
+            return;
+        }
+        if (signedIn.isEmpty()) {
+            return;
         }
         if (voteTopicCount == 0) {
             return;
@@ -740,6 +743,184 @@ public class CommitteeService {
     }
 
     // ===== Minutes =====
+    @Transactional(readOnly = true)
+    public String buildQuickMinutesContext(Long meetingId, QuickExtractionVO extraction, AsrResult asr) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        MeetingRecord record = getRecord(meetingId);
+        List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
+        List<RecordAttendance> present = attendances.stream().filter(RecordAttendance::getSignedIn).toList();
+        List<RecordAttendance> absent = attendances.stream().filter(a -> !a.getSignedIn()).toList();
+        List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        Map<Long, QuickConfirmRequest.TopicResult> confirmed = quickConfirmTopicMap(record);
+
+        String host = attendances.stream()
+                .filter(a -> a.getUserRole().getRole().isChair())
+                .findFirst()
+                .map(a -> a.getUserRole().getRealName())
+                .orElse(present.isEmpty() ? "未明确说明" : present.get(0).getUserRole().getRealName());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("会议名称：").append(nullToUnknown(m.getTitle())).append('\n');
+        sb.append("会议时间：").append(nullToUnknown(m.getMeetingDate())).append(" ").append(nullToUnknown(m.getMeetingTime())).append('\n');
+        sb.append("会议地点：").append(nullToUnknown(m.getLocation())).append('\n');
+        sb.append("会议说明：").append(nullToUnknown(m.getDescription())).append('\n');
+        sb.append("主持人：").append(host).append('\n');
+        sb.append("应到委员：").append(attendances.size()).append("人\n");
+        sb.append("实到委员：").append(present.size()).append("人；名单：")
+                .append(present.isEmpty() ? "未明确说明" : present.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append('\n');
+        if (!absent.isEmpty()) {
+            sb.append("缺席委员：").append(absent.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append('\n');
+        }
+        if (record.getHasMajorIssue()) {
+            sb.append("列席/居委会签字：").append(nullToUnknown(record.getJuweiName()))
+                    .append(record.getJuweiSigned() ? "（已签字）" : "（未签字）").append('\n');
+        }
+
+        sb.append("\n议题及人工确认结果：\n");
+        int idx = 1;
+        for (RecordTopic topic : topics) {
+            QuickConfirmRequest.TopicResult r = confirmed.get(topic.getId());
+            sb.append(idx++).append(". 【").append(topicTypeLabel(topic)).append("】").append(topic.getTitle()).append('\n');
+            if (r != null) {
+                sb.append("   确认结果：").append(nullToUnknown(r.getResult())).append('\n');
+                if (r.getSummaryDraft() != null && !r.getSummaryDraft().isBlank()) {
+                    sb.append("   已生成议题报告/人工确认内容：\n").append(indent(r.getSummaryDraft(), "   ")).append('\n');
+                }
+                if (isVoteTopic(topic)) {
+                    sb.append("   表决票数：同意 ").append(nullToUnknown(r.getForVotes()))
+                            .append("，反对 ").append(nullToUnknown(r.getAgVotes()))
+                            .append("，弃权 ").append(nullToUnknown(r.getAbVotes()))
+                            .append("，合计 ").append(nullToUnknown(r.getTotalVotes())).append('\n');
+                }
+                if (r.getSegmentIndexes() != null && !r.getSegmentIndexes().isEmpty()) {
+                    sb.append("   关联转写片段序号：").append(r.getSegmentIndexes().stream().map(String::valueOf).collect(Collectors.joining("、"))).append('\n');
+                }
+            } else {
+                sb.append("   确认结果：未明确说明\n");
+            }
+        }
+
+        sb.append("\n转写全文：\n");
+        if (asr != null && asr.getSegments() != null && !asr.getSegments().isEmpty()) {
+            int count = 0;
+            for (AsrResult.Segment seg : asr.getSegments()) {
+                if (count++ >= 160) {
+                    sb.append("（后续转写较长，已截断）\n");
+                    break;
+                }
+                sb.append(nullToUnknown(seg.getSpeaker())).append("：").append(nullToUnknown(seg.getText())).append('\n');
+            }
+        } else {
+            sb.append("未明确说明\n");
+        }
+
+        sb.append("\n生成要求：请根据以上创建会议内容、人工确认议题结果和转写内容，润色生成正式《业主委员会会议纪要》。");
+        sb.append("会议纪要须包含会议基本信息、参会情况、逐项议题内容、讨论/表决情况、决议或结论、后续安排。");
+        sb.append("不得编造未出现事实；缺失信息写“未明确说明”；语言正式、客观、中立。");
+        return sb.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public String buildQuickMinutesContextCompact(Long meetingId, QuickExtractionVO extraction, AsrResult asr) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        MeetingRecord record = getRecord(meetingId);
+        List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
+        List<RecordAttendance> present = attendances.stream().filter(RecordAttendance::getSignedIn).toList();
+        List<RecordAttendance> absent = attendances.stream().filter(a -> !a.getSignedIn()).toList();
+        List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        Map<Long, QuickConfirmRequest.TopicResult> confirmed = quickConfirmTopicMap(record);
+
+        String host = attendances.stream()
+                .filter(a -> a.getUserRole().getRole().isChair())
+                .findFirst()
+                .map(a -> a.getUserRole().getRealName())
+                .orElse(present.isEmpty() ? "未明确说明" : present.get(0).getUserRole().getRealName());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("【会议基本信息】\n");
+        sb.append("会议名称：").append(nullToUnknown(m.getTitle())).append('\n');
+        sb.append("会议时间：").append(nullToUnknown(m.getMeetingDate())).append(" ").append(nullToUnknown(m.getMeetingTime())).append('\n');
+        sb.append("会议地点：").append(nullToUnknown(m.getLocation())).append('\n');
+        sb.append("会议说明：").append(nullToUnknown(m.getDescription())).append('\n');
+        sb.append("主持人：").append(host).append('\n');
+        sb.append("应到委员：").append(attendances.size()).append("人\n");
+        sb.append("实到委员：").append(present.size()).append("人；名单：")
+                .append(present.isEmpty() ? "未明确说明" : present.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append('\n');
+        if (!absent.isEmpty()) {
+            sb.append("缺席委员：").append(absent.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append('\n');
+        }
+        if (record.getHasMajorIssue()) {
+            sb.append("居委会签字：").append(nullToUnknown(record.getJuweiName()))
+                    .append(record.getJuweiSigned() ? "（已签字）" : "（未签字）").append('\n');
+        }
+
+        sb.append("\n【人工确认后的议题结果】\n");
+        int idx = 1;
+        for (RecordTopic topic : topics) {
+            QuickConfirmRequest.TopicResult r = confirmed.get(topic.getId());
+            sb.append(idx++).append(". 【").append(topicTypeLabel(topic)).append("】").append(topic.getTitle()).append('\n');
+            if (r == null) {
+                sb.append("   记录状态：未明确说明\n");
+                continue;
+            }
+            if (isVoteTopic(topic)) {
+                sb.append("   表决确认结果：").append(quickResultLabel(r.getResult())).append('\n');
+            } else if (topic.getType() == TopicType.notice) {
+                sb.append("   纪要处理口径：通报事项已记录，不按赞成、反对、通过或未通过表述。\n");
+            } else {
+                sb.append("   纪要处理口径：讨论事项已记录，重点写明主要意见、共识和后续安排，不按表决事项表述。\n");
+            }
+            if (r.getSummaryDraft() != null && !r.getSummaryDraft().isBlank()) {
+                sb.append("   人工确认议题报告摘录：").append(compactMinutesInput(r.getSummaryDraft(), isVoteTopic(topic) ? 260 : 360)).append('\n');
+            }
+            if (isVoteTopic(topic)) {
+                sb.append("   表决票数：同意").append(nullToUnknown(r.getForVotes()))
+                        .append("，反对").append(nullToUnknown(r.getAgVotes()))
+                        .append("，弃权").append(nullToUnknown(r.getAbVotes()))
+                        .append("，合计").append(nullToUnknown(r.getTotalVotes())).append('\n');
+            }
+        }
+
+        sb.append("\n【必要转写补充】\n");
+        if (asr != null && asr.getSegments() != null && !asr.getSegments().isEmpty()) {
+            int count = 0;
+            for (AsrResult.Segment seg : asr.getSegments()) {
+                if (count++ >= 60) {
+                    sb.append("（转写较长，后续已截断；纪要应优先依据人工确认结果。）\n");
+                    break;
+                }
+                sb.append(nullToUnknown(seg.getSpeaker())).append("：").append(nullToUnknown(seg.getText())).append('\n');
+            }
+        } else {
+            sb.append("未明确说明\n");
+        }
+
+        sb.append("\n【生成要求】\n");
+        sb.append("请生成正式《业主委员会会议纪要》，比议题报告更精简。");
+        sb.append("每个议题控制在一小段，通报类只根据人工确认议题报告精简为通报内容、委员知悉/意见和后续安排，严禁写赞成、反对、通过、未通过或表决；");
+        sb.append("讨论类写明主要意见、共识和后续安排；表决/决议类只写方案要点、票数、表决结果、决议和关键执行安排，不展开过多背景细节。");
+        sb.append("优先依据人工确认结果和议题报告摘录，不要逐句复述转写，不要输出冗长背景。");
+        sb.append("缺失信息写“未明确说明”，不得编造。");
+        return sb.toString();
+    }
+
+    private String quickResultLabel(String result) {
+        if ("passed".equals(result)) return "通过";
+        if ("rejected".equals(result)) return "未通过";
+        if ("abstain".equals(result)) return "弃权";
+        if ("unclear".equals(result)) return "未明确说明";
+        return nullToUnknown(result);
+    }
+
+    private String compactMinutesInput(String text, int maxLen) {
+        if (text == null || text.isBlank()) return "未明确说明";
+        String cleaned = text.replaceAll("\\s+", " ").trim();
+        if (cleaned.length() <= maxLen) return cleaned;
+        return cleaned.substring(0, maxLen) + "……";
+    }
+
     public String generateMinutes(Long meetingId) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
@@ -833,6 +1014,19 @@ public class CommitteeService {
         sb.append(concText).append("\n");
 
         return sb.toString();
+    }
+
+    private String nullToUnknown(Object value) {
+        if (value == null) return "未明确说明";
+        String s = String.valueOf(value);
+        return s.isBlank() ? "未明确说明" : s;
+    }
+
+    private String indent(String text, String prefix) {
+        if (text == null || text.isBlank()) return "";
+        return Arrays.stream(text.split("\\R", -1))
+                .map(line -> prefix + line)
+                .collect(Collectors.joining("\n"));
     }
 
     @Transactional
@@ -1596,16 +1790,31 @@ public class CommitteeService {
         // Resolution check
         List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
         List<RecordTopic> voteTopics = topics.stream().filter(this::isVoteTopic).collect(Collectors.toList());
+        boolean quickMode = m.getMeetingMode() == MeetingMode.quick;
+        Map<Long, QuickConfirmRequest.TopicResult> quickConfirmTopics = quickMode
+                ? quickConfirmTopicMap(record)
+                : Collections.emptyMap();
         int requiredVoteCount = m.getMeetingMode() == MeetingMode.quick ? signedIn : total;
+        int voteNeed = quickMode ? signedIn / 2 + 1 : need;
         for (RecordTopic tp : voteTopics) {
-            List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
-            int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
-            if (forV < need) {
-                int voted = votes.size();
+            QuickConfirmRequest.TopicResult quickResult = quickConfirmTopics.get(tp.getId());
+            int forV;
+            int voted;
+            if (quickMode && quickResult != null) {
+                int agV = Optional.ofNullable(quickResult.getAgVotes()).orElse(0);
+                int abV = Optional.ofNullable(quickResult.getAbVotes()).orElse(0);
+                forV = Optional.ofNullable(quickResult.getForVotes()).orElse(0);
+                voted = forV + agV + abV;
+            } else {
+                List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
+                forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
+                voted = votes.size();
+            }
+            if (forV < voteNeed) {
                 if (voted < requiredVoteCount) {
-                    notes.add("\"" + tp.getTitle() + "\"尚未完成表决（已投 " + voted + "/" + requiredVoteCount + "，赞成 " + forV + "/" + need + "）");
+                    notes.add("\"" + tp.getTitle() + "\"尚未完成表决（已投 " + voted + "/" + requiredVoteCount + "，赞成 " + forV + "/" + voteNeed + "）");
                 } else {
-                    notes.add("\"" + tp.getTitle() + "\"未通过（赞成 " + forV + "/" + need + "）");
+                    notes.add("\"" + tp.getTitle() + "\"未通过（赞成 " + forV + "/" + voteNeed + "）");
                 }
             }
         }
@@ -1614,9 +1823,18 @@ public class CommitteeService {
                 && (!record.getHasMajorIssue() || record.getJuweiSigned())
                 && !evidences.isEmpty()
                 && voteTopics.stream().allMatch(tp -> {
+                    if (quickMode) {
+                        QuickConfirmRequest.TopicResult quickResult = quickConfirmTopics.get(tp.getId());
+                        if (quickResult == null) return false;
+                        Integer forV = quickResult.getForVotes();
+                        Integer agV = quickResult.getAgVotes();
+                        Integer abV = quickResult.getAbVotes();
+                        if (forV == null || agV == null || abV == null) return false;
+                        return forV + agV + abV >= requiredVoteCount && forV >= voteNeed;
+                    }
                     List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
                     int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
-                    return forV >= need;
+                    return forV >= voteNeed;
                 });
 
         if (allComplete) {

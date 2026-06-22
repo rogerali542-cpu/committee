@@ -1,0 +1,305 @@
+<view class="page">
+  <!-- 角色介绍条（对齐委员会） -->
+  <view class="role-intro">
+    <text class="ri-title">业主大会</text>
+    <text class="ri-desc">通知公示 · 选票送达 · 双过半验票 · 公示归档</text>
+  </view>
+
+  <!-- 统计卡片（对齐委员会 target-row 风格） -->
+  <view class="target-row">
+    <view class="target-card">
+      <view class="tc-head">
+        <text class="tc-label">年度定期大会</text>
+        <text class="tc-badge ok">已召开</text>
+      </view>
+      <view class="tc-num">{{stats.annualCount}}<text class="tc-unit"> 次</text></view>
+      <text class="tc-sub">每年至少1次</text>
+      <view class="tc-progress">
+        <view class="tc-fill" style="width:{{stats.annualCount >= 1 ? 100 : stats.annualCount * 100}}%;"></view>
+      </view>
+    </view>
+    <view class="target-card">
+      <view class="tc-head">
+        <text class="tc-label">临时大会</text>
+        <text class="tc-badge {{stats.specialCount > 0 ? 'ok' : 'warn'}}">{{stats.specialCount > 0 ? stats.specialCount + '次' : '暂无'}}</text>
+      </view>
+      <view class="tc-num">{{stats.specialCount}}<text class="tc-unit"> 次</text></view>
+      <text class="tc-sub">按需召集</text>
+      <view class="tc-progress">
+        <view class="tc-fill" style="width:{{stats.specialCount > 0 ? 100 : 0}}%;"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="search-bar">
+    <input class="search-input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索大会..." placeholder-class="input-placeholder" />
+    <text wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">×</text>
+  </view>
+
+  <!-- 阶段标签（仅主席可见） -->
+  <view class="stage-tabs" wx:if="{{isChair}}">
+    <view class="tab {{currentStage=='preparing'?'active':''}}" bindtap="switchTab" data-stage="preparing">
+      准备<text class="tab-count">{{stats.preparing}}</text>
+    </view>
+    <view class="tab {{currentStage=='ongoing'?'active':''}}" bindtap="switchTab" data-stage="ongoing">
+      进行中<text class="tab-count">{{stats.ongoing}}</text>
+    </view>
+    <view class="tab {{currentStage=='ended'?'active':''}}" bindtap="switchTab" data-stage="ended">
+      已结束<text class="tab-count">{{stats.ended}}</text>
+    </view>
+  </view>
+
+  <!-- ══════ 主席视图：按阶段筛选 ══════ -->
+  <view class="meeting-list" wx:if="{{isChair}}">
+    <block wx:if="{{meetings.length}}">
+      <view class="meeting-card" wx:for="{{meetings}}" wx:key="id" bindtap="openDetail" data-id="{{item.id}}">
+        <view class="mc-header">
+          <text class="mc-title">{{item.title}}</text>
+          <text class="stage-pill {{item.compliance==='invalid' ? 'invalid' : item.stage}}">
+            {{item.compliance==='invalid' ? '无效' : item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束'}}
+          </text>
+        </view>
+        <view class="mc-meta">
+          <text class="om-type {{item.type}}">{{item.type === 'regular' ? '定期大会' : '临时大会'}}</text>
+          <text wx:if="{{item.needsVote}}" class="om-type vote">含表决</text>
+          <text class="mc-dot">·</text>
+          <text>{{item.meetingDate || '日期待定'}} {{item.meetingTime}}</text>
+          <text class="mc-dot">·</text>
+          <text>{{item.location || '地点待定'}}</text>
+        </view>
+        <view class="mc-summary">{{item.statusLine}}</view>
+      </view>
+    </block>
+    <view wx:else class="empty-state"><text>暂无此阶段的大会</text></view>
+  </view>
+
+  <!-- ══════ 业主视图：待办 + 已完成 ══════ -->
+  <block wx:if="{{!isChair}}">
+    <view class="section-header">我的待办与关注</view>
+    <view class="meeting-list">
+      <block wx:if="{{pending.length}}">
+        <view class="meeting-card" wx:for="{{pending}}" wx:key="id" bindtap="openDetail" data-id="{{item.id}}">
+          <view class="mc-header">
+            <text class="mc-title">{{item.title}}</text>
+            <text class="stage-pill {{item.stage}}">{{item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束'}}</text>
+          </view>
+          <view class="mc-meta">
+            <text class="om-type {{item.type}}">{{item.type === 'regular' ? '定期大会' : '临时大会'}}</text>
+            <text class="mc-dot">·</text>
+            <text>{{item.meetingDate || '日期待定'}} {{item.meetingTime}}</text>
+            <text class="mc-dot">·</text>
+            <text>{{item.location || '地点待定'}}</text>
+            <text class="personal-badge {{item.progress >= 100 ? 'done' : 'doing'}}">{{item.progressLabel}}</text>
+          </view>
+          <view class="pp-bar"><view class="pp-fill {{item.progress >= 100 ? 'done' : ''}}" style="width:{{item.progress}}%;"></view></view>
+        </view>
+      </block>
+      <view wx:else class="empty-state"><text>暂无待办</text></view>
+    </view>
+
+    <view class="section-header muted">其他相关会议</view>
+    <view class="meeting-list">
+      <block wx:if="{{others.length}}">
+        <view class="meeting-card muted-card" wx:for="{{others}}" wx:key="id" bindtap="openDetail" data-id="{{item.id}}">
+          <view class="mc-header">
+            <text class="mc-title">{{item.title}}</text>
+            <text class="stage-pill ended">已结束</text>
+          </view>
+          <view class="mc-meta">
+            <text>{{item.meetingDate || ''}} {{item.meetingTime}}</text>
+            <text class="mc-dot">·</text>
+            <text>{{item.location || ''}}</text>
+            <text class="personal-badge done">{{item.progressLabel}}</text>
+          </view>
+        </view>
+      </block>
+      <view wx:else class="empty-state"><text>暂无已完成</text></view>
+    </view>
+  </block>
+
+  <!-- FAB 新建按钮（仅主席） -->
+  <view class="fab" wx:if="{{isChair}}" bindtap="openCreate">
+    <text class="fab-icon">+</text>
+  </view>
+
+  <!-- 创建弹窗（对齐委员会 create-panel 结构） -->
+  <view wx:if="{{createVisible}}" class="modal-mask" bindtap="closeCreate">
+    <view class="create-panel" catchtap="noop">
+      <view class="create-head">
+        <view>
+          <text class="create-title">新建业主大会</text>
+          <text class="create-sub">补齐通知、表决票、公示和归档所需信息</text>
+        </view>
+        <text class="sheet-close close-btn" bindtap="closeCreate">×</text>
+      </view>
+
+      <scroll-view scroll-y class="create-body">
+        <!-- 资料预填（对齐委员会） -->
+        <view class="prefill-entry" bindtap="toggleMaterialPrefill">
+          <view class="prefill-copy">
+            <text class="prefill-title">有会议资料？从资料预填</text>
+            <text class="prefill-desc">没有资料可直接手动填写</text>
+          </view>
+          <text class="prefill-toggle">{{materialPrefillOpen ? '收起' : '展开'}}</text>
+        </view>
+
+        <view wx:if="{{materialPrefillOpen}}" class="create-section material-section">
+          <view class="section-title-row">
+            <text class="section-title">会议资料</text>
+            <text wx:if="{{materialFiles.length}}" class="required-note">已选{{materialFiles.length}}份</text>
+          </view>
+          <view class="assist-row">
+            <button class="assist-btn" bindtap="chooseMaterialFile">上传资料</button>
+            <button class="assist-btn primary" bindtap="scanMaterialPrefill">扫描并预填</button>
+          </view>
+          <view wx:if="{{materialFiles.length}}" class="file-list">
+            <view wx:for="{{materialFiles}}" wx:key="name" class="file-item">
+              <text class="file-name">{{item.name}}</text>
+              <text class="file-size">{{item.sizeText}}</text>
+              <text class="tp-del" bindtap="removeMaterialFile" data-index="{{index}}">×</text>
+            </view>
+          </view>
+          <textarea class="form-textarea material-textarea" value="{{materialText}}" bindinput="onMaterialTextInput" placeholder-class="input-placeholder" maxlength="-1" placeholder="粘贴会议通知或资料正文，例如：会议时间、地点、主要事项、是否表决等" />
+          <view wx:if="{{materialScanResult}}" class="scan-result">
+            <text class="scan-line ok">已识别：{{materialScanResult.matchedText}}</text>
+            <text class="scan-line">需补充：{{materialScanResult.missingText}}</text>
+          </view>
+          <text class="clear-link" wx:if="{{materialText || materialFiles.length}}" bindtap="clearMaterialPrefill">清空资料</text>
+        </view>
+
+        <!-- 基本信息 -->
+        <view class="create-section">
+          <view class="section-title-row">
+            <text class="section-title">基本信息</text>
+            <text class="required-note">* 必填</text>
+          </view>
+          <view class="form-group">
+            <text class="form-label">大会标题 *</text>
+            <input class="form-input large" value="{{createForm.title}}" data-field="title" bindinput="onCreateInput" placeholder-class="input-placeholder" placeholder="如 2026年度第一次业主大会" />
+          </view>
+          <view class="form-row">
+            <view class="form-group half">
+              <text class="form-label">会议日期 *</text>
+              <picker mode="date" value="{{createForm.meetingDate}}" bindchange="onDateChange">
+                <view class="picker-field">{{createForm.meetingDate || '选择日期'}}</view>
+              </picker>
+            </view>
+            <view class="form-group half">
+              <text class="form-label">开始时间 *</text>
+              <picker mode="time" value="{{createForm.meetingTime}}" bindchange="onTimeChange">
+                <view class="picker-field">{{createForm.meetingTime || '选择时间'}}</view>
+              </picker>
+            </view>
+          </view>
+        </view>
+
+        <!-- 大会类型 -->
+        <view class="create-section">
+          <text class="section-title">大会类型</text>
+          <view class="type-row">
+            <text class="type-chip {{createForm.type === 'regular' ? 'on' : ''}}" bindtap="pickType" data-type="regular">定期大会</text>
+            <text class="type-chip {{createForm.type === 'special' ? 'on' : ''}}" bindtap="pickType" data-type="special">临时大会</text>
+            <text class="type-chip {{createForm.needsVote ? 'on' : ''}}" bindtap="toggleNeedsVote">含表决</text>
+          </view>
+        </view>
+
+        <!-- 会议地点（对齐委员会：快速选择 + 手动输入） -->
+        <view class="create-section">
+          <text class="section-title">会议地点</text>
+          <view class="quick-grid">
+            <text wx:for="{{locationOptions}}" wx:key="*this" class="quick-chip {{createForm.location === item ? 'on' : ''}}" bindtap="pickLocation" data-location="{{item}}">{{item}}</text>
+          </view>
+          <input class="form-input" value="{{createForm.location}}" data-field="location" bindinput="onCreateInput" placeholder-class="input-placeholder" placeholder="也可手动输入会议地点" />
+        </view>
+
+        <!-- 大会规模（自动统计） -->
+        <view class="create-section">
+          <text class="section-title">大会规模<text style="font-size:10px;color:#999;font-weight:400;">（自动统计）</text></text>
+          <view class="form-row">
+            <view class="form-group half">
+              <view class="readonly-stat">{{totalOwners}}<text class="rs-unit"> 户</text></view>
+              <text class="rs-label">总户数</text>
+            </view>
+            <view class="form-group half">
+              <view class="readonly-stat">{{totalArea}}<text class="rs-unit"> ㎡</text></view>
+              <text class="rs-label">总面积</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 会前准备（对齐委员会） -->
+        <view class="create-section">
+          <text class="section-title">会前准备</text>
+          <view class="prep-row">
+            <view class="prep-copy">
+              <text class="prep-title">通知公示</text>
+              <text class="prep-desc">15天公示期，逐户通知业主</text>
+            </view>
+            <switch checked="{{createForm.needNotice}}" data-field="needNotice" bindchange="onCreateSwitch" color="#FFA800" />
+          </view>
+          <view wx:if="{{createForm.needsVote}}" class="prep-row">
+            <view class="prep-copy">
+              <text class="prep-title">选票送达</text>
+              <text class="prep-desc">7天送达期，含表决票和会议材料</text>
+            </view>
+            <switch checked="{{createForm.needBallot}}" data-field="needBallot" bindchange="onCreateSwitch" color="#FFA800" />
+          </view>
+        </view>
+
+        <!-- 表决议题（逐条构建，仅 needsVote 时显示） -->
+        <view wx:if="{{createForm.needsVote}}" class="create-section">
+          <view class="section-title-row">
+            <text class="section-title">表决议题</text>
+            <text wx:if="{{createForm.topics.length}}" class="required-note">{{createForm.topics.length}}条</text>
+          </view>
+          <view wx:if="{{!createForm.topics.length}}" class="topic-empty">
+            <text>尚未添加议题，下方「添加议题」可逐条构建</text>
+          </view>
+          <view wx:for="{{createForm.topics}}" wx:for-item="topic" wx:for-index="idx" wx:key="idx" class="create-topic-card">
+            <view class="ct-head">
+              <text class="ct-num">议题 {{idx + 1}}</text>
+              <text class="tp-del" bindtap="removeCreateTopic" data-index="{{idx}}">×</text>
+            </view>
+            <view class="form-group" style="margin-bottom:6px;">
+              <input class="form-input" value="{{topic.title}}" data-index="{{idx}}" data-field="title" bindinput="onCreateTopicInput" placeholder="议题名称" placeholder-class="input-placeholder" />
+            </view>
+            <view class="type-row" style="margin-bottom:0;">
+              <text class="type-chip {{topic.decisionType === 'simple' ? 'on' : ''}}" bindtap="pickCreateTopicType" data-index="{{idx}}" data-type="simple">普通表决</text>
+              <text class="type-chip {{topic.decisionType === 'multi_choice' ? 'on' : ''}}" bindtap="pickCreateTopicType" data-index="{{idx}}" data-type="multi_choice">多选一</text>
+            </view>
+            <block wx:if="{{topic.decisionType === 'multi_choice'}}">
+              <view wx:for="{{topic.options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="id" class="ct-option-row">
+                <text class="ct-opt-num">{{optIdx + 1}}.</text>
+                <input class="form-input ct-opt-input" value="{{opt.label}}" data-index="{{idx}}" data-opt-index="{{optIdx}}" bindinput="onTopicOptionInput" placeholder="选项{{optIdx + 1}}" placeholder-class="input-placeholder" />
+                <text wx:if="{{topic.options.length > 1}}" class="tp-del" bindtap="removeCreateTopicOption" data-index="{{idx}}" data-opt-index="{{optIdx}}">×</text>
+              </view>
+              <text class="add-link" bindtap="addCreateTopicOption" data-index="{{idx}}" style="display:block;margin-top:6px;">+ 添加选项</text>
+            </block>
+          </view>
+          <button class="btn btn-ghost" style="width:100%;margin-top:8px;" bindtap="addCreateTopic">+ 添加议题</button>
+        </view>
+
+        <!-- 补充说明 -->
+        <view class="create-section">
+          <text class="section-title">补充说明</text>
+          <textarea class="form-textarea" style="min-height:72px;height:72px;" value="{{createForm.description}}" data-field="description" bindinput="onCreateInput" placeholder-class="input-placeholder" maxlength="-1" placeholder="{{createForm.needsVote ? '其他需要记录的事项（非表决内容）' : '大会事项说明'}}" />
+        </view>
+
+        <!-- 预览（对齐委员会） -->
+        <view class="create-preview">
+          <text class="preview-title">{{createForm.title || '未填写大会标题'}}</text>
+          <text class="preview-line">时间：{{createForm.meetingDate || '待定'}} {{createForm.meetingTime || ''}}</text>
+          <text class="preview-line">地点：{{createForm.location || '待定'}}</text>
+          <text class="preview-line">类型：{{createForm.type === 'special' ? '临时大会' : '定期大会'}} · {{createForm.needsVote ? '含表决' : '不含表决'}}</text>
+          <text class="preview-line">规模：{{createForm.totalOwners}}户 · {{createForm.totalArea}}㎡</text>
+          <text class="preview-line">流程：准备阶段 · 通知公示 · 选票送达 · 验票表决 · 公示归档</text>
+        </view>
+      </scroll-view>
+
+      <view class="sheet-actions fixed">
+        <button class="btn btn-ghost" bindtap="closeCreate">取消</button>
+        <button class="btn btn-primary" bindtap="submitCreate">确认创建</button>
+      </view>
+    </view>
+  </view>
+</view>

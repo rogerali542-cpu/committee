@@ -1,0 +1,279 @@
+<view class="page">
+  <view class="target-row" wx:if="{{isChair}}">
+    <view class="target-card">
+      <view class="tc-head">
+        <text class="tc-label">本期目标</text>
+        <text class="tc-badge {{stats.periodCount >= stats.periodTarget ? 'ok' : 'warn'}}">
+          {{stats.periodCount >= stats.periodTarget ? (stats.periodCount > stats.periodTarget ? '超额' + (stats.periodCount - stats.periodTarget) + '次' : '已达标') : '未达标'}}
+        </text>
+      </view>
+      <view class="tc-num">{{stats.periodCount}}<text class="tc-unit"> 次</text></view>
+      <text class="tc-sub">{{stats.periodLabel}}已召开</text>
+      <view class="tc-progress">
+        <view class="tc-fill" style="width:{{stats.periodCount >= stats.periodTarget ? 100 : stats.periodCount / stats.periodTarget * 100}}%;"></view>
+      </view>
+      <text class="tc-rule">规定：每两个月至少{{stats.periodTarget}}次</text>
+    </view>
+
+    <view class="target-card">
+      <view class="tc-head">
+        <text class="tc-label">年度目标</text>
+        <text class="tc-badge {{stats.annualCount >= stats.annualTarget ? 'ok' : 'warn'}}">
+          {{stats.annualCount >= stats.annualTarget ? (stats.annualCount > stats.annualTarget ? '超额' + (stats.annualCount - stats.annualTarget) + '次' : '已达标') : '还差' + (stats.annualTarget - stats.annualCount) + '次'}}
+        </text>
+      </view>
+      <view class="tc-num">{{stats.annualCount}}<text class="tc-unit"> 次</text></view>
+      <text class="tc-sub">{{stats.annualYear}}年已召开</text>
+      <view class="tc-progress">
+        <view class="tc-fill" style="width:{{stats.annualCount >= stats.annualTarget ? 100 : stats.annualCount / stats.annualTarget * 100}}%;"></view>
+      </view>
+      <text class="tc-rule">规定：全年至少{{stats.annualTarget}}次</text>
+    </view>
+  </view>
+
+  <view class="publish-score {{publishScore.overdue > 0 ? 'has-overdue' : ''}}" wx:if="{{isChair}}">
+    <view class="ps-head"><text class="ps-title">会议公示情况</text></view>
+    <view class="ps-stats">
+      <text class="ps-stat ok">按时公示 {{publishScore.ontime}}</text>
+      <text class="ps-stat bad">逾期未公示 {{publishScore.overdue}}</text>
+      <text class="ps-stat wait">待公示 {{publishScore.pending}}</text>
+    </view>
+  </view>
+
+  <view class="role-intro {{isExternal ? 'public' : ''}}">
+    <text class="ri-title">{{roleView.title}}</text>
+    <text class="ri-desc">{{roleView.intro}}</text>
+  </view>
+
+  <view class="search-bar">
+    <input class="search-input" value="{{keyword}}" bindinput="onSearch" placeholder="搜索会议标题..." placeholder-class="input-placeholder" />
+    <text wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">×</text>
+  </view>
+
+  <view class="stage-tabs" wx:if="{{isChair}}">
+    <view class="tab {{currentStage=='preparing'?'active':''}}" bindtap="switchTab" data-stage="preparing">
+      准备<text class="tab-count">{{counts.preparing}}</text>
+    </view>
+    <view class="tab {{currentStage=='ongoing'?'active':''}}" bindtap="switchTab" data-stage="ongoing">
+      进行中<text class="tab-count">{{counts.ongoing}}</text>
+    </view>
+    <view class="tab {{currentStage=='ended'?'active':''}}" bindtap="switchTab" data-stage="ended">
+      已结束<text class="tab-count">{{counts.ended}}</text>
+    </view>
+  </view>
+
+  <view class="meeting-list" wx:if="{{isChair}}">
+    <block wx:if="{{meetings.length}}">
+      <block wx:for="{{meetings}}" wx:key="id">
+        <view class="meeting-card" bindtap="openMeetingTap" data-id="{{item.id}}" data-invalid="{{item.compliance==='invalid'}}">
+          <view class="mc-header">
+            <text class="mc-title">{{item.title}}</text>
+            <text class="stage-pill {{item.compliance==='invalid' ? 'invalid' : item.stage}}">
+              {{item.compliance==='invalid' ? '无效' : item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束'}}
+            </text>
+          </view>
+          <view class="mc-meta">
+            <text>{{item.meetingDate || '日期待定'}}</text>
+            <text class="mc-dot">·</text>
+            <text>{{item.location || '地点待定'}}</text>
+            <text class="mc-dot" wx:if="{{item.stageDesc}}">·</text>
+            <text class="mc-stage-desc">{{item.stageDesc}}</text>
+          </view>
+          <view class="mc-summary">{{item.summaryLine}}</view>
+        </view>
+      </block>
+    </block>
+    <view wx:else class="empty-state"><text>暂无此阶段会议</text></view>
+  </view>
+
+  <block wx:if="{{!isChair}}">
+    <view class="section-header">{{isRecorder ? '流程待处理' : '我的待办与关注'}}</view>
+    <view class="meeting-list">
+      <block wx:if="{{pending.length}}">
+        <block wx:for="{{pending}}" wx:key="id">
+          <view class="meeting-card" bindtap="openDetail" data-id="{{item.id}}">
+            <view class="mc-header">
+              <text class="mc-title">{{item.title}}</text>
+              <text class="stage-pill {{item.stage}}">{{item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束'}}</text>
+            </view>
+            <view class="mc-meta">
+              <text>{{item.meetingDate || '日期待定'}}</text>
+              <text class="mc-dot">·</text>
+              <text>{{item.location || '地点待定'}}</text>
+              <text class="mc-dot" wx:if="{{item.stageDesc}}">·</text>
+              <text class="mc-stage-desc">{{item.stageDesc}}</text>
+              <text class="personal-badge {{item.progress >= 100 ? 'done' : 'doing'}}">{{item.progressLabel}}</text>
+            </view>
+            <view class="pp-bar"><view class="pp-fill {{item.progress >= 100 ? 'done' : ''}}" style="width:{{item.progress}}%;"></view></view>
+          </view>
+        </block>
+      </block>
+      <view wx:else class="empty-state"><text>暂无待办</text></view>
+    </view>
+
+    <view class="section-header muted">{{isRecorder ? '其他会议' : '其他相关会议'}}</view>
+    <view class="meeting-list">
+      <block wx:if="{{others.length}}">
+        <block wx:for="{{others}}" wx:key="id">
+          <view class="meeting-card muted-card" bindtap="openDetail" data-id="{{item.id}}">
+            <view class="mc-header">
+              <text class="mc-title">{{item.title}}</text>
+              <text class="stage-pill {{item.stage}}">{{item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束'}}</text>
+            </view>
+            <view class="mc-meta">
+              <text>{{item.meetingDate || '日期待定'}}</text>
+              <text class="mc-dot">·</text>
+              <text>{{item.location || '地点待定'}}</text>
+              <text class="mc-dot" wx:if="{{item.stageDesc}}">·</text>
+              <text class="mc-stage-desc">{{item.stageDesc}}</text>
+              <text class="personal-badge done">已完成</text>
+            </view>
+          </view>
+        </block>
+      </block>
+      <view wx:else class="empty-state"><text>暂无其他会议</text></view>
+    </view>
+  </block>
+
+  <view class="fab" wx:if="{{isChair}}" bindtap="openNewMeeting">
+    <text class="fab-icon">+</text>
+  </view>
+
+  <view wx:if="{{createVisible}}" class="modal-mask" bindtap="closeCreate">
+    <view class="create-panel" catchtap="noop">
+      <view class="create-head">
+        <view>
+          <text class="create-title">新建业委会会议</text>
+          <text class="create-sub">补齐会前通知、材料送达和记录归档所需信息</text>
+        </view>
+        <text class="sheet-close close-btn" bindtap="closeCreate">×</text>
+      </view>
+
+      <scroll-view scroll-y class="create-body">
+        <view class="prefill-entry" bindtap="toggleMaterialPrefill">
+          <view class="prefill-copy">
+            <text class="prefill-title">有会议资料？从资料预填</text>
+            <text class="prefill-desc">没有资料可直接手动填写</text>
+          </view>
+          <text class="prefill-toggle">{{materialPrefillOpen ? '收起' : '展开'}}</text>
+        </view>
+
+        <view wx:if="{{materialPrefillOpen}}" class="create-section material-section">
+          <view class="section-title-row">
+            <text class="section-title">会议资料</text>
+            <text wx:if="{{materialFiles.length}}" class="required-note">已选{{materialFiles.length}}份</text>
+          </view>
+          <view class="assist-row">
+            <button class="assist-btn" bindtap="chooseMaterialFile">上传资料</button>
+            <button class="assist-btn primary" bindtap="scanMaterialPrefill">扫描并预填</button>
+          </view>
+          <view wx:if="{{materialFiles.length}}" class="file-list">
+            <view wx:for="{{materialFiles}}" wx:key="name" class="file-item">
+              <text class="file-name">{{item.name}}</text>
+              <text class="file-size">{{item.sizeText}}</text>
+              <text class="tp-del" bindtap="removeMaterialFile" data-index="{{index}}">×</text>
+            </view>
+          </view>
+          <textarea class="form-textarea material-textarea" value="{{materialText}}" bindinput="onMaterialTextInput" placeholder-class="input-placeholder" maxlength="-1" placeholder="粘贴会议通知或资料正文，例如：会议时间、地点、主要议题、是否表决等" />
+          <view wx:if="{{materialScanResult}}" class="scan-result">
+            <text class="scan-line ok">已识别：{{materialScanResult.matchedText}}</text>
+            <text class="scan-line">需补充：{{materialScanResult.missingText}}</text>
+          </view>
+          <text class="clear-link" wx:if="{{materialText || materialFiles.length}}" bindtap="clearMaterialPrefill">清空资料</text>
+        </view>
+
+        <view class="create-section">
+          <view class="section-title-row">
+            <text class="section-title">基本信息</text>
+            <text class="required-note">* 必填</text>
+          </view>
+          <view class="form-group">
+            <text class="form-label">会议标题 *</text>
+            <input class="form-input large" value="{{createForm.title}}" data-field="title" bindinput="onCreateInput" placeholder-class="input-placeholder" placeholder="如 2026年第5次业委会例会" />
+          </view>
+          <view class="form-row">
+            <view class="form-group half">
+              <text class="form-label">会议日期 *</text>
+              <picker mode="date" value="{{createForm.meetingDate}}" bindchange="onDateChange">
+                <view class="picker-field">{{createForm.meetingDate || '选择日期'}}</view>
+              </picker>
+            </view>
+            <view class="form-group half">
+              <text class="form-label">开始时间 *</text>
+              <picker mode="time" value="{{createForm.meetingTime}}" bindchange="onTimeChange">
+                <view class="picker-field">{{createForm.meetingTime || '选择时间'}}</view>
+              </picker>
+            </view>
+          </view>
+        </view>
+
+        <view class="create-section">
+          <text class="section-title">会议地点</text>
+          <input class="form-input" value="{{createForm.location}}" data-field="location" bindinput="onCreateInput" placeholder-class="input-placeholder" placeholder="请输入会议地点" />
+        </view>
+
+        <!-- 会议议程项（逐条构建） -->
+        <view class="create-section">
+          <view class="section-title-row">
+            <text class="section-title">会议议题</text>
+            <text class="required-note">* 必填 · {{createForm.topics.length}}条</text>
+          </view>
+
+          <view wx:if="{{!createForm.topics.length}}" class="topic-empty">
+            <text>快速模式会围绕预设议题识别录音，请至少添加一条</text>
+          </view>
+
+          <view wx:for="{{createForm.topics}}" wx:for-item="topic" wx:key="idx" wx:for-index="idx" class="create-topic-card">
+            <view class="ct-head">
+              <text class="ct-num">议题 {{idx + 1}}</text>
+              <text class="tp-del" bindtap="removeCreateTopic" data-index="{{idx}}">×</text>
+            </view>
+
+            <view class="form-group">
+              <input class="form-input" value="{{topic.title}}" data-index="{{idx}}" data-field="title" bindinput="onCreateTopicInput" placeholder="议程项名称" placeholder-class="input-placeholder" />
+            </view>
+
+            <view class="type-row" style="margin-bottom:8px;">
+              <text class="type-chip {{topic.type === 'notice' ? 'on' : ''}}" bindtap="pickCreateAgendaType" data-index="{{idx}}" data-type="notice">通报事项</text>
+              <text class="type-chip {{topic.type === 'discussion' ? 'on' : ''}}" bindtap="pickCreateAgendaType" data-index="{{idx}}" data-type="discussion">讨论事项</text>
+              <text class="type-chip {{topic.type === 'decision' ? 'on' : ''}}" bindtap="pickCreateAgendaType" data-index="{{idx}}" data-type="decision">表决事项</text>
+            </view>
+
+            <view class="type-row" wx:if="{{topic.type === 'decision'}}" style="margin-bottom:0;">
+              <text class="type-chip {{topic.decisionType === 'simple' ? 'on' : ''}}" bindtap="pickCreateTopicType" data-index="{{idx}}" data-type="simple">普通表决</text>
+              <text class="type-chip {{topic.decisionType === 'multi_choice' ? 'on' : ''}}" bindtap="pickCreateTopicType" data-index="{{idx}}" data-type="multi_choice">多选一</text>
+            </view>
+
+            <block wx:if="{{topic.type === 'decision' && topic.decisionType === 'multi_choice'}}">
+              <view wx:for="{{topic.options}}" wx:for-item="opt" wx:for-index="optIdx" wx:key="id" class="ct-option-row">
+                <text class="ct-opt-num">{{optIdx + 1}}.</text>
+                <input class="form-input ct-opt-input" value="{{opt.label}}" data-index="{{idx}}" data-opt-index="{{optIdx}}" bindinput="onTopicOptionInput" placeholder="选项{{optIdx + 1}}" placeholder-class="input-placeholder" />
+                <text wx:if="{{topic.options.length > 1}}" class="tp-del" bindtap="removeCreateTopicOption" data-index="{{idx}}" data-opt-index="{{optIdx}}">×</text>
+              </view>
+              <text class="add-link" bindtap="addCreateTopicOption" data-index="{{idx}}" style="display:block;margin-top:6px;">+ 添加选项</text>
+            </block>
+          </view>
+
+          <button class="btn btn-ghost" style="width:100%;margin-top:8px;" bindtap="addCreateTopic">+ 添加议题</button>
+        </view>
+
+        <view class="create-section">
+          <text class="section-title">补充说明</text>
+          <textarea class="form-textarea" style="min-height:72px;height:72px;" value="{{createForm.description}}" data-field="description" bindinput="onCreateInput" placeholder-class="input-placeholder" maxlength="-1" placeholder="其他需要记录的事项（非表决内容）" />
+        </view>
+
+        <view class="create-preview">
+          <text class="preview-title">{{createForm.title || '未填写会议标题'}}</text>
+          <text class="preview-line">时间：{{createForm.meetingDate || '待定'}} {{createForm.meetingTime || ''}}</text>
+          <text class="preview-line">地点：{{createForm.location || '待定'}}</text>
+          <text class="preview-line">流程：准备阶段 · 通知送达 · 确认参会 · 表决归档</text>
+        </view>
+      </scroll-view>
+
+      <view class="sheet-actions fixed">
+        <button class="btn btn-ghost" bindtap="closeCreate">取消</button>
+        <button class="btn btn-primary" bindtap="submitNewMeeting">确认创建</button>
+      </view>
+    </view>
+  </view>
+</view>

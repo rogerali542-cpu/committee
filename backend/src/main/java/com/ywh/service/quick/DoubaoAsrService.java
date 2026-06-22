@@ -60,6 +60,10 @@ public class DoubaoAsrService implements AsrService {
                 return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
                         .status("failed").message("DOUBAO_ASR_APP_KEY / DOUBAO_ASR_ACCESS_TOKEN 未配置").build();
             }
+            if (isPrivateAudioUrl(audioRef)) {
+                return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
+                        .status("failed").message("音频地址不是公网地址，豆包无法下载；请配置对象存储或公网 STORAGE_PUBLIC_BASE_URL").build();
+            }
             ObjectNode body = mapper.createObjectNode();
             body.putObject("user").put("uid", "ywh-" + meetingId);
             body.putObject("audio")
@@ -159,6 +163,21 @@ public class DoubaoAsrService implements AsrService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private boolean isPrivateAudioUrl(String audioRef) {
+        if (audioRef == null || audioRef.isBlank()) return true;
+        try {
+            String host = URI.create(audioRef).getHost();
+            if (host == null) return true;
+            host = host.toLowerCase();
+            if ("localhost".equals(host) || "127.0.0.1".equals(host) || host.startsWith("192.168.")) return true;
+            if (host.startsWith("10.")) return true;
+            if (host.matches("172\\.(1[6-9]|2\\d|3[0-1])\\..*")) return true;
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     // —— 解析转写结果（字段名以控制台文档为准，必要时改这里）——

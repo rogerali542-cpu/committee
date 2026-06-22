@@ -72,6 +72,10 @@ module.exports = {
   committeeQuickExtract: committee.committeeQuickExtract,
   committeeQuickTranscript: committee.committeeQuickTranscript,
   committeeQuickConfirm: committee.committeeQuickConfirm,
+  committeeQuickPolish: committee.committeeQuickPolish,
+  committeeQuickTopicSummary: committee.committeeQuickTopicSummary,
+  committeeQuickTopicSummaryTask: committee.committeeQuickTopicSummaryTask,
+  committeeQuickTopicSummaryTaskStatus: committee.committeeQuickTopicSummaryTaskStatus,
 
   // Reception
   receptionSystem: reception.receptionSystem,

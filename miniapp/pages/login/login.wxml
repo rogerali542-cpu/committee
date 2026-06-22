@@ -1,0 +1,33 @@
+<view class="login-page">
+  <view class="login-logo">
+    <text class="login-icon">🏛️</text>
+  </view>
+  <text class="login-title">业委专区</text>
+  <text class="login-sub">请选择登录身份</text>
+
+  <view class="login-card">
+    <view class="login-group-title">业委会内部</view>
+    <block wx:for="{{internalRoles}}" wx:key="id">
+      <view class="login-opt" bindtap="doLogin" data-id="{{item.id}}" data-name="{{item.realName}}">
+        <view class="login-avatar">{{item.realName[0]}}</view>
+        <view class="login-info">
+          <view class="login-name">{{item.realName}}<text class="login-role-tag">{{item.role}}</text></view>
+          <view class="login-desc">{{item.desc}}</view>
+        </view>
+        <text class="login-arrow">›</text>
+      </view>
+    </block>
+
+    <view class="login-group-title" style="margin-top:20px;">外部身份（测试）</view>
+    <block wx:for="{{externalRoles}}" wx:key="id">
+      <view class="login-opt" bindtap="doLogin" data-id="{{item.id}}" data-name="{{item.realName}}">
+        <view class="login-avatar {{item.role === '业主' ? 'owner' : 'prop'}}">{{item.realName[0]}}</view>
+        <view class="login-info">
+          <view class="login-name">{{item.realName}}<text class="login-role-tag">{{item.role}}</text></view>
+          <view class="login-desc">{{item.desc}}</view>
+        </view>
+        <text class="login-arrow">›</text>
+      </view>
+    </block>
+  </view>
+</view>

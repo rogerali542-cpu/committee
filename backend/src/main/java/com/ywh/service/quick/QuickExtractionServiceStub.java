@@ -8,6 +8,7 @@ import com.ywh.enums.TopicType;
 import com.ywh.repository.MeetingRecordRepository;
 import com.ywh.repository.RecordTopicRepository;
 import com.ywh.service.quick.kb.CandidateTopicRecommender;
+import com.ywh.service.quick.kb.RuleFieldExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +34,7 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
             "关于", "事项", "会议", "议题", "讨论", "审议", "研究", "工作", "有关", "进行", "情况", "通报"
     );
 
-    // 待归类去噪：去掉标点和下列语气/填充词后，有效内容少于该字数、且不含表决词/数字的片段视为「无需归类」，不进待归类列表。
+    // 片段去噪：去掉标点和下列语气/填充词后，有效内容少于该字数、且不含表决词/数字的片段视为无实质内容。
     private static final int MIN_MEANINGFUL_CHARS = 4;
     private static final Set<String> FILLER_TOKENS = Set.of(
             "嗯", "啊", "哦", "呃", "唉", "诶", "呀", "哈", "哈哈", "嗯嗯", "嗯呐",
@@ -55,6 +56,7 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
     private final MeetingRecordRepository recordRepo;
     private final RecordTopicRepository topicRepo;
     private final CandidateTopicRecommender candidateRecommender;
+    private final RuleFieldExtractor ruleFieldExtractor;
 
     @Override
     public QuickExtractionVO extract(Long meetingId, AsrResult asr) {
@@ -65,26 +67,47 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
 
         Map<String, QuickExtractionVO.SpeakerInfo> speakerMap = buildSpeakerMap(asr);
         Map<String, Long> stats = buildStats(asr);
+        List<AsrResult.Segment> allSegments = segments(asr);
+
+        // 按议程顺序定位每个议题的"宣布点"，把该议题到下一议题之间的整段归入它（结构化会议归集的主力）
+        int[] anchors = agendaAnchors(topics, allSegments);
 
         List<QuickExtractionVO.TopicHit> presetHits = new ArrayList<>();
         for (int i = 0; i < topics.size(); i++) {
-            presetHits.add(buildPresetHit(topics.get(i), asr, i, topics.size()));
+            int blockStart = anchors[i];
+            int blockEnd = -1;
+            if (blockStart >= 0) {
+                blockEnd = allSegments.size() - 1;
+                for (int k = i + 1; k < anchors.length; k++) {
+                    if (anchors[k] > blockStart) { blockEnd = anchors[k] - 1; break; }
+                }
+            }
+            presetHits.add(buildPresetHit(topics.get(i), asr, i, topics.size(), blockStart, blockEnd));
         }
 
         List<String> presetTitles = topics.stream().map(RecordTopic::getTitle).toList();
         List<QuickExtractionVO.TopicHit> candidateTopics = candidateRecommender.recommend(asr, presetTitles);
+
+        // rule_kb 结构化字段抽取：对每个议题命中的片段抽 金额/时间/表决结果/资金来源/责任方/公司/楼栋
+        for (QuickExtractionVO.TopicHit hit : presetHits) {
+            hit.setExtractedFields(ruleFieldExtractor.extract(allSegments, hit.getMatchedSegments()));
+        }
+        for (QuickExtractionVO.TopicHit hit : candidateTopics) {
+            hit.setExtractedFields(ruleFieldExtractor.extract(allSegments, hit.getMatchedSegments()));
+        }
 
         return QuickExtractionVO.builder()
                 .meetingId(meetingId)
                 .speakerMap(speakerMap)
                 .presetTopicHits(presetHits)
                 .candidateTopics(candidateTopics)
-                .unmatchedSegments(buildUnmatchedSegments(topics, presetHits, asr))
+                .unmatchedSegments(List.of())
                 .stats(stats)
                 .build();
     }
 
-    private QuickExtractionVO.TopicHit buildPresetHit(RecordTopic topic, AsrResult asr, int topicIndex, int topicCount) {
+    private QuickExtractionVO.TopicHit buildPresetHit(RecordTopic topic, AsrResult asr, int topicIndex, int topicCount,
+                                                      int blockStart, int blockEnd) {
         List<SegmentScore> baseScores = new ArrayList<>();
         List<AsrResult.Segment> segments = segments(asr);
         for (int i = 0; i < segments.size(); i++) {
@@ -92,6 +115,7 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
         }
 
         List<QuickExtractionVO.SegmentMatch> matches = new ArrayList<>();
+        java.util.Set<Integer> have = new LinkedHashSet<>();
         double autoThreshold = autoThreshold(topic);
         double reviewThreshold = reviewThreshold(topic);
         for (int i = 0; i < baseScores.size(); i++) {
@@ -101,6 +125,21 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
                     : baseScores.get(i);
             if (scored.score >= reviewThreshold) {
                 matches.add(toMatch(scored, segments.get(i), i, scored.score >= autoThreshold ? "auto" : "review"));
+                have.add(i);
+            }
+        }
+
+        // 议程分块：把该议题"宣布点→下一议题前"之间、关键词没命中的实质片段也归入（跳过纯口水）
+        if (blockStart >= 0 && blockEnd >= blockStart) {
+            for (int i = blockStart; i <= blockEnd && i < segments.size(); i++) {
+                if (have.contains(i) || isTrivialSegment(segments.get(i))) continue;
+                AsrResult.Segment s = segments.get(i);
+                matches.add(QuickExtractionVO.SegmentMatch.builder()
+                        .segmentIndex(i).segmentId("s" + i).speaker(s.getSpeaker())
+                        .startMs(s.getStartMs()).endMs(s.getEndMs()).text(safeText(s.getText()))
+                        .score(round(reviewThreshold)).level("review")
+                        .reasons(List.of("按议程顺序归入该议题")).build());
+                have.add(i);
             }
         }
 
@@ -124,6 +163,38 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
                         ? voteHint(matchedIndexes, asr)
                         : QuickExtractionVO.VoteHint.builder().result("unclear").confidence(0.0).build())
                 .build();
+    }
+
+    /**
+     * 按议程顺序为每个议题定位"宣布点"片段下标（严格递增；定位不到为 -1）。
+     * 评分 = 命中标题核心词比例×0.7 + 出现议程引导语(第X项/下面/接下来…)×0.4，从上一锚点之后向后扫描取最高分。
+     */
+    private int[] agendaAnchors(List<RecordTopic> topics, List<AsrResult.Segment> segs) {
+        int m = topics.size(), n = segs.size();
+        int[] anchor = new int[m];
+        java.util.Arrays.fill(anchor, -1);
+        int cursor = 0;
+        for (int i = 0; i < m; i++) {
+            List<String> terms = coreTerms(topics.get(i).getTitle());
+            int best = -1;
+            double bestScore = 0;
+            for (int j = cursor; j < n; j++) {
+                String text = safeText(segs.get(j).getText());
+                if (text.isEmpty()) continue;
+                double s = 0;
+                if (!terms.isEmpty()) {
+                    long tm = terms.stream().filter(text::contains).count();
+                    s += 0.7 * tm / terms.size();
+                }
+                if (containsAny(text, "第一项", "第二项", "第三项", "第四项", "第五项", "第六项",
+                        "下一项", "下一个议题", "下一个问题", "下面", "接下来", "现在进入", "这一项", "最后一项")) {
+                    s += 0.4;
+                }
+                if (s > bestScore) { bestScore = s; best = j; }
+            }
+            if (best >= 0 && bestScore >= 0.5) { anchor[i] = best; cursor = best + 1; }
+        }
+        return anchor;
     }
 
     private List<QuickExtractionVO.UnmatchedSegment> buildUnmatchedSegments(List<RecordTopic> topics,
@@ -249,26 +320,93 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
 
     private QuickExtractionVO.VoteHint voteHint(List<Integer> matched, AsrResult asr) {
         if (matched == null || matched.isEmpty() || asr == null || asr.getSegments() == null) {
-            return QuickExtractionVO.VoteHint.builder().result("unclear").confidence(0.2).build();
+            return QuickExtractionVO.VoteHint.builder().result("unclear").confidence(0.2).source("none").build();
         }
-        int agree = 0;
-        int reject = 0;
-        for (Integer idx : matched) {
-            int from = Math.max(0, idx - 1);
-            int to = Math.min(asr.getSegments().size() - 1, idx + 2);
-            for (int i = from; i <= to; i++) {
-                String text = safeText(asr.getSegments().get(i).getText());
-                if (containsAny(text, "同意", "赞成", "通过", "没有意见", "一致通过")) agree++;
-                if (containsAny(text, "反对", "不同意", "暂缓", "不通过", "未通过")) reject++;
+        // 汇总命中片段及其前后邻句的文本（表决播报常在议题尾部）
+        Set<Integer> idxs = new LinkedHashSet<>();
+        int n = asr.getSegments().size();
+        for (Integer m : matched) {
+            for (int i = Math.max(0, m - 1); i <= Math.min(n - 1, m + 2); i++) idxs.add(i);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i : idxs) sb.append(safeText(asr.getSegments().get(i).getText())).append(' ');
+        String text = sb.toString();
+
+        // 1) 显式播报票数：「X票同意 / X票反对 / X票弃权」
+        Integer fav = findCount(text, "(?:同意|赞成)");
+        Integer ag = findCount(text, "(?:反对|不同意)");
+        Integer ab = findCount(text, "弃权");
+        if (fav != null || ag != null || ab != null) {
+            int f = fav == null ? 0 : fav, a = ag == null ? 0 : ag, b = ab == null ? 0 : ab;
+            return QuickExtractionVO.VoteHint.builder()
+                    .result(f >= a ? "passed" : "rejected").confidence(0.9)
+                    .forVotes(f).agVotes(a).abVotes(b).unanimous(false).source("explicit").build();
+        }
+
+        // 2) 全票/一致通过：票数按实到人数在前端补齐（这里只标记）
+        if (containsAny(text, "全票通过", "一致通过", "全体通过", "无异议", "没有异议")) {
+            return QuickExtractionVO.VoteHint.builder()
+                    .result("passed").confidence(0.85).unanimous(true).source("unanimous").build();
+        }
+        if (containsAny(text, "否决", "未通过", "不予通过", "未形成决议")) {
+            return QuickExtractionVO.VoteHint.builder()
+                    .result("rejected").confidence(0.8).unanimous(false).source("unanimous").build();
+        }
+
+        // 3) 逐个表态计数（兜底，粗略）：数「同意/赞成」与「反对/不同意」「弃权」出现次数
+        int agree = countOcc(text, "同意", "赞成") - countOcc(text, "不同意");
+        int reject = countOcc(text, "反对", "不同意", "不通过", "暂缓");
+        int abstain = countOcc(text, "弃权");
+        if (agree <= 0 && reject <= 0 && abstain <= 0) {
+            return QuickExtractionVO.VoteHint.builder().result("unclear").confidence(0.35).source("none").build();
+        }
+        agree = Math.max(0, agree);
+        return QuickExtractionVO.VoteHint.builder()
+                .result(agree >= reject ? "passed" : "rejected")
+                .confidence(round(Math.min(0.7, 0.4 + Math.max(agree, reject) * 0.1)))
+                .forVotes(agree).agVotes(reject).abVotes(abstain).unanimous(false).source("counted").build();
+    }
+
+    /** 在文本里找「数字 + (票) + 关键词」，返回数字（支持中文数字）；找不到返回 null。 */
+    private Integer findCount(String text, String kw) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("([0-9零〇○两一二三四五六七八九十]{1,4})\\s*票?\\s*(?:人?\\s*)?" + kw)
+                .matcher(text);
+        if (m.find()) return chineseToInt(m.group(1));
+        return null;
+    }
+
+    /** 统计若干词在文本中出现的总次数。 */
+    private int countOcc(String text, String... words) {
+        int c = 0;
+        for (String w : words) {
+            int from = 0, i;
+            while ((i = text.indexOf(w, from)) >= 0) { c++; from = i + w.length(); }
+        }
+        return c;
+    }
+
+    /** 中文/阿拉伯数字转 int（0~99，业委会人数量级足够）；无法解析返回 null。 */
+    private Integer chineseToInt(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim();
+        if (s.matches("\\d{1,3}")) return Integer.parseInt(s);
+        s = s.replace("两", "二").replace("〇", "零").replace("○", "零");
+        String d = "零一二三四五六七八九";
+        if (!s.contains("十")) {
+            int v = 0;
+            for (char c : s.toCharArray()) {
+                int p = d.indexOf(c);
+                if (p < 0) return null;
+                v = v * 10 + p;
             }
+            return v;
         }
-        if (agree == 0 && reject == 0) {
-            return QuickExtractionVO.VoteHint.builder().result("unclear").confidence(0.35).build();
-        }
-        if (agree >= reject) {
-            return QuickExtractionVO.VoteHint.builder().result("passed").confidence(round(Math.min(0.85, 0.45 + agree * 0.1))).build();
-        }
-        return QuickExtractionVO.VoteHint.builder().result("rejected").confidence(round(Math.min(0.85, 0.45 + reject * 0.1))).build();
+        int idx = s.indexOf('十');
+        int tens = idx == 0 ? 1 : d.indexOf(s.charAt(0));
+        int ones = idx == s.length() - 1 ? 0 : d.indexOf(s.charAt(idx + 1));
+        if (tens < 0 || ones < 0) return null;
+        return tens * 10 + ones;
     }
 
     private Map<String, QuickExtractionVO.SpeakerInfo> buildSpeakerMap(AsrResult asr) {
