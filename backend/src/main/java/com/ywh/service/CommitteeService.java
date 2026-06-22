@@ -1054,6 +1054,40 @@ public class CommitteeService {
         snapshotRevision(meetingId, text);
     }
 
+    @Transactional
+    public void updateQuickAiArtifacts(Long meetingId, String minutesText, String topicReportText, String todoListText) {
+        if (minutesText == null || minutesText.trim().isEmpty()) {
+            throw new IllegalArgumentException("会议纪要内容不能为空");
+        }
+        MeetingRecord record = getRecord(meetingId);
+        record.setMinutesText(minutesText);
+        if (topicReportText != null && !topicReportText.trim().isEmpty()) {
+            record.setAiTopicReportText(topicReportText);
+        }
+        if (todoListText != null && !todoListText.trim().isEmpty()) {
+            record.setTodoListText(todoListText);
+        }
+        record.setMinutesConfirmHash(record.getQuickConfirmHash());
+        recordRepo.save(record);
+        snapshotRevision(meetingId, minutesText);
+    }
+
+    public String getInternalTopicReport(Long meetingId) {
+        MeetingRecord record = getRecord(meetingId);
+        if (record.getAiTopicReportText() != null && !record.getAiTopicReportText().isBlank()) {
+            return record.getAiTopicReportText();
+        }
+        return "暂无内部AI议题报告，请先在快速会议中生成纪要草稿。";
+    }
+
+    public String getTodoListText(Long meetingId) {
+        MeetingRecord record = getRecord(meetingId);
+        if (record.getTodoListText() != null && !record.getTodoListText().isBlank()) {
+            return record.getTodoListText();
+        }
+        return "无明确待办事项。";
+    }
+
     private boolean isQuickMinutesOutdated(CommitteeMeeting meeting, MeetingRecord record) {
         return meeting != null
                 && meeting.getMeetingMode() == MeetingMode.quick

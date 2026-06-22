@@ -29,6 +29,8 @@ public class MinutesGenServiceStub implements MinutesGenService {
                 .meetingId(meetingId)
                 .topics(topics)
                 .minutesMarkdown(minutesFromContext(meetingContext, topics))
+                .topicReportMarkdown(topicReportFromContext(meetingContext, topics))
+                .todoListMarkdown(todosFromTopics(topics))
                 .fallbackUsed(true)
                 .errorCode("LLM_DISABLED")
                 .errorMessage("大模型未启用，已使用规则兜底")
@@ -93,6 +95,55 @@ public class MinutesGenServiceStub implements MinutesGenService {
         }
         sb.append("\n三、会议结论与后续安排\n");
         sb.append("会议已按人工确认结果记录相关事项。通报事项按会议记录留存，讨论事项按会议形成的意见继续推进，表决事项按确认票数和表决结果执行。\n");
+        return sb.toString();
+    }
+
+    private String topicReportFromContext(String meetingContext, List<QuickPolishVO.TopicSummary> topics) {
+        String basic = section(meetingContext, "【会议基本信息】", "【人工确认后的议题结果】");
+        String topicText = section(meetingContext, "【人工确认后的议题结果】", "【必要转写补充】");
+        String transcript = section(meetingContext, "【必要转写补充】", "【生成要求】");
+        StringBuilder sb = new StringBuilder();
+        sb.append("AI议题报告（内部保存）\n\n");
+        sb.append("一、会议基础信息\n");
+        sb.append(basic.isBlank() ? "未明确说明。\n" : basic).append("\n\n");
+        sb.append("二、议题详细报告\n");
+        if (!topicText.isBlank()) {
+            sb.append(topicText).append("\n\n");
+        } else if (topics != null && !topics.isEmpty()) {
+            int index = 1;
+            for (QuickPolishVO.TopicSummary t : topics) {
+                String summary = clean(t.getSummary());
+                if (!summary.isBlank()) sb.append(index++).append(". ").append(summary).append("\n");
+            }
+            sb.append("\n");
+        } else {
+            sb.append("未明确说明。\n\n");
+        }
+        sb.append("三、发言摘要与证据线索\n");
+        sb.append(transcript.isBlank() ? "未明确说明。\n" : transcript).append("\n\n");
+        sb.append("四、风险提示与生命周期\n");
+        sb.append("后续应结合执行反馈补充议题状态，包括提出、讨论、修改、表决、执行、验收、归档等节点。\n");
+        return sb.toString();
+    }
+
+    private String todosFromTopics(List<QuickPolishVO.TopicSummary> topics) {
+        List<String> lines = new ArrayList<>();
+        if (topics != null) {
+            for (QuickPolishVO.TopicSummary topic : topics) {
+                if (topic.getTodos() == null) continue;
+                for (String todo : topic.getTodos()) {
+                    String cleaned = clean(todo);
+                    if (!cleaned.isBlank()) lines.add(cleaned);
+                }
+            }
+        }
+        if (lines.isEmpty()) return "无明确待办事项。";
+        StringBuilder sb = new StringBuilder("待办事项\n");
+        int index = 1;
+        for (String line : lines) {
+            sb.append(index++).append(". 事项：").append(line)
+                    .append("；负责人：未明确说明；截止时间：未明确说明；状态：待完成。\n");
+        }
         return sb.toString();
     }
 

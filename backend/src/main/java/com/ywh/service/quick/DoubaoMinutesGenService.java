@@ -43,7 +43,10 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             .connectTimeout(Duration.ofSeconds(10)).build();
 
     private static final String SYSTEM_PROMPT = """
-            你是专业的业主委员会会议纪要秘书。依据【会议转写】和【议题线索】，先识别每个议题类型，再按对应关注点提取关键信息，最后生成正式、客观、中立的会议纪要。
+            你是专业的业主委员会会议秘书。依据【会议转写】、【人工确认议题结果】和【议题线索】，同时生成三份产物：
+            1. 正式会议纪要 minutesMarkdown：用于存档、公示和展示，必须简洁正式；
+            2. AI议题报告 topicReportMarkdown：用于系统内部保存，必须详细完整；
+            3. 待办事项 todoListMarkdown：用于执行跟踪，结构化列出事项、负责人、截止时间、来源议题、状态。
 
             议题类型判断：
             1. 通报类 notice：议题或发言包含“汇报、通报、介绍、学习、传达、进展情况、工作情况”等，通常无需表决。
@@ -57,8 +60,9 @@ public class DoubaoMinutesGenService implements MinutesGenService {
 
             处理步骤：
             1. 对每个议题先按【信息提取清单】尽量完整提取事实；清单中的缺失项写“未明确说明”。
-            2. 再基于已提取事实生成该议题的 summary、resolution、todos 和 minutesMarkdown 对应小节。
-            3. summary 要覆盖关键事实，不要只写“进行了讨论/进行了通报”这类空泛表述；但不得补造未出现内容。
+            2. 内部 AI 议题报告保留详细背景、详细通报/讨论/方案内容、委员意见、问题列表、风险提示、整改事项、责任人、完成时限和议题生命周期状态。
+            3. 正式会议纪要只保留议题背景、讨论情况、表决情况、形成意见和后续安排；不得逐字记录委员发言，不得记录无关细节。
+            4. 待办事项只列会议明确产生的后续动作；没有就写“无明确待办事项”。
 
             硬性要求：
             1. 只依据转写内容，不得编造未出现的事实、人名、金额或决议。
@@ -66,17 +70,20 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             3. 「决议」字段只整理会上已形成的口径、表决播报或讨论倾向，并在结尾注明"（待人工确认）"；切勿替与会者下最终表决结论。
             4. 语言简洁、正式，统一使用第三人称，去掉口头语和重复；金额/数字/时间/单位保持准确。
             5. 待办（todos）是会上明确要做的后续事项，没有就给空数组。
-            6. minutesMarkdown 优先输出正式会议纪要；多个议题要分别按类型生成小节。
-            7. 通报类事项不得写“赞成、反对、通过、未通过、表决”等表决口径；只能写通报内容、委员知悉/意见和后续安排。
-            8. 表决/决议类事项要比议题报告更精炼，只保留方案要点、票数、表决结果、决议和关键执行安排，不要展开冗长背景。
-            9. 严格只输出一个 JSON 对象，不要任何解释或 Markdown 代码块包裹。
+            6. minutesMarkdown 必须是简洁版正式纪要：多个议题分别按类型生成小节，但每个议题控制在一小段。
+            7. topicReportMarkdown 必须是详细版内部报告：可保留业务统计、发言摘要、证据线索和风险提示。
+            8. 通报类事项在 minutesMarkdown 中不得写“赞成、反对、通过、未通过、表决”等表决口径；只能写通报内容、委员知悉/意见和后续安排。
+            9. 表决/决议类事项在 minutesMarkdown 中只写方案要点、票数、表决结果、决议和关键执行安排，不展开冗长背景。
+            10. 严格只输出一个 JSON 对象，不要任何解释或 Markdown 代码块包裹。
 
             输出 JSON 结构：
             {
               "topics": [
                 {"ref": "议题标识(原样回填)", "summary": "讨论摘要", "resolution": "决议结论（待人工确认）", "todos": ["待办1","待办2"]}
               ],
-              "minutesMarkdown": "整篇会议纪要的 Markdown（含标题、各议题小节、决议与待办）"
+              "minutesMarkdown": "正式会议纪要，简洁版，用于存档/展示/公示",
+              "topicReportMarkdown": "AI议题报告，详细版，用于内部保存",
+              "todoListMarkdown": "待办事项清单，包含事项、负责人、截止时间、来源议题、状态"
             }
             """;
 
@@ -501,6 +508,8 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                 .meetingId(meetingId)
                 .topics(topics)
                 .minutesMarkdown(root.path("minutesMarkdown").asText(""))
+                .topicReportMarkdown(root.path("topicReportMarkdown").asText(""))
+                .todoListMarkdown(root.path("todoListMarkdown").asText(""))
                 .build();
     }
 
@@ -522,6 +531,8 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                 .meetingId(meetingId)
                 .topics(topics)
                 .minutesMarkdown(fallbackMinutes(meetingContext, topics))
+                .topicReportMarkdown(fallbackTopicReport(meetingContext, topics))
+                .todoListMarkdown(fallbackTodos(topics))
                 .fallbackUsed(true)
                 .errorCode(errorCode)
                 .errorMessage(errorMessage)
@@ -584,6 +595,57 @@ public class DoubaoMinutesGenService implements MinutesGenService {
         }
         sb.append("\n三、会议结论与后续安排\n");
         sb.append("会议已按人工确认结果记录相关事项。通报事项按会议记录留存，讨论事项按会议形成的意见继续推进，表决事项按确认票数和表决结果执行。\n");
+        return sb.toString();
+    }
+
+    private String fallbackTopicReport(String meetingContext, List<QuickPolishVO.TopicSummary> topics) {
+        String basic = section(meetingContext, "【会议基本信息】", "【人工确认后的议题结果】");
+        String topicText = section(meetingContext, "【人工确认后的议题结果】", "【必要转写补充】");
+        String transcript = section(meetingContext, "【必要转写补充】", "【生成要求】");
+        StringBuilder sb = new StringBuilder();
+        sb.append("AI议题报告（内部保存）\n\n");
+        sb.append("一、会议基础信息\n");
+        sb.append(basic.isBlank() ? "未明确说明。\n" : basic).append("\n\n");
+        sb.append("二、议题详细报告\n");
+        if (!topicText.isBlank()) {
+            sb.append(topicText).append("\n\n");
+        } else if (topics != null && !topics.isEmpty()) {
+            int index = 1;
+            for (QuickPolishVO.TopicSummary topic : topics) {
+                String summary = clean(topic.getSummary());
+                if (!summary.isBlank()) {
+                    sb.append(index++).append(". ").append(summary).append('\n');
+                }
+            }
+            sb.append('\n');
+        } else {
+            sb.append("未明确说明。\n\n");
+        }
+        sb.append("三、发言摘要与证据线索\n");
+        sb.append(transcript.isBlank() ? "未明确说明。\n" : transcript).append("\n\n");
+        sb.append("四、风险提示与生命周期\n");
+        sb.append("后续应结合执行反馈补充议题状态，包括提出、讨论、修改、表决、执行、验收、归档等节点。\n");
+        return sb.toString();
+    }
+
+    private String fallbackTodos(List<QuickPolishVO.TopicSummary> topics) {
+        List<String> lines = new ArrayList<>();
+        if (topics != null) {
+            for (QuickPolishVO.TopicSummary topic : topics) {
+                if (topic.getTodos() == null) continue;
+                for (String todo : topic.getTodos()) {
+                    String cleaned = clean(todo);
+                    if (!cleaned.isBlank()) lines.add(cleaned);
+                }
+            }
+        }
+        if (lines.isEmpty()) return "无明确待办事项。";
+        StringBuilder sb = new StringBuilder("待办事项\n");
+        int index = 1;
+        for (String line : lines) {
+            sb.append(index++).append(". 事项：").append(line)
+                    .append("；负责人：未明确说明；截止时间：未明确说明；状态：待完成。\n");
+        }
         return sb.toString();
     }
 

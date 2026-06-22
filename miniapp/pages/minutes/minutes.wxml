@@ -37,6 +37,8 @@
     </view>
     <view class="minutes-actions">
       <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
+      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-outline edit-minutes-btn" bindtap="viewInternalTopicReport">查看内部AI议题报告</button>
+      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewTodoList">查看待办事项</button>
       <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
       <button wx:if="{{canReviseMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startRevise">发起修订</button>
       <button wx:if="{{canReviseMinutes}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewRevisions">修订历史</button>
@@ -129,6 +131,8 @@
 
     <view class="minutes-actions">
       <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
+      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-outline edit-minutes-btn" bindtap="viewInternalTopicReport">查看内部AI议题报告</button>
+      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewTodoList">查看待办事项</button>
       <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
       <button wx:if="{{canReviseMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startRevise">发起修订</button>
       <button wx:if="{{canReviseMinutes}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewRevisions">修订历史</button>

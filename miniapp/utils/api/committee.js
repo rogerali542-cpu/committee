@@ -156,6 +156,12 @@ module.exports = {
   committeeQuickPolish: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/polish', data);
   },
+  committeeQuickTopicReport: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/topic-report');
+  },
+  committeeQuickTodos: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/todos');
+  },
   committeeQuickTopicSummary: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/topic-summary', data);
   },

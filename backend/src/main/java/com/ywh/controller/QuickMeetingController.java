@@ -153,9 +153,26 @@ public class QuickMeetingController {
         String context = committeeService.buildQuickMinutesContextCompact(id, extraction, asr);
         QuickPolishVO vo = minutesGenService.polish(id, context, extraction, asr);
         if (vo.getMinutesMarkdown() != null && !vo.getMinutesMarkdown().isBlank()) {
-            committeeService.updateMinutes(id, vo.getMinutesMarkdown());
+            committeeService.updateQuickAiArtifacts(
+                    id,
+                    vo.getMinutesMarkdown(),
+                    vo.getTopicReportMarkdown(),
+                    vo.getTodoListMarkdown()
+            );
         }
         return Result.ok(vo);
+    }
+
+    @GetMapping("/topic-report")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<String> topicReport(@PathVariable Long id) {
+        return Result.ok(committeeService.getInternalTopicReport(id));
+    }
+
+    @GetMapping("/todos")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<String> todos(@PathVariable Long id) {
+        return Result.ok(committeeService.getTodoListText(id));
     }
 
     private List<String> topicTexts(Long meetingId, TopicSummaryRequest req) {

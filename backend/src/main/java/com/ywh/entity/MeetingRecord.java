@@ -34,6 +34,14 @@ public class MeetingRecord {
     @Column(name = "minutes_text", columnDefinition = "TEXT")
     private String minutesText;
 
+    /** 内部保存：详细 AI 议题报告，不作为公示纪要直接展示。 */
+    @Column(name = "ai_topic_report_text", columnDefinition = "TEXT")
+    private String aiTopicReportText;
+
+    /** 面向执行跟踪：从会议内容抽取的待办事项清单。 */
+    @Column(name = "todo_list_text", columnDefinition = "TEXT")
+    private String todoListText;
+
     @Column(name = "quick_confirm_json", columnDefinition = "TEXT")
     private String quickConfirmJson;
 

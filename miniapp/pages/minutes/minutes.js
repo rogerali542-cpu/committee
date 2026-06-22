@@ -12,6 +12,7 @@ Page({
     isExternalRole: false,
     canEditMinutes: false,
     canReviseMinutes: false,
+    canViewInternalArtifacts: false,
     reviseMode: false,
     hasServerMinutes: false,
     isPublished: false,
@@ -32,6 +33,7 @@ Page({
       isExternalRole: isExternalRole,
       canEditMinutes: false,
       canReviseMinutes: false,
+      canViewInternalArtifacts: false,
       reviseMode: false,
       isPublished: false,
       isArchived: false,
@@ -197,6 +199,7 @@ Page({
         accessText: '',
         isPublished: published,
         isArchived: archived,
+        canViewInternalArtifacts: !this.data.isExternalRole && !this.data.isOwner,
         // 未公示未归档：可直接编辑；已公示或已归档：只能走修订版本
         canEditMinutes: this.data.isChair && !published && !archived && !minutes.draft,
         canReviseMinutes: this.data.isChair && (published || archived) && !minutes.draft
@@ -290,5 +293,33 @@ Page({
       });
       wx.showModal({ title: '纪要修订历史', content: lines.join('\n'), showCancel: false, confirmText: '关闭' });
     } catch (e) { wx.showToast({ title: e.message, icon: 'none' }); }
+  },
+
+  async viewInternalTopicReport() {
+    try {
+      const text = await api.committeeQuickTopicReport(this.meetingId);
+      wx.showModal({
+        title: '内部AI议题报告',
+        content: text || '暂无内部AI议题报告',
+        showCancel: false,
+        confirmText: '关闭'
+      });
+    } catch (e) {
+      wx.showToast({ title: e.message || '加载失败', icon: 'none' });
+    }
+  },
+
+  async viewTodoList() {
+    try {
+      const text = await api.committeeQuickTodos(this.meetingId);
+      wx.showModal({
+        title: '会议待办事项',
+        content: text || '无明确待办事项',
+        showCancel: false,
+        confirmText: '关闭'
+      });
+    } catch (e) {
+      wx.showToast({ title: e.message || '加载失败', icon: 'none' });
+    }
   }
 });
