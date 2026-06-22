@@ -126,7 +126,8 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             2. 无法确认的信息写“未明确说明”；不得虚构委员发言或表决人数。
             3. 去掉口头语、重复和无关闲聊；金额/数字/时间/单位保持准确。
             4. 尽量把给定内容里的背景、方案、金额、时间、责任人、意见、结论、后续安排都提取出来。
-            5. 输出纯文本，不要 JSON、不要 Markdown、不要额外解释。
+            5. 不要输出录音时间戳、片段序号或 S1/S2 等说话人编号。
+            6. 输出纯文本，不要 JSON、不要 Markdown、不要额外解释。
             """;
 
     /** 通告/通报事项固定模板：通告内容 / 委员意见 / 会议结论 三段。 */
@@ -217,28 +218,45 @@ public class DoubaoMinutesGenService implements MinutesGenService {
     @Override
     public String summarizeTopic(String title, String type, List<String> segmentTexts) {
         if (segmentTexts == null || segmentTexts.isEmpty()) return localTopicReport(title, type, List.of());
+        List<String> cleanedTexts = cleanTopicSegmentTexts(segmentTexts);
         try {
             String sys = topicSummarySystem(type);
             StringBuilder u = new StringBuilder();
             u.append("议题：").append(title == null ? "" : title).append('\n');
             u.append("类型：").append(type == null ? "未明确说明" : type).append('\n');
             u.append("信息提取清单：").append(topicFocus(type)).append('\n');
-            u.append("请先尽量完整提取上述清单中的事实，再生成正式议题报告；缺失项写“未明确说明”。\n");
-            u.append("会议片段（含上下文）：\n");
-            for (String s : segmentTexts) {
+            u.append("请先尽量完整提取上述清单中的事实，再生成正式议题报告；缺失项写“未明确说明”；不要保留时间戳、片段序号或说话人编号。\n");
+            u.append("会议片段正文：\n");
+            for (String s : cleanedTexts) {
                 if (s != null && !s.isBlank()) u.append("· ").append(s.trim()).append('\n');
             }
             String out = callLlmText(sys, u.toString());
             if (out != null && !out.isBlank()) return out.trim();
-            return localTopicReport(title, type, segmentTexts);
+            return localTopicReport(title, type, cleanedTexts);
         } catch (Exception e) {
             log.error("[MINUTES] 单议题摘要失败 title=" + title, e);
-            return localTopicReport(title, type, segmentTexts);
+            return localTopicReport(title, type, cleanedTexts);
         }
     }
 
     private String localTopicReport(String title, String type, List<String> segmentTexts) {
         return TopicReportComposer.compose(title, type, segmentTexts);
+    }
+
+    private List<String> cleanTopicSegmentTexts(List<String> segmentTexts) {
+        if (segmentTexts == null || segmentTexts.isEmpty()) return List.of();
+        List<String> cleaned = new ArrayList<>();
+        for (String raw : segmentTexts) {
+            if (raw == null) continue;
+            String s = raw.trim()
+                    .replaceAll("^\\s*\\d{1,2}:\\d{2}(?::\\d{2})?\\s*", "")
+                    .replaceAll("^\\s*(S\\d+|未知发言人)\\s+", "")
+                    .replaceAll("^\\s*(S\\d+|未知发言人)[:：]\\s*", "")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            if (!s.isBlank()) cleaned.add(s);
+        }
+        return cleaned;
     }
 
     private List<String> compactFacts(List<String> segmentTexts) {

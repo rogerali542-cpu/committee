@@ -946,7 +946,7 @@ Page({
     if (!t || t.summarizing) return;
     const segmentIndexes = (t.segmentMatches || []).map(function (s) { return s.segmentIndex; });
     const segmentTexts = (t.segmentMatches || []).map(function (s) {
-      return [s.time, s.speaker, s.text].filter(Boolean).join(' ');
+      return s.text || '';
     }).filter(Boolean);
     if (!segmentIndexes.length) { wx.showToast({ title: '暂无可整理的片段', icon: 'none' }); return; }
     list[idx] = Object.assign({}, t, { summarizing: true });
