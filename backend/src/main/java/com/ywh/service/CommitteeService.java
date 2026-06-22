@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -485,7 +487,9 @@ public class CommitteeService {
                 .collect(Collectors.toMap(RecordTopic::getId, t -> t));
         long voteTopicCount = topics.values().stream().filter(this::isVoteTopic).count();
         try {
-            record.setQuickConfirmJson(objectMapper.writeValueAsString(req));
+            String confirmJson = objectMapper.writeValueAsString(req);
+            record.setQuickConfirmJson(confirmJson);
+            record.setQuickConfirmHash(sha256(confirmJson));
             recordRepo.save(record);
         } catch (Exception e) {
             throw new IllegalArgumentException("保存快速会议确认结果失败");
@@ -933,6 +937,9 @@ public class CommitteeService {
         }
         MeetingRecord record = getRecord(meetingId);
         if (record.getMinutesText() != null && !record.getMinutesText().isBlank()) {
+            if (isQuickMinutesOutdated(m, record)) {
+                return "【提示】人工确认议题内容已更新，当前纪要可能不是最新版本，请重新生成纪要草稿。\n\n" + record.getMinutesText();
+            }
             return record.getMinutesText();
         }
         List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
@@ -1042,8 +1049,30 @@ public class CommitteeService {
         }
         MeetingRecord record = getRecord(meetingId);
         record.setMinutesText(text);
+        record.setMinutesConfirmHash(record.getQuickConfirmHash());
         recordRepo.save(record);
         snapshotRevision(meetingId, text);
+    }
+
+    private boolean isQuickMinutesOutdated(CommitteeMeeting meeting, MeetingRecord record) {
+        return meeting != null
+                && meeting.getMeetingMode() == MeetingMode.quick
+                && record != null
+                && record.getQuickConfirmHash() != null
+                && !record.getQuickConfirmHash().equals(record.getMinutesConfirmHash());
+    }
+
+    private String sha256(String text) {
+        if (text == null) return null;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(text.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("计算快速会议确认版本失败");
+        }
     }
 
     /** 追加一条纪要修订快照，版本号自增；内容与上一版相同则跳过。见 §5 */

@@ -24,7 +24,7 @@ module.exports = {
     return core.request('POST', '/api/committees/' + id + '/archive-extras?fileName=' + encodeURIComponent(fileName) + '&sizeText=' + encodeURIComponent(sizeText || '') + '&reason=' + encodeURIComponent(reason || ''));
   },
   committeeDetail: function (id) {
-    return core.request('GET', '/api/committees/' + id);
+    return core.realRequest('GET', '/api/committees/' + id);
   },
   committeeMembers: function () {
     return core.request('GET', '/api/committees/members');
@@ -36,7 +36,7 @@ module.exports = {
     return core.request('PUT', '/api/committees/' + id, data);
   },
   committeeAdvance: function (id, action, mode) {
-    return core.request('POST', '/api/committees/' + id + '/advance?action=' + action + (mode ? '&mode=' + mode : ''));
+    return core.realRequest('POST', '/api/committees/' + id + '/advance?action=' + action + (mode ? '&mode=' + mode : ''));
   },
   committeeToggleDelivery: function (id, userRoleId, field) {
     return core.request('PUT', '/api/committees/' + id + '/delivery/' + userRoleId + '?field=' + field);
@@ -52,28 +52,28 @@ module.exports = {
     return core.request('PUT', '/api/committees/' + id + '/attendance/' + userRoleId + '?field=' + field);
   },
   committeeSelfToggle: function (id, field) {
-    return core.request('PUT', '/api/committees/' + id + '/self?field=' + field);
+    return core.realRequest('PUT', '/api/committees/' + id + '/self?field=' + field);
   },
   committeeSignAll: function (id) {
-    return core.request('POST', '/api/committees/' + id + '/attendance/sign-all');
+    return core.realRequest('POST', '/api/committees/' + id + '/attendance/sign-all');
   },
   // 导出签到名单（返回 { fileName, content(CSV) }）
   committeeExportAttendance: function (id) {
-    return core.request('GET', '/api/committees/' + id + '/attendance/export');
+    return core.realRequest('GET', '/api/committees/' + id + '/attendance/export');
   },
   // 录音负责人：认领（开始录音即认领） / 重置（主任兜底）
   committeeClaimRecorder: function (id) {
-    return core.request('POST', '/api/committees/' + id + '/quick/recorder/claim');
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/recorder/claim');
   },
   committeeResetRecorder: function (id) {
-    return core.request('POST', '/api/committees/' + id + '/quick/recorder/reset');
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/recorder/reset');
   },
   committeeAddTopic: function (id, title, type, decisionType, optionsJson, realNameVote) {
     var params = '?title=' + encodeURIComponent(title) + '&type=' + type;
     if (decisionType) params += '&decisionType=' + decisionType;
     if (optionsJson) params += '&options=' + encodeURIComponent(optionsJson);
     if (realNameVote) params += '&realNameVote=true';
-    return core.request('POST', '/api/committees/' + id + '/topics' + params);
+    return core.realRequest('POST', '/api/committees/' + id + '/topics' + params);
   },
   committeeRemoveTopic: function (id, topicId) {
     return core.request('DELETE', '/api/committees/' + id + '/topics/' + topicId);
@@ -94,13 +94,13 @@ module.exports = {
     return core.request('PUT', '/api/committees/' + id + '/flags?flag=' + flag);
   },
   committeeToggleJuwei: function (id) {
-    return core.request('POST', '/api/committees/' + id + '/juwei');
+    return core.realRequest('POST', '/api/committees/' + id + '/juwei');
   },
   committeeAddEvidence: function (id, fileName, fileType) {
-    return core.request('POST', '/api/committees/' + id + '/evidences?fileName=' + encodeURIComponent(fileName) + '&fileType=' + fileType);
+    return core.realRequest('POST', '/api/committees/' + id + '/evidences?fileName=' + encodeURIComponent(fileName) + '&fileType=' + fileType);
   },
   committeeRemoveEvidence: function (id, evId) {
-    return core.request('DELETE', '/api/committees/' + id + '/evidences/' + evId);
+    return core.realRequest('DELETE', '/api/committees/' + id + '/evidences/' + evId);
   },
   committeePublish: function (id) {
     return core.request('POST', '/api/committees/' + id + '/publish');
@@ -130,7 +130,7 @@ module.exports = {
     return core.request('PUT', '/api/committees/' + id + '/compliance?status=' + status);
   },
   committeeAddMaterial: function (id, fileName, sizeText) {
-    return core.request('POST', '/api/committees/' + id + '/materials?fileName=' + encodeURIComponent(fileName) + '&sizeText=' + encodeURIComponent(sizeText || ''));
+    return core.realRequest('POST', '/api/committees/' + id + '/materials?fileName=' + encodeURIComponent(fileName) + '&sizeText=' + encodeURIComponent(sizeText || ''));
   },
   committeeRemoveMaterial: function (id, materialIndex) {
     return core.request('DELETE', '/api/committees/' + id + '/materials/' + materialIndex);

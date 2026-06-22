@@ -1184,7 +1184,10 @@ Page({
       try {
         await api.committeeQuickConfirm(this.meetingId, payload);
         if (typeof api.committeeQuickPolish === 'function') {
-          await api.committeeQuickPolish(this.meetingId, payload);
+          const polishResult = await api.committeeQuickPolish(this.meetingId, payload);
+          if (polishResult && polishResult.fallbackUsed) {
+            syncError = new Error(polishResult.errorMessage || '大模型不可用，已使用规则兜底');
+          }
         }
       } catch (e) {
         syncError = e;
@@ -1221,7 +1224,10 @@ Page({
         this.setData({ ending: true });
         try {
           const confirmPayload = this.buildConfirmPayload();
-          await api.committeeQuickPolish(this.meetingId, confirmPayload);
+          const polishResult = await api.committeeQuickPolish(this.meetingId, confirmPayload);
+          if (polishResult && polishResult.fallbackUsed) {
+            wx.showToast({ title: polishResult.errorMessage || '已用规则兜底生成', icon: 'none' });
+          }
           await api.committeeAdvance(this.meetingId, 'end');
           this.clearQuickState();
           wx.showToast({ title: '纪要已生成', icon: 'success' });

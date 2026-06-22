@@ -98,12 +98,18 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             String userContent = buildUserContent(meetingContext, extraction, asr);
             String content = callLlm(userContent);
             QuickPolishVO vo = parse(meetingId, content);
-            if (vo != null) return vo;
+            if (vo != null) {
+                vo.setFallbackUsed(false);
+                vo.setSource("llm");
+                return vo;
+            }
             log.warn("[MINUTES] 豆包返回无法解析为纪要 JSON，降级。meetingId={}", meetingId);
+            return fallback(meetingId, meetingContext, extraction, "LLM_PARSE_FAILED", "大模型返回格式异常，已使用规则兜底");
         } catch (Exception e) {
-            log.error("[MINUTES] 豆包纪要生成失败，降级。meetingId=" + meetingId, e);
+            LlmFailure failure = classifyLlmFailure(e);
+            log.error("[MINUTES] 豆包纪要生成失败，降级。meetingId={} code={} message={}", meetingId, failure.code, failure.message, e);
+            return fallback(meetingId, meetingContext, extraction, failure.code, failure.message);
         }
-        return fallback(meetingId, meetingContext, extraction);
     }
 
     private static final String TOPIC_SUMMARY_SYSTEM = """
@@ -499,7 +505,8 @@ public class DoubaoMinutesGenService implements MinutesGenService {
     }
 
     // —— 调用失败/解析失败时的兜底：用规则层标题先撑住 UI ——
-    private QuickPolishVO fallback(Long meetingId, String meetingContext, QuickExtractionVO extraction) {
+    private QuickPolishVO fallback(Long meetingId, String meetingContext, QuickExtractionVO extraction,
+                                  String errorCode, String errorMessage) {
         List<QuickPolishVO.TopicSummary> topics = new ArrayList<>();
         if (extraction != null && extraction.getPresetTopicHits() != null) {
             for (QuickExtractionVO.TopicHit t : extraction.getPresetTopicHits()) {
@@ -515,7 +522,42 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                 .meetingId(meetingId)
                 .topics(topics)
                 .minutesMarkdown(fallbackMinutes(meetingContext, topics))
+                .fallbackUsed(true)
+                .errorCode(errorCode)
+                .errorMessage(errorMessage)
+                .source("fallback")
                 .build();
+    }
+
+    private LlmFailure classifyLlmFailure(Exception e) {
+        String message = e == null ? "" : String.valueOf(e.getMessage());
+        String lower = message.toLowerCase();
+        if (e instanceof java.net.http.HttpTimeoutException || lower.contains("timeout") || lower.contains("timed out")) {
+            return new LlmFailure("LLM_TIMEOUT", "大模型请求超时，已使用规则兜底");
+        }
+        if (message.contains("status=401") || message.contains("status=403")) {
+            return new LlmFailure("LLM_AUTH_FAILED", "大模型鉴权失败，请检查 API Key、模型权限或账号额度");
+        }
+        if (message.contains("status=429")) {
+            return new LlmFailure("LLM_RATE_LIMITED", "大模型调用触发限流，已使用规则兜底");
+        }
+        if (message.matches("(?s).*status=5\\d\\d.*")) {
+            return new LlmFailure("LLM_SERVER_ERROR", "大模型服务端异常，已使用规则兜底");
+        }
+        if (lower.contains("json") || lower.contains("parse")) {
+            return new LlmFailure("LLM_PARSE_FAILED", "大模型返回格式异常，已使用规则兜底");
+        }
+        return new LlmFailure("LLM_CALL_FAILED", "大模型调用失败，已使用规则兜底");
+    }
+
+    private static class LlmFailure {
+        final String code;
+        final String message;
+
+        LlmFailure(String code, String message) {
+            this.code = code;
+            this.message = message;
+        }
     }
 
     private String fallbackMinutes(String meetingContext, List<QuickPolishVO.TopicSummary> topics) {

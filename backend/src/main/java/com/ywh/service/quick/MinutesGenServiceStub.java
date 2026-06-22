@@ -29,6 +29,10 @@ public class MinutesGenServiceStub implements MinutesGenService {
                 .meetingId(meetingId)
                 .topics(topics)
                 .minutesMarkdown(minutesFromContext(meetingContext, topics))
+                .fallbackUsed(true)
+                .errorCode("LLM_DISABLED")
+                .errorMessage("大模型未启用，已使用规则兜底")
+                .source("fallback")
                 .build();
     }
 

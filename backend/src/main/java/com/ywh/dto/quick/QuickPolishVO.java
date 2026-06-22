@@ -19,6 +19,10 @@ public class QuickPolishVO {
     private Long meetingId;
     private List<TopicSummary> topics;
     private String minutesMarkdown;   // 可直接回填 committeeUpdateMinutes
+    private Boolean fallbackUsed;      // true=大模型失败或未启用，使用规则兜底
+    private String errorCode;          // LLM_AUTH_FAILED / LLM_TIMEOUT / LLM_PARSE_FAILED 等
+    private String errorMessage;       // 面向前端展示的简要原因
+    private String source;             // llm / fallback
 
     @Data
     @Builder
