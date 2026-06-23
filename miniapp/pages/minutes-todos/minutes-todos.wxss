@@ -1,0 +1,31 @@
+.page { min-height:100vh; background:#f5f5f5; padding:12px; padding-bottom:60px; }
+
+.info-banner { background:#F1EEFB; color:#6B4FBB; font-size:12px; font-weight:600; text-align:center; padding:8px 12px; border-radius:8px; margin-bottom:12px; }
+
+.todo-card { background:#fff; border-radius:12px; padding:14px; margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+.todo-top { display:flex; align-items:flex-start; }
+.todo-idx { flex:none; width:20px; height:20px; line-height:20px; text-align:center; border-radius:50%; background:#6B4FBB; color:#fff; font-size:12px; margin-right:8px; margin-top:1px; }
+.todo-title { flex:1; font-size:15px; font-weight:600; color:#222; line-height:1.5; }
+.todo-meta { display:flex; flex-wrap:wrap; margin:10px 0 0 28px; }
+.meta-item { display:flex; align-items:center; font-size:13px; margin-right:16px; margin-top:2px; }
+.meta-label { color:#999; margin-right:6px; }
+.meta-val { color:#444; }
+.todo-source { display:block; font-size:12px; color:#999; margin:8px 0 0 28px; }
+.todo-status { display:inline-block; margin:10px 0 0 28px; font-size:12px; padding:3px 10px; border-radius:10px; }
+.status-pending { background:#FFF3E0; color:#E67E22; }
+.status-doing { background:#E8F1FF; color:#2F6BD8; }
+.status-done { background:#E8F7EC; color:#2B9E55; }
+
+.access-card { background:#fff; border-radius:14px; padding:28px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.05); text-align:center; }
+.access-icon { width:38px; height:38px; border-radius:50%; background:#E8F7EC; color:#2B9E55; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:20px; font-weight:700; }
+.access-title { display:block; font-size:16px; color:#333; font-weight:700; margin-bottom:8px; }
+.access-text { display:block; font-size:13px; color:#888; line-height:1.7; }
+
+.doc { background:#fff; border-radius:12px; padding:14px; margin-top:4px; }
+.doc-body { display:block; font-size:13px; color:#555; line-height:1.8; white-space:pre-wrap; word-break:break-word; }
+
+.actions { margin-top:12px; }
+.copy-btn { width:100%; }
+.btn-primary { background:#6B4FBB; color:#fff; border-radius:10px; font-size:14px; }
+
+.empty-state { text-align:center; color:#999; font-size:13px; padding:40px 0; }

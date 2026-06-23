@@ -295,31 +295,13 @@ Page({
     } catch (e) { wx.showToast({ title: e.message, icon: 'none' }); }
   },
 
-  async viewInternalTopicReport() {
-    try {
-      const text = await api.committeeQuickTopicReport(this.meetingId);
-      wx.showModal({
-        title: '内部AI议题报告',
-        content: text || '暂无内部AI议题报告',
-        showCancel: false,
-        confirmText: '关闭'
-      });
-    } catch (e) {
-      wx.showToast({ title: e.message || '加载失败', icon: 'none' });
-    }
+  viewInternalTopicReport() {
+    // 改为独立页展示，避免 showModal 截断长文本
+    wx.navigateTo({ url: '/pages/minutes-internal/minutes-internal?meetingId=' + this.meetingId });
   },
 
-  async viewTodoList() {
-    try {
-      const text = await api.committeeQuickTodos(this.meetingId);
-      wx.showModal({
-        title: '会议待办事项',
-        content: text || '无明确待办事项',
-        showCancel: false,
-        confirmText: '关闭'
-      });
-    } catch (e) {
-      wx.showToast({ title: e.message || '加载失败', icon: 'none' });
-    }
+  viewTodoList() {
+    // 改为独立页结构化卡片展示，避免 showModal 截断/挤成一坨
+    wx.navigateTo({ url: '/pages/minutes-todos/minutes-todos?meetingId=' + this.meetingId });
   }
 });

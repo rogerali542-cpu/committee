@@ -425,6 +425,26 @@ public class CommitteeService {
         topicRepo.delete(topic);
     }
 
+    /** 进行中人工修改议题名称（主任/副主任）：AI 推测标题不准、预设标题写错时改名。 */
+    public void renameTopic(Long meetingId, Long topicId, String title) {
+        if (title == null || title.trim().isEmpty()) {
+            throw new IllegalArgumentException("议题名称不能为空");
+        }
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅会议进行中可修改议题名称");
+        }
+        MeetingRecord record = getRecord(meetingId);
+        RecordTopic topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        if (topic.getRecord() == null || !topic.getRecord().getId().equals(record.getId())) {
+            throw new IllegalArgumentException("议题不属于本次会议");
+        }
+        topic.setTitle(title.trim());
+        topicRepo.save(topic);
+    }
+
     @Transactional
     public void vote(Long meetingId, Long topicId, String choice, Long selectedId) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)

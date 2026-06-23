@@ -48,6 +48,7 @@ module.exports = {
   committeeResetRecorder: committee.committeeResetRecorder,
   committeeAddTopic: committee.committeeAddTopic,
   committeeRemoveTopic: committee.committeeRemoveTopic,
+  committeeRenameTopic: committee.committeeRenameTopic,
   committeeVote: committee.committeeVote,
   committeeProxyTargets: committee.committeeProxyTargets,
   committeeProxySubmit: committee.committeeProxySubmit,

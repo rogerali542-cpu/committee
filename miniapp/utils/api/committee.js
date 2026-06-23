@@ -78,6 +78,9 @@ module.exports = {
   committeeRemoveTopic: function (id, topicId) {
     return core.request('DELETE', '/api/committees/' + id + '/topics/' + topicId);
   },
+  committeeRenameTopic: function (id, topicId, title) {
+    return core.realRequest('PUT', '/api/committees/' + id + '/topics/' + topicId + '/title?title=' + encodeURIComponent(title));
+  },
   committeeVote: function (id, topicId, choice, selectedId) {
     var params = choice ? '?choice=' + choice : '';
     if (selectedId) params += (params ? '&' : '?') + 'selectedId=' + selectedId;
@@ -154,7 +157,8 @@ module.exports = {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/confirm', data);
   },
   committeeQuickPolish: function (id, data) {
-    return core.realRequest('POST', '/api/committees/' + id + '/quick/polish', data);
+    // 大模型生成纪要较慢，放开默认 60s 超时（后端 LLM 上限 180s）
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/polish', data, { timeout: 210000 });
   },
   committeeQuickTopicReport: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/topic-report');

@@ -61,7 +61,7 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             处理步骤：
             1. 对每个议题先按【信息提取清单】尽量完整提取事实；清单中的缺失项写“未明确说明”。
             2. 内部 AI 议题报告保留详细背景、详细通报/讨论/方案内容、委员意见、问题列表、风险提示、整改事项、责任人、完成时限和议题生命周期状态。
-            3. 正式会议纪要只保留议题背景、讨论情况、表决情况、形成意见和后续安排；不得逐字记录委员发言，不得记录无关细节。
+            3. 正式会议纪要（minutesMarkdown）按固定章节完整撰写：会议概况、议题审议情况、会议决议、后续安排；各议题要展开背景、审议/讨论情况和结论并充实成段，但不得逐字记录委员发言，不得写入内部风险或证据线索。
             4. 待办事项只列会议明确产生的后续动作；没有就写“无明确待办事项”。
 
             硬性要求：
@@ -70,18 +70,23 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             3. 「决议」字段只整理会上已形成的口径、表决播报或讨论倾向，并在结尾注明"（待人工确认）"；切勿替与会者下最终表决结论。
             4. 语言简洁、正式，统一使用第三人称，去掉口头语和重复；金额/数字/时间/单位保持准确。
             5. 待办（todos）是会上明确要做的后续事项，没有就给空数组。
-            6. minutesMarkdown 必须是简洁版正式纪要：多个议题分别按类型生成小节，但每个议题控制在一小段。
-            7. topicReportMarkdown 必须是详细版内部报告：可保留业务统计、发言摘要、证据线索和风险提示。
-            8. 通报类事项在 minutesMarkdown 中不得写“赞成、反对、通过、未通过、表决”等表决口径；只能写通报内容、委员知悉/意见和后续安排。
-            9. 表决/决议类事项在 minutesMarkdown 中只写方案要点、票数、表决结果、决议和关键执行安排，不展开冗长背景。
-            10. 严格只输出一个 JSON 对象，不要任何解释或 Markdown 代码块包裹。
+            6. minutesMarkdown 是面向全体业主公示的正式纪要，内容要完整充实、条理清晰，严格按四个章节组织：
+               一、会议概况：会议名称、时间、地点、主持人、应到/实到委员人数。
+               二、议题审议情况：按议题逐项展开，每个议题写成完整段落，包含“议题背景、审议/讨论情况、会议结论”三层，不要只用一两句话带过。
+               三、会议决议：汇总本次会议形成的全部决议事项；若无表决事项则写“本次会议无表决决议事项”。
+               四、后续安排：列出后续工作、责任分工和完成时间要求。
+            7. minutesMarkdown 内容虽充实，但仍是公开文件：不得逐字记录委员发言，不得写入内部风险评估、证据线索或未经确认的猜测。
+            8. topicReportMarkdown 必须是详细版内部报告：可保留业务统计、发言摘要、证据线索和风险提示。
+            9. 通报类事项在 minutesMarkdown 中不得写“赞成、反对、通过、未通过、表决”等表决口径；只写通报内容、委员知悉/意见和后续安排。
+            10. 表决/决议类事项在 minutesMarkdown 中要写清方案要点、应到/实到人数、同意/反对/弃权票数、表决方式、表决结果和决议内容。
+            11. 严格只输出一个 JSON 对象，不要任何解释或 Markdown 代码块包裹。
 
             输出 JSON 结构：
             {
               "topics": [
                 {"ref": "议题标识(原样回填)", "summary": "讨论摘要", "resolution": "决议结论（待人工确认）", "todos": ["待办1","待办2"]}
               ],
-              "minutesMarkdown": "正式会议纪要，简洁版，用于存档/展示/公示",
+              "minutesMarkdown": "正式会议纪要，按四章节完整撰写（会议概况/议题审议情况/会议决议/后续安排），用于存档/展示/公示",
               "topicReportMarkdown": "AI议题报告，详细版，用于内部保存",
               "todoListMarkdown": "待办事项清单，包含事项、负责人、截止时间、来源议题、状态"
             }
@@ -231,7 +236,7 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                 if (s != null && !s.isBlank()) u.append("· ").append(s.trim()).append('\n');
             }
             String out = callLlmText(sys, u.toString());
-            if (out != null && !out.isBlank()) return out.trim();
+            if (out != null && !out.isBlank()) return stripTranscriptMarks(out);
             return localTopicReport(title, type, cleanedTexts);
         } catch (Exception e) {
             log.error("[MINUTES] 单议题摘要失败 title=" + title, e);
@@ -327,9 +332,10 @@ public class DoubaoMinutesGenService implements MinutesGenService {
         if (meetingContext != null && !meetingContext.isBlank()) {
             sb.append(meetingContext.trim()).append("\n\n");
             sb.append("请严格依据以上【会议基本信息】和【人工确认后的议题结果】生成正式会议纪要；");
-            sb.append("【必要转写补充】仅用于核对事实，不要逐句复述转写，不要扩写成议题报告。\n");
-            sb.append("通报类事项只能由人工确认议题报告精简得到，不得写赞成、反对、通过、未通过或表决；");
-            sb.append("表决/决议类事项要精炼，只保留重点结论、票数和关键执行安排。\n");
+            sb.append("【必要转写补充】仅用于核对事实，不要逐句复述转写。\n");
+            sb.append("纪要按四个章节完整撰写：一、会议概况；二、议题审议情况（每个议题展开背景、审议/讨论情况、会议结论）；三、会议决议；四、后续安排。\n");
+            sb.append("通报类事项不得写赞成、反对、通过、未通过或表决，只写通报内容、委员意见和后续安排；");
+            sb.append("表决/决议类事项要写清方案要点、票数和表决结果。内容要充实成段，但不得逐字记录发言或写入内部风险、证据线索。\n");
             return sb.toString();
         }
 
@@ -454,7 +460,7 @@ public class DoubaoMinutesGenService implements MinutesGenService {
         String url = trimTrailingSlash(llm.getBaseUrl()) + "/chat/completions";
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(120))
+                .timeout(Duration.ofSeconds(180))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + llm.getApiKey())
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
@@ -516,7 +522,7 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                 }
                 topics.add(QuickPolishVO.TopicSummary.builder()
                         .ref(n.path("ref").asText(""))
-                        .summary(n.path("summary").asText(""))
+                        .summary(stripTranscriptMarks(n.path("summary").asText("")))
                         .resolution(n.path("resolution").asText(""))
                         .todos(todos)
                         .build());
@@ -525,9 +531,11 @@ public class DoubaoMinutesGenService implements MinutesGenService {
         return QuickPolishVO.builder()
                 .meetingId(meetingId)
                 .topics(topics)
-                .minutesMarkdown(root.path("minutesMarkdown").asText(""))
-                .topicReportMarkdown(root.path("topicReportMarkdown").asText(""))
-                .todoListMarkdown(root.path("todoListMarkdown").asText(""))
+                // 正式纪要含「会议时间 14:30」等真实时钟，仅清说话人编号与括号内时间戳；
+                // 内部议题报告无时钟字段，按整段清洗，连同录音时间戳一并去掉。
+                .minutesMarkdown(stripSpeakerArtifacts(root.path("minutesMarkdown").asText("")))
+                .topicReportMarkdown(stripTranscriptMarks(root.path("topicReportMarkdown").asText("")))
+                .todoListMarkdown(stripSpeakerArtifacts(root.path("todoListMarkdown").asText("")))
                 .build();
     }
 
@@ -726,6 +734,17 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                 "经确认，表决票数为：" + votes + "；表决结果为：" + result + "。";
     }
 
+    /** 兜底文本清理：去掉 Markdown 强调/标题/列表符号与多余空白。 */
+    private String clean(String text) {
+        if (text == null) return "";
+        return text.replace("*", "")
+                .replace("`", "")
+                .replaceAll("^\\s*#{1,6}\\s*", "")
+                .replaceAll("^[\\s\\-—·•]+", "")
+                .replaceAll("[ \\t\\u3000]{2,}", " ")
+                .trim();
+    }
+
     private String lineValue(String text, String prefix) {
         if (text == null) return "";
         for (String line : text.split("\\R")) {
@@ -773,5 +792,40 @@ public class DoubaoMinutesGenService implements MinutesGenService {
     private String trimTrailingSlash(String s) {
         if (s == null) return "";
         return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
+    }
+
+    // —— 输出侧清洗：大模型有时会把转写里的录音时间戳（00:15）和说话人编号（S1）回显进纪要 ——
+    /** 括号包裹的录音时间戳：（00:15）[01:02:03]【0:30】等。 */
+    private static final java.util.regex.Pattern TS_BRACKET =
+            java.util.regex.Pattern.compile("[（(\\[【]\\s*\\d{1,2}:\\d{2}(?::\\d{2})?\\s*[)）\\]】]");
+    /** 独立的录音时间戳 mm:ss / hh:mm:ss（前后非数字、非冒号，避免误伤被包裹的真实时钟）。 */
+    private static final java.util.regex.Pattern TS_TOKEN =
+            java.util.regex.Pattern.compile("(?<![\\d:])\\d{1,2}:\\d{2}(?::\\d{2})?(?![\\d:])");
+    /** 说话人编号 S1/S2…（后接标点、空白或行尾）。 */
+    private static final java.util.regex.Pattern SPEAKER_TAG =
+            java.util.regex.Pattern.compile("S\\d{1,3}(?=[：:、，,。.\\s)）\\]】]|$)");
+
+    /** 仅清说话人编号与括号内时间戳，保留正文里的真实时钟（如「会议时间 14:30」）。用于正式纪要。 */
+    private static String stripSpeakerArtifacts(String text) {
+        if (text == null || text.isBlank()) return text == null ? "" : text;
+        String s = TS_BRACKET.matcher(text).replaceAll("");
+        s = SPEAKER_TAG.matcher(s).replaceAll("");
+        return tidy(s);
+    }
+
+    /** 整段清洗：连同独立录音时间戳一并去掉。用于无时钟字段的议题摘要/议题报告。 */
+    private static String stripTranscriptMarks(String text) {
+        if (text == null || text.isBlank()) return text == null ? "" : text;
+        String s = TS_BRACKET.matcher(text).replaceAll("");
+        s = TS_TOKEN.matcher(s).replaceAll("");
+        s = SPEAKER_TAG.matcher(s).replaceAll("");
+        return tidy(s);
+    }
+
+    private static String tidy(String s) {
+        return s.replaceAll("[ \\t]{2,}", " ")
+                .replaceAll(" *\\n", "\n")
+                .replaceAll("\\n{3,}", "\n\n")
+                .trim();
     }
 }

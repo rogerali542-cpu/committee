@@ -49,20 +49,23 @@ function request(method, path, data) {
 }
 
 // 真实后端请求（无视 USE_MOCK）——快速会议的录音/ASR/纪要必须打真后端，mock 没意义
-function realRequest(method, path, data) {
+function realRequest(method, path, data, options) {
   return new Promise(function (resolve, reject) {
     var app = getApp();
     var header = {};
     if (app.globalData.token) header['Authorization'] = 'Bearer ' + app.globalData.token;
     if (app.globalData.activeRole) header['X-Active-Role-Id'] = String(app.globalData.activeRole.id);
-    wx.request({
+    var req = {
       url: BASE + path, method: method, header: header, data: data,
       success: function (res) {
         if (res.data && res.data.code === 200) resolve(res.data.data);
         else reject(new Error(res.data ? res.data.message : '请求失败'));
       },
       fail: function (err) { wx.showToast({ title: '网络异常', icon: 'none' }); reject(err); }
-    });
+    };
+    // 慢接口（如大模型生成纪要）可传 options.timeout 放开默认 60s 限制
+    if (options && options.timeout) req.timeout = options.timeout;
+    wx.request(req);
   });
 }
 

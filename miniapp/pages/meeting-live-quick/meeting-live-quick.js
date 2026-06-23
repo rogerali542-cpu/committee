@@ -812,11 +812,14 @@ Page({
       return (prefix ? prefix + '：' : '') + (seg.text || '');
     }).filter(Boolean);
     const fullText = lines.join('\n');
-    const compact = fullText.replace(/\s+/g, ' ').trim();
+    // 摘要/字数只统计转写正文，不带时间戳与说话人前缀
+    const body = (transcript || []).map(function (seg) {
+      return (seg.text || '').trim();
+    }).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
     return {
       transcriptFullText: fullText,
-      transcriptPreview: compact.length > 92 ? compact.slice(0, 92) + '...' : compact,
-      transcriptCharCount: compact.length
+      transcriptPreview: body.length > 92 ? body.slice(0, 92) + '...' : body,
+      transcriptCharCount: body.length
     };
   },
 
@@ -938,6 +941,7 @@ Page({
 
   // 按需：让大模型把该议题命中片段整理成书面正文，填进 summaryDraft（主要用于通报/讨论）
   async summarizeTopic(e) {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可整理议题报告', icon: 'none' }); return; }
     const ds = e.currentTarget.dataset;
     const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
     const idx = Number(ds.idx);
@@ -1031,6 +1035,102 @@ Page({
       }
     };
     tick();
+  },
+
+  // 人工修改议题名称（主任/副主任）：AI 推测标题不准、预设标题写错时改名
+  renameTopic(e) {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可改名', icon: 'none' }); return; }
+    const ds = e.currentTarget.dataset;
+    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
+    const idx = Number(ds.idx);
+    const t = (this.data[key] || [])[idx];
+    if (!t) return;
+    const self = this;
+    wx.showModal({
+      title: '修改议题名称',
+      editable: true,
+      placeholderText: '请输入议题名称',
+      content: t.title || '',
+      success: function (res) {
+        if (!res.confirm) return;
+        const title = (res.content || '').trim();
+        if (!title) { wx.showToast({ title: '名称不能为空', icon: 'none' }); return; }
+        if (title === t.title) return;
+        const apply = function () {
+          const list = self.data[key].slice();
+          if (!list[idx]) return;
+          list[idx] = Object.assign({}, list[idx], { title: title, confirmed: false });
+          self.setData({ [key]: list });
+          self.persistQuickState();
+        };
+        // 候选议题还不是库内真实议题（无数字 id），只本地改、采纳时带入；预设议题走后端改名落库
+        const numericId = Number(t.id);
+        if (key === 'aiTopics' || !numericId) { apply(); return; }
+        api.committeeRenameTopic(self.meetingId, numericId, title)
+          .then(function () { apply(); self.saveQuickConfirmToServer(true); wx.showToast({ title: '已修改', icon: 'success' }); })
+          .catch(function (err) { wx.showToast({ title: err.message || '修改失败', icon: 'none' }); });
+      }
+    });
+  },
+
+  // ── 人工编辑议题报告正文：AI 不是唯一来源，未匹配/AI 不准时可手写或改写 ──
+  editTopicSummary(e) {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可编辑议题报告', icon: 'none' }); return; }
+    const ds = e.currentTarget.dataset;
+    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
+    const idx = Number(ds.idx);
+    const list = this.data[key].slice();
+    const t = list[idx];
+    if (!t || t.summarizing) return;
+    list[idx] = Object.assign({}, t, {
+      summaryEditing: true,
+      summaryEditText: t.summaryDraft && t.summaryDraft.indexOf('暂无明确匹配') < 0 ? t.summaryDraft : ''
+    });
+    this.setData({ [key]: list });
+  },
+
+  onSummaryInput(e) {
+    const ds = e.currentTarget.dataset;
+    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
+    const idx = Number(ds.idx);
+    const list = this.data[key].slice();
+    if (!list[idx]) return;
+    list[idx] = Object.assign({}, list[idx], { summaryEditText: e.detail.value });
+    this.setData({ [key]: list });
+  },
+
+  cancelTopicSummary(e) {
+    const ds = e.currentTarget.dataset;
+    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
+    const idx = Number(ds.idx);
+    const list = this.data[key].slice();
+    if (!list[idx]) return;
+    list[idx] = Object.assign({}, list[idx], { summaryEditing: false });
+    this.setData({ [key]: list });
+  },
+
+  saveTopicSummary(e) {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可编辑议题报告', icon: 'none' }); return; }
+    const ds = e.currentTarget.dataset;
+    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
+    const idx = Number(ds.idx);
+    const list = this.data[key].slice();
+    const t = list[idx];
+    if (!t) return;
+    const text = (t.summaryEditText || '').trim();
+    if (!text) { wx.showToast({ title: '议题报告不能为空', icon: 'none' }); return; }
+    // 人工改过内容后取消已确认状态，要求重新确认，避免改完忘了再确认
+    list[idx] = Object.assign({}, t, {
+      summaryDraft: text,
+      summaryAi: true,
+      summaryEdited: true,
+      summaryEditing: false,
+      confirmed: false
+    });
+    this.setData({ [key]: list });
+    this.persistQuickState();
+    this.saveQuickConfirmToServer(true);
+    wx.showToast({ title: '已保存，请重新确认', icon: 'none' });
   },
 
   ignoreCandidate(e) {
@@ -1176,28 +1276,48 @@ Page({
     }
   },
 
-  async viewMinutes() {
-    if (this.data.isChair && this.data.currentStep === 4) {
-      const payload = this.buildConfirmPayload();
-      let syncError = null;
-      wx.showLoading({ title: '生成草稿中', mask: true });
-      try {
-        await api.committeeQuickConfirm(this.meetingId, payload);
-        if (typeof api.committeeQuickPolish === 'function') {
-          const polishResult = await api.committeeQuickPolish(this.meetingId, payload);
-          if (polishResult && polishResult.fallbackUsed) {
-            syncError = new Error(polishResult.errorMessage || '大模型不可用，已使用规则兜底');
-          }
-        }
-      } catch (e) {
-        syncError = e;
-      } finally {
-        wx.hideLoading();
-      }
-      if (syncError) {
-        wx.showToast({ title: syncError.message || '草稿刷新失败，先查看旧稿', icon: 'none' });
-      }
+  // 仅查看已保存的纪要草稿，不触发重新生成
+  viewMinutes() {
+    wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
+  },
+
+  // 免确认·一键生成纪要草稿（主任）：不要求逐项确认完成，直接用当前结果调大模型出草稿。
+  // 明确是「预览能力」——产出标注为草稿，最终仍以结束会议时的正式纪要为准。
+  async generateDraftNoConfirm() {
+    if (!this.data.isChair) {
+      wx.showToast({ title: '仅主任/副主任可生成草稿', icon: 'none' });
+      return;
     }
+    if (!this.data.generated) {
+      wx.showToast({ title: '请先完成录音转写与议题抽取', icon: 'none' });
+      return;
+    }
+    const payload = this.buildConfirmPayload();
+    let syncError = null;
+    let fallbackNote = '';
+    wx.showLoading({ title: 'AI生成草稿中…', mask: true });
+    try {
+      // 先把当前(可能未逐项确认的)结果落库，再让大模型出草稿
+      await api.committeeQuickConfirm(this.meetingId, payload);
+      if (typeof api.committeeQuickPolish === 'function') {
+        const polishResult = await api.committeeQuickPolish(this.meetingId, payload);
+        // 规则兜底也算生成成功，仅作提示，不阻断跳转
+        if (polishResult && polishResult.fallbackUsed) {
+          fallbackNote = polishResult.errorMessage || '大模型暂不可用，已用规则兜底生成草稿';
+        }
+      }
+    } catch (e) {
+      syncError = e;
+    } finally {
+      wx.hideLoading();
+    }
+    if (syncError) {
+      wx.showToast({ title: syncError.message || '草稿生成失败', icon: 'none' });
+      return;
+    }
+    const pending = (this.data.presetTopics || []).filter(function (t) { return !t.confirmed; }).length;
+    const okMsg = fallbackNote || (pending ? '草稿已生成（' + pending + ' 项未确认）' : '草稿已生成');
+    wx.showToast({ title: okMsg, icon: 'none' });
     wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
   },
 

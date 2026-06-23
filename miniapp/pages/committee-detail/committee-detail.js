@@ -18,6 +18,69 @@ function topicVoteCount(topic) {
   return toNumber(topic && topic.forVotes) + toNumber(topic && topic.agVotes) + toNumber(topic && topic.abVotes);
 }
 
+function topicTypeLabel(topic) {
+  var type = String(topic && topic.type || '').toLowerCase();
+  if (type === 'notice') return '通报';
+  if (type === 'discussion') return '讨论';
+  if (type === 'major') return '重大';
+  if (topic && topic.decisionType === 'multi_choice') return '多选一';
+  if (topic && topic.voteRequired === false) return '记录';
+  return '表决';
+}
+
+function topicTypeClass(topic) {
+  var type = String(topic && topic.type || '').toLowerCase();
+  if (type === 'notice') return 'notice';
+  if (type === 'discussion') return 'discussion';
+  if (type === 'major') return 'major';
+  if (topic && topic.decisionType === 'multi_choice') return 'multi';
+  return 'decision';
+}
+
+function topicStatusLabel(topic) {
+  if (!topic) return '待确认';
+  if (topic.voteRequired === false) return '已记录';
+  if (topic.status === 'passed' || topic.passed) return '已通过';
+  if (topic.status === 'failed') return '未通过';
+  return '待完成';
+}
+
+function topicStatusClass(topic) {
+  if (!topic) return 'pending';
+  if (topic.voteRequired === false) return 'recorded';
+  if (topic.status === 'passed' || topic.passed) return 'passed';
+  if (topic.status === 'failed') return 'failed';
+  return 'pending';
+}
+
+function topicVoteSummary(topic) {
+  if (!topic) return '';
+  if (topic.voteRequired === false) return topic.text || '无需表决，已作为会议记录事项';
+  if (topic.decisionType === 'multi_choice') {
+    var opts = topic.options || [];
+    if (!opts.length) return topic.text || '多选一表决';
+    return opts.map(function (opt) {
+      return (opt.label || opt.name || '选项') + ' ' + toNumber(opt.votes);
+    }).join(' / ') + (topic.need ? '，通过需≥' + topic.need : '');
+  }
+  return '同意 ' + toNumber(topic.forVotes) +
+    ' / 反对 ' + toNumber(topic.agVotes) +
+    ' / 弃权 ' + toNumber(topic.abVotes) +
+    (topic.need ? '，通过需≥' + topic.need : '');
+}
+
+function decorateMeetingTopics(detail) {
+  if (!detail || !detail.record || !detail.record.topics) return;
+  detail.record.topics = detail.record.topics.map(function (topic) {
+    topic.typeLabel = topicTypeLabel(topic);
+    topic.typeClass = topicTypeClass(topic);
+    topic.statusLabel = topicStatusLabel(topic);
+    topic.statusClass = topicStatusClass(topic);
+    topic.voteSummary = topicVoteSummary(topic);
+    return topic;
+  });
+}
+
 function buildFlowStats(detail) {
   if (!detail) return null;
   var delivery = detail.delivery || {};
@@ -235,6 +298,7 @@ Page({
 
       // Pre-compute topics passed count
       if (detail.record && detail.record.topics) {
+        decorateMeetingTopics(detail);
         detail.record.topicsPassed = detail.record.topics.filter(function (t) { return t.passed; }).length;
       }
 
@@ -895,6 +959,16 @@ Page({
 
   viewMinutes() {
     wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=committee-detail' });
+  },
+
+  // 面向民众的公开纪要：只读正式纪要正文，与内部工作视图分开
+  viewPublicMinutes() {
+    wx.navigateTo({ url: '/pages/minutes-public/minutes-public?meetingId=' + this.meetingId });
+  },
+
+  // 内部 AI 议题报告（详细版）+ 待办，仅供业委会内部查看
+  viewInternalReport() {
+    wx.navigateTo({ url: '/pages/minutes-internal/minutes-internal?meetingId=' + this.meetingId });
   },
 
   viewNoticeDraft() {

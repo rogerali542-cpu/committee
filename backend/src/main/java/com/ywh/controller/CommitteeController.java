@@ -127,6 +127,14 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @PutMapping("/{id}/topics/{topicId}/title")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> renameTopic(@PathVariable Long id, @PathVariable Long topicId,
+                                    @RequestParam String title) {
+        service.renameTopic(id, topicId, title);
+        return Result.ok();
+    }
+
     @PutMapping("/{id}/topics/{topicId}/vote")
     public Result<Void> vote(@PathVariable Long id, @PathVariable Long topicId,
                               @RequestParam(required = false) String choice,
