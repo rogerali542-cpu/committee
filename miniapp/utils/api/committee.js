@@ -24,7 +24,7 @@ module.exports = {
     return core.request('POST', '/api/committees/' + id + '/archive-extras?fileName=' + encodeURIComponent(fileName) + '&sizeText=' + encodeURIComponent(sizeText || '') + '&reason=' + encodeURIComponent(reason || ''));
   },
   committeeDetail: function (id) {
-    return core.realRequest('GET', '/api/committees/' + id);
+    return core.request('GET', '/api/committees/' + id);
   },
   committeeMembers: function () {
     return core.request('GET', '/api/committees/members');
@@ -61,12 +61,17 @@ module.exports = {
   committeeExportAttendance: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/attendance/export');
   },
-  // 录音负责人：认领（开始录音即认领） / 重置（主任兜底）
-  committeeClaimRecorder: function (id) {
-    return core.realRequest('POST', '/api/committees/' + id + '/quick/recorder/claim');
+  // 录音多条：获取会议全部录音列表
+  committeeRecordings: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/recordings');
   },
-  committeeResetRecorder: function (id) {
-    return core.realRequest('POST', '/api/committees/' + id + '/quick/recorder/reset');
+  // 上传录音（纯存，不自动转写）
+  committeeUploadRecording: function (id, filePath) {
+    return core.uploadFile('/api/committees/' + id + '/quick/recording/upload', filePath, 'file');
+  },
+  // 主任选片触发转写
+  committeeTranscribeRecording: function (id, recordingId) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/recordings/' + recordingId + '/transcribe');
   },
   committeeAddTopic: function (id, title, type, decisionType, optionsJson, realNameVote) {
     var params = '?title=' + encodeURIComponent(title) + '&type=' + type;

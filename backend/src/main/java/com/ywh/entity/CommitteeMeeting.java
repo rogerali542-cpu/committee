@@ -59,6 +59,15 @@ public class CommitteeMeeting {
     @Column(name = "notified_at")
     private LocalDateTime notifiedAt;
 
+    @Column(name = "notice_title", length = 200)
+    private String noticeTitle;
+
+    @Column(name = "notice_content", columnDefinition = "TEXT")
+    private String noticeContent;
+
+    @Column(name = "notice_status", length = 20)
+    private String noticeStatus;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

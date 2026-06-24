@@ -1,0 +1,112 @@
+page { background: #f4f5f7; }
+
+.mm { padding: 28rpx 24rpx calc(60rpx + env(safe-area-inset-bottom)); }
+
+/* 卡片通用 */
+.mm-card {
+  background: #fff; border-radius: 24rpx;
+  padding: 36rpx 32rpx; margin-bottom: 28rpx;
+  box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06);
+}
+
+/* 会议信息 */
+.mm-title { display: block; font-size: 52rpx; font-weight: 700; color: #1f2329; line-height: 1.35; }
+.mm-meta { margin-top: 20rpx; display: flex; flex-direction: column; }
+.mm-meta-row { font-size: 36rpx; color: #4a5560; margin-top: 10rpx; }
+.mm-desc { display: block; margin-top: 20rpx; font-size: 32rpx; color: #6b7785; line-height: 1.5; }
+
+/* 章节标题 */
+.mm-section-title { display: block; font-size: 40rpx; font-weight: 700; color: #1f2329; margin-bottom: 8rpx; }
+.mm-section-desc { display: block; font-size: 28rpx; color: #8a96a3; margin-bottom: 24rpx; line-height: 1.5; }
+
+/* 大按钮 */
+.mm-big-btn {
+  display: flex; align-items: center; justify-content: center;
+  height: 150rpx; border-radius: 22rpx; background: #FFA800;
+  box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.34);
+}
+.mm-big-btn:active { opacity: 0.88; }
+.mm-big-ico { font-size: 56rpx; margin-right: 16rpx; }
+.mm-big-text { font-size: 52rpx; font-weight: 700; color: #fff; }
+
+/* 已确认参加 */
+.mm-done { display: flex; flex-direction: column; align-items: center; }
+.mm-done-row {
+  display: flex; align-items: center; justify-content: center;
+  height: 130rpx; width: 100%;
+  background: #EAF9EE; border-radius: 22rpx;
+}
+.mm-done-ico {
+  width: 56rpx; height: 56rpx; border-radius: 50%;
+  background: #27AE60; color: #fff; font-size: 36rpx; font-weight: 700;
+  text-align: center; line-height: 56rpx; margin-right: 16rpx;
+}
+.mm-done-text { font-size: 46rpx; font-weight: 700; color: #1E8449; }
+.mm-cancel { margin-top: 28rpx; font-size: 30rpx; color: #9aa6b2; padding: 8rpx; }
+
+/* 录音控件 */
+.mm-recorder {
+  display: flex; align-items: center;
+  padding: 28rpx 20rpx; background: #fafafa; border-radius: 16rpx;
+  margin-bottom: 20rpx;
+}
+.mm-rec-dot {
+  width: 24rpx; height: 24rpx; border-radius: 50%; background: #c4ccd4; margin-right: 16rpx;
+}
+.mm-rec-dot.on { background: #E74C3C; box-shadow: 0 0 12rpx rgba(231,76,60,0.4); }
+.mm-rec-time { font-size: 44rpx; font-weight: 700; color: #1f2329; font-variant-numeric: tabular-nums; margin-right: 16rpx; }
+.mm-rec-status { font-size: 28rpx; color: #8a96a3; }
+
+.mm-rec-btn {
+  width: 100%; height: 88rpx; border-radius: 16rpx;
+  background: #FFA800; color: #fff; font-size: 36rpx; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16rpx;
+}
+.mm-rec-btn.ghost { background: #f0f2f5; color: #4a5560; }
+.mm-rec-btn[disabled] { opacity: 0.5; }
+
+.mm-divider { display: flex; align-items: center; margin: 8rpx 0 16rpx; }
+.mm-divider::before, .mm-divider::after { content: ''; flex: 1; height: 1rpx; background: #e8eaed; }
+.mm-divider-text { padding: 0 20rpx; font-size: 26rpx; color: #9aa6b2; }
+
+.mm-uploading { display: block; text-align: center; font-size: 30rpx; color: #FFA800; padding: 12rpx; }
+
+.mm-tip-block { padding: 48rpx 0; text-align: center; }
+.mm-tip { font-size: 32rpx; color: #8a96a3; }
+
+/* 录音列表 */
+.mm-rec-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 0; border-top: 1rpx solid #f0f2f5;
+}
+.mm-rec-item:first-child { border-top: none; }
+.mm-rec-item-left { flex: 1; display: flex; flex-direction: column; }
+.mm-rec-item-name { font-size: 32rpx; color: #3a434d; }
+.mm-rec-item-time { color: #8a96a3; font-size: 26rpx; }
+.mm-rec-item-status { font-size: 26rpx; color: #9aa6b2; margin-top: 4rpx; }
+.mm-rec-item-play { font-size: 48rpx; padding: 12rpx 16rpx; }
+
+/* 已结束结果 */
+.mm-result { display: flex; align-items: center; justify-content: center; margin-bottom: 28rpx; }
+.mm-result-ico { font-size: 48rpx; margin-right: 14rpx; }
+.mm-result-text { font-size: 48rpx; font-weight: 700; color: #1f2329; }
+.mm-topics { margin-bottom: 28rpx; }
+.mm-topic {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 0; border-top: 1rpx solid #f0f2f5;
+}
+.mm-topic:first-child { border-top: none; }
+.mm-topic-title { flex: 1; font-size: 34rpx; color: #3a434d; margin-right: 20rpx; }
+.mm-topic-result { font-size: 34rpx; font-weight: 600; color: #FF8C00; }
+
+/* 会议材料 */
+.mm-mat {
+  display: flex; align-items: center;
+  background: #fff; border-radius: 20rpx; padding: 32rpx 28rpx;
+  box-shadow: 0 6rpx 18rpx rgba(0,0,0,0.04);
+}
+.mm-mat:active { background: #fafafa; }
+.mm-mat-ico { font-size: 40rpx; margin-right: 16rpx; }
+.mm-mat-text { flex: 1; font-size: 36rpx; color: #3a434d; }
+.mm-mat-arrow { font-size: 44rpx; color: #c4ccd4; }

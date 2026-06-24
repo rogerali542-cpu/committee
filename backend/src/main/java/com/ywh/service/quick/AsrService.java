@@ -2,6 +2,7 @@ package com.ywh.service.quick;
 
 import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.AsrTaskVO;
+import com.ywh.service.CommitteeService;
 
 /**
  * 语音识别服务（豆包 ASR 接入点）。
@@ -9,8 +10,11 @@ import com.ywh.dto.quick.AsrTaskVO;
  */
 public interface AsrService {
 
-    /** 提交一段已上传的会议录音做转写，返回异步任务。audioRef = 对象存储 key / uploadId。 */
+    /** @deprecated 旧两参，提交已上传的录音做转写。 */
     AsrTaskVO submit(Long meetingId, String audioRef);
+
+    /** 提交指定录音记录做转写，返回异步任务。完成后更新 MeetingRecording.asrStatus=done。 */
+    AsrTaskVO submit(Long meetingId, Long recordingId, CommitteeService committeeService);
 
     /** 查询转写任务状态。 */
     AsrTaskVO status(String taskId);

@@ -41,6 +41,8 @@ public class MeetingDetailVO {
 
     // Delivery info
     private DeliveryInfoVO delivery;
+    private NoticeDraftVO noticeDraft;
+    private List<Map<String, Object>> materials;
 
     // 当前用户（委员）自己的送达/已读状态（准备阶段）
     private MyDeliveryVO myDelivery;
@@ -56,6 +58,13 @@ public class MeetingDetailVO {
 
     // Members
     private List<MemberSummaryVO> members;
+
+    @Data
+    public static class NoticeDraftVO {
+        private String title;
+        private String content;
+        private String status;
+    }
 
     @Data
     public static class DeliveryInfoVO {
@@ -94,9 +103,8 @@ public class MeetingDetailVO {
         private Boolean hasMajorIssue;
         private String juweiName;
         private Boolean juweiSigned;
-        private Long recorderRoleId;   // 当前录音负责人（null=暂无）
-        private String recorderName;
-        private String recordingUrl;   // 会议录音存档地址（会后回放/下载）
+        private String recordingUrl;   // 已转写的最新录音链接（会后回放/下载，DEPRECATED 后改用 recordings）
+        private List<RecordingVO> recordings; // 多条录音，每条记录上传人/时间/ASR 状态
         private List<AttendanceVO> attendances;
         private List<TopicVO> topics;
         private List<EvidenceVO> evidences;

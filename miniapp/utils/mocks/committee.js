@@ -75,6 +75,23 @@ function getMemberName(userRoleId) {
   return m ? m.name : '';
 }
 
+// 录音多条：为 Mock 会议合成录音列表
+function buildRecordings(m) {
+  var recs = m._recordings || [];
+  if (!recs.length && m._recordingUrl) {
+    recs = [{
+      id: 1,
+      uploaderName: getMemberName(m._recorderRoleId) || '记录员',
+      recordingUrl: m._recordingUrl,
+      fileName: '会议录音.mp3',
+      fileSize: 1024000,
+      asrStatus: 'done',
+      createdAt: (m.meetingDate || '2026-06-01') + 'T' + (m.meetingTime || '09:00') + ':00'
+    }];
+  }
+  return recs;
+}
+
 function proxyKey(meetingId, memberId) {
   return meetingId + '_' + memberId;
 }
@@ -304,9 +321,8 @@ function mockDetail(m) {
     } : null,
     record: !hideInternalRecord ? {
       hasDecision: true, hasMajorIssue: !!m.hasMajorIssue, juweiName: '王红梅（社区居委会）', juweiSigned: !!m.juweiSigned,
-      recorderRoleId: m._recorderRoleId || null,
-      recorderName: m._recorderRoleId ? getMemberName(m._recorderRoleId) : null,
-      // mock 没有真实录音；已结束会议给个占位 URL 以便预览录音卡（真后端为实际存档地址）
+      // 录音多条：返回录音列表代替旧的单条 URL
+      recordings: buildRecordings(m),
       recordingUrl: m._recordingUrl || (m.stage === C.STAGE.ENDED ? 'https://example.com/mock-recording.mp3' : null),
       attendances: attendances, topics: topics, evidences: ensureCommitteeEvidences(m), checks: checks,
       recordLevel: 'minor', recordText: '记录有瑕疵',
@@ -947,21 +963,40 @@ function handle(method, path, data) {
     return {};
   }
 
-  // 录音负责人：认领 / 转交
-  var recClaimMatch = path.match(/\/api\/committees\/(\d+)\/quick\/recorder\/claim/);
-  if (recClaimMatch && method === 'POST') {
-    var rcm = mock.committeeMeetings.find(function (x) { return x.id === parseInt(recClaimMatch[1]); });
-    if (rcm) {
-      var rcApp = getApp();
-      rcm._recorderRoleId = (rcApp && rcApp.globalData && rcApp.globalData.activeRole) ? rcApp.globalData.activeRole.id : 1;
+  // 录音多条：上传（只存不转）
+  var recUploadMatch = path.match(/\/api\/committees\/(\d+)\/quick\/recording\/upload/);
+  if (recUploadMatch && method === 'POST') {
+    var rum = mock.committeeMeetings.find(function (x) { return x.id === parseInt(recUploadMatch[1]); });
+    if (rum) {
+      if (!rum._recordings) rum._recordings = [];
+      var newId = (rum._recordings.length || 0) + 1;
+      var app = getApp();
+      var uploaderName = (app && app.globalData && app.globalData.activeRole) ? app.globalData.activeRole.realName : '未知';
+      rum._recordings.unshift({
+        id: newId,
+        uploaderName: uploaderName,
+        recordingUrl: 'https://example.com/mock-recording-' + newId + '.mp3',
+        fileName: '录音_' + newId + '.mp3',
+        fileSize: 512000,
+        asrStatus: 'none',
+        createdAt: new Date().toISOString()
+      });
+      return { recordingId: newId, url: 'https://example.com/mock-recording-' + newId + '.mp3', fileName: '录音_' + newId + '.mp3', fileSize: 512000 };
     }
-    return {};
+    return { recordingId: 0, url: '', fileName: '', fileSize: 0 };
   }
-  var recResetMatch = path.match(/\/api\/committees\/(\d+)\/quick\/recorder\/reset/);
-  if (recResetMatch && method === 'POST') {
-    var rrm = mock.committeeMeetings.find(function (x) { return x.id === parseInt(recResetMatch[1]); });
-    if (rrm) rrm._recorderRoleId = null;
-    return {};
+
+  // 录音多条：获取列表
+  var recListMatch = path.match(/\/api\/committees\/(\d+)\/quick\/recordings/);
+  if (recListMatch && method === 'GET') {
+    var rlm = mock.committeeMeetings.find(function (x) { return x.id === parseInt(recListMatch[1]); });
+    return rlm ? buildRecordings(rlm) : [];
+  }
+
+  // 录音多条：主任选片触发转写
+  var recTranscribeMatch = path.match(/\/api\/committees\/(\d+)\/quick\/recordings\/(\d+)\/transcribe/);
+  if (recTranscribeMatch && method === 'POST') {
+    return { taskId: 'asr_mock_' + Date.now(), meetingId: parseInt(recTranscribeMatch[1]), status: 'done' };
   }
 
   // 导出签到名单（CSV 文本，仅姓名为主，不含房号）

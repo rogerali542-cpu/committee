@@ -5,6 +5,7 @@ import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.MeetingDetailVO.*;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
+import com.ywh.dto.RecordingVO;
 import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.QuickConfirmRequest;
 import com.ywh.dto.quick.QuickExtractionVO;
@@ -39,6 +40,7 @@ public class CommitteeService {
     private final RecordEvidenceRepository evidenceRepo;
     private final MeetingPublishRepository publishRepo;
     private final MinutesRevisionRepository minutesRevisionRepo;
+    private final MeetingRecordingRepository recordingRepo;
     private final UserRoleRepository userRoleRepo;
     private final ObjectMapper objectMapper;
 
@@ -158,6 +160,8 @@ public class CommitteeService {
                 .taskHint((String) taskSummary.get("hint"))
                 .flowNodeText(getFlowNodeText(m))
                 .delivery(hideInternalRecord ? null : getDeliveryInfo(m))
+                .noticeDraft(buildNoticeDraft(m))
+                .materials(Collections.emptyList())
                 .myDelivery(hideInternalRecord ? null : getMyDelivery(m, ur))
                 .record(hideInternalRecord ? null : getRecordInfo(m))
                 .publish(publishInfo)
@@ -181,6 +185,7 @@ public class CommitteeService {
                 .description(req.getDescription())
                 .createdBy(userId)
                 .build();
+        applyGeneratedNoticeDraft(m);
         m = meetingRepo.save(m);
 
         MeetingRecord record = MeetingRecord.builder()
@@ -194,6 +199,38 @@ public class CommitteeService {
         savePresetTopics(record, meetingTopics);
 
         return m;
+    }
+
+    @Transactional
+    public void updateMeeting(Long meetingId, CreateMeetingRequest req) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.preparing) {
+            throw new IllegalArgumentException("仅准备阶段的会议可以编辑");
+        }
+        if (req.getTitle() != null) m.setTitle(req.getTitle());
+        if (req.getMeetingDate() != null) m.setMeetingDate(req.getMeetingDate());
+        if (req.getMeetingTime() != null) m.setMeetingTime(req.getMeetingTime());
+        if (req.getLocation() != null) m.setLocation(req.getLocation());
+        if (req.getDescription() != null) m.setDescription(req.getDescription());
+        applyGeneratedNoticeDraft(m);
+        meetingRepo.save(m);
+    }
+
+    @Transactional
+    public void updateNoticeDraft(Long meetingId, String title, String content) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.preparing) {
+            throw new IllegalArgumentException("仅准备阶段可以编辑通知草稿");
+        }
+        if (title == null || title.isBlank() || content == null || content.isBlank()) {
+            throw new IllegalArgumentException("通知标题和正文不能为空");
+        }
+        m.setNoticeTitle(title);
+        m.setNoticeContent(content);
+        m.setNoticeStatus("edited");
+        meetingRepo.save(m);
     }
 
     // ===== Advance Stage =====
@@ -350,11 +387,27 @@ public class CommitteeService {
 
     @Transactional
     public void selfToggle(Long meetingId, String field) {
-        MeetingRecord record = getRecord(meetingId);
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        // 准备阶段可能还没有 MeetingRecord，需要按需创建
+        MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElse(null);
+        if (record == null) {
+            record = initRecord(meeting);
+        }
         Long urId = SecurityUtils.getCurrentUserId();
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         RecordAttendance a = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), urId)
-                .orElseThrow(() -> new IllegalArgumentException("你不在本次会议委员名单中"));
+                .orElse(null);
+        if (a == null) {
+            // 用户不在参会名单中 → 自动补入（通知对象即应参会人）
+            a = RecordAttendance.builder()
+                    .record(record)
+                    .userRole(ur)
+                    .signedIn(false)
+                    .signed(false)
+                    .build();
+            a = attendanceRepo.save(a);
+        }
         if ("signedIn".equals(field)) {
             a.setSignedIn(true);
             a.setOperator(ur);
@@ -633,33 +686,51 @@ public class CommitteeService {
         recordRepo.save(record);
     }
 
-    // ===== 录音负责人（advisory，进行中协调用） =====
-    /** 当前用户认领"录音负责人"（需已确认参会）。 */
+    // ===== 录音多条：上传存文件，不自动转写 =====
+    /** 上传录音只存文件信息到新表，返回录音记录 ID。主任"选片"时再触发 ASR 转写。 */
     @Transactional
-    public void claimRecorder(Long meetingId) {
-        MeetingRecord record = getRecord(meetingId);
-        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
-        ensureSignedIn(record, ur.getId());
-        record.setRecorder(ur);
-        recordRepo.save(record);
+    public Long saveRecording(Long meetingId, String url, String fileName, Long fileSize) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        UserRoleEntity uploader = SecurityUtils.getCurrentUserRole();
+        MeetingRecording recording = MeetingRecording.builder()
+                .meeting(meeting)
+                .uploader(uploader)
+                .recordingUrl(url)
+                .fileName(fileName)
+                .fileSize(fileSize)
+                .asrStatus("none")
+                .build();
+        recording = recordingRepo.save(recording);
+        return recording.getId();
     }
 
-    /** 重置录音负责人（异常兜底，仅主任/副主任）：清空后可重新有人认领并重录。 */
-    @Transactional
-    public void resetRecorder(Long meetingId) {
-        MeetingRecord record = getRecord(meetingId);
-        record.setRecorder(null);
-        recordRepo.save(record);
+    /** 获取某会议全部录音列表（按创建时间倒序） */
+    public List<RecordingVO> getRecordings(Long meetingId) {
+        return recordingRepo.findByMeetingIdOrderByCreatedAtDesc(meetingId).stream()
+                .map(this::toRecordingVO)
+                .collect(Collectors.toList());
     }
 
-    /** 录音上传后把存档地址落库（会后可回放/下载）。重录覆盖为最新。 */
-    @Transactional
-    public void saveRecordingUrl(Long meetingId, String url) {
-        MeetingRecord record = getRecord(meetingId);
-        record.setRecordingUrl(url);
-        recordRepo.save(record);
+    /** 根据 ID 获取录音记录的 URL，供 ASR 服务调用 */
+    public String getRecordingUrl(Long recordingId) {
+        MeetingRecording r = recordingRepo.findById(recordingId).orElse(null);
+        return r != null ? r.getRecordingUrl() : null;
     }
 
+    private RecordingVO toRecordingVO(MeetingRecording r) {
+        return RecordingVO.builder()
+                .id(r.getId())
+                .uploaderName(r.getUploader() != null ? r.getUploader().getRealName() : null)
+                .recordingUrl(r.getRecordingUrl())
+                .fileName(r.getFileName())
+                .fileSize(r.getFileSize())
+                .asrStatus(r.getAsrStatus())
+                .createdAt(r.getCreatedAt())
+                .build();
+    }
+
+    // ensureSignedIn 保留：MeetingRecord 仍然存在（签到/议题/佐证管理），只是录音移到了 MeetingRecording 表
     private void ensureSignedIn(MeetingRecord record, Long userRoleId) {
         RecordAttendance a = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), userRoleId)
                 .orElseThrow(() -> new IllegalArgumentException("不在本次会议名单中"));
@@ -1225,13 +1296,58 @@ public class CommitteeService {
     public void removeMeeting(Long meetingId) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
-        if (m.getStage() != MeetingStage.preparing) {
-            throw new IllegalArgumentException("仅准备阶段的会议可以取消");
-        }
+        // 简化阶段：放开删除限制，任意阶段的会议都可由主任删除（级联清理覆盖全部关联数据）。
+        // 便于清理测试数据；正式上线如需治理可再收紧（如禁止删除已公示会议）。
+        deliveryRepo.deleteByMeetingId(meetingId);
+        minutesRevisionRepo.deleteAll(minutesRevisionRepo.findByMeetingIdOrderByVersionNoDesc(meetingId));
+        publishRepo.findByMeetingId(meetingId).ifPresent(publishRepo::delete);
+        recordRepo.findByMeetingId(meetingId).ifPresent(record -> {
+            List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+            topics.forEach(topic -> voteRepo.deleteAll(voteRepo.findByTopicId(topic.getId())));
+            topicRepo.deleteAll(topics);
+            attendanceRepo.deleteAll(attendanceRepo.findByRecordId(record.getId()));
+            evidenceRepo.deleteAll(evidenceRepo.findByRecordId(record.getId()));
+            recordRepo.delete(record);
+        });
         meetingRepo.delete(m);
     }
 
     // ================= Private Helpers =================
+
+    private void applyGeneratedNoticeDraft(CommitteeMeeting m) {
+        NoticeDraftVO draft = generateNoticeDraft(m);
+        m.setNoticeTitle(draft.getTitle());
+        m.setNoticeContent(draft.getContent());
+        m.setNoticeStatus("draft");
+    }
+
+    private NoticeDraftVO buildNoticeDraft(CommitteeMeeting m) {
+        if (m.getNoticeTitle() != null && !m.getNoticeTitle().isBlank()
+                && m.getNoticeContent() != null && !m.getNoticeContent().isBlank()) {
+            NoticeDraftVO vo = new NoticeDraftVO();
+            vo.setTitle(m.getNoticeTitle());
+            vo.setContent(m.getNoticeContent());
+            vo.setStatus(m.getNoticeStatus() != null ? m.getNoticeStatus() : "draft");
+            return vo;
+        }
+        return generateNoticeDraft(m);
+    }
+
+    private NoticeDraftVO generateNoticeDraft(CommitteeMeeting m) {
+        NoticeDraftVO vo = new NoticeDraftVO();
+        String title = "关于召开" + (m.getTitle() != null ? m.getTitle() : "业主委员会会议") + "的通知";
+        List<String> lines = new ArrayList<>();
+        lines.add(title);
+        lines.add("会议时间：" + (m.getMeetingDate() != null ? m.getMeetingDate() : "待定")
+                + " " + (m.getMeetingTime() != null ? m.getMeetingTime() : ""));
+        lines.add("会议地点：" + (m.getLocation() != null ? m.getLocation() : "待定"));
+        lines.add("主要议题：" + (m.getDescription() != null && !m.getDescription().isBlank() ? m.getDescription() : "待补充"));
+        lines.add("请各位委员按时参加，并提前查阅会议材料。");
+        vo.setTitle(title);
+        vo.setContent(String.join("\n", lines));
+        vo.setStatus("draft");
+        return vo;
+    }
 
     private List<UserRoleEntity> findCommitteeMembers(Long communityId) {
         return userRoleRepo.findByCommunityIdAndRoleIn(communityId, List.of("主任", "副主任", "委员"));
@@ -1584,7 +1700,16 @@ public class CommitteeService {
     }
 
     private RecordInfoVO getRecordInfo(CommitteeMeeting m) {
-        MeetingRecord record = getRecord(m.getId());
+        MeetingRecord record = recordRepo.findByMeetingId(m.getId()).orElse(null);
+        if (record == null) {
+            if (m.getStage() == MeetingStage.preparing) {
+                RecordInfoVO vo = emptyPreparingRecordInfo();
+                // 准备阶段也能看到已上传的录音
+                vo.setRecordings(getRecordings(m.getId()));
+                return vo;
+            }
+            throw new IllegalArgumentException("会议记录不存在");
+        }
         List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
         List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
         List<RecordEvidence> evidences = evidenceRepo.findByRecordId(record.getId());
@@ -1754,15 +1879,29 @@ public class CommitteeService {
         vo.setHasMajorIssue(record.getHasMajorIssue());
         vo.setJuweiName(record.getJuweiName());
         vo.setJuweiSigned(record.getJuweiSigned());
-        vo.setRecorderRoleId(record.getRecorder() != null ? record.getRecorder().getId() : null);
-        vo.setRecorderName(record.getRecorder() != null ? record.getRecorder().getRealName() : null);
-        vo.setRecordingUrl(record.getRecordingUrl());
+        vo.setRecordingUrl(null);
+        vo.setRecordings(getRecordings(m.getId()));
         vo.setAttendances(attendanceVOs);
         vo.setTopics(topicVOs);
         vo.setEvidences(evidenceVOs);
         vo.setChecks(checks);
         vo.setRecordLevel(recordLevel);
         vo.setRecordText(recordText);
+        return vo;
+    }
+
+    private RecordInfoVO emptyPreparingRecordInfo() {
+        RecordInfoVO vo = new RecordInfoVO();
+        vo.setHasDecision(false);
+        vo.setHasMajorIssue(false);
+        vo.setJuweiSigned(false);
+        vo.setAttendances(Collections.emptyList());
+        vo.setTopics(Collections.emptyList());
+        vo.setEvidences(Collections.emptyList());
+        vo.setChecks(Collections.emptyList());
+        vo.setRecordings(Collections.emptyList());
+        vo.setRecordLevel("preparing");
+        vo.setRecordText("准备阶段");
         return vo;
     }
 
@@ -2093,10 +2232,11 @@ public class CommitteeService {
                     .filter(d -> d.getUserRole().getId().equals(ur.getId()))
                     .findFirst().orElse(null);
             if (myDelivery == null) {
-                s.put("level", "readonly");
-                s.put("title", "可查看");
-                s.put("items", List.of("你不在本会委员名单中"));
-                s.put("hint", "");
+                // 委员不在当前送达名单中，但仍可查看并确认参会
+                s.put("level", "todo");
+                s.put("title", "待确认");
+                s.put("items", List.of("会议通知尚未送达给你，但你可以提前确认参会"));
+                s.put("hint", "主任发送通知时未将你列入名单，你仍可参会。");
             } else {
                 List<String> items = new ArrayList<>();
                 if (!myDelivery.getNoticeDelivered()) items.add("待记录员送达通知");
@@ -2118,9 +2258,9 @@ public class CommitteeService {
             RecordAttendance myAtt = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), ur.getId())
                     .orElse(null);
             if (myAtt == null) {
-                s.put("level", "readonly");
-                s.put("title", "可查看");
-                s.put("items", List.of("你不在本次会议委员名单中"));
+                s.put("level", "todo");
+                s.put("title", "待确认");
+                s.put("items", List.of("请确认参会"));
                 s.put("hint", "");
             } else {
                 List<String> items = new ArrayList<>();

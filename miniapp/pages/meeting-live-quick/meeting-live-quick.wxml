@@ -43,15 +43,9 @@
   <view class="lp-card" wx:if="{{currentStep === 2}}">
     <text class="lp-card-step">第 2 步，共 4 步</text>
     <text class="lp-card-title">会议录音</text>
-    <text class="lp-card-desc">本场会议由一人完成录音，开始后锁定为录音人。请围绕会议议题展开讨论和表决。</text>
+    <text class="lp-card-desc">录音后上传保存，多条录音皆可留存。主任在下一步统一选一条作为纪要依凭。</text>
 
-    <!-- 别人已在负责录音时的温馨提示（不锁定，仅提醒避免多设备同录）-->
-    <view wx:if="{{recorderRoleId && !isRecorder}}" class="qk-recorder-role">
-      <text class="qk-rr-status">提示：{{recorderName || '一位参会人'}} 已在负责录音，尽量避免多台设备同时录制。</text>
-      <button wx:if="{{isChair}}" class="lp-ghost-btn" bindtap="resetRecorder">重置录音人</button>
-    </view>
-
-    <!-- 录音控件：任意已签到参会人可用；开始录音时自动认领为录音人 -->
+    <!-- 录音控件：任意已签到参会人可用 -->
     <view class="qk-recorder">
       <view class="qk-rec-dot {{recording ? 'on' : ''}}"></view>
       <text class="qk-rec-time">{{timeText}}</text>
@@ -61,13 +55,13 @@
       {{recording ? '暂停录音' : (recorderStarted ? '继续录音' : (tempFilePath ? '重新录音' : '开始录音'))}}
     </button>
     <button class="lp-ghost-btn" bindtap="finishRecord" disabled="{{uploading || polling || extracting}}">
-      结束录音，上传并转写
+      结束录音并上传
     </button>
     <view class="qk-divider"><text class="qk-divider-text">或</text></view>
     <button class="lp-ghost-btn" bindtap="chooseAudioFile" disabled="{{uploading || polling || extracting}}">
       选择已有录音文件上传
     </button>
-    <view class="qk-note">暂停/继续仍是同一段连续录音；不现场录音时可直接上传一段已有会议录音（需从聊天会话里选择文件）。</view>
+    <view class="qk-note">上传后只保存不自动转写，需在下一步选片。</view>
 
     <!-- 会议资料：人人可传/可看 -->
     <view class="qk-grp-title">会议资料（{{materials.length}}）<text class="qk-link" bindtap="uploadMaterial">+ 上传资料</text></view>
@@ -86,20 +80,32 @@
 
   <view class="lp-card" wx:if="{{currentStep === 3}}">
     <text class="lp-card-step">第 3 步，共 4 步</text>
-    <text class="lp-card-title">转写完成</text>
+    <text class="lp-card-title">选片转写</text>
+    <text class="lp-card-desc">选择一条已上传的录音，触发语音转写，为议题匹配提供文本底稿。</text>
 
-    <view class="qk-gen" wx:if="{{uploading || polling || extracting}}">
+    <!-- 已上传录音列表 -->
+    <view wx:if="{{recordings.length}}" class="qk-pick-list">
+      <view class="qk-pick-item {{item.id === _transcribingRecordingId ? 'transcribing' : ''}}" wx:for="{{recordings}}" wx:key="id">
+        <view class="qk-pick-info">
+          <text class="qk-pick-name">{{item.uploaderName || '未知'}} · {{item.fileName || '录音'}}</text>
+          <text class="qk-pick-meta">{{item.createdAt || ''}} · {{item.asrStatus === 'done' ? '已转写' : item.asrStatus === 'processing' ? '转写中' : '已保存'}}</text>
+        </view>
+        <button wx:if="{{item.asrStatus !== 'done' && item.asrStatus !== 'processing'}}" class="lp-ghost-btn" bindtap="transcribeRecording" data-recording-id="{{item.id}}" disabled="{{polling}}">转写</button>
+        <text wx:elif="{{item.asrStatus === 'done'}}" class="qk-pick-done">✓ 已转写</text>
+        <text wx:else class="qk-pick-ing">转写中...</text>
+      </view>
+    </view>
+    <view wx:else class="lp-empty">暂无录音，请返回上一步录制或上传</view>
+
+    <!-- 转写状态 -->
+    <view class="qk-gen" wx:if="{{polling || extracting}}">
       <view class="qk-spinner"></view>
       <text class="qk-gen-text">{{processText}}</text>
     </view>
-    <view class="qk-gen" wx:elif="{{generated}}">
+
+    <view class="qk-gen" wx:if="{{generated}}">
       <view class="qk-gen-icon">✓</view>
       <text class="qk-gen-text">{{finishText}}</text>
-      <view class="qk-note">转写文本已作为底稿保存，下一步重点核对文本与议题的匹配关系。</view>
-    </view>
-    <view class="qk-gen" wx:else>
-      <text class="qk-gen-text">{{processText}}</text>
-      <view class="qk-note">可返回上一步重新录音后再次上传。</view>
     </view>
 
     <view wx:if="{{generated}}" class="qk-transcript-card">
@@ -112,6 +118,9 @@
       </view>
       <text class="qk-transcript-preview">{{transcriptPreview || '暂无可预览的转写文本'}}</text>
     </view>
+
+    <view wx:if="{{asrStatus === 'failed'}}" class="qk-note">转写失败，可重新选片或返回上一步录制新音频。</view>
+    <button wx:if="{{asrStatus === 'failed'}}" class="lp-ghost-btn" bindtap="retryToStep2">返回录音</button>
 
     <button class="lp-primary-btn" bindtap="goConfirm" disabled="{{!generated}}">下一步：匹配议题并生成纪要依据</button>
   </view>

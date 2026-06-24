@@ -1,0 +1,89 @@
+<view class="page" wx:if="{{view}}">
+  <view class="hd-card">
+    <text class="hd-title">{{view.title}}</text>
+    <text class="hd-sub">{{view.sub}}</text>
+    <view class="hd-tags">
+      <text class="hd-tag" wx:for="{{view.tags}}" wx:key="*this">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="sec" wx:if="{{view.desc}}">
+    <text class="sec-title">说明</text>
+    <text class="sec-text">{{view.desc}}</text>
+  </view>
+
+  <view class="sec" wx:if="{{view.signInText}}">
+    <text class="sec-title">签到情况</text>
+    <text class="sec-text">{{view.signInText}}</text>
+  </view>
+
+  <view class="sec" wx:if="{{view.hasMinutes}}">
+    <text class="sec-title">会议纪要</text>
+    <view class="doc-row" bindtap="openMinutes">
+      <text class="doc-icon">DOC</text>
+      <text class="doc-name">查看会议纪要</text>
+      <text class="doc-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="sec" wx:if="{{view.materials.length}}">
+    <text class="sec-title">会议材料（{{view.materials.length}}）</text>
+    <view class="doc-row" wx:for="{{view.materials}}" wx:key="name"
+          bindtap="previewMaterial" data-index="{{index}}">
+      <text class="doc-icon">FILE</text>
+      <text class="doc-name">{{item.name}}</text>
+      <text class="doc-size">{{item.sizeText || ''}}</text>
+    </view>
+  </view>
+
+  <view class="sec">
+    <view class="sec-head">
+      <text class="sec-title">归档后补充（{{view.archiveExtras ? view.archiveExtras.length : 0}}）</text>
+      <text class="sec-action" wx:if="{{view.canSupplement}}" bindtap="addArchiveExtra">+ 补充</text>
+    </view>
+    <view wx:if="{{view.archiveExtras && view.archiveExtras.length}}">
+      <view class="doc-row supplement" wx:for="{{view.archiveExtras}}" wx:key="id"
+            bindtap="previewArchiveExtra" data-index="{{index}}">
+        <text class="doc-icon">SUP</text>
+        <view class="doc-main">
+          <text class="doc-name">{{item.fileName}}</text>
+          <text class="doc-meta">{{item.reason || '补充归档资料'}}{{item.addedBy ? ' · ' + item.addedBy : ''}}</text>
+        </view>
+        <text class="doc-size">{{item.sizeText || ''}}</text>
+      </view>
+    </view>
+    <text wx:else class="empty-line">暂无归档后补充材料</text>
+  </view>
+
+  <view class="sec" wx:if="{{view.evidences.length}}">
+    <text class="sec-title">佐证材料（{{view.evidences.length}}）</text>
+    <view class="doc-row" wx:for="{{view.evidences}}" wx:key="id">
+      <text class="doc-icon">IMG</text>
+      <text class="doc-name">{{item.fileName}}</text>
+    </view>
+  </view>
+
+  <!-- 归档管理（仅主任/副主任） -->
+  <view class="sec" wx:if="{{view.isCommittee && view.isChair}}">
+    <text class="sec-title">归档管理</text>
+    <text class="life-state">当前状态：{{view.published ? '已公示归档' : view.withdrawn ? '公示已撤回（仍在档）' : '已归档（未公示）'}}</text>
+    <text class="life-reason" wx:if="{{view.withdrawn && view.withdrawReason}}">撤回原因：{{view.withdrawReason}}</text>
+    <text class="life-hint" wx:if="{{view.published}}">已公示会议如需撤出，请先撤回公示，再撤销归档。</text>
+
+    <view class="life-actions">
+      <button wx:if="{{view.published}}" class="btn btn-outline" size="mini" bindtap="withdrawPublish">撤回公示</button>
+      <button wx:if="{{view.withdrawn}}" class="btn btn-outline" size="mini" bindtap="rePublish">修订后重新公示</button>
+      <button class="btn btn-outline" size="mini" bindtap="viewMinutesRevisions">修订历史{{view.minutesRevisionCount ? '（' + view.minutesRevisionCount + '）' : ''}}</button>
+      <button wx:if="{{!view.published}}" class="btn btn-danger" size="mini" bindtap="revokeArchive">撤销归档</button>
+    </view>
+
+    <view class="life-log" wx:if="{{view.archiveLog.length}}">
+      <text class="life-log-title">操作记录</text>
+      <view class="life-log-row" wx:for="{{view.archiveLog}}" wx:key="id">
+        <text class="llr-action">{{item.action}}</text>
+        <text class="llr-meta">{{item.operator}} · {{item.at}}</text>
+        <text class="llr-reason" wx:if="{{item.reason}}">{{item.reason}}</text>
+      </view>
+    </view>
+  </view>
+</view>

@@ -29,14 +29,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // ── 临时调试：打印每个请求收到的鉴权信息（定位小程序上传 403 用，定位后删）──
-        if (request.getRequestURI().contains("/quick/recording")) {
-            System.out.println("[AUTHDBG] uri=" + request.getRequestURI()
-                    + " method=" + request.getMethod()
-                    + " Authorization=" + request.getHeader("Authorization")
-                    + " X-Active-Role-Id=" + request.getHeader("X-Active-Role-Id")
-                    + " Content-Type=" + request.getContentType());
-        }
         String token = extractToken(request);
         if (token != null) {
             UserRoleEntity activeRole = null;

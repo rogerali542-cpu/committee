@@ -7,6 +7,7 @@
     "pages/meeting-hub/meeting-hub",
     "pages/committee/committee",
     "pages/committee-detail/committee-detail",
+    "pages/my-meeting/my-meeting",
     "pages/meeting-live-quick/meeting-live-quick",
     "pages/minutes/minutes",
     "pages/minutes-public/minutes-public",

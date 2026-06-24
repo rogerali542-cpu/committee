@@ -1,0 +1,130 @@
+<scroll-view scroll-y class="live-page" wx:if="{{detail}}">
+
+  <!-- 步骤指示器 -->
+  <view class="lp-stepper">
+    <block wx:for="{{steps}}" wx:for-item="s" wx:key="key">
+      <view class="lp-step {{currentStep > index + 1 ? 'done' : (currentStep === index + 1 ? 'active' : 'locked')}}"
+            bindtap="goStep" data-step="{{index + 1}}">
+        <text class="lp-step-num">{{currentStep > index + 1 ? '✓' : index + 1}}</text>
+        <text class="lp-step-label">{{s.label}}</text>
+      </view>
+      <view wx:if="{{index < steps.length - 1}}" class="lp-step-line {{currentStep > index + 1 ? 'done' : ''}}"></view>
+    </block>
+  </view>
+
+  <!-- 引导提示（只提示，不强制） -->
+  <view class="lp-hint">
+    <text class="lp-hint-icon">💡</text>
+    <text class="lp-hint-text">{{hint}}</text>
+  </view>
+
+  <!-- 会议简介 -->
+  <view class="lp-brief">
+    <text class="lp-brief-title">{{detail.title}}</text>
+    <text class="lp-brief-meta">{{detail.meetingDate}} {{detail.meetingTime}} · {{detail.location}}</text>
+  </view>
+
+  <!-- ═══ 步骤1：确认参会 ═══ -->
+  <view class="lp-card" wx:if="{{steps[currentStep-1].key === 'attend'}}">
+    <text class="lp-card-step">第 1 步，共 {{stepTotal}} 步</text>
+    <text class="lp-card-title">请确认是否参加会议</text>
+    <text class="lp-card-desc">如果你会参加本次会议，请点击下面的按钮。</text>
+    <button wx:if="{{!step1Done && detail.perms.canSignIn}}" class="lp-primary-btn" bindtap="confirmAttend">我会参加</button>
+    <view wx:elif="{{step1Done}}" class="lp-done-banner">✓ 已确认参加{{step1Time ? '，' + step1Time : ''}}</view>
+    <view wx:else class="lp-warn-note">你没有参会确认权限</view>
+  </view>
+
+  <!-- ═══ 步骤2：表决 ═══ -->
+  <view class="lp-card" wx:if="{{steps[currentStep-1].key === 'vote'}}">
+    <text class="lp-card-step">第 2 步，共 {{stepTotal}} 步</text>
+    <text class="lp-card-title">请对会议事项投票</text>
+    <text class="lp-card-desc">逐项选择同意、不同意或弃权，提交后不能修改。未投不影响推进。</text>
+
+    <view wx:if="{{detail.record.topics.length === 0}}" class="lp-empty">本次会议暂无表决议题</view>
+
+    <view class="lp-topic" wx:for="{{detail.record.topics}}" wx:for-item="topic" wx:key="id">
+      <view class="lp-topic-head">
+        <text class="lp-topic-type {{topic.type === 'major' ? 'major' : 'decision'}}">{{topic.type === 'major' ? '重大事项' : '决定事项'}}</text>
+        <text wx:if="{{topic.decisionType === 'multi_choice'}}" class="lp-topic-type multi">多选一</text>
+        <text class="lp-topic-title">{{topic.title}}</text>
+      </view>
+      <view class="lp-topic-meta" wx:if="{{topic.createdByName || topic.realNameVote}}">
+        <text wx:if="{{topic.source === 'live'}}" class="lp-tag live">现场新增</text>
+        <text wx:if="{{topic.createdByName}}" class="lp-meta-text">{{topic.createdByName}} 提出</text>
+        <text wx:if="{{topic.realNameVote}}" class="lp-tag realname">实名表决</text>
+      </view>
+
+      <!-- 简单表决 -->
+      <block wx:if="{{topic.decisionType !== 'multi_choice'}}">
+        <view wx:if="{{!topic.myVote}}" class="lp-vote-btns">
+          <text class="lp-vbtn for" bindtap="vote" data-topic-id="{{topic.id}}" data-choice="for_vote">同意</text>
+          <text class="lp-vbtn ag" bindtap="vote" data-topic-id="{{topic.id}}" data-choice="against">不同意</text>
+          <text class="lp-vbtn ab" bindtap="vote" data-topic-id="{{topic.id}}" data-choice="abstain">弃权</text>
+        </view>
+        <view wx:else class="lp-vote-locked">已选择：{{topic.myVote === 'for_vote' ? '同意' : topic.myVote === 'against' ? '不同意' : '弃权'}}</view>
+        <view class="lp-vote-bar" wx:if="{{userView === 'chair'}}">
+          <text>同意{{topic.forVotes}} · 不同意{{topic.agVotes}} · 弃权{{topic.abVotes}}（需≥{{topic.need}}）</text>
+        </view>
+      </block>
+
+      <!-- 多选一 -->
+      <block wx:else>
+        <view wx:if="{{!topic.myVote}}" class="lp-opt-list">
+          <view class="lp-opt-row" wx:for="{{topic.options}}" wx:for-item="opt" wx:key="id" bindtap="vote" data-topic-id="{{topic.id}}" data-selected-id="{{opt.id}}">
+            <view class="lp-opt-radio"></view>
+            <text class="lp-opt-label">{{opt.label}}</text>
+          </view>
+        </view>
+        <view wx:else class="lp-vote-locked">✓ 已选择：{{topic.myVoteLabel.label}}</view>
+        <view class="lp-vote-bar" wx:if="{{userView === 'chair'}}">
+          <text wx:for="{{topic.options}}" wx:for-item="o" wx:key="id" class="lp-ob">{{o.label}} {{o.votes}}票</text>
+        </view>
+      </block>
+
+      <!-- 决议结论 -->
+      <view class="lp-topic-result {{topic.passed ? 'pass' : (topic.status === 'failed' ? 'fail' : '')}}">
+        <text class="lp-tr-label">决议</text>
+        <text class="lp-tr-text">{{topic.text}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ═══ 步骤3a：成员完成 ═══ -->
+  <view class="lp-card" wx:if="{{steps[currentStep-1].key === 'done'}}">
+    <view class="lp-complete">
+      <view class="lp-complete-icon">✓</view>
+      <text class="lp-complete-title">本次参会操作已完成</text>
+      <text class="lp-complete-sub">确认参会 ✓ · 表决 {{step3Done ? '✓' : '部分未投'}}</text>
+      <text class="lp-complete-tip">等待主持人宣布结束会议</text>
+    </view>
+  </view>
+
+  <!-- ═══ 步骤3b：主任结束会议 ═══ -->
+  <view class="lp-card" wx:if="{{steps[currentStep-1].key === 'end'}}">
+    <text class="lp-card-step">最后一步</text>
+    <text class="lp-card-title">结束会议</text>
+    <text class="lp-card-desc">下面是结束前的参考情况，未完成项不影响结束。</text>
+
+    <view class="lp-ready">
+      <view class="lp-ready-row" wx:for="{{readiness}}" wx:key="label">
+        <text class="lp-ready-icon {{item.ok ? 'ok' : 'no'}}">{{item.ok ? '✓' : '!'}}</text>
+        <text class="lp-ready-label">{{item.label}}</text>
+        <text class="lp-ready-detail {{item.ok ? 'ok' : 'no'}}">{{item.detail}}</text>
+      </view>
+    </view>
+
+    <button class="lp-ghost-btn" bindtap="viewMinutes">查看纪要草稿</button>
+    <button class="lp-primary-btn {{readyAllOk ? '' : 'warn'}}" bindtap="endMeeting" disabled="{{ending}}">
+      {{ending ? '结束中…' : '结束会议并生成纪要'}}
+    </button>
+  </view>
+
+  <!-- 底部步骤导航 -->
+  <view class="lp-nav">
+    <button class="lp-nav-btn ghost" wx:if="{{currentStep > 1}}" bindtap="prevStep">上一步</button>
+    <button class="lp-nav-btn ghost" wx:else bindtap="exitLive">退出</button>
+    <button class="lp-nav-btn primary" wx:if="{{currentStep < stepTotal}}" bindtap="nextStep">下一步</button>
+    <button class="lp-nav-btn ghost" wx:else bindtap="exitLive">返回会议详情</button>
+  </view>
+
+</scroll-view>

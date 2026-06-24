@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public interface MeetingDeliveryRepository extends JpaRepository<MeetingDelivery, Long> {
     List<MeetingDelivery> findByMeetingId(Long meetingId);
+    List<MeetingDelivery> findByUserRoleIdOrderByIdDesc(Long userRoleId);
     Optional<MeetingDelivery> findByMeetingIdAndUserRoleId(Long meetingId, Long userRoleId);
 
     @Modifying

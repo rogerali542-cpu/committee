@@ -27,6 +27,11 @@
 
 <scroll-view scroll-y class="page">
   <view wx:if="{{detail}}">
+    <!-- 简化阶段：进行中/已结束会议也允许主任删除（清理测试数据用；准备阶段用会议头部的取消按钮） -->
+    <view wx:if="{{userView === 'chair' && detail.stage !== 'preparing'}}" style="text-align:right; padding:14rpx 28rpx 0;">
+      <text bindtap="removeMeeting" style="color:#E74C3C; font-size:28rpx;">删除会议</text>
+    </view>
+
     <!-- 任务横幅（结束阶段隐藏；主任准备阶段用步骤条替代） -->
     <view class="task-banner {{detail.taskLevel}}" wx:if="{{detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')}}">
       <text class="tb-title">{{detail.taskTitle}}</text>

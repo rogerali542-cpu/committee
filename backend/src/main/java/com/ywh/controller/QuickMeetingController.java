@@ -1,6 +1,7 @@
 package com.ywh.controller;
 
 import com.ywh.annotation.RequireRole;
+import com.ywh.dto.RecordingVO;
 import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.AsrTaskVO;
 import com.ywh.dto.quick.QuickConfirmRequest;
@@ -52,36 +53,46 @@ public class QuickMeetingController {
 
     @PostMapping("/recording/upload")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
-    public Result<AsrTaskVO> upload(@PathVariable Long id,
+    public Result<Map<String, Object>> upload(@PathVariable Long id,
                                     @RequestParam("file") MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             return Result.fail("音频为空");
         }
         String ext = extractExt(file.getOriginalFilename());
         String url = audioStorage.save(id, file.getBytes(), ext);
-        committeeService.saveRecordingUrl(id, url);
-        return Result.ok(asrService.submit(id, url));
+        Long recordingId = committeeService.saveRecording(id, url,
+                file.getOriginalFilename(), (long) file.getSize());
+        return Result.ok(Map.of(
+                "recordingId", recordingId,
+                "url", url,
+                "fileName", file.getOriginalFilename() != null ? file.getOriginalFilename() : "",
+                "fileSize", file.getSize()
+        ));
     }
 
-    @PostMapping("/recording/init")
-    @RequireRole({"主任", "副主任", "记录员"})
-    public Result<Map<String, Object>> initUpload(@PathVariable Long id) {
-        String uploadId = "upload_" + UUID.randomUUID().toString().substring(0, 8);
-        return Result.ok(Map.of("uploadId", uploadId, "meetingId", id));
-    }
-
-    @PostMapping("/recording/complete")
-    @RequireRole({"主任", "副主任", "记录员"})
-    public Result<AsrTaskVO> completeUpload(@PathVariable Long id,
-                                            @RequestParam(required = false) String audioRef) {
-        return Result.ok(asrService.submit(id, audioRef));
-    }
-
+    /** 查询 ASR 转写任务状态（轮询接口） */
     @GetMapping("/recording/status")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
-    public Result<AsrTaskVO> recordingStatus(@PathVariable Long id, @RequestParam String taskId) {
+    public Result<AsrTaskVO> recordingStatus(@RequestParam String taskId) {
         return Result.ok(asrService.status(taskId));
     }
+
+    /** 主任选片触发 ASR 转写 */
+    @PostMapping("/recordings/{recordingId}/transcribe")
+    @RequireRole({"主任", "副主任"})
+    public Result<AsrTaskVO> transcribeRecording(@PathVariable Long id,
+                                                  @PathVariable Long recordingId) {
+        return Result.ok(asrService.submit(id, recordingId, committeeService));
+    }
+
+    /** 获取会议全部录音列表 */
+    @GetMapping("/recordings")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<List<RecordingVO>> recordings(@PathVariable Long id) {
+        return Result.ok(committeeService.getRecordings(id));
+    }
+
+    // ===== 以下接口保留，但 /recording/upload 已改为只存不转 =====
 
     @GetMapping("/transcript")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
@@ -124,20 +135,6 @@ public class QuickMeetingController {
     @RequireRole({"主任", "副主任"})
     public Result<Void> confirm(@PathVariable Long id, @RequestBody QuickConfirmRequest req) {
         committeeService.applyQuickConfirm(id, req);
-        return Result.ok();
-    }
-
-    @PostMapping("/recorder/claim")
-    @RequireRole({"主任", "副主任", "记录员", "委员"})
-    public Result<Void> claimRecorder(@PathVariable Long id) {
-        committeeService.claimRecorder(id);
-        return Result.ok();
-    }
-
-    @PostMapping("/recorder/reset")
-    @RequireRole({"主任", "副主任"})
-    public Result<Void> resetRecorder(@PathVariable Long id) {
-        committeeService.resetRecorder(id);
         return Result.ok();
     }
 

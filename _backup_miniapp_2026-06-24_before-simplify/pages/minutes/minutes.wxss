@@ -1,0 +1,69 @@
+.page { min-height:100vh; background:#f5f5f5; padding:12px; padding-bottom:60px; }
+.doc { background:#fff; border-radius:14px; padding:20px 16px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+.access-card { background:#fff; border-radius:14px; padding:28px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.05); text-align:center; }
+.access-icon { width:38px; height:38px; border-radius:50%; background:#FFF3E0; color:#E67E22; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:20px; font-weight:700; }
+.access-title { display:block; font-size:16px; color:#333; font-weight:700; margin-bottom:8px; }
+.access-text { display:block; font-size:13px; color:#888; line-height:1.7; }
+
+.draft-banner {
+  background:#FFF3E0; color:#E67E22; font-size:12px; font-weight:600;
+  text-align:center; padding:8px 12px; border-radius:8px; margin-bottom:16px;
+}
+
+.revise-hint {
+  display:block; background:#FDF2F2; color:#C0392B; font-size:12px;
+  line-height:1.6; padding:8px 12px; border-radius:8px; margin-bottom:10px;
+}
+
+.doc-title { font-size:18px; font-weight:700; text-align:center; display:block; margin-bottom:16px; color:#333; }
+
+.doc-head { margin-bottom:16px; }
+.dh-row { display:flex; align-items:center; padding:6px 0; border-bottom:1px solid #f9f9f9; }
+.dh-key { font-size:13px; color:#888; width:72px; flex-shrink:0; }
+.dh-val { font-size:13px; color:#333; font-weight:500; }
+
+.doc-sec { margin-bottom:16px; padding-top:12px; border-top:1px solid #f0f0f0; }
+.sec-title { font-size:14px; font-weight:700; color:#333; display:block; margin-bottom:10px; }
+.sec-text { font-size:13px; color:#555; line-height:1.7; display:block; margin-bottom:4px; }
+.sec-k { color:#888; }
+.b { font-weight:600; color:#333; }
+.tag-ok { color:#27AE60; font-weight:600; }
+.tag-no { color:#E74C3C; font-weight:600; }
+
+/* 表决 */
+.topic-item { background:#fafafa; border-radius:10px; padding:10px; margin-bottom:8px; }
+.ti-title { font-size:13px; font-weight:600; color:#333; display:block; }
+.ti-tag { font-size:10px; padding:1px 7px; border-radius:6px; background:#FFF6E5; color:#FFA800; }
+.ti-tag.major { background:#FDECEA; color:#E74C3C; }
+.ti-result { font-size:12px; color:#888; display:block; margin-top:6px; }
+.ti-conclusion { font-size:12px; font-weight:600; display:block; margin-top:4px; }
+.ti-conclusion.pass { color:#27AE60; }
+.ti-conclusion.fail { color:#E74C3C; }
+
+/* 结论 */
+.conclusion-box { border-radius:10px; padding:10px 14px; margin-bottom:10px; }
+.conclusion-box.valid { background:#EAF7EF; }
+.conclusion-box.flawed { background:#FFF4E5; }
+.conclusion-box.invalid { background:#FDECEA; }
+.cb-text { font-size:13px; font-weight:600; }
+.conclusion-box.valid .cb-text { color:#27AE60; }
+.conclusion-box.flawed .cb-text { color:#E67E22; }
+.conclusion-box.invalid .cb-text { color:#E74C3C; }
+
+.check-grid { margin-bottom:8px; }
+.cg-row { display:flex; align-items:center; padding:4px 0; }
+.cg-label { font-size:12px; color:#888; width:80px; flex-shrink:0; }
+.cg-value { font-size:12px; font-weight:600; }
+.cg-value.ok { color:#27AE60; }
+.cg-value.warn { color:#E67E22; }
+.cg-value.bad { color:#E74C3C; }
+
+.notes-list { margin-top:8px; padding:8px 10px; background:#fafafa; border-radius:8px; }
+.note-item { font-size:11px; color:#888; display:block; padding:2px 0; }
+
+.doc-foot { font-size:11px; color:#ccc; text-align:center; display:block; margin:12px 0; }
+
+.minutes-actions { display:flex; flex-direction:column; align-items:center; gap:10px; margin-top:16px; }
+.minutes-actions .copy-btn, .minutes-actions .edit-minutes-btn { margin:0; width:240px; }
+.copy-btn { display:block; margin:0 auto; width:200px; padding:10px 0; background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; border:none; border-radius:22px; font-size:14px; font-weight:600; text-align:center; }
+.edit-minutes-btn { padding:10px 0; text-align:center; }

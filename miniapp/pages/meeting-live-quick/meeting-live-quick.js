@@ -183,7 +183,7 @@ Page({
     steps: [
       { key: 'sign', label: '确认参会' },
       { key: 'record', label: '录音' },
-      { key: 'generate', label: '转写文本' },
+      { key: 'pick', label: '选片转写' },
       { key: 'confirm', label: '议题匹配' }
     ],
     currentStep: 1,
@@ -220,12 +220,10 @@ Page({
     transcriptMode: 'short',
     ending: false,
 
-    // 角色 / 录音负责人 / 资料 / 实时议题
+    // 角色 / 资料 / 实时议题 / 录音列表
     isChair: false,
     myRoleId: null,
-    recorderRoleId: null,
-    recorderName: '',
-    isRecorder: false,
+    recordings: [],
     materials: [],
     signedInList: [],
     voteTotal: 0,
@@ -405,8 +403,7 @@ Page({
       const appG = getApp();
       const myRoleId = appG.globalData && appG.globalData.activeRole ? appG.globalData.activeRole.id : null;
       const rec = detail.record || {};
-      const recorderRoleId = rec.recorderRoleId || null;
-      const isRecorder = !!(recorderRoleId && myRoleId && Number(recorderRoleId) === Number(myRoleId));
+      const recordings = rec.recordings || [];
       const signedInList = (rec.attendances || []).filter(function (a) { return a.signedIn; });
       const voteTotal = signedInList.length;
       this.setData({
@@ -416,9 +413,7 @@ Page({
         signedIn,
         isChair: detail.userView === 'chair',
         myRoleId,
-        recorderRoleId,
-        recorderName: rec.recorderName || '',
-        isRecorder,
+        recordings: recordings,
         materials: detail.materials || [],
         signedInList,
         voteTotal,
@@ -531,16 +526,7 @@ Page({
     this.startRecord();
   },
 
-  // 开始录音/上传时自动认领为录音人（仅供"谁在录"的协调提示，失败不影响录音）
-  markRecorder() {
-    if (this.data.isRecorder) return;
-    api.committeeClaimRecorder(this.meetingId)
-      .then(() => this.setData({ recorderRoleId: this.data.myRoleId, isRecorder: true }))
-      .catch(() => {});
-  },
-
   startRecord() {
-    this.markRecorder();
     this.clearTimer();
     this.clearPoll();
     this.clearQuickState();
@@ -674,7 +660,6 @@ Page({
   },
 
   async uploadRecording(filePath) {
-    this.markRecorder();
     this.clearPoll();
     this._asrDoneHandled = false;
     this.setData({
@@ -688,33 +673,67 @@ Page({
       transcriptFullText: '',
       transcriptCharCount: 0,
       transcriptVisible: false,
-      asrStatus: 'uploading',
-      processText: '正在上传录音...'
+      processText: '正在上传录音…（只保存，不自动转写）'
     });
 
     this.persistQuickState();
 
     try {
-      const task = await api.committeeQuickUploadRecording(this.meetingId, filePath);
+      // 上传只存，不自动转写 — 返回录音记录信息
+      const result = await api.committeeUploadRecording(this.meetingId, filePath);
+      wx.showToast({ title: '录音已上传', icon: 'success' });
       this.setData({
         uploading: false,
-        polling: true,
-        taskId: task.taskId,
-        asrStatus: task.status || 'pending',
-        processText: this.statusText(task.status)
+        currentStep: 3 // 进入"选片转写"步骤
       });
-      this.persistQuickState();
-      if (task.status === 'done') {
-        this.handleAsrDone(task);
-      } else if (task.status === 'failed') {
-        this.handleAsrFailed(task.message);
-      } else {
-        this.startPoll(task.taskId);
-      }
+      this.loadDetail(); // 刷新录音列表
     } catch (e) {
-      this.setData({ uploading: false, polling: false, extracting: false, processText: '上传失败，请重试' });
+      this.setData({ uploading: false, processText: '上传失败，请重试' });
       wx.showToast({ title: e.message || '上传失败', icon: 'none' });
     }
+  },
+
+  // 选片转写
+  transcribeRecording(e) {
+    const recordingId = e.currentTarget.dataset.recordingId;
+    if (!recordingId) return;
+    this.clearPoll();
+    this._asrDoneHandled = false;
+    this._transcribingRecordingId = recordingId;
+    this.setData({
+      polling: true,
+      extracting: false,
+      generated: false,
+      transcript: [],
+      transcriptPreview: '',
+      transcriptFullText: '',
+      transcriptCharCount: 0,
+      transcriptVisible: false,
+      processText: '正在提交转写...'
+    });
+    this.persistQuickState();
+
+    api.committeeTranscribeRecording(this.meetingId, recordingId)
+      .then((task) => {
+        this.setData({
+          polling: true,
+          taskId: task.taskId,
+          asrStatus: task.status || 'pending',
+          processText: this.statusText(task.status)
+        });
+        this.persistQuickState();
+        if (task.status === 'done') {
+          this.handleAsrDone(task);
+        } else if (task.status === 'failed') {
+          this.handleAsrFailed(task.message);
+        } else {
+          this.startPoll(task.taskId);
+        }
+      })
+      .catch((e) => {
+        this.setData({ polling: false, processText: '提交转写失败' });
+        wx.showToast({ title: e.message || '提交失败', icon: 'none' });
+      });
   },
 
   startPoll(taskId) {
@@ -735,7 +754,9 @@ Page({
           processText: this.statusText(task.status, task.message)
         });
         this.persistQuickState();
-        if (task.status === 'done') this.handleAsrDone(task);
+        if (task.status === 'done') {
+          this.handleAsrDone(task);
+        }
         if (task.status === 'failed') this.handleAsrFailed(task.message);
       } catch (e) {
         this.clearPoll();
@@ -747,11 +768,18 @@ Page({
 
   statusText(status, message) {
     if (status === 'done') return '转写完成，正在抽取议题与表决提示...';
-    if (status === 'failed') return message || '转写失败';
+    if (status === 'failed') return this.asrFailMessage(message);
     if (status === 'processing') return '录音转写中...';
     if (status === 'pending') return '转写任务已提交，等待处理...';
     if (status === 'uploading') return '正在上传录音...';
     return '正在处理录音...';
+  },
+
+  asrFailMessage(message) {
+    if (message && String(message).indexOf('45000006') >= 0) {
+      return '音频公网地址无法访问，请返回上一步重新上传录音。';
+    }
+    return message || '转写失败';
   },
 
   async handleAsrDone(task) {
@@ -840,14 +868,32 @@ Page({
 
   handleAsrFailed(message) {
     this.clearPoll();
+    const text = this.asrFailMessage(message);
     this.setData({
       uploading: false,
       polling: false,
       extracting: false,
       generated: false,
-      processText: message || '转写失败'
+      asrStatus: 'failed',
+      processText: text
     });
-    wx.showToast({ title: message || '转写失败', icon: 'none' });
+    this.persistQuickState();
+    wx.showToast({ title: text, icon: 'none' });
+  },
+
+  retryToStep2() {
+    this.clearPoll();
+    this.setData({
+      currentStep: 2,
+      uploading: false,
+      polling: false,
+      extracting: false,
+      generated: false,
+      taskId: '',
+      asrStatus: '',
+      processText: '请重新上传录音'
+    });
+    this.persistQuickState();
   },
 
   mapExtraction(extraction) {
@@ -1356,27 +1402,6 @@ Page({
           this.setData({ ending: false });
           wx.showToast({ title: e.message || '操作失败', icon: 'none' });
         }
-      }
-    });
-  },
-
-  // 主任兜底：重置录音人指示（清空后由下一个开始录音的人接管显示）
-  resetRecorder() {
-    if (!this.data.isChair) {
-      wx.showToast({ title: '仅主任/副主任可重置录音人', icon: 'none' });
-      return;
-    }
-    wx.showModal({
-      title: '重置录音人',
-      content: '重置后当前录音人被清空，可由其他人重新开始录音。注意：已录制的片段需由原设备自行上传，换人需重新录制。',
-      confirmText: '确认重置',
-      success: async (res) => {
-        if (!res.confirm) return;
-        try {
-          await api.committeeResetRecorder(this.meetingId);
-          wx.showToast({ title: '已重置', icon: 'success' });
-          this.loadDetail();
-        } catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
       }
     });
   },

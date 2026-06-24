@@ -1,0 +1,36 @@
+<view class="page">
+  <text class="intro">只显示此刻需要你操作的事项，按会议开始时间排序。</text>
+
+  <block wx:if="{{pending.length || active.length}}">
+    <!-- 待开始：我还没动手的 -->
+    <view wx:if="{{pending.length}}" class="todo-section">
+      <view class="section-head"><text class="section-title">待开始</text><text class="section-count">{{pending.length}}</text></view>
+      <view class="todo-card" wx:for="{{pending}}" wx:key="key" bindtap="openItem" data-id="{{item.id}}" data-kind="{{item.kind}}">
+        <view class="tc-head">
+          <text class="tc-tag">{{item.tag}}</text>
+          <text class="tc-status">{{item.statusText}}</text>
+        </view>
+        <text class="tc-title">{{item.title}}</text>
+        <view class="tc-meta"><text wx:if="{{item.subText}}">{{item.subText}}</text></view>
+      </view>
+    </view>
+
+    <!-- 进行中：已经在处理但没完成的 -->
+    <view wx:if="{{active.length}}" class="todo-section">
+      <view class="section-head"><text class="section-title">进行中</text><text class="section-count">{{active.length}}</text></view>
+      <view class="todo-card" wx:for="{{active}}" wx:key="key" bindtap="openItem" data-id="{{item.id}}" data-kind="{{item.kind}}">
+        <view class="tc-head">
+          <text class="tc-tag">{{item.tag}}</text>
+          <text class="tc-status active">{{item.statusText}}</text>
+        </view>
+        <text class="tc-title">{{item.title}}</text>
+        <view class="tc-meta"><text wx:if="{{item.subText}}">{{item.subText}}</text></view>
+      </view>
+    </view>
+  </block>
+
+  <view wx:elif="{{!loading}}" class="empty-state">
+    <text class="empty-emoji">🎉</text>
+    <text>暂无待办，所有事项都已处理</text>
+  </view>
+</view>

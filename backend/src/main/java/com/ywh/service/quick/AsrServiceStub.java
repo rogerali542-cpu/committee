@@ -2,6 +2,7 @@ package com.ywh.service.quick;
 
 import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.AsrTaskVO;
+import com.ywh.service.CommitteeService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +28,12 @@ public class AsrServiceStub implements AsrService {
 
     @Override
     public AsrTaskVO submit(Long meetingId, String audioRef) {
+        return submit(meetingId, null, null);
+    }
+
+    @Override
+    public AsrTaskVO submit(Long meetingId, Long recordingId, CommitteeService committeeService) {
+        // 桩实现：无论 recordingId 是否为空，都直接返回模拟转写结果
         String taskId = "asr_" + UUID.randomUUID().toString().substring(0, 8);
 
         // TODO 接入豆包：此处调用豆包【录音文件识别】异步接口，传 audioRef(对象存储地址)，

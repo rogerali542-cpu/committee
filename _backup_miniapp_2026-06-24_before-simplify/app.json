@@ -1,0 +1,48 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/community-home/community-home",
+    "pages/main/main",
+    "pages/profile/profile",
+    "pages/meeting-hub/meeting-hub",
+    "pages/committee/committee",
+    "pages/committee-detail/committee-detail",
+    "pages/meeting-live-quick/meeting-live-quick",
+    "pages/minutes/minutes",
+    "pages/minutes-public/minutes-public",
+    "pages/minutes-internal/minutes-internal",
+    "pages/minutes-todos/minutes-todos",
+    "pages/info-public/info-public",
+    "pages/reception/reception",
+    "pages/learning/learning",
+    "pages/learning-detail/learning-detail",
+    "pages/notifications/notifications",
+    "pages/todo/todo",
+    "pages/library/library",
+    "pages/property-tasks/property-tasks",
+    "pages/property-board/property-board",
+    "pages/archive-detail/archive-detail",
+    "pages/admin/admin"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#FFA800",
+    "navigationBarTitleText": "业委专区",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#999999",
+    "selectedColor": "#FFA800",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/community-home/community-home", "text": "小区首页" },
+      { "pagePath": "pages/main/main", "text": "业委专区" },
+      { "pagePath": "pages/profile/profile", "text": "个人中心" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

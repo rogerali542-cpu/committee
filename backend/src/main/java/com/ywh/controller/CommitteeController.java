@@ -52,6 +52,22 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @PutMapping("/{id}")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> update(@PathVariable Long id, @RequestBody CreateMeetingRequest req) {
+        service.updateMeeting(id, req);
+        return Result.ok();
+    }
+
+    @PutMapping("/{id}/notice-draft")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> updateNoticeDraft(@PathVariable Long id, @RequestBody Map<String, Object> req) {
+        service.updateNoticeDraft(id,
+                req == null ? null : (String) req.get("title"),
+                req == null ? null : (String) req.get("content"));
+        return Result.ok();
+    }
+
     @PostMapping("/{id}/advance")
     @RequireRole({"主任", "副主任"})
     public Result<Void> advance(@PathVariable Long id, @RequestParam String action,

@@ -1,0 +1,31 @@
+<view class="page">
+  <text class="intro">小区物业相关问题的处理进展，向全体业主公开。</text>
+
+  <view class="filter-tabs">
+    <view class="f-tab {{filter==='all'?'active':''}}" bindtap="switchFilter" data-filter="all">全部 <text class="f-count">{{counts.all}}</text></view>
+    <view class="f-tab {{filter==='processing'?'active':''}}" bindtap="switchFilter" data-filter="processing">处理中 <text class="f-count">{{counts.processing}}</text></view>
+    <view class="f-tab {{filter==='done'?'active':''}}" bindtap="switchFilter" data-filter="done">已处理 <text class="f-count">{{counts.done}}</text></view>
+  </view>
+
+  <view class="board-list">
+    <block wx:if="{{items.length}}">
+      <view class="board-card" wx:for="{{items}}" wx:key="id">
+        <view class="bc-head">
+          <text class="bc-tag">物业事项</text>
+          <text class="status-pill {{item.statusKey}}">{{item.statusLabel}}</text>
+        </view>
+        <view class="bc-content">{{item.content}}</view>
+        <view class="bc-meta"><text>反映日期 {{item.date}}</text></view>
+        <view class="bc-reply" wx:if="{{item.propertyReply}}">
+          <text class="bc-reply-label">物业处理结果：</text>
+          <text>{{item.propertyReply}}</text>
+          <text wx:if="{{item.propertyRepliedAt}}" class="bc-reply-time">{{item.propertyRepliedAt}}</text>
+        </view>
+      </view>
+    </block>
+    <view wx:elif="{{!loading}}" class="empty-state">
+      <text class="empty-emoji">📢</text>
+      <text>暂无物业事项</text>
+    </view>
+  </view>
+</view>

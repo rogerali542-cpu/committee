@@ -1,0 +1,167 @@
+<scroll-view scroll-y class="page">
+
+  <!-- 类型切换: 内部学习 / 外部培训 -->
+  <view class="type-tabs">
+    <view class="type-tab {{learnType=='internal'?'active':''}}" bindtap="switchType" data-type="internal">内部学习</view>
+    <view class="type-tab {{learnType=='training'?'active':''}}" bindtap="switchType" data-type="training">外部培训</view>
+  </view>
+
+  <!-- 年度目标（仅内部学习） -->
+  <view class="learn-target" wx:if="{{learnType=='internal'}}">
+    <view class="lt-head">
+      <text class="lt-title">年度组织学习</text>
+      <text class="lt-badge {{done >= target ? 'done' : 'warn'}}">{{done >= target ? '已达标' : '还差'+(target-done)+'次'}}</text>
+    </view>
+    <view class="lt-body">
+      <view class="lt-ring-wrap">
+        <canvas canvas-id="ringCanvas" class="lt-canvas"></canvas>
+        <view class="lt-ring-center">
+          <text class="lt-ring-num">{{done}}<text class="lt-ring-unit2">/{{target}}</text></text>
+          <text class="lt-ring-label">已完成</text>
+        </view>
+      </view>
+      <view class="lt-info">
+        <view class="lt-info-row">
+          <view class="lt-dot" style="background:#27AE60;"></view>
+          <text>已结束</text>
+          <view class="lt-bar-wrap"><view class="lt-bar-fill" style="width:{{total?done/total*100:0}}%;background:#27AE60;"></view></view>
+          <text class="lt-num">{{done}}</text>
+        </view>
+        <view class="lt-info-row">
+          <view class="lt-dot" style="background:#2980B9;"></view>
+          <text>进行中</text>
+          <view class="lt-bar-wrap"><view class="lt-bar-fill" style="width:{{total?ongoing/total*100:0}}%;background:#2980B9;"></view></view>
+          <text class="lt-num">{{ongoing}}</text>
+        </view>
+        <view class="lt-info-row">
+          <view class="lt-dot" style="background:#E67E22;"></view>
+          <text>待开</text>
+          <view class="lt-bar-wrap"><view class="lt-bar-fill" style="width:{{total?pending/total*100:0}}%;background:#E67E22;"></view></view>
+          <text class="lt-num">{{pending}}</text>
+        </view>
+        <text class="lt-rule">规则：每年至少{{target}}次</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 培训子分类（仅外部培训） -->
+  <view class="train-sub-tabs" wx:if="{{learnType=='training'}}">
+    <view class="tsc-card {{trainSub=='street'?'active':''}}" bindtap="switchTrainSub" data-sub="street">
+      <view class="tsc-icon" style="background:#EBF5FB;">🏛️</view>
+      <text class="tsc-title">街镇组织培训</text>
+      <text class="tsc-desc">街镇统一组织 · 全体委员参加</text>
+      <text class="tsc-badge">{{streetCount}}</text>
+    </view>
+    <view class="tsc-card {{trainSub=='special'?'active':''}}" bindtap="switchTrainSub" data-sub="special">
+      <view class="tsc-icon" style="background:#FDF2E9;">🛡️</view>
+      <text class="tsc-title">专项业务培训</text>
+      <text class="tsc-desc">市区街道组织 · 指定人员</text>
+      <text class="tsc-badge">{{specialCount}}</text>
+    </view>
+  </view>
+
+  <!-- 阶段筛选 -->
+  <view class="filter-tabs">
+    <view class="f-tab {{learnStage=='preparing'?'active':''}}" bindtap="switchStage" data-stage="preparing">待开 <text class="f-count">{{counts.pending}}</text></view>
+    <view class="f-tab {{learnStage=='ongoing'?'active':''}}" bindtap="switchStage" data-stage="ongoing">进行中 <text class="f-count">{{counts.ongoing}}</text></view>
+    <view class="f-tab {{learnStage=='ended'?'active':''}}" bindtap="switchStage" data-stage="ended">已结束 <text class="f-count">{{counts.ended}}</text></view>
+  </view>
+
+  <!-- 学习卡片列表 -->
+  <view class="learn-list">
+    <block wx:if="{{items.length}}">
+      <view class="learn-card" wx:for="{{items}}" wx:key="id" bindtap="openDetail" data-id="{{item.id}}">
+        <view class="lc-header">
+          <text class="lc-title">{{item.title}}</text>
+          <text class="lc-pill {{item.stage}}">{{item.stage === 'preparing' ? '待开' : item.stage === 'ongoing' ? '进行中' : '已结束'}}</text>
+        </view>
+        <view class="lc-meta">
+          <text class="lc-meta-line">📅 {{item.date}} {{item.time}}</text>
+          <text class="lc-meta-line">📍 {{item.location}}</text>
+          <text class="lc-meta-line">👤 {{item.trainer}}</text>
+          <text class="lc-meta-line" wx:if="{{item.attendees}}">👥 {{item.attendees}}</text>
+        </view>
+        <view class="lc-progress" wx:if="{{item.stage !== 'preparing'}}">
+          <view class="lc-progress-bar"><view class="lc-progress-fill" style="width:{{item.progress}}%"></view></view>
+          <text class="lc-progress-text">{{item.progress}}%</text>
+        </view>
+        <view class="lc-arrow">›</view>
+      </view>
+    </block>
+    <view wx:else class="empty-state"><text>暂无学习记录</text></view>
+  </view>
+
+  <!-- FAB 新建（主任/副主任/记录员可见） -->
+  <view class="fab" wx:if="{{canCreate}}" bindtap="openCreate">
+    <text class="fab-icon">+</text>
+  </view>
+
+  <!-- 创建学习记录弹窗 -->
+  <view wx:if="{{createVisible}}" class="modal-mask" bindtap="closeCreate">
+    <view class="form-sheet" catchtap="noop">
+      <view class="sheet-head">
+        <text class="sheet-title">新增学习记录</text>
+        <text class="sheet-close" bindtap="closeCreate">×</text>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">学习标题 *</text>
+        <input class="form-input large" value="{{createForm.title}}" data-field="title" bindinput="onCreateInput" placeholder="如 2026年度第1次业委会学习" placeholder-class="input-placeholder" />
+      </view>
+
+      <view class="form-row">
+        <view class="form-group half">
+          <text class="form-label">日期 *</text>
+          <picker mode="date" value="{{createForm.date}}" bindchange="onDateChange">
+            <view class="picker-field">{{createForm.date || '选择日期'}}</view>
+          </picker>
+        </view>
+        <view class="form-group half">
+          <text class="form-label">时间</text>
+          <picker mode="time" value="{{createForm.time}}" bindchange="onTimeChange">
+            <view class="picker-field">{{createForm.time || '选择时间'}}</view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">地点</text>
+        <input class="form-input" value="{{createForm.location}}" data-field="location" bindinput="onCreateInput" placeholder="如 社区活动室" placeholder-class="input-placeholder" />
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">组织者/讲师</text>
+        <input class="form-input" value="{{createForm.trainer}}" data-field="trainer" bindinput="onCreateInput" placeholder="如 街道办陈主任" placeholder-class="input-placeholder" />
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">参与人员（逗号分隔，用于通知和签到）</text>
+        <input class="form-input" value="{{createForm.attendees}}" data-field="attendees" bindinput="onCreateInput" placeholder="如 张建国,李秀英,王志强" placeholder-class="input-placeholder" />
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">学习类型</text>
+        <view class="type-row">
+          <text class="type-chip {{createForm.type === 'internal' ? 'on' : ''}}" bindtap="pickCreateType" data-type="internal">内部学习</text>
+          <text class="type-chip {{createForm.type === 'street' ? 'on' : ''}}" bindtap="pickCreateType" data-type="street">街镇培训</text>
+          <text class="type-chip {{createForm.type === 'special' ? 'on' : ''}}" bindtap="pickCreateType" data-type="special">专项培训</text>
+        </view>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">学习内容说明</text>
+        <textarea class="form-textarea" value="{{createForm.description}}" data-field="description" bindinput="onCreateInput" placeholder="简述学习内容和目的" placeholder-class="input-placeholder" style="min-height:80px;height:80px;" />
+      </view>
+
+      <view class="sheet-actions">
+        <button class="btn btn-ghost" bindtap="closeCreate">取消</button>
+        <button class="btn btn-primary" bindtap="submitCreate">确认创建</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{undoVisible}}" class="undo-toast">
+    <text>{{undoText}}</text>
+    <text class="undo-btn" bindtap="undoLearning">撤销</text>
+  </view>
+</scroll-view>

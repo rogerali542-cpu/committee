@@ -264,9 +264,14 @@ Page({
     try {
       const detail = await api.committeeDetail(this.meetingId);
       const userView = detail.userView;
-      // 进行中无需停留在详情页：参会角色直接进入「会议进行」向导（替换当前页，退出即回列表）
+      // 委员走专属极简会议页，不进操作者用的详情/录音页（覆盖通知、待办等入口）
+      if (userView === 'member') {
+        wx.redirectTo({ url: '/pages/my-meeting/my-meeting?id=' + this.meetingId });
+        return;
+      }
+      // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）
       if (detail.stage === 'ongoing' && detail.record && !this.fromNotice &&
-          (userView === 'chair' || userView === 'member')) {
+          userView === 'chair') {
         wx.redirectTo({ url: '/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + this.meetingId });
         return;
       }
