@@ -29,6 +29,7 @@ Page({
     description: '',
     stage: '',            // preparing / ongoing / ended
     signedIn: false,
+    declined: false,      // 因故缺席
     materials: [],
     hasMaterials: false,
 
@@ -262,6 +263,7 @@ Page({
         description: d.description || '',
         stage: d.stage,
         signedIn: !!me.signedIn,
+        declined: !!me.declined,
         materials: materials,
         hasMaterials: materials.length > 0,
         topics: topics,
@@ -285,8 +287,28 @@ Page({
         if (!res.confirm) return;
         try {
           await api.committeeSelfToggle(this.meetingId, 'signedIn');
-          this.setData({ signedIn: true });
+          this.setData({ signedIn: true, declined: false });
           wx.showToast({ title: '已确认参加', icon: 'success' });
+        } catch (e) {
+          wx.showToast({ title: (e && e.message) || '操作失败', icon: 'none' });
+        }
+      }
+    });
+  },
+
+  declineAttend() {
+    if (this.data.signedIn) return;
+    wx.showModal({
+      title: '无法参会',
+      content: '确认本次会议无法参加？将登记为"因故缺席"。',
+      confirmText: '无法参会',
+      cancelText: '再想想',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await api.committeeSelfToggle(this.meetingId, 'declined');
+          this.setData({ declined: true, signedIn: false });
+          wx.showToast({ title: '已登记：无法参会', icon: 'none' });
         } catch (e) {
           wx.showToast({ title: (e && e.message) || '操作失败', icon: 'none' });
         }
@@ -302,8 +324,8 @@ Page({
       success: async (res) => {
         if (!res.confirm) return;
         try {
-          await api.committeeSelfToggle(this.meetingId, 'signedIn');
-          this.setData({ signedIn: false });
+          await api.committeeSelfToggle(this.meetingId, 'cancel');
+          this.setData({ signedIn: false, declined: false });
         } catch (e) {
           wx.showToast({ title: (e && e.message) || '操作失败', icon: 'none' });
         }

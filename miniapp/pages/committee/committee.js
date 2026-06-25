@@ -110,11 +110,11 @@ Page({
     }
   },
 
-  onSearch(e) { this.setData({ keyword: e.detail.value }); },
-  clearSearch() { this.setData({ keyword: '' }); },
+  onSearch(e) { this.setData({ keyword: e.detail.value }); this.loadAll(); },
+  clearSearch() { this.setData({ keyword: '' }); this.loadAll(); },
 
   switchTab(e) {
-    this.setData({ currentStage: e.currentTarget.dataset.stage });
+    this.setData({ currentStage: e.currentTarget.dataset.stage, keyword: '' });
     this.loadAll();
   },
 
@@ -337,7 +337,7 @@ Page({
       return;
     }
     try {
-      await api.committeeCreate({
+      const created = await api.committeeCreate({
         title: form.title,
         meetingDate: form.meetingDate,
         meetingTime: form.meetingTime,
@@ -345,9 +345,12 @@ Page({
         description: form.description,
         topics: topics
       });
-      wx.showToast({ title: '已创建，通知草稿已生成', icon: 'none' });
       this.setData({ createVisible: false, currentStage: 'preparing' });
-      this.loadAll();
+      if (created && created.id) {
+        wx.navigateTo({ url: '/pages/committee-detail/committee-detail?id=' + created.id });
+      } else {
+        this.loadAll();
+      }
     } catch (e) {
       wx.showToast({ title: e.message, icon: 'none' });
     }

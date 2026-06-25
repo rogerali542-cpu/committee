@@ -1,10 +1,10 @@
 <scroll-view scroll-y class="profile-scroll">
   <!-- Header -->
-  <view class="profile-header" style="background:{{headerGrad}};">
+  <view class="profile-header" style="background:{{headerGrad}}; padding-top:{{statusBarHeight + 24}}px;">
     <view class="ph-avatar" style="color:{{textColor}};">{{activeRole.realName[0]}}</view>
     <text class="ph-name" style="color:{{textColor}};">{{activeRole.realName}}</text>
     <text class="ph-role-chip" style="background:rgba(255,255,255,0.3);color:{{textColor}};">{{activeRole.role}}</text>
-    <text class="ph-desc" style="color:{{textColor}};opacity:0.75;">{{roleDesc}}</text>
+    <text class="ph-desc" style="color:{{textColor}};opacity:0.82;">{{roleDesc}}</text>
   </view>
 
   <!-- Stats Row (委员会成员) -->
@@ -35,47 +35,25 @@
     </view>
   </view>
 
-  <!-- 基本信息 -->
-  <view class="section-header">基本信息</view>
-  <view class="section">
-    <view class="s-row"><text class="s-label">姓名</text><text class="s-value">{{activeRole.realName}}</text></view>
-    <view class="s-row"><text class="s-label">身份</text><text class="s-value role-tag {{roleClass}}">{{activeRole.role}}</text></view>
-    <view class="s-row"><text class="s-label">小区</text><text class="s-value">阳光家园</text></view>
-  </view>
-
-  <!-- 角色记录 -->
-  <view class="section-header">{{recordsTitle}}</view>
-  <view class="section">
-    <view class="menu-row" wx:for="{{recordsList}}" wx:key="label" bindtap="{{item.action === 'admin' ? 'goAdmin' : 'showWip'}}">
-      <view class="menu-icon" style="background:{{item.bg}};">{{item.icon}}</view>
-      <text class="menu-label">{{item.label}}</text>
-      <text class="menu-arrow">›</text>
+  <!-- 系统管理（仅管理员） -->
+  <block wx:if="{{recordsList.length}}">
+    <view class="section-header">{{recordsTitle}}</view>
+    <view class="section">
+      <view class="menu-row" wx:for="{{recordsList}}" wx:key="label" bindtap="{{item.action === 'admin' ? 'goAdmin' : 'showWip'}}">
+        <view class="menu-icon" style="background:{{item.bg}};">{{item.icon}}</view>
+        <text class="menu-label">{{item.label}}</text>
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
-  </view>
+  </block>
 
-  <!-- 消息与通知 -->
-  <view class="section-header">消息与通知</view>
+  <!-- 消息通知 -->
+  <view class="section-header">消息通知</view>
   <view class="section">
     <view class="menu-row" bindtap="openNotifications">
       <view class="menu-icon" style="background:#FFF3DC;">🔔</view>
       <text class="menu-label">系统通知</text>
       <view wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount > 99 ? '99+' : unreadCount}}</view>
-      <text class="menu-arrow">›</text>
-    </view>
-    <view class="menu-row" bindtap="showWip">
-      <view class="menu-icon" style="background:#F0F0F0;">💬</view>
-      <text class="menu-label">意见反馈</text>
-      <text class="menu-arrow">›</text>
-    </view>
-  </view>
-
-  <!-- 关于 -->
-  <view class="section-header">关于</view>
-  <view class="section">
-    <view class="menu-row" bindtap="showWip">
-      <view class="menu-icon" style="background:#F0F0F0;">ℹ️</view>
-      <text class="menu-label">关于系统</text>
-      <text class="menu-value">v1.0</text>
       <text class="menu-arrow">›</text>
     </view>
   </view>

@@ -2,9 +2,13 @@ const app = getApp();
 
 Page({
   data: {
+    statusBarHeight: 0,
     internalRoles: []
   },
   onLoad() {
+    if (wx.getWindowInfo) {
+      this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight || 20 });
+    }
     // In production, first call wx.login() then backend login
     // Here we show test identities (committee members only)
     this.setData({

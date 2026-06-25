@@ -1,9 +1,11 @@
 <view class="login-page">
-  <view class="login-logo">
-    <text class="login-icon">🏛️</text>
+  <view class="login-header" style="padding-top: {{statusBarHeight + 30}}px;">
+    <view class="login-logo">
+      <text class="login-icon">🏛️</text>
+    </view>
+    <text class="login-title">业委会</text>
+    <text class="login-sub">请选择登录身份</text>
   </view>
-  <text class="login-title">业委专区</text>
-  <text class="login-sub">请选择登录身份</text>
 
   <view class="login-card">
     <block wx:for="{{internalRoles}}" wx:key="id">

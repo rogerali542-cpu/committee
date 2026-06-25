@@ -1,5 +1,7 @@
 <scroll-view scroll-y class="live-page" wx:if="{{detail}}">
 
+  <page-nav title="会议进行" style="display:block;margin:-24rpx -24rpx 0;"></page-nav>
+
   <view class="lp-stepper">
     <block wx:for="{{steps}}" wx:for-item="s" wx:key="key">
       <view class="lp-step {{currentStep > index + 1 ? 'done' : (currentStep === index + 1 ? 'active' : 'locked')}}">
@@ -310,11 +312,13 @@
 
     <view class="qk-note">确认环节支持人工修改：议题报告正文可手动填写/改写，票数与结果可调整，最终以人工确认为准。</view>
 
-    <button class="lp-ghost-btn" bindtap="viewMinutes">查看现有纪要草稿</button>
-    <button wx:if="{{isChair}}" class="lp-ghost-btn" bindtap="generateDraftNoConfirm">免确认 · 一键生成纪要草稿</button>
-    <view wx:if="{{isChair}}" class="qk-wait-tip light">「一键生成」用于随时预览，不要求逐项确认；正式纪要请在确认后用下方按钮生成。</view>
     <button wx:if="{{isChair}}" class="lp-primary-btn" bindtap="endMeeting" disabled="{{ending}}">{{ending ? '生成纪要中...' : '生成纪要并结束会议'}}</button>
     <view wx:else class="qk-wait-tip">表决确认与结束会议由主任/副主任拍板，请等待主持人操作。</view>
+    <view class="qk-sub-actions">
+      <text class="qk-sub-link" bindtap="viewMinutes">查看现有草稿</text>
+      <text wx:if="{{isChair}}" class="qk-sub-sep">·</text>
+      <text wx:if="{{isChair}}" class="qk-sub-link" bindtap="generateDraftNoConfirm">免确认一键生成</text>
+    </view>
   </view>
 
   <view class="lp-nav">

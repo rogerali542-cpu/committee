@@ -2,7 +2,7 @@
   <!-- 顶栏：标题 + 通知铃 -->
   <view class="hd" style="padding-top: {{statusBarHeight}}px;">
     <view class="hd-left">
-      <text class="hd-title">业委专区</text>
+      <text class="hd-title">业委会</text>
       <text class="hd-sub">{{activeRole.realName}} · {{activeRole.role}}</text>
     </view>
     <view class="hd-bell" bindtap="goNotifications">
@@ -75,6 +75,10 @@
       <view class="more-item" bindtap="goReception">
         <text class="more-ico">🤝</text>
         <text class="more-label">接待记录</text>
+      </view>
+      <view wx:if="{{canCreate}}" class="more-item" bindtap="goNoticeAdmin">
+        <text class="more-ico">📢</text>
+        <text class="more-label">公告管理</text>
       </view>
       <view class="more-item" bindtap="goLearning">
         <text class="more-ico">📖</text>

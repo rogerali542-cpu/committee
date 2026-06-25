@@ -1,0 +1,8 @@
+.qnav { background: linear-gradient(160deg, #FFC23D, #FFA800); }
+.qnav-bar { position: relative; height: 92rpx; display: flex; align-items: center; }
+.qnav-back { width: 96rpx; text-align: center; font-size: 64rpx; color: #fff; line-height: 1; }
+.qnav-title {
+  position: absolute; left: 96rpx; right: 96rpx;
+  text-align: center; font-size: 42rpx; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

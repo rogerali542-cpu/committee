@@ -1,4 +1,5 @@
 <scroll-view scroll-y class="page">
+  <page-nav title="会议纪要" style="display:block;margin:-24rpx -24rpx 0;"></page-nav>
   <view wx:if="{{accessDenied}}" class="access-card">
     <view class="access-icon">!</view>
     <text class="access-title">{{accessTitle}}</text>
@@ -8,7 +9,7 @@
   <!-- 业主大会纪要（纯文本） -->
   <view wx:elif="{{isOwner && plainText}}" class="doc">
     <text class="doc-title">业主大会会议纪要</text>
-    <text style="display:block;font-size:13px;color:#555;line-height:1.7;white-space:pre-wrap;padding:12px 0;">{{plainText}}</text>
+    <text class="doc-body">{{plainText}}</text>
     <view wx:if="{{editMode}}" class="edit-block">
       <textarea class="edit-textarea" value="{{editText}}" bindinput="onEditTextInput" placeholder="编辑纪要全文..." placeholder-class="input-placeholder" maxlength="-1" />
       <view class="edit-actions">
@@ -26,7 +27,7 @@
   <view wx:elif="{{!isOwner && hasServerMinutes && plainText}}" class="doc">
     <view wx:if="{{minutes && minutes.draft}}" class="draft-banner">草稿 · 会议进行中，结束后定稿</view>
     <text class="doc-title">业主委员会会议纪要</text>
-    <text style="display:block;font-size:13px;color:#555;line-height:1.7;white-space:pre-wrap;padding:12px 0;">{{plainText}}</text>
+    <text class="doc-body">{{plainText}}</text>
     <view wx:if="{{editMode}}" class="edit-block">
       <text wx:if="{{reviseMode}}" class="revise-hint">修订模式：原归档版本将保留，本次修改作为新版本生效，提交时需填写修订原因。</text>
       <textarea class="edit-textarea" value="{{editText}}" bindinput="onEditTextInput" placeholder="编辑纪要全文..." placeholder-class="input-placeholder" maxlength="-1" />
@@ -37,11 +38,13 @@
     </view>
     <view class="minutes-actions">
       <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
-      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-outline edit-minutes-btn" bindtap="viewInternalTopicReport">查看内部AI议题报告</button>
-      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewTodoList">查看待办事项</button>
       <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
-      <button wx:if="{{canReviseMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startRevise">发起修订</button>
-      <button wx:if="{{canReviseMinutes}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewRevisions">修订历史</button>
+      <view class="more-links">
+        <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewInternalTopicReport">内部议题报告</text>
+        <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewTodoList">待办事项</text>
+        <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="startRevise">发起修订</text>
+        <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="viewRevisions">修订历史</text>
+      </view>
     </view>
   </view>
 
@@ -131,11 +134,13 @@
 
     <view class="minutes-actions">
       <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
-      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-outline edit-minutes-btn" bindtap="viewInternalTopicReport">查看内部AI议题报告</button>
-      <button wx:if="{{canViewInternalArtifacts}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewTodoList">查看待办事项</button>
       <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
-      <button wx:if="{{canReviseMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startRevise">发起修订</button>
-      <button wx:if="{{canReviseMinutes}}" class="btn btn-ghost edit-minutes-btn" bindtap="viewRevisions">修订历史</button>
+      <view class="more-links">
+        <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewInternalTopicReport">内部议题报告</text>
+        <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewTodoList">待办事项</text>
+        <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="startRevise">发起修订</text>
+        <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="viewRevisions">修订历史</text>
+      </view>
     </view>
   </view>
 

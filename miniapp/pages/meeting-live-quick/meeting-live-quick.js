@@ -1388,20 +1388,33 @@ Page({
       success: async (res) => {
         if (!res.confirm) return;
         this.setData({ ending: true });
+        const confirmPayload = this.buildConfirmPayload();
+        // 1) 尽力保存确认结果（失败不阻断结束；polish 会再保存一次）
         try {
-          const confirmPayload = this.buildConfirmPayload();
-          const polishResult = await api.committeeQuickPolish(this.meetingId, confirmPayload);
-          if (polishResult && polishResult.fallbackUsed) {
-            wx.showToast({ title: polishResult.errorMessage || '已用规则兜底生成', icon: 'none' });
+          if (typeof api.committeeQuickConfirm === 'function') {
+            await api.committeeQuickConfirm(this.meetingId, confirmPayload);
           }
+        } catch (ce) { /* ignore */ }
+        // 2) 结束会议（核心）。若因"已是结束态"报错则视为已结束；其它错误明确弹窗提示并停下。
+        let ended = false;
+        try {
           await api.committeeAdvance(this.meetingId, 'end');
-          this.clearQuickState();
-          wx.showToast({ title: '纪要已生成', icon: 'success' });
-          setTimeout(() => wx.navigateBack(), 600);
-        } catch (e) {
-          this.setData({ ending: false });
-          wx.showToast({ title: e.message || '操作失败', icon: 'none' });
+          ended = true;
+        } catch (ae) {
+          const msg = (ae && ae.message) || '';
+          if (msg.indexOf('仅进行中') >= 0 || msg.indexOf('已结束') >= 0 || msg.indexOf('ended') >= 0) {
+            ended = true;
+          } else {
+            this.setData({ ending: false });
+            wx.showModal({ title: '结束会议失败', content: msg || '请稍后重试', showCancel: false });
+            return;
+          }
         }
+        this.clearQuickState();
+        // 3) 尽力生成纪要（慢/失败都不阻断跳转）
+        try { await api.committeeQuickPolish(this.meetingId, confirmPayload); } catch (pe) { /* ignore */ }
+        // 4) 跳转到会议纪要页
+        wx.redirectTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
       }
     });
   },

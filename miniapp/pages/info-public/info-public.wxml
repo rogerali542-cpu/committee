@@ -11,5 +11,8 @@
       <text class="ic-desc">{{item.description}}</text>
     </view>
   </block>
-  <view wx:else class="empty-state"><text>暂无已公示的会议公告</text></view>
+  <view wx:else class="empty-state">
+    <text class="empty-emoji">📭</text>
+    <text class="empty-text">暂无已公示的会议公告</text>
+  </view>
 </view>

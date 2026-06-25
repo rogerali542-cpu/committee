@@ -1,6 +1,4 @@
 {
-  "navigationBarTitleText": "会议进行",
-  "navigationBarBackgroundColor": "#FFA800",
-  "navigationBarTextStyle": "black",
-  "usingComponents": {}
+  "navigationStyle": "custom",
+  "usingComponents": { "page-nav": "/components/page-nav/page-nav" }
 }

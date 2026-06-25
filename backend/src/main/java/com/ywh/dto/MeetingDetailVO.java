@@ -120,6 +120,7 @@ public class MeetingDetailVO {
             private String roomNumber;
             private Boolean signedIn;
             private Boolean signed;
+            private Boolean declined;
             private Boolean isSelf;
             private Boolean isProxy;
             private String operatorName;

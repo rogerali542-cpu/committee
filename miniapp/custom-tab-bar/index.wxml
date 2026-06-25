@@ -5,7 +5,7 @@
   </view>
   <view class="tab-item {{selected===1?'active':''}}" bindtap="switchTab" data-index="1" data-path="/pages/main/main">
     <text class="tab-icon">🏛️</text>
-    <text class="tab-text">业委专区</text>
+    <text class="tab-text">业委会</text>
   </view>
   <view class="tab-item {{selected===2?'active':''}}" bindtap="switchTab" data-index="2" data-path="/pages/profile/profile">
     <text class="tab-icon">👤</text>

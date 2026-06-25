@@ -26,6 +26,7 @@
 </template>
 
 <scroll-view scroll-y class="page">
+  <page-nav title="会议详情" style="display:block;margin:-12px -12px 0;"></page-nav>
   <view wx:if="{{detail}}">
     <!-- 简化阶段：进行中/已结束会议也允许主任删除（清理测试数据用；准备阶段用会议头部的取消按钮） -->
     <view wx:if="{{userView === 'chair' && detail.stage !== 'preparing'}}" style="text-align:right; padding:14rpx 28rpx 0;">
@@ -64,6 +65,22 @@
           <view class="prep-dot">{{item.state === 'done' ? '✓' : index + 1}}</view>
           <text class="prep-lbl">{{item.label}}</text>
         </view>
+      </view>
+
+      <!-- 本人参会确认：发起人发送时已自动确认，故仅本人尚未确认时显示（副主任等在此确认/拒绝） -->
+      <view class="prep-card" wx:if="{{detail.myDelivery}}">
+        <view class="pc-head"><text class="pc-title">我的参会</text></view>
+        <block wx:if="{{detail.mySignedIn}}">
+          <text class="my-attend-tip ok">✅ 你已确认参会</text>
+          <text class="my-attend-cancel" bindtap="cancelAttend">取消参会</text>
+        </block>
+        <block wx:else>
+          <text class="my-attend-tip {{detail.myDeclined ? 'declined' : ''}}">{{detail.myDeclined ? '已登记：因故缺席（如仍可参加，请点确认参会）' : '请确认本人是否参加本次会议'}}</text>
+          <view class="attend-actions">
+            <button class="attend-btn primary" bindtap="confirmAttend">确认参会</button>
+            <button class="attend-btn ghost" bindtap="declineAttend">无法参会</button>
+          </view>
+        </block>
       </view>
 
       <!-- 通知内容（草稿） -->
@@ -118,41 +135,20 @@
         </view>
       </view>
 
-      <!-- 委员送达进度 -->
+      <!-- 确认参会情况 -->
       <view class="prep-card" wx:if="{{detail.delivery}}">
         <view class="pc-head">
-          <text class="pc-title">委员送达进度</text>
-          <text wx:if="{{detail.delivery.total > 0}}" class="pc-sub link" bindtap="toggleDeliveryList">{{deliveryExpanded ? '收起名单' : '查看名单'}}</text>
+          <text class="pc-title">确认参会情况</text>
         </view>
         <view wx:if="{{detail.delivery.total > 0}}" class="pc-progress">
           <view class="pp-col">
-            <view class="pp-l"><text>已送达</text><text>{{detail.delivery.noticeDone}} / {{detail.delivery.total}}</text></view>
-            <view class="pp-bar"><view class="pp-fill" style="width:{{detail.delivery.noticePct}}%"></view></view>
-          </view>
-          <view class="pp-col">
-            <view class="pp-l"><text>已读</text><text>{{detail.delivery.readDone}} / {{detail.delivery.total}}</text></view>
-            <view class="pp-bar"><view class="pp-fill read" style="width:{{detail.delivery.readPct}}%"></view></view>
-          </view>
-          <view class="pp-col" wx:if="{{detail.materials && detail.materials.length}}">
-            <view class="pp-l"><text>材料</text><text>{{detail.delivery.materialDone}} / {{detail.delivery.total}}</text></view>
-            <view class="pp-bar"><view class="pp-fill" style="width:{{detail.delivery.materialPct}}%"></view></view>
+            <view class="pp-l"><text>已确认参会</text><text>{{detail.delivery.attendConfirmed}} / {{detail.delivery.total}} 人</text></view>
+            <view class="pp-bar"><view class="pp-fill read" style="width:{{detail.delivery.attendPct}}%"></view></view>
+            <text wx:if="{{detail.delivery.attendDeclined > 0}}" class="pp-declined">因故缺席 {{detail.delivery.attendDeclined}} 人</text>
           </view>
         </view>
         <view wx:else class="pc-upload-empty">
-          <text class="ue-txt">发送通知时选择应参会委员，名单将用于签到和会议纪要</text>
-        </view>
-        <view class="pc-members" wx:if="{{deliveryExpanded && detail.delivery.memberDeliveries}}">
-          <view class="pcm-row" wx:for="{{detail.delivery.memberDeliveries}}" wx:key="userRoleId">
-            <view class="pcm-main">
-              <text class="pcm-name">{{item.name}}</text>
-              <text class="pcm-role">{{item.role}}</text>
-            </view>
-            <view class="pcm-tags">
-              <text class="pcm-tag {{item.noticeDelivered ? 'ok' : ''}}" bindtap="toggleDelivery" data-user-role-id="{{item.userRoleId}}" data-field="notice">{{item.noticeDelivered ? '通知✓' : '通知'}}</text>
-              <text wx:if="{{item.noticeDelivered}}" class="pcm-tag read {{item.noticeRead ? 'ok' : ''}}">{{item.noticeRead ? '已读' : '未读'}}</text>
-              <text wx:if="{{detail.materials && detail.materials.length}}" class="pcm-tag {{item.materialDelivered ? 'ok' : ''}}" bindtap="toggleDelivery" data-user-role-id="{{item.userRoleId}}" data-field="material">{{item.materialDelivered ? '材料✓' : '材料'}}</text>
-            </view>
-          </view>
+          <text class="ue-txt">发送通知后，委员在自己的会议页点"确认参会"，这里统计已确认人数</text>
         </view>
         <text class="pc-deadline">{{detail.delivery.noDate ? '请先设置会议日期' : (detail.delivery.daysLeft >= 0 ? '截止 ' + detail.delivery.deadlineStr + '（还剩 ' + detail.delivery.daysLeft + ' 天）' : '截止 ' + detail.delivery.deadlineStr + '（已逾期）')}}</text>
       </view>
@@ -212,21 +208,27 @@
 
     <!-- ══════════ 委员 和 主任/副主任 共用：个人操作 ══════════ -->
     <block wx:if="{{userView === 'member' || userView === 'chair'}}">
-      <!-- 准备阶段：委员个人送达状态 -->
-      <block wx:if="{{!noticePackageVisible && detail.stage === 'preparing' && detail.myDelivery}}">
+      <!-- 准备阶段：委员个人送达状态（主任不显示个人确认卡——发送时已自动计入已读，用上方送达进度卡管理） -->
+      <block wx:if="{{userView === 'member' && !noticePackageVisible && detail.stage === 'preparing' && detail.myDelivery}}">
         <!-- 通知已送达 → 显示通知草稿 -->
         <view class="my-delivery-card" wx:if="{{detail.myDelivery.noticeDelivered}}">
-          <text class="mdc-title">📨 会议通知已送达</text>
-          <text class="mdc-big {{detail.myDelivery.noticeRead ? 'ok' : ''}}">{{detail.myDelivery.noticeRead ? '你已确认阅读会议通知' : '会议通知已送达，请阅读后确认'}}</text>
-          <button wx:if="{{!detail.myDelivery.noticeRead && !detail.noticeDraft}}" class="nd-confirm-btn" bindtap="confirmNoticeRead">我已阅读会议通知</button>
+          <text class="mdc-title">📨 会议通知</text>
+          <text class="mdc-big {{detail.mySignedIn ? 'ok' : (detail.myDeclined ? 'declined' : '')}}">{{detail.mySignedIn ? '✅ 你已确认参会' : (detail.myDeclined ? '已登记：因故缺席' : '收到会议通知，请确认是否参加')}}</text>
+          <view wx:if="{{!detail.mySignedIn && !detail.noticeDraft}}" class="attend-actions">
+            <button class="attend-btn primary" bindtap="confirmAttend">确认参会</button>
+            <button class="attend-btn ghost" bindtap="declineAttend">无法参会</button>
+          </view>
         </view>
         <view class="notice-draft-card" wx:if="{{detail.myDelivery.noticeDelivered && detail.noticeDraft}}">
           <view class="nd-head">
             <text class="nd-title">会议通知</text>
-            <text class="nd-status ok">{{detail.myDelivery.noticeRead ? '已确认' : '已送达'}}</text>
+            <text class="nd-status ok">{{detail.mySignedIn ? '已确认参会' : (detail.myDeclined ? '因故缺席' : '待确认')}}</text>
           </view>
           <text class="nd-content">{{detail.noticeDraft.content}}</text>
-          <button wx:if="{{!detail.myDelivery.noticeRead}}" class="nd-confirm-btn" bindtap="confirmNoticeRead">我已阅读会议通知</button>
+          <view wx:if="{{!detail.mySignedIn}}" class="attend-actions">
+            <button class="attend-btn primary" bindtap="confirmAttend">确认参会</button>
+            <button class="attend-btn ghost" bindtap="declineAttend">无法参会</button>
+          </view>
         </view>
         <!-- 通知未送达 -->
         <view class="my-delivery-card" wx:else>
@@ -304,9 +306,10 @@
           </view>
         </view>
         <template is="meetingTopicsCard" data="{{topics: detail.record ? detail.record.topics : []}}" />
-        <button class="btn btn-ghost" size="mini" bindtap="viewMinutes">查看会议纪要</button>
-        <button class="btn btn-ghost" size="mini" bindtap="viewPublicMinutes">查看公开纪要</button>
-        <button class="btn btn-ghost" size="mini" bindtap="viewInternalReport">内部议题报告</button>
+        <view class="member-doc-actions">
+          <button class="doc-btn" bindtap="viewMinutes">查看会议纪要</button>
+          <button class="doc-btn ghost" bindtap="viewPublicMinutes">查看公开纪要</button>
+        </view>
       </block>
 
       <!-- 主任：完整归档 -->
@@ -329,10 +332,14 @@
           </view>
           <template is="meetingTopicsCard" data="{{topics: detail.record ? detail.record.topics : []}}" />
           <view class="flow-stats-panel" wx:if="{{detail.flowStats}}">
-            <view class="fsc-head">
-              <text class="fsc-title">流程统计</text>
-              <text class="fsc-sub">通知送达和参会确认</text>
+            <view class="fsc-head" bindtap="toggleFlowStats">
+              <view>
+                <text class="fsc-title">流程统计</text>
+                <text class="fsc-sub">通知送达和参会确认</text>
+              </view>
+              <text class="fsc-toggle">{{flowStatsOpen ? '收起 ▾' : '展开 ▸'}}</text>
             </view>
+            <block wx:if="{{flowStatsOpen}}">
             <view class="fss-row">
               <view class="fss-mark delivery">送</view>
               <view class="fss-main">
@@ -351,6 +358,7 @@
               </view>
               <text class="fss-status {{detail.flowStats.attendance.done ? 'ok' : 'bad'}}">{{detail.flowStats.attendance.statusText}}</text>
             </view>
+            </block>
           </view>
           <view class="arc-list">
             <view class="arcl-row" bindtap="viewNoticeDraft" wx:if="{{detail.noticeDraft}}">
@@ -377,12 +385,17 @@
           </view>
           <view class="arc-add" bindtap="addArchiveExtra"><text>+ 补充归档材料</text></view>
           <view class="arc-log" wx:if="{{detail.archiveLog && detail.archiveLog.length}}">
-            <text class="arclog-title">操作记录</text>
+            <view class="arclog-head" bindtap="toggleArchiveLog">
+              <text class="arclog-title">操作记录（{{detail.archiveLog.length}}）</text>
+              <text class="arclog-toggle">{{archiveLogOpen ? '收起 ▾' : '展开 ▸'}}</text>
+            </view>
+            <block wx:if="{{archiveLogOpen}}">
             <view class="arclog-row" wx:for="{{detail.archiveLog}}" wx:for-item="lg" wx:key="id">
               <text class="arclog-action">{{lg.action}}</text>
               <text class="arclog-meta">{{lg.operator}} · {{lg.at}}</text>
               <text class="arclog-reason" wx:if="{{lg.reason}}">{{lg.reason}}</text>
             </view>
+            </block>
           </view>
         </view>
         <view class="ar-publish" wx:if="{{detail.compliance !== 'invalid'}}">

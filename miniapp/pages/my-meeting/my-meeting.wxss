@@ -43,6 +43,9 @@ page { background: #f4f5f7; }
 }
 .mm-done-text { font-size: 46rpx; font-weight: 700; color: #1E8449; }
 .mm-cancel { margin-top: 28rpx; font-size: 30rpx; color: #9aa6b2; padding: 8rpx; }
+.mm-declined { display: block; text-align: center; font-size: 30rpx; color: #E67E22; margin-bottom: 20rpx; line-height: 1.5; }
+.mm-decline-wrap { text-align: center; margin-top: 28rpx; }
+.mm-decline-pill { display: inline-block; min-height: 84rpx; line-height: 84rpx; padding: 0 72rpx; border-radius: 42rpx; background: #eef0f3; color: #5b6673; font-size: 32rpx; font-weight: 600; }
 
 /* 录音控件 */
 .mm-recorder {

@@ -1,1 +1,4 @@
-{ "navigationBarTitleText": "会议详情" }
+{
+  "navigationStyle": "custom",
+  "usingComponents": { "page-nav": "/components/page-nav/page-nav" }
+}

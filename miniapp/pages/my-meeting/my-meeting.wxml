@@ -1,4 +1,5 @@
 <view class="mm">
+  <page-nav title="我的会议" style="display:block;margin:-28rpx -24rpx 0;"></page-nav>
   <!-- 会议信息 -->
   <view class="mm-card">
     <text class="mm-title">{{title}}</text>
@@ -11,17 +12,23 @@
 
   <!-- 阶段主区：准备→确认参加 / 进行中→录音+材料 / 已结束→查看结果 -->
   <view wx:if="{{stage === 'preparing'}}" class="mm-card">
-    <view wx:if="{{!signedIn}}" class="mm-big-btn" bindtap="confirmAttend">
-      <text class="mm-big-ico">✅</text>
-      <text class="mm-big-text">确认参加</text>
-    </view>
-    <view wx:else class="mm-done">
+    <view wx:if="{{signedIn}}" class="mm-done">
       <view class="mm-done-row">
         <text class="mm-done-ico">✓</text>
         <text class="mm-done-text">已确认参加</text>
       </view>
       <text class="mm-cancel" bindtap="cancelAttend">取消参加</text>
     </view>
+    <block wx:else>
+      <view wx:if="{{declined}}" class="mm-declined">已登记：因故缺席（如仍可参加，请点下方确认）</view>
+      <view class="mm-big-btn" bindtap="confirmAttend">
+        <text class="mm-big-ico">✅</text>
+        <text class="mm-big-text">确认参加</text>
+      </view>
+      <view wx:if="{{!declined}}" class="mm-decline-wrap">
+        <text class="mm-decline-pill" bindtap="declineAttend">无法参会</text>
+      </view>
+    </block>
   </view>
 
   <!-- 进行中：录音 + 材料 -->

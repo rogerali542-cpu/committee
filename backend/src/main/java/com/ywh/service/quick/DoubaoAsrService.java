@@ -22,7 +22,9 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -49,86 +51,110 @@ public class DoubaoAsrService implements AsrService {
     private final ConcurrentHashMap<String, Long> reqIdToMeeting = new ConcurrentHashMap<>();
     // meetingId -> 已解析完成的识别结果（任务 done 后缓存，供后续读取）
     private final ConcurrentHashMap<Long, AsrResult> results = new ConcurrentHashMap<>();
+    // 正在后台向豆包提交（HTTP 请求尚未完成）的 reqId 集合
+    private final Set<String> pendingReqIds = ConcurrentHashMap.newKeySet();
+    // 后台提交失败的 reqId → 错误信息
+    private final ConcurrentHashMap<String, String> submitErrors = new ConcurrentHashMap<>();
 
     @Override
     public AsrTaskVO submit(Long meetingId, String audioRef) {
-        return submitInternal(meetingId, null, audioRef);
+        return submitInternal(meetingId, audioRef, null);
     }
 
     @Override
     public AsrTaskVO submit(Long meetingId, Long recordingId, CommitteeService committeeService) {
-        String audioUrl = null;
-        if (recordingId != null && committeeService != null) {
-            audioUrl = committeeService.getRecordingUrl(recordingId);
-        }
-        return submitInternal(meetingId, recordingId, audioUrl);
+        String audioUrl = (recordingId != null && committeeService != null)
+                ? committeeService.getRecordingUrl(recordingId) : null;
+        return submitInternal(meetingId, audioUrl, committeeService);
     }
 
-    private AsrTaskVO submitInternal(Long meetingId, Long recordingId, String audioRef) {
+    private AsrTaskVO submitInternal(Long meetingId, String audioRef, CommitteeService cs) {
         DoubaoProperties.Asr a = props.getAsr();
         String reqId = UUID.randomUUID().toString();
-        try {
-            if (isBlank(a.getAppKey()) || isBlank(a.getAccessToken())) {
-                return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
-                        .status("failed").message("DOUBAO_ASR_APP_KEY / DOUBAO_ASR_ACCESS_TOKEN not configured").build();
-            }
 
-            ObjectNode body = mapper.createObjectNode();
-            body.putObject("user").put("uid", "ywh-" + meetingId);
-            ObjectNode audioNode = body.putObject("audio");
-
-            // 优先尝试用本地上传文件 Base64 提交（避免公网 URL 问题）
-            if (isPrivateAudioUrl(audioRef)) {
-                String filename = extractFilename(audioRef);
-                if (filename != null) {
-                    try {
-                        byte[] audioBytes = audioStorage.load(filename);
-                        String b64 = java.util.Base64.getEncoder().encodeToString(audioBytes);
-                        audioNode.put("data", b64);
-                        audioNode.put("format", guessFormat(audioRef, a.getDefaultFormat()));
-                        log.info("[ASRDBG] submit via audio.data meetingId={} file={} size={} bytes", meetingId, filename, audioBytes.length);
-                    } catch (Exception e) {
-                        log.warn("[ASRDBG] unable to load audio file for base64 submit: {}", e.getMessage());
-                        return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
-                                .status("failed").message("音频文件读取失败，请重新上传").build();
-                    }
-                } else {
-                    return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
-                            .status("failed").message("音频公网地址无法访问，请返回上一步重新上传录音").build();
-                }
-            } else {
-                audioNode.put("url", audioRef);
-                audioNode.put("format", guessFormat(audioRef, a.getDefaultFormat()));
-                log.info("[ASRDBG] submit via audio.url meetingId={} audioUrl={}", meetingId, audioRef);
-            }
-
-            ObjectNode req = body.putObject("request");
-            req.put("model_name", a.getModelName());
-            req.put("enable_itn", true);
-            req.put("enable_punc", true);
-            req.put("enable_speaker_info", true);
-            req.put("show_utterances", true);
-
-            HttpResponse<String> resp = post(a.getSubmitUrl(), reqId, body.toString());
-            String code = resp.headers().firstValue("X-Api-Status-Code").orElse("");
-            if (!"20000000".equals(code)) {
-                log.warn("Doubao ASR submit failed code={} body={}", code, resp.body());
-                return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
-                        .status("failed").message("submit code=" + code).build();
-            }
-            meetingToReqId.put(meetingId, reqId);
-            reqIdToMeeting.put(reqId, meetingId);
-            return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId).status("processing").build();
-        } catch (Exception e) {
-            log.error("Doubao ASR submit exception", e);
-            return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId)
-                    .status("failed").message(e.getMessage()).build();
+        if (isBlank(a.getAppKey()) || isBlank(a.getAccessToken())) {
+            return failed(reqId, meetingId, "DOUBAO_ASR_APP_KEY / DOUBAO_ASR_ACCESS_TOKEN not configured");
         }
+
+        // ── 1. 同步构建 JSON 请求体（读文件 + Base64，快速本地操作） ──
+        ObjectNode body = mapper.createObjectNode();
+        body.putObject("user").put("uid", "ywh-" + meetingId);
+        ObjectNode audioNode = body.putObject("audio");
+
+        if (isPrivateAudioUrl(audioRef)) {
+            String filename = extractFilename(audioRef);
+            if (filename == null) {
+                return failed(reqId, meetingId, "音频公网地址无法访问，请返回上一步重新上传录音");
+            }
+            try {
+                byte[] audioBytes = audioStorage.load(filename);
+                String b64 = java.util.Base64.getEncoder().encodeToString(audioBytes);
+                audioNode.put("data", b64);
+                audioNode.put("format", guessFormat(audioRef, a.getDefaultFormat()));
+                log.info("[ASRDBG] submit via audio.data meetingId={} file={} size={} bytes", meetingId, filename, audioBytes.length);
+            } catch (Exception e) {
+                log.warn("[ASRDBG] unable to load audio file: {}", e.getMessage());
+                return failed(reqId, meetingId, "音频文件读取失败，请重新上传");
+            }
+        } else {
+            audioNode.put("url", audioRef);
+            audioNode.put("format", guessFormat(audioRef, a.getDefaultFormat()));
+            log.info("[ASRDBG] submit via audio.url meetingId={} audioUrl={}", meetingId, audioRef);
+        }
+
+        ObjectNode req = body.putObject("request");
+        req.put("model_name", a.getModelName());
+        req.put("enable_itn", true);
+        req.put("enable_punc", true);
+        req.put("enable_speaker_info", true);
+        req.put("show_utterances", true);
+
+        // ── 2. 预注册 taskId，立即返回，HTTP 提交放后台 ──
+        meetingToReqId.put(meetingId, reqId);
+        reqIdToMeeting.put(reqId, meetingId);
+        pendingReqIds.add(reqId);
+
+        final String bodyStr = body.toString();
+        final Long mid = meetingId;
+        final String rid = reqId;
+        CompletableFuture.runAsync(() -> {
+            try {
+                HttpResponse<String> resp = post(a.getSubmitUrl(), rid, bodyStr);
+                String code = resp.headers().firstValue("X-Api-Status-Code").orElse("");
+                if (!"20000000".equals(code)) {
+                    log.warn("[ASR] Doubao submit failed meetingId={} code={} body={}", mid, code, resp.body());
+                    submitErrors.put(rid, "submit code=" + code);
+                } else {
+                    log.info("[ASR] Doubao submit OK meetingId={} reqId={}", mid, rid);
+                }
+            } catch (Exception e) {
+                log.error("[ASR] Doubao submit exception meetingId={}", mid, e);
+                submitErrors.put(rid, e.getMessage() != null ? e.getMessage() : "网络异常");
+            } finally {
+                pendingReqIds.remove(rid);
+            }
+        });
+
+        return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId).status("processing").build();
+    }
+
+    private AsrTaskVO failed(String reqId, Long meetingId, String message) {
+        return AsrTaskVO.builder().taskId(reqId).meetingId(meetingId).status("failed").message(message).build();
     }
 
     @Override
     public AsrTaskVO status(String taskId) {
         Long meetingId = reqIdToMeeting.get(taskId);
+        // 后台提交尚未完成，不能查豆包（reqId 还未登记到豆包侧）
+        if (pendingReqIds.contains(taskId)) {
+            return AsrTaskVO.builder().taskId(taskId).meetingId(meetingId).status("processing").build();
+        }
+        // 后台提交失败
+        String submitErr = submitErrors.get(taskId);
+        if (submitErr != null) {
+            return AsrTaskVO.builder().taskId(taskId).meetingId(meetingId).status("failed").message(submitErr).build();
+        }
+        // 正常查询豆包
         try {
             HttpResponse<String> resp = post(props.getAsr().getQueryUrl(), taskId, "{}");
             String code = resp.headers().firstValue("X-Api-Status-Code").orElse("");

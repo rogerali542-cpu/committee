@@ -1,0 +1,71 @@
+<scroll-view scroll-y class="page">
+  <view class="page-head">
+    <view>
+      <text class="page-title">公告管理</text>
+      <text class="page-sub">发布、编辑小区公告</text>
+    </view>
+    <button class="head-btn" size="mini" bindtap="openCreate">+ 发布</button>
+  </view>
+
+  <!-- 公告列表 -->
+  <view wx:if="{{list.length}}" class="notice-list">
+    <view class="notice-card" wx:for="{{list}}" wx:key="id">
+      <view class="nc-top">
+        <text class="nc-date">📅 {{item.date}}</text>
+        <text class="nc-status {{item.published ? 'on' : 'off'}}">{{item.published ? '已发布' : '未发布'}}</text>
+      </view>
+      <text class="nc-title">{{item.title}}</text>
+      <text class="nc-detail" wx:if="{{item.detail}}">{{item.detail}}</text>
+      <view class="nc-actions">
+        <button class="btn btn-outline" size="mini" bindtap="openEdit" data-item="{{item}}">编辑</button>
+        <button class="btn btn-ghost" size="mini" bindtap="remove" data-item="{{item}}">删除</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:elif="{{!loading}}" class="empty-state">
+    <text class="empty-emoji">📢</text>
+    <text>还没有公告，点右上角「发布」新建</text>
+  </view>
+  <view wx:else class="empty-state"><text>加载中...</text></view>
+
+  <!-- 新建 / 编辑 面板 -->
+  <view wx:if="{{sheetVisible}}" class="modal-mask" bindtap="closeSheet">
+    <view class="form-sheet" catchtap="noop">
+      <view class="sheet-head">
+        <text class="sheet-title">{{editing ? '编辑公告' : '发布公告'}}</text>
+        <text class="sheet-close" bindtap="closeSheet">×</text>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">公告日期</text>
+        <picker mode="date" value="{{form.date}}" bindchange="onDateChange">
+          <view class="picker-field">{{form.date || '选择日期'}}</view>
+        </picker>
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">公告标题 *</text>
+        <input class="form-input" value="{{form.title}}" data-field="title" bindinput="onFormInput" placeholder="如：关于小区电梯年度维保的通知" placeholder-class="input-placeholder" maxlength="100" />
+      </view>
+
+      <view class="form-group">
+        <text class="form-label">公告内容</text>
+        <textarea class="form-textarea" value="{{form.detail}}" data-field="detail" bindinput="onFormInput" placeholder="详细说明公告内容、时间、注意事项等" placeholder-class="input-placeholder" maxlength="2000" />
+      </view>
+
+      <view class="form-switch-row">
+        <view>
+          <text class="form-label" style="margin:0;">立即对居民公开</text>
+          <text class="form-hint">关闭则保存为草稿，居民暂时看不到</text>
+        </view>
+        <switch checked="{{form.published}}" color="#FFA800" bindchange="onPublishedChange" />
+      </view>
+
+      <view class="sheet-actions">
+        <button class="btn btn-ghost" bindtap="closeSheet">取消</button>
+        <button class="btn btn-primary" bindtap="submit" loading="{{saving}}">{{editing ? '保存修改' : '确认发布'}}</button>
+      </view>
+    </view>
+  </view>
+</scroll-view>

@@ -1,4 +1,4 @@
-.page { min-height:100vh; background:#f5f5f5; padding:12px; padding-bottom:110px; }
+.page { min-height:100vh; background:#f4f5f7; padding:12px; padding-bottom:110px; }
 
 /* Task banner */
 .task-banner { padding:10px 14px; border-radius:12px; margin-bottom:12px; }
@@ -771,3 +771,25 @@
 .send-person { flex:1; min-width:0; }
 .send-name { display:block; font-size:14px; color:#333; font-weight:600; line-height:1.45; word-break:break-all; }
 .send-meta { display:block; font-size:11px; color:#999; margin-top:2px; line-height:1.45; word-break:break-all; }
+
+/* —— 适老化补充：委员纪要按钮 + 归档页折叠头 —— */
+.member-doc-actions { display:flex; gap:16rpx; margin-bottom:12px; }
+.doc-btn { flex:1; height:88rpx; line-height:88rpx; border-radius:44rpx; background:#FFA800; color:#fff; font-size:30rpx; font-weight:600; margin:0; border:0; }
+.doc-btn::after { border:0; }
+.doc-btn.ghost { background:#fff; color:#C77800; border:2rpx solid #FFA800; }
+.fsc-toggle { font-size:24rpx; color:#C77800; font-weight:600; flex-shrink:0; white-space:nowrap; }
+.arclog-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.arclog-toggle { font-size:24rpx; color:#C77800; font-weight:600; }
+
+/* —— 委员确认参会 / 无法参会 —— */
+.attend-actions { display:flex; flex-direction:column; gap:20rpx; margin-top:24rpx; }
+.attend-btn { border:none; margin:0; }
+.attend-btn::after { border:none; }
+.attend-btn.primary { width:100%; min-height:104rpx; line-height:104rpx; border-radius:18rpx; font-size:34rpx; font-weight:700; background:#FFA800; color:#fff; box-shadow:0 8rpx 22rpx rgba(255,168,0,0.4); }
+.attend-btn.ghost { align-self:center; width:auto; min-height:84rpx; line-height:84rpx; padding:0 72rpx; border-radius:42rpx; font-size:32rpx; font-weight:600; background:#eef0f3; color:#5b6673; }
+.mdc-big.declined { color:#E67E22; }
+.pp-declined { display:block; font-size:24rpx; color:#E67E22; margin-top:10rpx; }
+.my-attend-tip { display:block; font-size:30rpx; color:#4a5560; margin-bottom:16rpx; line-height:1.5; }
+.my-attend-tip.declined { color:#E67E22; }
+.my-attend-tip.ok { color:#27AE60; font-weight:600; margin-bottom:0; }
+.my-attend-cancel { display:block; text-align:center; margin-top:24rpx; font-size:30rpx; color:#9aa6b2; padding:8rpx; }

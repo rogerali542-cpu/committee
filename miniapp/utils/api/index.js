@@ -11,6 +11,7 @@ var committee = require('./committee');
 var reception = require('./reception');
 var learning = require('./learning');
 var publicInfo = require('./public-info');
+var notice = require('./notice');
 
 module.exports = {
   // 便捷方法
@@ -116,5 +117,12 @@ module.exports = {
   notificationReadAll: require('./notifications').notificationReadAll,
 
   // Public Info
-  publicInfo: publicInfo.publicInfo
+  publicInfo: publicInfo.publicInfo,
+
+  // Notice 小区公告
+  noticeList: notice.noticeList,
+  noticeManageList: notice.noticeManageList,
+  noticeCreate: notice.noticeCreate,
+  noticeUpdate: notice.noticeUpdate,
+  noticeRemove: notice.noticeRemove
 };

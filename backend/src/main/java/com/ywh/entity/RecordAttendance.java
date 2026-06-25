@@ -31,6 +31,9 @@ public class RecordAttendance {
     @Column(name = "attested", nullable = false)
     private Boolean signed;    // DB: attested（确认签字）
 
+    @Column(name = "declined")
+    private Boolean declined;   // 因故缺席（委员主动选择"无法参会"）；null/false=未拒绝
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "operator_id")
     private UserRoleEntity operator;

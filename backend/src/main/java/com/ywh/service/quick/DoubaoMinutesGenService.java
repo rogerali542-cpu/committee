@@ -45,7 +45,7 @@ public class DoubaoMinutesGenService implements MinutesGenService {
     private static final String SYSTEM_PROMPT = """
             你是专业的业主委员会会议秘书。依据【会议转写】、【人工确认议题结果】和【议题线索】，同时生成三份产物：
             1. 正式会议纪要 minutesMarkdown：用于存档、公示和展示，必须简洁正式；
-            2. AI议题报告 topicReportMarkdown：用于系统内部保存，必须详细完整；
+            2. AI议题报告 topicReportMarkdown：用于系统内部保存，要点完整但精炼，不堆砌、不重复、不冗长；
             3. 待办事项 todoListMarkdown：用于执行跟踪，结构化列出事项、负责人、截止时间、来源议题、状态。
 
             议题类型判断：
@@ -72,7 +72,7 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             5. 待办（todos）是会上明确要做的后续事项，没有就给空数组。
             6. minutesMarkdown 是面向全体业主公示的正式纪要，内容要完整充实、条理清晰，严格按四个章节组织：
                一、会议概况：会议名称、时间、地点、主持人、应到/实到委员人数。
-               二、议题审议情况：按议题逐项展开，每个议题写成完整段落，包含“议题背景、审议/讨论情况、会议结论”三层，不要只用一两句话带过。
+               二、议题审议情况：按议题逐项展开，包含“议题背景、审议/讨论情况、会议结论”三层，简明扼要、突出要点，避免冗长复述与套话。
                三、会议决议：汇总本次会议形成的全部决议事项；若无表决事项则写“本次会议无表决决议事项”。
                四、后续安排：列出后续工作、责任分工和完成时间要求。
             7. minutesMarkdown 内容虽充实，但仍是公开文件：不得逐字记录委员发言，不得写入内部风险评估、证据线索或未经确认的猜测。
@@ -452,6 +452,8 @@ public class DoubaoMinutesGenService implements MinutesGenService {
         ObjectNode body = mapper.createObjectNode();
         body.put("model", llm.getModel());
         body.put("temperature", 0.3);
+        // 输出封顶：防止模型把三份文档写得过长拖慢生成；配合"精炼"prompt，正常纪要足够用。
+        body.put("max_tokens", 4096);
         ArrayNode messages = body.putArray("messages");
         messages.addObject().put("role", "system").put("content", SYSTEM_PROMPT);
         messages.addObject().put("role", "user").put("content", userContent);

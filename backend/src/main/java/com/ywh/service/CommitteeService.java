@@ -337,6 +337,8 @@ public class CommitteeService {
             throw new IllegalArgumentException("请选择需要通知并应参会的委员");
         }
 
+        UserRoleEntity initiator = SecurityUtils.getCurrentUserRole();
+        LocalDateTime now = LocalDateTime.now();
         List<UserRoleEntity> members = resolveMeetingMembers(meeting.getCommunity().getId(), memberIds);
         deliveryRepo.deleteByMeetingId(meetingId);
         List<MeetingDelivery> deliveries = members.stream()
@@ -349,6 +351,21 @@ public class CommitteeService {
                 .collect(Collectors.toList());
         deliveryRepo.saveAll(deliveries);
         markNotifiedIfComplete(meetingId);
+
+        // 发起人（当前主任/副主任）发送会议通知时即自动"确认参会"，计入确认参会人数（自动为 1），无需再手动确认。
+        if (initiator != null) {
+            MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElseGet(() -> initRecord(meeting));
+            RecordAttendance att = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), initiator.getId())
+                    .orElseGet(() -> RecordAttendance.builder()
+                            .record(record).userRole(initiator).signedIn(false).signed(false).build());
+            if (!Boolean.TRUE.equals(att.getSignedIn())) {
+                att.setSignedIn(true);
+                att.setOperator(initiator);
+                att.setIsProxy(false);
+                att.setOperatedAt(now);
+                attendanceRepo.save(att);
+            }
+        }
     }
 
     /** 全部通知送达后记录"通知完成"时间，触发重大字段锁定（规则8）。 */
@@ -410,6 +427,21 @@ public class CommitteeService {
         }
         if ("signedIn".equals(field)) {
             a.setSignedIn(true);
+            a.setDeclined(false);
+            a.setOperator(ur);
+            a.setIsProxy(false);
+            a.setOperatedAt(LocalDateTime.now());
+        } else if ("declined".equals(field)) {
+            // 无法参会 → 标记因故缺席，并取消签到
+            a.setDeclined(true);
+            a.setSignedIn(false);
+            a.setOperator(ur);
+            a.setIsProxy(false);
+            a.setOperatedAt(LocalDateTime.now());
+        } else if ("cancel".equals(field)) {
+            // 取消参会 → 回到未响应（既不确认也不缺席）
+            a.setSignedIn(false);
+            a.setDeclined(false);
             a.setOperator(ur);
             a.setIsProxy(false);
             a.setOperatedAt(LocalDateTime.now());
@@ -584,14 +616,9 @@ public class CommitteeService {
             if (!isVoteTopic(topic)) {
                 continue;
             }
-            int forVotes = Optional.ofNullable(result.getForVotes()).orElse(0);
-            int agVotes = Optional.ofNullable(result.getAgVotes()).orElse(0);
-            int abVotes = Optional.ofNullable(result.getAbVotes()).orElse(0);
-            if (forVotes < 0 || agVotes < 0 || abVotes < 0 || forVotes + agVotes + abVotes != signedIn.size()) {
-                throw new IllegalArgumentException("请填写与签到人数一致的表决票数");
-            }
-            // Quick mode stores aggregate counts from the recording confirmation.
-            // It must not create synthetic per-member votes.
+            // 快速模式：票数以主持人现场确认为准（聚合值存于 quickConfirmJson），
+            // 不再强制"同意+反对+弃权 == 签到人数"——避免因人数对不上而无法结束会议。
+            // 仅清理旧的逐人投票记录，不再合成逐人投票。
             voteRepo.deleteAll(voteRepo.findByTopicId(topic.getId()));
         }
     }
@@ -1298,6 +1325,8 @@ public class CommitteeService {
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         // 简化阶段：放开删除限制，任意阶段的会议都可由主任删除（级联清理覆盖全部关联数据）。
         // 便于清理测试数据；正式上线如需治理可再收紧（如禁止删除已公示会议）。
+        // 先清理录音文件，避免外键约束报错
+        recordingRepo.deleteAll(recordingRepo.findByMeetingIdOrderByCreatedAtDesc(meetingId));
         deliveryRepo.deleteByMeetingId(meetingId);
         minutesRevisionRepo.deleteAll(minutesRevisionRepo.findByMeetingIdOrderByVersionNoDesc(meetingId));
         publishRepo.findByMeetingId(meetingId).ifPresent(publishRepo::delete);
@@ -1725,6 +1754,7 @@ public class CommitteeService {
             av.setRoomNumber(a.getUserRole().getRoomNumber());
             av.setSignedIn(a.getSignedIn());
             av.setSigned(a.getSigned());
+            av.setDeclined(Boolean.TRUE.equals(a.getDeclined()));
             av.setIsSelf(ur.getId().equals(a.getUserRole().getId()));
             av.setIsProxy(Boolean.TRUE.equals(a.getIsProxy()));
             av.setOperatorName(a.getOperator() != null ? a.getOperator().getRealName() : null);

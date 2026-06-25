@@ -162,6 +162,7 @@ Page({
   },
   goCommittee() { wx.navigateTo({ url: '/pages/committee/committee' }); },
   goReception() { wx.navigateTo({ url: '/pages/reception/reception' }); },
+  goNoticeAdmin() { wx.navigateTo({ url: '/pages/notice-admin/notice-admin' }); },
   goLearning() { wx.navigateTo({ url: '/pages/learning/learning' }); },
   goLibrary() { wx.navigateTo({ url: '/pages/library/library' }); },
   goNotifications() { wx.navigateTo({ url: '/pages/notifications/notifications' }); }

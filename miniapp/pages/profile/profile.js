@@ -3,6 +3,7 @@ const api = require('../../utils/api');
 
 Page({
   data: {
+    statusBarHeight: 0,
     activeRole: {},
     headerGrad: '',
     textColor: '#5C3D00',
@@ -19,6 +20,9 @@ Page({
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 2 });
+    }
+    if (wx.getWindowInfo) {
+      this.setData({ statusBarHeight: wx.getWindowInfo().statusBarHeight || 20 });
     }
     const role = app.globalData.activeRole;
     if (!role) { wx.redirectTo({ url: '/pages/login/login' }); return; }
@@ -58,16 +62,7 @@ Page({
     // Records menu by role
     let recordsTitle = '';
     let recordsList = [];
-    if (isCommittee) {
-      recordsTitle = '我的记录';
-      recordsList = [
-        { icon: '🗳️', bg: '#FFF3DC', label: '我的投票记录' },
-        { icon: '📋', bg: '#FFF3DC', label: '参会记录' },
-        { icon: '✍️', bg: '#FFF3DC', label: '确认记录' },
-        { icon: '📝', bg: '#F5EEF8', label: '整理的纪要' },
-        { icon: '📎', bg: '#F5EEF8', label: '上传的佐证' }
-      ];
-    } else if (role.role === '管理员') {
+    if (role.role === '管理员') {
       recordsTitle = '系统管理';
       recordsList = [
         { icon: '⚙️', bg: '#F5EEF8', label: '权限管理', action: 'admin' }
@@ -79,7 +74,7 @@ Page({
     this.setData({
       activeRole: role,
       headerGrad: gradMap[role.role] || gradMap['主任'],
-      textColor: light ? '#fff' : '#5C3D00',
+      textColor: '#fff',
       roleDesc: descMap[role.role] || '',
       roleClass: roleClassMap[role.role] || '',
       showStats: isCommittee,

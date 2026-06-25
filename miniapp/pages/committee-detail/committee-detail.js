@@ -161,6 +161,8 @@ Page({
     stepDone: 0, stepTotal: 2, stepAllDone: false,
     prepareSteps: [], prepareHint: '', prepareMode: '',
     deliveryExpanded: false,
+    flowStatsOpen: false,
+    archiveLogOpen: false,
     noticePackageVisible: false,
     recAudioPlaying: false,
     // 添加议题表单
@@ -329,6 +331,19 @@ Page({
         detail.delivery.noticePct = percent(noticeDone, dels.length);
         detail.delivery.materialPct = percent(materialDone, dels.length);
         detail.delivery.readPct = percent(readDone, dels.length);
+      }
+      // 确认参会人数：委员"确认参会"走的是出席(signedIn)，按应通知人数 delivery.total 统计
+      if (detail.delivery) {
+        var atts = (detail.record && detail.record.attendances) ? detail.record.attendances : [];
+        var attendConfirmed = atts.filter(function (a) { return a.signedIn; }).length;
+        var attendDeclined = atts.filter(function (a) { return a.declined; }).length;
+        var attendTotal = detail.delivery.total || atts.length || 0;
+        detail.delivery.attendConfirmed = attendConfirmed;
+        detail.delivery.attendDeclined = attendDeclined;
+        detail.delivery.attendPct = percent(attendConfirmed, attendTotal);
+        var mine = atts.filter(function (a) { return a.isSelf; })[0];
+        detail.mySignedIn = !!(mine && mine.signedIn);
+        detail.myDeclined = !!(mine && mine.declined);
       }
       detail.flowStats = buildFlowStats(detail);
 
@@ -697,6 +712,14 @@ Page({
     this.setData({ deliveryExpanded: !this.data.deliveryExpanded });
   },
 
+  toggleFlowStats() {
+    this.setData({ flowStatsOpen: !this.data.flowStatsOpen });
+  },
+
+  toggleArchiveLog() {
+    this.setData({ archiveLogOpen: !this.data.archiveLogOpen });
+  },
+
   async sendAll() {
     await this.openSendDialog();
   },
@@ -783,9 +806,45 @@ Page({
   async confirmNoticeRead() {
     try {
       await api.committeeMarkDeliveryRead(this.meetingId);
-      wx.showToast({ title: '已确认阅读', icon: 'success' });
+      wx.showToast({ title: '已确认参会', icon: 'success' });
       this.loadDetail();
     } catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
+  },
+
+  // 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
+  async confirmAttend() {
+    try {
+      await api.committeeSelfToggle(this.meetingId, 'signedIn');
+      wx.showToast({ title: '已确认参会', icon: 'success' });
+      this.loadDetail();
+    } catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
+  },
+
+  // 委员"无法参会"：标记因故缺席(declined)
+  async declineAttend() {
+    try {
+      await api.committeeSelfToggle(this.meetingId, 'declined');
+      wx.showToast({ title: '已登记：无法参会', icon: 'none' });
+      this.loadDetail();
+    } catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
+  },
+
+  // "取消参会"：回到未响应（从确认参会人数中移除）
+  cancelAttend() {
+    wx.showModal({
+      title: '取消参会',
+      content: '确定取消本人参会？取消后将从确认参会人数中移除。',
+      confirmText: '取消参会',
+      cancelText: '再想想',
+      success: async (res) => {
+        if (!res.confirm) return;
+        try {
+          await api.committeeSelfToggle(this.meetingId, 'cancel');
+          wx.showToast({ title: '已取消参会', icon: 'none' });
+          this.loadDetail();
+        } catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
+      }
+    });
   },
 
   async toggleDelivery(e) {
