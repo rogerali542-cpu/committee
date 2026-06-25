@@ -127,13 +127,18 @@ public class CommitteeController {
 
     @PostMapping("/{id}/topics")
     @RequireRole({"主任", "副主任", "委员"})
-    public Result<RecordTopic> addTopic(@PathVariable Long id,
+    public Result<java.util.Map<String, Object>> addTopic(@PathVariable Long id,
                                          @RequestParam String title,
                                          @RequestParam String type,
                                          @RequestParam(required = false) String decisionType,
                                          @RequestParam(required = false) String options,
                                          @RequestParam(required = false, defaultValue = "false") Boolean realNameVote) {
-        return Result.ok(service.addTopic(id, title, type, decisionType, options, realNameVote));
+        // 仅返回必要字段，避免直接序列化 JPA 实体触发 Hibernate 懒加载代理(community 等)序列化失败
+        RecordTopic t = service.addTopic(id, title, type, decisionType, options, realNameVote);
+        java.util.Map<String, Object> vo = new java.util.HashMap<>();
+        vo.put("id", t.getId());
+        vo.put("title", t.getTitle());
+        return Result.ok(vo);
     }
 
     @DeleteMapping("/{id}/topics/{topicId}")

@@ -1411,9 +1411,11 @@ Page({
           }
         }
         this.clearQuickState();
-        // 3) 尽力生成纪要（慢/失败都不阻断跳转）
-        try { await api.committeeQuickPolish(this.meetingId, confirmPayload); } catch (pe) { /* ignore */ }
-        // 4) 跳转到会议纪要页
+        // 3) 纪要由后端在后台生成——只触发、不 await（大模型慢/挂都不会卡住结束与跳转）
+        if (typeof api.committeeQuickPolish === 'function') {
+          api.committeeQuickPolish(this.meetingId, confirmPayload).catch(function () {});
+        }
+        // 4) 立即跳转到会议纪要页（纪要稍后由后端生成）
         wx.redirectTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
       }
     });
