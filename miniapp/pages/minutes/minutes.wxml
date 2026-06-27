@@ -6,6 +6,27 @@
     <text class="access-text">{{accessText}}</text>
   </view>
 
+  <!-- AI 生成中：整屏只显示"生成中"，不展示任何已有/合成内容 -->
+  <view wx:elif="{{aiGenerating}}" class="doc">
+    <view class="ai-gen-banner">
+      <view class="ai-gen-dot"></view>
+      <text class="ai-gen-text">AI 正在生成会议纪要，请稍候…</text>
+    </view>
+    <text class="gen-hint">通常需要十几秒到一分钟，生成后会自动显示，请勿离开本页面。</text>
+  </view>
+
+  <!-- 首次创建纪要（手写 / 尚无正式纪要时编辑）：整屏只显示干净编辑器，不预填合成内容 -->
+  <view wx:elif="{{editMode && !hasServerMinutes && !isOwner}}" class="doc">
+    <text class="doc-title">业主委员会会议纪要</text>
+    <view class="edit-block">
+      <textarea class="edit-textarea" value="{{editText}}" bindinput="onEditTextInput" placeholder="请输入会议纪要内容…（也可返回上一页改用 AI 自动生成）" placeholder-class="input-placeholder" maxlength="-1" />
+      <view class="edit-actions">
+        <button class="btn btn-ghost" bindtap="cancelEdit">取消</button>
+        <button class="btn btn-primary" bindtap="saveEdit">保存并确认</button>
+      </view>
+    </view>
+  </view>
+
   <!-- 业主大会纪要（纯文本） -->
   <view wx:elif="{{isOwner && plainText}}" class="doc">
     <text class="doc-title">业主大会会议纪要</text>
@@ -17,9 +38,10 @@
         <button class="btn btn-primary" size="mini" bindtap="saveEdit">保存纪要</button>
       </view>
     </view>
-    <view class="minutes-actions">
-      <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
-      <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
+    <view class="minutes-actions" wx:if="{{!aiGenerating}}">
+      <button wx:if="{{canEditMinutes && minutes.draft}}" class="end-meeting-btn" bindtap="endMeetingFromMinutes">确认纪要无误，结束会议</button>
+      <button wx:if="{{canEditMinutes && !editMode}}" class="edit-minutes-btn {{minutes.draft ? 'ghost' : ''}}" bindtap="startEdit">编辑纪要</button>
+      <button class="copy-btn" bindtap="copyText">复制全文</button>
     </view>
   </view>
 
@@ -33,15 +55,16 @@
       <textarea class="edit-textarea" value="{{editText}}" bindinput="onEditTextInput" placeholder="编辑纪要全文..." placeholder-class="input-placeholder" maxlength="-1" />
       <view class="edit-actions">
         <button class="btn btn-ghost" size="mini" bindtap="cancelEdit">取消</button>
-        <button class="btn btn-primary" size="mini" bindtap="saveEdit">{{reviseMode ? '提交修订' : '保存纪要'}}</button>
+        <button class="btn btn-primary" bindtap="saveEdit">{{reviseMode ? '提交修订' : '保存并确认'}}</button>
       </view>
     </view>
-    <view class="minutes-actions">
-      <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
-      <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
+    <view class="minutes-actions" wx:if="{{!aiGenerating}}">
+      <button wx:if="{{canEditMinutes && minutes.draft}}" class="end-meeting-btn" bindtap="endMeetingFromMinutes">确认纪要无误，结束会议</button>
+      <button wx:if="{{canEditMinutes && !editMode}}" class="edit-minutes-btn {{minutes.draft ? 'ghost' : ''}}" bindtap="startEdit">编辑纪要</button>
+      <button class="copy-btn" bindtap="copyText">复制全文</button>
       <view class="more-links">
+        <text wx:if="{{canViewInternalArtifacts}}" class="more-link primary-link" bindtap="viewTodoList">待办事项</text>
         <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewInternalTopicReport">内部议题报告</text>
-        <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewTodoList">待办事项</text>
         <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="startRevise">发起修订</text>
         <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="viewRevisions">修订历史</text>
       </view>
@@ -128,16 +151,17 @@
       <textarea class="edit-textarea" value="{{editText}}" bindinput="onEditTextInput" placeholder="编辑纪要全文..." placeholder-class="input-placeholder" maxlength="-1" />
       <view class="edit-actions">
         <button class="btn btn-ghost" size="mini" bindtap="cancelEdit">取消</button>
-        <button class="btn btn-primary" size="mini" bindtap="saveEdit">{{reviseMode ? '提交修订' : '保存纪要'}}</button>
+        <button class="btn btn-primary" bindtap="saveEdit">{{reviseMode ? '提交修订' : '保存并确认'}}</button>
       </view>
     </view>
 
-    <view class="minutes-actions">
-      <button class="btn-primary copy-btn" bindtap="copyText">复制纪要全文</button>
-      <button wx:if="{{canEditMinutes}}" class="btn btn-outline edit-minutes-btn" bindtap="startEdit">编辑纪要</button>
+    <view class="minutes-actions" wx:if="{{!aiGenerating}}">
+      <button wx:if="{{canEditMinutes && minutes.draft}}" class="end-meeting-btn" bindtap="endMeetingFromMinutes">确认纪要无误，结束会议</button>
+      <button wx:if="{{canEditMinutes && !editMode}}" class="edit-minutes-btn {{minutes.draft ? 'ghost' : ''}}" bindtap="startEdit">编辑纪要</button>
+      <button class="copy-btn" bindtap="copyText">复制全文</button>
       <view class="more-links">
+        <text wx:if="{{canViewInternalArtifacts}}" class="more-link primary-link" bindtap="viewTodoList">待办事项</text>
         <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewInternalTopicReport">内部议题报告</text>
-        <text wx:if="{{canViewInternalArtifacts}}" class="more-link" bindtap="viewTodoList">待办事项</text>
         <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="startRevise">发起修订</text>
         <text wx:if="{{canReviseMinutes}}" class="more-link" bindtap="viewRevisions">修订历史</text>
       </view>

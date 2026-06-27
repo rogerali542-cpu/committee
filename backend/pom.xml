@@ -92,6 +92,13 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- 音频转码（内置 ffmpeg，免在服务器单独安装）：把浏览器 H5 录音 webm/mp4 转成豆包 ASR 友好的 16k 单声道 mp3 -->
+        <dependency>
+            <groupId>ws.schild</groupId>
+            <artifactId>jave-all-deps</artifactId>
+            <version>3.5.0</version>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

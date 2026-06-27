@@ -1,0 +1,59 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import { getStorage } from '@/utils/storage'
+
+const Placeholder = () => import('@/pages/Placeholder.vue')
+
+// 按 miniapp/app.json 的 25 个页面建路由。除录音页 meeting-live-quick（第三期）外均已迁移为实页。
+const routes = [
+  { path: '/', redirect: '/community-home' },
+  { path: '/login', component: () => import('@/pages/Login.vue'), meta: { title: '登录', noAuth: true } },
+
+  // tabBar 三页
+  { path: '/community-home', component: () => import('@/pages/CommunityHome.vue'), meta: { title: '小区首页', tab: true } },
+  { path: '/main', component: () => import('@/pages/Main.vue'), meta: { title: '业委会', tab: true } },
+  { path: '/profile', component: () => import('@/pages/Profile.vue'), meta: { title: '个人中心', tab: true } },
+
+  // 核心主线
+  { path: '/committee', component: () => import('@/pages/Committee.vue'), meta: { title: '会议管理' } },
+  { path: '/committee-detail', component: () => import('@/pages/CommitteeDetail.vue'), meta: { title: '会议详情' } },
+  { path: '/minutes', component: () => import('@/pages/Minutes.vue'), meta: { title: '会议纪要' } },
+  { path: '/minutes-public', component: () => import('@/pages/MinutesPublic.vue'), meta: { title: '公开纪要' } },
+  { path: '/minutes-internal', component: () => import('@/pages/MinutesInternal.vue'), meta: { title: '内部总结' } },
+  { path: '/minutes-todos', component: () => import('@/pages/MinutesTodos.vue'), meta: { title: '待办事项' } },
+
+  // 其余页
+  { path: '/meeting-hub', component: () => import('@/pages/MeetingHub.vue'), meta: { title: '会议中心' } },
+  { path: '/my-meeting', component: () => import('@/pages/MyMeeting.vue'), meta: { title: '我的会议' } },
+  { path: '/meeting-live-quick', component: () => import('@/pages/MeetingLiveQuick.vue'), meta: { title: '会议进行' } },
+  { path: '/info-public', component: () => import('@/pages/InfoPublic.vue'), meta: { title: '公示信息' } },
+  { path: '/reception', component: () => import('@/pages/Reception.vue'), meta: { title: '接待' } },
+  { path: '/learning', component: () => import('@/pages/Learning.vue'), meta: { title: '学习' } },
+  { path: '/learning-detail', component: () => import('@/pages/LearningDetail.vue'), meta: { title: '学习详情' } },
+  { path: '/notifications', component: () => import('@/pages/Notifications.vue'), meta: { title: '通知' } },
+  { path: '/todo', component: () => import('@/pages/Todo.vue'), meta: { title: '待办' } },
+  { path: '/library', component: () => import('@/pages/Library.vue'), meta: { title: '资料库' } },
+  { path: '/property-tasks', component: () => import('@/pages/PropertyTasks.vue'), meta: { title: '物业任务' } },
+  { path: '/property-board', component: () => import('@/pages/PropertyBoard.vue'), meta: { title: '物业看板' } },
+  { path: '/archive-detail', component: () => import('@/pages/ArchiveDetail.vue'), meta: { title: '归档详情' } },
+  { path: '/notice-admin', component: () => import('@/pages/NoticeAdmin.vue'), meta: { title: '公告管理' } },
+  { path: '/admin', component: () => import('@/pages/Admin.vue'), meta: { title: '管理后台' } },
+
+  { path: '/:pathMatch(.*)*', redirect: '/main' }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  scrollBehavior() { return { top: 0 } }
+})
+
+router.beforeEach((to) => {
+  if (to.meta.noAuth) return true
+  const token = getStorage('token', '')
+  const activeRole = getStorage('activeRole', null)
+  const logged = !!(token || (activeRole && activeRole.id))
+  if (!logged) return { path: '/login' }
+  return true
+})
+
+export default router

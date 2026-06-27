@@ -43,6 +43,7 @@ public class MeetingDetailVO {
     private DeliveryInfoVO delivery;
     private NoticeDraftVO noticeDraft;
     private List<Map<String, Object>> materials;
+    private List<Map<String, Object>> archiveExtras;
 
     // 当前用户（委员）自己的送达/已读状态（准备阶段）
     private MyDeliveryVO myDelivery;
@@ -160,6 +161,7 @@ public class MeetingDetailVO {
             private Long id;
             private String fileName;
             private String fileType;
+            private String fileUrl;
         }
 
         @Data

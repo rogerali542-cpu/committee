@@ -39,11 +39,11 @@
 }
 .stat-item:not(:last-child) { border-right: 2rpx solid #f0f0f0; }
 .stat-num { font-size: 44rpx; font-weight: 700; color: #1f2329; }
-.stat-label { font-size: 26rpx; color: #9aa6b2; }
+.stat-label { font-size: 26rpx; color: #666; }
 
 /* Section */
 .section-header {
-  font-size: 26rpx; color: #9aa6b2; font-weight: 500;
+  font-size: 26rpx; color: #666; font-weight: 500;
   padding: 32rpx 32rpx 12rpx;
 }
 .section {
@@ -69,11 +69,11 @@
   font-size: 36rpx;
 }
 .menu-label { flex: 1; font-size: 34rpx; color: #1f2329; }
-.menu-arrow { font-size: 40rpx; color: #d0d6dd; }
+.menu-arrow { font-size: 40rpx; color: #999; }
 .menu-check { font-size: 38rpx; color: #FFA800; font-weight: 700; }
 
 /* Identity group */
-.menu-role-tag { font-size: 24rpx; padding: 4rpx 16rpx; border-radius: 10rpx; background: #f0f0f0; color: #888; }
+.menu-role-tag { font-size: 26rpx; padding: 4rpx 16rpx; border-radius: 10rpx; background: #f0f0f0; color: #666; }
 .menu-role-tag.chair { background: #FFF3DC; color: #C77800; }
 .menu-role-tag.recorder { background: #F5EEF8; color: #9B59B6; }
 
@@ -98,6 +98,6 @@
 /* 通知未读红点 */
 .badge {
   min-width: 36rpx; height: 36rpx; line-height: 36rpx; text-align: center;
-  background: #E74C3C; color: #fff; font-size: 22rpx; font-weight: 700;
+  background: #E74C3C; color: #fff; font-size: 26rpx; font-weight: 700;
   border-radius: 18rpx; padding: 0 10rpx; margin-right: 8rpx;
 }

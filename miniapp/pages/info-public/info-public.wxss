@@ -7,7 +7,7 @@
 
 .intro {
   font-size: 26rpx;
-  color: #9aa6b2;
+  color: #666;
   display: block;
   margin-bottom: 24rpx;
   text-align: center;
@@ -27,7 +27,7 @@
 
 .ic-tag {
   display: inline-block;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 600;
   background: #E8F7EE;
   color: #27AE60;
@@ -44,7 +44,7 @@
 }
 .ic-meta {
   font-size: 26rpx;
-  color: #9aa6b2;
+  color: #666;
   display: flex;
   gap: 24rpx;
   margin-bottom: 12rpx;
@@ -63,4 +63,4 @@
   padding-top: 120rpx;
 }
 .empty-emoji { font-size: 80rpx; margin-bottom: 20rpx; }
-.empty-text { font-size: 32rpx; color: #b3bcc6; }
+.empty-text { font-size: 32rpx; color: #777; }

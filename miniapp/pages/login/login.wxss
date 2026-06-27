@@ -91,11 +91,11 @@
 }
 .login-desc {
   font-size: 28rpx;
-  color: #9aa6b2;
+  color: #666;
   margin-top: 8rpx;
 }
 .login-arrow {
   font-size: 48rpx;
-  color: #d0d6dd;
+  color: #999;
   font-weight: 300;
 }

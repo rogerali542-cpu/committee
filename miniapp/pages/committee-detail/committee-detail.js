@@ -802,15 +802,6 @@ Page({
     }
   },
 
-  // 委员主动确认已阅读会议通知 → 回写已读、清待办
-  async confirmNoticeRead() {
-    try {
-      await api.committeeMarkDeliveryRead(this.meetingId);
-      wx.showToast({ title: '已确认参会', icon: 'success' });
-      this.loadDetail();
-    } catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
-  },
-
   // 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
   async confirmAttend() {
     try {
@@ -1030,16 +1021,14 @@ Page({
     wx.navigateTo({ url: '/pages/minutes-public/minutes-public?meetingId=' + this.meetingId });
   },
 
-  // 内部 AI 议题报告（详细版）+ 待办，仅供业委会内部查看
+  // 内部总结（内部 AI 议题报告详细版 + 决议），仅供业委会内部查看
   viewInternalReport() {
     wx.navigateTo({ url: '/pages/minutes-internal/minutes-internal?meetingId=' + this.meetingId });
   },
 
-  viewNoticeDraft() {
-    var detail = this.data.detail;
-    if (detail && detail.noticeDraft) {
-      wx.showModal({ title: '会议通知', content: detail.noticeDraft.content, showCancel: false });
-    }
+  // 会议待办事项独立页
+  viewTodos() {
+    wx.navigateTo({ url: '/pages/minutes-todos/minutes-todos?meetingId=' + this.meetingId });
   },
 
   addArchiveExtra() {

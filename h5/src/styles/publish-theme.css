@@ -1,0 +1,86 @@
+/* 公示/通知页「蓝色体系」主题：与内部业委工作页(橙 #FFA800)区分。
+   主蓝 #0051FF（《业委移动端设计规范》主色）。守适老化：大字、高对比，
+   不照搬参考产品的 14px 正文 / #999 低对比浅字。
+   卡片右上角的 .pub-badge 是预留的「状态徽标位」：当前显示公示状态(已公示/草稿/待公示)，
+   未来接入社区链后，同一位置可直接换成「已上链 / 存证中」而无需改版式。 */
+
+:root {
+  /* 柔和低饱和蓝（由纯饱和 #0051FF 降下来，避免大面积铺色刺眼；仍守住白字/文字对比 ≥4.5:1） */
+  --pub-blue: #3F6FBE;        /* 主蓝：低饱和柔和蓝（饱和度约 53%，不刺眼） */
+  --pub-blue-2: #6088CE;      /* 浅一档：顶栏渐变上端 */
+  --pub-blue-deep: #345C9E;   /* 深一档：按下/激活态 */
+  --pub-blue-soft: #EDF2FA;   /* 极浅蓝底：标签/强调块（更淡更灰，低饱和） */
+  --pub-blue-line: #E4EBF4;   /* 分割线 */
+  --pub-bg: #F5F7FB;          /* 页面浅灰蓝底 */
+  --pub-ink: #1A2233;         /* 标题深色 */
+  --pub-text: #2B3445;        /* 正文（高对比） */
+  --pub-sub: #5A6473;         /* 次要文字（比 #999 深，适老） */
+  --pub-amber: #D9802A;       /* 截止/草稿 提醒 */
+  --pub-amber-soft: #FFF3E2;
+  --pub-green: #1F9D55;
+  --pub-green-soft: #E6F6EC;
+}
+
+/* 页面容器：浅灰蓝底；顶栏(PublishNav)放在 .pub-wrap 之外以贴满宽度 */
+.pub-page { min-height: 100vh; background: var(--pub-bg); box-sizing: border-box; }
+.pub-wrap { padding: 24rpx 24rpx 120rpx; box-sizing: border-box; }
+
+/* 白色圆角卡 + 轻阴影 */
+.pub-card {
+  position: relative;
+  background: #fff;
+  border-radius: 24rpx;
+  box-shadow: 0 10rpx 30rpx rgba(41, 63, 102, 0.10);
+  padding: 36rpx 32rpx;
+  margin-bottom: 24rpx;
+}
+
+/* 左上小分类标签 */
+.pub-tag {
+  display: inline-flex; align-items: center;
+  height: 46rpx; padding: 0 18rpx; border-radius: 10rpx;
+  background: var(--pub-blue-soft); color: var(--pub-blue);
+  font-size: 28rpx; font-weight: 600;
+}
+
+/* 右上状态徽标（预留上链位） */
+.pub-badge {
+  position: absolute; top: 30rpx; right: 30rpx;
+  display: inline-flex; align-items: center;
+  height: 48rpx; padding: 0 22rpx; border-radius: 999rpx;
+  font-size: 28rpx; font-weight: 700;
+}
+.pub-badge.is-pub   { background: var(--pub-blue); color: #fff; }
+.pub-badge.is-draft { background: var(--pub-amber-soft); color: var(--pub-amber); }
+.pub-badge.is-wait  { background: #EDF0F5; color: var(--pub-sub); }
+
+.pub-title {
+  display: block; font-size: 46rpx; font-weight: 800;
+  color: var(--pub-ink); line-height: 1.4; margin: 22rpx 0 16rpx;
+}
+
+.pub-meta { display: flex; flex-wrap: wrap; gap: 6rpx 28rpx; }
+.pub-meta .mi { font-size: 30rpx; color: var(--pub-sub); line-height: 1.7; }
+.pub-meta .mi b { color: var(--pub-text); font-weight: 600; }
+
+.pub-divider { height: 2rpx; background: var(--pub-blue-line); margin: 26rpx 0; }
+
+.pub-body {
+  display: block; font-size: 36rpx; color: var(--pub-text);
+  line-height: 1.95; white-space: pre-wrap;
+}
+
+/* 提示条（如草稿提醒） */
+.pub-note { font-size: 28rpx; line-height: 1.7; padding: 18rpx 22rpx; border-radius: 14rpx; margin-top: 18rpx; }
+.pub-note.warn { background: var(--pub-amber-soft); color: var(--pub-amber); }
+
+/* 主按钮（蓝） */
+.pub-btn {
+  width: 100%; height: 96rpx; line-height: 96rpx;
+  border: none; border-radius: 18rpx;
+  background: var(--pub-blue); color: #fff;
+  font-size: 36rpx; font-weight: 700; margin-top: 8rpx;
+}
+.pub-btn:active { background: var(--pub-blue-deep); }
+
+.pub-foot { display: block; text-align: center; font-size: 28rpx; color: var(--pub-sub); margin-top: 24rpx; }

@@ -1,0 +1,2743 @@
+<template>
+  <div class="detail-page">
+    <PageNav :title="navTitle" style="margin:-12px -12px 0;" />
+    <div v-if="detail" class="detail-body">
+      <!-- 简化阶段：进行中/已结束会议也允许主任删除（清理测试数据用；准备阶段用会议头部的取消按钮） -->
+      <div v-if="userView === 'chair' && detail.stage !== 'preparing'" style="text-align:right; padding:14rpx 28rpx 0;">
+        <span @click="removeMeeting" style="color:#E74C3C; font-size:28rpx;">删除会议</span>
+      </div>
+
+      <!-- 任务横幅（结束阶段隐藏；主任准备阶段用步骤条替代） -->
+      <div class="task-banner" :class="detail.taskLevel" v-if="detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')">
+        <span class="tb-title">{{ detail.taskTitle }}</span>
+        <span class="tb-items" v-if="detail.taskItemsText">{{ detail.taskItemsText }}</span>
+        <span class="tb-flow">当前：{{ detail.flowNodeText }}</span>
+        <span class="tb-hint" v-if="detail.taskHint">{{ detail.taskHint }}</span>
+      </div>
+
+      <!-- ══════════ 主任准备阶段（卡片流布局） ══════════ -->
+      <template v-if="userView === 'chair' && detail.stage === 'preparing' && !noticePackageVisible">
+
+        <!-- 会议头部 -->
+        <div class="prep-head">
+          <div class="ph-main">
+            <span class="ph-title">{{ detail.title }}</span>
+          </div>
+          <div class="ph-actions">
+            <span class="ph-action danger" @click="removeMeeting">取消会议</span>
+          </div>
+        </div>
+
+        <!-- 步骤条 -->
+        <div class="prep-steps">
+          <div class="prep-step" :class="item.state" v-for="(item, index) in prepareSteps" :key="item.label">
+            <div class="prep-dot">{{ item.state === 'done' ? '✓' : index + 1 }}</div>
+            <span class="prep-lbl">{{ item.label }}</span>
+          </div>
+        </div>
+
+        <!-- 本人参会确认：发起人发送时已自动确认，故仅本人尚未确认时显示（副主任等在此确认/拒绝） -->
+        <div class="prep-card" v-if="detail.myDelivery">
+          <div class="pc-head"><span class="pc-title">我的参会</span></div>
+          <template v-if="detail.mySignedIn">
+            <span class="my-attend-tip ok">✅ 你已确认参会</span>
+            <span class="my-attend-cancel" @click="cancelAttend">取消参会</span>
+          </template>
+          <template v-else>
+            <span class="my-attend-tip" :class="detail.myDeclined ? 'declined' : ''">{{ detail.myDeclined ? '已登记：因故缺席（如仍可参加，请点确认参会）' : '请确认本人是否参加本次会议' }}</span>
+            <div class="attend-actions">
+              <button class="attend-btn primary" @click="confirmAttend">确认参会</button>
+              <button class="attend-btn ghost" @click="declineAttend">无法参会</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- 通知内容（草稿） -->
+        <div class="prep-card">
+          <div class="pc-head">
+            <div class="nt-titlewrap">
+              <span class="pc-title">通知内容</span>
+              <span class="notice-status" :class="detail.noticeDraft && detail.noticeDraft.status === 'edited' ? 'ok' : 'warn'">{{ detail.noticeDraft && detail.noticeDraft.status === 'edited' ? '已确认' : '待确认' }}</span>
+            </div>
+            <div class="pc-head-actions">
+              <span class="pc-edit-btn" @click="openEdit">编辑通知</span>
+            </div>
+          </div>
+          <span class="pc-draft">{{ detail.noticeDraft && detail.noticeDraft.content }}</span>
+          <!-- 居委会见证：并入通知内容，作为一条内容 -->
+          <div class="notice-extra" v-if="detail.record">
+            <div class="ne-text">
+              <span class="ne-title">居委会见证</span>
+            </div>
+            <input type="checkbox" class="wx-switch" :checked="detail.record.hasMajorIssue" @change="toggleFlag('hasMajorIssue')" />
+          </div>
+        </div>
+
+        <!-- 会议材料 -->
+        <div class="prep-card">
+          <div class="pc-head">
+            <span class="pc-title">会议材料</span>
+            <div class="pc-head-actions">
+              <span class="upload-btn" @click="uploadMaterial">{{ detail.materials && detail.materials.length ? '继续上传' : '＋ 上传材料' }}</span>
+            </div>
+          </div>
+          <span class="pc-desc material-desc">可选择上传附件</span>
+          <div v-if="!detail.materials || !detail.materials.length" class="material-empty-inline">
+            <span>暂无附件</span>
+          </div>
+          <template v-else>
+            <div class="pc-file" v-for="(item, index) in detail.materials" :key="item.id || item.name" @click="item.url ? openFile(item.url) : previewMaterial(index)">
+              <img v-if="item.url && isImageFile(item.url, item.fileType)" :src="item.url" class="file-thumb" @click.stop="openFile(item.url)" />
+              <span v-else class="pf-ic">📄</span>
+              <span class="pf-name">{{ item.name }}</span>
+              <span class="pf-size">{{ item.sizeText || '' }}</span>
+              <span class="pf-del" @click.stop="removeMaterial(item)">×</span>
+            </div>
+          </template>
+        </div>
+
+        <!-- 参会情况统计（通知发出后显示）：已确认参会 / 总人数 + 进度条 -->
+        <div class="prep-card" v-if="detail.delivery && detail.delivery.total > 0">
+          <div class="pc-head">
+            <span class="pc-title">参会情况</span>
+          </div>
+          <div class="attend-stat">
+            <div class="as-row">
+              <span class="as-label">已确认参会</span>
+              <span class="as-num"><b>{{ detail.delivery.attendConfirmed }}</b> / {{ detail.delivery.total }} 人</span>
+            </div>
+            <div class="as-bar"><div class="as-fill" :style="{ width: detail.delivery.attendPct + '%' }"></div></div>
+            <span v-if="detail.delivery.attendDeclined > 0" class="as-declined">因故缺席 {{ detail.delivery.attendDeclined }} 人</span>
+          </div>
+        </div>
+
+      </template>
+
+      <!-- 会议基本信息（结束阶段隐藏；主任准备阶段用上方卡片流替代） -->
+      <div class="info-card" v-if="detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')">
+        <div class="info-row"><span class="info-k">时间</span>{{ detail.meetingDate }} {{ detail.meetingTime }}</div>
+        <div class="info-row"><span class="info-k">地点</span>{{ detail.location }}</div>
+        <div class="info-row" v-if="detail.description"><span class="info-k">说明</span>{{ detail.description }}</div>
+      </div>
+
+      <div class="notice-package-card" v-if="noticePackageVisible">
+        <div class="npc-head">
+          <div>
+            <span class="npc-title">会议通知与材料</span>
+            <span class="npc-sub">{{ detail.stage === 'ongoing' ? '会议已开始，仍可先查看会前送达内容' : '会前送达内容' }}</span>
+          </div>
+          <span class="npc-badge">已送达</span>
+        </div>
+        <div class="npc-section" v-if="detail.noticeDraft">
+          <span class="npc-section-title">会议通知</span>
+          <span class="npc-content">{{ detail.noticeDraft.content }}</span>
+        </div>
+        <div class="npc-section">
+          <span class="npc-section-title">会议材料（{{ detail.materials ? detail.materials.length : 0 }}）</span>
+          <div v-if="detail.materials && detail.materials.length">
+            <div v-for="(item, index) in detail.materials" :key="item.id || item.name" class="mt-item" @click="item.url ? openFile(item.url) : previewMaterial(index)">
+              <img v-if="item.url && isImageFile(item.url, item.fileType)" :src="item.url" class="file-thumb" @click.stop="openFile(item.url)" />
+              <span class="mt-name">{{ item.name }}</span>
+              <span class="mt-size">{{ item.sizeText || '' }}</span>
+              <span class="mt-arrow">›</span>
+            </div>
+          </div>
+          <span v-else class="npc-empty">暂无会议材料</span>
+        </div>
+      </div>
+
+      <!-- 会议材料：委员仅在材料送达后可见（主任的材料卡在上方卡片流） -->
+      <div class="materials-card" v-if="!noticePackageVisible && detail.stage === 'preparing' && userView === 'member' && detail.myDelivery && detail.myDelivery.materialDelivered && detail.materials && detail.materials.length">
+        <div class="mt-head-row">
+          <span class="mt-title">会议材料（{{ detail.materials ? detail.materials.length : 0 }}）</span>
+        </div>
+        <div v-if="detail.materials && detail.materials.length">
+          <div v-for="(item, index) in detail.materials" :key="item.id || item.name" class="mt-item" @click="item.url ? openFile(item.url) : previewMaterial(index)">
+            <img v-if="item.url && isImageFile(item.url, item.fileType)" :src="item.url" class="file-thumb" @click.stop="openFile(item.url)" />
+            <span class="mt-name">{{ item.name }}</span>
+            <span class="mt-size">{{ item.sizeText || '' }}</span>
+            <span class="mt-arrow">›</span>
+            <span v-if="userView === 'chair'" class="mt-del" @click.stop="removeMaterial(item)">×</span>
+          </div>
+        </div>
+        <div v-else class="mt-empty">
+          <span v-if="userView === 'chair'">暂未上传材料，点击上方"上传材料"添加</span>
+          <span v-else>暂无会议材料</span>
+        </div>
+      </div>
+
+      <!-- ══════════ 委员 和 主任/副主任 共用：个人操作 ══════════ -->
+      <template v-if="userView === 'member' || userView === 'chair'">
+        <!-- 准备阶段：委员个人送达状态（主任不显示个人确认卡——发送时已自动计入已读，用上方送达进度卡管理） -->
+        <template v-if="userView === 'member' && !noticePackageVisible && detail.stage === 'preparing' && detail.myDelivery">
+          <!-- 通知已送达 → 显示通知草稿 -->
+          <div class="my-delivery-card" v-if="detail.myDelivery.noticeDelivered">
+            <span class="mdc-title">📨 会议通知</span>
+            <span class="mdc-big" :class="detail.mySignedIn ? 'ok' : (detail.myDeclined ? 'declined' : '')">{{ detail.mySignedIn ? '✅ 你已确认参会' : (detail.myDeclined ? '已登记：因故缺席' : '收到会议通知，请确认是否参加') }}</span>
+            <div v-if="!detail.mySignedIn && !detail.noticeDraft" class="attend-actions">
+              <button class="attend-btn primary" @click="confirmAttend">确认参会</button>
+              <button class="attend-btn ghost" @click="declineAttend">无法参会</button>
+            </div>
+          </div>
+          <div class="notice-draft-card" v-if="detail.myDelivery.noticeDelivered && detail.noticeDraft">
+            <div class="nd-head">
+              <span class="nd-title">会议通知</span>
+              <span class="nd-status ok">{{ detail.mySignedIn ? '已确认参会' : (detail.myDeclined ? '因故缺席' : '待确认') }}</span>
+            </div>
+            <span class="nd-content">{{ detail.noticeDraft.content }}</span>
+            <div v-if="!detail.mySignedIn" class="attend-actions">
+              <button class="attend-btn primary" @click="confirmAttend">确认参会</button>
+              <button class="attend-btn ghost" @click="declineAttend">无法参会</button>
+            </div>
+          </div>
+          <!-- 通知未送达 -->
+          <div class="my-delivery-card" v-else-if="!detail.myDelivery.noticeDelivered">
+            <span class="mdc-title">会议通知</span>
+            <span class="mdc-big">尚未送达，请等待主任发送通知</span>
+          </div>
+          <!-- 材料送达状态 -->
+          <div class="my-delivery-card" v-if="detail.myDelivery.noticeDelivered && detail.materials && detail.materials.length">
+            <span class="mdc-title">📎 会议材料</span>
+            <span class="mdc-big" :class="detail.myDelivery.materialDelivered ? 'ok' : ''">{{ detail.myDelivery.materialDelivered ? '材料已送达' : '材料尚未送达' }}</span>
+          </div>
+        </template>
+
+        <!-- 进行中：进入「会议进行」向导页 -->
+        <template v-if="detail.stage === 'ongoing' && detail.record">
+          <div class="live-entry" @click="enterLive">
+            <div class="live-entry-main">
+              <span class="live-entry-title">会议进行中</span>
+              <span class="live-entry-sub">确认参会 → 录音转写 → 确认表决</span>
+            </div>
+            <span class="live-entry-arrow">进入 ›</span>
+          </div>
+          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
+        </template>
+
+      </template>
+
+      <!-- ══════════ 结束阶段 ══════════ -->
+      <template v-if="detail.stage === 'ended'">
+        <!-- 会议录音存档（委员/主任可见，外部无 record 自动隐藏）-->
+        <div v-if="detail.record && detail.record.recordingUrl" class="rec-archive-card">
+          <div class="rac-head">
+            <span class="rac-title">🎙 会议录音</span>
+            <span class="rac-sub">{{ recAudioPlaying ? '播放中…' : '会议全程录音存档' }}</span>
+          </div>
+          <div class="rac-actions">
+            <button class="btn btn-outline mini" @click="toggleRecording">{{ recAudioPlaying ? '暂停' : '试听' }}</button>
+            <button class="btn btn-ghost mini" @click="downloadRecording">下载/转发</button>
+          </div>
+        </div>
+
+        <!-- 委员：简洁结论 -->
+        <template v-if="userView === 'member'">
+          <div class="ar-verdict" :class="detail.compliance">
+            <div class="arv-icon">{{ detail.compliance === 'valid' ? '✓' : detail.compliance === 'flawed' ? '!' : '✕' }}</div>
+            <div class="arv-info">
+              <span class="arv-title">{{ detail.title }}</span>
+              <span class="arv-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · {{ detail.location }}</span>
+              <span class="arv-result">{{ detail.compliance === 'valid' ? '会议有效' : detail.compliance === 'flawed' ? '有效（带说明）' : '会议无效' }} · {{ detail.publish && detail.publish.published ? '已公示归档' : detail._archived ? '已归档' : '待公示' }}</span>
+              <span class="arv-reason" v-if="detail.complianceReason">{{ detail.complianceReason }}</span>
+            </div>
+          </div>
+          <div class="flow-stats-card" v-if="detail.flowStats">
+            <div class="fsc-head">
+              <span class="fsc-title">流程统计</span>
+              <span class="fsc-sub">通知送达和参会确认</span>
+            </div>
+            <div class="fss-row">
+              <div class="fss-mark delivery">送</div>
+              <div class="fss-main">
+                <div class="fss-line"><span class="fss-name">通知与材料</span><span class="fss-num">{{ detail.flowStats.delivery.noticeDone }}/{{ detail.flowStats.delivery.total }}</span></div>
+                <div class="fss-bar"><div class="fss-fill" :class="detail.flowStats.delivery.done ? 'ok' : 'warn'" :style="{ width: detail.flowStats.delivery.pct + '%' }"></div></div>
+                <span class="fss-meta">通知 {{ detail.flowStats.delivery.noticePct }}% · 材料 {{ detail.flowStats.delivery.materialDone }}/{{ detail.flowStats.delivery.total }}</span>
+              </div>
+              <span class="fss-status" :class="detail.flowStats.delivery.done ? 'ok' : 'warn'">{{ detail.flowStats.delivery.done ? '已完成' : detail.flowStats.delivery.statusText }}</span>
+            </div>
+            <div class="fss-row">
+              <div class="fss-mark attend">会</div>
+              <div class="fss-main">
+                <div class="fss-line"><span class="fss-name">确认参会</span><span class="fss-num">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}</span></div>
+                <div class="fss-bar"><div class="fss-fill" :class="detail.flowStats.attendance.done ? 'ok' : 'bad'" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
+                <span class="fss-meta">需≥{{ detail.flowStats.attendance.need }} · {{ detail.flowStats.attendance.pct }}%</span>
+              </div>
+              <span class="fss-status" :class="detail.flowStats.attendance.done ? 'ok' : 'bad'">{{ detail.flowStats.attendance.statusText }}</span>
+            </div>
+          </div>
+          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
+          <div class="member-doc-actions">
+            <button class="doc-btn" @click="viewMinutes">查看会议纪要</button>
+            <button class="doc-btn ghost" @click="viewPublicMinutes">查看公开纪要</button>
+          </div>
+        </template>
+
+        <!-- 主任：完整归档 -->
+        <template v-if="userView === 'chair'">
+          <div class="ar-card" :class="detail.compliance">
+            <div class="arc-head">
+              <div class="arch-icon">{{ detail.compliance === 'valid' ? '✓' : detail.compliance === 'flawed' ? '!' : '✕' }}</div>
+              <div class="arch-info">
+                <span class="arch-title">{{ detail.title }}</span>
+                <span class="arch-sub">{{ detail.meetingDate }} {{ detail.meetingTime }} · {{ detail.location }}</span>
+                <span class="arch-result">{{ detail.compliance === 'valid' ? '会议有效' : detail.compliance === 'flawed' ? '有效（带说明）' : '会议无效' }} · {{ detail.publish && detail.publish.published ? '已公示归档' : detail._archived ? '已归档' : '待公示' }}</span>
+                <span class="arch-reason" v-if="detail.complianceReason">{{ detail.complianceReason }}</span>
+              </div>
+            </div>
+            <div class="arc-fix">
+              <span class="arcf-label">判定有误？</span>
+              <span class="arcf-chip" :class="detail.compliance === 'valid' ? 'on' : ''" @click="markCompliance('valid')">有效</span>
+              <span class="arcf-chip" :class="detail.compliance === 'flawed' ? 'on' : ''" @click="markCompliance('flawed')">瑕疵</span>
+              <span class="arcf-chip" :class="detail.compliance === 'invalid' ? 'on' : ''" @click="markCompliance('invalid')">无效</span>
+            </div>
+            <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
+            <div class="flow-stats-panel" v-if="detail.flowStats">
+              <div class="fsc-head" @click="toggleFlowStats">
+                <div>
+                  <span class="fsc-title">流程统计</span>
+                  <span class="fsc-sub">通知送达和参会确认</span>
+                </div>
+                <span class="fsc-toggle">{{ flowStatsOpen ? '收起 ▾' : '展开 ▸' }}</span>
+              </div>
+              <template v-if="flowStatsOpen">
+              <div class="fss-row">
+                <div class="fss-mark delivery">送</div>
+                <div class="fss-main">
+                  <div class="fss-line"><span class="fss-name">通知与材料</span><span class="fss-num">{{ detail.flowStats.delivery.noticeDone }}/{{ detail.flowStats.delivery.total }}</span></div>
+                  <div class="fss-bar"><div class="fss-fill" :class="detail.flowStats.delivery.done ? 'ok' : 'warn'" :style="{ width: detail.flowStats.delivery.pct + '%' }"></div></div>
+                  <span class="fss-meta">通知 {{ detail.flowStats.delivery.noticePct }}% · 材料 {{ detail.flowStats.delivery.materialDone }}/{{ detail.flowStats.delivery.total }}</span>
+                </div>
+                <span class="fss-status" :class="detail.flowStats.delivery.done ? 'ok' : 'warn'">{{ detail.flowStats.delivery.done ? '已完成' : detail.flowStats.delivery.statusText }}</span>
+              </div>
+              <div class="fss-row">
+                <div class="fss-mark attend">会</div>
+                <div class="fss-main">
+                  <div class="fss-line"><span class="fss-name">确认参会</span><span class="fss-num">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}</span></div>
+                  <div class="fss-bar"><div class="fss-fill" :class="detail.flowStats.attendance.done ? 'ok' : 'bad'" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
+                  <span class="fss-meta">需≥{{ detail.flowStats.attendance.need }} · {{ detail.flowStats.attendance.pct }}%</span>
+                </div>
+                <span class="fss-status" :class="detail.flowStats.attendance.done ? 'ok' : 'bad'">{{ detail.flowStats.attendance.statusText }}</span>
+              </div>
+              </template>
+            </div>
+            <div class="arc-list">
+              <div class="arcl-row" @click="viewInternalReport">
+                <div class="arcl-icon min">🗂️</div><div class="arcl-info"><span class="arcl-name">内部总结</span><span class="arcl-meta">详细议题报告与决议，内部查看</span></div><span class="arcl-arrow">›</span>
+              </div>
+              <div class="arcl-row" @click="viewPublicMinutes">
+                <div class="arcl-icon min">📢</div><div class="arcl-info"><span class="arcl-name">公开纪要</span><span class="arcl-meta">面向公众的正式纪要展示版</span></div><span class="arcl-arrow">›</span>
+              </div>
+              <div class="arcl-row" @click="viewTodos">
+                <div class="arcl-icon min">📋</div><div class="arcl-info"><span class="arcl-name">待办事项</span><span class="arcl-meta">会议形成的待办与跟进事项</span></div><span class="arcl-arrow">›</span>
+              </div>
+              <template v-if="detail.archiveExtras && detail.archiveExtras.length">
+                <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openFile(ae.url)">
+                  <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openFile(ae.url)" />
+                  <div v-else class="arcl-icon extra">📎</div><div class="arcl-info"><span class="arcl-name">{{ ae.fileName }}</span><span class="arcl-meta">归档后补充 · {{ ae.reason || '补充资料' }}{{ ae.addedBy ? ' · ' + ae.addedBy : '' }}</span></div><span class="arcl-arrow">留痕</span>
+                </div>
+              </template>
+            </div>
+            <div class="arc-add" @click="addArchiveExtra"><span>+ 补充归档材料</span></div>
+            <div class="arc-log" v-if="detail.archiveLog && detail.archiveLog.length">
+              <div class="arclog-head" @click="toggleArchiveLog">
+                <span class="arclog-title">操作记录（{{ detail.archiveLog.length }}）</span>
+                <span class="arclog-toggle">{{ archiveLogOpen ? '收起 ▾' : '展开 ▸' }}</span>
+              </div>
+              <template v-if="archiveLogOpen">
+              <div class="arclog-row" v-for="lg in detail.archiveLog" :key="lg.id">
+                <span class="arclog-action">{{ lg.action }}</span>
+                <span class="arclog-meta">{{ lg.operator }} · {{ lg.at }}</span>
+                <span class="arclog-reason" v-if="lg.reason">{{ lg.reason }}</span>
+              </div>
+              </template>
+            </div>
+          </div>
+          <div class="ar-publish" v-if="detail.compliance !== 'invalid'">
+            <div v-if="detail.publish && detail.publish.published" class="arp-done">
+              <span class="arp-check">✓</span>
+              <span>已于 {{ detail.publish.publishDate }} 公示{{ detail.publish.publishedBy ? '（' + detail.publish.publishedBy + '）' : '' }}，归档完成</span>
+              <div class="arp-actions">
+                <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
+                <span class="ar-skip danger" @click="withdrawPublish">撤回公示</span>
+              </div>
+            </div>
+            <div v-else-if="detail.publish && detail.publish.withdrawn" class="arp-done withdrawn">
+              <span>⚠ 公示已撤回{{ detail.publish.withdrawnBy ? '（' + detail.publish.withdrawnBy + '）' : '' }}{{ detail.publish.withdrawReason ? '：' + detail.publish.withdrawReason : '' }}</span>
+              <button class="btn btn-primary" style="width:100%;margin-top:8px;" @click="publishNow">修订后重新公示</button>
+              <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
+            </div>
+            <div v-else-if="detail._archived" class="arp-done">
+              <span class="arp-check">✓</span><span>已归档（未公示）</span>
+              <div class="arp-actions">
+                <span class="ar-skip danger" @click="revokeArchive">撤销归档</span>
+              </div>
+            </div>
+            <template v-else>
+              <span class="ext-hint withdrawn" v-if="detail.revokeArchiveReason">⚠ 归档已撤销：{{ detail.revokeArchiveReason }}，请确认后重新归档</span>
+              <button class="btn btn-primary" style="width:100%;" @click="publishNow">发起公示</button>
+              <span class="ar-skip" @click="archiveDirect">直接归档，不公示</span>
+            </template>
+          </div>
+          <div class="ar-publish invalid" v-else><span>会议无效，无需公示，资料留档备查</span></div>
+        </template>
+      </template>
+
+      <!-- 进行中（主任/委员）统一收敛到「会议进行」向导页（live-entry 入口），此处不再内联管理 -->
+
+      <!-- ══════════ 外部视图 ══════════ -->
+      <template v-if="userView === 'owner' || userView === 'property'">
+        <div class="ext-banner" :class="userView">
+          <span>{{ userView === 'owner' ? '🏠 业主视角·只读' : '🏢 物业视角·只读' }}</span>
+          <span class="ext-sub">仅展示对外公开信息，不可操作</span>
+        </div>
+        <template v-if="detail.stage === 'ended' && detail.compliance !== 'invalid' && detail.publish && detail.publish.published">
+          <button class="btn btn-ghost mini" @click="viewMinutes">查看公示纪要</button>
+        </template>
+        <template v-else-if="detail.publish && detail.publish.withdrawn">
+          <span class="ext-hint withdrawn">⚠ 该会议纪要已撤回公示</span>
+        </template>
+        <template v-else-if="detail.compliance === 'invalid'">
+          <span class="ext-hint withdrawn">⚠ 该会议已作废</span>
+        </template>
+        <template v-else>
+          <span class="ext-hint">会议结束公示后可查看会议纪要</span>
+        </template>
+      </template>
+    </div>
+
+    <!-- 准备阶段（主任）：底部固定主操作 -->
+    <div class="prep-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
+      <button v-if="prepareMode === 'send'" class="pf-btn" @click="sendAll">选择通知对象<br>并发送通知</button>
+      <button v-else class="pf-btn" @click="startMeeting">开始会议</button>
+      <span class="pf-hint">{{ prepareHint }}</span>
+    </div>
+
+    <!-- 发送通知时选择应参会人员 -->
+    <div v-if="sendVisible" class="modal-mask" @click="closeSendDialog">
+      <div class="form-sheet send-sheet" @click.stop>
+        <div class="sheet-head">
+          <span class="sheet-title">选择通知对象</span>
+          <span class="sheet-close" @click="closeSendDialog">×</span>
+        </div>
+        <div class="send-summary">
+          <span>已选 {{ sendSelectedCount }} / {{ sendMembers.length }}</span>
+          <div class="send-actions">
+            <span @click="selectAllSendMembers">全选</span>
+            <span class="muted" @click="clearSendMembers">清空</span>
+          </div>
+        </div>
+        <div class="send-member-list" style="overflow-y:auto;">
+          <div v-for="item in sendMembers" :key="item.userRoleId" class="send-member" :class="item.checked ? 'on' : ''" @click="toggleSendMember(item.userRoleId)">
+            <div class="send-check">{{ item.checked ? '✓' : '' }}</div>
+            <div class="send-person">
+              <span class="send-name">{{ item.name }}</span>
+              <span class="send-meta">{{ item.role }}{{ item.roomNumber ? ' · ' + item.roomNumber : '' }}</span>
+            </div>
+          </div>
+          <div v-if="!sendMembers.length" class="proxy-empty">暂无可通知的业委会成员</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn btn-ghost" @click="closeSendDialog">取消</button>
+          <button class="btn btn-primary" :class="{ loading: sendSubmitting }" @click="confirmSendAll">发送通知</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加议题弹窗 -->
+    <div v-if="addTopicVisible" class="modal-mask" @click="closeAddTopic">
+      <div class="form-sheet" @click.stop style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
+        <div class="sheet-head">
+          <span class="sheet-title">添加议题</span>
+          <span class="sheet-close" @click="closeAddTopic">×</span>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">议题名称</span>
+          <input class="form-input large" v-model="newTopicForm.title" placeholder="输入议题名称" />
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">表决类型</span>
+          <div class="type-row">
+            <span class="type-chip" :class="newTopicForm.decisionType === 'simple' ? 'on' : ''" @click="pickDecisionType('simple')">普通表决</span>
+            <span class="type-chip" :class="newTopicForm.decisionType === 'multi_choice' ? 'on' : ''" @click="pickDecisionType('multi_choice')">多选一</span>
+          </div>
+        </div>
+
+        <div v-if="newTopicForm.decisionType === 'multi_choice'" class="form-group">
+          <span class="form-label">选项（每行一个，第一个为默认选项）</span>
+          <textarea class="form-textarea" v-model="newTopicForm.optionsText" placeholder="每行写一个选项，如：&#10;完全更换为智能门禁&#10;保留现有门禁，加装人脸识别&#10;暂不改造，维持现状" style="min-height:90px;height:90px;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <div class="realname-row" @click="toggleRealName">
+            <div>
+              <span class="form-label">实名表决</span>
+              <span class="realname-hint">开启后将公开每位委员的投票选择，须在投票前确定</span>
+            </div>
+            <div class="rn-switch" :class="newTopicForm.realName ? 'on' : ''"><div class="rn-knob"></div></div>
+          </div>
+        </div>
+
+        <div class="sheet-actions">
+          <button class="btn btn-ghost" @click="closeAddTopic">取消</button>
+          <button class="btn btn-primary" @click="submitAddTopic">确认添加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 代录弹层 -->
+    <div v-if="proxyVisible" class="modal-mask" @click="closeProxyRecorder">
+      <div class="form-sheet proxy-sheet" @click.stop>
+        <div class="sheet-head">
+          <span class="sheet-title">会议代录</span>
+          <span class="sheet-close" @click="closeProxyRecorder">×</span>
+        </div>
+
+        <div class="proxy-tabs">
+          <span class="proxy-tab" :class="proxyAction === 'signIn' ? 'on' : ''" @click="pickProxyAction('signIn')">代确认参会</span>
+          <span class="proxy-tab" :class="proxyAction === 'vote' ? 'on' : ''" @click="pickProxyAction('vote')">代投票</span>
+        </div>
+
+        <div v-if="proxyAction === 'vote'" class="proxy-section">
+          <span class="form-label">选择议题</span>
+          <div class="proxy-topic-list">
+            <span v-for="item in (detail && detail.record ? detail.record.topics : [])" :key="item.id" class="proxy-topic" :class="proxyTopicId == item.id ? 'on' : ''" @click="pickProxyTopic(item.id)">{{ item.title }}</span>
+          </div>
+          <template v-for="topic in (detail && detail.record ? detail.record.topics : [])" :key="topic.id">
+            <div v-if="proxyTopicId == topic.id && topic.decisionType !== 'multi_choice'" class="proxy-choice-row">
+              <span class="proxy-choice for" :class="proxyChoice === 'for_vote' ? 'on' : ''" @click="pickProxyChoice('for_vote')">赞成</span>
+              <span class="proxy-choice ag" :class="proxyChoice === 'against' ? 'on' : ''" @click="pickProxyChoice('against')">反对</span>
+              <span class="proxy-choice ab" :class="proxyChoice === 'abstain' ? 'on' : ''" @click="pickProxyChoice('abstain')">弃权</span>
+            </div>
+            <div v-if="proxyTopicId == topic.id && topic.decisionType === 'multi_choice'" class="proxy-option-list">
+              <div class="proxy-option" :class="proxySelectedId == opt.id ? 'on' : ''" v-for="opt in topic.options" :key="opt.id" @click="pickProxyOption(opt.id)">
+                <span>{{ opt.label }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="proxy-section">
+          <span class="form-label">选择代录对象</span>
+          <input class="form-input" :value="proxyKeyword" @input="onProxyKeywordInput" placeholder="搜索姓名或房号" />
+          <div class="proxy-target-list" style="overflow-y:auto;">
+            <div v-for="item in proxyTargets" :key="item.memberId" class="proxy-target" :class="[item.checked ? 'on' : '', item.disabled ? 'disabled' : '']" @click="toggleProxyTarget(item.memberId)">
+              <div class="proxy-check">{{ item.checked ? '✓' : '' }}</div>
+              <div class="proxy-person">
+                <span class="proxy-name">{{ item.name }}</span>
+                <span class="proxy-meta">{{ item.role }}{{ item.roomNumber ? ' · ' + item.roomNumber : '' }}</span>
+              </div>
+              <span v-if="item.disabledText" class="proxy-state">{{ item.disabledText }}</span>
+            </div>
+            <div v-if="!proxyTargets.length" class="proxy-empty">没有匹配人员</div>
+          </div>
+        </div>
+
+        <div class="proxy-section">
+          <span class="form-label">代录凭证</span>
+          <div class="proof-picker" @click="pickProxyProof">
+            <span class="proof-main">{{ proxyProofName || '上传现场照片、授权截图或纸质凭证' }}</span>
+            <span class="proof-action">{{ proxyProofName ? '重新选择' : '选择图片' }}</span>
+          </div>
+        </div>
+
+        <div class="proxy-submit-row">
+          <span class="proxy-count">已选 {{ proxySelectedCount }} 人</span>
+          <button class="btn btn-primary proxy-submit" :class="{ loading: proxySubmitting }" @click="submitProxyAction">提交代录</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑会议弹窗 -->
+    <div v-if="editVisible" class="modal-mask" @click="closeEdit">
+      <div class="form-sheet" @click.stop style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
+        <div class="sheet-head">
+          <span class="sheet-title">编辑会议</span>
+          <span class="sheet-close" @click="closeEdit">×</span>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">会议标题 *</span>
+          <input class="form-input large" v-model="editForm.title" placeholder="会议标题" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <span class="form-label">会议日期 *</span>
+            <input type="date" class="picker-field" :value="editForm.meetingDate" @change="onEditDateChange" />
+          </div>
+          <div class="form-group half">
+            <span class="form-label">开始时间 *</span>
+            <input type="time" class="picker-field" :value="editForm.meetingTime" @change="onEditTimeChange" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">会议地点</span>
+          <input class="form-input" v-model="editForm.location" placeholder="请输入会议地点" />
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">主要议题 / 补充说明</span>
+          <textarea class="form-textarea" style="min-height:72px;height:72px;" v-model="editForm.description" placeholder="主要议题或其他需要记录的事项"></textarea>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">通知正文</span>
+          <span class="form-hint">默认按上面信息自动生成；如需自定义措辞可在此直接编辑。</span>
+          <textarea class="form-textarea" style="min-height:160px;height:160px;" :value="editForm.content" @input="onEditContentInput" placeholder="通知正文"></textarea>
+        </div>
+
+        <div class="sheet-actions">
+          <button class="btn btn-ghost" @click="closeEdit">取消</button>
+          <button class="btn btn-primary" @click="submitEdit">保存修改</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑通知草稿弹窗 -->
+    <div v-if="noticeEditVisible" class="modal-mask" @click="closeNoticeEdit">
+      <div class="form-sheet" @click.stop style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
+        <div class="sheet-head">
+          <span class="sheet-title">编辑通知</span>
+          <span class="sheet-close" @click="closeNoticeEdit">×</span>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">通知标题</span>
+          <input class="form-input large" v-model="noticeEditForm.title" placeholder="通知标题" />
+        </div>
+
+        <div class="form-group">
+          <span class="form-label">通知正文</span>
+          <textarea class="form-textarea" style="min-height:200px;height:200px;" v-model="noticeEditForm.content" placeholder="通知正文"></textarea>
+        </div>
+
+        <div class="sheet-actions">
+          <button class="btn btn-ghost" @click="closeNoticeEdit">取消</button>
+          <button class="btn btn-primary" @click="submitNoticeEdit">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, computed, h, onMounted, onActivated, onUnmounted, onDeactivated } from 'vue'
+import { useRoute } from 'vue-router'
+import api from '@/api'
+import perm from '@/utils/perm'
+import { toast, showModal } from '@/utils/ui'
+import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
+import { getStorage } from '@/utils/storage'
+import { pickAndUpload, humanSize } from '@/utils/upload'
+import PageNav from '@/components/PageNav.vue'
+
+const route = useRoute()
+
+// ── 同文件内子组件：会议议题卡（替代 wxml <template name="meetingTopicsCard">）──
+// topics 显式作为 prop 传入；3 处引用（进行中 / 委员结束页 / 主任归档卡）均用该组件。
+// 用 render 函数（h）实现，避免依赖运行时模板编译器（Vite 默认 runtime-only 构建）。
+const MeetingTopicsCard = {
+  name: 'MeetingTopicsCard',
+  props: {
+    topics: { type: Array, default: () => [] }
+  },
+  setup(props) {
+    return () => {
+      const topics = props.topics
+      if (!topics || !topics.length) return null
+      return h('div', { class: 'meeting-topics-card' }, [
+        h('div', { class: 'mtc-head' }, [
+          h('div', [
+            h('span', { class: 'mtc-title-main' }, '会议议题'),
+            h('span', { class: 'mtc-sub' }, '本次会议讨论与表决事项')
+          ]),
+          h('span', { class: 'mtc-count' }, topics.length + '项')
+        ]),
+        ...topics.map((item, index) => h('div', { class: 'mtc-topic', key: item.id }, [
+          h('span', { class: 'mtc-no' }, index + 1),
+          h('div', { class: 'mtc-body' }, [
+            h('div', { class: 'mtc-title-row' }, [
+              h('span', { class: 'mtc-topic-title' }, item.title),
+              h('span', { class: ['mtc-status', item.statusClass] }, item.statusLabel)
+            ]),
+            h('div', { class: 'mtc-meta' }, [
+              h('span', { class: ['mtc-chip', item.typeClass] }, item.typeLabel),
+              item.realNameVote ? h('span', { class: 'mtc-chip realname' }, '实名') : null,
+              item.source === 'live' ? h('span', { class: 'mtc-chip live' }, '现场新增') : null
+            ]),
+            h('span', { class: 'mtc-summary' }, item.voteSummary)
+          ])
+        ]))
+      ])
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// 顶层纯函数（自 committee-detail.js 1:1 迁移）
+// ═══════════════════════════════════════════════
+function toNumber(value) {
+  var n = Number(value)
+  return isNaN(n) ? 0 : n
+}
+
+function percent(done, total) {
+  return total > 0 ? Math.round(done / total * 100) : 0
+}
+
+function topicVoteCount(topic) {
+  if (topic && topic.decisionType === 'multi_choice' && topic.options) {
+    return topic.options.reduce(function (sum, opt) { return sum + toNumber(opt.votes) }, 0)
+  }
+  return toNumber(topic && topic.forVotes) + toNumber(topic && topic.agVotes) + toNumber(topic && topic.abVotes)
+}
+
+function topicTypeLabel(topic) {
+  var type = String(topic && topic.type || '').toLowerCase()
+  if (type === 'notice') return '通报'
+  if (type === 'discussion') return '讨论'
+  if (type === 'major') return '重大'
+  if (topic && topic.decisionType === 'multi_choice') return '多选一'
+  if (topic && topic.voteRequired === false) return '记录'
+  return '表决'
+}
+
+function topicTypeClass(topic) {
+  var type = String(topic && topic.type || '').toLowerCase()
+  if (type === 'notice') return 'notice'
+  if (type === 'discussion') return 'discussion'
+  if (type === 'major') return 'major'
+  if (topic && topic.decisionType === 'multi_choice') return 'multi'
+  return 'decision'
+}
+
+function topicStatusLabel(topic) {
+  if (!topic) return '待确认'
+  if (topic.voteRequired === false) return '已记录'
+  if (topic.status === 'passed' || topic.passed) return '已通过'
+  if (topic.status === 'failed') return '未通过'
+  return '待完成'
+}
+
+function topicStatusClass(topic) {
+  if (!topic) return 'pending'
+  if (topic.voteRequired === false) return 'recorded'
+  if (topic.status === 'passed' || topic.passed) return 'passed'
+  if (topic.status === 'failed') return 'failed'
+  return 'pending'
+}
+
+function topicVoteSummary(topic) {
+  if (!topic) return ''
+  if (topic.voteRequired === false) return topic.text || '无需表决，已作为会议记录事项'
+  if (topic.decisionType === 'multi_choice') {
+    var opts = topic.options || []
+    if (!opts.length) return topic.text || '多选一表决'
+    return opts.map(function (opt) {
+      return (opt.label || opt.name || '选项') + ' ' + toNumber(opt.votes)
+    }).join(' / ') + (topic.need ? '，通过需≥' + topic.need : '')
+  }
+  return '同意 ' + toNumber(topic.forVotes) +
+    ' / 反对 ' + toNumber(topic.agVotes) +
+    ' / 弃权 ' + toNumber(topic.abVotes) +
+    (topic.need ? '，通过需≥' + topic.need : '')
+}
+
+function decorateMeetingTopics(detail) {
+  if (!detail || !detail.record || !detail.record.topics) return
+  detail.record.topics = detail.record.topics.map(function (topic) {
+    topic.typeLabel = topicTypeLabel(topic)
+    topic.typeClass = topicTypeClass(topic)
+    topic.statusLabel = topicStatusLabel(topic)
+    topic.statusClass = topicStatusClass(topic)
+    topic.voteSummary = topicVoteSummary(topic)
+    return topic
+  })
+}
+
+function buildFlowStats(detail) {
+  if (!detail) return null
+  var delivery = detail.delivery || {}
+  var memberDeliveries = delivery.memberDeliveries || []
+  var memberTotal = detail.members && detail.members.length ? detail.members.length : 0
+  var deliveryTotal = toNumber(delivery.total) || memberDeliveries.length || memberTotal
+  var noticeDone = delivery.noticeDone !== undefined && delivery.noticeDone !== null
+    ? toNumber(delivery.noticeDone)
+    : memberDeliveries.filter(function (item) { return item.noticeDelivered }).length
+  var materialDone = delivery.materialDone !== undefined && delivery.materialDone !== null
+    ? toNumber(delivery.materialDone)
+    : memberDeliveries.filter(function (item) { return item.materialDelivered }).length
+
+  var record = detail.record || {}
+  var attendances = record.attendances || []
+  var attendanceTotal = attendances.length || memberTotal || deliveryTotal
+  var signedInCount = record.signedInCount !== undefined && record.signedInCount !== null
+    ? toNumber(record.signedInCount)
+    : attendances.filter(function (item) { return item.signedIn }).length
+  var need = attendanceTotal > 0 ? Math.floor(attendanceTotal / 2) + 1 : 0
+
+  var topics = (record.topics || []).filter(function (topic) { return topic.voteRequired !== false })
+  var topicCount = topics.length
+  var passedCount = topics.filter(function (topic) { return topic.passed }).length
+  var pendingCount = topics.filter(function (topic) {
+    return topic.status === 'pending' || (attendanceTotal > 0 && topicVoteCount(topic) < attendanceTotal)
+  }).length
+  var failedCount = Math.max(0, topicCount - passedCount - pendingCount)
+  var votedCount = topics.reduce(function (sum, topic) { return sum + topicVoteCount(topic) }, 0)
+  var voteTotal = topicCount * attendanceTotal
+  var noticePct = percent(noticeDone, deliveryTotal)
+  var materialPct = percent(materialDone, deliveryTotal)
+
+  return {
+    delivery: {
+      total: deliveryTotal,
+      noticeDone: noticeDone,
+      materialDone: materialDone,
+      noticePct: noticePct,
+      materialPct: materialPct,
+      pct: Math.min(noticePct, materialPct),
+      done: deliveryTotal > 0 && noticeDone >= deliveryTotal && materialDone >= deliveryTotal,
+      statusText: deliveryTotal > 0 ? '未完成' : '未记录'
+    },
+    attendance: {
+      total: attendanceTotal,
+      signedInCount: signedInCount,
+      need: need,
+      pct: percent(signedInCount, attendanceTotal),
+      done: attendanceTotal > 0 && signedInCount >= need,
+      statusText: attendanceTotal > 0 ? (signedInCount >= need ? '已达到法定人数' : '未达到法定人数') : '暂无参会记录'
+    },
+    vote: {
+      topicCount: topicCount,
+      passedCount: passedCount,
+      pendingCount: pendingCount,
+      failedCount: failedCount,
+      votedCount: votedCount,
+      totalVoteCount: voteTotal,
+      pct: percent(votedCount, voteTotal),
+      done: topicCount === 0 || pendingCount === 0,
+      metaText: topicCount === 0 ? '未设置表决议题' : '投票完成 ' + votedCount + '/' + voteTotal,
+      statusText: topicCount === 0
+        ? '本次无表决议题'
+        : (pendingCount > 0 ? pendingCount + '项待完成' : passedCount + '/' + topicCount + '项通过')
+    }
+  }
+}
+
+// ── 工具：文件大小格式化（小程序里依赖 this.formatSize，但原文件未显式定义，
+//    这里补一个与上传/补充材料调用一致的实现，便于第三期接文件能力时复用）──
+function formatSize(size) {
+  var n = Number(size) || 0
+  if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + 'MB'
+  if (n >= 1024) return Math.round(n / 1024) + 'KB'
+  return n + 'B'
+}
+
+// ═══════════════════════════════════════════════
+// data（自 Page.data 1:1 迁移到 ref/reactive）
+// ═══════════════════════════════════════════════
+const detail = ref(null)
+const userView = ref('')
+
+// 顶部橙色区域标题：随会议阶段变化（创建后进入即"会议通知"——总结会议信息并向委员发送通知）
+const navTitle = computed(() => {
+  const d = detail.value
+  if (!d) return '会议通知'
+  if (d.stage === 'preparing') return '会议通知'
+  if (d.stage === 'ongoing') return '会议进行中'
+  return '会议详情'
+})
+const activeRole = ref({})
+const currentStep = ref(1)
+const step1Done = ref(false), step2Done = ref(false), step3Done = ref(false)
+const step1Time = ref(''), step2Time = ref(''), step3Time = ref('')
+const stepDone = ref(0), stepTotal = ref(2), stepAllDone = ref(false)
+const prepareSteps = ref([]), prepareHint = ref(''), prepareMode = ref('')
+const deliveryExpanded = ref(false)
+const flowStatsOpen = ref(false)
+const archiveLogOpen = ref(false)
+const noticePackageVisible = ref(false)
+const recAudioPlaying = ref(false)
+const quickMode = ref(false)
+const step3Ready = ref(false)
+// 添加议题表单
+const addTopicVisible = ref(false)
+const newTopicForm = reactive({
+  title: '',
+  decisionType: 'simple',
+  type: 'decision',
+  optionsText: '',
+  realName: false
+})
+const proxyVisible = ref(false)
+const proxyAction = ref('signIn')
+const proxyTargets = ref([])
+const proxyAllTargets = ref([])
+const proxyKeyword = ref('')
+const proxyProofUrl = ref('')
+const proxyProofName = ref('')
+const proxyTopicId = ref(null)
+const proxyChoice = ref('for_vote')
+const proxySelectedId = ref(null)
+const proxySelectedCount = ref(0)
+const proxySubmitting = ref(false)
+// 编辑会议
+const editVisible = ref(false)
+const editForm = reactive({ title: '', meetingDate: '', meetingTime: '', location: '', description: '', content: '' })
+const noticeContentDirty = ref(false)
+const locationOptions = ['社区活动室', '物业办公室', '社区会议室', '线上会议', '待定']
+// 编辑通知
+const noticeEditVisible = ref(false)
+const noticeEditForm = reactive({ title: '', content: '' })
+const sendVisible = ref(false)
+const sendMembers = ref([])
+const sendSelectedCount = ref(0)
+const sendSubmitting = ref(false)
+
+// onLoad 上下文（this.meetingId / this.fromNotice）
+let meetingId = null
+let fromNotice = false
+// 录音上下文（this._recAudio）
+let _recAudio = null
+
+// ═══════════════════════════════════════════════
+// 生命周期
+// ═══════════════════════════════════════════════
+// 注意：本页用 options.id（不是 meetingId），即 route.query.id
+onMounted(() => {
+  meetingId = parseInt(route.query.id)
+  fromNotice = route.query.fromNotice === '1'
+  activeRole.value = getStorage('activeRole', null) || {}
+  loadDetail()
+})
+// onShow → onMounted + onActivated（本页 onShow 会重载 detail，务必保留刷新）
+onActivated(() => { loadDetail() })
+// onUnload → onUnmounted
+onUnmounted(() => { destroyRecAudio() })
+// onHide → onDeactivated（本页 onHide 暂停录音播放）
+onDeactivated(() => { pauseRecAudio() })
+
+// ── 会议录音存档：试听 / 下载转发 ──
+// H5：用 HTMLAudioElement 替代小程序 wx.createInnerAudioContext。
+function destroyRecAudio() {
+  if (_recAudio) {
+    try { _recAudio.pause() } catch (e) {}
+    _recAudio.onplay = _recAudio.onpause = _recAudio.onended = _recAudio.onerror = null
+    _recAudio = null
+  }
+  recAudioPlaying.value = false
+}
+function pauseRecAudio() {
+  if (_recAudio && recAudioPlaying.value) { try { _recAudio.pause() } catch (e) {} }
+}
+function toggleRecording() {
+  const url = detail.value && detail.value.record ? detail.value.record.recordingUrl : ''
+  if (!url) { toast({ title: '暂无录音', icon: 'none' }); return }
+  if (_recAudio && recAudioPlaying.value) { _recAudio.pause(); return }
+  if (!_recAudio) {
+    _recAudio = new Audio(url)
+    _recAudio.onplay = () => { recAudioPlaying.value = true }
+    _recAudio.onpause = () => { recAudioPlaying.value = false }
+    _recAudio.onended = () => { recAudioPlaying.value = false }
+    _recAudio.onerror = () => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) }
+  }
+  const p = _recAudio.play()
+  if (p && p.catch) p.catch(() => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) })
+}
+// H5 无微信转发文件能力：降级为下载（拉成 blob 保证跨域也能下），提示可在微信内转发该文件。
+async function downloadRecording() {
+  const url = detail.value && detail.value.record ? detail.value.record.recordingUrl : ''
+  if (!url) { toast({ title: '暂无录音', icon: 'none' }); return }
+  try {
+    const resp = await fetch(url)
+    const blob = await resp.blob()
+    const objUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objUrl
+    a.download = '会议录音' + (url.lastIndexOf('.') >= 0 ? url.slice(url.lastIndexOf('.')) : '.mp3')
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(objUrl), 2000)
+    toast({ title: '已下载，可在微信中转发该文件' })
+  } catch (e) {
+    window.open(url, '_blank')
+    toast({ title: '已打开录音，可长按保存或转发' })
+  }
+}
+
+async function loadDetail() {
+  try {
+    const d = await api.committeeDetail(meetingId)
+    const uv = d.userView
+    // 委员走专属极简会议页，不进操作者用的详情/录音页（覆盖通知、待办等入口）
+    if (uv === 'member') {
+      redirectTo('/pages/my-meeting/my-meeting?id=' + meetingId)
+      return
+    }
+    // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）
+    if (d.stage === 'ongoing' && d.record && !fromNotice &&
+        uv === 'chair') {
+      redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+      return
+    }
+    if (d.taskItems) d.taskItemsText = d.taskItems.join(' / ')
+
+    // Calculate step states for member & chair view
+    let s1 = false, s2 = false, s3 = false
+    if ((uv === 'member' || uv === 'chair') && d.record && d.record.attendances) {
+      const me = d.record.attendances.find(a => a.isSelf)
+      if (me) {
+        s1 = me.signedIn
+        s2 = s1
+      }
+      // Step 2: all topics voted
+      if (d.record.topics) {
+        s3 = d.record.topics.length > 0 &&
+          d.record.topics.every(t => t.myVote)
+      } else {
+        s3 = true // no topics = done
+      }
+    }
+    // 如果后端说已完成（taskLevel === 'ok'），直接全锁
+    const forceDone = d.taskLevel === 'ok' && d.stage === 'ongoing'
+    if (forceDone) { s1 = true; s2 = true; s3 = true }
+    const sDone = [s1, s3].filter(Boolean).length
+    const sAllDone = forceDone || (sDone === 2)
+    // 自动设置当前步骤
+    const curStep = sAllDone ? 2 : s1 ? 2 : 1
+
+    // Pre-compute topics passed count
+    if (d.record && d.record.topics) {
+      decorateMeetingTopics(d)
+      d.record.topicsPassed = d.record.topics.filter(function (t) { return t.passed }).length
+    }
+
+    // Pre-compute chair view stats
+    if (d.record && d.record.attendances) {
+      d.record.signedInCount = d.record.attendances.filter(a => a.signedIn).length
+      d.record.signedCount = d.record.attendances.filter(a => a.signed).length
+      d.record.signedInPct = percent(d.record.signedInCount, d.record.attendances.length)
+      d.record.signedPct = percent(d.record.signedCount, d.record.attendances.length)
+    }
+
+    // Pre-compute delivery stats
+    if (d.delivery && d.delivery.memberDeliveries) {
+      var dels = d.delivery.memberDeliveries
+      var noticeDone = dels.filter(function (x) { return x.noticeDelivered }).length
+      var materialDone = dels.filter(function (x) { return x.materialDelivered }).length
+      var readDone = d.delivery.readDone !== undefined && d.delivery.readDone !== null
+        ? toNumber(d.delivery.readDone)
+        : dels.filter(function (x) { return x.noticeRead }).length
+      d.delivery.noticeDone = noticeDone
+      d.delivery.materialDone = materialDone
+      d.delivery.readDone = readDone
+      d.delivery.noticePct = percent(noticeDone, dels.length)
+      d.delivery.materialPct = percent(materialDone, dels.length)
+      d.delivery.readPct = percent(readDone, dels.length)
+    }
+    // 确认参会人数：委员"确认参会"走的是出席(signedIn)，按应通知人数 delivery.total 统计
+    if (d.delivery) {
+      var atts = (d.record && d.record.attendances) ? d.record.attendances : []
+      var attendConfirmed = atts.filter(function (a) { return a.signedIn }).length
+      var attendDeclined = atts.filter(function (a) { return a.declined }).length
+      var attendTotal = d.delivery.total || atts.length || 0
+      d.delivery.attendConfirmed = attendConfirmed
+      d.delivery.attendDeclined = attendDeclined
+      d.delivery.attendPct = percent(attendConfirmed, attendTotal)
+      var mine = atts.filter(function (a) { return a.isSelf })[0]
+      d.mySignedIn = !!(mine && mine.signedIn)
+      d.myDeclined = !!(mine && mine.declined)
+    }
+    d.flowStats = buildFlowStats(d)
+
+    // 准备阶段（主任）：材料是可选附件，不作为必经步骤。
+    let pSteps = [], pHint = '', pMode = ''
+    if (uv === 'chair' && d.stage === 'preparing') {
+      const del = d.delivery || {}
+      const allDone = !!del.allDone
+      let cur = allDone ? 2 : 1
+      const st = (i, done) => done ? 'done' : (cur === i ? 'current' : 'todo')
+      pSteps = [
+        { label: '编辑会议', state: 'done' },
+        { label: '会议通知', state: st(1, allDone) },
+        { label: '参会确认', state: cur === 2 ? 'current' : 'todo' }
+      ]
+      pMode = allDone ? 'start' : 'send'
+      pHint = allDone
+        ? '已送达 ' + (del.total || 0) + ' 位委员，可以开始会议'
+        : '发送后委员才能收到会议通知'
+    }
+    const npVisible = !!fromNotice &&
+      d.stage !== 'ended' &&
+      (uv === 'member' || uv === 'chair') &&
+      (!!d.noticeDraft || !!(d.materials && d.materials.length))
+
+    // 快速会议模式（进行中时生效）：隐藏代录、添加议题等逐题表决相关入口
+    const qMode = d.stage === 'ongoing' && d.meetingMode === 'quick'
+
+    detail.value = d
+    userView.value = uv
+    currentStep.value = curStep
+    step1Done.value = s1
+    step2Done.value = s2
+    step3Done.value = s3
+    stepDone.value = sDone
+    stepTotal.value = 2
+    stepAllDone.value = sAllDone
+    quickMode.value = qMode
+    prepareSteps.value = pSteps
+    prepareHint.value = pHint
+    prepareMode.value = pMode
+    noticePackageVisible.value = npVisible
+    deliveryExpanded.value = false
+  } catch (e) {
+    toast({ title: '加载失败', icon: 'none' })
+  }
+}
+
+function goStep(step) {
+  // 只能跳转到已解锁的步骤
+  if (step === 1 || (step === 2 && step1Done.value)) {
+    currentStep.value = step
+  }
+}
+
+async function confirmStep1() {
+  const res = await showModal({
+    title: '确认参加会议',
+    content: '请确认：你会参加本次会议。',
+    confirmText: '确认参加',
+    cancelText: '再看看'
+  })
+  if (!res.confirm) return
+  const now = new Date()
+  const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0')
+  step1Done.value = true
+  step2Done.value = true
+  step1Time.value = time
+  currentStep.value = 2
+  stepDone.value = Math.max(stepDone.value, 1)
+  api.committeeSelfToggle(meetingId, 'signedIn').catch(() => {})
+}
+
+function confirmStep2() {
+  currentStep.value = 2
+}
+
+async function confirmStep3() {
+  const topics = detail.value && detail.value.record ? (detail.value.record.topics || []) : []
+  if (topics.length && topics.some(t => !t.myVote)) {
+    toast({ title: '请先完成全部议题投票', icon: 'none' })
+    return
+  }
+  const res = await showModal({
+    title: '确认提交',
+    content: '提交后不能修改。请确认你的选择已经完成。',
+    confirmText: '确认提交',
+    cancelText: '再看看'
+  })
+  if (!res.confirm) return
+  const now = new Date()
+  const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0')
+  step3Done.value = true
+  step3Time.value = time
+  stepDone.value = 2
+  stepAllDone.value = true
+}
+
+async function vote(topicId, choice, selectedId) {
+  if (!step1Done.value) {
+    toast({ title: '请先确认参会', icon: 'none' })
+    return
+  }
+  const d = detail.value
+  const topic = d && d.record && d.record.topics
+    ? d.record.topics.find(t => String(t.id) === String(topicId))
+    : null
+  const selectedOption = topic && selectedId
+    ? (topic.options || []).find(function (o) { return String(o.id) === String(selectedId) })
+    : null
+  const choiceLabel = selectedOption
+    ? selectedOption.label
+    : (choice === 'for_vote' ? '同意' : choice === 'against' ? '不同意' : '弃权')
+  const res = await showModal({
+    title: '确认你的选择',
+    content: '你选择了「' + choiceLabel + '」。确认后这项不能修改。',
+    confirmText: '确认选择',
+    cancelText: '再看看'
+  })
+  if (!res.confirm) return
+  await _submitVote(topicId, choice, selectedId)
+}
+
+async function _submitVote(topicId, choice, selectedId) {
+  const d = detail.value
+  if (d && d.record && d.record.topics) {
+    const topics = d.record.topics.map(t => {
+      if (t.id == topicId) {
+        t.myVote = choice || selectedId
+        if (selectedId) {
+          var opt = (t.options || []).find(function (o) { return String(o.id) === String(selectedId) })
+          if (opt) t.myVoteLabel = { id: opt.id, label: opt.label }
+        }
+      }
+      return t
+    })
+    const allVoted = topics.every(t => t.myVote)
+    d.record.topics = topics
+    if (allVoted) step3Ready.value = true
+  }
+  try { await api.committeeVote(meetingId, topicId, choice, selectedId) } catch (e) {}
+}
+
+async function openProxyRecorder() {
+  const d = detail.value
+  if (!d || d.stage !== 'ongoing') {
+    toast({ title: '会议进行中才可代录', icon: 'none' })
+    return
+  }
+  proxyVisible.value = true
+  proxyAction.value = 'signIn'
+  proxyKeyword.value = ''
+  proxyProofUrl.value = ''
+  proxyProofName.value = ''
+  proxyTopicId.value = d.record && d.record.topics && d.record.topics[0] ? d.record.topics[0].id : null
+  proxyChoice.value = 'for_vote'
+  proxySelectedId.value = null
+  proxySelectedCount.value = 0
+  await loadProxyTargets()
+}
+
+function closeProxyRecorder() {
+  proxyVisible.value = false
+}
+
+async function loadProxyTargets() {
+  try {
+    const targets = await api.committeeProxyTargets(meetingId, proxyKeyword.value)
+    proxyAllTargets.value = targets || []
+    refreshProxyTargets()
+  } catch (e) {
+    toast({ title: e.message || '代录名单加载失败', icon: 'none' })
+  }
+}
+
+function refreshProxyTargets() {
+  const action = proxyAction.value
+  const topicId = proxyTopicId.value
+  const keyword = (proxyKeyword.value || '').trim().toLowerCase()
+  let selectedCount = 0
+  const targets = (proxyAllTargets.value || [])
+    .filter(function (item) {
+      if (!keyword) return true
+      const name = (item.name || '').toLowerCase()
+      const room = (item.roomNumber || '').toLowerCase()
+      return name.indexOf(keyword) >= 0 || room.indexOf(keyword) >= 0
+    })
+    .map(function (item) {
+      const votedTopicIds = item.votedTopicIds || []
+      let disabled = false
+      let disabledText = ''
+      if (action === 'signIn') {
+        disabled = !!item.signedIn
+        disabledText = item.signedIn ? (item.signInByProxy ? '已代录参会' : '已确认参会') : ''
+      } else {
+        if (!topicId) {
+          disabled = true
+          disabledText = '请选择议题'
+        } else if (!item.signedIn) {
+          disabled = true
+          disabledText = '未确认参会'
+        } else if (votedTopicIds.indexOf(Number(topicId)) >= 0) {
+          disabled = true
+          disabledText = '已投票'
+        }
+      }
+      const checked = disabled ? false : !!item.checked
+      if (checked) selectedCount += 1
+      return Object.assign({}, item, { disabled: disabled, disabledText: disabledText, checked: checked })
+    })
+  proxyTargets.value = targets
+  proxySelectedCount.value = selectedCount
+}
+
+function onProxyKeywordInput(e) {
+  proxyKeyword.value = e.target.value || ''
+  refreshProxyTargets()
+}
+
+function pickProxyAction(action) {
+  proxyAction.value = action
+  proxyChoice.value = 'for_vote'
+  proxySelectedId.value = null
+  refreshProxyTargets()
+}
+
+function pickProxyTopic(topicId) {
+  proxyTopicId.value = Number(topicId)
+  proxyChoice.value = 'for_vote'
+  proxySelectedId.value = null
+  refreshProxyTargets()
+}
+
+function pickProxyChoice(choice) {
+  proxyChoice.value = choice
+  proxySelectedId.value = null
+}
+
+function pickProxyOption(selectedId) {
+  proxySelectedId.value = Number(selectedId)
+  proxyChoice.value = ''
+}
+
+function toggleProxyTarget(memberId) {
+  memberId = Number(memberId)
+  const targets = (proxyTargets.value || []).map(function (item) {
+    if (Number(item.memberId) === memberId && !item.disabled) {
+      return Object.assign({}, item, { checked: !item.checked })
+    }
+    return item
+  })
+  const selectedIds = targets.filter(function (item) { return item.checked }).map(function (item) { return item.memberId })
+  const allTargets = (proxyAllTargets.value || []).map(function (item) {
+    return Object.assign({}, item, { checked: selectedIds.indexOf(item.memberId) >= 0 })
+  })
+  proxyTargets.value = targets
+  proxyAllTargets.value = allTargets
+  proxySelectedCount.value = selectedIds.length
+}
+
+// (2) 代录凭证：只选图上传，结果写入 proxyProofUrl / proxyProofName，供 submitProxyAction 使用
+async function pickProxyProof() {
+  try {
+    const r = await pickAndUpload('image/*')
+    if (!r) return // 用户取消
+    proxyProofUrl.value = r.url
+    proxyProofName.value = r.fileName
+    toast({ title: '已上传', icon: 'success' })
+  } catch (e) {
+    toast({ title: e.message || '上传失败', icon: 'none' })
+  }
+}
+
+async function submitProxyAction() {
+  if (proxySubmitting.value) return
+  const selectedIds = (proxyTargets.value || [])
+    .filter(function (item) { return item.checked && !item.disabled })
+    .map(function (item) { return item.memberId })
+  if (!selectedIds.length) {
+    toast({ title: '请选择代录对象', icon: 'none' })
+    return
+  }
+  if (!proxyProofUrl.value) {
+    toast({ title: '请上传凭证', icon: 'none' })
+    return
+  }
+
+  const payload = {
+    actionType: proxyAction.value,
+    memberIds: selectedIds,
+    proofUrl: proxyProofUrl.value,
+    proofName: proxyProofName.value
+  }
+  if (proxyAction.value === 'vote') {
+    if (!proxyTopicId.value) {
+      toast({ title: '请选择投票议题', icon: 'none' })
+      return
+    }
+    payload.topicId = proxyTopicId.value
+    const topic = (detail.value.record.topics || []).find(t => Number(t.id) === Number(proxyTopicId.value))
+    if (topic && topic.decisionType === 'multi_choice') {
+      if (!proxySelectedId.value) {
+        toast({ title: '请选择投票选项', icon: 'none' })
+        return
+      }
+      payload.selectedId = proxySelectedId.value
+    } else {
+      payload.choice = proxyChoice.value || 'for_vote'
+    }
+  }
+
+  proxySubmitting.value = true
+  try {
+    await api.committeeProxySubmit(meetingId, payload)
+    toast({ title: '代录已提交', icon: 'success' })
+    proxyVisible.value = false
+    proxySubmitting.value = false
+    loadDetail()
+  } catch (e) {
+    proxySubmitting.value = false
+    toast({ title: e.message || '提交失败', icon: 'none' })
+  }
+}
+
+// 开始会议：固定使用快速模式，传统逐题表决入口不再开放
+async function startMeeting() {
+  try {
+    await api.committeeAdvance(meetingId, 'start', 'quick')
+    toast({ title: '会议已开始', icon: 'success' })
+    enterLive()
+  } catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+// 进入「会议进行」全屏向导页：仅快速模式
+function enterLive() {
+  navigateTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+}
+
+async function endMeeting() {
+  try {
+    await api.committeeAdvance(meetingId, 'end')
+    toast({ title: '会议已结束', icon: 'success' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+async function toggleFlag(flag) {
+  try { await api.committeeToggleFlag(meetingId, flag); loadDetail() }
+  catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+async function toggleJuwei() {
+  try { await api.committeeToggleJuwei(meetingId); loadDetail() }
+  catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+function toggleDeliveryList() {
+  deliveryExpanded.value = !deliveryExpanded.value
+}
+
+function toggleFlowStats() {
+  flowStatsOpen.value = !flowStatsOpen.value
+}
+
+function toggleArchiveLog() {
+  archiveLogOpen.value = !archiveLogOpen.value
+}
+
+async function sendAll() {
+  await openSendDialog()
+}
+
+async function openSendDialog() {
+  try {
+    const members = await api.committeeMembers()
+    const deliveredRows = detail.value && detail.value.delivery
+      ? (detail.value.delivery.memberDeliveries || [])
+      : []
+    const existingIds = deliveredRows.map(function (item) { return Number(item.userRoleId) })
+    const hasExisting = existingIds.length > 0
+    const rows = (members || []).map(function (item) {
+      const id = Number(item.userRoleId)
+      return Object.assign({}, item, {
+        checked: hasExisting ? existingIds.indexOf(id) >= 0 : true
+      })
+    })
+    sendVisible.value = true
+    sendMembers.value = rows
+    sendSelectedCount.value = rows.filter(function (item) { return item.checked }).length
+    sendSubmitting.value = false
+  } catch (e) {
+    toast({ title: e.message || '通知对象加载失败', icon: 'none' })
+  }
+}
+
+function closeSendDialog() {
+  sendVisible.value = false
+  sendSubmitting.value = false
+}
+
+function toggleSendMember(id) {
+  id = Number(id)
+  const rows = (sendMembers.value || []).map(function (item) {
+    if (Number(item.userRoleId) === id) {
+      return Object.assign({}, item, { checked: !item.checked })
+    }
+    return item
+  })
+  sendMembers.value = rows
+  sendSelectedCount.value = rows.filter(function (item) { return item.checked }).length
+}
+
+function selectAllSendMembers() {
+  const rows = (sendMembers.value || []).map(function (item) {
+    return Object.assign({}, item, { checked: true })
+  })
+  sendMembers.value = rows
+  sendSelectedCount.value = rows.length
+}
+
+function clearSendMembers() {
+  const rows = (sendMembers.value || []).map(function (item) {
+    return Object.assign({}, item, { checked: false })
+  })
+  sendMembers.value = rows
+  sendSelectedCount.value = 0
+}
+
+async function confirmSendAll() {
+  if (sendSubmitting.value) return
+  const selectedIds = (sendMembers.value || [])
+    .filter(function (item) { return item.checked })
+    .map(function (item) { return item.userRoleId })
+  if (!selectedIds.length) {
+    toast({ title: '请选择通知对象', icon: 'none' })
+    return
+  }
+  sendSubmitting.value = true
+  try {
+    await api.committeeSendAll(meetingId, selectedIds)
+    toast({ title: '通知已发送', icon: 'success' })
+    sendVisible.value = false
+    sendSubmitting.value = false
+    loadDetail()
+  } catch (e) {
+    sendSubmitting.value = false
+    toast({ title: e.message || '发送失败', icon: 'none' })
+  }
+}
+
+// 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
+async function confirmAttend() {
+  try {
+    await api.committeeSelfToggle(meetingId, 'signedIn')
+    toast({ title: '已确认参会', icon: 'success' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) }
+}
+
+// 委员"无法参会"：标记因故缺席(declined)
+async function declineAttend() {
+  try {
+    await api.committeeSelfToggle(meetingId, 'declined')
+    toast({ title: '已登记：无法参会', icon: 'none' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) }
+}
+
+// "取消参会"：回到未响应（从确认参会人数中移除）
+async function cancelAttend() {
+  const res = await showModal({
+    title: '取消参会',
+    content: '确定取消本人参会？取消后将从确认参会人数中移除。',
+    confirmText: '取消参会',
+    cancelText: '再想想'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeSelfToggle(meetingId, 'cancel')
+    toast({ title: '已取消参会', icon: 'none' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) }
+}
+
+async function toggleDelivery(userRoleId, field) {
+  try { await api.committeeToggleDelivery(meetingId, userRoleId, field); loadDetail() }
+  catch (err) { toast({ title: err.message, icon: 'none' }) }
+}
+
+async function signAll() {
+  try { await api.committeeSignAll(meetingId); loadDetail() }
+  catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+async function markCompliance(status) {
+  try { await api.committeeCompliance(meetingId, status); loadDetail() }
+  catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+async function archiveDirect() {
+  const res = await showModal({
+    title: '直接归档',
+    content: '归档后该会议将移出会议管理，进入资料库供查阅。确认归档？',
+    confirmText: '确认归档'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeArchive(meetingId)
+    toast({ title: '已归档', icon: 'success' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message || '归档失败', icon: 'none' }) }
+}
+
+async function publishNow() {
+  try { await api.committeePublish(meetingId); toast({ title: '已公示', icon: 'success' }); loadDetail() }
+  catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+// 撤销归档：仅误归档用，必填原因，留痕；已公示需先撤回公示
+async function revokeArchive() {
+  const res = await showModal({
+    title: '撤销归档',
+    content: '仅用于误归档（归错会议/误点归档/未结束就归档）。撤销后会议回到归档前阶段，需重新归档。',
+    editable: true,
+    placeholderText: '请填写撤销原因（必填）'
+  })
+  if (!res.confirm) return
+  var reason = (res.content || '').trim()
+  if (!reason) { toast({ title: '撤销必须填写原因', icon: 'none' }); return }
+  try {
+    await api.committeeRevokeArchive(meetingId, reason)
+    toast({ title: '已撤销归档', icon: 'success' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message || '撤销失败', icon: 'none' }) }
+}
+
+async function withdrawPublish() {
+  const res = await showModal({
+    title: '撤回公示',
+    content: '撤回后业主将看到"已撤回"状态，且需重新公示。',
+    editable: true,
+    placeholderText: '请填写撤回原因（必填）'
+  })
+  if (!res.confirm) return
+  var reason = (res.content || '').trim()
+  if (!reason) { toast({ title: '撤回必须填写原因', icon: 'none' }); return }
+  try {
+    await api.committeeWithdrawPublish(meetingId, reason)
+    toast({ title: '已撤回公示', icon: 'success' })
+    loadDetail()
+  } catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+async function viewMinutesRevisions() {
+  try {
+    var list = await api.committeeMinutesRevisions(meetingId)
+    if (!list || !list.length) { toast({ title: '暂无修订记录', icon: 'none' }); return }
+    var lines = list.map(function (r) {
+      return 'v' + r.versionNo + ' · ' + (r.editorName || '—') + ' · ' + (r.createdAt || '')
+    })
+    await showModal({
+      title: '纪要修订历史',
+      content: lines.join('\n'),
+      showCancel: false,
+      confirmText: '关闭'
+    })
+  } catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+async function removeMeeting() {
+  const res = await showModal({
+    title: '确认取消',
+    content: '确定取消该会议？'
+  })
+  if (res.confirm) {
+    try { await api.committeeRemove(meetingId); navigateBack() }
+    catch (e) { toast({ title: e.message, icon: 'none' }) }
+  }
+}
+
+function openAddTopic() {
+  addTopicVisible.value = true
+  newTopicForm.title = ''
+  newTopicForm.decisionType = 'simple'
+  newTopicForm.type = 'decision'
+  newTopicForm.optionsText = ''
+  newTopicForm.realName = false
+}
+function closeAddTopic() {
+  addTopicVisible.value = false
+}
+function pickDecisionType(type) {
+  newTopicForm.decisionType = type
+}
+function toggleRealName() {
+  newTopicForm.realName = !newTopicForm.realName
+}
+async function submitAddTopic() {
+  const f = newTopicForm
+  if (!f.title.trim()) {
+    toast({ title: '请输入议题名称', icon: 'none' })
+    return
+  }
+  var optionsJson = null
+  if (f.decisionType === 'multi_choice' && f.optionsText.trim()) {
+    var labels = f.optionsText.split('\n').filter(function (l) { return l.trim() })
+    var opts = labels.map(function (l, i) { return { id: i + 1, label: l.trim() } })
+    optionsJson = JSON.stringify(opts)
+  }
+  try {
+    await api.committeeAddTopic(meetingId, f.title.trim(), f.type, f.decisionType, optionsJson, f.realName)
+    toast({ title: '议题已添加', icon: 'success' })
+    addTopicVisible.value = false
+    loadDetail()
+  } catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+async function removeTopic(topicId) {
+  const res = await showModal({ title: '删除议题', content: '确认删除该议题？' })
+  if (res.confirm) {
+    try { await api.committeeRemoveTopic(meetingId, topicId); await loadDetail() }
+    catch (e) { toast({ title: e.message, icon: 'none' }) }
+  }
+}
+// 在新标签页打开/预览文件（H5）
+function openFile(url) {
+  if (!url) return
+  window.open(url, '_blank')
+}
+
+// 判断是否图片（按 fileType 或扩展名）
+function isImageFile(url, fileType) {
+  var s = ((fileType || '') + ' ' + (url || '')).toLowerCase()
+  return /\.(jpg|jpeg|png|gif|webp)(\?|$)/.test(s) || /(jpg|jpeg|png|gif|webp|图片|照片)/.test((fileType || '').toLowerCase())
+}
+
+// (1) 议题证据：选图/PDF 上传 → committeeAddEvidence → 刷新
+async function addEvidence() {
+  try {
+    const r = await pickAndUpload('image/*,application/pdf')
+    if (!r) return // 用户取消
+    await api.committeeAddEvidence(meetingId, r.fileName, r.fileType, r.url)
+    toast({ title: '已上传', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: e.message || '上传失败', icon: 'none' })
+  }
+}
+async function removeEvidence(evId) {
+  try { await api.committeeRemoveEvidence(meetingId, evId); await loadDetail() }
+  catch (e) { toast({ title: e.message, icon: 'none' }) }
+}
+
+function viewMinutes() {
+  navigateTo('/pages/minutes/minutes?meetingId=' + meetingId + '&from=committee-detail')
+}
+
+// 面向民众的公开纪要：只读正式纪要正文，与内部工作视图分开
+function viewPublicMinutes() {
+  navigateTo('/pages/minutes-public/minutes-public?meetingId=' + meetingId)
+}
+
+// 内部总结（内部 AI 议题报告详细版 + 决议），仅供业委会内部查看
+function viewInternalReport() {
+  navigateTo('/pages/minutes-internal/minutes-internal?meetingId=' + meetingId)
+}
+
+// 会议待办事项独立页
+function viewTodos() {
+  navigateTo('/pages/minutes-todos/minutes-todos?meetingId=' + meetingId)
+}
+
+// (4) 补充归档材料：先填补充原因，再选文件上传 → committeeAddArchiveExtra → 刷新
+async function addArchiveExtra() {
+  const res = await showModal({
+    title: '补充归档材料',
+    content: '请先填写补充原因，再选择文件上传。',
+    editable: true,
+    placeholderText: '请填写补充原因（必填）'
+  })
+  if (!res.confirm) return
+  const reason = (res.content || '').trim()
+  if (!reason) { toast({ title: '请填写补充原因', icon: 'none' }); return }
+  try {
+    const r = await pickAndUpload('*/*')
+    if (!r) return // 用户取消
+    await api.committeeAddArchiveExtra(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, reason, r.url)
+    toast({ title: '已上传', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: e.message || '上传失败', icon: 'none' })
+  }
+}
+
+function removeArchiveExtra() {
+  toast({ title: '归档补充材料已留痕，不支持直接删除', icon: 'none' })
+}
+
+async function previewMaterial(idx) {
+  var materials = detail.value && detail.value.materials
+  if (!materials || !materials[idx]) return
+  var m = materials[idx]
+  var content = m.content || '（暂无预览内容）'
+  await showModal({
+    title: m.name,
+    content: content,
+    showCancel: false,
+    confirmText: '关闭'
+  })
+}
+
+// (3) 会议材料：选任意文件上传 → committeeAddMaterial → 刷新
+async function uploadMaterial() {
+  try {
+    const r = await pickAndUpload('*/*')
+    if (!r) return // 用户取消
+    await api.committeeAddMaterial(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, r.url)
+    toast({ title: '已上传', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: e.message || '上传失败', icon: 'none' })
+  }
+}
+
+async function removeMaterial(item) {
+  if (!item) return
+  const res = await showModal({
+    title: '删除材料',
+    content: '确认删除「' + item.name + '」？'
+  })
+  if (res.confirm) {
+    try { await api.committeeRemoveMaterial(meetingId, item.id); loadDetail() }
+    catch (err) { toast({ title: err.message, icon: 'none' }) }
+  }
+}
+
+async function previewArchiveMaterials() {
+  var materials = detail.value && detail.value.materials
+  if (!materials || !materials.length) return
+  var list = materials.map(function (m, i) { return (i + 1) + '. ' + m.name }).join('\n')
+  await showModal({
+    title: '会议材料（' + materials.length + '份）',
+    content: list,
+    showCancel: false,
+    confirmText: '关闭'
+  })
+}
+
+// ── 编辑会议 ──
+
+async function openEdit() {
+  var d = detail.value
+  // 规则8：已通知后修改重大信息须重新通知全体成员
+  if (d.coreLocked) {
+    const res = await showModal({
+      title: '会议已通知',
+      content: '会议已通知全体成员。修改日期/时间/地点等重大信息后，需重新通知。是否继续？',
+      confirmText: '继续修改'
+    })
+    if (res.confirm) _doOpenEdit(d)
+    return
+  }
+  _doOpenEdit(d)
+}
+
+function _doOpenEdit(d) {
+  editVisible.value = true
+  noticeContentDirty.value = false
+  editForm.title = d.title || ''
+  editForm.meetingDate = d.meetingDate || ''
+  editForm.meetingTime = d.meetingTime || ''
+  editForm.location = d.location || ''
+  // 主要议题：按准备会议时添加的议题标题，逐条编号列出；无议题则回退到补充说明
+  editForm.description = buildTopicsText(d) || d.description || ''
+  editForm.content = (d.noticeDraft && d.noticeDraft.content) || ''
+}
+
+// 把会议议题标题拼成"1.xxx\n2.xxx"
+function buildTopicsText(d) {
+  const topics = (d && d.record && d.record.topics) || []
+  return topics
+    .filter(t => (t.title || '').trim())
+    .map((t, i) => (i + 1) + '.' + t.title.trim())
+    .join('\n')
+}
+
+function closeEdit() {
+  editVisible.value = false
+}
+
+function onEditContentInput(e) {
+  editForm.content = e.target.value
+  noticeContentDirty.value = true
+}
+
+function onEditDateChange(e) {
+  editForm.meetingDate = e.target.value
+}
+
+function onEditTimeChange(e) {
+  editForm.meetingTime = e.target.value
+}
+
+function pickEditLocation(location) {
+  editForm.location = location
+}
+
+async function submitEdit() {
+  var form = editForm
+  if (!form.title || !form.meetingDate || !form.meetingTime || !form.location) {
+    toast({ title: '请补全标题、时间和地点', icon: 'none' })
+    return
+  }
+  try {
+    // 先存会议要素（会按新要素自动重生成通知草稿）
+    await api.committeeUpdate(meetingId, { ...form })
+    // 若手动改过通知正文，再覆盖保存（保留自定义措辞）
+    if (noticeContentDirty.value && form.content) {
+      await api.committeeUpdateNotice(meetingId, form.title, form.content)
+    }
+    toast({ title: '已保存', icon: 'success' })
+    editVisible.value = false
+    loadDetail()
+  } catch (e) {
+    toast({ title: e.message || '保存失败', icon: 'none' })
+  }
+}
+
+// ── 编辑通知草稿 ──
+
+function editNoticeDraft() {
+  var draft = detail.value && detail.value.noticeDraft
+  noticeEditVisible.value = true
+  noticeEditForm.title = draft ? draft.title : ''
+  noticeEditForm.content = draft ? draft.content : ''
+}
+
+function closeNoticeEdit() {
+  noticeEditVisible.value = false
+}
+
+async function submitNoticeEdit() {
+  var form = noticeEditForm
+  if (!form.title || !form.content) {
+    toast({ title: '标题和正文不能为空', icon: 'none' })
+    return
+  }
+  try {
+    await api.committeeUpdateNotice(meetingId, form.title, form.content)
+    toast({ title: '通知已更新', icon: 'success' })
+    noticeEditVisible.value = false
+    loadDetail()
+  } catch (e) {
+    toast({ title: e.message || '保存失败', icon: 'none' })
+  }
+}
+
+function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
+</script>
+
+<style scoped>
+.detail-page { min-height:100vh; background:#f4f5f7; padding:12px; display:flex; flex-direction:column; box-sizing:border-box; }
+.detail-body { flex:1 0 auto; }
+
+/* Task banner */
+.task-banner { padding:10px 14px; border-radius:12px; margin-bottom:12px; }
+.task-banner.todo { background:#EBF5FB; }
+.task-banner.warn { background:#FFF4E5; }
+.task-banner.ok { background:#EAFAF1; }
+.task-banner.readonly { background:#F8F9FA; }
+.tb-title { font-size: 28rpx; font-weight:600; display:block; }
+.tb-items { font-size: 28rpx; color:#666; display:block; margin-top:4px; }
+.tb-flow { font-size: 28rpx; color:#666; margin-top:4px; display:block; }
+.tb-hint { font-size: 28rpx; color:#666; margin-top:4px; display:block; }
+
+/* Info */
+.info-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.info-row { font-size: 28rpx; color:#555; margin-bottom:6px; display:flex; align-items:flex-start; gap:8px; }
+.info-k { font-size: 28rpx; color:#666; flex-shrink:0; }
+.proxy-entry {
+  background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.proxy-entry-copy { flex:1; min-width:0; }
+.proxy-entry-title { display:block; font-size: 28rpx; font-weight:700; color:#333; }
+.proxy-entry-desc { display:block; font-size: 28rpx; color:#666; margin-top:3px; line-height:1.4; }
+.proxy-entry-btn {
+  width:78px; height:36px; line-height:36px; margin:0; padding:0;
+  border-radius:18px; border:0; background:#FFA800; color:#fff;
+  font-size: 28rpx; font-weight:700; flex-shrink:0;
+}
+.proxy-entry-btn.disabled { background:#e8e8e8; color:#666; }
+.notice-draft-card { background:#FFF8EA; border:1px solid #FFE0A3; border-radius:16px; padding:16px; margin-bottom:12px; }
+.nd-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.nd-title { font-size: 28rpx; font-weight:700; color:#5C3D00; line-height:1.45; }
+.nd-status { flex-shrink:0; font-size: 28rpx; color:#D88900; background:#fff; border-radius:12px; padding:3px 9px; line-height:1.35; }
+.nd-status.ok { color:#1D9E75; background:#E1F5EE; }
+.nd-content { display:block; font-size: 28rpx; color:#6B5300; line-height:1.7; white-space:pre-wrap; word-break:break-all; }
+.nd-confirm-btn { margin-top:14px; width:100%; min-height:44px; padding:11px; background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; font-size: 30rpx; font-weight:700; border:none; border-radius:12px; }
+.notice-package-card {
+  background:#fff; border-radius:16px; padding:16px; margin-bottom:12px;
+  border:1px solid #FFE0A3; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+.npc-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.npc-title { display:block; font-size: 32rpx; font-weight:700; color:#333; line-height:1.4; }
+.npc-sub { display:block; font-size: 28rpx; color:#666; margin-top:2px; line-height:1.45; }
+.npc-badge { flex-shrink:0; font-size: 28rpx; color:#27AE60; background:#EAF7EF; border-radius:12px; padding:3px 9px; line-height:1.35; }
+.npc-section { padding-top:10px; border-top:1px dashed #f0f0f0; margin-top:10px; }
+.npc-section:first-of-type { padding-top:0; border-top:0; margin-top:0; }
+.npc-section-title { display:block; font-size: 28rpx; font-weight:700; color:#5C3D00; margin-bottom:8px; line-height:1.45; }
+.npc-content { display:block; font-size: 28rpx; color:#555; line-height:1.75; white-space:pre-wrap; word-break:break-all; }
+.npc-empty { display:block; font-size: 28rpx; color:#666; padding:8px 0; }
+
+/* Member: delivery card */
+.my-delivery-card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px; }
+.mdc-title { font-size: 28rpx; font-weight:600; color:#333; margin-bottom:10px; display:block; }
+.mdc-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; }
+.mdc-label { font-size: 28rpx; color:#666; }
+.mdc-status { font-size: 28rpx; font-weight:600; }
+.mdc-status.ok { color:#27AE60; }
+.mdc-status.no { color:#666; }
+.mdc-tip { font-size: 28rpx; color:#666; margin-top:8px; line-height:1.5; display:block; }
+.mdc-big { display:block; font-size: 28rpx; font-weight:600; color:#E67E22; margin-top:4px; }
+.mdc-big.ok { color:#27AE60; }
+
+/* 会议材料 */
+.materials-card {
+  background:#fff; border-radius:16px; padding:16px; margin-bottom:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+.mt-title { font-size: 28rpx; font-weight:600; color:#333; display:block; margin-bottom:8px; }
+.mt-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; }
+.mt-item:last-child { border-bottom:none; }
+.mt-name { font-size: 28rpx; color:#444; flex:1; }
+.mt-size { font-size: 28rpx; color:#666; }
+
+/* Steps card */
+.steps-card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px; }
+.msc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.msc-title { font-size: 28rpx; font-weight:600; color:#333; }
+.msc-progress { font-size: 28rpx; color:#FFA800; font-weight:600; }
+
+.step-item { display:flex; gap:12px; }
+.step-item:not(.last) .step-body { padding-bottom:16px; }
+.step-item:not(.last) .step-num-wrap { padding-bottom:16px; }
+.step-num-wrap { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:28px; }
+.step-num {
+  width:28px; height:28px; border-radius:50%;
+  background:#f0f0f0; color:#666;
+  display:flex; align-items:center; justify-content:center;
+  font-size: 28rpx; font-weight:700;
+}
+.step-item.done .step-num { background:#27AE60; color:#fff; }
+.step-item.active .step-num { background:#FFA800; color:#fff; }
+.step-line { width:2px; flex:1; min-height:16px; background:#f0f0f0; margin:4px 0; }
+.step-item.done .step-line { background:#27AE60; }
+
+.step-body { flex:1; min-width:0; }
+.step-title { font-size: 28rpx; font-weight:600; color:#333; display:block; }
+.step-done-text { font-size: 28rpx; color:#27AE60; font-weight:500; display:block; margin-top:4px; }
+.step-locked-text { font-size: 28rpx; color:#666; display:block; margin-top:6px; }
+.step-sub-text { font-size: 28rpx; color:#666; display:block; margin:6px 0; }
+.step-btn { margin-top:6px; }
+.step-btn.primary { background:#FFA800; color:#fff; border:none; border-radius:20px; padding:8px 16px; font-size: 28rpx; }
+
+.topic-card { background:#fafafa; border-radius:14px; padding:16px; margin-top:12px; }
+.tp-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.tp-type { font-size: 28rpx; padding:2px 7px; border-radius:6px; }
+.tp-type.decision { background:#FFF6E5; color:#FFA800; }
+.tp-type.major { background:#FDECEA; color:#E74C3C; }
+.tp-title { font-size: 28rpx; font-weight:600; color:#333; flex:1; }
+
+.vote-btns { display:flex; gap:10px; margin:12px 0 8px; }
+.vbtn {
+  flex:1;
+  min-height:52px;
+  box-sizing:border-box;
+  font-size: 32rpx;
+  font-weight:700;
+  padding:14px 8px;
+  border-radius:14px;
+  background:#f0f0f0;
+  color:#555;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.vbtn.for.on { background:#E8F7EE; color:#27AE60; font-weight:600; }
+.vbtn.ag.on { background:#FDECEA; color:#E74C3C; font-weight:600; }
+.vbtn.ab.on { background:#EBF5FB; color:#2980B9; font-weight:600; }
+.vote-mine { font-size: 28rpx; color:#666; margin-top:4px; display:block; }
+.vote-bars { margin-top:6px; }
+.vote-locked { margin-top:6px; }
+.vote-mine-done { font-size: 28rpx; color:#27AE60; font-weight:600; }
+.vb-line { font-size: 28rpx; color:#666; }
+
+.completion-card { background:#EAF7EF; border-radius:16px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:12px; }
+.cc-icon { width:32px; height:32px; border-radius:50%; background:#27AE60; color:#fff; display:flex; align-items:center; justify-content:center; font-size: 32rpx; font-weight:700; }
+.cc-title { font-size: 28rpx; font-weight:600; color:#27AE60; }
+.cc-sub { font-size: 28rpx; color:#52BE80; }
+
+.perm-note { display:flex; align-items:flex-start; gap:7px; padding:9px 10px; border-radius:10px; background:#F8F9FA; border:1px solid #f0f0f0; font-size: 28rpx; color:#666; margin-top:10px; }
+.pn-icon { width:16px; height:16px; border-radius:50%; background:#EAF2FB; color:#2980B9; font-size: 28rpx; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+/* Chair */
+.chair-delivery-card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px; }
+.cdc-title { font-size: 28rpx; font-weight:600; color:#333; margin-bottom:10px; display:block; }
+.cdc-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.cdc-label { font-size: 28rpx; color:#666; width:68px; flex-shrink:0; }
+.cdc-bar { flex:1; height:7px; background:#f0f0f0; border-radius:4px; overflow:hidden; }
+.cdc-fill { height:100%; background:linear-gradient(90deg,#FFCC44,#FFA800); border-radius:4px; }
+.cdc-fill.material { background:linear-gradient(90deg,#7FB3F5,#2980B9); }
+.cdc-count { font-size: 28rpx; color:#666; width:28px; text-align:right; flex-shrink:0; }
+.cdc-detail { display:block; font-size: 28rpx; color:#666; margin-top:6px; }
+.cdc-status { display:block; font-size: 28rpx; font-weight:600; color:#E67E22; margin-top:6px; }
+.cdc-status.ok { color:#27AE60; }
+.cdc-footer { font-size: 28rpx; color:#666; margin-top:6px; display:block; }
+.delivery-member-list { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+.delivery-member { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:9px 10px; background:#fafafa; border-radius:10px; }
+.delivery-member-main { flex:1; min-width:0; }
+.delivery-member-name { display:block; font-size: 28rpx; color:#333; font-weight:600; line-height:1.45; word-break:break-all; }
+.delivery-member-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; line-height:1.35; }
+.delivery-tags { display:flex; flex-direction:column; gap:4px; flex-shrink:0; align-items:flex-end; }
+.delivery-tag { font-size: 28rpx; color:#E67E22; background:#FFF3E0; border-radius:8px; padding:2px 7px; line-height:1.35; white-space:nowrap; }
+.delivery-tag.ok { color:#27AE60; background:#EAF7EF; }
+.threshold-note { text-align:center; padding:6px 0; font-size: 28rpx; color:#E67E22; }
+.threshold-note.ok { color:#27AE60; }
+.btn-disabled { background:#e8e8e8; color:#666; }
+
+.chair-overview { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px; }
+.co-title { font-size: 28rpx; font-weight:600; color:#333; margin-bottom:10px; display:block; }
+.co-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.co-label { font-size: 28rpx; color:#666; width:28px; flex-shrink:0; }
+.co-bar { flex:1; height:7px; background:#f0f0f0; border-radius:4px; overflow:hidden; }
+.co-fill { height:100%; border-radius:4px; }
+.co-fill.ok { background:linear-gradient(90deg,#27AE60,#2ECC71); }
+.co-fill.no { background:linear-gradient(90deg,#E74C3C,#EC7063); }
+.co-count { font-size: 28rpx; color:#666; width:28px; text-align:right; flex-shrink:0; }
+.co-checks { margin-top:8px; padding-top:8px; border-top:1px dashed #f0f0f0; }
+.co-check-row { display:flex; align-items:center; gap:7px; padding:4px 0; }
+.co-check-icon { width:16px; height:16px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size: 28rpx; font-weight:700; color:#fff; }
+.co-check-icon.ok { background:#27AE60; }
+.co-check-icon.no { background:#E74C3C; }
+.co-check-label { flex:1; font-size: 28rpx; color:#555; }
+.co-check-detail { font-size: 28rpx; }
+.co-check-detail.ok { color:#27AE60; }
+.co-check-detail.no { color:#E74C3C; }
+
+.chair-control { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.cc2-title { font-size: 28rpx; font-weight:600; color:#333; display:block; margin-bottom:6px; }
+.cc2-note { font-size: 28rpx; color:#666; margin-bottom:12px; line-height:1.5; display:block; }
+.cc2-btns { display:flex; gap:8px; justify-content:flex-end; }
+
+/* Compliance */
+.compliance-block { padding:10px 14px; border-radius:12px; margin-bottom:8px; }
+.compliance-block.valid { background:#EAF7EF; }
+.compliance-block.flawed { background:#FFF4E5; }
+.compliance-block.invalid { background:#FDECEA; }
+.cb-head { font-size: 28rpx; font-weight:600; }
+
+.publish-block { padding:10px 14px; border-radius:12px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; }
+.publish-block.pending { background:#EBF5FB; }
+.publish-block.ontime { background:#EAF7EF; }
+.publish-block.late { background:#FFF4E5; }
+.publish-block.overdue { background:#FDECEA; }
+.pb-main { font-size: 28rpx; color:#333; flex:1; }
+
+/* 合规判定 */
+.compliance-pending {
+  background:#fff; border-radius:16px; padding:16px; margin-bottom:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04); text-align:center;
+}
+.cp-title { display:block; font-size: 28rpx; font-weight:600; color:#333; margin-bottom:12px; }
+.cp-btns { display:flex; gap:8px; justify-content:center; }
+.cb-auto { display:block; font-size: 28rpx; color:#666; margin-top:4px; }
+.override-row { display:flex; align-items:center; gap:6px; padding:8px 0; }
+.or-label { font-size: 28rpx; color:#666; }
+.or-chip { font-size: 28rpx; color:#666; padding:2px 8px; border-radius:8px; background:#f5f5f5; }
+.or-chip.on { color:#fff; background:#FFA800; font-weight:600; }
+
+/* ===== 结束阶段 ===== */
+
+/* 委员简洁结论 */
+.ar-verdict {
+  display:flex; align-items:flex-start; gap:12px; padding:16px; border-radius:16px; margin-bottom:12px;
+}
+.ar-verdict.valid { background:#E8F7EE; }
+.ar-verdict.flawed { background:#FFF8E8; }
+.ar-verdict.invalid { background:#FDECEA; }
+.arv-icon { font-size: 36rpx; font-weight:700; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; margin-top:2px; }
+.ar-verdict.valid .arv-icon { background:#27AE60; }
+.ar-verdict.flawed .arv-icon { background:#E67E22; }
+.ar-verdict.invalid .arv-icon { background:#E74C3C; }
+.arv-info { flex:1; }
+.arv-title { display:block; font-size: 30rpx; font-weight:700; color:#333; }
+.arv-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.arv-result { display:block; font-size: 28rpx; color:#666; margin-top:4px; font-weight:500; }
+.arv-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.arch-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+
+/* 主任归档卡片 */
+.ar-card { background:#fff; border-radius:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden; }
+.ar-card.valid { border-top:3px solid #27AE60; }
+.ar-card.flawed { border-top:3px solid #E67E22; }
+.ar-card.invalid { border-top:3px solid #E74C3C; }
+
+.arc-head { display:flex; align-items:center; gap:10px; padding:14px 16px 0; }
+.arch-icon { font-size: 36rpx; font-weight:700; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#fff; }
+.ar-card.valid .arch-icon { background:#27AE60; }
+.ar-card.flawed .arch-icon { background:#E67E22; }
+.ar-card.invalid .arch-icon { background:#E74C3C; }
+.arch-info { flex:1; }
+.arch-title { display:block; font-size: 30rpx; font-weight:700; color:#333; }
+.arch-sub { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
+
+.arc-fix { display:flex; align-items:center; gap:6px; padding:8px 16px; }
+.arcf-label { font-size: 28rpx; color:#666; }
+.arcf-chip { font-size: 28rpx; color:#666; padding:2px 8px; border-radius:8px; background:#f5f5f5; }
+.arcf-chip.on { color:#fff; background:#FFA800; font-weight:600; }
+
+.flow-stats-card { background:#fff; border-radius:16px; padding:14px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.flow-stats-panel { margin:8px 16px 12px; padding:12px 0 4px; border-top:1px solid #f0f0f0; }
+.fsc-head { display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-bottom:4px; }
+.fsc-title { font-size: 28rpx; font-weight:700; color:#333; line-height:1.4; }
+.fsc-sub { font-size: 28rpx; color:#666; line-height:1.4; text-align:right; }
+.fss-row { display:flex; align-items:flex-start; gap:10px; padding:10px 0; }
+.fss-row + .fss-row { border-top:1px dashed #f0f0f0; }
+.fss-mark { width:30px; height:30px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size: 28rpx; font-weight:700; }
+.fss-mark.delivery { background:#EBF5FB; color:#2980B9; }
+.fss-mark.attend { background:#EAF7EF; color:#27AE60; }
+.fss-mark.vote { background:#FFF3DC; color:#E67E22; }
+.fss-main { flex:1; min-width:0; }
+.fss-line { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.fss-name { font-size: 28rpx; color:#333; font-weight:600; line-height:1.4; }
+.fss-num { font-size: 28rpx; color:#333; font-weight:700; line-height:1.4; flex-shrink:0; }
+.fss-bar { height:6px; background:#f0f0f0; border-radius:4px; overflow:hidden; margin:5px 0 4px; }
+.fss-fill { height:100%; border-radius:4px; transition:width .18s ease; }
+.fss-fill.ok { background:linear-gradient(90deg,#27AE60,#2ECC71); }
+.fss-fill.warn { background:linear-gradient(90deg,#E67E22,#F5B041); }
+.fss-fill.bad { background:linear-gradient(90deg,#E74C3C,#EC7063); }
+.fss-meta { display:block; font-size: 28rpx; color:#666; line-height:1.35; }
+.fss-status { width:72px; flex-shrink:0; text-align:right; font-size: 28rpx; line-height:1.35; padding-top:2px; }
+.fss-status.ok { color:#27AE60; }
+.fss-status.warn { color:#E67E22; }
+.fss-status.bad { color:#E74C3C; }
+
+/* 会议议题卡（meeting-topics-card）样式见文件末尾的非 scoped <style> 块——
+   该卡由 render 函数子组件 MeetingTopicsCard 渲染，其内部节点不带父组件 scope 属性，
+   故须放在非 scoped 块中才能命中。 */
+
+.arc-list { border-top:1px solid #f0f0f0; margin:0 16px; padding-top:6px; }
+.arcl-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+.arcl-row:last-child { border-bottom:none; }
+.arcl-icon { font-size: 32rpx; width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.arcl-icon.notice { background:#FFF3DC; }
+.arcl-icon.mat { background:#FFF8E8; }
+.arcl-icon.ev { background:#E8F8F5; }
+.arcl-icon.min { background:#FDEBD0; }
+.arcl-icon.extra { background:#f5f5f5; }
+.arcl-info { flex:1; min-width:0; }
+.arcl-name { display:block; font-size: 28rpx; color:#333; }
+.arcl-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.arcl-arrow { font-size: 36rpx; color:#666; flex-shrink:0; }
+.arcl-del { font-size: 32rpx; color:#666; padding:0 4px; flex-shrink:0; }
+.arc-add { text-align:center; padding:10px; color:#FFA800; font-size: 28rpx; font-weight:600; border-top:1px solid #f0f0f0; }
+.arc-log { border-top:1px solid #f0f0f0; padding:10px 12px; }
+.arclog-title { display:block; font-size: 28rpx; color:#666; margin-bottom:6px; }
+.arclog-row { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; padding:4px 0; }
+.arclog-action { font-size: 28rpx; color:#E74C3C; font-weight:600; }
+.arclog-meta { font-size: 28rpx; color:#666; }
+.arclog-reason { font-size: 28rpx; color:#666; width:100%; }
+
+/* 公示 */
+.ar-publish { text-align:center; padding:16px; background:#fff; border-radius:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.ar-publish.invalid { background:#fafafa; color:#666; font-size: 28rpx; }
+.arp-done { display:flex; align-items:center; justify-content:center; gap:8px; font-size: 28rpx; color:#27AE60; }
+.arp-check { width:22px; height:22px; border-radius:50%; background:#27AE60; color:#fff; display:flex; align-items:center; justify-content:center; font-size: 28rpx; }
+.ar-skip { display:block; text-align:center; font-size: 28rpx; color:#666; margin-top:10px; }
+.ar-skip.danger { color:#E74C3C; }
+
+/* 实名表决开关（添加议题表单） */
+.realname-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.realname-hint { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.rn-switch { width:44px; height:24px; border-radius:12px; background:#ddd; flex:0 0 auto; position:relative; transition:background .2s; }
+.rn-switch.on { background:#27AE60; }
+.rn-knob { width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left .2s; }
+.rn-switch.on .rn-knob { left:22px; }
+
+/* 议题留痕 + 实名标记 */
+.tp-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:4px 0 2px; }
+.tp-meta-text { font-size: 28rpx; color:#666; }
+.tp-tag { font-size: 28rpx; padding:1px 6px; border-radius:8px; }
+.tp-tag.live { color:#E67E22; background:#FDF2E3; }
+.tp-tag.realname { color:#2980B9; background:#EAF2F8; }
+.voter-list { margin-top:8px; padding:8px 10px; background:#F7F9FA; border-radius:8px; }
+.vl-title { display:block; font-size: 28rpx; color:#2980B9; margin-bottom:4px; }
+.vl-item { display:block; font-size: 28rpx; color:#555; line-height:1.6; }
+.arp-done.withdrawn { flex-direction:column; align-items:stretch; color:#E67E22; font-size: 28rpx; gap:4px; }
+.arp-actions { display:flex; justify-content:center; gap:18px; width:100%; margin-top:6px; }
+.arp-actions .ar-skip { margin-top:0; }
+.ext-hint.withdrawn { color:#E67E22; }
+
+/* Recorder */
+.notice-block { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px; }
+.nb-title { font-size: 28rpx; font-weight:600; display:block; margin-bottom:10px; }
+.np-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.np-label { font-size: 28rpx; color:#777; width:60px; }
+.np-count2 { font-size: 28rpx; color:#666; width:40px; text-align:right; }
+
+.flag-row { margin-bottom:12px; background:#fff; border-radius:16px; padding:16px; }
+.flag-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size: 28rpx; color:#555; }
+
+.juwei-row { display:flex; align-items:center; justify-content:space-between; background:#EBF5FB; border-radius:10px; padding:10px 14px; margin-bottom:10px; font-size: 28rpx; }
+
+.fu-chip { font-size: 28rpx; padding:3px 10px; border-radius:12px; border:1px solid #ddd; color:#666; }
+.fu-chip.on { background:#E8F7EE; border-color:#27AE60; color:#27AE60; font-weight:600; }
+
+/* External */
+.ext-banner { padding:10px 14px; border-radius:12px; margin-bottom:10px; }
+.ext-banner.owner { background:#EAFAF1; border-left:3px solid #27AE60; font-size: 28rpx; color:#27AE60; }
+.ext-banner.property { background:#EBF5FB; border-left:3px solid #2980B9; font-size: 28rpx; color:#2980B9; }
+.ext-sub { font-size: 28rpx; opacity:0.7; margin-top:2px; display:block; }
+.ext-hint { text-align:center; color:#666; font-size: 28rpx; padding:16px 0; display:block; }
+
+/* Wizard Stepper */
+.live-entry { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#FFCC44,#FFA800); border-radius:16px; padding:18px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(255,168,0,0.25); }
+.live-entry-main { flex:1; }
+.live-entry-title { display:block; font-size: 32rpx; font-weight:700; color:#fff; line-height:1.4; }
+.live-entry-sub { display:block; font-size: 28rpx; color:rgba(255,255,255,0.85); margin-top:4px; line-height:1.5; }
+.live-entry-arrow { flex-shrink:0; font-size: 28rpx; font-weight:700; color:#fff; background:rgba(255,255,255,0.2); border-radius:16px; padding:6px 14px; }
+
+/* 准备阶段步骤条 */
+.prep-steps { display:flex; background:#fff; border-radius:12px; padding:14px 6px; margin-bottom:18px; border:0.5px solid #ECECEF; }
+.prep-step { flex:1 1 0; min-width:0; text-align:center; position:relative; }
+.prep-step::before { content:""; position:absolute; top:10px; left:-50%; right:50%; height:2px; background:#DEDEE3; z-index:0; }
+.prep-step:first-child::before { display:none; }
+.prep-step.done::before, .prep-step.current::before { background:#27AE60; }
+.prep-dot { position:relative; z-index:1; display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; font-size: 28rpx; font-weight:600; background:#fff; color:#666; border:1px solid #DEDEE3; box-sizing:border-box; }
+.prep-step.done .prep-dot { background:#27AE60; color:#fff; border-color:#27AE60; }
+.prep-step.current .prep-dot { background:#FFA800; color:#fff; border-color:#FFA800; }
+.prep-lbl { display:block; font-size:30rpx; margin-top:6px; color:#1F2024; font-weight:700; }
+.prep-step.done .prep-lbl { color:#1F2024; }
+.prep-step.current .prep-lbl { color:#D88900; font-weight:700; }
+
+.action-row.secondary { display:flex; gap:10px; margin-top:4px; }
+
+/* 准备阶段底部固定主操作 */
+.prep-footer { flex-shrink:0; max-width:408px; width:100%; margin:16px auto calc(6px + env(safe-area-inset-bottom)); box-sizing:border-box; background:#fff; border:1px solid #ECECEF; border-radius:18px; box-shadow:0 10rpx 30rpx rgba(0,0,0,0.12); padding:12px 16px; }
+.pf-btn { display:block; width:fit-content; margin:0 auto; padding:11px 22px; border:0; border-radius:12px; background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; font-size: 34rpx; font-weight:700; line-height:1.3; }
+.pf-hint { display:block; text-align:center; font-size: 24rpx; color:#666; margin-top:7px; }
+
+/* 准备阶段会议头部 */
+.prep-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; background:#fff; border:0.5px solid #ECECEF; border-radius:12px; padding:16px 16px; margin-top:14px; margin-bottom:18px; }
+.ph-main { flex:1; min-width:0; }
+.ph-title { display:block; font-size: 34rpx; font-weight:700; color:#1F2024; line-height:1.35; word-break:break-all; }
+.ph-meta { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:7px; }
+.ph-meta-item { font-size:12.5px; color:#6B6E76; line-height:1.35; }
+.mi-k { color:#666; margin-right:5px; }
+.ph-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; padding-top:1px; }
+.ph-action { font-size: 28rpx; color:#8A5A0B; background:#FEF4E2; border:0.5px solid #F4D08A; border-radius:14px; padding:4px 9px; line-height:1.35; }
+.ph-action.danger { color:#C0392B; background:#FFF5F3; border-color:#F3C7BF; padding:6px 14px; font-weight:600; }
+
+/* 准备阶段通用卡片 */
+.prep-card { background:#fff; border-radius:12px; padding:16px 16px; margin-bottom:18px; border:0.5px solid #ECECEF; }
+.pc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.pc-title { font-size: 34rpx; font-weight:700; color:#1F2024; }
+.pc-desc { display:block; font-size: 28rpx; color:#1F2024; margin-top:2px; line-height:1.4; }
+.pc-sub { font-size:12.5px; color:#666; }
+.pc-sub.link { color:#D88900; }
+.pc-head-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.pc-link { color:#D88900; font-size:12.5px; line-height:1.35; }
+.pc-title-wrap { display:flex; align-items:center; gap:10px; min-width:0; }
+.pc-edit-btn { font-size:26rpx; color:#fff; background:#FFA800; border:0; border-radius:16px; padding:6px 18px; line-height:1.3; flex-shrink:0; font-weight:600; box-shadow:0 4rpx 12rpx rgba(255,168,0,0.3); }
+.upload-btn { font-size:28rpx; color:#fff; background:#FFA800; border-radius:18px; padding:8px 22px; font-weight:600; line-height:1.3; flex-shrink:0; box-shadow:0 4rpx 12rpx rgba(255,168,0,0.3); }
+.pc-badge { font-size: 26rpx; font-weight:700; padding:2px 9px; border-radius:20px; }
+.pc-badge.warn { color:#8A5A0B; background:#FEF4E2; border:0.5px solid #F4D08A; }
+.pc-badge.ok { color:#1D9E75; background:#E1F5EE; }
+.nt-titlewrap { display:flex; align-items:center; gap:10px; min-width:0; }
+.notice-status { font-size:24rpx; font-weight:600; display:inline-flex; align-items:center; gap:6rpx; flex-shrink:0; }
+.notice-status::before { content:""; width:12rpx; height:12rpx; border-radius:50%; background:currentColor; }
+.notice-status.warn { color:#C77800; }
+.notice-status.ok { color:#1D9E75; }
+.pc-draft { display:block; font-size: 28rpx; color:#6B6E76; line-height:1.7; white-space:pre-wrap; word-break:break-all; background:#F6F6F8; border-radius:8px; padding:12px 14px; }
+.notice-extra { display:flex; align-items:center; justify-content:flex-start; gap:22rpx; margin-top:18rpx; padding-top:18rpx; border-top:2rpx solid #f0f0f0; }
+.ne-text { flex:0 1 auto; min-width:0; }
+.ne-title { display:block; font-size:28rpx; color:#1f2329; font-weight:600; line-height:1.4; word-break:break-all; }
+.ne-desc { display:block; font-size:26rpx; color:#888; margin-top:6rpx; line-height:1.45; word-break:break-all; }
+.pc-ghost { margin-top:10px; padding:9px; border:0.5px solid #DEDEE3; border-radius:8px; color:#1F2024; font-size:13.5px; text-align:center; }
+.pc-chev { color:#666; }
+
+/* 材料空态 / 文件行 */
+.pc-upload-empty { border:1px dashed #DEDEE3; border-radius:8px; padding:14px; text-align:center; }
+.material-desc { margin-top:10px; margin-bottom:2px; }
+.material-empty-inline { padding:2px 0 2px; color:#1F2024; font-size:28rpx; line-height:1.45; }
+/* 参会情况统计卡 */
+.as-row { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.as-label { font-size:28rpx; color:#1F2024; font-weight:600; }
+.as-num { font-size:28rpx; color:#666; }
+.as-num b { font-size:40rpx; color:#FFA800; font-weight:700; margin-right:2rpx; }
+.as-bar { height:16rpx; background:#EEF0F2; border-radius:8rpx; overflow:hidden; }
+.as-fill { height:100%; background:linear-gradient(90deg,#FFC23D,#FFA800); border-radius:8rpx; transition:width 0.3s ease; min-width:8rpx; }
+.as-declined { display:block; font-size:26rpx; color:#E67E22; margin-top:10px; }
+.ue-ic { display:block; font-size: 40rpx; color:#666; }
+.ue-txt { display:block; font-size:12.5px; color:#6B6E76; margin:4px 0 10px; }
+.ue-btn { display:inline-block; padding:8px 20px; background:#fff; border:0.5px solid #DEDEE3; border-radius:8px; color:#1F2024; font-size:13.5px; }
+.pc-file { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:0.5px solid #ECECEF; font-size:13.5px; }
+.pc-file:first-child { border-top:none; }
+.pf-ic { color:#B96F12; font-size: 36rpx; }
+.pf-name { flex:1; color:#1F2024; font-size:28rpx; }
+.pf-size { font-size: 28rpx; color:#1F2024; }
+.pf-del { color:#666; font-size: 36rpx; padding:0 4px; }
+/* 上传文件缩略图：适老化——尺寸够大、可点 */
+.file-thumb { width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid #eee; flex:none; cursor:pointer; }
+
+/* 送达进度（双列） */
+.pc-progress { display:flex; gap:14px; }
+.pp-col { flex:1; }
+.pp-l { display:flex; justify-content:space-between; font-size: 28rpx; color:#6B6E76; margin-bottom:5px; }
+.pp-bar { height:6px; border-radius:4px; background:#ECECEF; overflow:hidden; }
+.pp-fill { display:block; height:100%; background:linear-gradient(90deg,#FFCC44,#FFA800); border-radius:4px; transition:width .4s; }
+.pp-fill.read { background:linear-gradient(90deg,#4FD0A6,#1D9E75); }
+.pc-deadline { display:block; font-size:11.5px; color:#666; margin-top:10px; }
+.juwei-prep-row {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px; border-radius:8px; background:#EBF5FB;
+  color:#355C7D; font-size: 28rpx; line-height:1.45;
+}
+
+/* 送达名单（折叠） */
+.pc-members { margin-top:12px; border-top:0.5px solid #ECECEF; padding-top:8px; }
+.pcm-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; }
+.pcm-main { display:flex; flex-direction:column; }
+.pcm-name { font-size: 28rpx; color:#1F2024; }
+.pcm-role { font-size: 28rpx; color:#666; }
+.pcm-tags { display:flex; gap:6px; }
+.pcm-tag { font-size: 28rpx; padding:3px 9px; border-radius:14px; background:#F6F6F8; color:#666; border:0.5px solid #ECECEF; }
+.pcm-tag.ok { color:#1D9E75; background:#E1F5EE; border-color:#E1F5EE; }
+
+.wizard-stepper { display:flex; align-items:center; justify-content:center; padding:16px; background:#fff; border-radius:16px; margin-bottom:12px; }
+.ws-step { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.ws-num { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size: 28rpx; font-weight:700; }
+.ws-label { font-size: 28rpx; color:#666; }
+.ws-step.active .ws-num { background:#FFA800; color:#fff; }
+.ws-step.active .ws-label { color:#FFA800; font-weight:600; }
+.ws-step.done .ws-num { background:#27AE60; color:#fff; }
+.ws-step.done .ws-label { color:#27AE60; }
+.ws-step.locked .ws-num { background:#eee; color:#666; }
+.ws-step.locked .ws-label { color:#666; }
+.ws-line { flex:1; height:2px; background:#eee; margin:0 4px; margin-bottom:16px; }
+.ws-line.done { background:#27AE60; }
+
+/* Wizard Card */
+.wizard-card { background:#fff; border-radius:16px; padding:18px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.guide-step { display:block; font-size: 28rpx; color:#D88900; font-weight:700; margin-bottom:8px; }
+.wc-title { font-size: 40rpx; font-weight:700; color:#222; display:block; margin-bottom:8px; line-height:1.35; }
+.wc-desc { font-size: 30rpx; color:#666; display:block; margin-bottom:16px; line-height:1.6; }
+.wc-info { background:#fafafa; border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; flex-direction:column; gap:6px; }
+.wc-info span { font-size: 28rpx; color:#555; line-height:1.55; }
+.wc-check { color:#27AE60 !important; font-weight:600; }
+.wc-empty { text-align:center; color:#666; font-size: 30rpx; padding:22px 0; display:block; }
+.wc-confirm { width:100%; min-height:54px; padding:14px; background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; font-size: 34rpx; font-weight:700; border:none; border-radius:14px; margin-top:10px; }
+.wc-done-banner { text-align:center; background:#EAF7EF; padding:14px; border-radius:12px; font-size: 30rpx; color:#27AE60; font-weight:700; line-height:1.5; }
+
+/* 会议录音存档卡 */
+.rec-archive-card { background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.rac-head { display:flex; flex-direction:column; gap:3px; margin-bottom:10px; }
+.rac-title { font-size: 30rpx; font-weight:700; color:#1F2024; }
+.rac-sub { font-size: 28rpx; color:#666; }
+.rac-actions { display:flex; gap:10px; }
+
+/* Completion */
+.cc-time { font-size: 28rpx; color:#666; margin-top:4px; }
+
+.add-link { font-size: 28rpx; color:#FFA800; font-weight:600; margin-left:8px; }
+.tp-del { font-size: 32rpx; color:#666; margin-left:auto; padding:0 4px; }
+.ev-item { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:#fafafa; border-radius:8px; margin-bottom:4px; font-size: 28rpx; }
+
+/* Actions */
+.action-row { display:flex; gap:8px; margin-top:10px; }
+
+/* ===== 多选一表决 ===== */
+.tp-type.multi { background:#F5EEF8; color:#8E44AD; }
+.option-list { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+.opt-row {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; background:#fafafa; border-radius:10px;
+  border:1px solid #f0f0f0;
+}
+.opt-radio {
+  width:20px; height:20px; border-radius:50%;
+  border:2px solid #ddd; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.opt-radio.on { border-color:#FFA800; }
+.opt-dot { width:10px; height:10px; border-radius:50%; background:#FFA800; }
+.opt-label { font-size: 28rpx; color:#333; line-height:1.4; }
+.option-bars { display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:6px; }
+.ob-line { font-size: 28rpx; color:#666; }
+
+/* ===== 添加议题弹窗 ===== */
+.form-sheet {
+  width:100%; max-height:92vh; overflow:auto;
+  background:#fff; border-radius:18px 18px 0 0;
+  padding:16px 16px 0; box-sizing:border-box;
+}
+.sheet-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.sheet-title { font-size: 34rpx; font-weight:700; color:#333; }
+.sheet-close { width:32px; height:32px; line-height:30px; text-align:center; border-radius:16px; font-size: 44rpx; color:#666; background:#f5f5f5; flex-shrink:0; }
+.type-row { display:flex; flex-wrap:wrap; gap:8px; }
+.type-chip {
+  min-height:34px; line-height:18px; box-sizing:border-box;
+  display:flex; align-items:center; justify-content:center;
+  font-size: 28rpx; color:#666; background:#f5f5f5;
+  padding:7px 12px; border-radius:16px;
+}
+.type-chip.on { color:#fff; background:#FFA800; font-weight:600; }
+.form-group { margin-bottom:12px; min-width:0; }
+.form-label { display:block; font-size: 28rpx; color:#777; margin-bottom:7px; line-height:1.45; }
+.form-hint { display:block; font-size: 28rpx; color:#666; margin:-3px 0 7px; line-height:1.5; }
+.form-input {
+  width:100%; box-sizing:border-box; background:#f7f7f7;
+  border-radius:12px; font-size: 28rpx; color:#333;
+  height:44px; min-height:44px; line-height:normal; padding:0 12px;
+  border:0;
+}
+.form-input.large { height:48px; min-height:48px; line-height:normal; font-size: 30rpx; font-weight:600; }
+.form-input::placeholder { color:#666; font-size: 28rpx; line-height:1.5; }
+.form-textarea::placeholder { color:#666; font-size: 28rpx; line-height:1.5; }
+.form-textarea {
+  width:100%; box-sizing:border-box; background:#f7f7f7;
+  border-radius:12px; font-size: 28rpx; color:#333;
+  min-height:128px; height:128px; line-height:1.5; padding:11px 12px;
+  border:0;
+}
+.picker-field {
+  width:100%; box-sizing:border-box; background:#f7f7f7;
+  border-radius:12px; font-size: 28rpx; color:#333;
+  height:44px; min-height:44px; line-height:normal; padding:0 12px;
+  border:0;
+}
+.sheet-actions { display:flex; gap:10px; justify-content:space-between; padding:12px 0 calc(18px + env(safe-area-inset-bottom)); }
+.sheet-actions .btn {
+  flex:1; min-width:0; height:44px; line-height:44px;
+  border-radius:22px; font-size: 28rpx; font-weight:600;
+  padding:0 16px; margin:0; border:0;
+  display:flex; align-items:center; justify-content:center; box-sizing:border-box;
+}
+.btn-ghost { color:#777; background:#f5f5f5; }
+.btn-primary { color:#fff; background:linear-gradient(135deg,#FFCC44,#FFA800); }
+
+.modal-mask {
+  position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,0.36);
+  display:flex; align-items:flex-end;
+}
+.proxy-sheet { max-height:88vh; padding-bottom:calc(18px + env(safe-area-inset-bottom)); }
+.proxy-tabs { display:flex; gap:8px; margin-bottom:12px; }
+.proxy-tab {
+  flex:1; text-align:center; padding:10px 0; border-radius:18px;
+  background:#f5f5f5; color:#777; font-size: 28rpx; font-weight:600;
+}
+.proxy-tab.on { background:#FFA800; color:#fff; }
+.proxy-section { margin-bottom:14px; }
+.proxy-topic-list { display:flex; flex-wrap:wrap; gap:8px; }
+.proxy-topic {
+  max-width:100%; box-sizing:border-box; padding:8px 10px; border-radius:12px;
+  background:#f7f7f7; color:#666; font-size: 28rpx; line-height:1.35;
+}
+.proxy-topic.on { background:#FFF3DC; color:#B36B00; font-weight:700; }
+.proxy-choice-row { display:flex; gap:8px; margin-top:10px; }
+.proxy-choice {
+  flex:1; text-align:center; padding:9px 0; border-radius:16px;
+  background:#f5f5f5; color:#777; font-size: 28rpx; font-weight:600;
+}
+.proxy-choice.for.on { background:#E8F7EE; color:#27AE60; }
+.proxy-choice.ag.on { background:#FDECEA; color:#E74C3C; }
+.proxy-choice.ab.on { background:#EBF5FB; color:#2980B9; }
+.proxy-option-list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.proxy-option {
+  padding:10px 12px; border-radius:12px; background:#f7f7f7;
+  color:#555; font-size: 28rpx; line-height:1.4; border:1px solid transparent;
+}
+.proxy-option.on { background:#FFF3DC; border-color:#FFA800; color:#B36B00; font-weight:700; }
+.proxy-target-list { max-height:260px; margin-top:10px; }
+.proxy-target {
+  display:flex; align-items:center; gap:10px; padding:10px 0;
+  border-bottom:1px solid #f2f2f2;
+}
+.proxy-target:last-child { border-bottom:none; }
+.proxy-target.disabled { opacity:0.45; }
+.proxy-target.on .proxy-check { background:#27AE60; border-color:#27AE60; color:#fff; }
+.proxy-check {
+  width:22px; height:22px; border-radius:50%; border:1px solid #ddd;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size: 28rpx; font-weight:700; flex-shrink:0;
+}
+.proxy-person { flex:1; min-width:0; }
+.proxy-name { display:block; font-size: 28rpx; color:#333; font-weight:600; }
+.proxy-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.proxy-state { font-size: 28rpx; color:#666; flex-shrink:0; }
+.proxy-empty { text-align:center; color:#666; font-size: 28rpx; padding:18px 0; }
+.proof-picker {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:#f7f7f7; border-radius:12px; padding:12px;
+}
+.proof-main { flex:1; min-width:0; font-size: 28rpx; color:#555; word-break:break-all; }
+.proof-action { font-size: 28rpx; color:#FFA800; font-weight:700; flex-shrink:0; }
+.proxy-submit-row {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding-top:4px;
+}
+.proxy-count { font-size: 28rpx; color:#666; flex-shrink:0; }
+.proxy-submit {
+  flex:1; height:44px; line-height:44px; border-radius:22px;
+  margin:0; padding:0; font-size: 28rpx; font-weight:700;
+}
+
+.send-sheet { max-height:84vh; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+.send-summary {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  font-size: 28rpx; color:#777; margin-bottom:10px;
+}
+.send-summary > span { font-weight:700; color:#1F2024; }
+.send-actions { display:flex; align-items:center; gap:12px; color:#D88900; font-weight:700; line-height:1.4; }
+.send-actions .muted { color:#666; }
+.send-member-list { max-height:360px; }
+.send-member {
+  display:flex; align-items:center; gap:10px; padding:11px 0;
+  border-bottom:1px solid #f2f2f2;
+}
+.send-member:last-child { border-bottom:0; }
+.send-member.on .send-check { background:#FFA800; border-color:#FFA800; color:#fff; }
+.send-check {
+  width:22px; height:22px; border-radius:50%; border:1px solid #ddd;
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size: 28rpx; font-weight:700; flex-shrink:0;
+}
+.send-person { flex:1; min-width:0; }
+.send-name { display:block; font-size: 28rpx; color:#333; font-weight:600; line-height:1.45; word-break:break-all; }
+.send-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; line-height:1.45; word-break:break-all; }
+
+/* —— 适老化补充：委员纪要按钮 + 归档页折叠头 —— */
+.member-doc-actions { display:flex; gap:16rpx; margin-bottom:12px; }
+.doc-btn { flex:1; height:88rpx; line-height:88rpx; border-radius:44rpx; background:#FFA800; color:#fff; font-size:30rpx; font-weight:600; margin:0; border:0; }
+.doc-btn.ghost { background:#fff; color:#C77800; border:2rpx solid #FFA800; }
+.fsc-toggle { font-size: 28rpx; color:#C77800; font-weight:600; flex-shrink:0; white-space:nowrap; }
+.arclog-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.arclog-toggle { font-size: 28rpx; color:#C77800; font-weight:600; }
+
+/* —— 委员确认参会 / 无法参会 —— */
+.attend-actions { display:flex; flex-direction:column; gap:20rpx; margin-top:24rpx; }
+.attend-btn { border:none; margin:0; }
+.attend-btn.primary { width:100%; min-height:104rpx; line-height:104rpx; border-radius:18rpx; font-size:34rpx; font-weight:700; background:#FFA800; color:#fff; box-shadow:0 8rpx 22rpx rgba(255,168,0,0.4); }
+.attend-btn.ghost { align-self:center; width:auto; min-height:84rpx; line-height:84rpx; padding:0 72rpx; border-radius:42rpx; font-size:32rpx; font-weight:600; background:#eef0f3; color:#5b6673; }
+.mdc-big.declined { color:#E67E22; }
+.pp-declined { display:block; font-size: 28rpx; color:#E67E22; margin-top:10rpx; }
+.my-attend-tip { display:block; font-size:30rpx; color:#4a5560; margin-bottom:16rpx; line-height:1.5; }
+.my-attend-tip.declined { color:#E67E22; }
+.my-attend-tip.ok { color:#27AE60; font-weight:600; margin-bottom:0; }
+.my-attend-cancel { display:block; text-align:center; margin-top:24rpx; font-size:30rpx; color:#666; padding:8rpx; }
+</style>
+
+<!-- 会议议题卡：由 render 函数子组件 MeetingTopicsCard 渲染，其节点不带父 scope 属性，
+     故这些规则放在非 scoped 块（类名与原 .wxss 完全一致，1:1 还原）。 -->
+<style>
+.meeting-topics-card {
+  background:#fff;
+  border-radius:16px;
+  padding:14px;
+  margin-bottom:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+.ar-card .meeting-topics-card {
+  margin:8px 16px 12px;
+  padding:12px 0 4px;
+  border-radius:0;
+  box-shadow:none;
+  border-top:1px solid #f0f0f0;
+}
+.mtc-head {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:6px;
+}
+.mtc-title-main {
+  display:block;
+  font-size: 28rpx;
+  font-weight:700;
+  color:#333;
+  line-height:1.4;
+}
+.mtc-sub {
+  display:block;
+  font-size: 28rpx;
+  color:#666;
+  line-height:1.4;
+  margin-top:1px;
+}
+.mtc-count {
+  flex-shrink:0;
+  font-size: 28rpx;
+  color:#D88900;
+  background:#FFF3DC;
+  border-radius:12px;
+  padding:3px 9px;
+  line-height:1.35;
+}
+.mtc-topic {
+  display:flex;
+  gap:10px;
+  padding:10px 0;
+  border-top:1px dashed #f0f0f0;
+}
+.mtc-head + .mtc-topic,
+.mtc-topic:first-of-type { border-top:none; }
+.mtc-no {
+  width:24px;
+  height:24px;
+  border-radius:8px;
+  background:#F6F6F8;
+  color:#666;
+  font-size: 28rpx;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  margin-top:1px;
+}
+.mtc-body { flex:1; min-width:0; }
+.mtc-title-row {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+.mtc-topic-title {
+  flex:1;
+  min-width:0;
+  font-size: 28rpx;
+  font-weight:600;
+  color:#333;
+  line-height:1.45;
+  word-break:break-all;
+}
+.mtc-status {
+  flex-shrink:0;
+  font-size: 28rpx;
+  line-height:1.35;
+  padding-top:2px;
+}
+.mtc-status.passed,
+.mtc-status.recorded { color:#27AE60; }
+.mtc-status.pending { color:#E67E22; }
+.mtc-status.failed { color:#E74C3C; }
+.mtc-meta {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:5px;
+}
+.mtc-chip {
+  font-size: 28rpx;
+  padding:2px 7px;
+  border-radius:10px;
+  line-height:1.35;
+  color:#666;
+  background:#F6F6F8;
+}
+.mtc-chip.decision { color:#E67E22; background:#FFF3DC; }
+.mtc-chip.multi { color:#8E44AD; background:#F5EEF8; }
+.mtc-chip.notice { color:#2980B9; background:#EBF5FB; }
+.mtc-chip.discussion { color:#27AE60; background:#EAF7EF; }
+.mtc-chip.major { color:#E74C3C; background:#FDECEA; }
+.mtc-chip.realname { color:#2980B9; background:#EAF2F8; }
+.mtc-chip.live { color:#B96F12; background:#FEF4E2; }
+.mtc-summary {
+  display:block;
+  margin-top:5px;
+  font-size: 28rpx;
+  color:#666;
+  line-height:1.45;
+  word-break:break-all;
+}
+</style>

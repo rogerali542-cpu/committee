@@ -76,6 +76,14 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 主任手动修正会议有效性判定（自动判定有误时纠正：valid/flawed/invalid） */
+    @PutMapping("/{id}/compliance")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> setCompliance(@PathVariable Long id, @RequestParam String status) {
+        service.setCompliance(id, status);
+        return Result.ok();
+    }
+
     @PutMapping("/{id}/delivery/{userRoleId}")
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> toggleDelivery(@PathVariable Long id, @PathVariable Long userRoleId,
@@ -197,8 +205,9 @@ public class CommitteeController {
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> addEvidence(@PathVariable Long id,
                                      @RequestParam String fileName,
-                                     @RequestParam String fileType) {
-        service.addEvidence(id, fileName, fileType);
+                                     @RequestParam String fileType,
+                                     @RequestParam(required = false) String fileUrl) {
+        service.addEvidence(id, fileName, fileType, fileUrl);
         return Result.ok();
     }
 
@@ -206,6 +215,39 @@ public class CommitteeController {
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> removeEvidence(@PathVariable Long id, @PathVariable Long evidenceId) {
         service.removeEvidence(id, evidenceId);
+        return Result.ok();
+    }
+
+    // ===== 会议材料 =====
+    @PostMapping("/{id}/materials")
+    @RequireRole({"主任", "副主任", "记录员"})
+    public Result<Void> addMaterial(@PathVariable Long id,
+                                    @RequestParam String fileName,
+                                    @RequestParam(required = false) String sizeText,
+                                    @RequestParam(required = false) String fileType,
+                                    @RequestParam(required = false) String fileUrl) {
+        service.addMaterial(id, fileName, fileType, sizeText, fileUrl);
+        return Result.ok();
+    }
+
+    @DeleteMapping("/{id}/materials/{materialId}")
+    @RequireRole({"主任", "副主任", "记录员"})
+    public Result<Void> removeMaterial(@PathVariable Long id, @PathVariable Long materialId) {
+        service.removeMaterial(id, materialId);
+        return Result.ok();
+    }
+
+    // ===== 补充归档 =====
+    @PostMapping("/{id}/archive-extras")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<Void> addArchiveExtra(@PathVariable Long id,
+                                        @RequestParam String fileName,
+                                        @RequestParam(required = false) String sizeText,
+                                        @RequestParam(required = false) String fileType,
+                                        @RequestParam(required = false) String reason,
+                                        @RequestParam(required = false) String fileUrl) {
+        String addedBy = com.ywh.util.SecurityUtils.getCurrentRealName();
+        service.addArchiveExtra(id, fileName, fileType, sizeText, reason, fileUrl, addedBy);
         return Result.ok();
     }
 

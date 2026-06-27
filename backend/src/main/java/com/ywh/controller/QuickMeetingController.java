@@ -12,6 +12,7 @@ import com.ywh.dto.quick.TopicSummaryTaskVO;
 import com.ywh.service.CommitteeService;
 import com.ywh.service.quick.AsrService;
 import com.ywh.service.quick.AudioStorageService;
+import com.ywh.service.quick.AudioTranscodeService;
 import com.ywh.service.quick.MinutesGenService;
 import com.ywh.service.quick.QuickExtractionService;
 import com.ywh.service.quick.TopicSummaryTaskService;
@@ -50,6 +51,7 @@ public class QuickMeetingController {
     private final TopicSummaryTaskService topicSummaryTaskService;
     private final AudioStorageService audioStorage;
     private final CommitteeService committeeService;
+    private final AudioTranscodeService audioTranscodeService;
 
     @PostMapping("/recording/upload")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
@@ -59,9 +61,22 @@ public class QuickMeetingController {
             return Result.fail("音频为空");
         }
         String ext = extractExt(file.getOriginalFilename());
-        String url = audioStorage.save(id, file.getBytes(), ext);
+        byte[] data = file.getBytes();
+        // 豆包 bigasr.auc 只认 mp3/wav/ogg；浏览器 H5 录音多为 webm/mp4/m4a/aac，
+        // 非友好格式统一转码为 16k 单声道 mp3（jave2 内置 ffmpeg），并把扩展名归一化为 mp3。
+        boolean doubaoFriendly = ext != null
+                && (ext.equals("mp3") || ext.equals("wav") || ext.equals("ogg"));
+        if (!doubaoFriendly) {
+            try {
+                data = audioTranscodeService.toMono16kMp3(data, ext);
+                ext = "mp3";
+            } catch (Exception e) {
+                return Result.fail("音频转码失败，请重试：" + e.getMessage());
+            }
+        }
+        String url = audioStorage.save(id, data, ext);
         Long recordingId = committeeService.saveRecording(id, url,
-                file.getOriginalFilename(), (long) file.getSize());
+                file.getOriginalFilename(), (long) data.length);
         return Result.ok(Map.of(
                 "recordingId", recordingId,
                 "url", url,

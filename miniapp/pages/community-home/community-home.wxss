@@ -39,7 +39,7 @@ page { background: #f4f5f7; }
   flex: 1;
   text-align: center;
   font-size: 28rpx;
-  color: #b3bcc6;
+  color: #777;
   padding: 14rpx 0 18rpx;
   border-bottom: 4rpx solid transparent;
   transition: all 0.2s;
@@ -127,7 +127,7 @@ page { background: #f4f5f7; }
   display: inline-block;
   background: #FFF3DC;
   color: #B8860B;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 600;
   padding: 4rpx 16rpx;
   border-radius: 10rpx;
@@ -171,7 +171,7 @@ page { background: #f4f5f7; }
 }
 
 .prop-tag {
-  font-size: 24rpx;
+  font-size: 26rpx;
   background: #E8F0FE;
   color: #3B5998;
   padding: 4rpx 16rpx;
@@ -208,7 +208,7 @@ page { background: #f4f5f7; }
 
 .prop-date {
   font-size: 26rpx;
-  color: #9aa6b2;
+  color: #666;
   display: block;
 }
 
@@ -275,7 +275,7 @@ page { background: #f4f5f7; }
 
 .minutes-date {
   font-size: 26rpx;
-  color: #9aa6b2;
+  color: #666;
 }
 
 .minutes-arrow {
@@ -299,5 +299,5 @@ page { background: #f4f5f7; }
 
 .empty-text {
   font-size: 32rpx;
-  color: #b3bcc6;
+  color: #777;
 }

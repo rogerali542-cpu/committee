@@ -42,6 +42,8 @@ public class CommitteeService {
     private final MinutesRevisionRepository minutesRevisionRepo;
     private final MeetingRecordingRepository recordingRepo;
     private final UserRoleRepository userRoleRepo;
+    private final MeetingMaterialRepository materialRepo;
+    private final ArchiveExtraRepository archiveExtraRepo;
     private final ObjectMapper objectMapper;
 
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
@@ -161,7 +163,8 @@ public class CommitteeService {
                 .flowNodeText(getFlowNodeText(m))
                 .delivery(hideInternalRecord ? null : getDeliveryInfo(m))
                 .noticeDraft(buildNoticeDraft(m))
-                .materials(Collections.emptyList())
+                .materials(buildMaterials(m.getId()))
+                .archiveExtras(buildArchiveExtras(m.getId()))
                 .myDelivery(hideInternalRecord ? null : getMyDelivery(m, ur))
                 .record(hideInternalRecord ? null : getRecordInfo(m))
                 .publish(publishInfo)
@@ -293,6 +296,30 @@ public class CommitteeService {
                                 .build());
                 publishRepo.save(pub);
             }
+        }
+        meetingRepo.save(m);
+    }
+
+    /** 主任手动修正会议有效性判定（自动判定有误时纠正） */
+    @Transactional
+    public void setCompliance(Long meetingId, String status) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.ended) {
+            throw new IllegalArgumentException("仅已结束的会议可以修正有效性判定");
+        }
+        ComplianceStatus cs;
+        try {
+            cs = ComplianceStatus.valueOf(status);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("无效的有效性取值：" + status);
+        }
+        m.setCompliance(cs);
+        // 改为"非无效"时，确保有公示记录，便于后续发起公示
+        if (cs != ComplianceStatus.invalid) {
+            publishRepo.findByMeetingId(meetingId).orElseGet(() ->
+                    publishRepo.save(MeetingPublish.builder()
+                            .meeting(m).published(false).withdrawn(false).build()));
         }
         meetingRepo.save(m);
     }
@@ -801,18 +828,77 @@ public class CommitteeService {
 
     // ===== Evidence =====
     @Transactional
-    public void addEvidence(Long meetingId, String fileName, String fileType) {
+    public void addEvidence(Long meetingId, String fileName, String fileType, String fileUrl) {
         MeetingRecord record = getRecord(meetingId);
         evidenceRepo.save(RecordEvidence.builder()
                 .record(record)
                 .fileName(fileName)
                 .fileType(fileType)
+                .fileUrl(fileUrl)
                 .build());
     }
 
     @Transactional
     public void removeEvidence(Long meetingId, Long evidenceId) {
         evidenceRepo.deleteById(evidenceId);
+    }
+
+    // ===== Materials（会议材料）=====
+    @Transactional
+    public void addMaterial(Long meetingId, String fileName, String fileType, String sizeText, String fileUrl) {
+        materialRepo.save(MeetingMaterial.builder()
+                .meetingId(meetingId)
+                .fileName(fileName)
+                .fileType(fileType)
+                .sizeText(sizeText)
+                .fileUrl(fileUrl)
+                .build());
+    }
+
+    @Transactional
+    public void removeMaterial(Long meetingId, Long materialId) {
+        materialRepo.deleteByMeetingIdAndId(meetingId, materialId);
+    }
+
+    private List<Map<String, Object>> buildMaterials(Long meetingId) {
+        return materialRepo.findByMeetingId(meetingId).stream().map(mat -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", mat.getId());
+            m.put("name", mat.getFileName());
+            m.put("sizeText", mat.getSizeText());
+            m.put("fileType", mat.getFileType());
+            m.put("url", mat.getFileUrl());
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    // ===== Archive Extras（补充归档）=====
+    @Transactional
+    public void addArchiveExtra(Long meetingId, String fileName, String fileType, String sizeText,
+                                String reason, String fileUrl, String addedBy) {
+        archiveExtraRepo.save(ArchiveExtra.builder()
+                .meetingId(meetingId)
+                .fileName(fileName)
+                .fileType(fileType)
+                .sizeText(sizeText)
+                .reason(reason)
+                .fileUrl(fileUrl)
+                .addedBy(addedBy)
+                .build());
+    }
+
+    private List<Map<String, Object>> buildArchiveExtras(Long meetingId) {
+        return archiveExtraRepo.findByMeetingId(meetingId).stream().map(ae -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", ae.getId());
+            m.put("fileName", ae.getFileName());
+            m.put("fileType", ae.getFileType());
+            m.put("reason", ae.getReason());
+            m.put("addedBy", ae.getAddedBy());
+            m.put("sizeText", ae.getSizeText());
+            m.put("url", ae.getFileUrl());
+            return m;
+        }).collect(Collectors.toList());
     }
 
     // ===== Publish =====
@@ -1060,85 +1146,11 @@ public class CommitteeService {
             }
             return record.getMinutesText();
         }
-        List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
-        List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
-
-        int total = attendances.size();
-        int need = total / 2 + 1;
-        List<RecordAttendance> present = attendances.stream().filter(RecordAttendance::getSignedIn).toList();
-        List<RecordAttendance> absent = attendances.stream().filter(a -> !a.getSignedIn()).toList();
-        String host = attendances.stream()
-                .filter(a -> a.getUserRole().getRole().isChair())
-                .findFirst()
-                .map(a -> a.getUserRole().getRealName())
-                .orElse(attendances.get(0).getUserRole().getRealName());
-        boolean presentHalf = present.size() >= need;
-        List<RecordTopic> voteTopics = topics.stream().filter(this::isVoteTopic).collect(Collectors.toList());
-        boolean hasVote = !voteTopics.isEmpty();
-        boolean draft = m.getStage() != MeetingStage.ended;
-
-        Map<String, Object> er = m.getStage() == MeetingStage.ended
-                ? evaluateEndResult(m) : evaluateEndResult(m);
-        String concClass = (String) er.get("level");
-        String concText = er.containsKey("conclusion") ? (String) er.get("conclusion")
-                : computeConclusionText(er);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("业主委员会会议纪要\n\n");
-        sb.append("会议名称：").append(m.getTitle()).append("\n");
-        sb.append("会议时间：").append(m.getMeetingDate()).append(" ").append(m.getMeetingTime()).append("\n");
-        sb.append("会议地点：").append(m.getLocation()).append("\n");
-        sb.append("主持人：").append(host).append("\n");
-        sb.append("记录人：秘书小李\n\n");
-
-        sb.append("一、参会情况\n");
-        sb.append("应到委员 ").append(total).append(" 人，实到 ").append(present.size()).append(" 人，");
-        sb.append(presentHalf ? "已过半，达到法定人数" : "未过半，未达法定人数").append("。\n");
-        // 人员名单：应到=送达（通知）名单，实到=签到名单
-        sb.append("应到名单（通知送达）：")
-          .append(attendances.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
-        sb.append("实到名单（确认参会）：")
-          .append(present.isEmpty() ? "无" : present.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
-        if (!absent.isEmpty()) {
-            sb.append("缺席：").append(absent.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append("\n");
-        }
-        if (record.getHasMajorIssue()) {
-            sb.append("列席：").append(record.getJuweiName()).append("（居委会委员）\n");
-        }
-        sb.append("\n二、会议议题\n");
-        int agendaIdx = 1;
-        for (RecordTopic tp : topics) {
-            sb.append(agendaIdx++).append(". 【").append(topicTypeLabel(tp)).append("】").append(tp.getTitle()).append("\n");
-        }
-        if (m.getDescription() != null && !m.getDescription().isBlank()) {
-            sb.append("补充说明：").append(m.getDescription()).append("\n");
-        }
-
-        if (hasVote) {
-            sb.append("\n三、表决情况\n");
-            int idx = 1;
-            for (RecordTopic tp : voteTopics) {
-                List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
-                int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
-                int agV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.against).count();
-                int abV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.abstain).count();
-                String statusText = getTopicStatusText(tp, total, forV, agV, abV);
-                sb.append(idx).append(". 【").append(topicTypeLabel(tp)).append("】").append(tp.getTitle()).append("\n");
-                sb.append("   赞成 ").append(forV).append(" 票，反对 ").append(agV).append(" 票，弃权 ").append(abV).append(" 票（赞成需≥").append(need).append("）。表决结果：").append(statusText).append("。\n");
-                idx++;
-            }
-        }
-
-        sb.append("\n").append(hasVote ? "四" : "三").append("、参会确认\n");
-        sb.append("本次会议经 ").append(present.size()).append("/").append(total).append(" 名委员确认参会。\n");
-        if (record.getHasMajorIssue()) {
-            sb.append("重大事项").append(record.getJuweiSigned() ? "已" : "尚未").append("由居委会委员（").append(record.getJuweiName()).append("）签字。\n");
-        }
-
-        sb.append("\n").append(hasVote ? "五" : "四").append("、会议结论\n");
-        sb.append(concText).append("\n");
-
-        return sb.toString();
+        // 没有正式纪要（AI 生成或人工保存）时返回空字符串。
+        // 正式纪要必须由主任"用 AI 生成"或"手写"显式创建后才存在；在此之前不凭空合成
+        // 一份"占位纪要"——否则首次进入纪要页就会出现一份来历不明的纪要（公示页同理，
+        // 空时应提示"尚未生成"）。结构化预览/归档查看由前端依据会议明细自行渲染。
+        return "";
     }
 
     private String nullToUnknown(Object value) {
@@ -1370,12 +1382,38 @@ public class CommitteeService {
         lines.add("会议时间：" + (m.getMeetingDate() != null ? m.getMeetingDate() : "待定")
                 + " " + (m.getMeetingTime() != null ? m.getMeetingTime() : ""));
         lines.add("会议地点：" + (m.getLocation() != null ? m.getLocation() : "待定"));
-        lines.add("主要议题：" + (m.getDescription() != null && !m.getDescription().isBlank() ? m.getDescription() : "待补充"));
+        // 主要议题：按准备会议时添加的议题标题，逐条编号列出（1.xxx 换行 2.xxx）
+        String topicsText = buildNoticeTopicsText(m);
+        if (!topicsText.isBlank()) {
+            lines.add("主要议题：");
+            lines.add(topicsText);
+        } else if (m.getDescription() != null && !m.getDescription().isBlank()) {
+            lines.add("主要议题：" + m.getDescription());
+        } else {
+            lines.add("主要议题：待补充");
+        }
         lines.add("请各位委员按时参加，并提前查阅会议材料。");
         vo.setTitle(title);
         vo.setContent(String.join("\n", lines));
         vo.setStatus("draft");
         return vo;
+    }
+
+    /** 按准备会议时添加的议题标题逐条编号，生成"1.xxx\n2.xxx"文本；无议题返回空串。 */
+    private String buildNoticeTopicsText(CommitteeMeeting m) {
+        MeetingRecord record = recordRepo.findByMeetingId(m.getId()).orElse(null);
+        if (record == null) return "";
+        List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        StringBuilder sb = new StringBuilder();
+        int idx = 1;
+        for (RecordTopic t : topics) {
+            String tt = t.getTitle();
+            if (tt == null || tt.isBlank()) continue;
+            if (sb.length() > 0) sb.append("\n");
+            sb.append(idx).append(".").append(tt.trim());
+            idx++;
+        }
+        return sb.toString();
     }
 
     private List<UserRoleEntity> findCommitteeMembers(Long communityId) {
@@ -1871,6 +1909,7 @@ public class CommitteeService {
             ev.setId(e.getId());
             ev.setFileName(e.getFileName());
             ev.setFileType(e.getFileType());
+            ev.setFileUrl(e.getFileUrl());
             return ev;
         }).collect(Collectors.toList());
 

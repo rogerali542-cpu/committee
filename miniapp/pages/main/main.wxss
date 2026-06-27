@@ -20,7 +20,7 @@ page { background: #f4f5f7; }
 .hd-badge {
   position: absolute; top: -2rpx; right: -6rpx;
   min-width: 34rpx; height: 34rpx; padding: 0 8rpx;
-  background: #E74C3C; color: #fff; font-size: 24rpx;
+  background: #E74C3C; color: #fff; font-size: 26rpx;
   border-radius: 17rpx; line-height: 34rpx; text-align: center;
 }
 
@@ -48,9 +48,9 @@ page { background: #f4f5f7; }
   width: 76rpx; height: 76rpx; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 40rpx; font-weight: 700;
-  background: #e9edf2; color: #9aa6b2;
+  background: #e9edf2; color: #666;
 }
-.step-label { font-size: 32rpx; color: #9aa6b2; margin-top: 14rpx; }
+.step-label { font-size: 32rpx; color: #666; margin-top: 14rpx; }
 .step.done .step-dot { background: #FFE7B3; color: #C77800; }
 .step.done .step-label { color: #6b7785; }
 .step.active .step-dot { background: #FFA800; color: #fff; box-shadow: 0 4rpx 14rpx rgba(255,168,0,0.45); }
@@ -84,14 +84,14 @@ page { background: #f4f5f7; }
 }
 .idle-emoji { font-size: 104rpx; margin-bottom: 24rpx; }
 .idle-hint { font-size: 38rpx; color: #4a5560; margin-bottom: 32rpx; }
-.idle-sub { font-size: 30rpx; color: #9aa6b2; margin-top: 6rpx; }
+.idle-sub { font-size: 30rpx; color: #666; margin-top: 6rpx; }
 .idle .big-btn.primary { width: 88%; height: 150rpx; }
 .idle .big-btn.primary .big-btn-text { font-size: 52rpx; }
 .idle .big-btn.primary .big-btn-ico { font-size: 56rpx; }
 
 /* ── 最近一次会议 ── */
 .recent { margin: 48rpx 24rpx 0; }
-.recent-head { font-size: 30rpx; color: #9aa6b2; margin-bottom: 16rpx; padding-left: 8rpx; }
+.recent-head { font-size: 30rpx; color: #666; margin-bottom: 16rpx; padding-left: 8rpx; }
 .recent-row {
   display: flex; align-items: center; justify-content: space-between;
   background: #fff; border-radius: 20rpx; padding: 30rpx 28rpx;
@@ -99,12 +99,12 @@ page { background: #f4f5f7; }
 }
 .recent-body { display: flex; flex-direction: column; }
 .recent-title { font-size: 38rpx; color: #1f2329; font-weight: 600; }
-.recent-meta { font-size: 32rpx; color: #8a96a3; margin-top: 10rpx; }
-.recent-arrow { font-size: 48rpx; color: #c4ccd4; }
+.recent-meta { font-size: 32rpx; color: #666; margin-top: 10rpx; }
+.recent-arrow { font-size: 48rpx; color: #999; }
 
 /* ── 更多功能（沉底 + 缩小） ── */
 .more { margin: 0 28rpx; margin-top: auto; padding-top: 56rpx; }
-.more-title { font-size: 26rpx; color: #b3bcc6; padding-left: 6rpx; }
+.more-title { font-size: 26rpx; color: #777; padding-left: 6rpx; }
 .more-grid { display: flex; margin-top: 14rpx; gap: 16rpx; }
 .more-item {
   flex: 1; background: #fff; border-radius: 18rpx;
@@ -113,4 +113,4 @@ page { background: #f4f5f7; }
 }
 .more-item:active { background: #fafafa; }
 .more-ico { font-size: 44rpx; line-height: 1.1; }
-.more-label { font-size: 26rpx; color: #8a96a3; margin-top: 14rpx; }
+.more-label { font-size: 26rpx; color: #666; margin-top: 14rpx; }

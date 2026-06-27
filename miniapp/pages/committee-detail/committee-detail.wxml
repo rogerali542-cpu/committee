@@ -361,23 +361,14 @@
             </block>
           </view>
           <view class="arc-list">
-            <view class="arcl-row" bindtap="viewNoticeDraft" wx:if="{{detail.noticeDraft}}">
-              <view class="arcl-icon notice">📄</view><view class="arcl-info"><text class="arcl-name">会议通知</text><text class="arcl-meta">创建时自动生成</text></view><text class="arcl-arrow">›</text>
-            </view>
-            <view class="arcl-row" wx:if="{{detail.materials && detail.materials.length}}" bindtap="previewArchiveMaterials">
-              <view class="arcl-icon mat">📎</view><view class="arcl-info"><text class="arcl-name">会议材料</text><text class="arcl-meta">{{detail.materials.length}} 份附件</text></view><text class="arcl-arrow">›</text>
-            </view>
-            <view class="arcl-row" wx:if="{{detail.record && detail.record.evidences && detail.record.evidences.length}}">
-              <view class="arcl-icon ev">🖼️</view><view class="arcl-info"><text class="arcl-name">线下佐证</text><text class="arcl-meta">{{detail.record.evidences.length}} 张照片</text></view><text class="arcl-arrow">›</text>
-            </view>
-            <view class="arcl-row" bindtap="viewMinutes">
-              <view class="arcl-icon min">📝</view><view class="arcl-info"><text class="arcl-name">会议纪要</text><text class="arcl-meta">含参会情况与决议结果，可查看导出</text></view><text class="arcl-arrow">›</text>
+            <view class="arcl-row" bindtap="viewInternalReport">
+              <view class="arcl-icon min">🗂️</view><view class="arcl-info"><text class="arcl-name">内部总结</text><text class="arcl-meta">详细议题报告与决议，内部查看</text></view><text class="arcl-arrow">›</text>
             </view>
             <view class="arcl-row" bindtap="viewPublicMinutes">
               <view class="arcl-icon min">📢</view><view class="arcl-info"><text class="arcl-name">公开纪要</text><text class="arcl-meta">面向公众的正式纪要展示版</text></view><text class="arcl-arrow">›</text>
             </view>
-            <view class="arcl-row" bindtap="viewInternalReport">
-              <view class="arcl-icon min">🗂️</view><view class="arcl-info"><text class="arcl-name">内部议题报告</text><text class="arcl-meta">详细版议题报告与待办，内部查看</text></view><text class="arcl-arrow">›</text>
+            <view class="arcl-row" bindtap="viewTodos">
+              <view class="arcl-icon min">📋</view><view class="arcl-info"><text class="arcl-name">待办事项</text><text class="arcl-meta">会议形成的待办与跟进事项</text></view><text class="arcl-arrow">›</text>
             </view>
             <view class="arcl-row" wx:for="{{detail.archiveExtras}}" wx:for-item="ae" wx:key="id" wx:if="{{detail.archiveExtras && detail.archiveExtras.length}}">
               <view class="arcl-icon extra">📎</view><view class="arcl-info"><text class="arcl-name">{{ae.fileName}}</text><text class="arcl-meta">归档后补充 · {{ae.reason || '补充资料'}}{{ae.addedBy ? ' · ' + ae.addedBy : ''}}</text></view><text class="arcl-arrow">留痕</text>

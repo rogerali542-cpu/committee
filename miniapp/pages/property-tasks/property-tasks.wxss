@@ -1,10 +1,10 @@
 .page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 40rpx; box-sizing: border-box; }
-.intro { font-size: 26rpx; color: #9aa6b2; display: block; margin-bottom: 24rpx; text-align: center; line-height: 1.6; }
+.intro { font-size: 26rpx; color: #666; display: block; margin-bottom: 24rpx; text-align: center; line-height: 1.6; }
 
 .filter-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
 .f-tab { flex: 1; text-align: center; font-size: 30rpx; color: #6b7785; background: #fff; border-radius: 18rpx; padding: 18rpx 0; font-weight: 500; }
 .f-tab.active { background: #FFF3DC; color: #C77800; font-weight: 700; }
-.f-count { font-size: 26rpx; color: #b3bcc6; }
+.f-count { font-size: 26rpx; color: #777; }
 .f-tab.active .f-count { color: #C77800; }
 
 .task-card { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
@@ -14,24 +14,24 @@
 .status-pill.dispatched { background: #FDECEA; color: #E74C3C; }
 .status-pill.processing { background: #FFF3DC; color: #E67E22; }
 .status-pill.replied { background: #E8F7EE; color: #27AE60; }
-.tc-meta { font-size: 26rpx; color: #9aa6b2; margin: 12rpx 0; }
+.tc-meta { font-size: 26rpx; color: #666; margin: 12rpx 0; }
 .tc-content { font-size: 32rpx; color: #33373d; line-height: 1.6; }
 
 .tc-ev { margin-top: 16rpx; background: #fafbfc; border: 2rpx solid #f0f0f0; border-radius: 14rpx; padding: 16rpx 18rpx; }
-.tc-ev-title { font-size: 26rpx; color: #8a96a3; }
+.tc-ev-title { font-size: 26rpx; color: #666; }
 .tc-ev-list { display: flex; flex-direction: column; gap: 4rpx; margin-top: 8rpx; }
 .tc-ev-name { font-size: 28rpx; color: #555; }
 
 .ev-edit-list { margin-bottom: 14rpx; }
 .ev-edit-item { display: flex; justify-content: space-between; align-items: center; padding: 10rpx 0; }
 .ev-edit-name { font-size: 30rpx; color: #555; }
-.ev-del { font-size: 38rpx; color: #ccc; padding: 0 12rpx; }
-.ev-empty { font-size: 28rpx; color: #b3bcc6; }
+.ev-del { font-size: 38rpx; color: #999; padding: 0 12rpx; }
+.ev-empty { font-size: 28rpx; color: #777; }
 .btn-outline { background: #fff; color: #C77800; border: 2rpx solid #FFCC44; }
 
 .tc-reply { font-size: 30rpx; color: #33373d; line-height: 1.7; background: #E8F7EE; border-radius: 14rpx; padding: 18rpx 20rpx; margin-top: 16rpx; border-left: 6rpx solid #2ECC71; }
 .tc-reply-label { font-weight: 700; color: #27AE60; }
-.tc-reply-time { display: block; font-size: 24rpx; color: #9aa6b2; margin-top: 6rpx; }
+.tc-reply-time { display: block; font-size: 26rpx; color: #666; margin-top: 6rpx; }
 
 .tc-next { margin-top: 18rpx; display: flex; align-items: center; justify-content: space-between; gap: 14rpx; }
 .tc-hint { font-size: 28rpx; color: #B8500B; flex: 1; }
@@ -39,7 +39,7 @@
 .btn-primary { background: #FFA800; color: #fff; }
 .btn-ghost { background: #f2f2f2; color: #666; }
 
-.empty-state { display: flex; flex-direction: column; align-items: center; color: #b3bcc6; font-size: 32rpx; padding-top: 120rpx; }
+.empty-state { display: flex; flex-direction: column; align-items: center; color: #777; font-size: 32rpx; padding-top: 120rpx; }
 .empty-emoji { font-size: 80rpx; margin-bottom: 20rpx; }
 
 /* 回填面板 */
@@ -47,10 +47,10 @@
 .form-sheet { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24rpx; }
 .sheet-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
-.sheet-close { font-size: 48rpx; color: #bbb; line-height: 1; }
+.sheet-close { font-size: 48rpx; color: #999; line-height: 1; }
 .form-group { margin-bottom: 24rpx; }
 .form-label { font-size: 28rpx; color: #666; display: block; margin-bottom: 12rpx; }
 .form-textarea { width: 100%; box-sizing: border-box; min-height: 200rpx; background: #f6f6f8; border-radius: 14rpx; padding: 20rpx; font-size: 32rpx; color: #1f2329; }
-.input-placeholder { color: #bbb; }
+.input-placeholder { color: #999; }
 .sheet-actions { display: flex; gap: 16rpx; }
 .sheet-actions .btn { flex: 1; line-height: 2.6; font-size: 32rpx; }

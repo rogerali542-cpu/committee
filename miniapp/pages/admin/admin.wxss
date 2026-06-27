@@ -2,11 +2,11 @@
 .card { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .user-head { display: flex; align-items: center; gap: 16rpx; }
 .uh-name { font-size: 34rpx; font-weight: 600; color: #1f2329; }
-.uh-role { font-size: 24rpx; background: #FFF6E5; color: #C77800; padding: 4rpx 18rpx; border-radius: 10rpx; font-weight: 600; }
-.uh-arrow { margin-left: auto; font-size: 26rpx; color: #c4ccd4; }
+.uh-role { font-size: 26rpx; background: #FFF6E5; color: #C77800; padding: 4rpx 18rpx; border-radius: 10rpx; font-weight: 600; }
+.uh-arrow { margin-left: auto; font-size: 26rpx; color: #999; }
 
 .perm-panel { margin-top: 18rpx; padding-top: 18rpx; border-top: 2rpx solid #f0f0f0; }
-.perm-note { font-size: 24rpx; color: #b3bcc6; display: block; margin-bottom: 14rpx; line-height: 1.6; }
+.perm-note { font-size: 26rpx; color: #777; display: block; margin-bottom: 14rpx; line-height: 1.6; }
 .perm-list { display: flex; flex-direction: column; }
 .perm-item { display: flex; align-items: center; justify-content: space-between; padding: 14rpx 0; border-bottom: 2rpx solid #fafafa; }
 .pi-name { font-size: 30rpx; color: #33373d; }

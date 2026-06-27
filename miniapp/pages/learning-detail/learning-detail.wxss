@@ -8,9 +8,9 @@
 .info-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .field-row { display: flex; align-items: flex-start; gap: 20rpx; padding: 18rpx 0; border-bottom: 2rpx solid #f5f5f5; }
 .field-row:last-child { border-bottom: none; }
-.field-label { font-size: 28rpx; color: #9aa6b2; width: 140rpx; flex-shrink: 0; line-height: 1.5; }
+.field-label { font-size: 28rpx; color: #666; width: 140rpx; flex-shrink: 0; line-height: 1.5; }
 .field-val { font-size: 30rpx; color: #1f2329; flex: 1; line-height: 1.5; }
-.field-val.tag { font-size: 24rpx; font-weight: 600; padding: 4rpx 18rpx; border-radius: 10rpx; display: inline-block; width: auto; flex: none; }
+.field-val.tag { font-size: 26rpx; font-weight: 600; padding: 4rpx 18rpx; border-radius: 10rpx; display: inline-block; width: auto; flex: none; }
 .field-val.tag.internal { background: #FFF3DC; color: #C77800; }
 .field-val.tag.street { background: #EBF5FB; color: #2980B9; }
 .field-val.tag.special { background: #FDF2E9; color: #E67E22; }
@@ -18,14 +18,14 @@
 /* 进度卡片 */
 .progress-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .pr-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
-.pr-label { font-size: 28rpx; color: #8a96a3; }
+.pr-label { font-size: 28rpx; color: #666; }
 .pr-pct { font-size: 32rpx; font-weight: 700; color: #C77800; }
 .pr-bar { background: #f0f0f0; border-radius: 8rpx; height: 14rpx; overflow: hidden; }
 .pr-fill { height: 100%; border-radius: 8rpx; background: #FFA800; }
 
 /* 内容说明 */
 .content-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
-.cc-label { font-size: 28rpx; color: #9aa6b2; display: block; margin-bottom: 12rpx; }
+.cc-label { font-size: 28rpx; color: #666; display: block; margin-bottom: 12rpx; }
 .cc-text { font-size: 32rpx; color: #33373d; line-height: 1.8; }
 
 /* 签到 */
@@ -38,9 +38,9 @@
 .sign-row { display: flex; align-items: center; justify-content: space-between; padding: 14rpx; border-radius: 12rpx; }
 .sign-row.done { background: #f9f9f9; }
 .sign-name { font-size: 30rpx; color: #1f2329; }
-.sign-status { font-size: 24rpx; font-weight: 600; }
+.sign-status { font-size: 26rpx; font-weight: 600; }
 .sign-status.ok { color: #27AE60; }
-.sign-status.wait { color: #c4ccd4; }
+.sign-status.wait { color: #999; }
 .sign-my { padding-top: 16rpx; border-top: 2rpx solid #f0f0f0; text-align: center; }
 .btn-signin { width: 100%; height: 84rpx; line-height: 84rpx; border-radius: 42rpx; background: #fff; color: #C77800; border: 2rpx solid #FFA800; font-size: 30rpx; font-weight: 600; margin: 0; }
 .btn-signin::after { border: none; }
@@ -53,12 +53,12 @@
 .ev-list { display: flex; flex-direction: column; gap: 8rpx; }
 .ev-item { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 18rpx; background: #fafbfc; border-radius: 12rpx; font-size: 28rpx; color: #444; }
 .ev-name { flex: 1; min-width: 0; word-break: break-all; }
-.ev-del { font-size: 34rpx; color: #ccc; margin-left: 16rpx; flex-shrink: 0; }
-.ev-empty { font-size: 26rpx; color: #b3bcc6; text-align: center; padding: 16rpx 0; }
+.ev-del { font-size: 34rpx; color: #999; margin-left: 16rpx; flex-shrink: 0; }
+.ev-empty { font-size: 26rpx; color: #777; text-align: center; padding: 16rpx 0; }
 
 /* 操作区 */
 .action-card { background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
-.ac-hint { font-size: 28rpx; color: #9aa6b2; display: block; margin-bottom: 20rpx; }
+.ac-hint { font-size: 28rpx; color: #666; display: block; margin-bottom: 20rpx; }
 .btn-primary { width: 100%; height: 96rpx; line-height: 96rpx; border-radius: 48rpx; background: #FFA800; color: #fff; font-size: 34rpx; font-weight: 600; border: none; margin: 0; }
 .btn-primary.finish { background: #5DADE2; }
 .btn-primary::after { border: none; }
@@ -73,8 +73,8 @@
 .delete-link { font-size: 28rpx; color: #E74C3C; }
 
 /* 复用 */
-.empty-state { padding: 80rpx; text-align: center; color: #b3bcc6; font-size: 32rpx; }
-.stage-pill { font-size: 24rpx; font-weight: 600; padding: 6rpx 18rpx; border-radius: 12rpx; white-space: nowrap; }
+.empty-state { padding: 80rpx; text-align: center; color: #777; font-size: 32rpx; }
+.stage-pill { font-size: 26rpx; font-weight: 600; padding: 6rpx 18rpx; border-radius: 12rpx; white-space: nowrap; }
 .stage-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .stage-pill.ongoing { background: #EBF5FB; color: #2980B9; }
-.stage-pill.ended { background: #F0F0F0; color: #888; }
+.stage-pill.ended { background: #F0F0F0; color: #666; }

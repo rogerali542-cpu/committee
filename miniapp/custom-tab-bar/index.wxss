@@ -12,12 +12,12 @@
   align-items: center; justify-content: center;
   gap: 3px;
 }
-.tab-icon { font-size: 22px; }
-.tab-text { font-size: 11px; color: #999; }
+.tab-icon { font-size: 44rpx; }
+.tab-text { font-size: 26rpx; color: #999; }
 .tab-item.active .tab-text { color: #FFA800; font-weight: 600; }
 .tab-badge {
   position: absolute; top: 4px; right: 50%; margin-right: -24px;
   min-width: 18px; height: 18px; line-height: 18px; text-align: center;
-  background: #E74C3C; color: #fff; font-size: 10px; font-weight: 700;
+  background: #E74C3C; color: #fff; font-size: 26rpx; font-weight: 700;
   border-radius: 9px; padding: 0 5px;
 }

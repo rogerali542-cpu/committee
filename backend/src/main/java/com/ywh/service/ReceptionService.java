@@ -286,19 +286,21 @@ public class ReceptionService {
             m.put("id", ev.getId());
             m.put("fileName", ev.getFileName());
             m.put("fileType", ev.getFileType());
+            m.put("fileUrl", ev.getFileUrl());
             return m;
         }).collect(Collectors.toList());
     }
 
     @Transactional
-    public Map<String, Object> addEvidence(Long recordId, String fileName, String fileType) {
+    public Map<String, Object> addEvidence(Long recordId, String fileName, String fileType, String fileUrl) {
         ReceptionEvidence ev = ReceptionEvidence.builder()
-                .recordId(recordId).fileName(fileName).fileType(fileType).build();
+                .recordId(recordId).fileName(fileName).fileType(fileType).fileUrl(fileUrl).build();
         ev = evRepo.save(ev);
         Map<String, Object> m = new HashMap<>();
         m.put("id", ev.getId());
         m.put("fileName", ev.getFileName());
         m.put("fileType", ev.getFileType());
+        m.put("fileUrl", ev.getFileUrl());
         return m;
     }
 

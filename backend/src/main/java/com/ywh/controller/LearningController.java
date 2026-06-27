@@ -68,8 +68,9 @@ public class LearningController {
     @PostMapping("/{id}/evidences")
     public Result<Map<String, Object>> addEvidence(@PathVariable Long id,
                                                     @RequestParam String fileName,
-                                                    @RequestParam String fileType) {
-        return Result.ok(service.addEvidence(id, fileName, fileType));
+                                                    @RequestParam String fileType,
+                                                    @RequestParam(required = false) String fileUrl) {
+        return Result.ok(service.addEvidence(id, fileName, fileType, fileUrl));
     }
 
     @DeleteMapping("/{id}/evidences/{evId}")

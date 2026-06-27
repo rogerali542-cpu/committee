@@ -2,8 +2,6 @@ const api = require('../../utils/api');
 
 const POLL_INTERVAL = 1500;
 const MAX_POLL_COUNT = 120;
-const TOPIC_REPORT_POLL_INTERVAL = 2000;
-const TOPIC_REPORT_MAX_POLL = 120;
 const QUICK_STATE_PREFIX = 'committee_quick_meeting_state_';
 
 function voteHintText(hint) {
@@ -160,6 +158,8 @@ function mapTopic(hit, fallback, voteTotal) {
     voteCounted: voteFor + voteAgainst + voteAbstain,
     aiVote: aiVote,
     aiVoteLabel: aiVoteLabel,
+    // 表决类议题且 AI 未能确定（无票数来源或结果不明）时，提示主任核对
+    needsReview: voteRequired && (result === 'unclear' || !aiVote),
     confidence: confidence,
     matchConfidence: matchConfidence,
     reviewLevel: (hit && hit.reviewLevel) || (matchedSegments.length ? 'review' : 'empty'),
@@ -209,9 +209,6 @@ Page({
 
     presetTopics: [],
     aiTopics: [],
-    detailOpen: false,
-    detailGroup: '',
-    detailIndex: -1,
     transcript: [],
     transcriptPreview: '',
     transcriptFullText: '',
@@ -219,6 +216,11 @@ Page({
     transcriptVisible: false,
     transcriptMode: 'short',
     ending: false,
+    // 重做后的「最后一步」：AI 纪要审核
+    minutesGenerated: false,   // 是否已生成 AI 纪要草稿
+    generatingMinutes: false,  // 生成中（按钮 loading 态）
+    minutesDraft: '',          // AI 纪要草稿正文
+    extraOpen: false,          // 「AI 额外发现」是否展开
 
     // 角色 / 资料 / 实时议题 / 录音列表
     isChair: false,
@@ -252,7 +254,6 @@ Page({
     this.persistQuickState();
     this.clearTimer();
     this.clearPoll();
-    this.clearTopicReportPolls();
     if (this.data.recording && this.recorder) {
       try { this.recorder.stop(); } catch (e) {}
     }
@@ -578,22 +579,6 @@ Page({
     }
   },
 
-  clearTopicReportPoll(taskKey) {
-    if (!this._topicReportTimers) this._topicReportTimers = {};
-    if (this._topicReportTimers[taskKey]) {
-      clearTimeout(this._topicReportTimers[taskKey]);
-      delete this._topicReportTimers[taskKey];
-    }
-  },
-
-  clearTopicReportPolls() {
-    const timers = this._topicReportTimers || {};
-    Object.keys(timers).forEach(function (key) {
-      clearTimeout(timers[key]);
-    });
-    this._topicReportTimers = {};
-  },
-
   fmt(s) {
     const m = Math.floor(s / 60);
     return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
@@ -743,8 +728,13 @@ Page({
       this._pollCount += 1;
       if (this._pollCount > MAX_POLL_COUNT) {
         this.clearPoll();
-        this.setData({ polling: false, processText: '转写超时，请稍后重试' });
-        wx.showToast({ title: '转写超时', icon: 'none' });
+        this.setData({ polling: false, asrStatus: 'failed', processText: '转写超时' });
+        wx.showModal({
+          title: '转写超时',
+          content: '这条录音长时间没有完成转写，可能是录音里没有有效语音或网络较慢。请换一条录音，或返回上一步重新录音。',
+          confirmText: '知道了',
+          showCancel: false
+        });
         return;
       }
       try {
@@ -794,6 +784,26 @@ Page({
       processText: '转写完成，正在抽取议题与表决提示...'
     });
     this.persistQuickState();
+
+    // 先取转写原文，判断是否「空转写」（录音里没有可识别的说话声）。
+    // 豆包对静音/无效音频也会返回 done，但识别结果为空——此时必须提示用户，而不是继续抽取出空议题。
+    let transcript = null;        // null = 取原文失败(网络等)，不据此判空，避免误报
+    try {
+      if (typeof api.committeeQuickTranscript === 'function') {
+        const raw = await api.committeeQuickTranscript(this.meetingId);
+        transcript = this.mapTranscript(raw);
+      }
+    } catch (e) { transcript = null; }
+
+    if (transcript) {
+      const hasText = transcript.some(function (seg) { return seg.text && seg.text.trim(); });
+      if (!hasText) {
+        this.handleAsrEmpty();
+        return;
+      }
+    }
+
+    // 有文字（或取原文失败的兜底）→ 抽取议题与表决提示
     try {
       const extraction = await api.committeeQuickExtract(this.meetingId);
       const mapped = this.mapExtraction(extraction);
@@ -812,15 +822,37 @@ Page({
       return;
     }
 
-    // 转写原文：best-effort，失败不影响主流程
-    try {
-      if (typeof api.committeeQuickTranscript === 'function') {
-        const transcript = await api.committeeQuickTranscript(this.meetingId);
-        const mappedTranscript = this.mapTranscript(transcript);
-        this.setData(Object.assign({ transcript: mappedTranscript }, this.buildTranscriptState(mappedTranscript)));
-        this.persistQuickState();
-      }
-    } catch (e) { /* 忽略：原文展示是附加功能 */ }
+    // 渲染转写原文（前面已取到则直接用）
+    if (transcript) {
+      this.setData(Object.assign({ transcript: transcript }, this.buildTranscriptState(transcript)));
+      this.persistQuickState();
+    }
+  },
+
+  // 空转写：录音里没有识别到可转写的语音——停止轮询、明确弹窗、允许换录音重试
+  handleAsrEmpty() {
+    this.clearPoll();
+    this._asrDoneHandled = false;   // 允许换一条录音/重新录音后再次转写
+    this.setData({
+      uploading: false,
+      polling: false,
+      extracting: false,
+      generated: false,
+      asrStatus: 'empty',
+      taskId: '',
+      transcript: [],
+      transcriptPreview: '',
+      transcriptFullText: '',
+      transcriptCharCount: 0,
+      processText: '未检测到有效语音'
+    });
+    this.persistQuickState();
+    wx.showModal({
+      title: '没有识别到语音',
+      content: '这条录音里没有听到可转写的说话声，可能是录到了静音、杂音，或录音太短。请换一条录音，或返回上一步重新录音。',
+      confirmText: '知道了',
+      showCancel: false
+    });
   },
 
   // 转写结果（说话人+时间+文本）转成可渲染列表
@@ -914,34 +946,6 @@ Page({
     this.persistQuickState();
   },
 
-  toggleConfirm(e) {
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const list = this.data[key].slice();
-    const idx = Number(ds.idx);
-    const item = list[idx];
-    if (item && item.voteRequired && !item.confirmed) {
-      const counted = Number(item.voteCounted) || 0;
-      if (!this.data.voteTotal || counted !== this.data.voteTotal) {
-        wx.showToast({ title: '请先填写与实到人数一致的票数', icon: 'none' });
-        return;
-      }
-    }
-    list[idx] = Object.assign({}, list[idx], { confirmed: !list[idx].confirmed });
-    this.setData({ [key]: list });
-    this.persistQuickState();
-    this.saveQuickConfirmToServer(true);
-  },
-
-  // 列表点议题 → 打开全屏详情面板
-  openTopicDetail(e) {
-    const ds = e.currentTarget.dataset;
-    this.setData({ detailOpen: true, detailGroup: ds.group, detailIndex: Number(ds.idx) });
-  },
-  closeTopicDetail() {
-    this.setData({ detailOpen: false });
-  },
-
   // 采纳疑似新议题：主任选类型 → 调用现场添加议题接口建真实议题 → 并入正式议题列表
   adoptCandidate(e) {
     if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可立项', icon: 'none' }); return; }
@@ -975,7 +979,7 @@ Page({
           const presetTopics = (this.data.presetTopics || []).concat([adopted]);
           const aiTopics = (this.data.aiTopics || []).slice();
           aiTopics.splice(idx, 1);
-          this.setData({ presetTopics: presetTopics, aiTopics: aiTopics, detailOpen: false });
+          this.setData({ presetTopics: presetTopics, aiTopics: aiTopics });
           this.persistQuickState();
           wx.showToast({ title: '已立项为' + c.label, icon: 'success' });
         } catch (err) {
@@ -985,206 +989,12 @@ Page({
     });
   },
 
-  // 按需：让大模型把该议题命中片段整理成书面正文，填进 summaryDraft（主要用于通报/讨论）
-  async summarizeTopic(e) {
-    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可整理议题报告', icon: 'none' }); return; }
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const list = this.data[key].slice();
-    const t = list[idx];
-    if (!t || t.summarizing) return;
-    const segmentIndexes = (t.segmentMatches || []).map(function (s) { return s.segmentIndex; });
-    const segmentTexts = (t.segmentMatches || []).map(function (s) {
-      return s.text || '';
-    }).filter(Boolean);
-    if (!segmentIndexes.length) { wx.showToast({ title: '暂无可整理的片段', icon: 'none' }); return; }
-    list[idx] = Object.assign({}, t, { summarizing: true });
-    this.setData({ [key]: list });
-    try {
-      const task = await api.committeeQuickTopicSummaryTask(this.meetingId, {
-        title: t.title, type: t.type, segmentIndexes: segmentIndexes, segmentTexts: segmentTexts
-      });
-      if (!task || !task.taskId) throw new Error('未获取到生成任务');
-      const taskKey = key + ':' + idx;
-      this.clearTopicReportPoll(taskKey);
-      this.pollTopicSummaryTask(taskKey, key, idx, task.taskId, 0);
-      wx.showToast({ title: '已开始生成', icon: 'none' });
-      return;
-    } catch (err) {
-      const next = this.data[key].slice();
-      next[idx] = Object.assign({}, next[idx], { summarizing: false });
-      this.setData({ [key]: next });
-      wx.showToast({ title: err.message || '生成失败', icon: 'none' });
-    }
-  },
-
-  // 忽略疑似新议题：移出待研判区，不进纪要
-  pollTopicSummaryTask(taskKey, key, idx, taskId, count) {
-    const self = this;
-    this._topicReportTimers = this._topicReportTimers || {};
-    const tick = async function () {
-      try {
-        const task = await api.committeeQuickTopicSummaryTaskStatus(self.meetingId, taskId);
-        const list = (self.data[key] || []).slice();
-        if (!list[idx]) {
-          self.clearTopicReportPoll(taskKey);
-          return;
-        }
-        if (task && task.status === 'succeeded') {
-          list[idx] = Object.assign({}, list[idx], {
-            summarizing: false,
-            summaryDraft: task.result || list[idx].summaryDraft,
-            summaryAi: !!task.result,
-            summaryTaskId: taskId
-          });
-          self.setData({ [key]: list });
-          self.persistQuickState();
-          self.clearTopicReportPoll(taskKey);
-          wx.showToast({ title: '已生成', icon: 'success' });
-          return;
-        }
-        if (task && task.status === 'failed') {
-          list[idx] = Object.assign({}, list[idx], { summarizing: false, summaryTaskId: taskId });
-          self.setData({ [key]: list });
-          self.persistQuickState();
-          self.clearTopicReportPoll(taskKey);
-          wx.showToast({ title: task.message || '生成失败', icon: 'none' });
-          return;
-        }
-        if (count >= TOPIC_REPORT_MAX_POLL) {
-          list[idx] = Object.assign({}, list[idx], { summarizing: false, summaryTaskId: taskId });
-          self.setData({ [key]: list });
-          self.persistQuickState();
-          self.clearTopicReportPoll(taskKey);
-          wx.showToast({ title: '生成时间较长，请稍后重试', icon: 'none' });
-          return;
-        }
-        self._topicReportTimers[taskKey] = setTimeout(function () {
-          self.pollTopicSummaryTask(taskKey, key, idx, taskId, count + 1);
-        }, TOPIC_REPORT_POLL_INTERVAL);
-      } catch (err) {
-        if (count >= 3) {
-          const list = (self.data[key] || []).slice();
-          if (list[idx]) {
-            list[idx] = Object.assign({}, list[idx], { summarizing: false, summaryTaskId: taskId });
-            self.setData({ [key]: list });
-            self.persistQuickState();
-          }
-          self.clearTopicReportPoll(taskKey);
-          wx.showToast({ title: err.message || '查询生成状态失败', icon: 'none' });
-          return;
-        }
-        self._topicReportTimers[taskKey] = setTimeout(function () {
-          self.pollTopicSummaryTask(taskKey, key, idx, taskId, count + 1);
-        }, TOPIC_REPORT_POLL_INTERVAL);
-      }
-    };
-    tick();
-  },
-
-  // 人工修改议题名称（主任/副主任）：AI 推测标题不准、预设标题写错时改名
-  renameTopic(e) {
-    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可改名', icon: 'none' }); return; }
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const t = (this.data[key] || [])[idx];
-    if (!t) return;
-    const self = this;
-    wx.showModal({
-      title: '修改议题名称',
-      editable: true,
-      placeholderText: '请输入议题名称',
-      content: t.title || '',
-      success: function (res) {
-        if (!res.confirm) return;
-        const title = (res.content || '').trim();
-        if (!title) { wx.showToast({ title: '名称不能为空', icon: 'none' }); return; }
-        if (title === t.title) return;
-        const apply = function () {
-          const list = self.data[key].slice();
-          if (!list[idx]) return;
-          list[idx] = Object.assign({}, list[idx], { title: title, confirmed: false });
-          self.setData({ [key]: list });
-          self.persistQuickState();
-        };
-        // 候选议题还不是库内真实议题（无数字 id），只本地改、采纳时带入；预设议题走后端改名落库
-        const numericId = Number(t.id);
-        if (key === 'aiTopics' || !numericId) { apply(); return; }
-        api.committeeRenameTopic(self.meetingId, numericId, title)
-          .then(function () { apply(); self.saveQuickConfirmToServer(true); wx.showToast({ title: '已修改', icon: 'success' }); })
-          .catch(function (err) { wx.showToast({ title: err.message || '修改失败', icon: 'none' }); });
-      }
-    });
-  },
-
-  // ── 人工编辑议题报告正文：AI 不是唯一来源，未匹配/AI 不准时可手写或改写 ──
-  editTopicSummary(e) {
-    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可编辑议题报告', icon: 'none' }); return; }
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const list = this.data[key].slice();
-    const t = list[idx];
-    if (!t || t.summarizing) return;
-    list[idx] = Object.assign({}, t, {
-      summaryEditing: true,
-      summaryEditText: t.summaryDraft && t.summaryDraft.indexOf('暂无明确匹配') < 0 ? t.summaryDraft : ''
-    });
-    this.setData({ [key]: list });
-  },
-
-  onSummaryInput(e) {
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const list = this.data[key].slice();
-    if (!list[idx]) return;
-    list[idx] = Object.assign({}, list[idx], { summaryEditText: e.detail.value });
-    this.setData({ [key]: list });
-  },
-
-  cancelTopicSummary(e) {
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const list = this.data[key].slice();
-    if (!list[idx]) return;
-    list[idx] = Object.assign({}, list[idx], { summaryEditing: false });
-    this.setData({ [key]: list });
-  },
-
-  saveTopicSummary(e) {
-    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可编辑议题报告', icon: 'none' }); return; }
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const list = this.data[key].slice();
-    const t = list[idx];
-    if (!t) return;
-    const text = (t.summaryEditText || '').trim();
-    if (!text) { wx.showToast({ title: '议题报告不能为空', icon: 'none' }); return; }
-    // 人工改过内容后取消已确认状态，要求重新确认，避免改完忘了再确认
-    list[idx] = Object.assign({}, t, {
-      summaryDraft: text,
-      summaryAi: true,
-      summaryEdited: true,
-      summaryEditing: false,
-      confirmed: false
-    });
-    this.setData({ [key]: list });
-    this.persistQuickState();
-    this.saveQuickConfirmToServer(true);
-    wx.showToast({ title: '已保存，请重新确认', icon: 'none' });
-  },
-
   ignoreCandidate(e) {
     const idx = Number(e.currentTarget.dataset.idx);
     const aiTopics = (this.data.aiTopics || []).slice();
     if (idx < 0 || idx >= aiTopics.length) return;
     aiTopics.splice(idx, 1);
-    this.setData({ aiTopics: aiTopics, detailOpen: false });
+    this.setData({ aiTopics: aiTopics });
     this.persistQuickState();
   },
 
@@ -1197,9 +1007,12 @@ Page({
     list[idx] = Object.assign({}, list[idx], {
       result: result,
       resultLabel: resultLabel(result),
+      needsReview: result === 'unclear',
       confirmed: false
     });
-    this.setData({ [key]: list });
+    const patch = { [key]: list };
+    if (this.data.minutesGenerated) patch.minutesGenerated = false; // 结果已改，草稿作废
+    this.setData(patch);
     this.persistQuickState();
   },
 
@@ -1220,6 +1033,7 @@ Page({
       voteCounted: counted,
       result,
       resultLabel: resultLabel(result),
+      needsReview: result === 'unclear',
       confirmed: false
     });
   },
@@ -1242,48 +1056,9 @@ Page({
     }
     topic[field] = next;
     list[idx] = this.recalcVoteTopic(topic);
-    this.setData({ [key]: list });
-    this.persistQuickState();
-  },
-
-  refreshTopicMatchMeta(topic) {
-    const matches = topic.segmentMatches || [];
-    const maxScore = matches.reduce(function (max, seg) {
-      return typeof seg.score === 'number' ? Math.max(max, seg.score) : max;
-    }, -1);
-    return decorateEvidence(Object.assign({}, topic, {
-      matchedSegments: matches.map(function (seg) { return seg.segmentIndex; }),
-      matchedCount: matches.length,
-      matchConfidence: maxScore >= 0 ? maxScore : null,
-      reviewLevel: matches.length ? 'review' : 'empty',
-      reviewLevelLabel: reviewLevelLabel(matches.length ? 'review' : 'empty'),
-      confirmed: false
-    }));
-  },
-
-  toggleTopicEvidence(e) {
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const idx = Number(ds.idx);
-    const list = this.data[key].slice();
-    if (!list[idx]) return;
-    const topic = Object.assign({}, list[idx], { evidenceExpanded: !list[idx].evidenceExpanded });
-    list[idx] = decorateEvidence(topic);
-    this.setData({ [key]: list });
-    this.persistQuickState();
-  },
-
-  removeMatchedSegment(e) {
-    const ds = e.currentTarget.dataset;
-    const key = ds.group === 'ai' ? 'aiTopics' : 'presetTopics';
-    const topicIndex = Number(ds.topicIndex);
-    const segmentIndex = Number(ds.segmentIndex);
-    const topics = this.data[key].slice();
-    const topic = Object.assign({}, topics[topicIndex]);
-    const matches = (topic.segmentMatches || []).slice();
-    topic.segmentMatches = matches.filter(function (seg) { return Number(seg.segmentIndex) !== segmentIndex; });
-    topics[topicIndex] = this.refreshTopicMatchMeta(topic);
-    this.setData({ [key]: topics });
+    const patch = { [key]: list };
+    if (this.data.minutesGenerated) patch.minutesGenerated = false; // 票数已改，草稿作废
+    this.setData(patch);
     this.persistQuickState();
   },
 
@@ -1306,117 +1081,108 @@ Page({
     };
   },
 
-  allPresetTopicsConfirmed() {
-    const topics = this.data.presetTopics || [];
-    return topics.length > 0 && topics.every(function (t) { return !!t.confirmed; });
-  },
-
-  async saveQuickConfirmToServer(silent) {
-    if (!this.data.isChair || this.data.currentStep !== 4 || typeof api.committeeQuickConfirm !== 'function') return false;
-    try {
-      await api.committeeQuickConfirm(this.meetingId, this.buildConfirmPayload());
-      return true;
-    } catch (e) {
-      if (!silent) wx.showToast({ title: e.message || '同步确认失败', icon: 'none' });
-      return false;
-    }
-  },
-
   // 仅查看已保存的纪要草稿，不触发重新生成
   viewMinutes() {
-    wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
+    wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick&view=1' });
   },
 
-  // 免确认·一键生成纪要草稿（主任）：不要求逐项确认完成，直接用当前结果调大模型出草稿。
-  // 明确是「预览能力」——产出标注为草稿，最终仍以结束会议时的正式纪要为准。
-  async generateDraftNoConfirm() {
-    if (!this.data.isChair) {
-      wx.showToast({ title: '仅主任/副主任可生成草稿', icon: 'none' });
-      return;
-    }
-    if (!this.data.generated) {
-      wx.showToast({ title: '请先完成录音转写与议题抽取', icon: 'none' });
-      return;
-    }
+  // ── 重做后的「最后一步」：表决核对 / 生成纪要 / 结束会议 ──
+
+  // 展开/收起某个议题的票数核对
+  toggleReview(e) {
+    const idx = Number(e.currentTarget.dataset.idx);
+    const list = (this.data.presetTopics || []).slice();
+    if (!list[idx]) return;
+    list[idx] = Object.assign({}, list[idx], { _reviewOpen: !list[idx]._reviewOpen });
+    this.setData({ presetTopics: list });
+  },
+
+  // 展开/收起「AI 额外发现」
+  toggleExtra() {
+    this.setData({ extraOpen: !this.data.extraOpen });
+  },
+
+  // 用 AI 生成会议纪要草稿（主任主动点击；等待大模型属预期内，按钮显示「生成中」）
+  async generateMinutes() {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可生成纪要', icon: 'none' }); return; }
+    if (!this.data.generated) { wx.showToast({ title: '请先完成录音转写', icon: 'none' }); return; }
+    this.setData({ generatingMinutes: true });
     const payload = this.buildConfirmPayload();
-    let syncError = null;
-    let fallbackNote = '';
-    wx.showLoading({ title: 'AI生成草稿中…', mask: true });
+    // 1) 先把(含已核对的)票数/结果快速落库（不依赖大模型）；失败则停下
     try {
-      // 先把当前(可能未逐项确认的)结果落库，再让大模型出草稿
       await api.committeeQuickConfirm(this.meetingId, payload);
-      if (typeof api.committeeQuickPolish === 'function') {
-        const polishResult = await api.committeeQuickPolish(this.meetingId, payload);
-        // 规则兜底也算生成成功，仅作提示，不阻断跳转
-        if (polishResult && polishResult.fallbackUsed) {
-          fallbackNote = polishResult.errorMessage || '大模型暂不可用，已用规则兜底生成草稿';
+    } catch (e) {
+      this.setData({ generatingMinutes: false });
+      wx.showToast({ title: (e && e.message) || '保存失败', icon: 'none' });
+      return;
+    }
+    // 2) 跳转纪要页：由纪要页（gen=1）统一调用大模型生成并显示"生成中"，
+    //    这里不再 fire 一次，避免重复生成 / 两份结果竞争写库。
+    this.setData({ generatingMinutes: false, minutesGenerated: true });
+    this.persistQuickState();
+    wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick&gen=1' });
+  },
+
+  // 确认无误，结束会议（纪要已生成，结束本身不再等大模型）
+  // 共用：落库当前结果 + 结束会议，然后跳转到指定页面（结束本身不再等大模型）
+  async _doEndAndGo(navUrl) {
+    this.setData({ ending: true });
+    try {
+      // 把最新(可能刚核对过的)结果再存一次，确保归档与展示一致
+      try { await api.committeeQuickConfirm(this.meetingId, this.buildConfirmPayload()); } catch (ce) { /* ignore */ }
+      try {
+        await api.committeeAdvance(this.meetingId, 'end');
+      } catch (ae) {
+        const msg = (ae && ae.message) || '';
+        const alreadyEnded = msg.indexOf('仅进行中') >= 0 || msg.indexOf('已结束') >= 0 || msg.indexOf('ended') >= 0;
+        if (!alreadyEnded) {
+          this.setData({ ending: false });
+          wx.showModal({ title: '结束会议失败', content: msg || '请稍后重试', showCancel: false });
+          return;
         }
       }
-    } catch (e) {
-      syncError = e;
-    } finally {
-      wx.hideLoading();
+      this.clearQuickState();
+      wx.redirectTo({ url: navUrl });
+    } catch (err) {
+      this.setData({ ending: false });
+      wx.showModal({ title: '结束会议失败', content: (err && err.message) || '请稍后重试', showCancel: false });
     }
-    if (syncError) {
-      wx.showToast({ title: syncError.message || '草稿生成失败', icon: 'none' });
-      return;
-    }
-    const pending = (this.data.presetTopics || []).filter(function (t) { return !t.confirmed; }).length;
-    const okMsg = fallbackNote || (pending ? '草稿已生成（' + pending + ' 项未确认）' : '草稿已生成');
-    wx.showToast({ title: okMsg, icon: 'none' });
+  },
+
+  // 确认无误，结束会议（AI 草稿已生成并落库，结束后直接看纪要）
+  confirmEndMeeting() {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可结束会议', icon: 'none' }); return; }
+    const that = this;
+    wx.showModal({
+      title: '结束会议',
+      content: '确认结束本次会议并归档纪要吗？',
+      confirmText: '确认结束',
+      cancelText: '再想想',
+      success: function (res) {
+        // 结束后跳到会议详情页（公示页面），主任可在此「发起公示」
+        if (res.confirm) that._doEndAndGo('/pages/committee-detail/committee-detail?id=' + that.meetingId);
+      }
+    });
+  },
+
+  // 手写会议纪要（不显眼入口）：不结束会议，直接进纪要页手写/编辑。
+  // （会议进行中即可编辑；结束在纪要页点"确认纪要无误，结束会议"。早先"先结束再进"依赖结束接口，结束失败就进不去，故改为直接进编辑。）
+  writeMinutes() {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可操作', icon: 'none' }); return; }
     wx.navigateTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
   },
 
-  endMeeting() {
-    if (!this.data.isChair) {
-      wx.showToast({ title: '仅主任/副主任可确认表决并结束', icon: 'none' });
-      return;
-    }
-    const unconfirmed = (this.data.presetTopics || []).filter(function (t) { return !t.confirmed; });
-    const pendingCandidates = (this.data.aiTopics || []).length;
-    if (unconfirmed.length) {
-      wx.showToast({ title: '请先确认全部议题', icon: 'none' });
-      return;
-    }
-    let warn = '';
-    if (pendingCandidates) warn += '还有 ' + pendingCandidates + ' 个疑似新议题未研判（需采纳或忽略）；';
+  // 先结束会议，纪要后续补充（不显眼入口）：只结束会议，纪要稍后在纪要页补充/修改
+  endThenSupplement() {
+    if (!this.data.isChair) { wx.showToast({ title: '仅主任/副主任可操作', icon: 'none' }); return; }
+    const that = this;
     wx.showModal({
-      title: '结束会议',
-      content: warn ? (warn + '可继续生成纪要并结束，但这些内容不会进入会议纪要。') : '确认生成正式会议纪要并结束本次会议？系统将调用大模型根据会议内容润色纪要。',
-      confirmText: '生成并结束',
+      title: '先结束会议',
+      content: '先结束本次会议，会议纪要可稍后在纪要页补充或修改。继续吗？',
+      confirmText: '结束会议',
       cancelText: '再想想',
-      success: async (res) => {
-        if (!res.confirm) return;
-        this.setData({ ending: true });
-        const confirmPayload = this.buildConfirmPayload();
-        // 1) 尽力保存确认结果（失败不阻断结束；polish 会再保存一次）
-        try {
-          if (typeof api.committeeQuickConfirm === 'function') {
-            await api.committeeQuickConfirm(this.meetingId, confirmPayload);
-          }
-        } catch (ce) { /* ignore */ }
-        // 2) 结束会议（核心）。若因"已是结束态"报错则视为已结束；其它错误明确弹窗提示并停下。
-        let ended = false;
-        try {
-          await api.committeeAdvance(this.meetingId, 'end');
-          ended = true;
-        } catch (ae) {
-          const msg = (ae && ae.message) || '';
-          if (msg.indexOf('仅进行中') >= 0 || msg.indexOf('已结束') >= 0 || msg.indexOf('ended') >= 0) {
-            ended = true;
-          } else {
-            this.setData({ ending: false });
-            wx.showModal({ title: '结束会议失败', content: msg || '请稍后重试', showCancel: false });
-            return;
-          }
-        }
-        this.clearQuickState();
-        // 3) 纪要由后端在后台生成——只触发、不 await（大模型慢/挂都不会卡住结束与跳转）
-        if (typeof api.committeeQuickPolish === 'function') {
-          api.committeeQuickPolish(this.meetingId, confirmPayload).catch(function () {});
-        }
-        // 4) 立即跳转到会议纪要页（纪要稍后由后端生成）
-        wx.redirectTo({ url: '/pages/minutes/minutes?meetingId=' + this.meetingId + '&from=meeting-live-quick' });
+      success: function (res) {
+        if (res.confirm) that._doEndAndGo('/pages/minutes/minutes?meetingId=' + that.meetingId + '&from=meeting-live-quick&view=1');
       }
     });
   },
@@ -1494,26 +1260,10 @@ Page({
     } catch (e) { wx.showToast({ title: e.message || '添加失败', icon: 'none' }); }
   },
 
-  // ── 居委会签字 / 线下佐证（结束步）──
+  // ── 居委会签字（结束步）──
   async toggleJuwei() {
     try { await api.committeeToggleJuwei(this.meetingId); this.loadDetail(); }
     catch (e) { wx.showToast({ title: e.message || '操作失败', icon: 'none' }); }
-  },
-  addEvidence() {
-    const that = this;
-    wx.chooseImage({
-      count: 1, sizeType: ['compressed'], sourceType: ['album', 'camera'],
-      success: async function () {
-        const name = 'IMG_' + new Date().getTime() + '.jpg';
-        try { await api.committeeAddEvidence(that.meetingId, name, '照片'); that.loadDetail(); }
-        catch (e) { wx.showToast({ title: e.message || '上传失败', icon: 'none' }); }
-      }
-    });
-  },
-  async removeEvidence(e) {
-    const evId = e.currentTarget.dataset.evId;
-    try { await api.committeeRemoveEvidence(this.meetingId, evId); this.loadDetail(); }
-    catch (err) { wx.showToast({ title: err.message || '删除失败', icon: 'none' }); }
   },
 
   // ── 导出签到名单（写临时 CSV → 转发/复制）──

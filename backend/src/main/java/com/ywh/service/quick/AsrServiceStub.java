@@ -6,7 +6,10 @@ import com.ywh.service.CommitteeService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,8 +26,8 @@ public class AsrServiceStub implements AsrService {
 
     // taskId -> 任务态
     private final ConcurrentHashMap<String, AsrTaskVO> tasks = new ConcurrentHashMap<>();
-    // meetingId -> 转写结果
-    private final ConcurrentHashMap<Long, AsrResult> results = new ConcurrentHashMap<>();
+    // meetingId -> { recordingId -> 转写结果 }，与正式实现一致：多条录音分别缓存，result() 合并
+    private final ConcurrentHashMap<Long, ConcurrentHashMap<Long, AsrResult>> recordingResults = new ConcurrentHashMap<>();
 
     @Override
     public AsrTaskVO submit(Long meetingId, String audioRef) {
@@ -39,7 +42,9 @@ public class AsrServiceStub implements AsrService {
         // TODO 接入豆包：此处调用豆包【录音文件识别】异步接口，传 audioRef(对象存储地址)，
         //  开启说话人分离 + 传入热词表(委员姓名/小区术语)，拿到豆包任务ID并落库。
         //  真实实现下，结果由回调或轮询写入；桩里直接造一段假转写并标记 done。
-        results.put(meetingId, mockTranscript(meetingId));
+        long key = recordingId != null ? recordingId : -1L;
+        recordingResults.computeIfAbsent(meetingId, k -> new ConcurrentHashMap<>())
+                .put(key, mockTranscript(meetingId, key));
 
         AsrTaskVO task = AsrTaskVO.builder()
                 .taskId(taskId).meetingId(meetingId).status("done").build();
@@ -58,16 +63,38 @@ public class AsrServiceStub implements AsrService {
 
     @Override
     public AsrResult result(Long meetingId) {
-        return results.get(meetingId);
+        ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
+        if (perRec == null || perRec.isEmpty()) return null;
+        return mergeRecordings(meetingId, perRec);
     }
 
-    // —— 仅桩用：演示转写 ——
-    private AsrResult mockTranscript(Long meetingId) {
+    // 按 recordingId 升序合并多条录音，时间轴累加偏移（与 DoubaoAsrService 一致）
+    private AsrResult mergeRecordings(Long meetingId, Map<Long, AsrResult> perRec) {
+        List<Long> keys = new ArrayList<>(perRec.keySet());
+        keys.sort(Comparator.naturalOrder());
+        List<AsrResult.Segment> merged = new ArrayList<>();
+        long offset = 0;
+        for (Long k : keys) {
+            AsrResult r = perRec.get(k);
+            if (r == null || r.getSegments() == null) continue;
+            long maxEnd = 0;
+            for (AsrResult.Segment s : r.getSegments()) {
+                merged.add(seg(s.getSpeaker(), s.getStartMs() + offset, s.getEndMs() + offset, s.getText()));
+                maxEnd = Math.max(maxEnd, s.getEndMs());
+            }
+            offset += maxEnd;
+        }
+        return AsrResult.builder().meetingId(meetingId).durationSec((int) (offset / 1000)).segments(merged).build();
+    }
+
+    // —— 仅桩用：演示转写（按录音 key 略作区分，便于看出多条已合并）——
+    private AsrResult mockTranscript(Long meetingId, long recKey) {
+        String tag = recKey > 0 ? "（录音" + recKey + "）" : "";
         return AsrResult.builder()
                 .meetingId(meetingId)
                 .durationSec(1800)
                 .segments(List.of(
-                        seg("S1", 0, 8000, "我们先讨论物业费调整这个议题。"),
+                        seg("S1", 0, 8000, tag + "我们先讨论物业费调整这个议题。"),
                         seg("S2", 8200, 12000, "我同意按方案上调。"),
                         seg("S3", 12500, 16000, "我也同意。"),
                         seg("S1", 16500, 22000, "另外有人临时提出增设非机动车停车点，大家看一下。"),

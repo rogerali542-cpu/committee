@@ -65,6 +65,7 @@ public class LearningService {
                 em.put("id", ev.getId());
                 em.put("fileName", ev.getFileName());
                 em.put("fileType", ev.getFileType());
+                em.put("fileUrl", ev.getFileUrl());
                 return em;
             }).collect(Collectors.toList()));
             // 签到
@@ -176,14 +177,15 @@ public class LearningService {
 
     // 佐证
     @Transactional
-    public Map<String, Object> addEvidence(Long id, String fileName, String fileType) {
+    public Map<String, Object> addEvidence(Long id, String fileName, String fileType, String fileUrl) {
         LearningEvidence ev = LearningEvidence.builder()
-                .recordId(id).fileName(fileName).fileType(fileType).build();
+                .recordId(id).fileName(fileName).fileType(fileType).fileUrl(fileUrl).build();
         ev = evRepo.save(ev);
         Map<String, Object> m = new HashMap<>();
         m.put("id", ev.getId());
         m.put("fileName", ev.getFileName());
         m.put("fileType", ev.getFileType());
+        m.put("fileUrl", ev.getFileUrl());
         return m;
     }
 

@@ -44,10 +44,18 @@ public class PublicAudioController {
 
     private MediaType contentType(String filename) {
         String f = filename.toLowerCase();
+        // 图片：使其能在 <img> 显示
+        if (f.endsWith(".jpg") || f.endsWith(".jpeg")) return MediaType.parseMediaType("image/jpeg");
+        if (f.endsWith(".png")) return MediaType.parseMediaType("image/png");
+        if (f.endsWith(".gif")) return MediaType.parseMediaType("image/gif");
+        if (f.endsWith(".webp")) return MediaType.parseMediaType("image/webp");
+        // PDF：可预览
+        if (f.endsWith(".pdf")) return MediaType.parseMediaType("application/pdf");
+        // 音频（原有逻辑）
         if (f.endsWith(".mp3")) return MediaType.parseMediaType("audio/mpeg");
         if (f.endsWith(".wav")) return MediaType.parseMediaType("audio/wav");
-        if (f.endsWith(".m4a") || f.endsWith(".aac")) return MediaType.parseMediaType("audio/aac");
         if (f.endsWith(".ogg")) return MediaType.parseMediaType("audio/ogg");
+        if (f.endsWith(".m4a")) return MediaType.parseMediaType("audio/mp4");
         return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

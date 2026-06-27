@@ -19,14 +19,14 @@
 .noti-item.unread .ni-dot { background: #E74C3C; }
 .ni-body { flex: 1; min-width: 0; }
 .ni-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
-.ni-type { font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 8rpx; }
+.ni-type { font-size: 26rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 8rpx; }
 .ni-type.notice { background: #E8F5E9; color: #2E7D32; }
 .ni-type.material { background: #E3F2FD; color: #1565C0; }
 .ni-type.reception { background: #FFF3E0; color: #E67E22; }
-.ni-time { font-size: 26rpx; color: #9aa6b2; }
+.ni-time { font-size: 26rpx; color: #666; }
 .ni-title { font-size: 34rpx; font-weight: 700; color: #1f2329; display: block; margin-bottom: 6rpx; }
 .ni-content { font-size: 28rpx; color: #6b7785; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ni-arrow { color: #d0d6dd; font-size: 40rpx; flex-shrink: 0; margin-left: 12rpx; }
+.ni-arrow { color: #999; font-size: 40rpx; flex-shrink: 0; margin-left: 12rpx; }
 .noti-item.unread .ni-arrow { color: #FFA800; }
 
-.empty-state { text-align: center; padding: 120rpx 0; color: #b3bcc6; font-size: 32rpx; }
+.empty-state { text-align: center; padding: 120rpx 0; color: #777; font-size: 32rpx; }
