@@ -1,8 +1,8 @@
 <template>
   <div class="page" style="overflow-y:auto">
-    <PageNav title="公告管理" style="margin: 0 -3.73vw 0" />
+    <PublishNav title="公告管理" style="margin: 0 -3.73vw 0" />
     <div class="na-pub-row">
-      <button class="na-pub-btn" @click="openCreate">发布新公告</button>
+      <button class="na-pub-btn" @click="openCreate">＋ 发布新公告</button>
     </div>
 
     <!-- 公告列表 -->
@@ -72,7 +72,7 @@
 import { ref } from 'vue'
 import { onMounted } from 'vue'
 import api from '@/api'
-import PageNav from '@/components/PageNav.vue'
+import PublishNav from '@/components/PublishNav.vue'
 import { toast, showModal } from '@/utils/ui'
 
 function today() {
@@ -191,6 +191,7 @@ onMounted(() => {
 .page {
   min-height: 100vh;
   box-sizing: border-box;
+  background: #F4F2EB;
   padding: 0 28rpx 80rpx;  /* 顶部不留 padding：PageNav 自己贴顶，避免负 margin 把后续内容上拉 */
 }
 
@@ -229,8 +230,8 @@ onMounted(() => {
 /* 顶部「发布新公告」主按钮：去掉冗余副标题后，居中加大便于老人识别点按 */
 /* 按钮与上方橙色头部之间留出背景缝隙，不紧贴 */
 .na-pub-row { display: flex; justify-content: center; margin: 28rpx 0 28rpx; }
-.na-pub-btn { background: #EA8A2A; color: #fff; font-size: 36rpx; font-weight: 700; border: none; border-radius: 18rpx; padding: 0 88rpx; line-height: 2.9; }
-.na-pub-btn:active { background: #D2771A; }
+.na-pub-btn { background: #3D70A0; color: #fff; font-size: 36rpx; font-weight: 700; border: none; border-radius: 18rpx; padding: 0 88rpx; line-height: 2.9; box-shadow: 0 0 0 6rpx #F4F2EB, 0 0 0 10rpx #3D70A0; }
+.na-pub-btn:active { background: #2D5A88; box-shadow: 0 0 0 6rpx #F4F2EB, 0 0 0 10rpx #2D5A88; }
 
 /* ── 公告卡片（蓝色公示卡视觉，卡内编辑/删除按钮仍保持中性/橙色） ── */
 .notice-list { display: flex; flex-direction: column; gap: 24rpx; }
@@ -365,7 +366,6 @@ onMounted(() => {
   margin-top: 16rpx;
 }
 .sheet-actions .btn { flex: 1; line-height: 2.6; font-size: 32rpx; }
-/* 弹窗主操作「确认发布/保存」暖橙，与列表页「发布」一致（仅本页覆盖全局 .btn-primary） */
-.sheet-actions .btn-primary { background: #EA8A2A; }
-.sheet-actions .btn-primary:active { background: #D2771A; }
+.sheet-actions .btn-primary { background: var(--pub-blue); }
+.sheet-actions .btn-primary:active { background: var(--pub-blue-deep); }
 </style>

@@ -318,7 +318,7 @@ onActivated(() => {
 
 <style scoped>
 .page {
-  background: #f4f5f7;
+  background: #F4F2EB;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -328,7 +328,7 @@ onActivated(() => {
 /* ── Header ── */
 .header {
   padding: 8rpx 36rpx 14rpx;
-  background: linear-gradient(160deg, #FFC23D, #FFA800);
+  background: linear-gradient(160deg, var(--pub-blue-2), var(--pub-blue));
 }
 .header-title {
   font-size: 48rpx;
@@ -347,7 +347,7 @@ onActivated(() => {
 .section-tabs {
   display: flex;
   background: #fff;
-  margin: 0 24rpx;
+  margin: 20rpx 24rpx 0;
   border-radius: 20rpx 20rpx 0 0;
   padding: 18rpx 16rpx 0;
   gap: 8rpx;
@@ -364,9 +364,9 @@ onActivated(() => {
   transition: all 0.2s;
 }
 .s-tab.on {
-  color: #C77800;
+  color: var(--pub-blue);
   font-weight: 700;
-  border-bottom-color: #FFA800;
+  border-bottom-color: var(--pub-blue);
 }
 
 /* ── Swiper ── */

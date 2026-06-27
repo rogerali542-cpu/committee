@@ -128,7 +128,7 @@ onActivated(loadList)
 </script>
 
 <style scoped>
-.page { height: 100vh; background: #f4f5f7; }
+.page { height: 100vh; background: #F4F2EB; }
 
 .head-bar {
   display: flex; justify-content: space-between; align-items: center;

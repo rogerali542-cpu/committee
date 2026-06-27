@@ -16,10 +16,10 @@ function back() { navigateBack() }
 <style scoped>
 .pub-nav {
   position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(160deg, var(--pub-blue-2) 0%, var(--pub-blue) 100%);
+  background: linear-gradient(160deg, #5D8EB8 0%, #3D70A0 100%);
   padding-top: env(safe-area-inset-top);
   display: flex; align-items: center;
-  height: calc(88rpx + env(safe-area-inset-top));
+  height: calc(116rpx + env(safe-area-inset-top));
   box-sizing: content-box;
 }
 .nav-back { width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 52rpx; font-weight: 300; }
