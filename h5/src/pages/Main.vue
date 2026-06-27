@@ -327,17 +327,17 @@ onActivated(onShow)
 .big-btn-ico { font-size: 50rpx; margin-right: 16rpx; }
 .big-btn-text { font-size: 48rpx; font-weight: 700; color: #fff; }
 
-/* 新增会议按钮（与大按钮同款橙色，位置与卡片拉开距离） */
+/* 新增会议按钮（比卡片内大按钮小 20%） */
 .add-meet-row {
   margin: 48rpx 24rpx 0;
   display: flex; align-items: center; justify-content: center;
-  height: 140rpx; border-radius: 22rpx;
+  height: 112rpx; border-radius: 22rpx;
   background: #FFA800;
   box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.34);
 }
 .add-meet-row:active { opacity: 0.88; }
-.add-meet-ico { font-size: 50rpx; margin-right: 16rpx; }
-.add-meet-text { font-size: 48rpx; font-weight: 700; color: #fff; }
+.add-meet-ico { font-size: 40rpx; margin-right: 12rpx; }
+.add-meet-text { font-size: 38rpx; font-weight: 700; color: #fff; }
 
 /* 删除会议（测试用，弱化） */
 .meet-del {

@@ -4,7 +4,7 @@
     <PageNav title="会议进行" style="margin:-3.2vw -3.2vw 0;" />
 
     <!-- AI 工作中：选片转写(豆包 ASR)等待时显"识别转写"态；完成后出确认按钮 -->
-    <AiWorkingOverlay :active="polling || extracting" phase="asr" :audioDurSec="asrAudioDurSec" />
+    <AiWorkingOverlay :active="polling || extracting" phase="asr" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
 
     <div class="lp-stepper">
       <template v-for="(s, index) in steps" :key="s.key">
@@ -562,7 +562,8 @@ const isPaused = computed(() => rec.recording.value && rec.paused.value)
 const uploading = ref(false)
 const polling = ref(false)
 const extracting = ref(false)
-const asrAudioDurSec = ref(0)  // 本次待转写录音总时长(秒)，传给 AiWorkingOverlay 估算进度
+const asrAudioDurSec = ref(0)    // 本次待转写录音总时长(秒)
+const asrFileSizeBytes = ref(0)  // 本次待转写文件大小(bytes)，用于更准确估算处理耗时
 const taskId = ref('')
 const asrStatus = ref('')
 const processText = ref('正在上传录音...')
@@ -924,6 +925,7 @@ async function finishRecord() {
       return
     }
     if (r.durationSec) asrAudioDurSec.value = r.durationSec
+    if (r.blob) asrFileSizeBytes.value = r.blob.size
     await uploadRecording(r.blob, r.ext)
     return
   }
@@ -986,7 +988,7 @@ async function onAudioFileChange(e) {
     toast({ title: '未选择文件', icon: 'none' })
     return
   }
-  // File 自带 name/ext，直接上传
+  asrFileSizeBytes.value = file.size
   await uploadRecordingFile(file)
 }
 

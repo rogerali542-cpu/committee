@@ -70,9 +70,10 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
-  active: { type: Boolean, default: false }, // AI 任务进行中
-  phase: { type: String, default: 'asr' },   // 'asr' 识别转写 | 'gen' 生成纪要
-  audioDurSec: { type: Number, default: 0 }  // 录音时长(秒)，传入后按比例估算 ASR 耗时
+  active: { type: Boolean, default: false },
+  phase: { type: String, default: 'asr' },
+  audioDurSec: { type: Number, default: 0 },        // 录音时长(秒)
+  audioFileSizeByte: { type: Number, default: 0 }   // 录音文件大小(bytes)
 })
 const emit = defineEmits(['confirm'])
 
@@ -88,11 +89,21 @@ let timer = null
 
 const cfg = computed(() => {
   const base = CFG[props.phase] || CFG.asr
-  if (props.phase === 'asr' && props.audioDurSec > 0) {
-    // ASR 耗时约为录音时长的 12%，最少 15 秒
-    return { ...base, target: Math.max(15, Math.round(props.audioDurSec * 0.12)) }
+  if (props.phase === 'asr') {
+    const sz = props.audioFileSizeByte || 0
+    const dur = props.audioDurSec || 0
+    // 上传时间：按 500KB/s 估算（4G/WiFi 保守值）
+    const uploadSec = sz > 0 ? sz / 500000 : 0
+    // 有实际时长则直接用；否则按 48kbps(≈6000 bytes/s) 从文件大小估算
+    const estDur = dur > 0 ? dur : (sz > 0 ? sz / 6000 : 0)
+    // Doubao ASR 离线批处理约 20x 实时速
+    const procSec = estDur > 0 ? estDur / 20 : 0
+    const total = uploadSec + procSec
+    if (total > 0) {
+      return { ...base, target: Math.max(10, Math.ceil(total + 8)) }
+    }
   }
-  return base
+  return CFG[props.phase] || CFG.asr
 })
 const frac = computed(() => (done.value ? 1 : Math.min(sec.value / cfg.value.target, 1)))
 
