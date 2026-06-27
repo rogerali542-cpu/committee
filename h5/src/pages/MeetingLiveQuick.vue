@@ -4,7 +4,7 @@
     <PageNav title="会议进行" style="margin:-3.2vw -3.2vw 0;" />
 
     <!-- AI 工作中：选片转写(豆包 ASR)等待时显"识别转写"态；完成后出确认按钮 -->
-    <AiWorkingOverlay :active="polling || extracting" phase="asr" />
+    <AiWorkingOverlay :active="polling || extracting" phase="asr" :audioDurSec="asrAudioDurSec" />
 
     <div class="lp-stepper">
       <template v-for="(s, index) in steps" :key="s.key">
@@ -562,6 +562,7 @@ const isPaused = computed(() => rec.recording.value && rec.paused.value)
 const uploading = ref(false)
 const polling = ref(false)
 const extracting = ref(false)
+const asrAudioDurSec = ref(0)  // 本次待转写录音总时长(秒)，传给 AiWorkingOverlay 估算进度
 const taskId = ref('')
 const asrStatus = ref('')
 const processText = ref('正在上传录音...')
@@ -922,6 +923,7 @@ async function finishRecord() {
       toast({ title: '录音为空，请重试', icon: 'none' })
       return
     }
+    if (r.durationSec) asrAudioDurSec.value = r.durationSec
     await uploadRecording(r.blob, r.ext)
     return
   }

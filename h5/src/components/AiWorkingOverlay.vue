@@ -71,12 +71,13 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   active: { type: Boolean, default: false }, // AI 任务进行中
-  phase: { type: String, default: 'asr' }    // 'asr' 识别转写 | 'gen' 生成纪要
+  phase: { type: String, default: 'asr' },   // 'asr' 识别转写 | 'gen' 生成纪要
+  audioDurSec: { type: Number, default: 0 }  // 录音时长(秒)，传入后按比例估算 ASR 耗时
 })
 const emit = defineEmits(['confirm'])
 
 const CFG = {
-  asr: { target: 88, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音已转写完成', doneBtn: '查看转写结果' },
+  asr: { target: 25, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音已转写完成', doneBtn: '查看转写结果' },
   gen: { target: 112, tok: 268, say: '正在为您提炼议题、生成纪要草稿', lab: '上下文理解', pct: true, active: 4, doneSay: '会议纪要草稿已生成', doneBtn: '查看纪要' }
 }
 
@@ -85,7 +86,14 @@ const done = ref(false)
 const sec = ref(0)
 let timer = null
 
-const cfg = computed(() => CFG[props.phase] || CFG.asr)
+const cfg = computed(() => {
+  const base = CFG[props.phase] || CFG.asr
+  if (props.phase === 'asr' && props.audioDurSec > 0) {
+    // ASR 耗时约为录音时长的 12%，最少 15 秒
+    return { ...base, target: Math.max(15, Math.round(props.audioDurSec * 0.12)) }
+  }
+  return base
+})
 const frac = computed(() => (done.value ? 1 : Math.min(sec.value / cfg.value.target, 1)))
 
 function mmss(s) { const m = Math.floor(s / 60), x = s % 60; return (m < 10 ? '0' : '') + m + ':' + (x < 10 ? '0' : '') + x }

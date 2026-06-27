@@ -12,35 +12,40 @@
       </div>
     </div>
 
-    <!-- ① 有进行中的会议：开会主线　② 否则：空闲态 -->
-    <div v-if="current" class="meet-card">
-      <span class="meet-tag">{{ current.tag }}</span>
-      <span class="meet-title">{{ current.title }}</span>
-      <span class="meet-meta">{{ current.meetingDate }} {{ current.meetingTime }} · {{ current.location }}</span>
+    <!-- ① 有进行中的会议：每张卡片独立展示 -->
+    <template v-if="currents.length > 0">
+      <div v-for="cur in currents" :key="cur.id" class="meet-card">
+        <span class="meet-tag">{{ cur.tag }}</span>
+        <span class="meet-title">{{ cur.title }}</span>
+        <span class="meet-meta">{{ cur.meetingDate }} {{ cur.meetingTime }} · {{ cur.location }}</span>
 
-      <!-- 三步进度 -->
-      <div class="steps">
-        <template v-for="(item, index) in current.steps" :key="item.no">
-          <div v-if="index > 0" class="step-line" :class="item.state === 'todo' ? 'todo' : 'done'"></div>
-          <div class="step" :class="item.state">
-            <div class="step-dot">
-              <span v-if="item.state === 'done'">✓</span>
-              <span v-else>{{ item.no }}</span>
+        <div class="steps">
+          <template v-for="(item, index) in cur.steps" :key="item.no">
+            <div v-if="index > 0" class="step-line" :class="item.state === 'todo' ? 'todo' : 'done'"></div>
+            <div class="step" :class="item.state">
+              <div class="step-dot">
+                <span v-if="item.state === 'done'">✓</span>
+                <span v-else>{{ item.no }}</span>
+              </div>
+              <span class="step-label">{{ item.label }}</span>
             </div>
-            <span class="step-label">{{ item.label }}</span>
-          </div>
-        </template>
+          </template>
+        </div>
+
+        <div class="big-btn" @click="goCurrent(cur)">
+          <span class="big-btn-ico">{{ cur.ctaIcon }}</span>
+          <span class="big-btn-text">{{ cur.ctaLabel }}</span>
+        </div>
+
+        <div v-if="canCreate" class="meet-del" @click="removeCurrent(cur)">删除会议</div>
       </div>
 
-      <!-- 当前步主操作（大按钮） -->
-      <div class="big-btn" @click="goCurrent">
-        <span class="big-btn-ico">{{ current.ctaIcon }}</span>
-        <span class="big-btn-text">{{ current.ctaLabel }}</span>
+      <!-- 新增会议（仅主任，卡片列表底部） -->
+      <div v-if="canCreate" class="add-meet-row" @click="goCreate">
+        <span class="add-meet-ico">➕</span>
+        <span class="add-meet-text">新增会议</span>
       </div>
-
-      <!-- 删除会议（仅主任；清理测试数据用） -->
-      <div v-if="canCreate" class="meet-del" @click="removeCurrent">删除会议</div>
-    </div>
+    </template>
 
     <template v-else>
       <div v-if="canCreate" class="idle">
@@ -111,7 +116,7 @@ const canCreate = ref(false)        // 主任/副主任：可发起会议
 const canViewInternal = ref(false)  // 可见资料库
 const unread = ref(0)
 const loading = ref(true)
-const current = ref(null)           // 当前进行中的会议（含三步进度与主操作）
+const currents = ref([])            // 所有进行中/准备中的会议卡片
 const recent = ref(null)            // 最近一次已结束会议
 
 function onShow() {
@@ -140,17 +145,19 @@ async function loadMeetings() {
     const meetings = Array.isArray(list) ? list : []
     const isChair = perm.isChair() || perm.isRecorder()
 
-    // 当前会议：优先「进行中 / 准备中」；主任再把「已结束未公示」视为待整理纪要
-    let cur = meetings.find((m) => m.stage === 'preparing' || m.stage === 'ongoing')
-    if (!cur && isChair) {
-      cur = meetings.find((m) => m.stage === 'ended'
+    // 所有进行中/准备中的会议；主任额外包含「已结束未公示」（待整理纪要）
+    let actives = meetings.filter((m) => m.stage === 'preparing' || m.stage === 'ongoing')
+    if (isChair) {
+      const pending = meetings.filter((m) => m.stage === 'ended'
         && m.compliance !== 'invalid'
         && (!m.publish || !m.publish.published))
+      actives = [...actives, ...pending]
     }
-    // 最近一次已结束会议（空闲态展示）
-    const rec = meetings.find((m) => m.stage === 'ended')
+    // 最近一次已结束会议（空闲态展示，排除已在卡片列表里的）
+    const activeIds = new Set(actives.map((m) => m.id))
+    const rec = meetings.find((m) => m.stage === 'ended' && !activeIds.has(m.id))
 
-    current.value = cur ? decorateCurrent(cur, isChair) : null
+    currents.value = actives.map((m) => decorateCurrent(m, isChair))
     recent.value = rec ? decorateRecent(rec) : null
     loading.value = false
   } catch (e) {
@@ -204,19 +211,17 @@ function decorateRecent(m) {
   return { id: m.id, title: m.title, meetingDate: m.meetingDate, status: status }
 }
 
-// 删除当前会议（仅主任；清理测试数据用，任意阶段均可）
-async function removeCurrent() {
-  const m = current.value
-  if (!m) return
+// 删除会议（仅主任；清理测试数据用，任意阶段均可）
+async function removeCurrent(cur) {
   const res = await showModal({
     title: '删除会议',
-    content: '确定删除「' + m.title + '」？删除后无法恢复。',
+    content: '确定删除「' + cur.title + '」？删除后无法恢复。',
     confirmText: '删除',
     confirmColor: '#E74C3C'
   })
   if (!res.confirm) return
   try {
-    await api.committeeRemove(m.id)
+    await api.committeeRemove(cur.id)
     toast({ title: '已删除', icon: 'success' })
     loadMeetings()
   } catch (e) {
@@ -225,14 +230,11 @@ async function removeCurrent() {
 }
 
 // ── 导航 ──
-function goCurrent() {
-  if (!current.value) return
-  const id = current.value.id
-  // 委员走专属极简会议页；主任/记录员走详情页（操作流程）
+function goCurrent(cur) {
   const isChair = perm.isChair() || perm.isRecorder()
   const url = isChair
-    ? '/pages/committee-detail/committee-detail?id=' + id
-    : '/pages/my-meeting/my-meeting?id=' + id
+    ? '/pages/committee-detail/committee-detail?id=' + cur.id
+    : '/pages/my-meeting/my-meeting?id=' + cur.id
   navigateTo(url)
 }
 function goCreate() {
@@ -324,6 +326,18 @@ onActivated(onShow)
 .big-btn:active { opacity: 0.88; }
 .big-btn-ico { font-size: 50rpx; margin-right: 16rpx; }
 .big-btn-text { font-size: 48rpx; font-weight: 700; color: #fff; }
+
+/* 新增会议按钮（与大按钮同款橙色，位置与卡片拉开距离） */
+.add-meet-row {
+  margin: 48rpx 24rpx 0;
+  display: flex; align-items: center; justify-content: center;
+  height: 140rpx; border-radius: 22rpx;
+  background: #FFA800;
+  box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.34);
+}
+.add-meet-row:active { opacity: 0.88; }
+.add-meet-ico { font-size: 50rpx; margin-right: 16rpx; }
+.add-meet-text { font-size: 48rpx; font-weight: 700; color: #fff; }
 
 /* 删除会议（测试用，弱化） */
 .meet-del {

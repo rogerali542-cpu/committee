@@ -5,6 +5,22 @@
     <!-- AI 工作中：纪要页 gen=1 大模型生成等待时显"生成纪要"态；完成后出确认按钮（覆盖原"生成中"提示） -->
     <AiWorkingOverlay :active="aiGenerating" phase="gen" />
 
+    <!-- 编辑纪要弹窗（有已有内容时；首次手写走下方整屏编辑器） -->
+    <div v-if="editMode && (hasServerMinutes || isOwner)" class="edit-modal-mask">
+      <div class="edit-modal">
+        <div class="edit-modal-head">
+          <span class="edit-modal-title">{{ reviseMode ? '修订纪要' : '编辑纪要' }}</span>
+          <span class="edit-modal-close" @click="cancelEdit">×</span>
+        </div>
+        <span v-if="reviseMode" class="revise-hint" style="margin-bottom:16rpx;display:block;">修订模式：原归档版本将保留，本次修改作为新版本生效，提交时需填写修订原因。</span>
+        <textarea class="edit-modal-textarea" v-model="editText" placeholder="编辑纪要全文..."></textarea>
+        <div class="edit-modal-actions">
+          <button class="btn btn-ghost" @click="cancelEdit">取消</button>
+          <button class="btn btn-primary" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存并确认' }}</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="accessDenied" class="access-card">
       <div class="access-icon">!</div>
       <span class="access-title">{{ accessTitle }}</span>
@@ -40,17 +56,6 @@
     <div v-else-if="isOwner && plainText" class="doc">
       <span class="doc-title">业主大会会议纪要</span>
       <span class="doc-body">{{ plainText }}</span>
-      <div v-if="editMode" class="edit-block">
-        <textarea
-          class="edit-textarea"
-          v-model="editText"
-          placeholder="编辑纪要全文..."
-        ></textarea>
-        <div class="edit-actions">
-          <button class="btn btn-ghost" @click="cancelEdit">取消</button>
-          <button class="btn btn-primary" @click="saveEdit">保存纪要</button>
-        </div>
-      </div>
       <div class="minutes-actions" v-if="!aiGenerating">
         <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认纪要无误，结束会议</button>
         <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" :class="{ ghost: minutes && minutes.draft }" @click="startEdit">编辑纪要</button>
@@ -63,18 +68,6 @@
       <div v-if="minutes && minutes.draft" class="draft-banner">草稿 · 会议进行中，结束后定稿</div>
       <span class="doc-title">业主委员会会议纪要</span>
       <span class="doc-body">{{ plainText }}</span>
-      <div v-if="editMode" class="edit-block">
-        <span v-if="reviseMode" class="revise-hint">修订模式：原归档版本将保留，本次修改作为新版本生效，提交时需填写修订原因。</span>
-        <textarea
-          class="edit-textarea"
-          v-model="editText"
-          placeholder="编辑纪要全文..."
-        ></textarea>
-        <div class="edit-actions">
-          <button class="btn btn-ghost" @click="cancelEdit">取消</button>
-          <button class="btn btn-primary" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存并确认' }}</button>
-        </div>
-      </div>
       <div class="minutes-actions" v-if="!aiGenerating">
         <!-- 两个主操作：确认(结束会议) / 编辑(改完再确认结束) -->
         <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认纪要无误，结束会议</button>
@@ -163,20 +156,6 @@
 
       <!-- 底部 -->
       <span class="doc-foot">本纪要由系统根据会议记录自动生成 · {{ minutes.draft ? '草稿' : '已定稿' }}</span>
-
-      <!-- 编辑模式 -->
-      <div v-if="editMode" class="edit-block">
-        <span v-if="reviseMode" class="revise-hint">修订模式：原归档版本将保留，本次修改作为新版本生效，提交时需填写修订原因。</span>
-        <textarea
-          class="edit-textarea"
-          v-model="editText"
-          placeholder="编辑纪要全文..."
-        ></textarea>
-        <div class="edit-actions">
-          <button class="btn btn-ghost" @click="cancelEdit">取消</button>
-          <button class="btn btn-primary" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存并确认' }}</button>
-        </div>
-      </div>
 
       <div class="minutes-actions" v-if="!aiGenerating">
         <!-- 两个主操作：确认(结束会议) / 编辑(改完再确认结束) -->
@@ -734,4 +713,16 @@ function viewTodoList() {
 .more-links { display:flex; flex-wrap:wrap; justify-content:center; gap:16rpx 28rpx; margin-top:12rpx; }
 .more-link { font-size:28rpx; color:#666; padding:10rpx 8rpx; }
 .more-link.primary-link { color:#C77800; font-weight:600; }
+
+/* 编辑纪要弹窗 */
+.edit-modal-mask { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; }
+.edit-modal { width:100%; background:#fff; border-radius:40rpx 40rpx 0 0; padding:40rpx 36rpx calc(40rpx + env(safe-area-inset-bottom)); max-height:88vh; display:flex; flex-direction:column; box-sizing:border-box; }
+.edit-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:28rpx; }
+.edit-modal-title { font-size:36rpx; font-weight:700; color:#1a1a1a; }
+.edit-modal-close { font-size:52rpx; color:#5A6473; padding:0 12rpx; line-height:1; }
+.edit-modal-textarea { flex:1; min-height:400rpx; background:#f6f6f8; border-radius:24rpx; padding:24rpx 28rpx; font-size:32rpx; color:#1a1a1a; border:none; resize:none; font-family:inherit; line-height:1.7; box-sizing:border-box; }
+.edit-modal-actions { display:flex; gap:24rpx; margin-top:28rpx; }
+.edit-modal-actions .btn { flex:1; line-height:2.6; font-size:32rpx; border-radius:44rpx; border:none; font-weight:600; }
+.edit-modal-actions .btn-ghost { background:#fff; color:#666; border:2rpx solid #ddd; }
+.edit-modal-actions .btn-primary { background:#FFA800; color:#fff; }
 </style>
