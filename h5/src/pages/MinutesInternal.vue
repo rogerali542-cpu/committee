@@ -1,5 +1,6 @@
 <template>
   <div class="page minutes-internal-page" style="overflow-y:auto;">
+    <PageNav title="内部总结" style="display:block;margin:-24rpx -24rpx 0;" />
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <div v-else-if="!reportText" class="access-card">
@@ -34,6 +35,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast } from '@/utils/ui'
+import PageNav from '@/components/PageNav.vue'
 
 const route = useRoute()
 

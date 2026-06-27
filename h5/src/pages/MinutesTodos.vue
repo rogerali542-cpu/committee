@@ -1,5 +1,6 @@
 <template>
   <div class="todos-page" style="overflow-y:auto;">
+    <PageNav title="待办事项" style="display:block;margin:-24rpx -24rpx 0;" />
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <div v-else-if="emptyText" class="access-card">
@@ -37,11 +38,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast } from '@/utils/ui'
+import PageNav from '@/components/PageNav.vue'
 
 // 会议待办事项独立页：把后端 todoListText 解析成结构化卡片清单展示。
 // 兼容两种后端格式：① Markdown 表格（LLM 常用）② 编号 + “字段：值” 列表（规则兜底）。
