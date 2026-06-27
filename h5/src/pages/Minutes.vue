@@ -714,15 +714,15 @@ function viewTodoList() {
 .more-link { font-size:28rpx; color:#666; padding:10rpx 8rpx; }
 .more-link.primary-link { color:#C77800; font-weight:600; }
 
-/* 编辑纪要弹窗 */
-.edit-modal-mask { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; }
-.edit-modal { width:100%; background:#fff; border-radius:40rpx 40rpx 0 0; padding:40rpx 36rpx calc(40rpx + env(safe-area-inset-bottom)); max-height:88vh; display:flex; flex-direction:column; box-sizing:border-box; }
-.edit-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:28rpx; }
-.edit-modal-title { font-size:36rpx; font-weight:700; color:#1a1a1a; }
-.edit-modal-close { font-size:52rpx; color:#5A6473; padding:0 12rpx; line-height:1; }
-.edit-modal-textarea { flex:1; min-height:400rpx; background:#f6f6f8; border-radius:24rpx; padding:24rpx 28rpx; font-size:32rpx; color:#1a1a1a; border:none; resize:none; font-family:inherit; line-height:1.7; box-sizing:border-box; }
-.edit-modal-actions { display:flex; gap:24rpx; margin-top:28rpx; }
-.edit-modal-actions .btn { flex:1; line-height:2.6; font-size:32rpx; border-radius:44rpx; border:none; font-weight:600; }
+/* 编辑纪要弹窗 —— 全屏模式，方便老年人操作 */
+.edit-modal-mask { position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; background:#fff; }
+.edit-modal { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.edit-modal-head { display:flex; align-items:center; justify-content:space-between; padding:calc(24rpx + env(safe-area-inset-top)) 32rpx 24rpx; background:linear-gradient(160deg,#FFC23D,#FFA800); flex-shrink:0; }
+.edit-modal-title { font-size:44rpx; font-weight:700; color:#fff; }
+.edit-modal-close { font-size:68rpx; color:rgba(255,255,255,0.88); padding:0 8rpx; line-height:1; }
+.edit-modal-textarea { flex:1; width:100%; background:#fff; border:none; resize:none; font-family:inherit; box-sizing:border-box; overflow-y:auto; padding:36rpx 32rpx; font-size:38rpx; color:#1a1a1a; line-height:2; }
+.edit-modal-actions { display:flex; gap:24rpx; flex-shrink:0; padding:24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom)); background:#f6f6f8; border-top:2rpx solid #ebebeb; }
+.edit-modal-actions .btn { flex:1; line-height:3; font-size:38rpx; border-radius:44rpx; border:none; font-weight:700; }
 .edit-modal-actions .btn-ghost { background:#fff; color:#666; border:2rpx solid #ddd; }
 .edit-modal-actions .btn-primary { background:#FFA800; color:#fff; }
 </style>
