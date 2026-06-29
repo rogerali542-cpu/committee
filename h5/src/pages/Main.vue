@@ -176,8 +176,15 @@ function decorateCurrent(m, isChair) {
 
   let ctaLabel, ctaIcon, tag
   if (m.stage === 'preparing') {
-    ctaLabel = isChair ? '继续准备会议' : '查看会议通知'
-    ctaIcon = '📋'
+    if (isChair) {
+      // 所有委员都已回复通知（确认/缺席）→ 主按钮变"会议已就绪"
+      // （实际应用还可按会议时间进一步变"开始会议"，测试阶段先不实装）
+      ctaLabel = m.allReplied ? '会议已就绪' : '继续准备会议'
+      ctaIcon = m.allReplied ? '✅' : '📋'
+    } else {
+      ctaLabel = '查看会议通知'
+      ctaIcon = '📋'
+    }
     tag = '会议通知'
   } else if (m.stage === 'ongoing') {
     ctaLabel = isChair ? '进入会议 · 开始录音' : '查看会议'

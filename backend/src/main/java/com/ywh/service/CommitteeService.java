@@ -106,6 +106,8 @@ public class CommitteeService {
                     && m.getCompliance() != ComplianceStatus.invalid ? getPublishInfo(m) : null);
             // 待办用：准备阶段、通知已送达我但我尚未查看 → 生成"查看会议通知"待办
             card.put("myNoticeUnread", isNoticeUnreadForMe(m, currentUr));
+            // 准备阶段：被通知委员是否都已回复（确认/缺席）→ 首页主按钮显示"会议已就绪"
+            card.put("allReplied", isPreparingAllReplied(m));
             return card;
         }).collect(Collectors.toList());
     }
@@ -1734,6 +1736,26 @@ public class CommitteeService {
     private MeetingPublish getPublish(CommitteeMeeting m) {
         return publishRepo.findByMeetingId(m.getId())
                 .orElse(MeetingPublish.builder().meeting(m).published(false).withdrawn(false).build());
+    }
+
+    /** 准备阶段：被通知的委员是否都已回复（确认参会 或 缺席）。供首页主按钮显示"会议已就绪"。
+     *  需通知已全部送达，且每位被通知人都有 signedIn 或 declined 的回复。 */
+    private boolean isPreparingAllReplied(CommitteeMeeting m) {
+        if (m.getStage() != MeetingStage.preparing) return false;
+        List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(m.getId());
+        if (deliveries.isEmpty()) return false;
+        if (!deliveries.stream().allMatch(d -> Boolean.TRUE.equals(d.getNoticeDelivered()))) return false;
+        MeetingRecord record = recordRepo.findByMeetingId(m.getId()).orElse(null);
+        if (record == null) return false;
+        Map<Long, RecordAttendance> byUser = attendanceRepo.findByRecordId(record.getId()).stream()
+                .collect(Collectors.toMap(a -> a.getUserRole().getId(), a -> a, (a, b) -> a));
+        for (MeetingDelivery d : deliveries) {
+            RecordAttendance a = byUser.get(d.getUserRole().getId());
+            boolean replied = a != null
+                    && (Boolean.TRUE.equals(a.getSignedIn()) || Boolean.TRUE.equals(a.getDeclined()));
+            if (!replied) return false;
+        }
+        return true;
     }
 
     private DeliveryInfoVO getDeliveryInfo(CommitteeMeeting m) {
