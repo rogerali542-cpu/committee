@@ -1,32 +1,37 @@
 <template>
-  <div class="page">
-    <PageNav title="历史会议" style="margin: 0 -3.2vw 0" />
-    <!-- 顶部分类切换 -->
-    <div class="tabs">
-      <div class="tab" :class="{ active: tab === 'committee' }" @click="switchTab('committee')">业委会会议 <span class="tab-count">{{ counts.committee }}</span></div>
-      <div class="tab" :class="{ active: tab === 'learning' }" @click="switchTab('learning')">学习培训 <span class="tab-count">{{ counts.learning }}</span></div>
-    </div>
+  <div class="pub-page lib-page">
+    <PublishNav title="历史会议" />
 
-    <div class="list">
+    <div class="pub-wrap">
+      <!-- 顶部分类切换（蓝色） -->
+      <div class="lib-tabs">
+        <div class="lib-tab" :class="{ active: tab === 'committee' }" @click="switchTab('committee')">
+          业委会会议 <span class="lib-tab-count">{{ counts.committee }}</span>
+        </div>
+        <div class="lib-tab" :class="{ active: tab === 'learning' }" @click="switchTab('learning')">
+          学习培训 <span class="lib-tab-count">{{ counts.learning }}</span>
+        </div>
+      </div>
+
       <template v-if="items.length">
-        <div class="lib-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
-          <div class="lc-main">
-            <span class="lc-title">{{ item.title }}</span>
-            <div class="lc-meta">
-              <span v-if="item.date">{{ item.date }}</span>
-              <span class="lc-dot" v-if="item.date && item.metaText">·</span>
-              <span v-if="item.metaText">{{ item.metaText }}</span>
-            </div>
-          </div>
-          <div class="lc-right">
-            <span class="lc-status">{{ item.statusText }}</span>
-            <span class="lc-arrow">›</span>
+        <div class="pub-card lib-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
+          <span class="pub-tag">{{ item.kind === 'committee' ? '业委会会议' : '学习培训' }}</span>
+          <!-- 状态徽标位：现示归档/公示状态；未来上社区链后此处换「已上链/存证中」 -->
+          <span class="pub-badge" :class="badgeClass(item.statusText)">{{ item.statusText }}</span>
+
+          <span class="pub-title">{{ item.title }}</span>
+
+          <div class="pub-meta">
+            <span class="mi" v-if="item.date">日期：<b>{{ item.date }}</b></span>
+            <span class="mi" v-if="item.metaText">{{ item.metaText }}</span>
           </div>
         </div>
       </template>
-      <div v-else-if="!loading" class="empty-state">
-        <span class="empty-emoji">📚</span>
-        <span>该分类暂无归档</span>
+
+      <div v-else-if="!loading" class="pub-card lib-empty">
+        <div class="empty-icon">📚</div>
+        <span class="empty-title">该分类暂无归档</span>
+        <span class="empty-text">已结束并归档的{{ tab === 'committee' ? '会议' : '学习活动' }}会显示在这里。</span>
       </div>
     </div>
   </div>
@@ -35,7 +40,7 @@
 <script setup>
 import { ref, onMounted, onActivated } from 'vue'
 import api from '@/api'
-import PageNav from '@/components/PageNav.vue'
+import PublishNav from '@/components/PublishNav.vue'
 import { redirectTo } from '@/utils/navigate'
 import { navigateTo } from '@/utils/navigate'
 import { getStorage } from '@/utils/storage'
@@ -47,6 +52,13 @@ const counts = ref({ committee: 0, learning: 0 })
 const lists = ref({ committee: [], learning: [] })
 const items = ref([])
 const loading = ref(true)
+
+// 状态 → 徽标配色：已公示=蓝、已完成=绿、已归档=中性
+function badgeClass(status) {
+  if (status === '已公示') return 'is-pub'
+  if (status === '已完成') return 'is-done'
+  return 'is-wait'
+}
 
 async function loadArchive() {
   loading.value = true
@@ -99,31 +111,32 @@ onActivated(enter)
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f4f5f7; padding: 0 24rpx 40rpx; box-sizing: border-box; }
+.lib-page { padding-bottom: 40rpx; }
 
-.tabs { display: flex; gap: 14rpx; margin: 20rpx 0 24rpx; }
-.tab { flex: 1; text-align: center; font-size: 30rpx; color: #6b7785; background: #fff; border-radius: 18rpx; padding: 18rpx 0; font-weight: 500; }
-.tab.active { background: #FFF3DC; color: #C77800; font-weight: 700; }
-.tab-count { font-size: 28rpx; color: #777; }
-.tab.active .tab-count { color: #C77800; }
-
-.lib-card {
-  background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx;
-  margin-bottom: 16rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06);
-  display: flex; align-items: center; justify-content: space-between;
+/* 蓝色分类切换 */
+.lib-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
+.lib-tab {
+  flex: 1; text-align: center; font-size: 30rpx; color: var(--pub-sub);
+  background: #fff; border-radius: 18rpx; padding: 20rpx 0; font-weight: 600;
+  box-shadow: 0 6rpx 20rpx rgba(41, 63, 102, 0.06);
 }
-.lib-card:active { background: #f7f9fb; }
-.lc-main { flex: 1; min-width: 0; }
-.lc-title { font-size: 36rpx; font-weight: 700; color: #1f2329; display: block; }
-.lc-meta { font-size: 28rpx; color: #666; margin-top: 8rpx; display: flex; gap: 10rpx; }
-.lc-dot { color: #666; }
-.lc-right { display: flex; align-items: center; gap: 12rpx; margin-left: 16rpx; }
-.lc-status { font-size: 28rpx; font-weight: 600; color: #27AE60; background: #E8F7EE; border-radius: 10rpx; padding: 4rpx 16rpx; white-space: nowrap; }
-.lc-arrow { font-size: 40rpx; color: #666; }
+.lib-tab.active { background: var(--pub-blue); color: #fff; }
+.lib-tab-count { font-size: 28rpx; opacity: 0.85; }
 
-.empty-state {
-  display: flex; flex-direction: column; align-items: center;
-  color: #777; font-size: 32rpx; padding-top: 120rpx;
+/* 卡片可点击反馈 */
+.lib-card { cursor: pointer; }
+.lib-card:active { background: var(--pub-blue-soft); }
+
+/* 学习「已完成」绿色徽标（在蓝色体系里作正向区分） */
+.pub-badge.is-done { background: var(--pub-green-soft); color: var(--pub-green); }
+
+/* 空态蓝卡 */
+.lib-empty { text-align: center; padding: 72rpx 36rpx; cursor: default; }
+.lib-empty:active { background: #fff; }
+.empty-icon {
+  width: 100rpx; height: 100rpx; border-radius: 50%; background: var(--pub-blue-soft);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx;
 }
-.empty-emoji { font-size: 80rpx; margin-bottom: 20rpx; }
+.empty-title { display: block; font-size: 38rpx; color: var(--pub-ink); font-weight: 700; margin-bottom: 14rpx; }
+.empty-text { display: block; font-size: 30rpx; color: var(--pub-sub); line-height: 1.7; }
 </style>
