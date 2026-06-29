@@ -68,11 +68,11 @@
       <span class="lp-card-step">第 1 步，共 4 步</span>
       <span class="lp-card-title">入会签到</span>
       <span class="lp-card-desc">签到后再进行录音，会议有效性会以签到人数为基础核查。</span>
-      <div class="qk-sign-card" :class="sessionSignedIn ? 'on' : ''">
-        <span class="qk-sign-main">{{ sessionSignedIn ? '已签到' : '待签到' }}</span>
+      <div class="qk-sign-card" :class="signedIn ? 'on' : ''">
+        <span class="qk-sign-main">{{ signedIn ? '已签到' : '待签到' }}</span>
         <span class="qk-sign-sub">{{ selfAttendance ? selfAttendance.name + ' · ' + selfAttendance.role : '当前登录身份' }}</span>
       </div>
-      <button class="lp-primary-btn" @click="confirmSignIn">{{ sessionSignedIn ? '进入录音' : '签到' }}</button>
+      <button class="lp-primary-btn" @click="confirmSignIn">{{ signedIn ? '进入录音' : '签到' }}</button>
     </div>
 
     <div class="lp-card" v-if="currentStep === 2">
@@ -563,8 +563,7 @@ const steps = ref([
   { key: 'confirm', label: '会议纪要' }
 ])
 const currentStep = ref(1)
-const signedIn = ref(false)        // 后端持久态：会前"确认参加"也会置 true，不能直接当作"会议开始后已签到"
-const sessionSignedIn = ref(false) // 本次会议开始后是否手动签到过——session 级，会后强制每人点一次；持久化进 quickState 以免刷新丢失
+const signedIn = ref(false)        // 后端持久态：会议开始时已清空，ongoing 阶段即"本人会上是否已签到"（按用户区分、服务器持久）
 const selfAttendance = ref(null)
 
 // 录音计时显示直接复用 useRecorder（recording/paused/hasRecording 在脚本里用 rec.* 读取）
@@ -719,7 +718,6 @@ function persistQuickState(extra) {
     meetingId: meetingId.value,
     savedAt: Date.now(),
     currentStep: currentStep.value,
-    sessionSignedIn: sessionSignedIn.value,
     generated: generated.value,
     taskId: taskId.value,
     asrStatus: asrStatus.value,
@@ -736,18 +734,14 @@ function persistQuickState(extra) {
   setStorage(quickStateKey(), state)
 }
 
-function restoreQuickState() {
+function restoreQuickState(signedInArg) {
   let saved = getStorage(quickStateKey(), null)
   if (!saved || String(saved.meetingId) !== String(meetingId.value)) return false
-
-  // 会后是否已手动签到，只认本会话签到标记，不再用会前"确认参加"的持久 signedIn
-  const savedSessionSignedIn = !!saved.sessionSignedIn
-  sessionSignedIn.value = savedSessionSignedIn
 
   const transcriptVal = saved.transcript || []
   const transcriptState = buildTranscriptState(transcriptVal)
   let step = Number(saved.currentStep) || (saved.generated ? 4 : 2)
-  if (!savedSessionSignedIn) step = 1   // 会后未手动签到，一律回到第 1 步签到
+  if (!signedInArg) step = 1   // 本人未签到（后端 signedIn=false）一律回到第 1 步签到
   else if (step < 2) step = 2
   if (step > 4) step = 4
   if (!saved.generated && step > 3) step = 3
@@ -770,10 +764,10 @@ function restoreQuickState() {
   transcriptPreview.value = transcriptState.transcriptPreview || saved.transcriptPreview || ''
   transcriptCharCount.value = transcriptState.transcriptCharCount || saved.transcriptCharCount || 0
 
-  if (savedSessionSignedIn && saved.taskId && !saved.generated && saved.asrStatus === 'done') {
+  if (signedInArg && saved.taskId && !saved.generated && saved.asrStatus === 'done') {
     _asrDoneHandled = false
     handleAsrDone({ taskId: saved.taskId, status: 'done' })
-  } else if (savedSessionSignedIn && saved.taskId && !saved.generated && saved.asrStatus !== 'failed') {
+  } else if (signedInArg && saved.taskId && !saved.generated && saved.asrStatus !== 'failed') {
     currentStep.value = 3
     polling.value = true
     processText.value = saved.processText || statusText(saved.asrStatus || 'pending')
@@ -814,12 +808,12 @@ async function loadDetail() {
     attendanceList.value = recObj.attendances || []
     voteTotal.value = total
     voteNeed.value = Math.floor(total / 2) + 1
+    // 本人已签到（后端 signedIn，会议开始时已清空、按用户区分）→ 自动进入录音步，无需重复签到
+    currentStep.value = isSigned && currentStep.value === 1 ? 2 : currentStep.value
 
     if (d.stage === 'ongoing') {
-      // 进入即只认本会话签到标记：未签到时 restoreQuickState 会强制回到第 1 步，
-      // tryRestoreGeneratedFromServer 也只在本会话已签到后才允许直达后续步骤
-      const restored = restoreQuickState()
-      if (sessionSignedIn.value && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
+      const restored = restoreQuickState(isSigned)
+      if (isSigned && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
     } else {
       clearQuickState()
     }
@@ -844,7 +838,7 @@ async function refreshAttendance() {
 }
 
 async function tryRestoreGeneratedFromServer() {
-  if (!meetingId.value || !sessionSignedIn.value || generated.value) return
+  if (!meetingId.value || !signedIn.value || generated.value) return
   if (typeof api.committeeQuickTranscript !== 'function' || typeof api.committeeQuickExtract !== 'function') return
   try {
     const transcriptRaw = await api.committeeQuickTranscript(meetingId.value)
@@ -877,10 +871,8 @@ function getSelfAttendance(d) {
 }
 
 async function confirmSignIn() {
-  // 会前已"确认参加"（signedIn=true）也必须在会议开始后手动点一次签到，
-  // 这里只置本会话签到标记，不重复打后端；点击本身即视为入会签到
+  // 已签到（后端 signedIn=true）→ 直接进入录音步
   if (signedIn.value) {
-    sessionSignedIn.value = true
     currentStep.value = 2
     persistQuickState()
     return
@@ -896,7 +888,6 @@ async function confirmSignIn() {
     await api.committeeSelfToggle(meetingId.value, 'signedIn')
     toast({ title: '已签到', icon: 'success' })
     signedIn.value = true
-    sessionSignedIn.value = true
     currentStep.value = 2
     persistQuickState()
     loadDetail()
@@ -915,7 +906,7 @@ async function toggleRecord() {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
     return
   }
-  if (!sessionSignedIn.value) {
+  if (!signedIn.value) {
     toast({ title: '请先签到', icon: 'none' })
     return
   }
@@ -988,7 +979,7 @@ async function finishRecord() {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
     return
   }
-  if (!sessionSignedIn.value) {
+  if (!signedIn.value) {
     toast({ title: '请先签到', icon: 'none' })
     return
   }
@@ -1052,7 +1043,7 @@ function chooseAudioFile() {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
     return
   }
-  if (!sessionSignedIn.value) {
+  if (!signedIn.value) {
     toast({ title: '请先签到', icon: 'none' })
     return
   }
@@ -1697,7 +1688,7 @@ function formatSize(bytes) {
 // 资料上传：H5 用隐藏 input[type=file] 选文件，登记元数据（与小程序契约一致，仅存 name/sizeText）
 const materialFileInput = ref(null)
 function uploadMaterial() {
-  if (!sessionSignedIn.value) {
+  if (!signedIn.value) {
     toast({ title: '请先签到', icon: 'none' })
     return
   }

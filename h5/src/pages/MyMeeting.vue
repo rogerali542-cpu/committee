@@ -37,16 +37,8 @@
       <span class="mm-section-title">会议录音</span>
       <span class="mm-section-desc">录音用于帮助记录员整理会议内容，只保存不自动处理</span>
 
-      <!-- 签到（进行中必须先点签到，会前"确认参加"的人也要再点一次） -->
-      <div v-if="!sessionSignedIn" class="mm-sign-block">
-        <div class="mm-big-btn" @click="doSignIn">
-          <span class="mm-big-ico">✍️</span>
-          <span class="mm-big-text">签到</span>
-        </div>
-        <span class="mm-sign-hint">签到后即可录制备份录音</span>
-      </div>
-      <!-- 录音控件（已签到后显示） -->
-      <div v-else>
+      <!-- 录音控件（本人已签到后显示；signedIn 来自后端、会议开始时已清空，按用户区分） -->
+      <div v-if="signedIn">
         <div class="mm-recorder">
           <div class="mm-rec-dot" :class="{ on: recording }"></div>
           <span class="mm-rec-time">{{ timeText }}</span>
@@ -63,6 +55,14 @@
           选择已有文件上传
         </button>
         <span v-if="uploading" class="mm-uploading">上传中…</span>
+      </div>
+      <!-- 未签到：先点签到（会前"确认参加"已被开始会议清空，需会上再签一次） -->
+      <div v-else class="mm-sign-block">
+        <div class="mm-big-btn" @click="confirmAttend">
+          <span class="mm-big-ico">✍️</span>
+          <span class="mm-big-text">签到</span>
+        </div>
+        <span class="mm-sign-hint">签到后即可录制备份录音</span>
       </div>
     </div>
 
@@ -145,8 +145,7 @@ const dateText = ref('')
 const location = ref('')
 const description = ref('')
 const stage = ref('') // preparing / ongoing / ended
-const signedIn = ref(false)
-const sessionSignedIn = ref(false) // 本次会议进行中已点击签到（session 级，防止提前确认参加的人跳过签到）
+const signedIn = ref(false) // 后端持久态：会议开始时已清空，ongoing 阶段即"本人会上是否已签到"（按用户区分）
 const declined = ref(false) // 因故缺席
 const materials = ref([])
 const hasMaterials = ref(false)
@@ -246,24 +245,6 @@ async function loadDetail() {
   } catch (e) {
     loading.value = false
     toast({ title: '加载失败', icon: 'none' })
-  }
-}
-
-// 进行中专用签到：不论是否提前确认参加，都需点击一次才进录音
-async function doSignIn() {
-  if (signedIn.value) {
-    // 会前已确认参加，后端已是 signedIn，本次点击只需放行，不重复打后端
-    sessionSignedIn.value = true
-    toast({ title: '已签到', icon: 'success' })
-    return
-  }
-  try {
-    await api.committeeSelfToggle(meetingId, 'signedIn')
-    signedIn.value = true
-    sessionSignedIn.value = true
-    toast({ title: '已签到', icon: 'success' })
-  } catch (e) {
-    toast({ title: (e && e.message) || '操作失败', icon: 'none' })
   }
 }
 
