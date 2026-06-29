@@ -97,12 +97,24 @@
           <span class="qra-sub">重头开始</span>
         </button>
       </div>
+      <!-- 上传后空闲：继续上传录音（再录一段）/ 开始转写（去转写页），两个橙色按钮 -->
+      <div v-else-if="idleAfterUpload" class="qk-rec-actions">
+        <button class="lp-primary-btn qk-rec-act" @click="startRecord" :disabled="uploading">
+          <span class="qra-main">继续上传录音</span>
+          <span class="qra-sub">再录一段</span>
+        </button>
+        <button class="lp-primary-btn qk-rec-act" @click="goTranscribe" :disabled="uploading">
+          <span class="qra-main">开始转写</span>
+          <span class="qra-sub">已录 {{ recordings.length }} 段</span>
+        </button>
+      </div>
       <button v-else class="lp-primary-btn" @click="toggleRecord" :disabled="uploading || polling || extracting">
         {{ recBtnLabel }}
       </button>
-      <!-- 上传后空闲：提示已录段数会合并为一份，引导接着录 -->
-      <div v-if="idleAfterUpload" class="qk-seg-hint">已上传 {{ recordings.length }} 段 · 点"继续录音"接着录，转写时自动合并为一份会议记录</div>
-      <button class="lp-ghost-btn" :class="{ muted: !canUpload }" @click="finishRecord" :disabled="uploading || polling || extracting">
+      <!-- 上传中提示 -->
+      <div v-if="uploading" class="qk-seg-hint">⏳ 正在上传录音…</div>
+      <!-- "结束录音并上传"：上传后空闲态不显示（改用上面的"继续上传录音/开始转写"） -->
+      <button v-if="!idleAfterUpload" class="lp-ghost-btn" :class="{ muted: !canUpload }" @click="finishRecord" :disabled="uploading || polling || extracting">
         结束录音并上传
       </button>
       <div class="qk-divider"><span class="qk-divider-text">或</span></div>
@@ -148,7 +160,7 @@
               <span class="qk-pick-name">第 {{ idx + 1 }} 段 · 时长 {{ fmtDur(item.durationSec) }}</span>
               <span class="qk-pick-meta">上传 {{ fmtTime(item.createdAt) }} · {{ item.id === _transcribingRecordingId ? '转写中…' : (item.asrStatus === 'done' ? '已转写' : '待转写') }}</span>
             </div>
-            <span v-if="item.asrStatus === 'done'" class="qk-pick-done">✓</span>
+            <span class="qk-pick-play" :class="{ on: playingId === item.id }" @click.stop="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
             <span v-if="isChair && !polling && !extracting && item.id !== _transcribingRecordingId"
                   class="qk-pick-del" @click.stop="deleteRecording(item, idx)">删除</span>
           </div>
@@ -636,6 +648,8 @@ const extraOpen = ref(false)          // 「AI 额外发现」是否展开
 const isChair = ref(false)
 const myRoleId = ref(null)
 const recordings = ref([])
+// 转写页录音回放：当前正在播放的录音 id（null=未播放）
+const playingId = ref(null)
 const materials = ref([])
 const signedInList = ref([])
 const voteTotal = ref(0)
@@ -679,6 +693,7 @@ let _asrDoneHandled = false
 let _pollTimer = null
 let _booted = false
 let _attendanceTimer = null // 主任签到进度的轻量轮询
+let _playAudio = null       // 转写页录音回放用的 HTMLAudioElement
 
 // ═══════════════════════════════════════════════
 // 生命周期
@@ -711,6 +726,7 @@ onUnmounted(() => {
   persistQuickState()
   clearPoll()
   if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
+  if (_playAudio) { try { _playAudio.pause() } catch (e) {} _playAudio = null }
   if (typeof window !== 'undefined') window.removeEventListener('beforeunload', _beforeUnloadGuard)
   rec.reset() // 释放麦克风
 })
@@ -1114,7 +1130,7 @@ async function uploadRecording(blob, ext, durationSec) {
 async function uploadRecordingFile(file, durationSec) {
   clearPoll()
   _asrDoneHandled = false
-  currentStep.value = 3
+  // 上传期间留在录音页(step 2)，显示"正在上传录音…"，不再自动跳转写页
   uploading.value = true
   polling.value = false
   extracting.value = false
@@ -1134,7 +1150,7 @@ async function uploadRecordingFile(file, durationSec) {
     toast({ title: '录音已上传', icon: 'success' })
     uploading.value = false
     rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
-    currentStep.value = 3 // 进入"选片转写"步骤
+    currentStep.value = 2 // 停在录音页：显示"继续上传录音 / 开始转写"两个按钮
     loadDetail() // 刷新录音列表
   } catch (e) {
     uploading.value = false
@@ -1177,6 +1193,13 @@ function backToRecord() {
   persistQuickState()
 }
 
+// 录音页"开始转写"：进入转写页（选片转写）
+function goTranscribe() {
+  if (uploading.value) return
+  currentStep.value = 3
+  persistQuickState()
+}
+
 // 录音时长（秒）→ "MM:SS"；无时长显示占位
 function fmtDur(sec) {
   const s = Number(sec)
@@ -1191,6 +1214,23 @@ function fmtTime(iso) {
   return m ? (m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5]) : String(iso)
 }
 
+// 转写页录音回放：点播放试听这段录音，再点暂停；切到另一段会停掉上一段
+function togglePlay(item) {
+  const url = item && item.recordingUrl
+  if (!url) { toast({ title: '该录音暂无音频', icon: 'none' }); return }
+  // 再点同一段 = 暂停
+  if (playingId.value === item.id && _playAudio) { try { _playAudio.pause() } catch (e) {} return }
+  // 切到另一段：先静默停掉旧的（摘掉旧 handler 避免误触发）
+  if (_playAudio) { _playAudio.onplay = _playAudio.onpause = _playAudio.onended = _playAudio.onerror = null; try { _playAudio.pause() } catch (e) {} }
+  _playAudio = new Audio(url)
+  _playAudio.onplay = () => { playingId.value = item.id }
+  _playAudio.onpause = () => { if (playingId.value === item.id) playingId.value = null }
+  _playAudio.onended = () => { if (playingId.value === item.id) playingId.value = null }
+  _playAudio.onerror = () => { playingId.value = null; toast({ title: '播放失败', icon: 'none' }) }
+  const p = _playAudio.play()
+  if (p && p.catch) p.catch(() => { playingId.value = null; toast({ title: '播放失败', icon: 'none' }) })
+}
+
 // 删除一条录音（转写页删废录/多余段）：仅主任/副主任
 async function deleteRecording(item, idx) {
   if (!isChair.value) { toast({ title: '仅主任/副主任可删除', icon: 'none' }); return }
@@ -1202,6 +1242,8 @@ async function deleteRecording(item, idx) {
     cancelText: '取消'
   })
   if (!res.confirm) return
+  // 删的是正在播放的那段，先停掉回放
+  if (playingId.value === item.id && _playAudio) { try { _playAudio.pause() } catch (e) {} }
   try {
     await api.committeeDeleteRecording(meetingId.value, item.id)
     toast({ title: '已删除', icon: 'success' })
@@ -2196,6 +2238,8 @@ function exitLive() {
 .qk-pick-name { display:block; font-size:30rpx; color:#1f2329; word-break:break-all; }
 .qk-pick-meta { display:block; font-size: 28rpx; color:#666; margin-top:6rpx; }
 .qk-pick-done { font-size:28rpx; color:#27AE60; font-weight:600; flex-shrink:0; }
+.qk-pick-play { flex-shrink:0; width:60rpx; height:60rpx; box-sizing:border-box; display:flex; align-items:center; justify-content:center; font-size:28rpx; color:#0051FF; border:2rpx solid #BCD0FF; background:#EEF3FF; border-radius:50%; }
+.qk-pick-play.on { color:#fff; background:#0051FF; border-color:#0051FF; }
 .qk-pick-del { flex-shrink:0; font-size:26rpx; color:#E74C3C; border:2rpx solid #F3C2BD; background:#FDECEA; border-radius:999rpx; padding:8rpx 20rpx; line-height:1.3; }
 .qk-pick-ing { font-size:28rpx; color:#E67E22; flex-shrink:0; }
 .qk-pick-item .lp-ghost-btn { width:auto; flex-shrink:0; margin:0; padding:14rpx 32rpx; }
