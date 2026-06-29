@@ -1419,8 +1419,9 @@ async function startMeeting() {
   try {
     await api.committeeAdvance(meetingId, 'start', 'quick')
     toast({ title: '会议已开始', icon: 'success' })
-    // loadDetail 检测到 stage=ongoing 后会自动 redirectTo MeetingLiveQuick（避免 router.push 静默失败不跳转）
-    loadDetail()
+    // 开始会议后直接进入「会议进行」录音向导（用 redirectTo=router.replace 可靠跳转；
+    // 不走 loadDetail 的条件跳转，避免 fromNotice 流程下 !fromNotice 守卫把跳转挡掉、停在详情页）
+    redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
   } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
 
