@@ -11,8 +11,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
@@ -85,8 +89,15 @@ public class DoubaoOcrService {
                 log.info("[OCR] 识别完成 id={} file={} chars={}", materialId, filename,
                         text == null ? 0 : text.length());
             } catch (Exception e) {
-                log.warn("[OCR] 识别失败 id={} file={}: {}", materialId, filename, e.getMessage());
-                markStatus(materialId, "failed", null);
+                if (isServiceUnreachable(e)) {
+                    // OCR 服务没起/连不上：这不是"识别失败"，把状态清回 NULL（不显徽标），
+                    // 避免用户忘了起 ocr-asr-service 时每份图片/PDF 都标红"识别失败"。下次重传可再试。
+                    log.warn("[OCR] OCR 服务连不上，状态清空(NULL) id={} file={}: {}", materialId, filename, e.getMessage());
+                    markStatus(materialId, null, null);
+                } else {
+                    log.warn("[OCR] 识别失败 id={} file={}: {}", materialId, filename, e.getMessage());
+                    markStatus(materialId, "failed", null);
+                }
             }
         });
     }
@@ -148,6 +159,25 @@ public class DoubaoOcrService {
         } catch (Exception e) {
             log.warn("[OCR] 更新材料 OCR 状态失败 id={} status={}: {}", materialId, status, e.getMessage());
         }
+    }
+
+    /**
+     * 判断异常是否属于"OCR 服务连不上"（服务没起/网络不通），而非服务返回的识别错误。
+     * 连不上 → 状态清回 NULL 不显徽标；服务有响应但失败(如 422/500/超时) → 仍记 failed。
+     */
+    private boolean isServiceUnreachable(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof ConnectException                 // 连接被拒：服务没起
+                    || t instanceof HttpConnectTimeoutException   // 建连超时：连不上
+                    || t instanceof UnknownHostException          // 主机名解析不了
+                    || t instanceof NoRouteToHostException) {     // 路由不可达
+                return true;
+            }
+            String msg = t.getMessage();
+            if (msg != null && msg.toLowerCase().contains("connection refused")) return true;
+            if (t == t.getCause()) break;   // 防御自引用导致死循环
+        }
+        return false;
     }
 
     private boolean isOcrable(MeetingMaterial mat) {
