@@ -13,11 +13,15 @@ import com.ywh.entity.*;
 import com.ywh.enums.*;
 import com.ywh.repository.*;
 import com.ywh.util.SecurityUtils;
+import com.ywh.service.quick.DoubaoOcrService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -45,6 +49,8 @@ public class CommitteeService {
     private final MeetingMaterialRepository materialRepo;
     private final ArchiveExtraRepository archiveExtraRepo;
     private final ObjectMapper objectMapper;
+    // 可选：仅 doubao.ocr.enabled=true 时存在，未启用时 getIfAvailable() 返回 null → OCR 跳过
+    private final ObjectProvider<DoubaoOcrService> ocrServiceProvider;
 
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
 
@@ -874,13 +880,30 @@ public class CommitteeService {
     // ===== Materials（会议材料）=====
     @Transactional
     public void addMaterial(Long meetingId, String fileName, String fileType, String sizeText, String fileUrl) {
-        materialRepo.save(MeetingMaterial.builder()
+        MeetingMaterial saved = materialRepo.save(MeetingMaterial.builder()
                 .meetingId(meetingId)
                 .fileName(fileName)
                 .fileType(fileType)
                 .sizeText(sizeText)
                 .fileUrl(fileUrl)
                 .build());
+        triggerMaterialOcr(saved.getId());
+    }
+
+    /**
+     * 上传材料后触发 OCR 文字提取（图片/PDF）。等本事务提交后再跑，确保后台线程能查到这条记录；
+     * 未启用 OCR（无 DoubaoOcrService Bean）则静默跳过。OCR 仅作纪要补充语料，失败不影响材料本身。
+     */
+    private void triggerMaterialOcr(Long materialId) {
+        DoubaoOcrService ocr = ocrServiceProvider.getIfAvailable();
+        if (ocr == null || materialId == null) return;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { ocr.submitMaterialOcr(materialId); }
+            });
+        } else {
+            ocr.submitMaterialOcr(materialId);
+        }
     }
 
     @Transactional
@@ -896,6 +919,7 @@ public class CommitteeService {
             m.put("sizeText", mat.getSizeText());
             m.put("fileType", mat.getFileType());
             m.put("url", mat.getFileUrl());
+            m.put("ocrStatus", mat.getOcrStatus());   // null/processing/done/failed，供前端显示识别状态
             return m;
         }).collect(Collectors.toList());
     }
@@ -1119,6 +1143,20 @@ public class CommitteeService {
             }
         }
 
+        // 会议材料 OCR 摘录：图片/PDF 识别出的文字，让纪要可引用材料中的方案、数据、条款等
+        List<MeetingMaterial> materials = materialRepo.findByMeetingId(meetingId);
+        List<MeetingMaterial> ocrMaterials = materials.stream()
+                .filter(x -> x.getOcrText() != null && !x.getOcrText().isBlank())
+                .toList();
+        if (!ocrMaterials.isEmpty()) {
+            sb.append("\n【会议材料摘录】\n");
+            int mi = 1;
+            for (MeetingMaterial mt : ocrMaterials) {
+                sb.append(mi++).append(". ").append(nullToUnknown(mt.getFileName())).append("：")
+                        .append(compactMinutesInput(mt.getOcrText(), 600)).append('\n');
+            }
+        }
+
         sb.append("\n【必要转写补充】\n");
         if (asr != null && asr.getSegments() != null && !asr.getSegments().isEmpty()) {
             int count = 0;
@@ -1138,6 +1176,7 @@ public class CommitteeService {
         sb.append("每个议题控制在一小段，通报类只根据人工确认议题报告精简为通报内容、委员知悉/意见和后续安排，严禁写赞成、反对、通过、未通过或表决；");
         sb.append("讨论类写明主要意见、共识和后续安排；表决/决议类只写方案要点、票数、表决结果、决议和关键执行安排，不展开过多背景细节。");
         sb.append("优先依据人工确认结果和议题报告摘录，不要逐句复述转写，不要输出冗长背景。");
+        sb.append("如有【会议材料摘录】，可据此补充方案要点、数据或条款等事实细节，但人工确认结果与材料冲突时以人工确认结果为准；材料识别可能有误，不确定的不要写入。");
         sb.append("缺失信息写“未明确说明”，不得编造。");
         return sb.toString();
     }
