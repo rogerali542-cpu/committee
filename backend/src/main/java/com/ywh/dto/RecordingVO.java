@@ -13,6 +13,7 @@ public class RecordingVO {
     private String recordingUrl;
     private String fileName;
     private Long fileSize;
+    private Integer durationSec;
     private String asrStatus;
     private LocalDateTime createdAt;
 }

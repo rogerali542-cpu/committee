@@ -21,4 +21,7 @@ public interface AsrService {
 
     /** 取转写结果（status=done 时有效）。 */
     AsrResult result(Long meetingId);
+
+    /** 删除某条录音后，清掉它已缓存的逐条转写结果，使合并结果不再包含它。默认空实现。 */
+    default void evictRecording(Long meetingId, Long recordingId) {}
 }

@@ -68,9 +68,14 @@ export default {
   committeeRecordings: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/recordings');
   },
-  // 上传录音（纯存，不自动转写）
-  committeeUploadRecording: function (id, filePath) {
-    return core.uploadFile('/api/committees/' + id + '/quick/recording/upload', filePath, 'file');
+  // 上传录音（纯存，不自动转写）；durationSec 为录音时长（秒），用于转写页展示
+  committeeUploadRecording: function (id, filePath, durationSec) {
+    var q = (durationSec != null && durationSec > 0) ? ('?durationSec=' + Math.round(durationSec)) : '';
+    return core.uploadFile('/api/committees/' + id + '/quick/recording/upload' + q, filePath, 'file');
+  },
+  // 删除一条录音（转写页删废录/多余段）
+  committeeDeleteRecording: function (id, recordingId) {
+    return core.realRequest('DELETE', '/api/committees/' + id + '/quick/recordings/' + recordingId);
   },
   // 主任选片触发转写
   committeeTranscribeRecording: function (id, recordingId) {

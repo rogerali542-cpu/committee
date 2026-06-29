@@ -100,7 +100,9 @@
       <button v-else class="lp-primary-btn" @click="toggleRecord" :disabled="uploading || polling || extracting">
         {{ recBtnLabel }}
       </button>
-      <button class="lp-ghost-btn" @click="finishRecord" :disabled="uploading || polling || extracting">
+      <!-- 上传后空闲：提示已录段数会合并为一份，引导接着录 -->
+      <div v-if="idleAfterUpload" class="qk-seg-hint">已上传 {{ recordings.length }} 段 · 点"继续录音"接着录，转写时自动合并为一份会议记录</div>
+      <button class="lp-ghost-btn" :class="{ muted: !canUpload }" @click="finishRecord" :disabled="uploading || polling || extracting">
         结束录音并上传
       </button>
       <div class="qk-divider"><span class="qk-divider-text">或</span></div>
@@ -128,29 +130,37 @@
     <div class="lp-card" v-if="currentStep === 3">
       <span class="lp-card-step">第 3 步，共 4 步</span>
       <span class="lp-card-title">录音转写</span>
-      <span class="lp-card-desc">勾选要转写的录音（可多条），转写后文字会自动合并为本次会议记录，供议题匹配。</span>
+      <span class="lp-card-desc">本次会议录音的各段会合并为一份会议记录。下面默认全选，转写后自动按顺序拼接，供议题匹配。</span>
 
-      <!-- 已上传录音列表：可多选，已转写的自动并入会议记录 -->
-      <div v-if="recordings.length" class="qk-pick-list">
-        <div class="qk-pick-item"
-             :class="[item.id === _transcribingRecordingId ? 'transcribing' : '', isPicked(item.id) ? 'picked' : '']"
-             v-for="item in recordings" :key="item.id"
-             @click="onPickRowTap(item)">
-          <span class="qk-pick-check" :class="isPicked(item.id) ? 'on' : ''">{{ isPicked(item.id) ? '✓' : '' }}</span>
-          <div class="qk-pick-info">
-            <span class="qk-pick-name">{{ item.uploaderName || '未知' }} · {{ item.fileName || '录音' }}</span>
-            <span class="qk-pick-meta">{{ item.createdAt || '' }} · {{ item.id === _transcribingRecordingId ? '转写中…' : (item.asrStatus === 'done' ? '已转写 · 勾选可重新转写' : '待转写') }}</span>
+      <!-- 本次会议录音：多段视为一个整体，合并为一份；可取消勾选某段（如某段是废录） -->
+      <div v-if="recordings.length" class="qk-seg-group">
+        <div class="qk-seg-group-head">
+          <span class="qk-seg-group-title">本次会议录音</span>
+          <span class="qk-seg-group-sub">共 {{ recordings.length }} 段 · 合并为一份</span>
+        </div>
+        <div class="qk-pick-list">
+          <div class="qk-pick-item"
+               :class="[item.id === _transcribingRecordingId ? 'transcribing' : '', isPicked(item.id) ? 'picked' : '']"
+               v-for="(item, idx) in recordings" :key="item.id"
+               @click="onPickRowTap(item)">
+            <span class="qk-pick-check" :class="isPicked(item.id) ? 'on' : ''">{{ isPicked(item.id) ? '✓' : '' }}</span>
+            <div class="qk-pick-info">
+              <span class="qk-pick-name">第 {{ idx + 1 }} 段 · 时长 {{ fmtDur(item.durationSec) }}</span>
+              <span class="qk-pick-meta">上传 {{ fmtTime(item.createdAt) }} · {{ item.id === _transcribingRecordingId ? '转写中…' : (item.asrStatus === 'done' ? '已转写' : '待转写') }}</span>
+            </div>
+            <span v-if="item.asrStatus === 'done'" class="qk-pick-done">✓</span>
+            <span v-if="isChair && !polling && !extracting && item.id !== _transcribingRecordingId"
+                  class="qk-pick-del" @click.stop="deleteRecording(item, idx)">删除</span>
           </div>
-          <span v-if="item.asrStatus === 'done'" class="qk-pick-done">✓ 已转写</span>
         </div>
       </div>
       <div v-else class="lp-empty">暂无录音，请返回上一步录制或上传</div>
 
-      <div v-if="recordings.length && !polling && !extracting" class="qk-pick-hint">勾选要转写的录音可多选；转写后自动合并为一份会议记录，已转写的会自动并入。</div>
+      <div v-if="recordings.length && !polling && !extracting" class="qk-pick-hint">默认全选、合并为一份会议记录；如某段是废录可取消勾选。已转写的会自动并入。</div>
       <button v-if="recordings.length" class="lp-primary-btn" @click="transcribeSelected" :disabled="polling || extracting || (!pickedIds.length && !hasDoneRecordings)">
-        {{ pickedIds.length > 1 ? ('转写所选 ' + pickedIds.length + ' 条并合并') : '转写所选录音' }}
+        {{ pickedIds.length > 1 ? ('转写 ' + pickedIds.length + ' 段并合并为一份') : '转写录音' }}
       </button>
-      <div class="qk-back-rec" @click="backToRecord">＋ 返回录音页，再录或再传一段</div>
+      <div class="qk-back-rec" @click="backToRecord">＋ 返回录音页，继续录下一段</div>
 
       <!-- 转写状态 -->
       <div class="qk-gen" v-if="polling || extracting">
@@ -584,12 +594,17 @@ const hasSavedRecordings = computed(() => (recordings.value || []).length > 0)
 // 按钮文案：活动录制 → 暂停；已上传过录音 → 新增录音；本地有未上传录音 → 重新录音；否则 开始录音（暂停态另用并排按钮）
 const recBtnLabel = computed(() => {
   if (recActive.value) return '暂停录音'
-  if (hasSavedRecordings.value) return '新增录音'   // 已存过录音，本次为追加一段（旧的已存服务器，不会覆盖）
+  if (hasSavedRecordings.value) return '继续录音'   // 已上传过录音，本次接着录下一段（与已上传的合并为一份会议记录）
   if (rec.hasRecording.value) return '重新录音'
   return '开始录音'
 })
 // 暂停态：显示"继续录音/重新录音"并排按钮（继续=恢复同一会话，自然合并成一个文件）
 const isPaused = computed(() => rec.recording.value && rec.paused.value)
+// 当前是否有"可上传的新内容"（正在录 / 暂停中 / 内存里有还没上传的录音）。
+// 上传成功后已 rec.reset()，此值变 false → "结束录音并上传"置灰，避免重复上传同一段。
+const canUpload = computed(() => recActive.value || isPaused.value || rec.hasRecording.value)
+// 已上传过录音、且当前没有新录音在手 → 上传后的"空闲"态，引导继续录下一段
+const idleAfterUpload = computed(() => !rec.recording.value && !rec.hasRecording.value && hasSavedRecordings.value)
 
 const uploading = ref(false)
 const polling = ref(false)
@@ -984,7 +999,17 @@ async function finishRecord() {
     return
   }
   if (!rec.recording.value && !rec.hasRecording.value) {
-    toast({ title: '请先开始录音', icon: 'none' })
+    // 没有新录音可传：若已上传过则明确告知，避免重复上传同一段
+    if (hasSavedRecordings.value) {
+      showModal({
+        title: '这段录音已上传',
+        content: '当前没有新的录音内容。如需接着录，请点"继续录音"，转写时会和已上传的自动合并为一份。',
+        showCancel: false,
+        confirmText: '知道了'
+      })
+    } else {
+      toast({ title: '请先开始录音', icon: 'none' })
+    }
     return
   }
   if (uploading.value || polling.value || extracting.value) return
@@ -998,13 +1023,13 @@ async function finishRecord() {
     }
     if (r.durationSec) asrAudioDurSec.value = r.durationSec
     if (r.blob) asrFileSizeBytes.value = r.blob.size
-    await uploadRecording(r.blob, r.ext)
+    await uploadRecording(r.blob, r.ext, r.durationSec)
     return
   }
   // 会话已停止但已有上次产出（对齐原 tempFilePath 分支）→ 直接复用已生成的 blob 上传
   const blob = rec.getBlob && rec.getBlob()
   if (blob && blob.size > 0) {
-    await uploadRecording(blob, extFromBlob(blob))
+    await uploadRecording(blob, extFromBlob(blob), asrAudioDurSec.value)
     return
   }
   toast({ title: '录音为空，请重试', icon: 'none' })
@@ -1061,16 +1086,32 @@ async function onAudioFileChange(e) {
     return
   }
   asrFileSizeBytes.value = file.size
-  await uploadRecordingFile(file)
+  const dur = await getAudioDuration(file) // 读取已选音频的时长（秒），用于转写页展示
+  if (dur > 0) asrAudioDurSec.value = dur
+  await uploadRecordingFile(file, dur)
+}
+
+// 读取音频文件时长（秒）：临时 audio 元素读 metadata，失败返回 0
+function getAudioDuration(file) {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file)
+      const a = document.createElement('audio')
+      a.preload = 'metadata'
+      a.onloadedmetadata = () => { const d = a.duration; URL.revokeObjectURL(url); resolve(isFinite(d) ? Math.round(d) : 0) }
+      a.onerror = () => { URL.revokeObjectURL(url); resolve(0) }
+      a.src = url
+    } catch (err) { resolve(0) }
+  })
 }
 
 // 录音/选片上传：把 Blob 包成带正确文件名的 File，后端据扩展名识别格式并转 16k 单声道 mp3
-async function uploadRecording(blob, ext) {
+async function uploadRecording(blob, ext, durationSec) {
   const file = new File([blob], 'recording.' + ext, { type: blob.type })
-  await uploadRecordingFile(file)
+  await uploadRecordingFile(file, durationSec)
 }
 
-async function uploadRecordingFile(file) {
+async function uploadRecordingFile(file, durationSec) {
   clearPoll()
   _asrDoneHandled = false
   currentStep.value = 3
@@ -1088,10 +1129,11 @@ async function uploadRecordingFile(file) {
   persistQuickState()
 
   try {
-    // 上传只存，不自动转写 — 返回录音记录信息
-    await api.committeeUploadRecording(meetingId.value, file)
+    // 上传只存，不自动转写 — 返回录音记录信息（带上时长，供转写页展示）
+    await api.committeeUploadRecording(meetingId.value, file, durationSec)
     toast({ title: '录音已上传', icon: 'success' })
     uploading.value = false
+    rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
     currentStep.value = 3 // 进入"选片转写"步骤
     loadDetail() // 刷新录音列表
   } catch (e) {
@@ -1133,6 +1175,42 @@ function backToRecord() {
   clearPoll()
   currentStep.value = 2
   persistQuickState()
+}
+
+// 录音时长（秒）→ "MM:SS"；无时长显示占位
+function fmtDur(sec) {
+  const s = Number(sec)
+  if (!s || s <= 0) return '未知'
+  const m = Math.floor(s / 60)
+  return m + ':' + String(s % 60).padStart(2, '0')
+}
+// 上传时间：后端 LocalDateTime（如 2026-06-29T10:01:23）→ "MM-DD HH:mm"
+function fmtTime(iso) {
+  if (!iso) return ''
+  const m = String(iso).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+  return m ? (m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5]) : String(iso)
+}
+
+// 删除一条录音（转写页删废录/多余段）：仅主任/副主任
+async function deleteRecording(item, idx) {
+  if (!isChair.value) { toast({ title: '仅主任/副主任可删除', icon: 'none' }); return }
+  if (polling.value || extracting.value) return
+  const res = await showModal({
+    title: '删除这段录音',
+    content: '确定删除「第 ' + (idx + 1) + ' 段 · 时长 ' + fmtDur(item.durationSec) + '」？删除后不可恢复，转写合并结果也会去掉这段。',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeDeleteRecording(meetingId.value, item.id)
+    toast({ title: '已删除', icon: 'success' })
+    pickedIds.value = (pickedIds.value || []).filter(x => x !== item.id)
+    _knownRecordingIds.delete(item.id)
+    loadDetail() // 刷新录音列表
+  } catch (e) {
+    toast({ title: (e && e.message) || '删除失败', icon: 'none' })
+  }
 }
 
 // 转写所选录音：逐条顺序转写，全部完成后统一抽取；已转写的由后端自动并入合并
@@ -1899,6 +1977,10 @@ function exitLive() {
 .lp-primary-btn { display:block; width:100%; box-sizing:border-box; background:#FFA800; color:#fff; border:0; border-radius:44rpx; font-size:34rpx; font-weight:700; padding:26rpx 0; margin-top:12rpx; }
 .lp-primary-btn[disabled] { background:#e3cfa6; color:#fff; }
 .lp-ghost-btn { display:block; width:100%; box-sizing:border-box; background:#fff; color:#FFA800; border:2rpx solid #FFA800; border-radius:44rpx; font-size:30rpx; padding:22rpx 0; margin-top:16rpx; margin-bottom:8rpx; }
+/* 没有新录音可传时，"结束录音并上传"弱化为不可用样子（仍可点，点了弹提示说明已上传） */
+.lp-ghost-btn.muted { color:#BBB; border-color:#E2E2E2; background:#FAFAFA; }
+/* 上传后空闲提示：已录段数会合并为一份 */
+.qk-seg-hint { font-size:26rpx; color:#9A6A00; line-height:1.5; margin:6rpx 0 2rpx; background:#FFF8EC; border-radius:12rpx; padding:14rpx 18rpx; text-align:center; }
 
 /* 第4步底部：次要操作弱化为小链接 */
 .qk-sub-actions { display:flex; align-items:center; justify-content:center; gap:18rpx; margin-top:18rpx; }
@@ -2097,6 +2179,11 @@ function exitLive() {
 .qk-modal-note { display:block; font-size: 28rpx; color:#666; margin-top:18rpx; line-height:1.5; }
 
 /* 第3步：选片列表 */
+/* 本次会议录音分组：把多段框成一个整体 */
+.qk-seg-group { border:2rpx solid #FFE2B0; border-radius:18rpx; padding:18rpx; background:#FFFCF6; margin-bottom:8rpx; }
+.qk-seg-group-head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14rpx; }
+.qk-seg-group-title { font-size:30rpx; font-weight:700; color:#1F2024; }
+.qk-seg-group-sub { font-size:26rpx; color:#D88900; font-weight:600; }
 .qk-pick-list { display:flex; flex-direction:column; gap:14rpx; margin-bottom:8rpx; }
 .qk-pick-item { display:flex; align-items:center; gap:16rpx; background:#FAFBFC; border:2rpx solid #EEF1F4; border-radius:16rpx; padding:22rpx; }
 .qk-pick-item.transcribing { border-color:#FFD98A; background:#FFFDF6; }
@@ -2109,6 +2196,7 @@ function exitLive() {
 .qk-pick-name { display:block; font-size:30rpx; color:#1f2329; word-break:break-all; }
 .qk-pick-meta { display:block; font-size: 28rpx; color:#666; margin-top:6rpx; }
 .qk-pick-done { font-size:28rpx; color:#27AE60; font-weight:600; flex-shrink:0; }
+.qk-pick-del { flex-shrink:0; font-size:26rpx; color:#E74C3C; border:2rpx solid #F3C2BD; background:#FDECEA; border-radius:999rpx; padding:8rpx 20rpx; line-height:1.3; }
 .qk-pick-ing { font-size:28rpx; color:#E67E22; flex-shrink:0; }
 .qk-pick-item .lp-ghost-btn { width:auto; flex-shrink:0; margin:0; padding:14rpx 32rpx; }
 

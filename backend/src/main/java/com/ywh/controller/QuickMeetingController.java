@@ -19,6 +19,7 @@ import com.ywh.service.quick.TopicSummaryTaskService;
 import com.ywh.service.quick.TranscriptCorrectionService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,7 +57,8 @@ public class QuickMeetingController {
     @PostMapping("/recording/upload")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<Map<String, Object>> upload(@PathVariable Long id,
-                                    @RequestParam("file") MultipartFile file) throws IOException {
+                                    @RequestParam("file") MultipartFile file,
+                                    @RequestParam(value = "durationSec", required = false) Integer durationSec) throws IOException {
         if (file == null || file.isEmpty()) {
             return Result.fail("音频为空");
         }
@@ -76,7 +78,7 @@ public class QuickMeetingController {
         }
         String url = audioStorage.save(id, data, ext);
         Long recordingId = committeeService.saveRecording(id, url,
-                file.getOriginalFilename(), (long) data.length);
+                file.getOriginalFilename(), (long) data.length, durationSec);
         return Result.ok(Map.of(
                 "recordingId", recordingId,
                 "url", url,
@@ -105,6 +107,16 @@ public class QuickMeetingController {
     @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<List<RecordingVO>> recordings(@PathVariable Long id) {
         return Result.ok(committeeService.getRecordings(id));
+    }
+
+    /** 删除一条录音（转写页删废录/多余段）。仅主任/副主任可删。 */
+    @DeleteMapping("/recordings/{recordingId}")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> deleteRecording(@PathVariable Long id,
+                                        @PathVariable Long recordingId) {
+        committeeService.deleteRecording(id, recordingId);
+        asrService.evictRecording(id, recordingId); // 清掉该段已缓存的转写结果，合并结果随之更新
+        return Result.ok(null);
     }
 
     // ===== 以下接口保留，但 /recording/upload 已改为只存不转 =====

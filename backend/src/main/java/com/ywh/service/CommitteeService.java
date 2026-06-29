@@ -755,7 +755,7 @@ public class CommitteeService {
     // ===== 录音多条：上传存文件，不自动转写 =====
     /** 上传录音只存文件信息到新表，返回录音记录 ID。主任"选片"时再触发 ASR 转写。 */
     @Transactional
-    public Long saveRecording(Long meetingId, String url, String fileName, Long fileSize) {
+    public Long saveRecording(Long meetingId, String url, String fileName, Long fileSize, Integer durationSec) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         UserRoleEntity uploader = SecurityUtils.getCurrentUserRole();
@@ -765,10 +765,23 @@ public class CommitteeService {
                 .recordingUrl(url)
                 .fileName(fileName)
                 .fileSize(fileSize)
+                .durationSec(durationSec)
                 .asrStatus("none")
                 .build();
         recording = recordingRepo.save(recording);
         return recording.getId();
+    }
+
+    /** 删除一条录音（转写页可删废录/多余段）。仅删本会议下的记录，返回删除是否成功。
+     *  ASR 缓存的逐条转写结果由调用方(控制器)负责 evict，避免对 AsrService 形成循环依赖。 */
+    @Transactional
+    public void deleteRecording(Long meetingId, Long recordingId) {
+        MeetingRecording r = recordingRepo.findById(recordingId)
+                .orElseThrow(() -> new IllegalArgumentException("录音不存在"));
+        if (r.getMeeting() == null || !r.getMeeting().getId().equals(meetingId)) {
+            throw new IllegalArgumentException("录音不属于该会议");
+        }
+        recordingRepo.delete(r);
     }
 
     /** 获取某会议全部录音列表（按创建时间倒序） */
@@ -791,6 +804,7 @@ public class CommitteeService {
                 .recordingUrl(r.getRecordingUrl())
                 .fileName(r.getFileName())
                 .fileSize(r.getFileSize())
+                .durationSec(r.getDurationSec())
                 .asrStatus(r.getAsrStatus())
                 .createdAt(r.getCreatedAt())
                 .build();

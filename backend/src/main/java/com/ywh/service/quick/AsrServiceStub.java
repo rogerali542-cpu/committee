@@ -68,6 +68,12 @@ public class AsrServiceStub implements AsrService {
         return mergeRecordings(meetingId, perRec);
     }
 
+    @Override
+    public void evictRecording(Long meetingId, Long recordingId) {
+        ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
+        if (perRec != null && recordingId != null) perRec.remove(recordingId);
+    }
+
     // 按 recordingId 升序合并多条录音，时间轴累加偏移（与 DoubaoAsrService 一致）
     private AsrResult mergeRecordings(Long meetingId, Map<Long, AsrResult> perRec) {
         List<Long> keys = new ArrayList<>(perRec.keySet());

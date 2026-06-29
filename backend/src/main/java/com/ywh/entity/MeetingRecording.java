@@ -33,6 +33,9 @@ public class MeetingRecording {
     @Column(name = "file_size")
     private Long fileSize;
 
+    @Column(name = "duration_sec")
+    private Integer durationSec; // 录音时长（秒），前端上传时回传
+
     @Column(name = "asr_status", length = 20, nullable = false)
     private String asrStatus; // none, pending, processing, done, failed
 

@@ -221,6 +221,12 @@ public class DoubaoAsrService implements AsrService {
         return mergeRecordings(meetingId, perRec);
     }
 
+    @Override
+    public void evictRecording(Long meetingId, Long recordingId) {
+        ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
+        if (perRec != null && recordingId != null) perRec.remove(recordingId);
+    }
+
     /** 缓存某条录音的识别结果。recordingId 为空（旧两参路径）时归入合并槽 -1。 */
     private void putRecordingResult(Long meetingId, Long recordingId, AsrResult r) {
         long key = recordingId != null ? recordingId : -1L;
