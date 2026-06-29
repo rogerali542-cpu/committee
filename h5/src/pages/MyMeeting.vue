@@ -37,8 +37,16 @@
       <span class="mm-section-title">会议录音</span>
       <span class="mm-section-desc">录音用于帮助记录员整理会议内容，只保存不自动处理</span>
 
-      <!-- 录音控件（需已签到） -->
-      <div v-if="signedIn">
+      <!-- 签到（进行中必须先点签到，会前"确认参加"的人也要再点一次） -->
+      <div v-if="!sessionSignedIn" class="mm-sign-block">
+        <div class="mm-big-btn" @click="doSignIn">
+          <span class="mm-big-ico">✍️</span>
+          <span class="mm-big-text">签到</span>
+        </div>
+        <span class="mm-sign-hint">签到后即可录制备份录音</span>
+      </div>
+      <!-- 录音控件（已签到后显示） -->
+      <div v-else>
         <div class="mm-recorder">
           <div class="mm-rec-dot" :class="{ on: recording }"></div>
           <span class="mm-rec-time">{{ timeText }}</span>
@@ -55,9 +63,6 @@
           选择已有文件上传
         </button>
         <span v-if="uploading" class="mm-uploading">上传中…</span>
-      </div>
-      <div v-else class="mm-tip-block">
-        <span class="mm-tip">确认参加后即可录制备份录音</span>
       </div>
     </div>
 
@@ -141,6 +146,7 @@ const location = ref('')
 const description = ref('')
 const stage = ref('') // preparing / ongoing / ended
 const signedIn = ref(false)
+const sessionSignedIn = ref(false) // 本次会议进行中已点击签到（session 级，防止提前确认参加的人跳过签到）
 const declined = ref(false) // 因故缺席
 const materials = ref([])
 const hasMaterials = ref(false)
@@ -243,12 +249,31 @@ async function loadDetail() {
   }
 }
 
+// 进行中专用签到：不论是否提前确认参加，都需点击一次才进录音
+async function doSignIn() {
+  if (signedIn.value) {
+    // 会前已确认参加，后端已是 signedIn，本次点击只需放行，不重复打后端
+    sessionSignedIn.value = true
+    toast({ title: '已签到', icon: 'success' })
+    return
+  }
+  try {
+    await api.committeeSelfToggle(meetingId, 'signedIn')
+    signedIn.value = true
+    sessionSignedIn.value = true
+    toast({ title: '已签到', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '操作失败', icon: 'none' })
+  }
+}
+
 async function confirmAttend() {
   if (signedIn.value) return
+  const isOngoing = stage.value === 'ongoing'
   const res = await showModal({
-    title: '确认参加',
-    content: '确认参加本次会议？',
-    confirmText: '确认参加',
+    title: isOngoing ? '签到' : '确认参加',
+    content: isOngoing ? '确认签到本次会议？' : '确认参加本次会议？',
+    confirmText: isOngoing ? '签到' : '确认参加',
     confirmColor: '#FFA800'
   })
   if (!res.confirm) return
@@ -256,7 +281,7 @@ async function confirmAttend() {
     await api.committeeSelfToggle(meetingId, 'signedIn')
     signedIn.value = true
     declined.value = false
-    toast({ title: '已确认参加', icon: 'success' })
+    toast({ title: isOngoing ? '已签到' : '已确认参加', icon: 'success' })
   } catch (e) {
     toast({ title: (e && e.message) || '操作失败', icon: 'none' })
   }
@@ -420,6 +445,8 @@ onUnmounted(() => {
 
 .mm-tip-block { padding: 48rpx 0; text-align: center; }
 .mm-tip { font-size: 32rpx; color: #666; }
+.mm-sign-block { display: flex; flex-direction: column; gap: 20rpx; }
+.mm-sign-hint { display: block; text-align: center; font-size: 30rpx; color: #666; }
 
 /* 录音列表 */
 .mm-rec-item {

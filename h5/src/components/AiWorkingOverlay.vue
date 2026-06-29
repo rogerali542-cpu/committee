@@ -100,7 +100,13 @@ const cfg = computed(() => {
     const procSec = estDur > 0 ? estDur / 20 : 0
     const total = uploadSec + procSec
     if (total > 0) {
-      return { ...base, target: Math.max(10, Math.ceil(total + 8)) }
+      const overrides = { target: Math.max(10, Math.ceil(total + 8)) }
+      if (estDur > 0) {
+        // 「已解析音频」从 0 匀速涨到实际录音时长，视觉上贴合真实进度
+        overrides.max = parseFloat((estDur / 60).toFixed(1))
+        overrides.dec = 1
+      }
+      return { ...base, ...overrides }
     }
   }
   return CFG[props.phase] || CFG.asr

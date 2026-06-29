@@ -207,9 +207,16 @@
           <div class="live-entry" @click="enterLive">
             <div class="live-entry-main">
               <span class="live-entry-title">会议进行中</span>
-              <span class="live-entry-sub">确认参会 → 录音转写 → 确认表决</span>
+              <span class="live-entry-sub">签到 → 录音转写 → 确认表决</span>
             </div>
             <span class="live-entry-arrow">进入 ›</span>
+          </div>
+          <div class="signin-prog" v-if="userView === 'chair' && detail.flowStats && detail.flowStats.attendance">
+            <div class="sp-head">
+              <span class="sp-label">签到进度</span>
+              <span class="sp-count">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }} 人已签到</span>
+            </div>
+            <div class="sp-bar"><div class="sp-fill" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
           </div>
           <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
         </template>
@@ -258,7 +265,7 @@
             <div class="fss-row">
               <div class="fss-mark attend">会</div>
               <div class="fss-main">
-                <div class="fss-line"><span class="fss-name">确认参会</span><span class="fss-num">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}</span></div>
+                <div class="fss-line"><span class="fss-name">签到情况</span><span class="fss-num">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}</span></div>
                 <div class="fss-bar"><div class="fss-fill" :class="detail.flowStats.attendance.done ? 'ok' : 'bad'" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
                 <span class="fss-meta">需≥{{ detail.flowStats.attendance.need }} · {{ detail.flowStats.attendance.pct }}%</span>
               </div>
@@ -312,7 +319,7 @@
               <div class="fss-row">
                 <div class="fss-mark attend">会</div>
                 <div class="fss-main">
-                  <div class="fss-line"><span class="fss-name">确认参会</span><span class="fss-num">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}</span></div>
+                  <div class="fss-line"><span class="fss-name">签到情况</span><span class="fss-num">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}</span></div>
                   <div class="fss-bar"><div class="fss-fill" :class="detail.flowStats.attendance.done ? 'ok' : 'bad'" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
                   <span class="fss-meta">需≥{{ detail.flowStats.attendance.need }} · {{ detail.flowStats.attendance.pct }}%</span>
                 </div>
@@ -495,7 +502,7 @@
         </div>
 
         <div class="proxy-tabs">
-          <span class="proxy-tab" :class="proxyAction === 'signIn' ? 'on' : ''" @click="pickProxyAction('signIn')">代确认参会</span>
+          <span class="proxy-tab" :class="proxyAction === 'signIn' ? 'on' : ''" @click="pickProxyAction('signIn')">代签到</span>
           <span class="proxy-tab" :class="proxyAction === 'vote' ? 'on' : ''" @click="pickProxyAction('vote')">代投票</span>
         </div>
 
@@ -559,7 +566,10 @@
 
         <div class="form-group">
           <span class="form-label">会议标题 *</span>
-          <input class="form-input large" v-model="editForm.title" placeholder="会议标题" />
+          <div class="vi-row">
+            <input class="form-input large" v-model="editForm.title" placeholder="会议标题" />
+            <button class="vi-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startVoice('title')">🎤</button>
+          </div>
         </div>
 
         <div class="form-row">
@@ -580,7 +590,10 @@
 
         <div class="form-group">
           <span class="form-label">主要议题 / 补充说明</span>
-          <textarea class="form-textarea" style="min-height:72px;height:72px;" v-model="editForm.description" placeholder="主要议题或其他需要记录的事项"></textarea>
+          <div class="vi-row" style="align-items:flex-start;">
+            <textarea class="form-textarea" style="min-height:72px;height:72px;flex:1;" v-model="editForm.description" placeholder="主要议题或其他需要记录的事项"></textarea>
+            <button class="vi-btn" :class="{ on: voiceTarget === 'description' }" @click.stop="startVoice('description')" style="margin-top:6rpx;">🎤</button>
+          </div>
         </div>
 
         <div class="form-group">
@@ -888,6 +901,32 @@ const proxySubmitting = ref(false)
 const editVisible = ref(false)
 const editForm = reactive({ title: '', meetingDate: '', meetingTime: '', location: '', description: '', content: '' })
 const noticeContentDirty = ref(false)
+// 语音输入
+const voiceTarget = ref('')
+const voiceListening = ref(false)
+let _voiceRec = null
+function startVoice(field) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SR) { toast({ title: '浏览器暂不支持语音输入', icon: 'none' }); return }
+  if (voiceListening.value) {
+    if (_voiceRec) { try { _voiceRec.stop() } catch (e) {} }
+    if (voiceTarget.value === field) { voiceTarget.value = ''; return }
+  }
+  voiceTarget.value = field
+  voiceListening.value = true
+  _voiceRec = new SR()
+  _voiceRec.lang = 'zh-CN'
+  _voiceRec.interimResults = false
+  _voiceRec.maxAlternatives = 1
+  _voiceRec.onresult = (e) => {
+    const text = e.results[0][0].transcript
+    if (field === 'title') editForm.title = text
+    else if (field === 'description') editForm.description = (editForm.description ? editForm.description + '\n' : '') + text
+  }
+  _voiceRec.onend = () => { voiceListening.value = false; voiceTarget.value = '' }
+  _voiceRec.onerror = () => { voiceListening.value = false; voiceTarget.value = ''; toast({ title: '语音识别失败，请重试', icon: 'none' }) }
+  _voiceRec.start()
+}
 const locationOptions = ['社区活动室', '物业办公室', '社区会议室', '线上会议', '待定']
 // 编辑通知
 const noticeEditVisible = ref(false)
@@ -1108,9 +1147,9 @@ function goStep(step) {
 
 async function confirmStep1() {
   const res = await showModal({
-    title: '确认参加会议',
-    content: '请确认：你会参加本次会议。',
-    confirmText: '确认参加',
+    title: '入会签到',
+    content: '请确认：你已到场参加本次会议。',
+    confirmText: '签到',
     cancelText: '再看看'
   })
   if (!res.confirm) return
@@ -1151,7 +1190,7 @@ async function confirmStep3() {
 
 async function vote(topicId, choice, selectedId) {
   if (!step1Done.value) {
-    toast({ title: '请先确认参会', icon: 'none' })
+    toast({ title: '请先签到', icon: 'none' })
     return
   }
   const d = detail.value
@@ -1244,14 +1283,14 @@ function refreshProxyTargets() {
       let disabledText = ''
       if (action === 'signIn') {
         disabled = !!item.signedIn
-        disabledText = item.signedIn ? (item.signInByProxy ? '已代录参会' : '已确认参会') : ''
+        disabledText = item.signedIn ? (item.signInByProxy ? '已代录签到' : '已签到') : ''
       } else {
         if (!topicId) {
           disabled = true
           disabledText = '请选择议题'
         } else if (!item.signedIn) {
           disabled = true
-          disabledText = '未确认参会'
+          disabledText = '未签到'
         } else if (votedTopicIds.indexOf(Number(topicId)) >= 0) {
           disabled = true
           disabledText = '已投票'
@@ -1380,8 +1419,9 @@ async function startMeeting() {
   try {
     await api.committeeAdvance(meetingId, 'start', 'quick')
     toast({ title: '会议已开始', icon: 'success' })
-    enterLive()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
+    // loadDetail 检测到 stage=ongoing 后会自动 redirectTo MeetingLiveQuick（避免 router.push 静默失败不跳转）
+    loadDetail()
+  } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
 
 // 进入「会议进行」全屏向导页：仅快速模式
@@ -1819,8 +1859,17 @@ function _doOpenEdit(d) {
   editVisible.value = true
   noticeContentDirty.value = false
   editForm.title = d.title || ''
-  editForm.meetingDate = d.meetingDate || ''
-  editForm.meetingTime = d.meetingTime || ''
+  if (d.meetingDate) {
+    editForm.meetingDate = d.meetingDate
+    editForm.meetingTime = d.meetingTime || ''
+  } else {
+    const t = new Date()
+    t.setDate(t.getDate() + 1)
+    const mo = String(t.getMonth() + 1).padStart(2, '0')
+    const day = String(t.getDate()).padStart(2, '0')
+    editForm.meetingDate = t.getFullYear() + '-' + mo + '-' + day
+    editForm.meetingTime = '10:00'
+  }
   editForm.location = d.location || ''
   // 主要议题：按准备会议时添加的议题标题，逐条编号列出；无议题则回退到补充说明
   editForm.description = buildTopicsText(d) || d.description || ''
@@ -2247,6 +2296,20 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .tp-tag { font-size: 28rpx; padding:1px 6px; border-radius:8px; }
 .tp-tag.live { color:#E67E22; background:#FDF2E3; }
 .tp-tag.realname { color:#2980B9; background:#EAF2F8; }
+
+/* 语音输入 */
+.vi-row { display:flex; align-items:center; gap:12rpx; }
+.vi-btn { flex-shrink:0; width:76rpx; height:76rpx; border-radius:50%; background:#f0f2f5; border:2rpx solid #ddd; font-size:32rpx; display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; padding:0; }
+.vi-btn.on { background:#FFA800; border-color:#FFA800; animation:vi-pulse 1.2s ease-in-out infinite; }
+@keyframes vi-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,168,0,0.4); } 50% { box-shadow:0 0 0 14rpx rgba(255,168,0,0); } }
+
+/* 进行中签到进度（主任视图） */
+.signin-prog { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.sp-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.sp-label { font-size:28rpx; color:#666; }
+.sp-count { font-size:28rpx; font-weight:700; color:#27AE60; }
+.sp-bar { height:10px; background:#f0f0f0; border-radius:5px; overflow:hidden; }
+.sp-fill { height:100%; background:linear-gradient(90deg,#4FD0A6,#27AE60); border-radius:5px; transition:width 0.3s ease; min-width:4px; }
 .voter-list { margin-top:8px; padding:8px 10px; background:#F7F9FA; border-radius:8px; }
 .vl-title { display:block; font-size: 28rpx; color:#2980B9; margin-bottom:4px; }
 .vl-item { display:block; font-size: 28rpx; color:#555; line-height:1.6; }

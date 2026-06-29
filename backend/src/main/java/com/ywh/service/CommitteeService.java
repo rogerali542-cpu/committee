@@ -266,6 +266,18 @@ public class CommitteeService {
             m.setStage(MeetingStage.ongoing);
             m.setMeetingMode(MeetingMode.quick);
 
+            // 会议开始：清空准备阶段的"确认参会"(RSVP)，改为会上逐个签到。
+            // 这样 signedIn 在 ongoing 阶段表示"实际入会签到"，签到进度从 0 开始随委员陆续签到增加，
+            // 法定人数/表决资格/纪要出席名单也都以真实到会人数为准。declined(无法参会) 保留不动。
+            List<RecordAttendance> startAtts = attendanceRepo.findByRecordId(record.getId());
+            for (RecordAttendance a : startAtts) {
+                if (Boolean.TRUE.equals(a.getSignedIn())) {
+                    a.setSignedIn(false);
+                    a.setSigned(false);
+                }
+            }
+            attendanceRepo.saveAll(startAtts);
+
         } else if ("end".equals(action)) {
             if (m.getStage() != MeetingStage.ongoing) {
                 throw new IllegalArgumentException("仅进行中的会议可以结束");

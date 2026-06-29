@@ -177,9 +177,12 @@
             </div>
             <div class="form-group">
               <span class="form-label">会议标题 *</span>
-              <div class="title-input-wrap">
-                <input class="form-input large" v-model="createForm.title" placeholder="请输入会议标题" />
-                <span v-if="createForm.title" class="title-clear" @click="createForm.title = ''">清空</span>
+              <div class="vi-row">
+                <div class="title-input-wrap" style="flex:1;min-width:0;">
+                  <input class="form-input large" v-model="createForm.title" placeholder="请输入会议标题" />
+                  <span v-if="createForm.title" class="title-clear" @click="createForm.title = ''">清空</span>
+                </div>
+                <button class="vi-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startStreamingVoice('title')">🎤</button>
               </div>
               <div v-if="suggestedTitle && !createForm.title" class="title-suggest" @click="createForm.title = suggestedTitle">
                 <span class="ts-bulb">💡</span>
@@ -236,7 +239,10 @@
               </div>
             </div>
 
-            <button class="btn btn-ghost" style="width:100%;margin-top:16rpx;" @click="openAddTopic">+ 添加议题</button>
+            <div class="topic-add-row">
+              <button class="btn btn-ghost topic-add-btn" @click="openAddTopic">📝 输入议题</button>
+              <button class="btn btn-ghost topic-add-btn" @click="startStreamingVoice('topic')">🎤 语音议题</button>
+            </div>
           </div>
 
           <div class="extra-entry" @click="descOpen = !descOpen">
@@ -308,6 +314,27 @@
         <div class="pp-actions">
           <button class="btn btn-ghost" @click="timePickerOpen = false">取消</button>
           <button class="btn btn-primary" @click="confirmTime">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 流式语音输入弹窗（标题 / 议题） -->
+    <div v-if="voiceTarget === 'title' || voiceTarget === 'topic'" class="voice-modal-mask">
+      <div class="voice-modal">
+        <div class="vm-head">
+          <span class="vm-title">🎤 语音输入{{ voiceTarget === 'title' ? '标题' : '议题' }}</span>
+          <span class="vm-hint">说完后点确认</span>
+        </div>
+        <div class="vm-body">
+          <div class="vm-wave"><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="vm-text">
+            <span v-if="voiceFinal || voiceInterim">{{ voiceFinal }}<span class="vm-interim">{{ voiceInterim }}</span></span>
+            <span v-else class="vm-placeholder">正在听，请说话…</span>
+          </div>
+        </div>
+        <div class="vm-actions">
+          <button class="btn btn-ghost" @click="cancelVoice">取消</button>
+          <button class="btn btn-primary" @click="confirmVoice">确认</button>
         </div>
       </div>
     </div>
@@ -424,6 +451,11 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [] })
+// 语音输入状态
+const voiceTarget = ref('') // 'title' | 'topic' | 'time' | 'location' | ''
+const voiceInterim = ref('') // 实时识别中（未定稿）
+const voiceFinal = ref('')   // 已定稿文字
+let _voiceRec = null
 
 function show() {
   const role = getStorage('activeRole', null)
@@ -822,6 +854,156 @@ function todayStr() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
+// ——— 语音输入 ———
+function _stopVoice() {
+  if (_voiceRec) {
+    try { _voiceRec.stop() } catch (e) {}
+    _voiceRec = null
+  }
+}
+
+function _buildRec(continuous, interimResults) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRec) {
+    toast({ title: '当前浏览器不支持语音识别', icon: 'none' })
+    return null
+  }
+  const rec = new SpeechRec()
+  rec.lang = 'zh-CN'
+  rec.continuous = continuous
+  rec.interimResults = interimResults
+  return rec
+}
+
+// 流式模式：标题 / 议题（连续识别，显示弹窗，点确认后应用）
+function startStreamingVoice(target) {
+  _stopVoice()
+  voiceFinal.value = ''
+  voiceInterim.value = ''
+  voiceTarget.value = target
+
+  const rec = _buildRec(true, true)
+  if (!rec) { voiceTarget.value = ''; return }
+  _voiceRec = rec
+
+  rec.onresult = function (e) {
+    let fin = '', inter = ''
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript
+      if (e.results[i].isFinal) fin += t
+      else inter += t
+    }
+    if (fin) voiceFinal.value += fin
+    voiceInterim.value = inter
+  }
+  rec.onerror = function () { _stopVoice() }
+  rec.start()
+}
+
+// 直接模式：时间 / 地点（单次识别，无弹窗，自动写入）
+function startDirectVoice(target) {
+  _stopVoice()
+  voiceTarget.value = target
+
+  const rec = _buildRec(false, false)
+  if (!rec) { voiceTarget.value = ''; return }
+  _voiceRec = rec
+
+  rec.onresult = function (e) {
+    const text = (e.results[0] && e.results[0][0] && e.results[0][0].transcript) || ''
+    voiceTarget.value = ''
+    _voiceRec = null
+    if (target === 'time') parseAndSetTime(text)
+    else if (target === 'location') parseAndSetLocation(text)
+  }
+  rec.onerror = function () { voiceTarget.value = ''; _voiceRec = null }
+  rec.onend = function () { if (voiceTarget.value === target) voiceTarget.value = '' }
+  rec.start()
+}
+
+function confirmVoice() {
+  const text = (voiceFinal.value + voiceInterim.value).trim()
+  const target = voiceTarget.value
+  _stopVoice()
+  voiceTarget.value = ''
+  voiceFinal.value = ''
+  voiceInterim.value = ''
+  if (!text) return
+  if (target === 'title') {
+    createForm.title = text
+  } else if (target === 'topic') {
+    topicDraft.title = text
+    topicDraft.type = 'discussion'
+    topicDraft.decisionType = 'none'
+    topicDraft.options = []
+    topicEditIdx.value = -1
+    topicDialogOpen.value = true
+  }
+}
+
+function cancelVoice() {
+  _stopVoice()
+  voiceTarget.value = ''
+  voiceFinal.value = ''
+  voiceInterim.value = ''
+}
+
+// 解析时间文字，例如 "上午十点" / "下午两点半" / "9点15分"
+function parseAndSetTime(text) {
+  if (!text) return
+  let hour = null, minute = 0
+  const pm = /下午|傍晚|晚上/.test(text)
+  const am = /上午|早上|早晨/.test(text)
+  // 中文数字映射
+  const cnNum = { '零': 0, '一': 1, '两': 2, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10, '十一': 11, '十二': 12 }
+  // 先尝试阿拉伯数字 "9点" / "9:30"
+  const arM = text.match(/(\d{1,2})[点:](\d{0,2})/)
+  if (arM) {
+    hour = parseInt(arM[1])
+    minute = arM[2] ? parseInt(arM[2]) : 0
+  } else {
+    // 中文 "十点" / "两点" / "十一点"
+    for (const [k, v] of Object.entries(cnNum)) {
+      if (text.indexOf(k + '点') >= 0) { hour = v; break }
+    }
+  }
+  // 分钟
+  const minM = text.match(/(\d{1,2})分/)
+  if (minM) minute = parseInt(minM[1])
+  const halfM = /半/.test(text)
+  if (halfM) minute = 30
+  // 修正 AM/PM
+  if (hour !== null) {
+    if (pm && hour < 12) hour += 12
+    if (am && hour === 12) hour = 0
+    // 没有明确上午/下午时，业委会场景默认：1-8 当下午
+    if (!am && !pm && hour >= 1 && hour <= 8) hour += 12
+    hour = Math.max(9, Math.min(20, hour))
+    // 对齐到 0/15/30/45
+    minute = [0, 15, 30, 45].reduce((p, c) => Math.abs(c - minute) < Math.abs(p - minute) ? c : p)
+    tpHour.value = hour
+    tpMinute.value = minute
+    createForm.meetingTime = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0')
+    toast({ title: '时间已设为 ' + createForm.meetingTime, icon: 'success' })
+  } else {
+    toast({ title: '未能识别时间，请重试', icon: 'none' })
+  }
+}
+
+// 解析地点文字，匹配预设选项或直接写入
+function parseAndSetLocation(text) {
+  if (!text) return
+  const matched = commonLocations.find(loc => text.indexOf(loc) >= 0 || loc.indexOf(text) >= 0)
+  if (matched) {
+    locationPreset.value = matched
+    createForm.location = matched
+  } else {
+    locationPreset.value = '__other__'
+    createForm.location = text
+  }
+  toast({ title: '地点已设为 ' + (matched || text), icon: 'success' })
+}
+
 onMounted(show)
 onActivated(show)
 </script>
@@ -997,4 +1179,66 @@ onActivated(show)
 .td-title { font-size: 34rpx; font-weight: 700; color: #1f2329; }
 .td-body { padding: 26rpx 28rpx; overflow-y: auto; }
 .td-actions { display: flex; gap: 18rpx; padding: 18rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #f2f2f2; }
+
+/* 语音按钮行 */
+.vi-row { display: flex; align-items: center; gap: 14rpx; }
+.vi-btn {
+  flex-shrink: 0;
+  width: 72rpx; height: 72rpx;
+  border-radius: 50%;
+  border: 2rpx solid #d0d0d0;
+  background: #f7f8fa;
+  font-size: 32rpx;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.vi-btn.on {
+  background: #e8f0ff;
+  border-color: #0051FF;
+  animation: vi-pulse 1.2s ease-in-out infinite;
+}
+@keyframes vi-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 81, 255, 0.35); }
+  50%       { box-shadow: 0 0 0 10rpx rgba(0, 81, 255, 0); }
+}
+
+/* 议题双按钮行 */
+.topic-add-row { display: flex; gap: 20rpx; margin-top: 8rpx; }
+.topic-add-btn { flex: 1; height: 80rpx; font-size: 30rpx; border-radius: 16rpx; }
+
+/* 流式语音输入弹窗 */
+.voice-modal-mask { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; }
+.voice-modal {
+  width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 24rpx;
+}
+.vm-head { display: flex; align-items: baseline; justify-content: space-between; }
+.vm-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
+.vm-hint { font-size: 26rpx; color: #999; }
+.vm-body {
+  background: #f7f8fa; border-radius: 20rpx;
+  padding: 24rpx 20rpx; min-height: 160rpx;
+  display: flex; flex-direction: column; align-items: center; gap: 18rpx;
+}
+.vm-wave { display: flex; align-items: flex-end; gap: 8rpx; height: 48rpx; }
+.vm-wave span {
+  width: 8rpx; border-radius: 4rpx; background: #0051FF;
+  animation: vm-bar 1.1s ease-in-out infinite;
+}
+.vm-wave span:nth-child(1) { height: 20rpx; animation-delay: 0s; }
+.vm-wave span:nth-child(2) { height: 36rpx; animation-delay: 0.15s; }
+.vm-wave span:nth-child(3) { height: 48rpx; animation-delay: 0.3s; }
+.vm-wave span:nth-child(4) { height: 36rpx; animation-delay: 0.45s; }
+.vm-wave span:nth-child(5) { height: 20rpx; animation-delay: 0.6s; }
+@keyframes vm-bar {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
+  50%       { transform: scaleY(1);   opacity: 1;   }
+}
+.vm-text { font-size: 32rpx; color: #1f2329; line-height: 1.6; text-align: center; width: 100%; word-break: break-all; }
+.vm-interim { color: #888; }
+.vm-placeholder { color: #aaa; }
+.vm-actions { display: flex; gap: 20rpx; }
+.vm-actions .btn { flex: 1; height: 88rpx; font-size: 34rpx; border-radius: 18rpx; }
 </style>

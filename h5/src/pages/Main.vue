@@ -13,7 +13,7 @@
     </div>
 
     <!-- ① 有进行中的会议：每张卡片独立展示 -->
-    <template v-if="currents.length > 0">
+    <template v-if="currents && currents.length > 0">
       <div v-for="cur in currents" :key="cur.id" class="meet-card">
         <span class="meet-tag">{{ cur.tag }}</span>
         <span class="meet-title">{{ cur.title }}</span>
@@ -329,7 +329,8 @@ onActivated(onShow)
 
 /* 新增会议按钮（比卡片内大按钮小 20%） */
 .add-meet-row {
-  margin: 48rpx 24rpx 0;
+  margin: 48rpx auto 0;
+  width: 70%;
   display: flex; align-items: center; justify-content: center;
   height: 112rpx; border-radius: 22rpx;
   background: #FFA800;

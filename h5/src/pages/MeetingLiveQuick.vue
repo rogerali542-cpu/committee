@@ -20,7 +20,7 @@
       <span class="lp-info-title">{{ detail.title }}</span>
       <div class="lp-info-row top"><span class="lp-info-k">议题</span>
         <div class="lp-agenda">
-          <template v-if="detail.record.topics.length">
+          <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
             <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id">
               <span class="lp-agenda-idx">{{ index + 1 }}</span>
               <span class="lp-agenda-title">{{ item.title }}</span>
@@ -32,15 +32,47 @@
       </div>
     </div>
 
+    <!-- 主任：签到统计（悬浮/点按看每人状态，委员签到后进度自动增加） -->
+    <div
+      v-if="isChair && signinStats.total"
+      class="lp-signin"
+      :class="{ open: signinPanelOpen }"
+    >
+      <div class="ls-head">
+        <span class="ls-label">签到进度</span>
+        <span class="ls-count" :class="signinLevel"><b>{{ signinStats.signedCount }}</b>/{{ signinStats.total }} 人已签到</span>
+        <button class="ls-tag" :class="{ on: signinPanelOpen }" @click="signinPanelOpen = !signinPanelOpen">
+          {{ signinPanelOpen ? '收起 ▴' : '查看名单 ▾' }}
+        </button>
+      </div>
+      <div class="ls-bar"><div class="ls-fill" :class="signinLevel" :style="{ width: signinStats.pct + '%' }"></div></div>
+
+      <!-- 点击"查看名单"标签展开（手机端无 hover，纯点击控制） -->
+      <div class="ls-pop" v-show="signinPanelOpen" @click.stop>
+        <div class="ls-pop-head">
+          <span>签到名单</span>
+          <span class="ls-pop-sub">{{ signinStats.signedCount }}/{{ signinStats.total }}</span>
+        </div>
+        <div class="ls-pop-list">
+          <div class="ls-pop-item" v-for="a in signinStats.list" :key="a.userRoleId">
+            <span class="ls-dot" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')"></span>
+            <span class="ls-name">{{ a.name }}<span v-if="a.isSelf" class="ls-me">（我）</span></span>
+            <span class="ls-role">{{ a.role }}</span>
+            <span class="ls-state" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')">{{ a.signedIn ? '已签到' : (a.declined ? '缺席' : '未签到') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="lp-card" v-if="currentStep === 1">
       <span class="lp-card-step">第 1 步，共 4 步</span>
       <span class="lp-card-title">入会签到</span>
-      <span class="lp-card-desc">确认参会后再进行录音，会议有效性会以确认参会人数为基础核查。</span>
-      <div class="qk-sign-card" :class="signedIn ? 'on' : ''">
-        <span class="qk-sign-main">{{ signedIn ? '已确认参会' : '待确认参会' }}</span>
+      <span class="lp-card-desc">签到后再进行录音，会议有效性会以签到人数为基础核查。</span>
+      <div class="qk-sign-card" :class="sessionSignedIn ? 'on' : ''">
+        <span class="qk-sign-main">{{ sessionSignedIn ? '已签到' : '待签到' }}</span>
         <span class="qk-sign-sub">{{ selfAttendance ? selfAttendance.name + ' · ' + selfAttendance.role : '当前登录身份' }}</span>
       </div>
-      <button class="lp-primary-btn" @click="confirmSignIn">{{ signedIn ? '进入录音' : '确认参会' }}</button>
+      <button class="lp-primary-btn" @click="confirmSignIn">{{ sessionSignedIn ? '进入录音' : '签到' }}</button>
     </div>
 
     <div class="lp-card" v-if="currentStep === 2">
@@ -531,7 +563,8 @@ const steps = ref([
   { key: 'confirm', label: '会议纪要' }
 ])
 const currentStep = ref(1)
-const signedIn = ref(false)
+const signedIn = ref(false)        // 后端持久态：会前"确认参加"也会置 true，不能直接当作"会议开始后已签到"
+const sessionSignedIn = ref(false) // 本次会议开始后是否手动签到过——session 级，会后强制每人点一次；持久化进 quickState 以免刷新丢失
 const selfAttendance = ref(null)
 
 // 录音计时显示直接复用 useRecorder（recording/paused/hasRecording 在脚本里用 rec.* 读取）
@@ -593,6 +626,24 @@ const materials = ref([])
 const signedInList = ref([])
 const voteTotal = ref(0)
 const voteNeed = ref(0)
+// 主任签到统计：全体参会名单（含未签到）+ 悬浮面板开关
+const attendanceList = ref([])
+const signinPanelOpen = ref(false)
+const signinStats = computed(() => {
+  const list = attendanceList.value || []
+  const total = list.length
+  const signedCount = list.filter(a => a.signedIn).length
+  const pct = total ? Math.round((signedCount / total) * 100) : 0
+  return { total, signedCount, pct, list }
+})
+// 进度条颜色档位：全签到=绿，过半=黄，不足过半=红
+const signinLevel = computed(() => {
+  const s = signinStats.value
+  if (!s.total) return 'low'
+  if (s.signedCount >= s.total) return 'full'
+  if (s.pct >= 50) return 'mid'
+  return 'low'
+})
 const addTopicVisible = ref(false)
 const newTopicForm = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [] })
 
@@ -613,6 +664,7 @@ let _pollCount = 0
 let _asrDoneHandled = false
 let _pollTimer = null
 let _booted = false
+let _attendanceTimer = null // 主任签到进度的轻量轮询
 
 // ═══════════════════════════════════════════════
 // 生命周期
@@ -631,6 +683,8 @@ onMounted(() => {
   if (typeof window !== 'undefined') window.addEventListener('beforeunload', _beforeUnloadGuard)
   // useRecorder 内部已管理录音生命周期与计时，无需 initRecorder
   loadDetail()
+  // 主任端每 12s 轻量刷新签到进度（委员陆续签到时进度自动增加）
+  _attendanceTimer = setInterval(refreshAttendance, 12000)
 })
 
 // onShow → onMounted 首跑 + onActivated（保持热切回页刷新；但避免与 onMounted 重复首跑）
@@ -642,6 +696,7 @@ onActivated(() => {
 onUnmounted(() => {
   persistQuickState()
   clearPoll()
+  if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
   if (typeof window !== 'undefined') window.removeEventListener('beforeunload', _beforeUnloadGuard)
   rec.reset() // 释放麦克风
 })
@@ -664,6 +719,7 @@ function persistQuickState(extra) {
     meetingId: meetingId.value,
     savedAt: Date.now(),
     currentStep: currentStep.value,
+    sessionSignedIn: sessionSignedIn.value,
     generated: generated.value,
     taskId: taskId.value,
     asrStatus: asrStatus.value,
@@ -680,14 +736,18 @@ function persistQuickState(extra) {
   setStorage(quickStateKey(), state)
 }
 
-function restoreQuickState(signedInArg) {
+function restoreQuickState() {
   let saved = getStorage(quickStateKey(), null)
   if (!saved || String(saved.meetingId) !== String(meetingId.value)) return false
+
+  // 会后是否已手动签到，只认本会话签到标记，不再用会前"确认参加"的持久 signedIn
+  const savedSessionSignedIn = !!saved.sessionSignedIn
+  sessionSignedIn.value = savedSessionSignedIn
 
   const transcriptVal = saved.transcript || []
   const transcriptState = buildTranscriptState(transcriptVal)
   let step = Number(saved.currentStep) || (saved.generated ? 4 : 2)
-  if (!signedInArg) step = 1
+  if (!savedSessionSignedIn) step = 1   // 会后未手动签到，一律回到第 1 步签到
   else if (step < 2) step = 2
   if (step > 4) step = 4
   if (!saved.generated && step > 3) step = 3
@@ -710,10 +770,10 @@ function restoreQuickState(signedInArg) {
   transcriptPreview.value = transcriptState.transcriptPreview || saved.transcriptPreview || ''
   transcriptCharCount.value = transcriptState.transcriptCharCount || saved.transcriptCharCount || 0
 
-  if (signedInArg && saved.taskId && !saved.generated && saved.asrStatus === 'done') {
+  if (savedSessionSignedIn && saved.taskId && !saved.generated && saved.asrStatus === 'done') {
     _asrDoneHandled = false
     handleAsrDone({ taskId: saved.taskId, status: 'done' })
-  } else if (signedInArg && saved.taskId && !saved.generated && saved.asrStatus !== 'failed') {
+  } else if (savedSessionSignedIn && saved.taskId && !saved.generated && saved.asrStatus !== 'failed') {
     currentStep.value = 3
     polling.value = true
     processText.value = saved.processText || statusText(saved.asrStatus || 'pending')
@@ -751,13 +811,15 @@ async function loadDetail() {
     reconcilePickedIds(recs)
     materials.value = d.materials || []
     signedInList.value = signed
+    attendanceList.value = recObj.attendances || []
     voteTotal.value = total
     voteNeed.value = Math.floor(total / 2) + 1
-    currentStep.value = isSigned && currentStep.value === 1 ? 2 : currentStep.value
 
     if (d.stage === 'ongoing') {
-      const restored = restoreQuickState(isSigned)
-      if (isSigned && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
+      // 进入即只认本会话签到标记：未签到时 restoreQuickState 会强制回到第 1 步，
+      // tryRestoreGeneratedFromServer 也只在本会话已签到后才允许直达后续步骤
+      const restored = restoreQuickState()
+      if (sessionSignedIn.value && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
     } else {
       clearQuickState()
     }
@@ -766,8 +828,23 @@ async function loadDetail() {
   }
 }
 
+// 仅刷新签到名单/进度，不动步骤机与录音状态——供主任查看实时签到（定时 + 手动）
+async function refreshAttendance() {
+  if (!meetingId.value || !isChair.value) return
+  if (!detail.value || detail.value.stage !== 'ongoing') return
+  try {
+    const d = await api.committeeDetail(meetingId.value)
+    const atts = (d.record && d.record.attendances) || []
+    attendanceList.value = atts
+    const signed = atts.filter(function (a) { return a.signedIn })
+    signedInList.value = signed
+    voteTotal.value = signed.length
+    voteNeed.value = Math.floor(signed.length / 2) + 1
+  } catch (e) { /* 静默：签到刷新失败不打扰主任 */ }
+}
+
 async function tryRestoreGeneratedFromServer() {
-  if (!meetingId.value || !signedIn.value || generated.value) return
+  if (!meetingId.value || !sessionSignedIn.value || generated.value) return
   if (typeof api.committeeQuickTranscript !== 'function' || typeof api.committeeQuickExtract !== 'function') return
   try {
     const transcriptRaw = await api.committeeQuickTranscript(meetingId.value)
@@ -800,22 +877,26 @@ function getSelfAttendance(d) {
 }
 
 async function confirmSignIn() {
+  // 会前已"确认参加"（signedIn=true）也必须在会议开始后手动点一次签到，
+  // 这里只置本会话签到标记，不重复打后端；点击本身即视为入会签到
   if (signedIn.value) {
+    sessionSignedIn.value = true
     currentStep.value = 2
     persistQuickState()
     return
   }
   const res = await showModal({
-    title: '确认参加会议',
-    content: '请确认本人已进入本次业委会会议。确认后将进入录音转写流程。',
-    confirmText: '确认参会',
+    title: '入会签到',
+    content: '请确认本人已进入本次业委会会议。签到后将进入录音转写流程。',
+    confirmText: '签到',
     cancelText: '再看看'
   })
   if (!res.confirm) return
   try {
     await api.committeeSelfToggle(meetingId.value, 'signedIn')
-    toast({ title: '已确认参会', icon: 'success' })
+    toast({ title: '已签到', icon: 'success' })
     signedIn.value = true
+    sessionSignedIn.value = true
     currentStep.value = 2
     persistQuickState()
     loadDetail()
@@ -834,8 +915,8 @@ async function toggleRecord() {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
     return
   }
-  if (!signedIn.value) {
-    toast({ title: '请先确认参会', icon: 'none' })
+  if (!sessionSignedIn.value) {
+    toast({ title: '请先签到', icon: 'none' })
     return
   }
   if (!rec.supported.value) {
@@ -907,8 +988,8 @@ async function finishRecord() {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
     return
   }
-  if (!signedIn.value) {
-    toast({ title: '请先确认参会', icon: 'none' })
+  if (!sessionSignedIn.value) {
+    toast({ title: '请先签到', icon: 'none' })
     return
   }
   if (!rec.recording.value && !rec.hasRecording.value) {
@@ -971,8 +1052,8 @@ function chooseAudioFile() {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
     return
   }
-  if (!signedIn.value) {
-    toast({ title: '请先确认参会', icon: 'none' })
+  if (!sessionSignedIn.value) {
+    toast({ title: '请先签到', icon: 'none' })
     return
   }
   if (uploading.value || polling.value || extracting.value) return
@@ -1616,8 +1697,8 @@ function formatSize(bytes) {
 // 资料上传：H5 用隐藏 input[type=file] 选文件，登记元数据（与小程序契约一致，仅存 name/sizeText）
 const materialFileInput = ref(null)
 function uploadMaterial() {
-  if (!signedIn.value) {
-    toast({ title: '请先确认参会', icon: 'none' })
+  if (!sessionSignedIn.value) {
+    toast({ title: '请先签到', icon: 'none' })
     return
   }
   if (!materialFileInput.value) {
@@ -1777,6 +1858,46 @@ function exitLive() {
 .lp-agenda-tag.vote { background:#FFF3E0; color:#E67E22; }
 .lp-agenda-tag.major { background:#FDECEA; color:#E74C3C; }
 .lp-agenda-empty { color:#666; font-size:28rpx; }
+
+/* 主任：签到统计卡（点"查看名单"标签展开） */
+.lp-signin { position:relative; background:#fff; border-radius:24rpx; padding:26rpx 30rpx; margin-bottom:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.lp-signin.open { box-shadow:0 10rpx 34rpx rgba(255,168,0,0.22); }
+.ls-head { display:flex; align-items:center; gap:14rpx; margin-bottom:16rpx; }
+.ls-label { font-size:32rpx; font-weight:700; color:#1F2024; }
+.ls-count { font-size:30rpx; color:#666; }
+.ls-count b { font-size:38rpx; font-weight:800; }
+.ls-count.low b { color:#E74C3C; }
+.ls-count.mid b { color:#E6920A; }
+.ls-count.full b { color:#27AE60; }
+/* 查看名单小标签（手机端点击展开/收起） */
+.ls-tag { margin-left:auto; flex-shrink:0; border:2rpx solid #FFD79A; background:#FFF6E6; color:#D88900; font-size:26rpx; font-weight:600; padding:8rpx 20rpx; border-radius:999rpx; line-height:1.3; }
+.ls-tag.on { background:#FFA800; border-color:#FFA800; color:#fff; }
+.ls-bar { height:18rpx; border-radius:9rpx; background:#F0F0F2; overflow:hidden; }
+.ls-fill { height:100%; border-radius:9rpx; transition:width .35s ease, background .35s ease; }
+/* 进度条颜色随签到比例变化：少→红，过半→黄，全签到→绿 */
+.ls-fill.low { background:linear-gradient(90deg,#FF8A8A,#E74C3C); }
+.ls-fill.mid { background:linear-gradient(90deg,#FFD24D,#F5A623); }
+.ls-fill.full { background:linear-gradient(90deg,#5BD08A,#27AE60); }
+
+/* 明细名单：仅由"查看名单"标签点击控制 (v-show) */
+.ls-pop { position:absolute; left:0; right:0; top:calc(100% + 10rpx); z-index:30; background:#fff; border-radius:20rpx; box-shadow:0 16rpx 48rpx rgba(0,0,0,0.18); padding:20rpx 24rpx; }
+.ls-pop::before { content:''; position:absolute; left:60rpx; top:-12rpx; width:24rpx; height:24rpx; background:#fff; transform:rotate(45deg); box-shadow:-3rpx -3rpx 8rpx rgba(0,0,0,0.04); }
+.ls-pop-head { display:flex; justify-content:space-between; align-items:center; font-size:30rpx; font-weight:700; color:#1F2024; padding-bottom:14rpx; margin-bottom:10rpx; border-bottom:2rpx solid #F2F2F4; }
+.ls-pop-sub { font-size:28rpx; color:#D88900; font-weight:800; }
+.ls-pop-list { max-height:48vh; overflow-y:auto; }
+.ls-pop-item { display:flex; align-items:center; gap:14rpx; padding:14rpx 0; border-bottom:2rpx solid #F6F6F8; }
+.ls-pop-item:last-child { border-bottom:0; }
+.ls-dot { width:18rpx; height:18rpx; border-radius:50%; flex-shrink:0; background:#D5D5DA; }
+.ls-dot.on { background:#27AE60; }
+.ls-dot.off { background:#E74C3C; }
+.ls-dot.wait { background:#D5D5DA; }
+.ls-name { font-size:32rpx; color:#1F2024; flex-shrink:0; }
+.ls-me { font-size:26rpx; color:#999; }
+.ls-role { font-size:28rpx; color:#999; flex:1; min-width:0; }
+.ls-state { font-size:28rpx; font-weight:600; flex-shrink:0; padding:4rpx 16rpx; border-radius:12rpx; }
+.ls-state.on { color:#27AE60; background:#E8F7EE; }
+.ls-state.off { color:#E74C3C; background:#FDECEA; }
+.ls-state.wait { color:#999; background:#F2F2F4; }
 
 /* 步骤卡片 */
 .lp-card { background:#fff; border-radius:24rpx; padding:32rpx 30rpx; margin-bottom:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
