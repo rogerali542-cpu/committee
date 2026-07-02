@@ -94,4 +94,25 @@ export function getPersonalProgress(m, st) {
   return { pct: 100, label: '✅ 已完成' }
 }
 
-export default { nextId, todayStr, qs, buildCommitteeNoticeDraft, receptionDone, getStageDesc, getPersonalSummary, getPersonalProgress }
+// 语音识别热词纠错：业委会场景常见同音误识（Committee 创建页 / MeetingLiveQuick 添加议题 共用）
+export const HOTWORDS = [
+  ['叶委会', '业委会'], ['夜委会', '业委会'], ['页委会', '业委会'], ['一委会', '业委会'],
+  ['物业肥', '物业费'], ['物业菲', '物业费'],
+  ['主人', '主任'], ['副主人', '副主任'],
+  ['为员', '委员'], ['位员', '委员'], ['纬员', '委员'],
+  ['记要', '纪要'], ['计要', '纪要'],
+  ['意题', '议题'], ['一题', '议题'],
+  ['签道', '签到'], ['前到', '签到'], ['前道', '签到'],
+  ['表绝', '表决'],
+  ['公探', '公摊'], ['弓摊', '公摊'],
+  ['停车未', '停车位'], ['停车卫', '停车位'],
+  ['物业公私', '物业公司'],
+  ['维修基础', '维修基金'],
+]
+export function applyHotwords(text) {
+  let r = text
+  for (const [wrong, right] of HOTWORDS) r = r.replaceAll(wrong, right)
+  return r
+}
+
+export default { nextId, todayStr, qs, buildCommitteeNoticeDraft, receptionDone, getStageDesc, getPersonalSummary, getPersonalProgress, applyHotwords }

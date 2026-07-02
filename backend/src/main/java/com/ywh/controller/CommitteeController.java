@@ -210,6 +210,37 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    // ===== 议题意见 =====
+
+    @GetMapping("/{id}/opinions")
+    public Result<List<Map<String, Object>>> listOpinions(@PathVariable Long id) {
+        return Result.ok(service.listOpinions(id));
+    }
+
+    @PostMapping("/{id}/topics/{topicId}/opinions")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Map<String, Object>> addOpinion(@PathVariable Long id, @PathVariable Long topicId,
+                                                  @RequestBody Map<String, Object> req) {
+        String content = req == null ? null : (String) req.get("content");
+        String source = req == null ? null : (String) req.get("source");
+        return Result.ok(service.addOpinion(id, topicId, content, source));
+    }
+
+    @PutMapping("/{id}/opinions/{opinionId}")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Void> updateOpinion(@PathVariable Long id, @PathVariable Long opinionId,
+                                      @RequestBody Map<String, Object> req) {
+        service.updateOpinion(id, opinionId, req == null ? null : (String) req.get("content"));
+        return Result.ok();
+    }
+
+    @DeleteMapping("/{id}/opinions/{opinionId}")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Void> removeOpinion(@PathVariable Long id, @PathVariable Long opinionId) {
+        service.removeOpinion(id, opinionId);
+        return Result.ok();
+    }
+
     @GetMapping("/{id}/proxy-targets")
     @RequireRole({"主任", "副主任"})
     public Result<List<ProxyTargetVO>> proxyTargets(@PathVariable Long id,

@@ -21,7 +21,8 @@
         <!-- 通知卡片：发给委员的核心内容，也是生成转发图片的源 -->
         <div class="notice-card">
           <div class="nc-title">{{ detail.title }}</div>
-          <div class="nc-para">{{ noticeText }}</div>
+          <!-- 正文与 noticeText 同款措辞；地点做成蓝色可点超链接，点了打开高德地图 -->
+          <div class="nc-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
           <div class="nc-sign">业主委员会</div>
         </div>
 
@@ -156,7 +157,7 @@
             </div>
             <div class="sp-bar"><div class="sp-fill" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
           </div>
-          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
+          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
         </template>
 
       </template>
@@ -186,7 +187,7 @@
               <span class="arv-reason" v-if="detail.complianceReason">{{ detail.complianceReason }}</span>
             </div>
           </div>
-          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
+          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
           <div class="member-doc-actions">
             <button class="doc-btn" @click="viewMinutes">查看会议纪要</button>
             <button class="doc-btn ghost" @click="viewPublicMinutes">查看公开纪要</button>
@@ -201,7 +202,7 @@
                 <span class="arch-title">{{ detail.title }}</span>
               </div>
             </div>
-            <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" />
+            <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
                 <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openMaterialViewer(ae)" />
@@ -303,18 +304,27 @@
     <div class="prep-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
       <button v-if="prepareMode === 'send'" class="pf-btn pf-btn-single" @click="sendAll">发送通知</button>
       <div v-else class="pf-btn-row">
-        <button class="pf-btn pf-btn-ghost" @click="sendAll">再次通知</button>
+        <button class="pf-btn" @click="sendAll">再次通知</button>
         <button class="pf-btn" @click="startMeeting">开始会议</button>
       </div>
       <span class="pf-hint" v-if="prepareHint">{{ prepareHint }}</span>
     </div>
 
-    <!-- 发送通知后：转发到微信（文本 + 快速进会/地图链接，复制粘贴到委员群；微信里网址自动可点） -->
+    <!-- 发送通知后：转发到微信。弹窗内做格式化预览（与通知页一致：首行缩进/地点蓝色可点/落款靠右）；复制出去的纯文本保留网址供微信点开 -->
     <div v-if="forwardVisible" class="modal-mask" @click="closeForward">
       <div class="forward-sheet" @click.stop>
         <div class="fw-title">通知已发送</div>
-        <div class="fw-hint">复制下面的通知，粘贴到业主委员群即可（网址在微信里可直接点开）</div>
-        <textarea class="fw-text" readonly :value="shareText" @click="selectShareText"></textarea>
+        <div class="fw-hint">下面是通知内容，点「复制通知」粘贴到业主委员群即可</div>
+        <div class="fw-preview">
+          <!-- 正文与通知页同款：首行缩进，地点蓝色可点开地图，落款靠右 -->
+          <div class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
+          <div class="fw-sign">业主委员会</div>
+          <div class="fw-linkrows">
+            <div class="fw-linkrow" @click="openJoin"><span class="fw-lr-ico">👉</span><span class="fw-lr-txt">进入会议</span><span class="fw-lr-go">›</span></div>
+            <div class="fw-linkrow" v-if="detail.location" @click="openMap(detail.location)"><span class="fw-lr-ico">📍</span><span class="fw-lr-txt">地图导航</span><span class="fw-lr-go">›</span></div>
+          </div>
+        </div>
+        <div class="fw-hint fw-sub">复制的文本会自动带上以上两个网址，微信里可直接点开</div>
         <div class="fw-actions">
           <button class="fw-btn primary" @click="copyShareText">复制通知</button>
           <button class="fw-btn ghost" @click="openWechat">打开微信</button>
@@ -594,6 +604,11 @@
         </div>
       </div>
     </div>
+
+    <!-- 议题弹层：表决 + 意见（进行中可操作，其余阶段只读查看） -->
+    <TopicSheet v-if="detail && meetingIdRef" :meeting-id="meetingIdRef" :topic="sheetTopic"
+                :interactive="detail.stage === 'ongoing'" :signed-in="selfSignedIn" :is-chair="userView === 'chair'"
+                @close="sheetTopicId = null" @changed="loadDetail" />
   </div>
 </template>
 
@@ -609,6 +624,7 @@ import { pickAndUpload, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
+import TopicSheet from '@/components/TopicSheet.vue'
 
 const route = useRoute()
 
@@ -618,7 +634,8 @@ const route = useRoute()
 const MeetingTopicsCard = {
   name: 'MeetingTopicsCard',
   props: {
-    topics: { type: Array, default: () => [] }
+    topics: { type: Array, default: () => [] },
+    onSelect: { type: Function, default: null }   // 点议题行 → 打开议题弹层（表决+意见）
   },
   setup(props) {
     return () => {
@@ -631,7 +648,11 @@ const MeetingTopicsCard = {
           ]),
           h('span', { class: 'mtc-count' }, topics.length + '项')
         ]),
-        ...topics.map((item, index) => h('div', { class: 'mtc-topic', key: item.id }, [
+        ...topics.map((item, index) => h('div', {
+          class: ['mtc-topic', props.onSelect ? 'tappable' : ''],
+          key: item.id,
+          onClick: () => { if (props.onSelect) props.onSelect(item) }
+        }, [
           h('span', { class: 'mtc-no' }, index + 1),
           h('div', { class: 'mtc-body' }, [
             h('div', { class: 'mtc-title-row' }, [
@@ -641,9 +662,11 @@ const MeetingTopicsCard = {
             h('div', { class: 'mtc-meta' }, [
               h('span', { class: ['mtc-chip', item.typeClass] }, item.typeLabel),
               item.realNameVote ? h('span', { class: 'mtc-chip realname' }, '实名') : null,
-              item.source === 'live' ? h('span', { class: 'mtc-chip live' }, '现场新增') : null
+              item.source === 'live' ? h('span', { class: 'mtc-chip live' }, '现场新增') : null,
+              item.opinionCount > 0 ? h('span', { class: 'mtc-chip opinions' }, '意见 ' + item.opinionCount) : null
             ])
-          ])
+          ]),
+          props.onSelect ? h('span', { class: 'mtc-arrow' }, '›') : null
         ]))
       ])
     }
@@ -815,6 +838,22 @@ function formatSize(size) {
 // ═══════════════════════════════════════════════
 const detail = ref(null)
 const userView = ref('')
+
+// ── 议题弹层（表决+意见）──
+const meetingIdRef = ref(null)   // meetingId 的响应式镜像（弹层 prop 用）
+const sheetTopicId = ref(null)
+const sheetTopic = computed(() => {
+  const d = detail.value
+  const list = (d && d.record && d.record.topics) || []
+  return list.find(t => t.id === sheetTopicId.value) || null
+})
+const selfSignedIn = computed(() => {
+  const d = detail.value
+  const atts = (d && d.record && d.record.attendances) || []
+  const me = atts.find(a => a.isSelf)
+  return !!(me && me.signedIn)
+})
+function openTopicSheet(item) { sheetTopicId.value = item.id }
 
 const cardSizeClass = computed(() => {
   const n = detail.value?.record?.topics?.length ?? 0
@@ -1111,6 +1150,7 @@ async function loadDetail() {
       return
     }
     if (d.taskItems) d.taskItemsText = d.taskItems.join(' / ')
+    meetingIdRef.value = meetingId
 
     // Calculate step states for member & chair view
     let s1 = false, s2 = false, s3 = false
@@ -1611,9 +1651,10 @@ function openForward() {
 }
 function closeForward() { forwardVisible.value = false }
 
-// 会议地点地图搜索链接（默认高德；关键词搜索，无需经纬度。微信/浏览器点开高德H5，可再唤起高德App，无则百度/腾讯网页兜底同理）
+// 会议地点地图搜索链接（默认高德；关键词搜索，无需经纬度）。
+// callnative=1：手机上优先直接唤起高德App并定位到该地点，未装App则落到高德H5地图直接显示该地点
 function mapSearchUrl(loc) {
-  return 'https://uri.amap.com/search?keyword=' + encodeURIComponent(loc || '')
+  return 'https://uri.amap.com/search?keyword=' + encodeURIComponent(loc || '') + '&callnative=1'
 }
 // 点击会议地点 → 打开高德地图
 function openMap(loc) {
@@ -1621,18 +1662,21 @@ function openMap(loc) {
   const url = mapSearchUrl(loc)
   try { window.open(url, '_blank') } catch (e) { window.location.href = url }
 }
-// 转发到微信的通知文本：正文 + 落款 + 快速进会链接 + 地点导航链接（网址在微信里自动可点）
-// 进会链接为普通链接：委员本机登录过会自动带身份直达会议，否则先登录再落到该会议
+// 进会/地点导航链接（转发文本 + 弹窗预览复用）。进会为普通链接：委员本机登录过会自动带身份直达，否则先登录再落到该会议
+const joinUrl = computed(() => (typeof location !== 'undefined' ? location.origin : '') + '/committee-detail?id=' + meetingId)
+const mapNavUrl = computed(() => (detail.value && detail.value.location) ? mapSearchUrl(detail.value.location) : '')
+// 转发到微信的纯文本：首行缩进(全角空格) + 正文 + 落款 + 进会链接 + 地点导航链接。
+// 注：微信聊天是纯文本，只有完整网址能自动变蓝可点，无法把"地名"做成链接——故这里保留网址供群里点开
 const shareText = computed(() => {
-  const joinUrl = (typeof location !== 'undefined' ? location.origin : '') + '/committee-detail?id=' + meetingId
-  const loc = (detail.value && detail.value.location) || ''
-  let s = noticeText.value + '\n——业主委员会'
-  s += '\n\n👉 点击进入会议：\n' + joinUrl
-  if (loc) s += '\n\n📍 会议地点导航（高德地图）：\n' + mapSearchUrl(loc)
+  let s = '　　' + noticeText.value + '\n——业主委员会'
+  s += '\n\n👉 进入会议：' + joinUrl.value          // 标签+网址同一行，精简；微信仍能识别网址可点
+  if (mapNavUrl.value) s += '\n📍 地图导航：' + mapNavUrl.value
   return s
 })
-function selectShareText(e) {
-  try { e.target.select() } catch (err) {}
+// 弹窗预览里点"进入会议"
+function openJoin() {
+  const url = joinUrl.value
+  try { window.open(url, '_blank') } catch (e) { window.location.href = url }
 }
 function copyShareText() {
   const text = shareText.value
@@ -2527,10 +2571,10 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .pf-btn { display:flex; align-items:center; justify-content:center; height:88rpx; border:0; border-radius:44rpx; background: var(--c-primary-dark); color:#fff; font-size:32rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 20rpx; }
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
-.pf-btn-row { display:flex; gap:18rpx; }             /* 已发送：再次通知 + 开始会议 并排 */
-.pf-btn-row .pf-btn { flex:1; min-width:0; }
-.pf-btn-ghost { background:#f5f5f5; color:#777; }    /* 再次通知：次要样式 */
-.pf-btn-ghost:active { background:#ececec; }
+/* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
+.pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
+.pf-btn-row .pf-btn { flex:1; min-width:0; height:80rpx; font-size:30rpx; background: var(--c-primary); }
+.pf-btn-row .pf-btn:active { background: var(--c-primary-dark); }
 .pf-hint { display:block; text-align:center; font-size: 24rpx; color:#666; margin-top:7px; }
 
 /* ——— 通知页（精简版）：通知卡片 / 发送记录 / 取消会议 / 转发微信弹层 ——— */
@@ -2538,6 +2582,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .nc-banner { background:#C76A00; color:#fff; text-align:center; font-size:34rpx; font-weight:700; letter-spacing:6rpx; padding:24rpx 0; }
 .nc-title { font-size:42rpx; font-weight:700; color:#1a1a1a; text-align:center; padding:44rpx 40rpx 10rpx; line-height:1.4; }
 .nc-para { padding:8rpx 44rpx 4rpx; font-size:34rpx; color:#000; line-height:1.8; text-align:left; text-indent:2em; }
+/* 正文里的会议地点：蓝色可点超链接，点开高德地图导航 */
+.loc-inline { color:#1A73E8; text-decoration:underline; cursor:pointer; }
+.loc-inline:active { opacity:0.6; }
 .nc-info { padding:10rpx 44rpx 6rpx; }
 .nc-line { display:flex; font-size:30rpx; line-height:1.6; padding:7rpx 0; }
 .nc-k { flex-shrink:0; width:92rpx; color:#C76A00; font-weight:600; }
@@ -2547,16 +2594,26 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 通知记录：标题 + 记录 */
 .sr-section { margin:8rpx 6rpx 0; }
 .sr-heading { font-size:32rpx; font-weight:700; color:#1f2329; padding:2rpx 2rpx 12rpx; }
-.send-record { display:flex; align-items:center; gap:12rpx; margin:0; padding:18rpx 24rpx; background:#EAF7EE; border-radius:14rpx; }
-.sr-ic { color:#2E9E5B; font-weight:700; font-size:30rpx; }
-.sr-text { font-size:28rpx; color:#2E7D46; }
+/* 通知记录：去底色，纯绿色文字、加大一号并加粗 */
+.send-record { display:flex; align-items:center; gap:12rpx; margin:0; padding:8rpx 2rpx; }
+.send-record + .send-record { margin-top:20rpx; }   /* 多条记录之间间隔加大约 10px */
+.sr-ic { color:#2E9E5B; font-weight:700; font-size:32rpx; }
+.sr-text { font-size:32rpx; color:#2E7D46; font-weight:700; }
 .prep-cancel { text-align:center; margin:44rpx 0 10rpx; }
 .prep-cancel span { font-size:26rpx; color:#bbb; padding:10rpx 18rpx; }
 .forward-sheet { position:relative; width:100%; max-width:480px; margin:0 auto; background:#fff; border-radius:24rpx 24rpx 0 0; padding:30rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-sizing:border-box; }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
 .fw-hint { font-size:26rpx; color:#888; text-align:center; margin:10rpx 0 20rpx; line-height:1.5; }
-/* 文本化通知：可复制文本框 */
-.fw-text { display:block; width:100%; box-sizing:border-box; min-height:300rpx; margin:0 0 24rpx; border:2rpx solid #eee; border-radius:16rpx; padding:22rpx; font-size:28rpx; line-height:1.7; color:#333; background:#FAFAFA; resize:none; }
+/* 转发预览：与通知页一致的格式化通知（首行缩进/地点蓝链/落款靠右）+ 附带链接行 */
+.fw-preview { box-sizing:border-box; margin:0 0 6rpx; border:2rpx solid #eee; border-radius:16rpx; padding:24rpx 26rpx; background:#FAFAFA; }
+.fw-para { font-size:30rpx; color:#1a1a1a; line-height:1.8; text-align:left; text-indent:2em; }
+.fw-sign { text-align:right; font-size:30rpx; font-weight:700; color:#1a1a1a; margin-top:6rpx; }
+.fw-linkrows { margin-top:14rpx; padding-top:10rpx; border-top:1px dashed #e2e2e2; }
+.fw-linkrow { display:flex; align-items:center; gap:12rpx; padding:12rpx 2rpx; }
+.fw-lr-ico { font-size:30rpx; flex-shrink:0; }
+.fw-lr-txt { flex:1; min-width:0; font-size:28rpx; color:#1A73E8; text-decoration:underline; word-break:break-all; }
+.fw-lr-go { flex-shrink:0; color:#1A73E8; font-weight:700; }
+.fw-sub { margin:0 0 18rpx; font-size:24rpx; }
 .fw-actions { display:flex; gap:18rpx; }
 .fw-btn { flex:1; height:84rpx; border:none; border-radius:42rpx; font-size:30rpx; font-weight:600; }
 .fw-btn.ghost { background:#f0f0f0; color:#555; }
@@ -3024,6 +3081,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .mtc-chip.major { color:#E74C3C; background:#FDECEA; }
 .mtc-chip.realname { color:#2980B9; background:#EAF2F8; }
 .mtc-chip.live { color:#B96F12; background:#FEF4E2; }
+.mtc-chip.opinions { color:#C77700; background:#FFF3E0; }
+.mtc-arrow { flex-shrink:0; font-size:22px; color:#C2C6CC; align-self:center; }
+.mtc-topic.tappable:active { background:#FAFAFA; }
 .mtc-summary {
   display:block;
   margin-top:10px;

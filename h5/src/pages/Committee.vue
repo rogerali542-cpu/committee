@@ -405,6 +405,7 @@ import { getStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
 import { pickFile, humanSize } from '@/utils/upload'
+import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 
 const isChair = ref(false)
@@ -932,17 +933,22 @@ async function handleScanResult(res) {
   // token 消耗放进结果弹窗括号里：让用户直观感到 AI 真干活了
   const tokenNote = res.tokens > 0 ? '（本次智能识别消耗 ' + Number(res.tokens).toLocaleString() + ' token）' : ''
   if (res.available && res.category === 'notice') {
+    // 已填过会议信息（识别或手填）→ 改问“是否覆盖”，避免再次拍照悄悄冲掉上一次的内容
+    const dirty = formHasUserContent()
     const r = await showModal({
-      title: 'AI 智能识别：会议通知',
-      content: '已深度识别文件内容，判定为会议通知。要按它自动填写会议信息吗？' + tokenNote,
-      confirmText: '自动填写',
-      cancelText: canAttach ? '改为会议材料' : '取消',
+      title: dirty ? '覆盖已填写的信息？' : 'AI 智能识别：会议通知',
+      content: dirty
+        ? '当前已填写会议信息。要用这次识别的内容覆盖吗？' + tokenNote
+        : '已深度识别文件内容，判定为会议通知。要按它自动填写会议信息吗？' + tokenNote,
+      confirmText: dirty ? '覆盖填写' : '自动填写',
+      cancelText: dirty ? '保留原信息' : (canAttach ? '改为会议材料' : '取消'),
       size: 'large',
       showClose: true
     })
     if (r.close) return // 右上角 ×：只关弹窗，什么都不做
-    if (r.confirm) applyPrefill(res)
-    else if (canAttach) addScannedMaterial(res)
+    if (r.confirm) applyPrefill(res, { skipOverwriteConfirm: true }) // 覆盖已在上面确认过
+    else if (!dirty && canAttach) addScannedMaterial(res)
+    // dirty 且取消 = 保留原信息，什么都不做
     return
   }
   if (res.available && res.category === 'material') {
@@ -998,10 +1004,28 @@ function stopDocProgress() {
   clearInterval(docProgTimer)
   docProgTimer = null
 }
-function applyPrefill(data) {
+// 表单是否已有“实质内容”：日期/时间/地点开窗时就带默认值不算数，
+// 只认 识别预填过(docPrefilled) / 手填了标题 / 加了议题 —— 用来决定再次识别时是否要问“覆盖”
+function formHasUserContent() {
+  return docPrefilled.value
+    || !!(createForm.title && createForm.title.trim())
+    || (Array.isArray(createForm.topics) && createForm.topics.length > 0)
+}
+async function applyPrefill(data, opts = {}) {
   if (!data) { toast({ title: '未识别到内容，请手动填写', icon: 'none' }); return }
   const hasFields = !!(data.title || data.meetingDate || data.meetingTime || data.location || (Array.isArray(data.topics) && data.topics.length))
   if (data.available && hasFields) {
+    // 已有会议信息且外层没先确认过 → 先问是否覆盖（“改为自动填表”等入口也会走到这里）
+    if (!opts.skipOverwriteConfirm && formHasUserContent()) {
+      const c = await showModal({
+        title: '覆盖已填写的信息？',
+        content: '当前已填写会议信息。要用这次识别的内容覆盖吗？',
+        confirmText: '覆盖填写',
+        cancelText: '保留原信息',
+        showClose: true
+      })
+      if (!c.confirm) return // 保留原信息 / × ：不覆盖
+    }
     if (data.title) createForm.title = data.title
     if (data.meetingDate) createForm.meetingDate = data.meetingDate
     if (data.meetingTime) createForm.meetingTime = data.meetingTime
@@ -1250,17 +1274,19 @@ async function submitNewMeeting() {
     createVisible.value = false
     currentStage.value = 'preparing'
     if (created && created.id) {
-      // 竞态兜底：navigateTo(router.push) 偶发被取消/重复导航会 reject，未 catch 会被静默吞掉、
-      // 结果停在首页（弹窗已关）。这里 await + 失败重试一次，确保正确进入通知页。
+      // 竞态兜底：navigateTo(router.push) 偶发被取消/重复导航会 reject，或"URL变了却不切换视图"，
+      // 都会把用户留在主页（弹窗已关）。软跳后延时校验通知页(.detail-page)是否真的挂上，没挂上就
+      // window.location 硬跳过去，确保必达（对齐本 app 其它关键跳转的硬导航兜底做法）。
       const target = '/pages/committee-detail/committee-detail?id=' + created.id
+      const browserUrl = '/committee-detail?id=' + created.id
       console.log('[去通知] 跳转 →', target)
-      try {
-        await navigateTo(target)
-        console.log('[去通知] 跳转完成，当前 path =', location.pathname + location.search)
-      } catch (navErr) {
-        console.error('[去通知] 跳转 reject，重试一次：', navErr)
-        try { await navigateTo(target) } catch (e2) { console.error('[去通知] 重试仍失败：', e2); toast({ title: '会议已创建，请在列表中打开', icon: 'none' }); loadAll() }
-      }
+      try { await navigateTo(target) } catch (navErr) { console.error('[去通知] 软跳 reject：', navErr) }
+      setTimeout(() => {
+        if (!document.querySelector('.detail-page')) {
+          console.warn('[去通知] 软跳未挂载通知页，硬导航兜底 →', browserUrl)
+          window.location.href = browserUrl
+        }
+      }, 500)
     } else {
       console.warn('[去通知] created 无 id，回列表', created)
       toast({ title: '会议已创建，请在列表中打开', icon: 'none' })
@@ -1276,26 +1302,7 @@ function todayStr() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
-// ——— 语音输入 ———
-const HOTWORDS = [
-  ['叶委会', '业委会'], ['夜委会', '业委会'], ['页委会', '业委会'], ['一委会', '业委会'],
-  ['物业肥', '物业费'], ['物业菲', '物业费'],
-  ['主人', '主任'], ['副主人', '副主任'],
-  ['为员', '委员'], ['位员', '委员'], ['纬员', '委员'],
-  ['记要', '纪要'], ['计要', '纪要'],
-  ['意题', '议题'], ['一题', '议题'],
-  ['签道', '签到'], ['前到', '签到'], ['前道', '签到'],
-  ['表绝', '表决'],
-  ['公探', '公摊'], ['弓摊', '公摊'],
-  ['停车未', '停车位'], ['停车卫', '停车位'],
-  ['物业公私', '物业公司'],
-  ['维修基础', '维修基金'],
-]
-function applyHotwords(text) {
-  let r = text
-  for (const [wrong, right] of HOTWORDS) r = r.replaceAll(wrong, right)
-  return r
-}
+// ——— 语音输入 ———（热词纠错 applyHotwords 已抽到 @/utils/helpers 与 MeetingLiveQuick 共用）
 
 function _stopVoice() {
   if (_voiceRec) {

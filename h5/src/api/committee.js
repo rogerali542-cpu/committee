@@ -99,6 +99,19 @@ export default {
     if (selectedId) params += (params ? '&' : '?') + 'selectedId=' + selectedId;
     return core.request('PUT', '/api/committees/' + id + '/topics/' + topicId + '/vote' + params);
   },
+  // ===== 议题意见 =====
+  committeeOpinions: function (id) {
+    return core.request('GET', '/api/committees/' + id + '/opinions');
+  },
+  committeeAddOpinion: function (id, topicId, content, source) {
+    return core.request('POST', '/api/committees/' + id + '/topics/' + topicId + '/opinions', { content: content, source: source || 'text' });
+  },
+  committeeUpdateOpinion: function (id, opinionId, content) {
+    return core.request('PUT', '/api/committees/' + id + '/opinions/' + opinionId, { content: content });
+  },
+  committeeRemoveOpinion: function (id, opinionId) {
+    return core.request('DELETE', '/api/committees/' + id + '/opinions/' + opinionId);
+  },
   committeeProxyTargets: function (id, keyword) {
     var params = keyword ? '?keyword=' + encodeURIComponent(keyword) : '';
     return core.request('GET', '/api/committees/' + id + '/proxy-targets' + params);

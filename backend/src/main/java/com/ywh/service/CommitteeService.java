@@ -55,6 +55,7 @@ public class CommitteeService {
     private final ObjectProvider<DoubaoOcrService> ocrServiceProvider;
     private final MeetingTodoRepository todoRepo;
     private final MeetingNotificationLogRepository notificationLogRepo;
+    private final TopicOpinionRepository opinionRepo;
 
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
 
@@ -583,6 +584,8 @@ public class CommitteeService {
     public void removeTopic(Long meetingId, Long topicId) {
         RecordTopic topic = topicRepo.findById(topicId)
                 .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        // 先清该议题的意见，避免外键约束删除失败
+        opinionRepo.deleteAll(opinionRepo.findByTopicId(topicId));
         topicRepo.delete(topic);
     }
 
@@ -641,6 +644,108 @@ public class CommitteeService {
             vote.setChoice(VoteChoice.valueOf(choice));
         }
         voteRepo.save(vote);
+    }
+
+    // ===== 议题意见 =====
+
+    /** 本会议全部意见（平铺，前端按 topicId 分组）；任何阶段可查看。 */
+    public List<Map<String, Object>> listOpinions(Long meetingId) {
+        MeetingRecord record = getRecord(meetingId);
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        boolean chair = isChair(ur);
+        return opinionRepo.findByTopicRecordIdOrderByCreatedAtAsc(record.getId()).stream()
+                .map(op -> opinionToMap(op, ur, chair))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Map<String, Object> addOpinion(Long meetingId, Long topicId, String content, String source) {
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("意见内容不能为空");
+        }
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅会议进行中可发表意见");
+        }
+        RecordTopic topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        MeetingRecord record = topic.getRecord();
+        if (record == null || !record.getId().equals(getRecord(meetingId).getId())) {
+            throw new IllegalArgumentException("议题不属于本次会议");
+        }
+        Long urId = SecurityUtils.getCurrentUserId();
+        RecordAttendance attendance = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), urId)
+                .orElseThrow(() -> new IllegalArgumentException("请先签到后再发表意见"));
+        if (!Boolean.TRUE.equals(attendance.getSignedIn())) {
+            throw new IllegalArgumentException("请先签到后再发表意见");
+        }
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        String src = ("voice".equals(source) || "ai".equals(source)) ? source : "text";
+        TopicOpinion op = TopicOpinion.builder()
+                .topic(topic)
+                .userRole(ur)
+                .speakerName(ur.getRealName())
+                .content(content.trim())
+                .source(src)
+                .build();
+        opinionRepo.save(op);
+        return opinionToMap(op, ur, isChair(ur));
+    }
+
+    /** 修改意见内容：仅本人。 */
+    @Transactional
+    public void updateOpinion(Long meetingId, Long opinionId, String content) {
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("意见内容不能为空");
+        }
+        TopicOpinion op = findMeetingOpinion(meetingId, opinionId);
+        Long urId = SecurityUtils.getCurrentUserId();
+        if (op.getUserRole() == null || !op.getUserRole().getId().equals(urId)) {
+            throw new IllegalArgumentException("只能修改自己的意见");
+        }
+        op.setContent(content.trim());
+        opinionRepo.save(op);
+    }
+
+    /** 删除意见：本人或主任/副主任。 */
+    @Transactional
+    public void removeOpinion(Long meetingId, Long opinionId) {
+        TopicOpinion op = findMeetingOpinion(meetingId, opinionId);
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        boolean own = op.getUserRole() != null && op.getUserRole().getId().equals(ur.getId());
+        if (!own && !isChair(ur)) {
+            throw new IllegalArgumentException("只能删除自己的意见");
+        }
+        opinionRepo.delete(op);
+    }
+
+    private TopicOpinion findMeetingOpinion(Long meetingId, Long opinionId) {
+        TopicOpinion op = opinionRepo.findById(opinionId)
+                .orElseThrow(() -> new IllegalArgumentException("意见不存在"));
+        MeetingRecord record = op.getTopic() != null ? op.getTopic().getRecord() : null;
+        if (record == null || !record.getId().equals(getRecord(meetingId).getId())) {
+            throw new IllegalArgumentException("意见不属于本次会议");
+        }
+        return op;
+    }
+
+    private Map<String, Object> opinionToMap(TopicOpinion op, UserRoleEntity current, boolean chair) {
+        boolean own = op.getUserRole() != null && op.getUserRole().getId().equals(current.getId());
+        Map<String, Object> vo = new HashMap<>();
+        vo.put("id", op.getId());
+        vo.put("topicId", op.getTopic().getId());
+        vo.put("userRoleId", op.getUserRole() != null ? op.getUserRole().getId() : null);
+        vo.put("name", op.getUserRole() != null ? op.getUserRole().getRealName()
+                : (op.getSpeakerName() != null ? op.getSpeakerName() : "现场发言"));
+        vo.put("role", op.getUserRole() != null ? op.getUserRole().getRole().name() : null);
+        vo.put("content", op.getContent());
+        vo.put("source", op.getSource());
+        vo.put("isSelf", own);
+        vo.put("canEdit", own);
+        vo.put("canDelete", own || chair);
+        vo.put("createdAt", op.getCreatedAt() != null ? op.getCreatedAt().toString() : null);
+        return vo;
     }
 
     @Transactional
@@ -1535,6 +1640,8 @@ public class CommitteeService {
         publishRepo.findByMeetingId(meetingId).ifPresent(publishRepo::delete);
         recordRepo.findByMeetingId(meetingId).ifPresent(record -> {
             List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+            // 议题意见外键指向议题，先于议题清理
+            opinionRepo.deleteAll(opinionRepo.findByTopicRecordIdOrderByCreatedAtAsc(record.getId()));
             topics.forEach(topic -> voteRepo.deleteAll(voteRepo.findByTopicId(topic.getId())));
             topicRepo.deleteAll(topics);
             attendanceRepo.deleteAll(attendanceRepo.findByRecordId(record.getId()));
@@ -2070,6 +2177,8 @@ public class CommitteeService {
             tv.setForVotes(forV);
             tv.setAgVotes(agV);
             tv.setAbVotes(abV);
+            tv.setVoted(countedVotes);
+            tv.setOpinionCount((int) opinionRepo.countByTopicId(tp.getId()));
             tv.setTotal(total);
             tv.setNeed(need);
             tv.setPassed(passed);

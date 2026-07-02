@@ -16,6 +16,18 @@
       <span v-if="description" class="mm-desc">{{ description }}</span>
     </div>
 
+    <!-- 进行中：议题（点开表决/发表意见） -->
+    <div v-if="stage === 'ongoing' && rawTopics.length" class="mm-card">
+      <span class="mm-section-title">会议议题</span>
+      <div class="mm-topic-row" v-for="(item, index) in rawTopics" :key="item.id" @click="openTopicSheet(item)">
+        <span class="mm-topic-idx">{{ index + 1 }}</span>
+        <span class="mm-topic-name">{{ item.title }}</span>
+        <span class="mm-topic-badge" :class="{ vote: item.voteRequired && !item.myVote, done: item.voteRequired && item.myVote }">{{ memberBadgeText(item) }}</span>
+        <span class="mm-topic-arrow">›</span>
+      </div>
+      <span v-if="!signedIn" class="mm-topics-hint">签到后可表决、发表意见</span>
+    </div>
+
     <!-- 进行中：录音 + 材料 -->
     <div v-if="stage === 'ongoing'" class="mm-card">
       <span class="mm-section-title">会议录音</span>
@@ -57,7 +69,7 @@
         <span class="mm-result-text">{{ resultText }}</span>
       </div>
       <div v-if="topics.length" class="mm-topics">
-        <div class="mm-topic" v-for="(item, index) in topics" :key="item.title + '_' + index">
+        <div class="mm-topic" v-for="(item, index) in topics" :key="item.title + '_' + index" @click="openTopicSheetById(item.id)">
           <span class="mm-topic-title">{{ item.title }}</span>
           <span class="mm-topic-result">{{ item.resultText }}</span>
         </div>
@@ -110,6 +122,10 @@
         </div>
       </template>
     </div>
+
+    <!-- 议题弹层：表决 + 意见 -->
+    <TopicSheet v-if="meetingIdRef" :meeting-id="meetingIdRef" :topic="sheetTopic" :interactive="stage === 'ongoing'"
+                :signed-in="signedIn" @close="sheetTopicId = null" @changed="loadDetail" />
   </div>
 </template>
 
@@ -124,6 +140,7 @@ import { pickFile } from '@/utils/upload'
 import { useRecorder } from '@/composables/useRecorder'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import PageNav from '@/components/PageNav.vue'
+import TopicSheet from '@/components/TopicSheet.vue'
 
 function timeStr(s) {
   const m = Math.floor(s / 60)
@@ -174,6 +191,18 @@ const recordings = ref([]) // 已上传的录音列表
 // 已结束
 const resultText = ref('')
 const topics = ref([])
+
+// ── 议题弹层（表决+意见）──
+const rawTopics = ref([])            // 完整 TopicVO 列表（弹层/角标用）
+const meetingIdRef = ref(null)       // meetingId 的响应式镜像（传给弹层）
+const sheetTopicId = ref(null)
+const sheetTopic = computed(() => rawTopics.value.find(t => t.id === sheetTopicId.value) || null)
+function openTopicSheet(item) { sheetTopicId.value = item.id }
+function openTopicSheetById(id) { if (id != null) sheetTopicId.value = id }
+function memberBadgeText(item) {
+  if (item.voteRequired) return item.myVote ? '已表决' : '去表决'
+  return item.opinionCount > 0 ? '意见 ' + item.opinionCount : '发表意见'
+}
 
 // ── 会议通知正文（与主任通知页一致：微信口吻整段）──
 function fmtHm(t) { return String(t || '').slice(0, 5) }
@@ -252,9 +281,12 @@ async function loadDetail() {
     const me = (record.attendances || []).find(a => a.isSelf) || {}
     const mats = d.materials || []
     const tps = (record.topics || []).map(t => ({
+      id: t.id,
       title: t.title,
       resultText: topicResult(t)
     }))
+    rawTopics.value = record.topics || []
+    meetingIdRef.value = meetingId
     // 录音列表
     const recs = record.recordings || []
     loading.value = false
@@ -505,6 +537,18 @@ onUnmounted(() => {
 .mm-topic:first-child { border-top: none; }
 .mm-topic-title { flex: 1; font-size: 34rpx; color: #3a434d; margin-right: 20rpx; }
 .mm-topic-result { font-size: 34rpx; font-weight: 600; color: #FF8C00; }
+
+/* 进行中：议题行（点开弹层表决/发表意见） */
+.mm-topic-row { display: flex; align-items: center; gap: 16rpx; padding: 24rpx 0; border-bottom: 2rpx solid #F2F2F4; }
+.mm-topic-row:last-of-type { border-bottom: none; }
+.mm-topic-row:active { background: #fafafa; }
+.mm-topic-idx { width: 44rpx; height: 44rpx; flex-shrink: 0; border-radius: 50%; background: #F2F2F4; color: #666; font-size: 28rpx; text-align: center; line-height: 44rpx; }
+.mm-topic-name { flex: 1; min-width: 0; font-size: 34rpx; color: #1f2329; line-height: 1.4; word-break: break-all; }
+.mm-topic-badge { flex-shrink: 0; font-size: 26rpx; color: #666; background: #F2F2F4; border-radius: 999rpx; padding: 8rpx 20rpx; }
+.mm-topic-badge.vote { background: var(--c-primary-dark, #E8890C); color: #fff; font-weight: 700; }
+.mm-topic-badge.done { background: #EAF6E5; color: #2E7D32; font-weight: 600; }
+.mm-topic-arrow { flex-shrink: 0; font-size: 40rpx; color: #C2C6CC; }
+.mm-topics-hint { display: block; text-align: center; font-size: 26rpx; color: #9AA0A6; padding-top: 14rpx; }
 
 /* 会议材料 */
 .mm-mat {
