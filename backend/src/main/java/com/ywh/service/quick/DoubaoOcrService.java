@@ -102,6 +102,14 @@ public class DoubaoOcrService {
         });
     }
 
+    /**
+     * 同步识别一份文档字节流（图片/PDF）→ 返回全文文字。供"新建会议-上传/拍照识别"等即时场景调用。
+     * 复用与材料 OCR 相同的 ocr-asr-service 调用；失败直接抛异常，由调用方决定降级。
+     */
+    public String ocrDocumentSync(String filename, String fileType, byte[] data) throws Exception {
+        return callOcrDocument(props.getOcr(), filename, fileType, data);
+    }
+
     // ── 调用 ocr-asr-service /v1/ocr/document（multipart 上传单个文件，收 JSON.text）──
     private String callOcrDocument(DoubaoProperties.Ocr cfg, String filename, String fileType, byte[] data)
             throws Exception {

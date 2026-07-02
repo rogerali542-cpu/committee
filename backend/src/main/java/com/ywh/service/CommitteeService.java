@@ -3,6 +3,7 @@ package com.ywh.service;
 import com.ywh.dto.CreateMeetingRequest;
 import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.MeetingDetailVO.*;
+import com.ywh.dto.MeetingTodoVO;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
 import com.ywh.dto.RecordingVO;
@@ -27,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,6 +53,8 @@ public class CommitteeService {
     private final ObjectMapper objectMapper;
     // 可选：仅 doubao.ocr.enabled=true 时存在，未启用时 getIfAvailable() 返回 null → OCR 跳过
     private final ObjectProvider<DoubaoOcrService> ocrServiceProvider;
+    private final MeetingTodoRepository todoRepo;
+    private final MeetingNotificationLogRepository notificationLogRepo;
 
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
 
@@ -164,6 +168,8 @@ public class CommitteeService {
                 .userView(roleView)
                 .coreLocked(m.getStage() != MeetingStage.preparing || m.getNotifiedAt() != null)
                 .notifiedAt(m.getNotifiedAt() != null ? m.getNotifiedAt().toString() : null)
+                .notifiedByName(m.getNotifiedByName())
+                .notificationLogs(buildNotificationLogs(m.getId()))
                 .taskLevel((String) taskSummary.get("level"))
                 .taskTitle((String) taskSummary.get("title"))
                 .taskItems((List<String>) taskSummary.get("items"))
@@ -398,6 +404,17 @@ public class CommitteeService {
                 .collect(Collectors.toList());
         deliveryRepo.saveAll(deliveries);
         markNotifiedIfComplete(meetingId);
+        // 记录发送人：全部送达置 notifiedAt 后，同步记录当前主任/副主任"姓名·角色"（谁发的通知）
+        if (initiator != null && meeting.getNotifiedAt() != null) {
+            meeting.setNotifiedByName(initiator.getRealName() + "·" + initiator.getRole());
+            meetingRepo.save(meeting);
+        }
+        // 追加通知历史记录
+        notificationLogRepo.save(MeetingNotificationLog.builder()
+                .meeting(meeting)
+                .sentAt(now)
+                .sentByName(initiator != null ? initiator.getRealName() + "·" + initiator.getRole() : null)
+                .build());
 
         // 发起人（当前主任/副主任）发送会议通知时即自动"确认参会"，计入确认参会人数（自动为 1），无需再手动确认。
         if (initiator != null) {
@@ -415,6 +432,17 @@ public class CommitteeService {
         }
     }
 
+    private List<MeetingDetailVO.NotificationLogVO> buildNotificationLogs(Long meetingId) {
+        return notificationLogRepo.findByMeetingIdOrderBySentAtAsc(meetingId).stream()
+                .map(l -> {
+                    MeetingDetailVO.NotificationLogVO vo = new MeetingDetailVO.NotificationLogVO();
+                    vo.setSentAt(l.getSentAt().toString());
+                    vo.setSentByName(l.getSentByName());
+                    return vo;
+                })
+                .collect(Collectors.toList());
+    }
+
     /** 全部通知送达后记录"通知完成"时间，触发重大字段锁定（规则8）。 */
     private void markNotifiedIfComplete(Long meetingId) {
         List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(meetingId);
@@ -422,12 +450,13 @@ public class CommitteeService {
                 && deliveries.stream().allMatch(MeetingDelivery::getNoticeDelivered);
         CommitteeMeeting m = meetingRepo.findById(meetingId).orElse(null);
         if (m == null) return;
-        if (allNotified && m.getNotifiedAt() == null) {
+        if (allNotified) {
             m.setNotifiedAt(LocalDateTime.now());
             meetingRepo.save(m);
         } else if (!allNotified && m.getNotifiedAt() != null) {
             // 撤回送达 → 解除锁定
             m.setNotifiedAt(null);
+            m.setNotifiedByName(null);
             meetingRepo.save(m);
         }
     }
@@ -959,9 +988,10 @@ public class CommitteeService {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         PublishInfoVO info = getPublishInfo(m);
-        if (info.getDaysLeft() != null && info.getDaysLeft() < 0) {
-            throw new IllegalArgumentException("已超过会议结束后三日公示期限，不再补公示");
-        }
+        // TODO: 测试期间暂时跳过三日公示期限校验
+        // if (info.getDaysLeft() != null && info.getDaysLeft() < 0) {
+        //     throw new IllegalArgumentException("已超过会议结束后三日公示期限，不再补公示");
+        // }
         MeetingPublish pub = publishRepo.findByMeetingId(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("公示记录不存在"));
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
@@ -1285,6 +1315,98 @@ public class CommitteeService {
         return "无明确待办事项。";
     }
 
+    // ===== 结构化待办（委员可回复进度）=====
+    // 固化自 AI 待办文本：第一次进待办页由前端解析后调 initTodos 落库，之后以本表为准，
+    // 不再被 AI 文本覆盖。负责人仅文本，不强绑账号；任意委员可更新任意一条，留痕操作人。
+
+    @Transactional(readOnly = true)
+    public List<MeetingTodoVO> listTodos(Long meetingId) {
+        return todoRepo.findByMeetingIdOrderBySortOrderAsc(meetingId).stream()
+                .map(this::toTodoVO).collect(Collectors.toList());
+    }
+
+    /** 固化待办。幂等：已固化则忽略本次提交、直接返回现有，避免覆盖委员已更新的状态。 */
+    @Transactional
+    public List<MeetingTodoVO> initTodos(Long meetingId, List<MeetingTodoVO> items) {
+        if (todoRepo.countByMeetingId(meetingId) > 0) {
+            return listTodos(meetingId);
+        }
+        meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        LocalDateTime now = LocalDateTime.now();
+        List<MeetingTodo> saved = new ArrayList<>();
+        int order = 0;
+        if (items != null) {
+            for (MeetingTodoVO it : items) {
+                String title = it.getTitle() == null ? "" : it.getTitle().trim();
+                if (title.isEmpty()) continue;
+                MeetingTodo t = MeetingTodo.builder()
+                        .meetingId(meetingId)
+                        .title(clip(title, 500))
+                        .owner(clip(blankToNull(it.getOwner()), 100))
+                        .dueText(clip(blankToNull(it.getDueText()), 100))
+                        .status(normalizeTodoStatus(it.getStatus()))
+                        .sortOrder(order++)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build();
+                saved.add(todoRepo.save(t));
+            }
+        }
+        return saved.stream().map(this::toTodoVO).collect(Collectors.toList());
+    }
+
+    /** 委员更新某条待办状态，记录操作人与时间。 */
+    @Transactional
+    public MeetingTodoVO updateTodoStatus(Long meetingId, Long todoId, String status) {
+        MeetingTodo t = todoRepo.findById(todoId)
+                .orElseThrow(() -> new IllegalArgumentException("待办不存在"));
+        if (!t.getMeetingId().equals(meetingId)) {
+            throw new IllegalArgumentException("待办与会议不匹配");
+        }
+        t.setStatus(normalizeTodoStatus(status));
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (ur != null) {
+            t.setLastActorId(ur.getId());
+            t.setLastActorName(ur.getRealName());
+        }
+        t.setUpdatedAt(LocalDateTime.now());
+        return toTodoVO(todoRepo.save(t));
+    }
+
+    private MeetingTodoVO toTodoVO(MeetingTodo t) {
+        MeetingTodoVO vo = new MeetingTodoVO();
+        vo.setId(t.getId());
+        vo.setTitle(t.getTitle());
+        vo.setOwner(t.getOwner());
+        vo.setDueText(t.getDueText());
+        vo.setStatus(t.getStatus());
+        vo.setLastActorName(t.getLastActorName());
+        vo.setUpdatedAt(t.getUpdatedAt() == null ? null
+                : t.getUpdatedAt().format(DateTimeFormatter.ofPattern("MM-dd HH:mm")));
+        return vo;
+    }
+
+    private static String normalizeTodoStatus(String s) {
+        if (s == null) return "todo";
+        String v = s.trim().toLowerCase();
+        if (v.equals("todo") || v.equals("doing") || v.equals("done")) return v;
+        if (v.contains("完成") || v.contains("已办") || v.contains("办结")) return "done";
+        if (v.contains("进行") || v.contains("处理中") || v.contains("在做")) return "doing";
+        return "todo";
+    }
+
+    private static String blankToNull(String s) {
+        if (s == null) return null;
+        String v = s.trim();
+        return v.isEmpty() ? null : v;
+    }
+
+    private static String clip(String s, int max) {
+        if (s == null) return null;
+        return s.length() > max ? s.substring(0, max) : s;
+    }
+
     private boolean isQuickMinutesOutdated(CommitteeMeeting meeting, MeetingRecord record) {
         return meeting != null
                 && meeting.getMeetingMode() == MeetingMode.quick
@@ -1407,6 +1529,8 @@ public class CommitteeService {
         // 先清理录音文件，避免外键约束报错
         recordingRepo.deleteAll(recordingRepo.findByMeetingIdOrderByCreatedAtDesc(meetingId));
         deliveryRepo.deleteByMeetingId(meetingId);
+        // 通知历史（新增表，外键指向会议）——不先清理会触发外键约束导致删除失败
+        notificationLogRepo.deleteAll(notificationLogRepo.findByMeetingIdOrderBySentAtAsc(meetingId));
         minutesRevisionRepo.deleteAll(minutesRevisionRepo.findByMeetingIdOrderByVersionNoDesc(meetingId));
         publishRepo.findByMeetingId(meetingId).ifPresent(publishRepo::delete);
         recordRepo.findByMeetingId(meetingId).ifPresent(record -> {

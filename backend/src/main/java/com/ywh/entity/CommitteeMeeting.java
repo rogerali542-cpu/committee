@@ -59,6 +59,10 @@ public class CommitteeMeeting {
     @Column(name = "notified_at")
     private LocalDateTime notifiedAt;
 
+    // 发送通知的操作人（主任/副主任 "姓名·角色"），供通知页"发送记录"展示
+    @Column(name = "notified_by_name", length = 60)
+    private String notifiedByName;
+
     @Column(name = "notice_title", length = 200)
     private String noticeTitle;
 

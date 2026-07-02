@@ -53,11 +53,12 @@ export function realRequest(method, path, data, options) {
 }
 
 // 上传：H5 用 FormData + Blob/File，字段名默认 'file'（后端 multipart 接口契约不变）
-export function uploadFile(path, fileOrBlob, name = 'file', formData = {}) {
+// options.timeout：慢接口（如 OCR+大模型抽取）可放开，默认沿用实例 30s
+export function uploadFile(path, fileOrBlob, name = 'file', formData = {}, options = {}) {
   const fd = new FormData()
   fd.append(name, fileOrBlob, (fileOrBlob && fileOrBlob.name) || 'upload')
   Object.keys(formData || {}).forEach((k) => fd.append(k, formData[k]))
-  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then(
+  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: options.timeout || 30000 }).then(
     unwrap,
     (err) => { toast({ title: '上传失败', icon: 'none' }); return Promise.reject(err) }
   )

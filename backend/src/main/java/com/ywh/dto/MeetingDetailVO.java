@@ -38,6 +38,14 @@ public class MeetingDetailVO {
     // 通知后锁定（规则8）：coreLocked=true 时重大字段（日期/时间/地点/参会范围）应锁定，修改需重新通知
     private Boolean coreLocked;
     private String notifiedAt;
+    private String notifiedByName;   // 发送通知的操作人"姓名·角色"（谁发的通知）
+    private List<NotificationLogVO> notificationLogs;  // 全部通知记录（按时间升序）
+
+    @Data
+    public static class NotificationLogVO {
+        private String sentAt;
+        private String sentByName;
+    }
 
     // Delivery info
     private DeliveryInfoVO delivery;

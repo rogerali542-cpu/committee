@@ -1,6 +1,7 @@
 package com.ywh.controller;
 
 import com.ywh.annotation.RequireRole;
+import com.ywh.dto.MeetingTodoVO;
 import com.ywh.dto.RecordingVO;
 import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.AsrTaskVO;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -197,6 +200,32 @@ public class QuickMeetingController {
     @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<String> todos(@PathVariable Long id) {
         return Result.ok(committeeService.getTodoListText(id));
+    }
+
+    /** 结构化待办列表。initialized=false 时附带 raw（AI 待办原文），供前端解析后固化。 */
+    @GetMapping("/todos/list")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<Map<String, Object>> todoList(@PathVariable Long id) {
+        List<MeetingTodoVO> items = committeeService.listTodos(id);
+        Map<String, Object> out = new HashMap<>();
+        out.put("initialized", !items.isEmpty());
+        out.put("items", items);
+        out.put("raw", items.isEmpty() ? committeeService.getTodoListText(id) : null);
+        return Result.ok(out);
+    }
+
+    /** 固化待办（前端解析 AI 文本后回传）。幂等，已固化则返回现有。 */
+    @PostMapping("/todos/init")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<List<MeetingTodoVO>> todoInit(@PathVariable Long id, @RequestBody List<MeetingTodoVO> items) {
+        return Result.ok(committeeService.initTodos(id, items));
+    }
+
+    /** 委员更新某条待办状态：status = todo/doing/done。 */
+    @PutMapping("/todos/{todoId}/status")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<MeetingTodoVO> todoStatus(@PathVariable Long id, @PathVariable Long todoId, @RequestParam String status) {
+        return Result.ok(committeeService.updateTodoStatus(id, todoId, status));
     }
 
     private List<String> topicTexts(Long meetingId, TopicSummaryRequest req) {

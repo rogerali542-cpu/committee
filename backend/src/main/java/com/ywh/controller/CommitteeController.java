@@ -4,15 +4,22 @@ import com.ywh.annotation.RequireRole;
 import com.ywh.dto.CreateMeetingRequest;
 import com.ywh.dto.DeliverySendRequest;
 import com.ywh.dto.MeetingDetailVO;
+import com.ywh.dto.MeetingPrefillVO;
+import com.ywh.dto.NewsVO;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
 import com.ywh.entity.CommitteeMeeting;
 import com.ywh.entity.RecordTopic;
 import com.ywh.service.CommitteeService;
+import com.ywh.service.quick.AudioStorageService;
+import com.ywh.service.quick.DocumentPrefillService;
+import com.ywh.service.quick.NewsGenService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +29,9 @@ import java.util.Map;
 public class CommitteeController {
 
     private final CommitteeService service;
+    private final DocumentPrefillService prefillService;
+    private final NewsGenService newsGenService;
+    private final AudioStorageService audioStorage;
 
     @GetMapping
     public Result<List<Map<String, Object>>> list(
@@ -43,6 +53,34 @@ public class CommitteeController {
     @RequireRole({"主任", "副主任"})
     public Result<CommitteeMeeting> create(@RequestBody CreateMeetingRequest req) {
         return Result.ok(service.createMeeting(req));
+    }
+
+    /**
+     * 新建会议——上传文档/拍照件，OCR + 大模型判类（通知/材料）并抽取会议信息。
+     * 文件先落库存储（返回 fileUrl），识别失败也能作为会议材料挂载；OCR/AI 未开启或失败时
+     * 返回 available=false + message（前端提示后回退手动填写），不报错。
+     */
+    @PostMapping("/parse-document")
+    @RequireRole({"主任", "副主任"})
+    public Result<MeetingPrefillVO> parseDocument(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) return Result.fail("文件为空");
+        String name = file.getOriginalFilename();
+        String ext = extractExt(name);
+        byte[] data = file.getBytes();
+        MeetingPrefillVO vo = prefillService.parse(name, ext, data);
+        try {
+            vo.setFileUrl(audioStorage.save(0L, data, ext.isBlank() ? "bin" : ext));
+            vo.setFileName(name == null ? "" : name);
+            vo.setFileType(ext);
+            vo.setFileSize(file.getSize());
+        } catch (Exception e) { /* 存储失败不影响识别结果返回 */ }
+        return Result.ok(vo);
+    }
+
+    private String extractExt(String filename) {
+        if (filename == null) return "";
+        int dot = filename.lastIndexOf('.');
+        return dot >= 0 && dot < filename.length() - 1 ? filename.substring(dot + 1).toLowerCase() : "";
     }
 
     @DeleteMapping("/{id}")
@@ -268,6 +306,15 @@ public class CommitteeController {
     @GetMapping("/{id}/minutes")
     public Result<String> minutes(@PathVariable Long id) {
         return Result.ok(service.generateMinutes(id));
+    }
+
+    /** AI 生成党建新闻：拿会议纪要喂大模型，返回一篇党建主题新闻通稿（标题 + 正文）。 */
+    @PostMapping("/{id}/news")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<NewsVO> generateNews(@PathVariable Long id) {
+        MeetingDetailVO detail = service.getDetail(id);
+        String minutes = service.generateMinutes(id);
+        return Result.ok(newsGenService.generate(detail == null ? null : detail.getTitle(), minutes));
     }
 
     @GetMapping("/{id}/minutes/revisions")

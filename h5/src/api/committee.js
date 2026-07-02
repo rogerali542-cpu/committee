@@ -127,6 +127,10 @@ export default {
   committeeMinutes: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/minutes');
   },
+  // AI 生成党建新闻：拿会议纪要喂大模型生成新闻通稿（较慢，放开超时到 170s）
+  committeeGenerateNews: function (id) {
+    return core.realRequest('POST', '/api/committees/' + id + '/news', null, { timeout: 170000 });
+  },
   committeeMinutesRevisions: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/minutes/revisions');
   },
@@ -135,6 +139,11 @@ export default {
   },
   committeeStats: function () {
     return core.request('GET', '/api/committees/stats');
+  },
+  // 新建会议：上传文档/拍照件，后端 OCR + 大模型识别出会议信息（返回 MeetingPrefillVO）
+  // OCR + 推理模型抽取较慢（可达 30-40s），放开超时到 120s，避免默认 30s 超时误报"识别失败"
+  committeeParseDocument: function (file) {
+    return core.uploadFile('/api/committees/parse-document', file, 'file', {}, { timeout: 120000 });
   },
   committeePublishScore: function () {
     return core.request('GET', '/api/committees/publish-score');
@@ -181,6 +190,16 @@ export default {
   },
   committeeQuickTodos: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/todos');
+  },
+  // 结构化待办：列表（含未固化时的 raw 原文）/ 固化落库 / 更新状态
+  committeeTodoList: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/todos/list');
+  },
+  committeeTodoInit: function (id, items) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/todos/init', items);
+  },
+  committeeTodoStatus: function (id, todoId, status) {
+    return core.realRequest('PUT', '/api/committees/' + id + '/quick/todos/' + todoId + '/status?status=' + encodeURIComponent(status));
   },
   committeeQuickTopicSummary: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/topic-summary', data);
