@@ -79,6 +79,8 @@ const emit = defineEmits(['confirm', 'close'])
 const STEPS_MINUTES = ['上传录音', '识别转写', '提炼议题', '生成纪要']
 const CFG = {
   asr: { target: 25, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音已转写完成', doneBtn: '查看会议纪要', title: '豆包正在为您整理纪要', badge: '草稿生成中', steps: STEPS_MINUTES },
+  // 仅识别（不接生成纪要）：上传录音→转写→提炼，完成后回到录音页核对表决结果
+  recognize: { target: 25, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音识别完成', doneBtn: '下一步', title: '豆包正在为您识别录音', badge: '录音识别中', steps: ['上传录音', '识别转写', '提炼议题', '核对表决'] },
   gen: { target: 112, tok: 268, say: '正在为您提炼议题、生成纪要草稿', lab: '上下文理解', pct: true, active: 4, doneSay: '已生成会议纪要', doneBtn: '查看会议纪要', title: '豆包正在为您整理纪要', badge: '草稿生成中', steps: STEPS_MINUTES },
   // 党建新闻生成（红色党建风）：研读纪要 → 提炼党建主线 → 撰写初稿 → 润色成稿
   news: { target: 55, tok: 240, say: '正在研读纪要、撰写党建新闻通稿', lab: '党建主线提炼', pct: true, active: 3, doneSay: '党建新闻已生成', doneBtn: '查看新闻稿', title: '豆包正在为您撰写党建新闻', badge: '新闻撰写中', steps: ['研读纪要', '提炼主线', '撰写初稿', '润色成稿'] }
@@ -91,7 +93,7 @@ let timer = null
 
 const cfg = computed(() => {
   const base = CFG[props.phase] || CFG.asr
-  if (props.phase === 'asr') {
+  if (props.phase === 'asr' || props.phase === 'recognize') {
     const sz = props.audioFileSizeByte || 0
     const dur = props.audioDurSec || 0
     // 上传时间：按 500KB/s 估算（4G/WiFi 保守值）
