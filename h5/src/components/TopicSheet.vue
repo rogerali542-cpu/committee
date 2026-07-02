@@ -48,13 +48,14 @@
             <span class="ts-op-name">{{ op.name }}</span>
             <span v-if="op.role" class="ts-op-role">{{ op.role }}</span>
             <span class="ts-op-src" :class="op.source">{{ srcLabel(op.source) }}</span>
-            <span v-if="op.claimable" class="ts-op-claim-tag">待认领</span>
+            <span v-if="op.claimable" class="ts-op-claim-tag" :class="{ on: claimShowId === op.id }"
+                  @click="toggleClaimRow(op)">未认领</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
             <span v-if="op.canDelete" class="ts-op-del" @click="removeOpinion(op)">删除</span>
           </div>
           <div class="ts-op-content">{{ op.content }}</div>
-          <!-- AI 从现场发言提炼、还没归属到人：本人一键认领 -->
-          <div v-if="op.claimable" class="ts-op-claimrow">
+          <!-- AI 从现场发言提炼、还没归属到人：认领按钮默认藏着，点"未认领"标签才展开 -->
+          <div v-if="op.claimable && claimShowId === op.id" class="ts-op-claimrow">
             <button class="ts-op-claim-btn" @click="claimOpinion(op)">🙋 是我说的</button>
           </div>
         </div>
@@ -150,12 +151,13 @@ const helperDraft = ref('')     // 小助手里的"随便说说"
 const aiBusy = ref(false)       // AI 生成中
 const aiTokens = ref(0)         // 最近一次 AI 消耗 token（低调展示）
 const polishUndo = ref(null)    // 润色前的原文（可还原）；null=没有可还原的
+const claimShowId = ref(null)   // 认领按钮默认藏着：点"未认领"标签展开的那条意见 id（声明须在下方 immediate watch 之前）
 
 // 打开（topic 切换/出现）时拉取本议题意见；关闭/切议题时收掉语音条（释放麦克风）和 AI 状态
 watch(() => props.topic && props.topic.id, (id) => {
   cancelVoice()
   helperOn.value = false; helperDraft.value = ''; aiBusy.value = false
-  aiTokens.value = 0; polishUndo.value = null
+  aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
 onBeforeUnmount(cancelVoice)
@@ -296,6 +298,11 @@ async function submitOpinion() {
   } catch (e) { /* 已 toast */ } finally { sending.value = false }
 }
 
+// 认领按钮默认隐藏：点"未认领"标签才对该条展开（再点收起）
+function toggleClaimRow(op) {
+  claimShowId.value = claimShowId.value === op.id ? null : op.id
+}
+
 // 认领 AI 提炼的现场意见：归属到自己名下（之后可自行修改/删除）
 async function claimOpinion(op) {
   const res = await showModal({
@@ -308,6 +315,7 @@ async function claimOpinion(op) {
   try {
     const updated = await api.committeeClaimOpinion(props.meetingId, op.id)
     opinions.value = opinions.value.map(o => o.id === op.id ? updated : o)
+    claimShowId.value = null
     toast({ title: '已认领', icon: 'success' })
     emit('changed')
   } catch (e) { toast({ title: (e && e.message) || '认领失败', icon: 'none' }) }
@@ -362,7 +370,9 @@ async function removeOpinion(op) {
 .ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
 .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 4rpx 8rpx; }
 .ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; }
-.ts-op-claim-tag { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; }
+.ts-op-claim-tag { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; cursor: pointer; }
+.ts-op-claim-tag:active { opacity: 0.7; }
+.ts-op-claim-tag.on { background: #C0392B; color: #fff; }
 .ts-op-claimrow { margin-top: 10rpx; }
 .ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 10rpx 22rpx; }
 .ts-op-claim-btn:active { background: #FFF1DC; }
