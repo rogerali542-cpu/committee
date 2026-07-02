@@ -16,19 +16,7 @@
       <span v-if="description" class="mm-desc">{{ description }}</span>
     </div>
 
-    <!-- 进行中：议题（点开表决/发表意见） -->
-    <div v-if="stage === 'ongoing' && rawTopics.length" class="mm-card">
-      <span class="mm-section-title">会议议题</span>
-      <div class="mm-topic-row" v-for="(item, index) in rawTopics" :key="item.id" @click="openTopicSheet(item)">
-        <span class="mm-topic-idx">{{ index + 1 }}</span>
-        <span class="mm-topic-name">{{ item.title }}</span>
-        <span class="mm-topic-badge" :class="{ vote: item.voteRequired && !item.myVote, done: item.voteRequired && item.myVote }">{{ memberBadgeText(item) }}</span>
-        <span class="mm-topic-arrow">›</span>
-      </div>
-      <span v-if="!signedIn" class="mm-topics-hint">签到后可表决、发表意见</span>
-      <!-- 引导按钮：告诉委员议题可以点；点按钮直接打开第一个待办议题（优先没投票的表决项） -->
-      <button v-else class="mm-topics-cta" @click="openFirstPendingTopic">💬 点击上方议题，可以表决、发表意见</button>
-    </div>
+    <!-- 进行中已统一走「会议进行」页（loadDetail 里重定向），本页不再渲染进行中议题卡 -->
 
     <!-- 进行中：录音 + 材料 -->
     <div v-if="stage === 'ongoing'" class="mm-card">
@@ -137,7 +125,7 @@ import { onMounted, onActivated, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
-import { navigateTo } from '@/utils/navigate'
+import { navigateTo, redirectTo } from '@/utils/navigate'
 import { pickFile } from '@/utils/upload'
 import { useRecorder } from '@/composables/useRecorder'
 import { openMaterialViewer } from '@/composables/materialViewer'
@@ -199,19 +187,7 @@ const rawTopics = ref([])            // 完整 TopicVO 列表（弹层/角标用
 const meetingIdRef = ref(null)       // meetingId 的响应式镜像（传给弹层）
 const sheetTopicId = ref(null)
 const sheetTopic = computed(() => rawTopics.value.find(t => t.id === sheetTopicId.value) || null)
-function openTopicSheet(item) { sheetTopicId.value = item.id }
 function openTopicSheetById(id) { if (id != null) sheetTopicId.value = id }
-// 引导按钮入口：优先打开还没投票的表决议题，其次第一个议题
-function openFirstPendingTopic() {
-  const list = rawTopics.value || []
-  const pending = list.find(t => t.voteRequired && !t.myVote)
-  const target = pending || list[0]
-  if (target) sheetTopicId.value = target.id
-}
-function memberBadgeText(item) {
-  if (item.voteRequired) return item.myVote ? '已表决' : '去表决'
-  return item.opinionCount > 0 ? '意见 ' + item.opinionCount : '发表意见'
-}
 
 // ── 会议通知正文（与主任通知页一致：微信口吻整段）──
 function fmtHm(t) { return String(t || '').slice(0, 5) }
@@ -286,6 +262,11 @@ async function chooseAudioFile() {
 async function loadDetail() {
   try {
     const d = await api.committeeDetail(meetingId)
+    // 进行中会议：所有身份统一走「会议进行」页（议题表决/意见 + 录音查看；主任专属操作在那边按权限隐藏）
+    if (d.stage === 'ongoing' && d.record) {
+      redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+      return
+    }
     const record = d.record || {}
     const me = (record.attendances || []).find(a => a.isSelf) || {}
     const mats = d.materials || []
@@ -547,20 +528,7 @@ onUnmounted(() => {
 .mm-topic-title { flex: 1; font-size: 34rpx; color: #3a434d; margin-right: 20rpx; }
 .mm-topic-result { font-size: 34rpx; font-weight: 600; color: #FF8C00; }
 
-/* 进行中：议题行（点开弹层表决/发表意见） */
-.mm-topic-row { display: flex; align-items: center; gap: 16rpx; padding: 24rpx 0; border-bottom: 2rpx solid #F2F2F4; }
-.mm-topic-row:last-of-type { border-bottom: none; }
-.mm-topic-row:active { background: #fafafa; }
-.mm-topic-idx { width: 44rpx; height: 44rpx; flex-shrink: 0; border-radius: 50%; background: #F2F2F4; color: #666; font-size: 28rpx; text-align: center; line-height: 44rpx; }
-.mm-topic-name { flex: 1; min-width: 0; font-size: 34rpx; color: #1f2329; line-height: 1.4; word-break: break-all; }
-.mm-topic-badge { flex-shrink: 0; font-size: 26rpx; color: #666; background: #F2F2F4; border-radius: 999rpx; padding: 8rpx 20rpx; }
-.mm-topic-badge.vote { background: var(--c-primary-dark, #E8890C); color: #fff; font-weight: 700; }
-.mm-topic-badge.done { background: #EAF6E5; color: #2E7D32; font-weight: 600; }
-.mm-topic-arrow { flex-shrink: 0; font-size: 40rpx; color: #C2C6CC; }
-.mm-topics-hint { display: block; text-align: center; font-size: 26rpx; color: #9AA0A6; padding-top: 14rpx; }
-/* 引导按钮：柔和橙底，告知"议题可点"，点了直接打开第一个待办议题 */
-.mm-topics-cta { display: block; width: 100%; box-sizing: border-box; margin-top: 18rpx; border: 2rpx solid #F0D9B8; border-radius: 16rpx; background: #FFF9F0; color: #B06A00; font-size: 29rpx; padding: 18rpx 0; text-align: center; }
-.mm-topics-cta:active { background: #FFF1DC; }
+/* 进行中议题卡样式已随统一「会议进行」页移除（本页 ongoing 直接重定向） */
 
 /* 会议材料 */
 .mm-mat {

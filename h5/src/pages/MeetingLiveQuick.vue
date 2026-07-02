@@ -1,7 +1,8 @@
 <template>
   <div class="live-page" style="overflow-y:auto;" v-if="detail">
 
-    <PageNav title="会议录音" style="margin:-3.2vw -3.2vw 0;" />
+    <!-- 页面对所有身份统一：主任/副主任可操作录音等，其余身份只读+表决/意见 -->
+    <PageNav :title="isChair ? '会议录音' : '会议进行'" style="margin:-3.2vw -3.2vw 0;" />
 
     <!-- AI 工作中：一个遮罩连续覆盖 转写(asr) → 生成纪要(gen)；全部完成后显"已生成会议纪要"、点击进纪要页 -->
     <AiWorkingOverlay :active="polling || extracting || generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
@@ -28,15 +29,19 @@
           <span v-else class="lp-agenda-empty">暂无议题</span>
         </div>
       </div>
+      <!-- 委员引导：告知议题可点；点按钮直达第一个待办议题（优先没投票的表决项） -->
+      <button v-if="!isChair && signedIn && detail.record && detail.record.topics && detail.record.topics.length"
+              class="lp-topics-cta" @click="openFirstPendingTopic">💬 点击上方议题，可以表决、发表意见</button>
     </div>
 
-    <!-- 签到卡（精简版，无标题）：一颗签到按钮 + 一行提示 -->
+    <!-- 签到卡（精简版，无标题）：一颗签到按钮 + 一行提示（文案按角色） -->
     <div class="lp-card lp-sign" v-if="currentStep === 1">
-      <button class="lp-primary-btn narrow" @click="confirmSignIn">{{ signedIn ? '进入录音' : '签到' }}</button>
-      <span class="qk-sign-tip">{{ signedIn ? '已签到，可以开始录音了' : '签到后即可开始录音' }}</span>
+      <button class="lp-primary-btn narrow" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '签到' }}</button>
+      <span class="qk-sign-tip">{{ signedIn ? (isChair ? '已签到，可以开始录音了' : '已签到') : (isChair ? '签到后即可开始录音' : '签到后可表决、发表意见') }}</span>
     </div>
 
-    <div class="lp-card lp-rec" v-if="currentStep === 2">
+    <!-- 录音操作卡：仅主任/副主任（其余身份只在底部看录音列表、可试听） -->
+    <div class="lp-card lp-rec" v-if="currentStep === 2 && isChair">
       <span class="lp-card-title">会议录音</span>
 
       <!-- 圆圈即录音按钮：灰=点击开始，红(呼吸)=录音中点击暂停；暂停/上传后显示"继续" -->
@@ -409,6 +414,13 @@ const sheetTopic = computed(() => {
   return list.find(t => t.id === sheetTopicId.value) || null
 })
 function openTopicSheet(item) { sheetTopicId.value = item.id }
+// 委员引导按钮入口：优先打开还没投票的表决议题，其次第一个议题
+function openFirstPendingTopic() {
+  const list = (detail.value && detail.value.record && detail.value.record.topics) || []
+  const pending = list.find(t => t.voteRequired && !t.myVote)
+  const target = pending || list[0]
+  if (target) sheetTopicId.value = target.id
+}
 function topicBadgeText(item) {
   if (item.voteRequired) return (item.voted || 0) + '/' + (item.total || 0) + ' 票'
   return item.opinionCount > 0 ? '意见 ' + item.opinionCount : '发表意见'
@@ -738,7 +750,9 @@ async function confirmSignIn() {
   }
   const res = await showModal({
     title: '入会签到',
-    content: '请确认本人已进入本次业委会会议。签到后将进入录音转写流程。',
+    content: isChair.value
+      ? '请确认本人已进入本次业委会会议。签到后将进入录音转写流程。'
+      : '请确认本人已进入本次业委会会议。签到后即可对议题表决、发表意见。',
     confirmText: '签到',
     cancelText: '再看看'
   })
@@ -1856,6 +1870,9 @@ function exitLive() {
 /* 添加议题：蓝字白底小按钮，与标题顶对齐（略靠上） */
 .lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:8rpx 22rpx; line-height:1.3; }
 .lp-add-topic:active { background:#F0F6FF; }
+/* 委员引导按钮：柔和橙底，告知"议题可点"，点了直达第一个待办议题（卡片 padding-bottom 为 0，按钮自带下边距） */
+.lp-topics-cta { display:block; width:100%; box-sizing:border-box; margin:6rpx 0 26rpx; border:2rpx solid #F0D9B8; border-radius:16rpx; background:#FFF9F0; color:#B06A00; font-size:29rpx; padding:18rpx 0; text-align:center; }
+.lp-topics-cta:active { background:#FFF1DC; }
 .lp-info-row { display:flex; align-items:flex-start; gap:18rpx; font-size:34rpx; color:#444; margin-bottom:6rpx; }
 .lp-info-row.top { align-items:flex-start; }
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }

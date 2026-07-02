@@ -1138,8 +1138,13 @@ async function loadDetail() {
   try {
     const d = await api.committeeDetail(meetingId)
     const uv = d.userView
-    // 委员走专属极简会议页，不进操作者用的详情/录音页（覆盖通知、待办等入口）
+    // 委员：进行中与主任统一走「会议进行」页（表决/意见/看录音，主任专属操作按权限隐藏）；
+    // 其余阶段仍走专属极简会议页，不进操作者用的详情页（覆盖通知、待办等入口）
     if (uv === 'member') {
+      if (d.stage === 'ongoing' && d.record) {
+        redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+        return
+      }
       redirectTo('/pages/my-meeting/my-meeting?id=' + meetingId)
       return
     }
