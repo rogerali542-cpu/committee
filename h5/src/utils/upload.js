@@ -5,11 +5,13 @@ import core from '@/api/core'
 
 // 弹出系统文件选择框，返回选中的 File；用户取消返回 null。
 // accept 例：'image/*'(选图) / 'image/*,application/pdf' / '*/*'(任意文件)。
-export function pickFile(accept = '*/*') {
+// capture='environment' 时手机浏览器直接调起后置相机拍照（桌面端退化为普通选文件）。
+export function pickFile(accept = '*/*', capture = '') {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = accept
+    if (capture) input.capture = capture
     input.style.position = 'fixed'
     input.style.left = '-9999px'
     let settled = false

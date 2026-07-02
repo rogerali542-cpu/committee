@@ -1,14 +1,15 @@
 <template>
-  <div class="aio-mask" v-if="shown">
-    <div class="aio-card">
+  <div class="aio-mask" :class="{ 'theme-party': theme === 'party' }" v-if="shown">
+    <div class="aio-card" :class="{ 'theme-party': theme === 'party' }">
+      <button class="aio-close" @click="onClose" aria-label="关闭">×</button>
       <span class="aio-pt" style="top:8%;left:10%;width:8rpx;height:8rpx"></span>
       <span class="aio-pt" style="top:14%;left:86%;width:10rpx;height:10rpx;animation-delay:.6s"></span>
       <span class="aio-pt" style="top:6%;left:60%;width:6rpx;height:6rpx;animation-delay:1.1s"></span>
       <span class="aio-pt" style="top:20%;left:24%;width:6rpx;height:6rpx;animation-delay:.9s"></span>
 
       <div class="aio-hdr">
-        <span class="aio-title">豆包正在为您整理纪要</span>
-        <span class="aio-badge"><i class="aio-bdot"></i>{{ done ? '已完成' : '草稿生成中' }}</span>
+        <span class="aio-title">{{ title }}</span>
+        <span class="aio-badge"><i class="aio-bdot"></i>{{ done ? '已完成' : badge }}</span>
       </div>
 
       <!-- 进行中 -->
@@ -45,10 +46,7 @@
       </template>
 
       <div class="aio-steps">
-        <div class="aio-step" :class="stepClass(1)"><span class="aio-sdot">{{ stepClass(1) === 'done' ? '✓' : '1' }}</span><span class="aio-slabel">上传录音</span></div>
-        <div class="aio-step" :class="stepClass(2)"><span class="aio-sdot">{{ stepClass(2) === 'done' ? '✓' : '2' }}</span><span class="aio-slabel">识别转写</span></div>
-        <div class="aio-step" :class="stepClass(3)"><span class="aio-sdot">{{ stepClass(3) === 'done' ? '✓' : '3' }}</span><span class="aio-slabel">提炼议题</span></div>
-        <div class="aio-step" :class="stepClass(4)"><span class="aio-sdot">{{ stepClass(4) === 'done' ? '✓' : '4' }}</span><span class="aio-slabel">生成纪要</span></div>
+        <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
       </div>
 
       <div class="aio-prog">
@@ -72,14 +70,18 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 const props = defineProps({
   active: { type: Boolean, default: false },
   phase: { type: String, default: 'asr' },
+  theme: { type: String, default: 'tech' },         // tech=深蓝科技风 / party=红色党建风
   audioDurSec: { type: Number, default: 0 },        // 录音时长(秒)
   audioFileSizeByte: { type: Number, default: 0 }   // 录音文件大小(bytes)
 })
-const emit = defineEmits(['confirm'])
+const emit = defineEmits(['confirm', 'close'])
 
+const STEPS_MINUTES = ['上传录音', '识别转写', '提炼议题', '生成纪要']
 const CFG = {
-  asr: { target: 25, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音已转写完成', doneBtn: '查看转写结果' },
-  gen: { target: 112, tok: 268, say: '正在为您提炼议题、生成纪要草稿', lab: '上下文理解', pct: true, active: 4, doneSay: '会议纪要草稿已生成', doneBtn: '查看纪要' }
+  asr: { target: 25, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音已转写完成', doneBtn: '查看会议纪要', title: '豆包正在为您整理纪要', badge: '草稿生成中', steps: STEPS_MINUTES },
+  gen: { target: 112, tok: 268, say: '正在为您提炼议题、生成纪要草稿', lab: '上下文理解', pct: true, active: 4, doneSay: '已生成会议纪要', doneBtn: '查看会议纪要', title: '豆包正在为您整理纪要', badge: '草稿生成中', steps: STEPS_MINUTES },
+  // 党建新闻生成（红色党建风）：研读纪要 → 提炼党建主线 → 撰写初稿 → 润色成稿
+  news: { target: 55, tok: 240, say: '正在研读纪要、撰写党建新闻通稿', lab: '党建主线提炼', pct: true, active: 3, doneSay: '党建新闻已生成', doneBtn: '查看新闻稿', title: '豆包正在为您撰写党建新闻', badge: '新闻撰写中', steps: ['研读纪要', '提炼主线', '撰写初稿', '润色成稿'] }
 }
 
 const shown = ref(false)
@@ -119,6 +121,9 @@ function comma(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d)
 const say = computed(() => cfg.value.say)
 const doneSay = computed(() => cfg.value.doneSay)
 const doneBtn = computed(() => cfg.value.doneBtn)
+const title = computed(() => cfg.value.title || '豆包正在为您整理纪要')
+const badge = computed(() => cfg.value.badge || '草稿生成中')
+const steps = computed(() => cfg.value.steps || STEPS_MINUTES)
 const elapsed = computed(() => mmss(sec.value))
 const eta = computed(() => { const r = cfg.value.target - sec.value; return r > 3 ? '还需 ' + mmss(r) : '即将完成' })
 const tokens = computed(() => comma(sec.value * cfg.value.tok))
@@ -142,6 +147,7 @@ watch(() => props.active, (a) => {
 watch(() => props.phase, () => { if (props.active) start() })
 
 function onConfirm() { shown.value = false; done.value = false; emit('confirm') }
+function onClose() { stop(); shown.value = false; done.value = false; emit('close') }
 
 onUnmounted(stop)
 </script>
@@ -163,8 +169,11 @@ onUnmounted(stop)
   box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center;
 }
+.aio-close { position: absolute; top: 18rpx; right: 20rpx; z-index: 3; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; color: #AECBF0; font-size: 48rpx; line-height: 1; background: rgba(255,255,255,.1); border: 2rpx solid rgba(150,190,255,.22); border-radius: 50%; padding: 0; }
+.aio-close:active { background: rgba(255,255,255,.2); }
 .aio-pt { position: absolute; border-radius: 50%; background: #8FC6FF; box-shadow: 0 0 12rpx 2rpx rgba(120,180,255,.8); animation: aioTwk 3.2s ease-in-out infinite; }
-.aio-hdr { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+/* 右侧留出关闭按钮的位置，避免状态标签与右上角关闭圆圈重叠 */
+.aio-hdr { display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; padding-right: 72rpx; }
 .aio-title { font-size: 36rpx; font-weight: 700; color: #EAF2FF; text-shadow: 0 0 24rpx rgba(90,150,255,.5); }
 .aio-badge { display: inline-flex; align-items: center; gap: 8rpx; background: rgba(120,170,255,.16); color: #AED2FF; font-size: 24rpx; font-weight: 600; padding: 7rpx 18rpx; border-radius: 999rpx; border: 2rpx solid rgba(140,185,255,.28); white-space: nowrap; }
 .aio-bdot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #5FD2FF; box-shadow: 0 0 10rpx #5FD2FF; animation: aioBlink 1.4s ease-in-out infinite; }
@@ -203,6 +212,46 @@ onUnmounted(stop)
 .aio-by b { color: #9FD0FF; font-weight: 600; }
 .aio-btn { width: 100%; height: 92rpx; border: none; border-radius: 18rpx; background: linear-gradient(90deg, #4FC0FF, #2E73E6); color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 8rpx 28rpx rgba(46,115,230,.45); }
 .aio-btn:active { background: linear-gradient(90deg, #3FA8EC, #245FC4); }
+
+/* ════════ 红色党建风格（theme=party）：覆盖深蓝科技风配色 ════════ */
+.aio-mask.theme-party { background: rgba(40, 4, 6, 0.68); }
+.aio-card.theme-party {
+  background: radial-gradient(135% 80% at 50% 8%, #C0141B 0%, #8E0F14 52%, #5C0A0E 100%);
+  border-color: rgba(255, 210, 150, 0.4);
+  box-shadow: 0 24rpx 80rpx rgba(80, 8, 10, 0.6), 0 0 60rpx rgba(220, 60, 50, 0.3);
+}
+.theme-party .aio-close { color: #FFE1C4; background: rgba(255,255,255,.12); border-color: rgba(255,210,150,.35); }
+.theme-party .aio-pt { background: #FFD98A; box-shadow: 0 0 12rpx 2rpx rgba(255,200,120,.8); }
+.theme-party .aio-title { color: #FFF3E6; text-shadow: 0 0 24rpx rgba(255,180,120,.55); }
+.theme-party .aio-badge { background: rgba(255,220,170,.18); color: #FFE6C8; border-color: rgba(255,210,150,.4); }
+.theme-party .aio-bdot { background: #FFD070; box-shadow: 0 0 10rpx #FFD070; }
+.theme-party .aio-halo { fill: #E0322D; }
+.theme-party .aio-orb { fill: #D5262B; }
+.theme-party .aio-ring circle { stroke: #FFCF6B; }
+.theme-party .aio-ring2 circle { stroke: #FFB86B; }
+.theme-party .aio-say { color: #FFF1E4; }
+.theme-party .aio-say i { color: #FFC98A; }
+.theme-party .aio-say.done { color: #FFE0C0; }
+.theme-party .aio-done-sub { color: #E6B48C; }
+.theme-party .aio-m { background: rgba(255,255,255,.06); border-color: rgba(255,210,150,.2); }
+.theme-party .aio-ml { color: #E8B58A; }
+.theme-party .aio-mv { color: #FFE6CE; text-shadow: 0 0 16rpx rgba(255,180,120,.45); }
+.theme-party .aio-mv.eta { color: #FFD07A; text-shadow: 0 0 16rpx rgba(255,190,110,.45); }
+.theme-party .aio-steps::before { background: rgba(255,220,180,.18); }
+.theme-party .aio-sdot { background: rgba(255,255,255,.07); border-color: rgba(255,220,180,.28); color: #F0C29A; }
+.theme-party .aio-step.done .aio-sdot { background: #FFC24D; border-color: #FFC24D; color: #5C1B00; box-shadow: 0 0 18rpx rgba(255,194,77,.5); }
+.theme-party .aio-step.active .aio-sdot { background: #E0322D; border-color: #FFB27A; color: #fff; }
+.theme-party .aio-slabel { color: #E7B78F; }
+.theme-party .aio-step.active .aio-slabel { color: #FFE2C6; font-weight: 600; }
+.theme-party .aio-step.done .aio-slabel { color: #FFCF8A; }
+.theme-party .aio-track { background: rgba(255,255,255,.14); }
+.theme-party .aio-fill { background: linear-gradient(90deg, #FFC24D, #E0322D); box-shadow: 0 0 20rpx rgba(255,150,90,.7); }
+.theme-party .aio-pct { color: #FFE6CE; }
+.theme-party .aio-by { color: #E3AE86; }
+.theme-party .aio-by b { color: #FFD9A8; }
+.theme-party .aio-check { background: radial-gradient(circle at 50% 38%, #FFD98A 0%, #F5B301 55%, #C67A00 100%); color: #5C1B00; box-shadow: 0 0 40rpx rgba(245,179,1,.55); }
+.theme-party .aio-btn { background: linear-gradient(90deg, #FF6B4D, #D5262B); box-shadow: 0 8rpx 28rpx rgba(200,40,30,.5); }
+.theme-party .aio-btn:active { background: linear-gradient(90deg, #E85A3C, #B81E23); }
 @keyframes aioBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 @keyframes aioHalo { 0%,100% { opacity: .32; transform: scale(.92); } 50% { opacity: .68; transform: scale(1.05); } }
 @keyframes aioSpin { to { transform: rotate(360deg); } }

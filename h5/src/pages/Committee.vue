@@ -1,319 +1,317 @@
 <template>
-  <div class="committee-page">
-    <PageNav title="业主委员会" />
+  <div class="home">
+    <!-- 顶栏：标题 + 通知铃 -->
+    <div class="hd">
+      <div class="hd-left">
+        <span class="hd-title">业委会</span>
+        <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
+      </div>
+      <div class="hd-bell" @click="goNotifications">
+        <span class="hd-bell-ico">🔔</span>
+        <div v-if="unread > 0" class="hd-badge">{{ unread > 99 ? '99+' : unread }}</div>
+      </div>
+    </div>
 
-    <div class="target-row" v-if="isChair">
-      <div class="target-card">
-        <div class="tc-head">
-          <span class="tc-label">本期目标</span>
-          <span class="tc-badge" :class="stats.periodCount >= stats.periodTarget ? 'ok' : 'warn'">
-            {{ stats.periodCount >= stats.periodTarget ? '已完成' : '未达标' }}
-          </span>
+    <template v-if="isChair">
+      <!-- 业委会综合评分（占位分数，计算规则待定后接后端） -->
+      <div class="score-line">
+        <span class="score-ico">🏅</span>
+        <span>业委会综合评分</span>
+        <span class="score-num">{{ score }}</span>
+        <span class="score-unit">分</span>
+      </div>
+
+      <div class="target-row">
+        <div class="target-card">
+          <div class="tc-head"><span class="tc-label">本期会议</span></div>
+          <div class="tc-num">{{ monthNeed }}<span class="tc-unit">次</span></div>
+          <span class="tc-sub">{{ curMonth }}月需召开</span>
         </div>
-        <div class="tc-num">{{ stats.periodCount }}<span class="tc-unit"> 次</span></div>
-        <span class="tc-sub">{{ stats.periodLabel }}已召开</span>
-        <div class="tc-progress">
-          <div class="tc-fill" :style="{ width: (stats.periodCount >= stats.periodTarget ? 100 : stats.periodCount / stats.periodTarget * 100) + '%' }"></div>
-        </div>
-        <span class="tc-rule">目标 {{ stats.periodTarget }} 次</span>
-      </div>
 
-      <div class="target-card">
-        <div class="tc-head">
-          <span class="tc-label">年度目标</span>
-          <span class="tc-badge" :class="stats.annualCount >= stats.annualTarget ? 'ok' : 'warn'">
-            {{ stats.annualCount >= stats.annualTarget ? '已完成' : '还差' + (stats.annualTarget - stats.annualCount) + '次' }}
-          </span>
-        </div>
-        <div class="tc-num">{{ stats.annualCount }}<span class="tc-unit"> 次</span></div>
-        <span class="tc-sub">{{ stats.annualYear }}年已召开</span>
-        <div class="tc-progress">
-          <div class="tc-fill" :style="{ width: (stats.annualCount >= stats.annualTarget ? 100 : stats.annualCount / stats.annualTarget * 100) + '%' }"></div>
-        </div>
-        <span class="tc-rule">目标 {{ stats.annualTarget }} 次</span>
-      </div>
-    </div>
-
-
-    <div v-if="isChair" class="prepare-btn" @click="openNewMeeting">
-      <span class="prepare-ico">📝</span>
-      <span class="prepare-text">准备会议</span>
-    </div>
-    <div v-else class="role-intro" :class="{ public: isExternal }">
-      <span class="ri-title">{{ roleView.title }}</span>
-      <span class="ri-desc">{{ roleView.intro }}</span>
-    </div>
-
-    <div class="search-bar" v-if="isChair && currentStage === 'ended'">
-      <input class="search-input" :value="keyword" @input="onSearch" placeholder="搜索会议标题..." />
-      <span v-if="keyword" class="search-clear" @click="clearSearch">×</span>
-    </div>
-
-    <div class="stage-tabs" v-if="isChair">
-      <div class="tab" :class="{ active: currentStage == 'preparing' }" @click="switchStage('preparing')">
-        准备<span class="tab-count">{{ counts.preparing }}</span>
-      </div>
-      <div class="tab" :class="{ active: currentStage == 'ongoing' }" @click="switchStage('ongoing')">
-        进行中<span class="tab-count">{{ counts.ongoing }}</span>
-      </div>
-      <div class="tab" :class="{ active: currentStage == 'ended' }" @click="switchStage('ended')">
-        已结束<span class="tab-count">{{ counts.ended }}</span>
-      </div>
-    </div>
-
-    <div class="meeting-list" v-if="isChair">
-      <template v-if="meetings.length">
-        <div v-for="item in meetings" :key="item.id" class="meeting-card" @click="openMeetingTap(item)">
-          <div class="mc-header">
-            <span class="mc-title">{{ item.title }}</span>
-            <span class="stage-pill" :class="item.compliance === 'invalid' ? 'invalid' : item.stage">
-              {{ item.compliance === 'invalid' ? '无效' : item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束' }}
-            </span>
+        <div class="target-card">
+          <div class="tc-head">
+            <span class="tc-label">逾期会议</span>
+            <span v-if="overdueCount > 0" class="tc-badge warn">需补开</span>
           </div>
-          <div class="mc-meta">
-            <span>{{ item.meetingDate || '日期待定' }}</span>
-            <span class="mc-dot">·</span>
-            <span>{{ item.location || '地点待定' }}</span>
-            <span class="mc-dot" v-if="item.stageDesc">·</span>
-            <span class="mc-stage-desc">{{ item.stageDesc }}</span>
-          </div>
-          <div class="mc-summary">{{ item.summaryLine }}</div>
+          <div class="tc-num">{{ overdueCount }}<span class="tc-unit">次</span></div>
+          <span v-if="overdueCount > 0" class="tc-sub tc-sub-warn">{{ overdueMonths }}的会还没开，请尽快补上！</span>
+          <span v-else class="tc-sub">近期都按时开了</span>
         </div>
-      </template>
-      <div v-else class="empty-state"><span>暂无此阶段会议</span></div>
-    </div>
-
-    <template v-if="!isChair">
-      <div class="section-header">{{ isRecorder ? '流程待处理' : '我的待办与关注' }}</div>
-      <div class="meeting-list">
-        <template v-if="pending.length">
-          <div v-for="item in pending" :key="item.id" class="meeting-card" @click="openDetail(item.id)">
-            <div class="mc-header">
-              <span class="mc-title">{{ item.title }}</span>
-              <span class="stage-pill" :class="item.stage">{{ item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束' }}</span>
-            </div>
-            <div class="mc-meta">
-              <span>{{ item.meetingDate || '日期待定' }}</span>
-              <span class="mc-dot">·</span>
-              <span>{{ item.location || '地点待定' }}</span>
-              <span class="mc-dot" v-if="item.stageDesc">·</span>
-              <span class="mc-stage-desc">{{ item.stageDesc }}</span>
-              <span class="personal-badge" :class="item.progress >= 100 ? 'done' : 'doing'">{{ item.progressLabel }}</span>
-            </div>
-            <div class="pp-bar"><div class="pp-fill" :class="{ done: item.progress >= 100 }" :style="{ width: item.progress + '%' }"></div></div>
-          </div>
-        </template>
-        <div v-else class="empty-state"><span>暂无待办</span></div>
-      </div>
-
-      <div class="section-header muted">{{ isRecorder ? '其他会议' : '其他相关会议' }}</div>
-      <div class="meeting-list">
-        <template v-if="others.length">
-          <div v-for="item in others" :key="item.id" class="meeting-card muted-card" @click="openDetail(item.id)">
-            <div class="mc-header">
-              <span class="mc-title">{{ item.title }}</span>
-              <span class="stage-pill" :class="item.stage">{{ item.stage === 'preparing' ? '准备' : item.stage === 'ongoing' ? '进行中' : '已结束' }}</span>
-            </div>
-            <div class="mc-meta">
-              <span>{{ item.meetingDate || '日期待定' }}</span>
-              <span class="mc-dot">·</span>
-              <span>{{ item.location || '地点待定' }}</span>
-              <span class="mc-dot" v-if="item.stageDesc">·</span>
-              <span class="mc-stage-desc">{{ item.stageDesc }}</span>
-              <span class="personal-badge done">已完成</span>
-            </div>
-          </div>
-        </template>
-        <div v-else class="empty-state"><span>暂无其他会议</span></div>
       </div>
     </template>
+
+
+    <!-- 当前会议卡片（进行中/准备中；主任另含已结束未公示），点继续进入流程 -->
+    <template v-if="currents && currents.length > 0">
+      <div v-for="cur in currents" :key="cur.id" class="meet-card">
+        <span class="meet-title">{{ cur.title }}</span>
+
+        <div class="steps">
+          <template v-for="(item, index) in cur.steps" :key="item.no">
+            <div v-if="index > 0" class="step-line" :class="item.state === 'todo' ? 'todo' : 'done'"></div>
+            <div class="step" :class="item.state">
+              <div class="step-dot">
+                <span v-if="item.state === 'done'">✓</span>
+                <span v-else>{{ item.no }}</span>
+              </div>
+              <span class="step-label">{{ item.label }}</span>
+            </div>
+          </template>
+        </div>
+
+        <div class="big-btn" @click="goCurrent(cur)">
+          <span class="big-btn-ico">{{ cur.ctaIcon }}</span>
+          <span class="big-btn-text">{{ cur.ctaLabel }}</span>
+        </div>
+
+        <div v-if="isChair" class="meet-del" @click="removeCurrent(cur)">删除会议</div>
+      </div>
+    </template>
+
+    <!-- 委员且无相关会议：空闲提示 -->
+    <div v-if="!isChair && (!currents || !currents.length)" class="idle">
+      <span class="idle-emoji">☕</span>
+      <span class="idle-hint">暂时没有需要您处理的会议</span>
+      <span class="idle-sub">有新会议时，会在这里提醒您</span>
+    </div>
+
+    <!-- 去开会：在"更多功能"上方的拇指区；主任点了当场弹出"新建会议"，不再跳页 -->
+    <div v-if="isChair" class="big-btn primary go-meeting" @click="openNewMeeting">
+      <span class="big-btn-ico">📝</span>
+      <span class="big-btn-text">去通知</span>
+    </div>
+
+    <!-- 更多功能 -->
+    <div class="more" :class="{ 'more-sink': !isChair }">
+      <span class="more-title">更多功能</span>
+      <div class="more-grid">
+        <div class="more-item" @click="goReception">
+          <span class="more-ico">🤝</span>
+          <span class="more-label">接待记录</span>
+        </div>
+        <div class="more-item" @click="goLearning">
+          <span class="more-ico">📖</span>
+          <span class="more-label">学习培训</span>
+        </div>
+        <div v-if="canViewInternal" class="more-item" @click="goLibrary">
+          <span class="more-ico">📚</span>
+          <span class="more-label">历史会议</span>
+        </div>
+      </div>
+    </div>
 
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
       <div class="create-panel" @click.stop>
         <div class="create-head">
-          <div>
-            <span class="create-title">新建业委会会议</span>
-          </div>
-          <span class="sheet-close close-btn" @click="closeCreate">×</span>
+          <span class="create-back" @click="closeCreate">‹</span>
+          <span class="create-title">发起业委会</span>
+          <span class="create-nav-ph"></span>
         </div>
 
         <div class="create-body" style="overflow-y:auto;">
-          <div class="prefill-entry" @click="toggleMaterialPrefill">
-            <div class="prefill-copy">
-              <span class="prefill-title">有会议资料？从资料预填</span>
-              <span class="prefill-desc">没有资料可直接手动填写</span>
-            </div>
-            <span class="prefill-toggle">{{ materialPrefillOpen ? '收起' : '展开' }}</span>
-          </div>
-
-          <div v-if="materialPrefillOpen" class="create-section material-section">
-            <div class="section-title-row">
-              <span class="section-title">会议资料</span>
-              <span v-if="materialFiles.length" class="required-note">已选{{ materialFiles.length }}份</span>
-            </div>
-            <div class="assist-row">
-              <button class="assist-btn" @click="chooseMaterialFile">上传资料</button>
-              <button class="assist-btn primary" @click="scanMaterialPrefill">扫描并预填</button>
-            </div>
-            <div v-if="materialFiles.length" class="file-list">
-              <div v-for="(item, index) in materialFiles" :key="item.name" class="file-item">
-                <span class="file-name">{{ item.name }}</span>
-                <span class="file-size">{{ item.sizeText }}</span>
-                <span class="tp-del" @click="removeMaterialFile(index)">×</span>
-              </div>
-            </div>
-            <textarea class="form-textarea material-textarea" v-model="materialText" @input="onMaterialTextInput" placeholder="粘贴会议通知或资料正文，例如：会议时间、地点、主要议题、是否表决等"></textarea>
-            <div v-if="materialScanResult" class="scan-result">
-              <span class="scan-line ok">已识别：{{ materialScanResult.matchedText }}</span>
-              <span class="scan-line">需补充：{{ materialScanResult.missingText }}</span>
-            </div>
-            <span class="clear-link" v-if="materialText || materialFiles.length" @click="clearMaterialPrefill">清空资料</span>
-          </div>
-
-          <div class="create-section">
-            <div class="section-title-row">
-              <span class="section-title">基本信息</span>
-              <span class="required-note">* 必填</span>
-            </div>
+          <!-- 会议标题（置顶） -->
+          <div class="create-section title-card">
             <div class="form-group">
-              <span class="form-label">会议标题 *</span>
-              <div class="vi-row">
-                <div class="title-input-wrap" style="flex:1;min-width:0;">
-                  <input class="form-input large" v-model="createForm.title" placeholder="请输入会议标题" />
-                  <span v-if="createForm.title" class="title-clear" @click="createForm.title = ''">清空</span>
-                </div>
-                <button class="vi-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startStreamingVoice('title')">🎤</button>
+              <div class="title-input-wrap">
+                <textarea ref="titleEl" class="form-input large title-ta" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @keydown.enter.prevent></textarea>
+                <!-- 推荐标题：半透明显示在文本框内，点文字直接填入 -->
+                <span v-if="suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle">{{ suggestedTitle }}</span>
+                <span class="title-clear" :class="{ dim: !createForm.title && !suggestedTitle }" @click="clearTitleOrGhost">×</span>
               </div>
-              <div v-if="suggestedTitle && !createForm.title" class="title-suggest" @click="createForm.title = suggestedTitle">
-                <span class="ts-bulb">💡</span>
-                <span class="ts-text">推荐：{{ suggestedTitle }}</span>
-                <span class="ts-use">用这个</span>
+              <div class="title-voice-row">
+                <button class="voice-input-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startStreamingVoice('title')">🎤 语音输入</button>
               </div>
             </div>
+          </div>
+
+          <div class="create-section info-card">
+            <span class="section-title">会议时间 / 地点</span>
             <div class="form-row">
               <div class="form-group half">
-                <span class="form-label">会议日期 *</span>
                 <div class="picker-field date-field" @click="openDatePicker">
-                  <span class="tf-text">{{ createForm.meetingDate || '点击选择' }}</span>
+                  <span class="tf-text">{{ createForm.meetingDate || '选择日期' }}</span>
                   <span class="tf-arrow">▾</span>
                 </div>
               </div>
               <div class="form-group half">
-                <span class="form-label">开始时间 *</span>
                 <div class="picker-field time-field" @click="openTimePicker">
-                  <span class="tf-text">{{ createForm.meetingTime || '点击选择' }}</span>
+                  <span class="tf-text">{{ createForm.meetingTime || '选择时间' }}</span>
                   <span class="tf-arrow">▾</span>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="create-section">
-            <span class="section-title">会议地点</span>
-            <select class="picker-field loc-select" :value="locationPreset" @change="onLocationPreset">
-              <option v-for="loc in commonLocations" :key="loc" :value="loc">{{ loc }}</option>
-              <option value="__other__">其他地点（手动填写）</option>
-            </select>
-            <input v-if="locationPreset === '__other__'" class="form-input loc-other" v-model="createForm.location" placeholder="请输入会议地点" />
+            <div class="loc-row">
+              <select v-if="locationPreset !== '__other__'" class="picker-field loc-select" :value="locationPreset" @change="onLocationPreset">
+                <option v-for="loc in commonLocations" :key="loc" :value="loc">{{ loc }}</option>
+                <option value="__other__">其他地点（手动填写）</option>
+              </select>
+              <input v-else class="form-input loc-input" v-model="createForm.location" placeholder="请输入会议地点" />
+              <button class="loc-map-btn" @click="pickLocationOnMap" aria-label="在地图上选择地点"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2C8.1 2 5 5.1 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
+            </div>
+            <span v-if="locationPreset === '__other__'" class="loc-back" @click="resetLocPreset">选常用地点</span>
           </div>
 
           <!-- 会议议程项（弹窗逐条添加） -->
           <div class="create-section">
-            <div class="section-title-row">
-              <span class="section-title">会议议题</span>
-              <span class="required-note">* 必填 · {{ createForm.topics.length }}条</span>
+            <span class="section-title">会议议题</span>
+            <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line">
+              <span class="topic-line-text"><b>{{ idx + 1 }}.</b> {{ topic.title }}</span>
+              <span class="topic-line-del" @click="removeCreateTopic(idx)">×</span>
             </div>
-
-            <div v-if="!createForm.topics.length" class="topic-empty">
-              <span>请添加本次会议议题（至少一条）</span>
+            <div class="vi-row topic-input-row">
+              <input class="form-input topic-input" v-model="topicInput" placeholder="输入一条议题" @keyup.enter="addTopicFromInput" />
+              <button class="topic-confirm-btn" @click="addTopicFromInput">确定</button>
             </div>
-
-            <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-summary" @click="openEditTopic(idx)">
-              <div class="ts-main">
-                <span class="ts-num">议题 {{ idx + 1 }}</span>
-                <span class="ts-title">{{ topic.title || '未命名议题' }}</span>
-              </div>
-              <div class="ts-meta">
-                <span class="ts-badge">{{ topicTypeLabel(topic) }}</span>
-                <span class="tp-del" @click.stop="removeCreateTopic(idx)">×</span>
-              </div>
-            </div>
-
-            <div class="topic-add-row">
-              <button class="btn btn-ghost topic-add-btn" @click="openAddTopic">📝 输入议题</button>
-              <button class="btn btn-ghost topic-add-btn" @click="startStreamingVoice('topic')">🎤 语音议题</button>
+            <div class="title-voice-row">
+              <button class="voice-input-btn" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')">🎤 语音输入</button>
             </div>
           </div>
 
-          <div class="extra-entry" @click="descOpen = !descOpen">
-            <div class="prefill-copy">
-              <span class="prefill-title">补充说明</span>
-              <span class="prefill-desc">如有其他需记录的事项可展开填写</span>
+          <!-- 会议材料（拍照/上传判类为材料的文件；建会后自动挂到会议供委员传阅） -->
+          <div v-if="pendingMaterials.length" class="create-section">
+            <span class="section-title">会议材料（{{ pendingMaterials.length }}）</span>
+            <div v-for="(m, idx) in pendingMaterials" :key="m.url" class="mat-line">
+              <span class="mat-ico">{{ matIcon(m) }}</span>
+              <span class="mat-name" @click="openMaterialViewer(m)">{{ m.fileName }}</span>
+              <span class="mat-size" v-if="m.sizeText">{{ m.sizeText }}</span>
+              <span class="topic-line-del" @click="removePendingMaterial(idx)">×</span>
             </div>
-            <span class="prefill-toggle">{{ descOpen ? '收起' : '展开' }}</span>
           </div>
-          <div v-if="descOpen" class="create-section">
-            <textarea class="form-textarea" style="min-height:72px;height:72px;" v-model="createForm.description" placeholder="其他需要记录的事项（非表决内容）"></textarea>
+
+          <!-- 居委会见证（选项，非卡片）：勾选则建会后标记为重大事项 -->
+          <label class="juwei-row">
+            <span class="juwei-label">居委会见证</span>
+            <input type="checkbox" class="juwei-check" v-model="createForm.juweiWitness" />
+          </label>
+
+        </div>
+
+        <!-- 拍照/上传（双卡片）：选介质即可，AI 识别后自动判定是会议通知(预填)还是会议材料(传阅) -->
+        <div class="doc-scan-bar">
+          <div class="ds-cards">
+            <button class="ds-card" :class="{ busy: scanBusy === 'camera' }" :disabled="!!scanBusy" @click="startDocScan('camera')">
+              <span v-if="scanBusy === 'camera'" class="ds-spin"></span>
+              <span v-else class="ds-ico or">📷</span>
+              <span class="ds-t">{{ scanBusy === 'camera' ? '识别中 ' + docProgress + '%' : '拍照' }}</span>
+              <span class="ds-s">纸质文件</span>
+            </button>
+            <button class="ds-card" :class="{ busy: scanBusy === 'file' }" :disabled="!!scanBusy" @click="startDocScan('file')">
+              <span v-if="scanBusy === 'file'" class="ds-spin"></span>
+              <span v-else class="ds-ico bl">📁</span>
+              <span class="ds-t">{{ scanBusy === 'file' ? '识别中 ' + docProgress + '%' : '上传文件' }}</span>
+              <span class="ds-s">电子文件</span>
+            </button>
           </div>
+          <span v-if="lastScanTokens > 0 && !scanBusy" class="ds-tokens">本次识别消耗 {{ lastScanTokens.toLocaleString() }} token</span>
         </div>
 
         <div class="sheet-actions fixed">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
-          <button class="btn btn-primary" @click="submitNewMeeting">确认创建</button>
+          <button class="btn btn-primary" @click="submitNewMeeting">生成通知</button>
         </div>
       </div>
     </div>
 
-    <!-- 日期选择弹窗：年 / 月 / 日 -->
+    <!-- 模拟系统相机权限弹窗（真机由系统弹出，这里演示流程） -->
+    <div v-if="camPermVisible" class="perm-mask">
+      <div class="perm-box">
+        <span class="perm-ico">📷</span>
+        <span class="perm-title">“业委专区”想使用您的相机</span>
+        <span class="perm-sub">用于拍摄纸质文件进行 AI 识别</span>
+        <div class="perm-btns">
+          <button class="perm-btn deny" @click="denyCamPerm">不允许</button>
+          <button class="perm-btn allow" @click="allowCamPerm">允许</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案；不做整页进度页） -->
+    <div v-if="scanBusy" class="scan-pop-mask">
+      <div class="scan-pop">
+        <!-- 文档扫描动画：纸面 + 橙色扫描线来回扫 -->
+        <div class="sp-doc">
+          <span class="sp-doc-line w80"></span>
+          <span class="sp-doc-line w95"></span>
+          <span class="sp-doc-line w70"></span>
+          <span class="sp-doc-line w90"></span>
+          <span class="sp-doc-line w60"></span>
+          <span class="sp-scanline"></span>
+        </div>
+        <span class="sp-title">AI 智能识别中</span>
+        <span class="sp-say">{{ scanSay }}</span>
+        <!-- 三步流程点：上传 → 提取文字 → AI 理解 -->
+        <div class="sp-steps">
+          <div class="sp-step" :class="scanStage > 1 ? 'done' : 'active'"><span class="sp-dot">{{ scanStage > 1 ? '✓' : '1' }}</span><span class="sp-slabel">上传</span></div>
+          <div class="sp-step-line" :class="{ done: scanStage > 1 }"></div>
+          <div class="sp-step" :class="scanStage > 2 ? 'done' : (scanStage === 2 ? 'active' : '')"><span class="sp-dot">{{ scanStage > 2 ? '✓' : '2' }}</span><span class="sp-slabel">提取文字</span></div>
+          <div class="sp-step-line" :class="{ done: scanStage > 2 }"></div>
+          <div class="sp-step" :class="scanStage === 3 ? 'active' : ''"><span class="sp-dot">3</span><span class="sp-slabel">AI 理解</span></div>
+        </div>
+        <div class="sp-prog-row">
+          <div class="sp-bar"><div class="sp-fill" :style="{ width: docProgress + '%' }"></div></div>
+          <span class="sp-pct">{{ docProgress }}%</span>
+        </div>
+        <span class="sp-foot">豆包大模型 · 已用时 {{ scanSec }}s</span>
+      </div>
+    </div>
+
+    <!-- 模拟手机相机（测试用）：取景框对着纸质通知，按快门走真实识别；接真机后整块可删 -->
+    <div v-if="mockCameraVisible" class="mock-cam">
+      <div class="mc-top">
+        <span class="mc-badge">模拟相机 · 测试</span>
+        <span class="mc-close" @click="closeMockCamera">×</span>
+      </div>
+      <div class="mc-viewport">
+        <img class="mc-paper" :src="mockViewfinderUrl" alt="取景中的纸质文件" />
+        <span class="mc-corner tl"></span><span class="mc-corner tr"></span>
+        <span class="mc-corner bl"></span><span class="mc-corner br"></span>
+        <span class="mc-tip">将文件对准取景框</span>
+      </div>
+      <div class="mc-bottom">
+        <button class="mc-shutter" @click="mockShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
+      </div>
+      <div class="mc-flash" :class="{ on: mockCamFlash }"></div>
+    </div>
+
+    <!-- 日期选择弹窗：小日历（月历网格），点日期即选 -->
     <div v-if="datePickerOpen" class="picker-pop-mask" @click="datePickerOpen = false">
-      <div class="picker-pop" @click.stop>
-        <div class="pp-head">选择会议日期</div>
-        <div class="pp-cols">
-          <div class="pp-col">
-            <div class="pp-col-label">年</div>
-            <div class="pp-col-scroll">
-              <span v-for="y in yearOptions" :key="y" class="pp-item" :class="{ on: y === dpYear }" @click="setDpYear(y)">{{ y }}</span>
-            </div>
-          </div>
-          <div class="pp-col">
-            <div class="pp-col-label">月</div>
-            <div class="pp-col-scroll">
-              <span v-for="mo in monthOptions" :key="mo" class="pp-item" :class="{ on: mo === dpMonth }" @click="setDpMonth(mo)">{{ mo }}</span>
-            </div>
-          </div>
-          <div class="pp-col">
-            <div class="pp-col-label">日</div>
-            <div class="pp-col-scroll">
-              <span v-for="d in dayOptions" :key="d" class="pp-item" :class="{ on: d === dpDay }" @click="dpDay = d">{{ d }}</span>
-            </div>
-          </div>
+      <div class="cal-pop" @click.stop>
+        <div class="pop-close"><span class="close-btn" @click="datePickerOpen = false">×</span></div>
+        <div class="cal-head">
+          <span class="cal-nav" @click="calPrevMonth">‹</span>
+          <span class="cal-title">{{ dpYear }}年{{ dpMonth }}月</span>
+          <span class="cal-nav" @click="calNextMonth">›</span>
+        </div>
+        <div class="cal-week">
+          <span v-for="w in ['日','一','二','三','四','五','六']" :key="w" class="cal-wd">{{ w }}</span>
+        </div>
+        <div class="cal-grid">
+          <span v-for="(cell, i) in calCells" :key="i" class="cal-cell"
+                :class="{ empty: !cell, on: cell && isSelectedDay(cell), today: cell && !isSelectedDay(cell) && isToday(cell) }"
+                @click="cell && pickCalDay(cell)">{{ cell || '' }}</span>
         </div>
         <div class="pp-actions">
           <button class="btn btn-ghost" @click="datePickerOpen = false">取消</button>
-          <button class="btn btn-primary" @click="confirmDate">确定</button>
         </div>
       </div>
     </div>
 
-    <!-- 时间选择弹窗：小时（左） / 分钟（右，每5分钟） -->
+    <!-- 时间选择弹窗：大按钮点选（时 + 分），免滚动，点选即生效 -->
     <div v-if="timePickerOpen" class="picker-pop-mask" @click="timePickerOpen = false">
       <div class="picker-pop" @click.stop>
+        <div class="pop-close"><span class="close-btn" @click="timePickerOpen = false">×</span></div>
         <div class="pp-head">选择开始时间</div>
-        <div class="pp-cols">
-          <div class="pp-col">
-            <div class="pp-col-scroll">
-              <span v-for="h in hourOptions" :key="h" class="pp-item" :class="{ on: h === tpHour }" @click="tpHour = h">{{ String(h).padStart(2, '0') }}</span>
-            </div>
-          </div>
-          <div class="pp-col">
-            <div class="pp-col-scroll">
-              <span v-for="m in minuteOptions" :key="m" class="pp-item" :class="{ on: m === tpMinute }" @click="tpMinute = m">{{ String(m).padStart(2, '0') }}</span>
-            </div>
-          </div>
+        <div class="tg-cur">{{ String(tpHour).padStart(2, '0') }}:{{ String(tpMinute).padStart(2, '0') }}</div>
+        <div class="tg-label">时</div>
+        <div class="tg-grid">
+          <span v-for="h in hourOptions" :key="h" class="tg-cell" :class="{ on: h === tpHour }" @click="setTpHour(h)">{{ String(h).padStart(2, '0') }}</span>
+        </div>
+        <div class="tg-label">分</div>
+        <div class="tg-grid tg-grid-m">
+          <span v-for="m in minuteOptions" :key="m" class="tg-cell" :class="{ on: m === tpMinute }" @click="setTpMinute(m)">{{ String(m).padStart(2, '0') }}</span>
         </div>
         <div class="pp-actions">
-          <button class="btn btn-ghost" @click="timePickerOpen = false">取消</button>
-          <button class="btn btn-primary" @click="confirmTime">确定</button>
+          <button class="btn btn-primary" @click="timePickerOpen = false">完成</button>
         </div>
       </div>
     </div>
@@ -321,19 +319,16 @@
     <!-- 流式语音输入弹窗（标题 / 议题） -->
     <div v-if="voiceTarget === 'title' || voiceTarget === 'topic'" class="voice-modal-mask">
       <div class="voice-modal">
-        <div class="vm-head">
-          <span class="vm-title">🎤 语音输入{{ voiceTarget === 'title' ? '标题' : '议题' }}</span>
-          <span class="vm-hint">说完后点确认</span>
-        </div>
         <div class="vm-body">
           <div class="vm-wave"><span></span><span></span><span></span><span></span><span></span></div>
           <div class="vm-text">
             <span v-if="voiceFinal || voiceInterim">{{ voiceFinal }}<span class="vm-interim">{{ voiceInterim }}</span></span>
-            <span v-else class="vm-placeholder">正在听，请说话…</span>
+            <span v-else class="vm-placeholder">请说话输入{{ voiceTarget === 'title' ? '标题' : '议题' }}</span>
           </div>
         </div>
         <div class="vm-actions">
           <button class="btn btn-ghost" @click="cancelVoice">取消</button>
+          <button class="btn btn-ghost" @click="retryVoice">重新输入</button>
           <button class="btn btn-primary" @click="confirmVoice">确认</button>
         </div>
       </div>
@@ -386,20 +381,37 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, nextTick } from 'vue'
+import { ref, reactive, computed, nextTick, watch } from 'vue'
 import { onMounted, onActivated } from 'vue'
 import api from '@/api'
 import perm from '@/utils/perm'
-import { toast } from '@/utils/ui'
+import { showModal, showActionSheet, toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
 import { getStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
 import { pickFile, humanSize } from '@/utils/upload'
+import { openMaterialViewer } from '@/composables/materialViewer'
 
 const isChair = ref(false)
 const isRecorder = ref(false)
 const isExternal = ref(false)
+// 合并后的主页：顶栏 + 当前会议卡 所需状态
+const activeRole = ref({})
+const canCreate = ref(false)
+const canViewInternal = ref(false)
+const unread = ref(0)
+const currents = ref([])            // 进行中/准备中的会议卡片
+const STEP_BY_STAGE = { preparing: 1, ongoing: 2, ended: 3 }
+const STEP_LABELS = ['', '准备开会', '正式开会', '会后总结']
+// —— 首页指标（占位数字，计算规则待定后再接后端，届时替换这三个值即可）——
+const score = ref(92)        // 业委会综合评分
+const monthNeed = ref(1)     // 本期会议：当月需召开
+const overdueCount = ref(2)  // 逾期会议：往月该开未开
+const curMonth = new Date().getMonth() + 1
+// 逾期月份文案（规定每两月须开一次；占位取当前双月期的前一期，真实值待后端给出）
+const _ovBm = Math.ceil(curMonth / 2) > 1 ? Math.ceil(curMonth / 2) - 1 : 6
+const overdueMonths = ((_ovBm - 1) * 2 + 1) + '-' + (_ovBm * 2) + '月'
 const currentStage = ref('preparing')
 const meetings = ref([])
 const pending = ref([])
@@ -415,7 +427,9 @@ const createForm = reactive({
   meetingTime: '09:00',
   location: '',
   description: '',
-  topics: []
+  topics: [],
+  topicsText: '',
+  juweiWitness: false // 居委会见证：勾选则建会后标记 hasMajorIssue（重大事项需居委会见证）
 })
 const materialPrefillOpen = ref(false)
 const materialText = ref('')
@@ -423,9 +437,8 @@ const materialFiles = ref([])
 const materialScanResult = ref(null)
 const keyword = ref('')
 
-// 标题推荐 / 补充说明折叠
+// 标题推荐
 const suggestedTitle = ref('')
-const descOpen = ref(false)
 // 会议地点下拉
 const commonLocations = ['社区活动室', '社区会议室']
 const locationPreset = ref('社区活动室')
@@ -451,6 +464,22 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [] })
+const topicInput = ref('') // 议题输入框当前内容（打字/语音），点"确定"加入 topics 列表
+
+// 会议名称：自增高文本框（空/短=一行，超长自动到两行，max-height 封顶）
+const titleEl = ref(null)
+function autoGrowTitle() {
+  const el = titleEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+// 标题叉：有内容先清内容（推荐字重新浮现）；空但有推荐字（幽灵态）→ 把推荐字也清掉
+function clearTitleOrGhost() {
+  if (createForm.title) createForm.title = ''
+  else suggestedTitle.value = ''
+}
+watch(() => createForm.title, () => nextTick(autoGrowTitle))
 // 语音输入状态
 const voiceTarget = ref('') // 'title' | 'topic' | 'time' | 'location' | ''
 const voiceInterim = ref('') // 实时识别中（未定稿）
@@ -460,10 +489,14 @@ let _voiceRec = null
 function show() {
   const role = getStorage('activeRole', null)
   if (!role) { redirectTo('/pages/login/login'); return }
+  activeRole.value = role
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
+  canCreate.value = perm.can('committee.create')
+  canViewInternal.value = perm.can('view.internal')
   setupRoleView()
+  loadUnread()
   loadAll()
 }
 
@@ -481,52 +514,104 @@ function setupRoleView() {
 
 async function loadAll() {
   try {
-    const [listRes, statsRes, score] = await Promise.all([
-      api.committeeList(isChair.value ? currentStage.value : null),
-      api.committeeStats(),
-      api.committeePublishScore().catch(() => null)
+    const [listRes, statsRes] = await Promise.all([
+      api.committeeList(null),
+      api.committeeStats()
     ])
-    let list = listRes || []
+    const all = Array.isArray(listRes) ? listRes : []
     const st = statsRes || {}
     const now = new Date()
-    const month = now.getMonth() + 1
-    const bimonth = Math.ceil(month / 2)
-    const periodStart = (bimonth - 1) * 2 + 1
-    const periodEnd = bimonth * 2
-    st.periodLabel = periodStart + '-' + periodEnd + '月'
+    const bimonth = Math.ceil((now.getMonth() + 1) / 2)
+    st.periodLabel = ((bimonth - 1) * 2 + 1) + '-' + (bimonth * 2) + '月'
     st.annualYear = now.getFullYear()
-
-    // 非主席：分组为"待办"和"其他"
-    let pendingList = [], othersList = []
-    if (!isChair.value) {
-      pendingList = list.filter(m => m.progress >= 0 && m.progress < 100)
-      othersList = list.filter(m => m.progress >= 100 || m.progress < 0)
-    }
-
-    // 关键词过滤
-    var kw = keyword.value || ''
-    if (kw) {
-      list = list.filter(function (m) { return (m.title || '').indexOf(kw) >= 0 })
-      pendingList = pendingList.filter(function (m) { return (m.title || '').indexOf(kw) >= 0 })
-      othersList = othersList.filter(function (m) { return (m.title || '').indexOf(kw) >= 0 })
-    }
-
-    meetings.value = list
-    pending.value = pendingList
-    others.value = othersList
     stats.value = st
-    publishScore.value = score || { ontime: 0, overdue: 0, pending: 0 }
-    counts.value = { preparing: st.preparing || 0, ongoing: st.ongoing || 0, ended: st.ended || 0 }
+
+    // 当前会议卡片：进行中/准备中；主任另含"已结束未公示"（待整理纪要）
+    const chair = isChair.value || isRecorder.value
+    let actives = all.filter((m) => m.stage === 'preparing' || m.stage === 'ongoing')
+    if (chair) {
+      const pend = all.filter((m) => m.stage === 'ended'
+        && m.compliance !== 'invalid'
+        && (!m.publish || !m.publish.published))
+      actives = [...actives, ...pend]
+    }
+    currents.value = actives.map((m) => decorateCurrent(m, chair))
   } catch (e) {
-    // H5 无离线 mock，加载失败时置空兜底（原小程序此处回落到 mock 数据）
-    meetings.value = []
-    pending.value = []
-    others.value = []
     stats.value = {}
-    publishScore.value = { ontime: 0, overdue: 0, pending: 0 }
-    counts.value = { preparing: 0, ongoing: 0, ended: 0 }
+    currents.value = []
   }
 }
+
+async function loadUnread() {
+  try {
+    const res = await api.notificationList()
+    unread.value = (res && res.unread) || 0
+  } catch (e) { /* 离线可忽略 */ }
+}
+
+// 给当前会议附加：三步进度、主操作按钮文案/图标
+function decorateCurrent(m, chair) {
+  const step = STEP_BY_STAGE[m.stage] || 1
+  const steps = [1, 2, 3].map((no) => ({
+    no: no,
+    label: STEP_LABELS[no],
+    state: no < step ? 'done' : (no === step ? 'active' : 'todo')
+  }))
+  let ctaLabel, ctaIcon, tag
+  if (m.stage === 'preparing') {
+    if (chair) {
+      ctaLabel = m.allReplied ? '会议已就绪' : '继续开会'
+      ctaIcon = m.allReplied ? '✅' : '📋'
+    } else {
+      ctaLabel = '查看会议通知'
+      ctaIcon = '📋'
+    }
+    tag = '会议通知'
+  } else if (m.stage === 'ongoing') {
+    ctaLabel = chair ? '进入会议' : '查看会议'
+    ctaIcon = chair ? '🎙️' : '👀'
+    tag = '正在开的会'
+  } else {
+    ctaLabel = '整理会议记录'
+    ctaIcon = '📝'
+    tag = '会后总结'
+  }
+  return {
+    id: m.id, title: m.title, meetingDate: m.meetingDate, meetingTime: (m.meetingTime || '').slice(0, 5),
+    location: m.location, step: step, steps: steps,
+    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag
+  }
+}
+
+function goCurrent(cur) {
+  const chair = perm.isChair() || perm.isRecorder()
+  const url = chair
+    ? '/pages/committee-detail/committee-detail?id=' + cur.id
+    : '/pages/my-meeting/my-meeting?id=' + cur.id
+  navigateTo(url)
+}
+
+async function removeCurrent(cur) {
+  const res = await showModal({
+    title: '删除会议',
+    content: '确定删除「' + cur.title + '」？删除后无法恢复。',
+    confirmText: '删除',
+    confirmColor: '#E74C3C'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeRemove(cur.id)
+    toast({ title: '已删除', icon: 'success' })
+    loadAll()
+  } catch (e) {
+    toast({ title: (e && e.message) || '删除失败', icon: 'none' })
+  }
+}
+
+function goNotifications() { navigateTo('/pages/notifications/notifications') }
+function goReception() { navigateTo('/pages/reception/reception') }
+function goLearning() { navigateTo('/pages/learning/learning') }
+function goLibrary() { navigateTo('/pages/library/library') }
 
 function onSearch(e) { keyword.value = e.target.value; loadAll() }
 function clearSearch() { keyword.value = ''; loadAll() }
@@ -555,11 +640,11 @@ function openMinutes(id) {
 
 async function openNewMeeting() {
   createVisible.value = true
+  docPrefilled.value = false
   materialPrefillOpen.value = false
   materialText.value = ''
   materialFiles.value = []
   materialScanResult.value = null
-  descOpen.value = false
   topicDialogOpen.value = false
   timePickerOpen.value = false
   datePickerOpen.value = false
@@ -570,13 +655,17 @@ async function openNewMeeting() {
   locationPreset.value = '社区活动室'
   createForm.description = ''
   createForm.topics = []
+  createForm.juweiWitness = false
+  topicInput.value = ''
   suggestedTitle.value = ''
+  pendingMaterials.value = []
+  scanBusy.value = ''
+  lastScanTokens.value = 0
   // 基于历史会议推荐下一次标题（大多数会议为统一格式）
   try {
     const all = await api.committeeList(null)
     const sug = computeSuggestedTitle(all || [])
-    suggestedTitle.value = sug
-    if (!createForm.title) createForm.title = sug // 默认选中推荐，可点清空手填
+    suggestedTitle.value = sug // 不自动填入标题框，仅在下方作为推荐展示，点"用这个"才填入
   } catch (e) { /* 推荐失败则留空手填 */ }
 }
 
@@ -656,6 +745,230 @@ function scanMaterialPrefill() {
   toast({ title: result.matched.length ? '已预填，请确认' : '未识别到字段', icon: 'none' })
 }
 
+// —— 拍照/上传文档 → 后端 OCR + 大模型识别 → 回填表单（OCR/AI 未开或失败则提示并回退手填） ——
+const docPrefilled = ref(false)   // 已成功预填过一次（保留状态位，供后续提示用）
+
+// ——— 待挂载的会议材料（供委员传阅：如上级文件精神、报价单等）———
+// 「去通知」建会成功后再逐份挂到会议（届时触发 OCR）。来源：拍照/上传 AI 判类为 material 的文件。
+const pendingMaterials = ref([])      // [{ url, fileName, fileType, fileSize, sizeText }]
+function removePendingMaterial(idx) {
+  pendingMaterials.value = pendingMaterials.value.filter((_, i) => i !== idx)
+}
+// 材料行小图标：按文件类型区分（图片/PDF/其他）
+function matIcon(m) {
+  const t = String((m && m.fileType) || '').toLowerCase()
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(t)) return '🖼️'
+  if (t === 'pdf') return '📄'
+  return '📎'
+}
+
+// ——— 拍照/上传 → OCR 识别 → AI 判类（通知/材料）→ 用户确认 ———
+const scanBusy = ref('')          // '' | 'camera' | 'file'：正在识别的入口卡片
+const lastScanTokens = ref(0)     // 上次识别消耗的 token（低调显示在卡片下方）
+async function startDocScan(source) {
+  if (scanBusy.value) return
+  if (source === 'camera') {
+    // 测试阶段：先模拟系统相机权限申请，允许后弹模拟相机（取景+快门）。后续接真机时改回：
+    // const file = await pickFile('image/*', 'environment')
+    if (camPermGranted.value) openMockCamera()
+    else camPermVisible.value = true
+    return
+  }
+  const file = await pickFile('image/*,application/pdf')
+  if (!file) return // 用户取消
+  await scanFile(file, source)
+}
+
+// ——— 模拟系统相机权限弹窗（真机上由系统/微信弹出，这里演示流程；每次会话只问一次） ———
+const camPermVisible = ref(false)
+const camPermGranted = ref(false)
+function allowCamPerm() {
+  camPermGranted.value = true
+  camPermVisible.value = false
+  openMockCamera()
+}
+function denyCamPerm() {
+  camPermVisible.value = false
+  toast({ title: '未获得相机权限，无法拍照', icon: 'none' })
+}
+// 识别弹窗的阶段与文案：按进度分 上传→OCR提取→AI理解 三步（模拟节奏，后端一次性返回）
+const scanSec = ref(0)
+let _scanSecTimer = null
+const scanStage = computed(() => (docProgress.value < 25 ? 1 : docProgress.value < 70 ? 2 : 3))
+const scanSay = computed(() => {
+  if (docProgress.value < 25) return '正在安全上传文件…'
+  if (docProgress.value < 70) return '正在逐行提取文字…'
+  return '正在理解内容、判断文件类型…'
+})
+
+// 拿到文件（拍照/选文件）后的统一识别链路
+async function scanFile(file, source) {
+  scanBusy.value = source
+  startDocProgress()
+  scanSec.value = 0
+  clearInterval(_scanSecTimer)
+  _scanSecTimer = setInterval(() => { scanSec.value += 1 }, 1000)
+  try {
+    const res = await api.committeeParseDocument(file)
+    stopDocProgress()
+    docProgress.value = 100
+    await new Promise((r) => setTimeout(r, 350))
+    if (res && res.tokens > 0) lastScanTokens.value = res.tokens
+    // 先收起识别弹窗，再弹结果确认框（否则确认框会压在识别弹窗上）
+    clearInterval(_scanSecTimer)
+    _scanSecTimer = null
+    scanBusy.value = ''
+    docProgress.value = 0
+    await handleScanResult(res)
+  } catch (e) {
+    stopDocProgress()
+    toast({ title: '识别失败，请重试或手动填写', icon: 'none' })
+  } finally {
+    clearInterval(_scanSecTimer)
+    _scanSecTimer = null
+    scanBusy.value = ''
+    docProgress.value = 0
+  }
+}
+
+// ——— 模拟手机相机（测试用）：全屏取景框对着一张"纸质会议通知"，按快门出照片走真实识别 ———
+const mockCameraVisible = ref(false)
+const mockCamFlash = ref(false)
+const mockViewfinderUrl = ref('')
+let _mockShotCanvas = null
+function buildSampleNoticeCanvas() {
+  const cv = document.createElement('canvas'); cv.width = 750; cv.height = 940
+  const ctx = cv.getContext('2d')
+  ctx.fillStyle = '#fdfcf8'; ctx.fillRect(0, 0, 750, 940)
+  ctx.fillStyle = '#111'; ctx.textAlign = 'center'
+  ctx.font = 'bold 46px serif'
+  ctx.fillText('会 议 通 知', 375, 96)
+  ctx.font = '32px serif'; ctx.textAlign = 'left'
+  const lines = [
+    '各位业主委员会委员：',
+    '',
+    '兹定于2026年7月28日上午10:00，',
+    '在小区党群服务中心二楼会议室，',
+    '召开2026年第8次业委会例会。',
+    '',
+    '会议议题：',
+    '一、审议消防设施维修改造方案；',
+    '二、讨论电动车充电桩扩建选址；',
+    '三、通报小区公共收益使用明细。',
+    '',
+    '请各位委员准时出席，不能到会者',
+    '请提前向主任请假。',
+    '',
+    '                    业主委员会',
+    '                  2026年7月2日'
+  ]
+  let y = 180; for (const l of lines) { ctx.fillText(l, 64, y); y += 46 }
+  return cv
+}
+function openMockCamera() {
+  _mockShotCanvas = buildSampleNoticeCanvas()
+  mockViewfinderUrl.value = _mockShotCanvas.toDataURL('image/png')
+  mockCameraVisible.value = true
+}
+function closeMockCamera() { mockCameraVisible.value = false }
+async function mockShoot() {
+  if (!_mockShotCanvas) return
+  mockCamFlash.value = true
+  setTimeout(() => { mockCamFlash.value = false }, 180)
+  const blob = await new Promise((r) => _mockShotCanvas.toBlob(r, 'image/png'))
+  const file = new File([blob], '拍照-纸质文件.png', { type: 'image/png' })
+  await new Promise((r) => setTimeout(r, 260)) // 让"咔嚓"闪一下再收
+  mockCameraVisible.value = false
+  await scanFile(file, 'camera')
+}
+// 识别结果 → 按 AI 判类让用户确认；确认错了可一键改成另一类
+async function handleScanResult(res) {
+  if (!res) { toast({ title: '未识别到内容，请手动填写', icon: 'none' }); return }
+  const canAttach = !!res.fileUrl // 文件已存服务器，可直接作为材料挂载
+  // token 消耗放进结果弹窗括号里：让用户直观感到 AI 真干活了
+  const tokenNote = res.tokens > 0 ? '（本次智能识别消耗 ' + Number(res.tokens).toLocaleString() + ' token）' : ''
+  if (res.available && res.category === 'notice') {
+    const r = await showModal({
+      title: 'AI 智能识别：会议通知',
+      content: '已深度识别文件内容，判定为会议通知。要按它自动填写会议信息吗？' + tokenNote,
+      confirmText: '自动填写',
+      cancelText: canAttach ? '改为会议材料' : '取消',
+      size: 'large'
+    })
+    if (r.confirm) applyPrefill(res)
+    else if (canAttach) addScannedMaterial(res)
+    return
+  }
+  if (res.available && res.category === 'material') {
+    const r = await showModal({
+      title: 'AI 智能识别：会议材料',
+      content: '已深度识别文件内容，判定为会议材料，将在通知发出后发给委员传阅。' + tokenNote,
+      confirmText: '添加为材料',
+      cancelText: '改为自动填表',
+      size: 'large'
+    })
+    if (r.confirm) addScannedMaterial(res)
+    else applyPrefill(res) // 强制按通知抽取；字段可能为空，applyPrefill 会提示
+    return
+  }
+  // 识别失败/未判出类别：文件已存的话，问要不要直接作为材料
+  if (canAttach) {
+    const r = await showModal({
+      title: '未能识别内容',
+      content: (res.message || '未能识别出文件内容') + '。要把它直接作为会议材料添加吗？',
+      confirmText: '添加为材料',
+      cancelText: '不用了',
+      size: 'large'
+    })
+    if (r.confirm) addScannedMaterial(res)
+  } else {
+    toast({ title: res.message || '未能识别，请手动填写', icon: 'none' })
+  }
+}
+function addScannedMaterial(res) {
+  pendingMaterials.value = pendingMaterials.value.concat([{
+    url: res.fileUrl, fileName: res.fileName || '识别文件', fileType: res.fileType || '',
+    fileSize: res.fileSize || 0, sizeText: humanSize(res.fileSize || 0)
+  }])
+  toast({ title: '已加入会议材料', icon: 'success' })
+}
+const docProgress = ref(0)
+let docProgTimer = null
+// 模拟进度：后端一次性返回拿不到真实百分比，定时器渐进逼近 90%（越近越慢），完成时跳 100%
+function startDocProgress() {
+  docProgress.value = 0
+  clearInterval(docProgTimer)
+  docProgTimer = setInterval(() => {
+    const p = docProgress.value
+    if (p >= 90) return
+    const step = p < 60 ? 7 : p < 80 ? 3 : 1
+    docProgress.value = Math.min(90, p + step)
+  }, 350)
+}
+function stopDocProgress() {
+  clearInterval(docProgTimer)
+  docProgTimer = null
+}
+function applyPrefill(data) {
+  if (!data) { toast({ title: '未识别到内容，请手动填写', icon: 'none' }); return }
+  const hasFields = !!(data.title || data.meetingDate || data.meetingTime || data.location || (Array.isArray(data.topics) && data.topics.length))
+  if (data.available && hasFields) {
+    if (data.title) createForm.title = data.title
+    if (data.meetingDate) createForm.meetingDate = data.meetingDate
+    if (data.meetingTime) createForm.meetingTime = data.meetingTime
+    if (data.location) { createForm.location = data.location; syncLocationPreset(data.location) }
+    if (Array.isArray(data.topics) && data.topics.length) {
+      createForm.topics = data.topics.map((t) => ({ title: String(t), type: 'decision', decisionType: 'simple', options: [] }))
+    }
+    docPrefilled.value = true
+    toast({ title: '已自动填写，请核对', icon: 'none' })
+  } else if (data.available) {
+    toast({ title: '未识别出会议信息，请手动填写', icon: 'none' })
+  } else {
+    toast({ title: data.message || '未能识别，请手动填写', icon: 'none' })
+  }
+}
+
 // 预填/历史地点回填时同步下拉选中态：命中常用项→选它；非预设值→切"其他"并在手填框回显
 function syncLocationPreset(val) {
   if (val && commonLocations.indexOf(val) >= 0) {
@@ -672,6 +985,24 @@ function onLocationPreset(e) {
   const v = e.target.value
   locationPreset.value = v
   createForm.location = (v === '__other__') ? '' : v
+}
+
+// 地图选点（接口预留）：点地图图标 → 选高德/百度 → 真实接入时打开地图 app 选点回传地址。
+// 现为演示桩：未接真实地图，仅模拟从地图选回一个地址，便于测试展示。
+async function pickLocationOnMap() {
+  const res = await showActionSheet({ itemList: ['高德地图', '百度地图'] })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  const app = res.tapIndex === 0 ? '高德地图' : '百度地图'
+  // TODO 接入真实地图：经 URL scheme / 地图 JS-SDK 打开 app 选点，回传经纬度+地址后回填 createForm.location
+  locationPreset.value = '__other__'
+  createForm.location = '阳光家园·活动中心（' + app + '选点·演示）'
+  toast({ title: '已从' + app + '选择地点（演示）', icon: 'none' })
+}
+
+// 从"其他/地图选点"切回常用地点下拉
+function resetLocPreset() {
+  locationPreset.value = '社区活动室'
+  createForm.location = '社区活动室'
 }
 
 // 日期选择器：点击字段任意位置弹出，年/月/日三列
@@ -695,6 +1026,31 @@ function confirmDate() {
   datePickerOpen.value = false
 }
 
+// —— 小日历：用 dpYear/dpMonth 作当前查看月，点某天即选并关闭 ——
+const calCells = computed(() => {
+  const first = new Date(dpYear.value, dpMonth.value - 1, 1).getDay() // 0=周日
+  const days = new Date(dpYear.value, dpMonth.value, 0).getDate()
+  const cells = []
+  for (let i = 0; i < first; i++) cells.push(0) // 月初空格
+  for (let d = 1; d <= days; d++) cells.push(d)
+  return cells
+})
+function calPrevMonth() {
+  if (dpMonth.value <= 1) { dpMonth.value = 12; dpYear.value -= 1 } else { dpMonth.value -= 1 }
+}
+function calNextMonth() {
+  if (dpMonth.value >= 12) { dpMonth.value = 1; dpYear.value += 1 } else { dpMonth.value += 1 }
+}
+function calDateStr(day) {
+  return dpYear.value + '-' + String(dpMonth.value).padStart(2, '0') + '-' + String(day).padStart(2, '0')
+}
+function isSelectedDay(day) { return createForm.meetingDate === calDateStr(day) }
+function isToday(day) { return todayStr() === calDateStr(day) }
+function pickCalDay(day) {
+  createForm.meetingDate = calDateStr(day)
+  datePickerOpen.value = false
+}
+
 // 时间选择器：常规小时（左）+ 分钟（右，每5分钟），点确定回填
 function openTimePicker() {
   const parts = (createForm.meetingTime || '09:00').split(':')
@@ -707,6 +1063,12 @@ function confirmTime() {
   createForm.meetingTime = String(tpHour.value).padStart(2, '0') + ':' + String(tpMinute.value).padStart(2, '0')
   timePickerOpen.value = false
 }
+// 大按钮点选：点即更新并实时写入会议时间（免"确定"那一步）
+function applyTime() {
+  createForm.meetingTime = String(tpHour.value).padStart(2, '0') + ':' + String(tpMinute.value).padStart(2, '0')
+}
+function setTpHour(h) { tpHour.value = h; applyTime() }
+function setTpMinute(m) { tpMinute.value = m; applyTime() }
 
 // 打开选择器后把已选项滚到列中部（只滚动列内部，不影响页面）
 function scrollPickerToSelected() {
@@ -731,6 +1093,13 @@ function topicTypeLabel(t) {
   if (t.type === 'discussion') return '讨论'
   if (t.type === 'decision') return t.decisionType === 'multi_choice' ? '表决·多选一' : '表决·是否'
   return ''
+}
+
+function topicTypeClass(t) {
+  if (!t) return 'badge-discussion'
+  if (t.type === 'notice') return 'badge-notice'
+  if (t.type === 'decision') return 'badge-decision'
+  return 'badge-discussion'
 }
 
 function openAddTopic() {
@@ -797,35 +1166,16 @@ function confirmTopic() {
 
 async function submitNewMeeting() {
   var form = createForm
+  // OCR 还在识别时先别提交：此刻 createForm 可能是中间态，等识别完再去通知
+  if (scanBusy.value) { toast({ title: '正在识别中，请稍候…', icon: 'none' }); return }
   if (!form.title || !form.meetingDate || !form.meetingTime || !form.location) {
     toast({ title: '请补全标题、时间和地点', icon: 'none' })
     return
   }
-  // 过滤掉空标题的议题
-  var topics = (form.topics || []).filter(function (t) { return t.title.trim() })
-  // 对 multi_choice 过滤空选项；非表决项不带表决方式
-  topics = topics.map(function (t) {
-    // 拷贝一份，避免直接改响应式对象引发副作用
-    var nt = { ...t }
-    if (nt.type !== 'decision') {
-      nt.decisionType = 'none'
-      delete nt.options
-    } else if (nt.decisionType === 'multi_choice') {
-      nt.options = (nt.options || []).filter(function (o) { return o.label.trim() })
-    } else {
-      delete nt.options
-    }
-    return nt
-  })
+  // 议题：逐条添加在 createForm.topics（过滤空标题）
+  var topics = (form.topics || []).filter(function (t) { return t.title && t.title.trim() })
   if (!topics.length) {
     toast({ title: '请至少添加一个会议议题', icon: 'none' })
-    return
-  }
-  var invalidMulti = topics.find(function (t) {
-    return t.type === 'decision' && t.decisionType === 'multi_choice' && (!t.options || t.options.length < 2)
-  })
-  if (invalidMulti) {
-    toast({ title: '多选一议题至少需要两个选项', icon: 'none' })
     return
   }
   try {
@@ -837,11 +1187,34 @@ async function submitNewMeeting() {
       description: form.description,
       topics: topics
     })
+    // 居委会见证：勾选则标记本次为重大事项（hasMajorIssue）。失败不阻断建会流程。
+    if (created && created.id && form.juweiWitness) {
+      try { await api.committeeToggleFlag(created.id, 'hasMajorIssue') } catch (e) {}
+    }
+    // 会议材料：弹窗里传好的文件逐份挂到会议（供委员传阅，后端顺带触发 OCR）。单份失败不阻断建会。
+    if (created && created.id && pendingMaterials.value.length) {
+      for (const m of pendingMaterials.value) {
+        try { await api.committeeAddMaterial(created.id, m.fileName, m.sizeText, m.fileType, m.url) } catch (e) { console.error('[材料] 挂载失败：', m.fileName, e) }
+      }
+    }
+    console.log('[去通知] created =', JSON.stringify(created))
     createVisible.value = false
     currentStage.value = 'preparing'
     if (created && created.id) {
-      navigateTo('/pages/committee-detail/committee-detail?id=' + created.id)
+      // 竞态兜底：navigateTo(router.push) 偶发被取消/重复导航会 reject，未 catch 会被静默吞掉、
+      // 结果停在首页（弹窗已关）。这里 await + 失败重试一次，确保正确进入通知页。
+      const target = '/pages/committee-detail/committee-detail?id=' + created.id
+      console.log('[去通知] 跳转 →', target)
+      try {
+        await navigateTo(target)
+        console.log('[去通知] 跳转完成，当前 path =', location.pathname + location.search)
+      } catch (navErr) {
+        console.error('[去通知] 跳转 reject，重试一次：', navErr)
+        try { await navigateTo(target) } catch (e2) { console.error('[去通知] 重试仍失败：', e2); toast({ title: '会议已创建，请在列表中打开', icon: 'none' }); loadAll() }
+      }
     } else {
+      console.warn('[去通知] created 无 id，回列表', created)
+      toast({ title: '会议已创建，请在列表中打开', icon: 'none' })
       loadAll()
     }
   } catch (e) {
@@ -855,6 +1228,26 @@ function todayStr() {
 }
 
 // ——— 语音输入 ———
+const HOTWORDS = [
+  ['叶委会', '业委会'], ['夜委会', '业委会'], ['页委会', '业委会'], ['一委会', '业委会'],
+  ['物业肥', '物业费'], ['物业菲', '物业费'],
+  ['主人', '主任'], ['副主人', '副主任'],
+  ['为员', '委员'], ['位员', '委员'], ['纬员', '委员'],
+  ['记要', '纪要'], ['计要', '纪要'],
+  ['意题', '议题'], ['一题', '议题'],
+  ['签道', '签到'], ['前到', '签到'], ['前道', '签到'],
+  ['表绝', '表决'],
+  ['公探', '公摊'], ['弓摊', '公摊'],
+  ['停车未', '停车位'], ['停车卫', '停车位'],
+  ['物业公私', '物业公司'],
+  ['维修基础', '维修基金'],
+]
+function applyHotwords(text) {
+  let r = text
+  for (const [wrong, right] of HOTWORDS) r = r.replaceAll(wrong, right)
+  return r
+}
+
 function _stopVoice() {
   if (_voiceRec) {
     try { _voiceRec.stop() } catch (e) {}
@@ -876,6 +1269,13 @@ function _buildRec(continuous, interimResults) {
 }
 
 // 流式模式：标题 / 议题（连续识别，显示弹窗，点确认后应用）
+function addTopicFromInput() {
+  const t = topicInput.value.trim()
+  if (!t) { toast({ title: '请输入议题内容', icon: 'none' }); return }
+  createForm.topics = createForm.topics.concat([{ title: t, type: 'decision', decisionType: 'simple', options: [] }])
+  topicInput.value = ''
+}
+
 function startStreamingVoice(target) {
   _stopVoice()
   voiceFinal.value = ''
@@ -893,7 +1293,7 @@ function startStreamingVoice(target) {
       if (e.results[i].isFinal) fin += t
       else inter += t
     }
-    if (fin) voiceFinal.value += fin
+    if (fin) voiceFinal.value += applyHotwords(fin)
     voiceInterim.value = inter
   }
   rec.onerror = function () { _stopVoice() }
@@ -932,13 +1332,13 @@ function confirmVoice() {
   if (target === 'title') {
     createForm.title = text
   } else if (target === 'topic') {
-    topicDraft.title = text
-    topicDraft.type = 'discussion'
-    topicDraft.decisionType = 'none'
-    topicDraft.options = []
-    topicEditIdx.value = -1
-    topicDialogOpen.value = true
+    topicInput.value = text
   }
+}
+
+function retryVoice() {
+  const target = voiceTarget.value
+  startStreamingVoice(target)
 }
 
 function cancelVoice() {
@@ -1009,22 +1409,84 @@ onActivated(show)
 </script>
 
 <style scoped>
-.committee-page { min-height: 100vh; background: #f4f5f7; padding-bottom: 160rpx; }
+.home {
+  min-height: 100vh; background: var(--c-bg-page);
+  /* 底部留足空间：清开固定 TabBar(100rpx) 再多留 ~80rpx，避免有进行中会议内容超一屏时"更多功能"被导航栏挡住 */
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; box-sizing: border-box;
+}
+/* 顶栏 */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(8rpx + env(safe-area-inset-top)) 32rpx 18rpx; background: var(--c-primary-dark); }
+.hd-left { display: flex; flex-direction: column; padding-top: 8rpx; }
+.hd-title { font-size: 52rpx; font-weight: 700; color: #fff; }
+.hd-sub { font-size: 34rpx; color: #fff; margin-top: 8rpx; }
+.hd-bell { position: relative; padding: 8rpx; }
+.hd-bell-ico { font-size: 52rpx; }
+.hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
+/* 当前会议主卡片 */
+.meet-card { margin: 28rpx 24rpx 32rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 28rpx 30rpx 30rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
+.meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
+.meet-title { display: block; font-size: 42rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 0; line-height: 1.35; }
+.meet-meta { display: block; font-size: 30rpx; color: var(--c-text-mid); margin-top: 16rpx; }
+/* 三步进度 */
+.steps { display: flex; align-items: flex-start; justify-content: space-between; margin: 28rpx 8rpx 28rpx; }
+.step { display: flex; flex-direction: column; align-items: center; width: 140rpx; }
+.step-dot { width: 62rpx; height: 62rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32rpx; font-weight: 700; background: #E3E5E9; color: var(--c-text-weak); }
+.step-label { font-size: 28rpx; color: var(--c-text-weak); margin-top: 12rpx; }
+.step.done .step-dot { background: var(--c-primary-soft); color: var(--c-primary-dark); }
+.step.done .step-label { color: var(--c-text-mid); }
+.step.active .step-dot { background: var(--c-primary-dark); color: #fff; }
+.step.active .step-label { color: var(--c-text-strong); font-weight: 700; }
+.step-line { flex: 1; height: 6rpx; border-radius: 3rpx; margin-top: 28rpx; }
+.step-line.done { background: var(--c-primary); }
+.step-line.todo { background: #E3E5E9; }
+/* 大按钮（描边幽灵：白底 + 橙边橙字；去开会与卡片"继续开会"同款同大小、字略放大） */
+.big-btn { display: flex; align-items: center; justify-content: center; height: 140rpx; border-radius: 22rpx; background: var(--c-bg-card); border: 3rpx solid var(--c-primary-dark); margin-top: 8rpx; }
+.big-btn:active { background: var(--c-primary-soft); }
+.big-btn-ico { font-size: 54rpx; margin-right: 14rpx; }
+.big-btn-text { font-size: 52rpx; font-weight: 700; color: var(--c-primary-dark); }
+/* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
+.go-meeting { margin: auto auto 16rpx; width: 84%; }
+/* 卡片内"继续开会"：略收窄并居中 */
+.meet-card .big-btn { width: 90%; margin-left: auto; margin-right: auto; }
+/* 删除会议（测试用，弱化） */
+.meet-del { text-align: center; color: var(--c-danger); font-size: 30rpx; margin-top: 28rpx; padding: 8rpx; }
+.meet-del:active { opacity: 0.6; }
+/* 空闲态 */
+.idle { margin: 64rpx 24rpx 0; display: flex; flex-direction: column; align-items: center; }
+.idle-emoji { font-size: 104rpx; margin-bottom: 24rpx; }
+.idle-hint { font-size: 38rpx; color: var(--c-text-mid); margin-bottom: 8rpx; }
+.idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
+/* 更多功能（主任视图紧跟卡片；委员视图沉底） */
+.more { margin: 0 28rpx; padding-top: 40rpx; }
+.more-sink { margin-top: auto; }
+.more-title { font-size: 28rpx; color: var(--c-text-weak); padding-left: 6rpx; }
+.more-grid { display: flex; margin-top: 14rpx; gap: 16rpx; }
+.more-item { flex: 1; background: var(--c-bg-card); border-radius: 18rpx; padding: 36rpx 0 32rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+.more-item:active { background: #FAFBFC; }
+.more-ico { font-size: 44rpx; line-height: 1.1; }
+.more-label { font-size: 28rpx; color: var(--c-text-mid); margin-top: 14rpx; }
 
-/* 目标卡片 */
-.target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; padding: 24rpx 24rpx 0; }
-.target-card { background: #fff; border-radius: 24rpx; padding: 34rpx 28rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
-.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; margin-bottom: 16rpx; }
-.tc-label { font-size: 28rpx; color: #666; font-weight: 500; line-height: 1.35; word-break: break-all; }
+/* 综合评分小字（占位分数） */
+.score-line { display: flex; align-items: center; gap: 10rpx; margin: 24rpx 28rpx 0; font-size: 32rpx; color: var(--c-text-mid); }
+.score-ico { font-size: 38rpx; }
+.score-num { font-size: 46rpx; font-weight: 700; color: var(--c-primary-dark); margin-left: 6rpx; }
+.score-unit { font-size: 30rpx; color: var(--c-text-weak); }
+/* 目标卡片（放大一些） */
+.target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24rpx; padding: 24rpx 24rpx 0; }
+.target-card { background: var(--c-bg-card); border-radius: 24rpx; padding: 44rpx 32rpx; box-shadow: 0 6rpx 20rpx rgba(0,0,0,0.06); }
+.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; margin-bottom: 20rpx; }
+.tc-label { font-size: 36rpx; color: var(--c-text-mid); font-weight: 500; line-height: 1.35; word-break: break-all; }
 .tc-badge { font-size: 28rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; line-height: 1.35; white-space: nowrap; }
-.tc-badge.ok { background: #E8F7EE; color: #27AE60; }
-.tc-badge.warn { background: #FFF3E0; color: #E67E22; }
-.tc-num { font-size: 68rpx; font-weight: 700; color: #1f2329; line-height: 1; margin-bottom: 10rpx; }
-.tc-unit { font-size: 28rpx; font-weight: 400; color: #666; }
-.tc-sub { font-size: 28rpx; color: #777; margin-bottom: 14rpx; display: block; line-height: 1.45; word-break: break-all; }
-.tc-progress { background: #f0f0f0; border-radius: 6rpx; height: 12rpx; overflow: hidden; margin-bottom: 10rpx; }
-.tc-fill { height: 100%; border-radius: 6rpx; background: #FFA800; }
-.tc-rule { font-size: 28rpx; color: #666; line-height: 1.45; word-break: break-all; }
+.tc-badge.ok { background: var(--c-success-soft); color: var(--c-success); }
+.tc-badge.warn { background: var(--c-warning-soft); color: var(--c-warning); }
+.tc-num { font-size: 84rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1; margin-bottom: 16rpx; font-variant-numeric: tabular-nums; }
+.tc-unit { font-size: 34rpx; font-weight: 500; color: var(--c-text-mid); margin-left: 10rpx; }
+.tc-sub { font-size: 30rpx; font-weight: 600; color: var(--c-text-weak); margin-bottom: 4rpx; display: block; line-height: 1.55; word-break: break-all; }
+.tc-sub-warn { color: var(--c-warning); font-weight: 500; }
+.tc-progress { background: #E3E5E9; border-radius: 6rpx; height: 12rpx; overflow: hidden; margin-bottom: 10rpx; }
+.tc-fill { height: 100%; border-radius: 6rpx; background: var(--c-primary); }
+.tc-rule { font-size: 28rpx; color: var(--c-text-mid); line-height: 1.45; word-break: break-all; }
 
 .role-intro { margin: 24rpx 24rpx 16rpx; padding: 20rpx 24rpx; background: #fff; border-radius: 18rpx; border-left: 8rpx solid #FFA800; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); }
 .role-intro.public { border-left-color: #27AE60; }
@@ -1063,13 +1525,17 @@ onActivated(show)
 .prepare-text { font-size: 40rpx; font-weight: 700; color: #fff; letter-spacing: 2rpx; }
 
 /* 新建会议弹窗 */
-.modal-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
-.create-panel { width: 100%; max-height: 94vh; background: #fff; border-radius: 28rpx 28rpx 0 0; display: flex; flex-direction: column; overflow: hidden; }
-.create-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; padding: 32rpx 28rpx 20rpx; border-bottom: 2rpx solid #f2f2f2; }
-.create-title { display: block; font-size: 36rpx; font-weight: 700; color: #1f2329; line-height: 1.35; word-break: break-all; }
+.modal-mask { position: fixed; inset: 0; z-index: 200; background: #fff; display: flex; align-items: stretch; }
+.create-panel { width: 100%; height: 100%; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+.create-head { display: flex; align-items: center; background: var(--c-primary-dark); flex-shrink: 0; padding-top: env(safe-area-inset-top); box-sizing: border-box; height: calc(120rpx + env(safe-area-inset-top)); }
+.create-back { width: 96rpx; height: 120rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 64rpx; font-weight: 700; flex-shrink: 0; }
+.create-title { flex: 1; text-align: center; color: #fff; font-size: 38rpx; font-weight: 700; line-height: 1.35; }
+.create-nav-ph { width: 96rpx; flex-shrink: 0; }
 .close-btn { width: 60rpx; height: 60rpx; line-height: 56rpx; text-align: center; border-radius: 30rpx; color: #666; background: #f5f5f5; font-size: 40rpx; flex-shrink: 0; }
-.create-body { height: 64vh; max-height: 64vh; padding: 24rpx 26rpx; box-sizing: border-box; }
+.create-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24rpx 26rpx; box-sizing: border-box; }
 .create-section { background: #fafbfc; border-radius: 18rpx; padding: 24rpx; margin-bottom: 20rpx; border: 2rpx solid #f0f0f0; }
+.create-section.title-card { margin-top: 20rpx; margin-bottom: 30px; }
+.create-section.info-card { margin-bottom: 30px; }
 
 .prefill-entry { background: #FFF8EA; border: 2rpx solid #FFE0A3; border-radius: 18rpx; padding: 22rpx; margin-bottom: 20rpx; display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
 .prefill-copy { flex: 1; min-width: 0; }
@@ -1077,6 +1543,108 @@ onActivated(show)
 .prefill-desc { display: block; font-size: 28rpx; color: #9A7600; margin-top: 6rpx; line-height: 1.45; word-break: break-all; }
 .prefill-toggle { flex-shrink: 0; min-width: 88rpx; height: 56rpx; line-height: 56rpx; text-align: center; border-radius: 28rpx; background: #fff; color: #C77800; font-size: 28rpx; font-weight: 600; }
 .material-section { background: #fffdf7; border-color: #FFE8B8; }
+/* 快速填表按钮（窄·居中·描边药丸：明显但不抢"确认创建"，深字高对比） */
+.ai-fill-btn { width: 64%; margin: 44rpx auto 18rpx; display: flex; align-items: center; justify-content: center; gap: 12rpx; padding: 26rpx 28rpx; background: var(--c-primary-dark); border: none; border-radius: 999rpx; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); box-sizing: border-box; }
+.ai-fill-btn:active { background: var(--c-primary-strong); }
+.ai-fill-ico { font-size: 38rpx; line-height: 1; }
+.ai-fill-text { font-size: 32rpx; font-weight: 700; color: #fff; }
+.ai-fill-btn:disabled, .ai-fill-btn.busy { opacity: 0.65; }
+.ai-fill-hint { display: block; text-align: center; font-size: 26rpx; color: #999; margin: -8rpx 0 16rpx; }
+/* 快速填表固定条：底部拇指区（创建/取消上方），进入即见、不随表单滚动 */
+.quick-fill-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
+.quick-fill-bar .ai-fill-btn { margin: 0 auto 10rpx; }
+.quick-fill-bar .ai-fill-hint { margin: 0; }
+/* 拍照/上传 双卡片（政务风功能入口）：图标圆 + 标题 + 两行说明整合在卡片内 */
+.doc-scan-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
+.ds-cards { display: flex; gap: 18rpx; }
+.ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
+.ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
+.ds-card:disabled { opacity: 0.75; }
+.ds-ico { width: 76rpx; height: 76rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40rpx; margin-bottom: 4rpx; }
+.ds-ico.or { background: #FFF3E0; }
+.ds-ico.bl { background: #EAF2FF; }
+.ds-t { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
+.ds-s { font-size: 24rpx; color: #999; text-align: center; line-height: 1.45; }
+.ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
+/* token 消耗：低调小字，识别完成后显示 */
+.ds-tokens { display: block; text-align: center; font-size: 22rpx; color: #bbb; margin-top: 10rpx; }
+
+/* 模拟系统相机权限弹窗（仿系统样式：居中白盒 + 细线分隔双按钮） */
+.perm-mask { position: fixed; inset: 0; z-index: 3100; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
+.perm-box { width: 540rpx; background: #fff; border-radius: 28rpx; padding: 44rpx 36rpx 0; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.25); }
+.perm-ico { font-size: 64rpx; line-height: 1; margin-bottom: 18rpx; }
+.perm-title { font-size: 34rpx; font-weight: 700; color: #1a1a1a; line-height: 1.45; }
+.perm-sub { font-size: 28rpx; color: #888; line-height: 1.5; margin: 10rpx 0 34rpx; }
+.perm-btns { display: flex; width: calc(100% + 72rpx); margin: 0 -36rpx; border-top: 1rpx solid #e5e5e5; }
+.perm-btn { flex: 1; height: 100rpx; background: none; border: none; font-size: 34rpx; }
+.perm-btn.deny { color: #666; border-right: 1rpx solid #e5e5e5; }
+.perm-btn.allow { color: #0A7CFF; font-weight: 700; }
+.perm-btn:active { background: #f5f5f5; }
+
+/* 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案） */
+.scan-pop-mask { position: fixed; inset: 0; z-index: 3050; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; }
+.scan-pop { width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 30%); border: 1rpx solid rgba(255, 168, 0, 0.25); border-radius: 30rpx; padding: 48rpx 44rpx 38rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.06); box-sizing: border-box; }
+/* 文档扫描动画：白纸 + 灰色文字行 + 橙色扫描线上下来回 */
+.sp-doc { position: relative; width: 240rpx; height: 288rpx; background: #fff; border: 2rpx solid #F0E6D6; border-radius: 14rpx; box-shadow: 0 6rpx 18rpx rgba(160, 110, 20, 0.12); padding: 30rpx 26rpx; box-sizing: border-box; display: flex; flex-direction: column; gap: 26rpx; overflow: hidden; margin-bottom: 28rpx; }
+.sp-doc-line { height: 12rpx; border-radius: 6rpx; background: #EAE4D8; }
+.sp-doc-line.w80 { width: 80%; } .sp-doc-line.w95 { width: 95%; } .sp-doc-line.w70 { width: 70%; } .sp-doc-line.w90 { width: 90%; } .sp-doc-line.w60 { width: 60%; }
+.sp-scanline { position: absolute; left: 6rpx; right: 6rpx; top: 0; height: 50rpx; border-radius: 6rpx; background: linear-gradient(180deg, rgba(255,168,0,0) 0%, rgba(255,168,0,0.28) 55%, rgba(199,106,0,0.55) 100%); border-bottom: 3rpx solid #FFA800; box-shadow: 0 6rpx 14rpx rgba(255,168,0,0.35); animation: spScan 2.2s ease-in-out infinite; }
+@keyframes spScan { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(238rpx); } }
+.sp-title { font-size: 42rpx; font-weight: 700; color: #1f2329; letter-spacing: 1rpx; }
+.sp-say { font-size: 32rpx; color: #B07400; margin: 12rpx 0 30rpx; min-height: 44rpx; }
+/* 三步流程点 */
+.sp-steps { display: flex; align-items: center; width: 100%; margin-bottom: 30rpx; padding: 0 8rpx; box-sizing: border-box; }
+.sp-step { display: flex; flex-direction: column; align-items: center; gap: 8rpx; flex-shrink: 0; }
+.sp-dot { width: 56rpx; height: 56rpx; border-radius: 50%; background: #F2F2F4; border: 2rpx solid #E3E3E6; color: #999; font-size: 30rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.sp-step.active .sp-dot { background: #FFA800; border-color: #FFA800; color: #fff; box-shadow: 0 0 0 8rpx rgba(255,168,0,0.15); animation: spPulse 1.6s ease-out infinite; }
+.sp-step.done .sp-dot { background: #27AE60; border-color: #27AE60; color: #fff; }
+@keyframes spPulse { 0% { box-shadow: 0 0 0 0 rgba(255,168,0,0.35); } 70% { box-shadow: 0 0 0 14rpx rgba(255,168,0,0); } 100% { box-shadow: 0 0 0 0 rgba(255,168,0,0); } }
+.sp-slabel { font-size: 28rpx; color: #999; white-space: nowrap; }
+.sp-step.active .sp-slabel { color: #C76A00; font-weight: 600; }
+.sp-step.done .sp-slabel { color: #27AE60; }
+.sp-step-line { flex: 1; height: 4rpx; background: #EDEDEF; margin: 0 12rpx 38rpx; border-radius: 2rpx; }
+.sp-step-line.done { background: #27AE60; }
+/* 进度条 + 百分比同排 */
+.sp-prog-row { display: flex; align-items: center; gap: 18rpx; width: 100%; }
+.sp-bar { flex: 1; height: 18rpx; border-radius: 10rpx; background: #F0F0F2; overflow: hidden; }
+.sp-fill { height: 100%; border-radius: 10rpx; background: linear-gradient(90deg, #FFA800, #C76A00); transition: width .35s ease; }
+.sp-pct { font-size: 38rpx; color: #C76A00; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 96rpx; text-align: right; }
+.sp-foot { font-size: 26rpx; color: #C0B49E; margin-top: 24rpx; }
+
+/* 模拟手机相机（测试用） */
+.mock-cam { position: fixed; inset: 0; z-index: 3000; background: #000; display: flex; flex-direction: column; }
+.mc-top { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: calc(20rpx + env(safe-area-inset-top)) 28rpx 16rpx; }
+.mc-badge { font-size: 24rpx; color: #FFD79A; background: rgba(255, 215, 154, 0.14); border: 1rpx solid rgba(255, 215, 154, 0.4); padding: 6rpx 18rpx; border-radius: 999rpx; }
+.mc-close { width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 52rpx; line-height: 1; background: rgba(255,255,255,0.14); border-radius: 50%; }
+.mc-viewport { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; padding: 30rpx 44rpx; }
+.mc-paper { max-width: 100%; max-height: 100%; border-radius: 6rpx; box-shadow: 0 10rpx 50rpx rgba(0,0,0,0.8); transform: rotate(-1.2deg); }
+.mc-corner { position: absolute; width: 52rpx; height: 52rpx; border: 5rpx solid #FFD34D; }
+.mc-corner.tl { top: 18rpx; left: 26rpx; border-right: none; border-bottom: none; border-radius: 10rpx 0 0 0; }
+.mc-corner.tr { top: 18rpx; right: 26rpx; border-left: none; border-bottom: none; border-radius: 0 10rpx 0 0; }
+.mc-corner.bl { bottom: 18rpx; left: 26rpx; border-right: none; border-top: none; border-radius: 0 0 0 10rpx; }
+.mc-corner.br { bottom: 18rpx; right: 26rpx; border-left: none; border-top: none; border-radius: 0 0 10rpx 0; }
+.mc-tip { position: absolute; bottom: 34rpx; left: 0; right: 0; text-align: center; font-size: 26rpx; color: rgba(255,255,255,0.75); }
+.mc-bottom { flex-shrink: 0; display: flex; justify-content: center; padding: 30rpx 0 calc(46rpx + env(safe-area-inset-bottom)); }
+.mc-shutter { width: 140rpx; height: 140rpx; border-radius: 50%; background: transparent; border: 8rpx solid #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
+.mc-shutter-core { width: 104rpx; height: 104rpx; border-radius: 50%; background: #fff; transition: transform .12s ease; }
+.mc-shutter:active .mc-shutter-core { transform: scale(0.85); }
+.mc-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .1s ease; }
+.mc-flash.on { opacity: 0.9; }
+/* 会议材料行：小图标 + 可点文件名（点开全屏预览）+ 大小 + 删除 */
+.mat-line { display: flex; align-items: center; gap: 14rpx; padding: 18rpx 4rpx; border-bottom: 1rpx solid #f0f0f0; }
+.mat-line:last-child { border-bottom: none; }
+.mat-ico { flex-shrink: 0; font-size: 36rpx; line-height: 1; }
+.mat-name { flex: 1; min-width: 0; font-size: 30rpx; color: #0051FF; text-decoration: underline; text-underline-offset: 6rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.mat-name:active { opacity: 0.6; }
+.mat-size { flex-shrink: 0; font-size: 26rpx; color: #999; font-weight: 400; }
+/* 转圈圈：按钮内白色细环旋转（识别中显示，模拟进度数字在按钮文字里） */
+.ai-fill-spin { width: 34rpx; height: 34rpx; border-radius: 50%; border: 5rpx solid rgba(255,255,255,0.45); border-top-color: #fff; box-sizing: border-box; animation: aiSpin 0.7s linear infinite; }
+@keyframes aiSpin { to { transform: rotate(360deg); } }
+/* 居委会见证（创建页，移自通知页）：白卡 + 标题/说明 + 适老化大复选框 */
+/* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
+.juwei-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; cursor: pointer; padding: 10rpx 24rpx; margin-top: 40rpx; margin-bottom: 24rpx; }
+.juwei-label { font-size: 32rpx; color: #1f2329; font-weight: 600; }
+.juwei-check { width: 44rpx; height: 44rpx; flex-shrink: 0; accent-color: var(--c-primary-dark); }
 .assist-row { display: flex; gap: 18rpx; margin-bottom: 18rpx; }
 .assist-btn { flex: 1; height: 80rpx; line-height: 80rpx; border-radius: 40rpx; background: #fff; color: #C77800; border: 2rpx solid #FFE0A3; font-size: 28rpx; font-weight: 600; padding: 0 20rpx; margin: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
 .assist-btn.primary { background: #FFA800; color: #fff; border-color: #FFA800; }
@@ -1090,7 +1658,7 @@ onActivated(show)
 .scan-line.ok { color: #27AE60; }
 .clear-link { display: block; margin-top: 14rpx; font-size: 28rpx; color: #666; line-height: 1.5; }
 .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-bottom: 14rpx; }
-.section-title { display: block; font-size: 28rpx; color: #1f2329; font-weight: 700; margin-bottom: 14rpx; line-height: 1.45; word-break: break-all; }
+.section-title { display: block; font-size: 36rpx; color: #1f2329; font-weight: 700; margin-bottom: 14rpx; line-height: 1.45; word-break: break-all; }
 .section-title-row .section-title { margin-bottom: 0; }
 .required-note { font-size: 28rpx; color: #E67E22; line-height: 1.35; white-space: nowrap; }
 
@@ -1101,19 +1669,30 @@ onActivated(show)
 .form-label { display: block; font-size: 28rpx; color: #777; margin-bottom: 12rpx; line-height: 1.45; word-break: break-all; }
 .form-input, .form-textarea { width: 100%; box-sizing: border-box; background: #fff; border-radius: 14rpx; font-size: 32rpx; color: #1f2329; border: 2rpx solid #eeeeee; }
 .form-input { height: 88rpx; min-height: 88rpx; line-height: normal; padding: 0 20rpx; }
-.form-input.large { height: 96rpx; min-height: 96rpx; line-height: normal; font-size: 34rpx; font-weight: 600; }
+.form-input.large { height: 112rpx; min-height: 112rpx; line-height: normal; font-size: 40rpx; font-weight: 600; }
 .form-input::placeholder, .form-textarea::placeholder { color: #666; font-size: 30rpx; line-height: 1.5; }
+/* 会议标题输入框：占位用更淡的灰 + 常规字重（"请输入会议名称"作浅提示） */
+.form-input.large::placeholder { color: #9a9a9a; font-weight: 400; }
 .picker-field { width: 100%; min-height: 88rpx; box-sizing: border-box; background: #fff; border: 2rpx solid #eeeeee; border-radius: 14rpx; padding: 0 20rpx; font-size: 32rpx; color: #1f2329; line-height: normal; word-break: break-all; display: flex; align-items: center; }
 .form-textarea { min-height: 200rpx; height: 200rpx; line-height: 1.5; padding: 18rpx 20rpx; }
 
 .sheet-actions { display: flex; gap: 18rpx; justify-content: space-between; padding-top: 12rpx; }
-.sheet-actions.fixed { padding: 20rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid #f2f2f2; }
+.sheet-actions.fixed { padding: 20rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid #f2f2f2; flex-shrink: 0; }
 .btn, .btn-ghost, .btn-primary { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; text-align: center; font-size: 32rpx; font-weight: 600; box-sizing: border-box; white-space: nowrap; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; }
 .btn-ghost { color: #777; background: #f5f5f5; }
-.btn-primary { color: #fff; background: #FFA800; }
+/* 主按钮统一深橙（与顶栏同色），按下更深 */
+.btn-primary { color: #fff; background: var(--c-primary-dark); }
+.btn-primary:active { background: var(--c-primary-strong); }
 
 /* 议题构建 */
 .topic-empty { text-align: center; padding: 28rpx 0; font-size: 28rpx; color: #666; line-height: 1.6; }
+.topic-line { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 4rpx; }
+.topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
+.topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
+.topic-input-row { margin-top: 6rpx; }
+.topic-input { flex: 1; min-width: 0; }
+.topic-confirm-btn { flex-shrink: 0; height: 88rpx; padding: 0 28rpx; border: none; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 600; }
+.topic-confirm-btn:active { background: var(--c-primary-strong); }
 .ct-option-row { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
 .ct-opt-num { font-size: 28rpx; color: #666; width: 40rpx; text-align: right; flex-shrink: 0; }
 .ct-opt-input { flex: 1; min-width: 0; height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 28rpx; }
@@ -1131,14 +1710,29 @@ onActivated(show)
 /* 标题推荐 + 清空 */
 .title-input-wrap { position: relative; display: flex; align-items: center; }
 .title-input-wrap .form-input { padding-right: 120rpx; }
-.title-clear { position: absolute; right: 14rpx; top: 50%; transform: translateY(-50%); font-size: 26rpx; color: #C77800; background: #FFF1DA; padding: 10rpx 22rpx; border-radius: 24rpx; line-height: 1; }
-.title-suggest { display: flex; align-items: center; gap: 12rpx; margin-top: 16rpx; background: #FFF8EA; border: 2rpx solid #FFE0A3; border-radius: 16rpx; padding: 18rpx 20rpx; }
-.ts-bulb { font-size: 32rpx; flex-shrink: 0; }
-.ts-text { flex: 1; min-width: 0; font-size: 28rpx; color: #8A6500; line-height: 1.45; word-break: break-all; }
-.ts-use { flex-shrink: 0; font-size: 26rpx; color: #fff; background: #FFA800; padding: 10rpx 22rpx; border-radius: 24rpx; font-weight: 600; }
+.title-input-wrap textarea.title-ta { height: auto; min-height: 104rpx; max-height: 168rpx; line-height: 1.45; padding: 22rpx 78rpx 22rpx 20rpx; resize: none; overflow-y: auto; box-sizing: border-box; display: block; }
+.title-ta::-webkit-scrollbar { width: 6rpx; }
+.title-ta::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3rpx; }
+.title-ta::-webkit-scrollbar-track { background: transparent; }
+.title-clear { position: absolute; right: 12rpx; top: 50%; transform: translateY(-50%); font-size: 44rpx; color: #999; line-height: 1; padding: 0 8rpx; cursor: pointer; }
+/* 文本框空时：叉淡化 */
+.title-clear.dim { opacity: 0.25; }
+/* 推荐标题：半透明覆盖在文本框内，点文字自动填入 */
+.title-ghost { position: absolute; left: 20rpx; top: 22rpx; right: 78rpx; font-size: 40rpx; font-weight: 600; color: rgba(31, 32, 36, 0.32); line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+/* 语音输入按钮：文本框右下方 */
+.title-voice-row { display: flex; justify-content: flex-end; margin-top: 14rpx; }
+.voice-input-btn { display: inline-flex; align-items: center; gap: 6rpx; border: 2rpx solid #FFD79A; background: #FFF6E6; color: #C76A00; font-size: 28rpx; font-weight: 600; padding: 10rpx 24rpx; border-radius: 999rpx; line-height: 1.3; }
+.voice-input-btn.on { background: #FFA800; border-color: #FFA800; color: #fff; animation: vi-pulse 1.2s ease-in-out infinite; }
 
 /* 会议地点下拉 */
-.loc-select { width: 100%; appearance: none; -webkit-appearance: none; padding-right: 60rpx; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M5 7l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 20rpx center; }
+.loc-select { width: 100%; margin-top: 16rpx; appearance: none; -webkit-appearance: none; padding-right: 60rpx; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M5 7l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 20rpx center; }
+.loc-row { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; }
+.loc-row .loc-select { flex: 1; min-width: 0; width: auto; margin-top: 0; }
+.loc-map-btn { flex-shrink: 0; width: 96rpx; align-self: stretch; display: flex; align-items: center; justify-content: center; background: #E8F0FE; border: 2rpx solid #1A73E8; border-radius: 16rpx; box-sizing: border-box; }
+.loc-map-btn svg { width: 46rpx; height: 46rpx; display: block; }
+.loc-map-btn:active { background: #D6E4FC; }
+.loc-row .loc-input { flex: 1; min-width: 0; width: auto; }
+.loc-back { display: inline-block; margin-top: 14rpx; font-size: 28rpx; color: var(--c-primary-dark); }
 .loc-other { margin-top: 16rpx; }
 
 /* 日期/时间选择字段 */
@@ -1147,9 +1741,32 @@ onActivated(show)
 .tf-arrow { color: #999; font-size: 28rpx; }
 
 /* 列选择器弹窗（日期/时间共用） */
-.picker-pop-mask { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.42); display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; }
+.picker-pop-mask { position: fixed; inset: 0; z-index: 210; background: rgba(0,0,0,0.42); display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; }
+/* 小日历（月历网格） */
+.cal-pop { width: 86%; max-width: 620rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18rpx; }
+.cal-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
+.cal-nav { width: 76rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; color: var(--c-primary-dark); font-weight: 700; }
+.cal-nav:active { opacity: 0.5; }
+.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8rpx; }
+.cal-wd { text-align: center; font-size: 26rpx; color: #999; padding: 8rpx 0; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6rpx; }
+.cal-cell { height: 78rpx; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #1f2329; border-radius: 12rpx; }
+.cal-cell.empty { visibility: hidden; }
+.cal-cell.today { color: var(--c-primary-dark); font-weight: 700; }
+.cal-cell.on { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
+.cal-cell:not(.empty):not(.on):active { background: var(--c-primary-soft); }
 .picker-pop { width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 24rpx; box-sizing: border-box; }
+/* 时间：大按钮点选网格（免滚动） */
+.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: var(--c-primary-dark); letter-spacing: 2rpx; margin-bottom: 18rpx; }
+.tg-label { font-size: 28rpx; color: #999; margin: 8rpx 2rpx 12rpx; }
+.tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
+.tg-grid-m { margin-bottom: 4rpx; }
+.tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
+.tg-cell.on { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
+.tg-cell:not(.on):active { background: var(--c-primary-soft); }
 .pp-head { text-align: center; font-size: 34rpx; font-weight: 700; color: #1f2329; margin-bottom: 20rpx; }
+.pop-close { display: flex; justify-content: flex-end; margin-bottom: 4rpx; }
 .pp-cols { display: flex; gap: 16rpx; }
 .pp-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pp-col-label { text-align: center; font-size: 28rpx; color: #666; margin-bottom: 10rpx; }
@@ -1158,22 +1775,24 @@ onActivated(show)
 .pp-item.on { color: #fff; background: #FFA800; font-weight: 700; }
 .pp-actions { display: flex; gap: 18rpx; margin-top: 24rpx; }
 
-/* 补充说明折叠入口 */
-.extra-entry { background: #f7f8fa; border: 2rpx solid #ececec; border-radius: 18rpx; padding: 22rpx; margin-bottom: 20rpx; display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
-.extra-entry .prefill-title { display: block; font-size: 30rpx; color: #555; font-weight: 700; line-height: 1.45; }
-.extra-entry .prefill-desc { display: block; font-size: 28rpx; color: #999; margin-top: 6rpx; line-height: 1.45; }
-.extra-entry .prefill-toggle { color: #666; }
 
 /* 议题摘要行 */
-.topic-summary { background: #fff; border: 2rpx solid #eee; border-radius: 18rpx; padding: 22rpx; margin-top: 16rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.ts-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; }
-.ts-num { font-size: 26rpx; color: #C77800; font-weight: 600; }
-.ts-title { font-size: 30rpx; color: #1f2329; line-height: 1.4; word-break: break-all; }
-.ts-meta { display: flex; align-items: center; gap: 10rpx; flex-shrink: 0; }
-.ts-badge { font-size: 26rpx; color: #C77800; background: #FFF6E5; padding: 8rpx 16rpx; border-radius: 20rpx; white-space: nowrap; }
+.topic-summary { background: #fff; border: 2rpx solid #eee; border-radius: 18rpx; padding: 22rpx 24rpx; margin-top: 16rpx; }
+.ts-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-bottom: 14rpx; }
+.ts-num { font-size: 26rpx; color: #8a9099; font-weight: 600; }
+.ts-title { font-size: 32rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
+.ts-badge { font-size: 25rpx; padding: 6rpx 18rpx; border-radius: 20rpx; white-space: nowrap; line-height: 1.5; }
+.ts-badge.badge-notice { color: #0C447C; background: #E6F1FB; }
+.ts-badge.badge-discussion { color: #085041; background: #E1F5EE; }
+.ts-badge.badge-decision { color: #3C3489; background: #EEEDFE; }
+.ts-actions { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx solid #f0f0f0; }
+.ts-edit-btn { font-size: 27rpx; color: #C77800; background: #fff; border: 2rpx solid #F0A020; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
+.ts-edit-btn:active { background: #FFF6E5; }
+.ts-del-btn { font-size: 27rpx; color: #C0392B; background: #fff; border: 2rpx solid #E6B0AA; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
+.ts-del-btn:active { background: #FDF2F0; }
 
 /* 议题编辑弹窗 */
-.topic-dialog-mask { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.42); display: flex; align-items: flex-end; }
+.topic-dialog-mask { position: fixed; inset: 0; z-index: 210; background: rgba(0,0,0,0.42); display: flex; align-items: flex-end; }
 .topic-dialog { width: 100%; background: #fff; border-radius: 28rpx 28rpx 0 0; max-height: 88vh; display: flex; flex-direction: column; }
 .td-head { display: flex; align-items: center; justify-content: space-between; padding: 28rpx 28rpx 18rpx; border-bottom: 2rpx solid #f2f2f2; }
 .td-title { font-size: 34rpx; font-weight: 700; color: #1f2329; }
@@ -1204,11 +1823,12 @@ onActivated(show)
 }
 
 /* 议题双按钮行 */
+.topic-add-label { display: block; font-size: 28rpx; color: #8a9099; font-weight: 600; margin-top: 20rpx; margin-bottom: 8rpx; }
 .topic-add-row { display: flex; gap: 20rpx; margin-top: 8rpx; }
 .topic-add-btn { flex: 1; height: 80rpx; font-size: 30rpx; border-radius: 16rpx; }
 
 /* 流式语音输入弹窗 */
-.voice-modal-mask { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; }
+.voice-modal-mask { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; }
 .voice-modal {
   width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
   padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom));

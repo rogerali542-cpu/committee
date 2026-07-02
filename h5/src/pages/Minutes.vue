@@ -38,7 +38,7 @@
 
     <!-- 首次创建纪要（手写 / 尚无正式纪要时编辑）：整屏只显示干净编辑器，不预填合成内容 -->
     <div v-else-if="editMode && !hasServerMinutes && !isOwner" class="doc">
-      <span class="doc-title">业主委员会会议纪要</span>
+      <span class="doc-title">会议纪要</span>
       <div class="edit-block">
         <textarea
           class="edit-textarea"
@@ -55,9 +55,9 @@
     <!-- 业主大会纪要（纯文本） -->
     <div v-else-if="isOwner && plainText" class="doc">
       <span class="doc-title">业主大会会议纪要</span>
-      <span class="doc-body">{{ plainText }}</span>
+      <span class="doc-body">{{ prettyText }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
-        <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认纪要无误，结束会议</button>
+        <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
         <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" :class="{ ghost: minutes && minutes.draft }" @click="startEdit">编辑纪要</button>
         <button class="copy-btn" @click="copyText">复制全文</button>
       </div>
@@ -65,18 +65,18 @@
 
     <!-- 业委会纪要：优先展示后端保存的大模型/人工编辑正文 -->
     <div v-else-if="!isOwner && hasServerMinutes && plainText" class="doc">
-      <div v-if="minutes && minutes.draft" class="draft-banner">草稿 · 会议进行中，结束后定稿</div>
-      <span class="doc-title">业主委员会会议纪要</span>
-      <span class="doc-body">{{ plainText }}</span>
+      <span class="doc-body-title">{{ prettyTitle }}</span>
+      <span class="doc-body">{{ prettyBody }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
-        <!-- 两个主操作：确认(结束会议) / 编辑(改完再确认结束) -->
-        <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认纪要无误，结束会议</button>
-        <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" @click="startEdit">编辑纪要</button>
+        <!-- 两个主操作：确认 / 编辑，并排缩小 -->
+        <div class="action-row">
+          <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
+          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" @click="startEdit">编辑纪要</button>
+        </div>
         <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
         <div class="more-links">
-          <span class="more-link" @click="copyText">复制全文</span>
+          <span class="more-link primary-link" @click="copyText">复制全文</span>
           <span v-if="canViewInternalArtifacts" class="more-link primary-link" @click="viewTodoList">待办事项</span>
-          <span v-if="canViewInternalArtifacts" class="more-link" @click="viewInternalTopicReport">内部议题报告</span>
           <span v-if="canReviseMinutes" class="more-link" @click="startRevise">发起修订</span>
           <span v-if="canReviseMinutes" class="more-link" @click="viewRevisions">修订历史</span>
         </div>
@@ -85,12 +85,6 @@
 
     <!-- 委员会纪要（结构化） -->
     <div v-else-if="minutes && !isOwner" class="doc">
-      <!-- 草稿标识 -->
-      <div v-if="minutes.draft" class="draft-banner">草稿 · 会议进行中，结束后定稿</div>
-
-      <!-- 标题 -->
-      <span class="doc-title">业主委员会会议纪要</span>
-
       <!-- 头部信息 -->
       <div class="doc-head">
         <div class="dh-row"><span class="dh-key">会议名称</span><span class="dh-val">{{ minutes.meetingTitle }}</span></div>
@@ -158,14 +152,15 @@
       <span class="doc-foot">本纪要由系统根据会议记录自动生成 · {{ minutes.draft ? '草稿' : '已定稿' }}</span>
 
       <div class="minutes-actions" v-if="!aiGenerating">
-        <!-- 两个主操作：确认(结束会议) / 编辑(改完再确认结束) -->
-        <button v-if="canEditMinutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认纪要无误，结束会议</button>
-        <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" @click="startEdit">编辑纪要</button>
+        <!-- 两个主操作：确认 / 编辑，并排缩小 -->
+        <div class="action-row">
+          <button v-if="canEditMinutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
+          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" @click="startEdit">编辑纪要</button>
+        </div>
         <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
         <div class="more-links">
-          <span class="more-link" @click="copyText">复制全文</span>
+          <span class="more-link primary-link" @click="copyText">复制全文</span>
           <span v-if="canViewInternalArtifacts" class="more-link primary-link" @click="viewTodoList">待办事项</span>
-          <span v-if="canViewInternalArtifacts" class="more-link" @click="viewInternalTopicReport">内部议题报告</span>
           <span v-if="canReviseMinutes" class="more-link" @click="startRevise">发起修订</span>
           <span v-if="canReviseMinutes" class="more-link" @click="viewRevisions">修订历史</span>
         </div>
@@ -177,19 +172,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, hideToast, showModal, showLoading, hideLoading } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
+import PageNav from '@/components/PageNav.vue'
 
 const route = useRoute()
 
 // data
 const minutes = ref(null)
 const plainText = ref('')
+// 正文展示：去掉 AI 纪要里的 Markdown 标题标记（行首的 # / ##），纯文本更干净
+const prettyText = computed(() => String(plainText.value || '').replace(/^[ \t]*#{1,6}[ \t]*/gm, ''))
+// 第一行（xxx会议纪要）作标题，大字加粗；其余作正文
+const prettyTitle = computed(() => (String(prettyText.value || '').split('\n')[0] || '').trim())
+const prettyBody = computed(() => String(prettyText.value || '').split('\n').slice(1).join('\n').replace(/^\s*\n/, ''))
 const editMode = ref(false)
 const editText = ref('')
 const isChair = ref(false)
@@ -628,6 +629,8 @@ function viewTodoList() {
 </script>
 
 <style scoped>
+/* 顶栏统一为纯深橙（与其他页一致，覆盖 PageNav 默认黄橙渐变） */
+:deep(.page-nav) { background: var(--c-primary-dark); }
 .page { min-height:100vh; background:#f4f5f7; padding:24rpx 24rpx 100rpx; box-sizing:border-box; }
 .doc { background:#fff; border-radius:24rpx; padding:36rpx 32rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .access-card { background:#fff; border-radius:24rpx; padding:64rpx 36rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); text-align:center; }
@@ -647,6 +650,8 @@ function viewTodoList() {
 .doc-title { font-size:42rpx; font-weight:700; text-align:center; display:block; margin-bottom:28rpx; color:#1f2329; }
 
 /* 文档正文（阅读友好） */
+/* 正文第一行作标题：字号加大三号、黑体加粗、居中 */
+.doc-body-title { display:block; font-size:46rpx; font-weight:700; color:#1a1a1a; text-align:center; line-height:1.4; padding:8rpx 0 4rpx; }
 .doc-body { display:block; font-size:34rpx; color:#33373d; line-height:1.9; white-space:pre-wrap; padding:24rpx 0; }
 
 .doc-head { margin-bottom:28rpx; }
@@ -704,11 +709,14 @@ function viewTodoList() {
 
 /* 操作区 */
 .minutes-actions { display:flex; flex-direction:column; align-items:stretch; gap:16rpx; margin-top:28rpx; }
-/* 会议进行中：确认无误并结束会议=主操作（绿色，强调"完成") */
-.end-meeting-btn { width:100%; padding:24rpx 0; background:#27AE60; color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
-/* 编辑=主（橙色填充）；会议进行中时降为次要描边(.ghost) */
-.edit-minutes-btn { width:100%; padding:24rpx 0; background:#FFA800; color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
-.edit-minutes-btn.ghost { background:#fff; color:#C77800; border:2rpx solid #FFA800; padding:22rpx 0; font-size:32rpx; font-weight:600; }
+/* 确认无误 / 编辑纪要：两个主操作并排缩小，统一深橙填充按钮 */
+.action-row { display:flex; gap:20rpx; }
+.action-row .end-meeting-btn, .action-row .edit-minutes-btn { flex:1; width:auto; padding:20rpx 0; font-size:32rpx; }
+.end-meeting-btn { width:100%; padding:24rpx 0; background:var(--c-primary-dark); color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
+.end-meeting-btn:active { background:var(--c-primary-strong); }
+.edit-minutes-btn { width:100%; padding:24rpx 0; background:var(--c-primary-dark); color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
+.edit-minutes-btn:active { background:var(--c-primary-strong); }
+.edit-minutes-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); padding:22rpx 0; font-size:32rpx; font-weight:600; }
 .copy-btn { width:100%; padding:22rpx 0; text-align:center; background:#fff; color:#C77800; border:2rpx solid #FFA800; border-radius:44rpx; font-size:30rpx; font-weight:600; }
 .more-links { display:flex; flex-wrap:wrap; justify-content:center; gap:16rpx 28rpx; margin-top:12rpx; }
 .more-link { font-size:28rpx; color:#666; padding:10rpx 8rpx; }

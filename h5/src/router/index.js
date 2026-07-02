@@ -5,18 +5,18 @@ const Placeholder = () => import('@/pages/Placeholder.vue')
 
 // 按 miniapp/app.json 的 25 个页面建路由。除录音页 meeting-live-quick（第三期）外均已迁移为实页。
 const routes = [
-  { path: '/', redirect: '/community-home' },
+  { path: '/', redirect: '/main' },
   { path: '/login', component: () => import('@/pages/Login.vue'), meta: { title: '登录', noAuth: true } },
 
-  // tabBar 三页
-  { path: '/community-home', component: () => import('@/pages/CommunityHome.vue'), meta: { title: '小区首页', tab: true } },
-  { path: '/main', component: () => import('@/pages/Main.vue'), meta: { title: '业委会', tab: true } },
+  // tabBar 两页（小区首页已移除）
+  { path: '/main', component: () => import('@/pages/Committee.vue'), meta: { title: '业委会', tab: true } },
   { path: '/profile', component: () => import('@/pages/Profile.vue'), meta: { title: '个人中心', tab: true } },
 
-  // 核心主线
-  { path: '/committee', component: () => import('@/pages/Committee.vue'), meta: { title: '会议管理' } },
+  // 核心主线（原"业委会/会议管理"页已并入主页 /main）
+  { path: '/committee', redirect: '/main' },
   { path: '/committee-detail', component: () => import('@/pages/CommitteeDetail.vue'), meta: { title: '会议详情' } },
   { path: '/minutes', component: () => import('@/pages/Minutes.vue'), meta: { title: '会议纪要' } },
+  { path: '/news', component: () => import('@/pages/News.vue'), meta: { title: '党建新闻' } },
   { path: '/minutes-public', component: () => import('@/pages/MinutesPublic.vue'), meta: { title: '公开纪要' } },
   { path: '/minutes-internal', component: () => import('@/pages/MinutesInternal.vue'), meta: { title: '内部总结' } },
   { path: '/minutes-todos', component: () => import('@/pages/MinutesTodos.vue'), meta: { title: '待办事项' } },
@@ -35,7 +35,6 @@ const routes = [
   { path: '/property-tasks', component: () => import('@/pages/PropertyTasks.vue'), meta: { title: '物业任务' } },
   { path: '/property-board', component: () => import('@/pages/PropertyBoard.vue'), meta: { title: '物业看板' } },
   { path: '/archive-detail', component: () => import('@/pages/ArchiveDetail.vue'), meta: { title: '归档详情' } },
-  { path: '/notice-admin', component: () => import('@/pages/NoticeAdmin.vue'), meta: { title: '公告管理' } },
   { path: '/admin', component: () => import('@/pages/Admin.vue'), meta: { title: '管理后台' } },
 
   { path: '/:pathMatch(.*)*', redirect: '/main' }

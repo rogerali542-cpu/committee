@@ -1,5 +1,27 @@
 /* 全局样式 - 业委专区（自 miniapp/app.wxss 1:1 迁移）
-   原则：留白优先 · 颜色克制 · 圆角统一 · 卡片轻阴影。rpx 由 postcss 自动转 vw。 */
+   原则：单一主色(暖橙) · 中性灰阶承重 · ≤3语义色且小面积 · 留白/层级代替颜色。rpx 由 postcss 自动转 vw。 */
+
+:root {
+  /* ===== 主色（品牌暖橙·双 token） ===== */
+  --c-primary:        #C76A00; /* 橙填充底：顶栏/进度/大色块（白字仅3.83:1→只配深墨字或≥18pt大字） */
+  --c-primary-dark:   #A85800; /* 实心白字按钮底(5.17:1) + 橙色文字/图标/描边/链接。橙做底用 --c-primary、橙当字用本档，二者不叠放 */
+  --c-primary-strong: #8F4A06; /* 关键/危险确认大按钮底(白字6.67:1) */
+  --c-primary-soft:   #FFF3E0; /* 极浅橙底：选中/分区/警告浅底复用，仅底色不做渐变 */
+
+  /* ===== 中性灰阶（承重·大面积） ===== */
+  --c-text-strong: #1F2329; /* 正文/标题 */
+  --c-text-mid:    #4A5560; /* 次要文字主力(≈7:1) */
+  --c-text-weak:   #5C6672; /* 三级弱信息(时间戳等，仍≥4.5)；禁用更浅灰承载文字 */
+  --c-bg-page:     #F4F5F7;
+  --c-bg-card:     #FFFFFF;
+  --c-border:      #E3E5E9; /* 装饰分隔线 */
+  --c-border-focus:#808A96; /* 输入框/焦点圈(非文字≥3:1) */
+
+  /* ===== 语义色（恰好3个·低饱和·小面积·必配文字/图标） ===== */
+  --c-danger:       #C0392B; --c-danger-soft:  #FBEDEB;
+  --c-success:      #1E7E4E; --c-success-fill: #2E8B57; --c-success-soft: #ECF6F0;
+  --c-warning:      #8A5800; --c-warning-soft: #FFF3E0;
+}
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -7,9 +29,9 @@ html, body, #app { margin: 0; padding: 0; min-height: 100%; }
 
 body {
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
-  background: #f5f5f7;
+  background: var(--c-bg-page);
   font-size: 28rpx;
-  color: #1a1a1a;
+  color: var(--c-text-strong);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -18,30 +40,30 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 textarea, input { font-family: inherit; }
 
 /* ========== 卡片 ========== */
-.card { background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.card { background: var(--c-bg-card); border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
 
 /* ========== 按钮 ========== */
 .btn {
   padding: 10px 20px; border-radius: 22px; font-size: 28rpx; font-weight: 500;
   display: inline-flex; align-items: center; justify-content: center; border: none; margin: 0;
 }
-.btn-primary { background: #FFA800; color: #fff; }
-.btn-outline { background: #fff; color: #FFA800; border: 1px solid #FFA800; }
-.btn-ghost   { background: #f5f5f5; color: #666; }
-.btn-danger  { background: #E74C3C; color: #fff; }
-.btn-warn    { background: #E67E22; color: #fff; }
-.btn-disabled { background: #e8e8e8; color: #666; }
+.btn-primary { background: var(--c-primary-dark); color: #fff; }
+.btn-outline { background: var(--c-bg-card); color: var(--c-primary-dark); border: 1px solid var(--c-primary-dark); }
+.btn-ghost   { background: #EFF0F2; color: var(--c-text-mid); }
+.btn-danger  { background: var(--c-danger); color: #fff; }
+.btn-warn    { background: var(--c-warning); color: #fff; }
+.btn-disabled { background: #E8E8E8; color: var(--c-text-weak); }
 
-/* ========== 阶段标签 ========== */
+/* ========== 阶段标签（小面积·底+同色深字） ========== */
 .stage-pill { font-size: 28rpx; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-.stage-pill.preparing { background: #FFF3E0; color: #E67E22; }
-.stage-pill.ongoing   { background: #EBF5FB; color: #2980B9; }
-.stage-pill.ended     { background: #f0f0f0; color: #666; }
-.stage-pill.invalid   { background: #FDECEA; color: #E74C3C; }
+.stage-pill.preparing { background: var(--c-warning-soft); color: var(--c-warning); }
+.stage-pill.ongoing   { background: var(--c-primary-soft); color: var(--c-primary-dark); }
+.stage-pill.ended     { background: #F0F1F3; color: var(--c-text-mid); }
+.stage-pill.invalid   { background: var(--c-danger-soft); color: var(--c-danger); }
 
 /* ========== 空状态 ========== */
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; color: #666; font-size: 28rpx; }
-.mc-dot { color: #666; margin: 0 2px; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; color: var(--c-text-mid); font-size: 28rpx; }
+.mc-dot { color: var(--c-text-mid); margin: 0 2px; }
 
 /* tab 页底部为 TabBar 让位 */
 .has-tabbar { padding-bottom: calc(110rpx + env(safe-area-inset-bottom)); }

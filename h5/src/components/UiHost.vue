@@ -17,7 +17,7 @@
 
   <!-- Modal -->
   <div v-if="uiState.modal" class="ui-mask" @click.self="onCancel">
-    <div class="ui-modal">
+    <div class="ui-modal" :class="uiState.modal.size">
       <div class="ui-modal-title">{{ uiState.modal.title }}</div>
       <div v-if="!uiState.modal.editable" class="ui-modal-content">{{ uiState.modal.content }}</div>
       <textarea v-else class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
@@ -71,6 +71,12 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal-btn { flex: 1; padding: 28rpx 0; font-size: 32rpx; background: none; }
 .ui-modal-btn.cancel { color: #666; border-right: 1rpx solid #eee; }
 .ui-modal-btn.confirm { color: #FFA800; font-weight: 600; }
+/* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
+.ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
+.ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }
+.ui-modal.large .ui-modal-content { font-size: 36rpx; color: #000; line-height: 1.8; margin-top: 28rpx; }
+.ui-modal.large .ui-modal-actions { margin-top: 48rpx; }
+.ui-modal.large .ui-modal-btn { padding: 34rpx 0; font-size: 38rpx; font-weight: 700; }
 
 .ui-sheet { width: 100%; background: #f4f4f6; padding-bottom: env(safe-area-inset-bottom); }
 .ui-sheet-item { display: block; width: 100%; padding: 32rpx 0; font-size: 32rpx; background: #fff; border-bottom: 1rpx solid #eee; color: #1a1a1a; }

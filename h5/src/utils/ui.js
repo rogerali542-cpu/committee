@@ -36,6 +36,7 @@ export function showModal(opts = {}) {
       showCancel: opts.showCancel !== false,
       editable: !!opts.editable,
       placeholderText: opts.placeholderText || '',
+      size: opts.size || '',   // 'large' = 加大版（识别结果等重要确认框用）
       _resolve: resolve
     }
   })

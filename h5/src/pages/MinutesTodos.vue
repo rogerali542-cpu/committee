@@ -1,37 +1,36 @@
 <template>
   <div class="todos-page" style="overflow-y:auto;">
-    <PageNav title="待办事项" style="display:block;margin:-24rpx -24rpx 0;" />
+    <PageNav title="待办事项" />
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <div v-else-if="emptyText" class="access-card">
       <div class="access-icon">✓</div>
       <span class="access-title">暂无待办</span>
-      <span class="access-text">{{ emptyText }}</span>
     </div>
 
     <template v-else>
-      <div class="info-banner">内部资料 · 会议待办事项，仅供业委会内部跟踪</div>
-
-      <div class="todo-card" v-for="(item, index) in cards" :key="index">
+      <div class="todo-card" v-for="(item, index) in cards" :key="item.id || index">
         <div class="todo-top">
           <span class="todo-idx">{{ index + 1 }}</span>
           <span class="todo-title">{{ item.title }}</span>
         </div>
-        <div class="todo-meta" v-if="item.owner || item.due">
+        <div class="todo-meta" v-if="item.owner || item.dueText">
           <div class="meta-item" v-if="item.owner"><span class="meta-label">负责人</span><span class="meta-val">{{ item.owner }}</span></div>
-          <div class="meta-item" v-if="item.due"><span class="meta-label">截止</span><span class="meta-val">{{ item.due }}</span></div>
+          <div class="meta-item" v-if="item.dueText"><span class="meta-label">截止</span><span class="meta-val" :class="{ 'due-urgent': item.dueUrgent }">{{ item.dueText }}{{ item.dueUrgent ? ' ⚠' : '' }}</span></div>
         </div>
-        <span class="todo-source" v-if="item.source">来源 · {{ item.source }}</span>
-        <span class="todo-status" :class="'status-' + item.statusType" v-if="item.status">{{ item.status }}</span>
+
+        <!-- 状态回复：三个大按钮，点一下即更新并留痕 -->
+        <div class="todo-actions" v-if="item.id">
+          <button v-for="opt in STATUS_OPTS" :key="opt.key"
+                  class="status-btn" :class="['sb-' + opt.key, { active: item.status === opt.key }]"
+                  @click="setStatus(item, opt.key)">{{ opt.label }}</button>
+        </div>
+        <div class="todo-trace" v-if="item.lastActorName">{{ item.lastActorName }} · {{ item.updatedAt }} 更新</div>
       </div>
 
       <!-- 解析失败兜底：整段原文 -->
       <div class="doc" v-if="rawText">
         <span class="doc-body">{{ rawText }}</span>
-      </div>
-
-      <div class="actions">
-        <button class="btn-primary copy-btn" @click="copyTodos">复制待办全文</button>
       </div>
     </template>
   </div>
@@ -44,9 +43,15 @@ import api from '@/api'
 import { toast } from '@/utils/ui'
 import PageNav from '@/components/PageNav.vue'
 
-// 会议待办事项独立页：把后端 todoListText 解析成结构化卡片清单展示。
-// 兼容两种后端格式：① Markdown 表格（LLM 常用）② 编号 + “字段：值” 列表（规则兜底）。
-// 两者都解析不出时整段兜底，避免比 showModal 更糟。
+// 待办独立页：优先用后端结构化待办（每条带 id、可点按钮改状态、留痕操作人）。
+// 首次未固化时，复用下方解析逻辑把 AI 待办文本拆成卡片、回传后端固化，拿到带 id 的记录。
+// 两者都解析不出时整段原文兜底。
+
+const STATUS_OPTS = [
+  { key: 'todo', label: '没空' },
+  { key: 'doing', label: '我在做' },
+  { key: 'done', label: '已完成' }
+]
 
 function statusType(s) {
   if (!s) return 'pending'
@@ -54,8 +59,12 @@ function statusType(s) {
   if (/(进行|处理中)/.test(s)) return 'doing'
   return 'pending'
 }
+function statusKey(s) {
+  const t = statusType(s)
+  return t === 'done' ? 'done' : t === 'doing' ? 'doing' : 'todo'
+}
 
-// “未明确说明 / 无 / — / -” 等占位值视为空，卡片上不显示
+// "未明确说明 / 无 / — / -" 等占位值视为空，卡片上不显示
 const BLANK_RE = /^(未明确说明|未明确|未说明|暂无|无|—+|-+|\/|待定)$/
 function cellVal(v) {
   const s = (v || '').trim().replace(/\*+/g, '')
@@ -88,7 +97,7 @@ function parseTable(text) {
     .filter(function (cells) { return cells.length >= 2 })
   if (rows.length < 2) return null
   const keys = rows[0].map(colKey)
-  if (keys.indexOf('title') < 0) return null   // 没识别出“事项”列，不按表格处理
+  if (keys.indexOf('title') < 0) return null   // 没识别出"事项"列，不按表格处理
   const cards = []
   for (let i = 1; i < rows.length; i++) {
     const cells = rows[i]
@@ -106,7 +115,7 @@ function parseTable(text) {
   return cards.length ? cards : null
 }
 
-// —— 编号 + “字段：值” 列表解析（规则兜底格式）——
+// —— 编号 + "字段：值" 列表解析（规则兜底格式）——
 const STOP = '(?=[；;]|负责人[:：]|截止时间[:：]|截止[:：]|完成时间[:：]|来源议题[:：]|来源[:：]|状态[:：]|事项[:：]|$)'
 const LABELS = ['负责人', '截止时间', '截止', '完成时间', '来源议题', '来源', '状态', '事项']
 function pick(block, label) {
@@ -121,7 +130,7 @@ function parseOne(block) {
   const source = pick(block, '来源议题') || pick(block, '来源')
   let title = pick(block, '事项')
   if (!title) {
-    // 无“事项：”标签时，剥掉已识别字段段，剩下的主体作为标题
+    // 无"事项："标签时，剥掉已识别字段段，剩下的主体作为标题
     let t = block.replace(/\*+/g, '')
     LABELS.forEach(function (lab) { t = t.replace(new RegExp(lab + '[:：][^；;\\n]*[；;]?', 'g'), '') })
     title = t.replace(/[；;]+/g, ' ').trim()
@@ -168,32 +177,64 @@ const rawText = ref('')
 const emptyText = ref('')
 
 let meetingId = null
-let fullText = ''
 
-async function load() {
-  let text = ''
-  try { text = await api.committeeQuickTodos(meetingId) } catch (e) {}
-  text = text && String(text).trim()
-  fullText = text || ''
-  if (!text || /^[#\s]*(本次会议)?\s*无(明确)?待办/.test(text)) {
-    loading.value = false
-    cards.value = []
-    rawText.value = ''
-    emptyText.value = '本次会议无明确待办事项。'
-    return
-  }
-  const result = parseTodos(text)
-  loading.value = false
-  cards.value = result
-  rawText.value = result.length ? '' : text   // 解析不出卡片时整段兜底
-  emptyText.value = ''
+// 截止日期临近（≤3 天）标红警示。dueText 为文本，能解析成日期才判定。
+function markDueUrgent(list) {
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  list.forEach(c => {
+    if (c.dueText) { const d = new Date(c.dueText); c.dueUrgent = !isNaN(d) && (d - today) / 86400000 <= 3 }
+  })
+  return list
 }
 
-async function copyTodos() {
-  const text = fullText
-  if (!text) return
-  await navigator.clipboard.writeText(text)
-  toast({ title: '已复制' })
+async function load() {
+  try {
+    const res = await api.committeeTodoList(meetingId)
+    let items = (res && res.items) || []
+    if (!items.length) {
+      // 未固化：用 raw（AI 待办原文）解析后回传固化
+      const text = res && res.raw ? String(res.raw).trim() : ''
+      if (!text || /^[#\s]*(本次会议)?\s*无(明确)?待办/.test(text)) {
+        loading.value = false; cards.value = []; rawText.value = ''
+        emptyText.value = '本次会议无明确待办事项。'
+        return
+      }
+      const parsed = parseTodos(text)
+      if (parsed.length) {
+        const payload = parsed.map(c => ({ title: c.title, owner: c.owner, dueText: c.due, status: c.status }))
+        try {
+          items = (await api.committeeTodoInit(meetingId, payload)) || []
+        } catch (e) {
+          // 固化失败：降级展示解析结果（无 id，按钮不可用）
+          items = parsed.map(c => ({ title: c.title, owner: c.owner, dueText: c.due, status: statusKey(c.status) }))
+        }
+      } else {
+        loading.value = false; cards.value = []; rawText.value = text; emptyText.value = ''
+        return
+      }
+    }
+    cards.value = markDueUrgent(items)
+    rawText.value = ''
+    emptyText.value = items.length ? '' : '本次会议无明确待办事项。'
+  } catch (e) {
+    cards.value = []; rawText.value = ''
+    emptyText.value = '加载失败，请稍后重试'
+  }
+  loading.value = false
+}
+
+// 委员点按钮改状态：乐观更新 + 失败回滚，成功后回填留痕信息。
+async function setStatus(item, key) {
+  if (!item.id || item.status === key) return
+  const prev = item.status
+  item.status = key
+  try {
+    const res = await api.committeeTodoStatus(meetingId, item.id, key)
+    if (res) { item.lastActorName = res.lastActorName; item.updatedAt = res.updatedAt }
+  } catch (e) {
+    item.status = prev
+    toast({ title: e.message || '更新失败', icon: 'none' })
+  }
 }
 
 onMounted(() => {
@@ -208,35 +249,33 @@ onMounted(() => {
 </script>
 
 <style scoped>
+:deep(.page-nav) { background: var(--c-primary-dark); }
 .todos-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 100rpx; box-sizing: border-box; }
 
-.info-banner { background: #F1EEFB; color: #6B4FBB; font-size: 28rpx; font-weight: 600; text-align: center; padding: 18rpx 20rpx; border-radius: 14rpx; margin-bottom: 20rpx; }
-
-.todo-card { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
+.todo-card { background: #fff; border-radius: 16px; padding: 22px 20px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .todo-top { display: flex; align-items: flex-start; }
-.todo-idx { flex: none; width: 44rpx; height: 44rpx; line-height: 44rpx; text-align: center; border-radius: 50%; background: #6B4FBB; color: #fff; font-size: 28rpx; margin-right: 16rpx; margin-top: 2rpx; }
-.todo-title { flex: 1; font-size: 34rpx; font-weight: 600; color: #222; line-height: 1.5; }
-.todo-meta { display: flex; flex-wrap: wrap; margin: 16rpx 0 0 60rpx; }
-.meta-item { display: flex; align-items: center; font-size: 28rpx; margin-right: 32rpx; margin-top: 4rpx; }
-.meta-label { color: #666; margin-right: 10rpx; }
-.meta-val { color: #444; }
-.todo-source { display: block; font-size: 28rpx; color: #666; margin: 12rpx 0 0 60rpx; }
-.todo-status { display: inline-block; margin: 14rpx 0 0 60rpx; font-size: 28rpx; padding: 6rpx 18rpx; border-radius: 14rpx; }
-.status-pending { background: #FFF3E0; color: #E67E22; }
-.status-doing { background: #E8F1FF; color: #2F6BD8; }
-.status-done { background: #E8F7EC; color: #2B9E55; }
+.todo-idx { flex: none; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 50%; background: #1A4A8A; color: #fff; font-size: 18px; font-weight: 700; margin-right: 14px; margin-top: 2px; }
+.todo-title { flex: 1; font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1.55; }
+.todo-meta { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0 48px; }
+.meta-item { display: flex; align-items: center; font-size: 19px; font-weight: 600; }
+.meta-label { color: #555; margin-right: 8px; }
+.meta-val { color: #222; }
+.due-urgent { color: #CC0000; font-weight: 700; }
+
+/* 状态回复按钮：大、间距足、当前态高亮，方便老年人辨认与点击 */
+.todo-actions { display: flex; gap: 10px; margin: 18px 0 0 48px; }
+.status-btn { flex: 1; height: 54px; border-radius: 12px; border: 2px solid #e0e0e0; background: #fff; font-size: 19px; font-weight: 700; color: #999; cursor: pointer; }
+.status-btn.active.sb-todo { background: #FDDCB5; border-color: #E8A04D; color: #B34800; }
+.status-btn.active.sb-doing { background: #C8DEFF; border-color: #5B8DEF; color: #1249A8; }
+.status-btn.active.sb-done { background: #B8EDD0; border-color: #4CB377; color: #146B36; }
+.todo-trace { font-size: 15px; color: #999; margin: 12px 0 0 48px; }
 
 .access-card { background: #fff; border-radius: 24rpx; padding: 64rpx 36rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .access-icon { width: 96rpx; height: 96rpx; border-radius: 50%; background: #E8F7EC; color: #2B9E55; display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx; font-weight: 700; }
 .access-title { display: block; font-size: 38rpx; color: #1f2329; font-weight: 700; margin-bottom: 14rpx; }
-.access-text { display: block; font-size: 30rpx; color: #666; line-height: 1.7; }
 
 .doc { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; margin-top: 8rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .doc-body { display: block; font-size: 32rpx; color: #33373d; line-height: 1.9; white-space: pre-wrap; word-break: break-word; }
-
-.actions { margin-top: 20rpx; }
-.copy-btn { width: 100%; }
-.btn-primary { background: #FFA800; color: #fff; border-radius: 18rpx; font-size: 34rpx; font-weight: 600; height: 96rpx; line-height: 96rpx; }
 
 .empty-state { text-align: center; color: #666; font-size: 32rpx; padding: 80rpx 0; }
 </style>
