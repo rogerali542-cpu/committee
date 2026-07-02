@@ -241,6 +241,16 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 认领/指派 AI 提炼的现场意见：不带 userRoleId 是本人认领；带 userRoleId 仅主任/副主任可指派。 */
+    @PutMapping("/{id}/opinions/{opinionId}/claim")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Map<String, Object>> claimOpinion(@PathVariable Long id, @PathVariable Long opinionId,
+                                                    @RequestBody(required = false) Map<String, Object> req) {
+        Object v = req == null ? null : req.get("userRoleId");
+        Long assign = v == null ? null : Long.valueOf(String.valueOf(v));
+        return Result.ok(service.claimOpinion(id, opinionId, assign));
+    }
+
     /** 意见 AI 助手：mode=polish 润色已有意见 / mode=draft 按口头描述代拟发言。只回文本不入库。 */
     @PostMapping("/{id}/topics/{topicId}/opinions/assist")
     @RequireRole({"主任", "副主任", "委员"})

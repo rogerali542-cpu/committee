@@ -48,10 +48,15 @@
             <span class="ts-op-name">{{ op.name }}</span>
             <span v-if="op.role" class="ts-op-role">{{ op.role }}</span>
             <span class="ts-op-src" :class="op.source">{{ srcLabel(op.source) }}</span>
+            <span v-if="op.claimable" class="ts-op-claim-tag">待认领</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
             <span v-if="op.canDelete" class="ts-op-del" @click="removeOpinion(op)">删除</span>
           </div>
           <div class="ts-op-content">{{ op.content }}</div>
+          <!-- AI 从现场发言提炼、还没归属到人：本人一键认领 -->
+          <div v-if="op.claimable" class="ts-op-claimrow">
+            <button class="ts-op-claim-btn" @click="claimOpinion(op)">🙋 是我说的</button>
+          </div>
         </div>
       </div>
 
@@ -291,6 +296,23 @@ async function submitOpinion() {
   } catch (e) { /* 已 toast */ } finally { sending.value = false }
 }
 
+// 认领 AI 提炼的现场意见：归属到自己名下（之后可自行修改/删除）
+async function claimOpinion(op) {
+  const res = await showModal({
+    title: '认领这条发言？',
+    content: '确认是你在会上说的，认领后会记在你名下：\n' + (op.content.length > 60 ? op.content.slice(0, 60) + '…' : op.content),
+    confirmText: '是我说的',
+    cancelText: '不是'
+  })
+  if (!res.confirm) return
+  try {
+    const updated = await api.committeeClaimOpinion(props.meetingId, op.id)
+    opinions.value = opinions.value.map(o => o.id === op.id ? updated : o)
+    toast({ title: '已认领', icon: 'success' })
+    emit('changed')
+  } catch (e) { toast({ title: (e && e.message) || '认领失败', icon: 'none' }) }
+}
+
 async function removeOpinion(op) {
   const res = await showModal({ title: '删除这条意见？', content: op.content.length > 40 ? op.content.slice(0, 40) + '…' : op.content, confirmText: '删除', cancelText: '取消' })
   if (!res.confirm) return
@@ -340,6 +362,10 @@ async function removeOpinion(op) {
 .ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
 .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 4rpx 8rpx; }
 .ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; }
+.ts-op-claim-tag { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; }
+.ts-op-claimrow { margin-top: 10rpx; }
+.ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 10rpx 22rpx; }
+.ts-op-claim-btn:active { background: #FFF1DC; }
 
 .ts-input { display: flex; align-items: flex-end; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; position: sticky; bottom: 0; background: #fff; }
 .ts-mic { flex-shrink: 0; width: 84rpx; height: 84rpx; border: 2rpx solid #D8DBE0; border-radius: 50%; background: #fff; font-size: 40rpx; line-height: 1; padding: 0; }

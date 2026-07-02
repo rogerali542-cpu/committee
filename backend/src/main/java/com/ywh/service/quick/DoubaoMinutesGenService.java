@@ -81,10 +81,17 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             10. 表决/决议类事项在 minutesMarkdown 中要写清方案要点、应到/实到人数、同意/反对/弃权票数、表决方式、表决结果和决议内容。
             11. 严格只输出一个 JSON 对象，不要任何解释或 Markdown 代码块包裹。
 
+            12. 意见提炼（opinions）：从转写中把每位发言人对该议题明确表达的意见/立场/建议逐条提炼出来：
+                - text 用第一人称、书面化改写（像该委员自己写下的意见），忠实原意、不揣测立场，每条 60 字以内；
+                - speaker 填转写中该发言的发言人（有真实姓名用姓名，只有编号就原样填 S1、说话人2 等）；
+                - 只提炼明确的意见表达（同意/反对/建议/疑问/补充），主持流程话术、寒暄和纯事实汇报不算意见；
+                - 同一人对同一议题的多次同类表态合并成一条；没有意见就给空数组。
+
             输出 JSON 结构：
             {
               "topics": [
-                {"ref": "议题标识(原样回填)", "summary": "讨论摘要", "resolution": "决议结论（待人工确认）", "todos": ["待办1","待办2"]}
+                {"ref": "议题标识(原样回填)", "summary": "讨论摘要", "resolution": "决议结论（待人工确认）", "todos": ["待办1","待办2"],
+                 "opinions": [{"speaker": "发言人姓名或编号", "text": "第一人称书面化意见"}]}
               ],
               "minutesMarkdown": "正式会议纪要，按四章节完整撰写（会议概况/议题审议情况/会议决议/后续安排），用于存档/展示/公示",
               "topicReportMarkdown": "AI议题报告，详细版，用于内部保存",
@@ -336,6 +343,8 @@ public class DoubaoMinutesGenService implements MinutesGenService {
             sb.append("纪要按四节组织：一、会议概况；二、议题审议情况（每个议题最多两三句：背景、审议/讨论要点、结论）；三、会议决议；四、后续安排。务求简洁、突出重点，不展开成长段、不堆套话，信息不足直接省略、不要写“未明确说明”。\n");
             sb.append("通报类事项不得写赞成、反对、通过、未通过或表决，只写通报内容、委员意见和后续安排；");
             sb.append("表决/决议类事项要写清方案要点、票数和表决结果。内容要精炼，不得逐字记录发言或写入内部风险、证据线索。\n");
+            sb.append("另外：topics[].ref 按【人工确认后的议题结果】中的议题顺序填对应序号（1、2、3…），");
+            sb.append("并按系统要求第12条从【必要转写补充】提炼每个议题的 opinions（发言人明确表达的意见，第一人称书面化）；转写为空则 opinions 给空数组。\n");
             return sb.toString();
         }
 
@@ -522,11 +531,23 @@ public class DoubaoMinutesGenService implements MinutesGenService {
                         if (!s.isBlank()) todos.add(s);
                     });
                 }
+                List<QuickPolishVO.OpinionDraft> opinions = new ArrayList<>();
+                if (n.path("opinions").isArray()) {
+                    for (JsonNode op : n.path("opinions")) {
+                        String text = stripTranscriptMarks(op.path("text").asText(""));
+                        if (text.isBlank()) continue;
+                        opinions.add(QuickPolishVO.OpinionDraft.builder()
+                                .speaker(op.path("speaker").asText("").trim())
+                                .text(text)
+                                .build());
+                    }
+                }
                 topics.add(QuickPolishVO.TopicSummary.builder()
                         .ref(n.path("ref").asText(""))
                         .summary(stripTranscriptMarks(n.path("summary").asText("")))
                         .resolution(n.path("resolution").asText(""))
                         .todos(todos)
+                        .opinions(opinions)
                         .build());
             }
         }

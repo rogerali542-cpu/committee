@@ -35,5 +35,16 @@ public class QuickPolishVO {
         private String summary;      // 议题讨论摘要
         private String resolution;   // 决议结论
         private List<String> todos;  // 待办清单
+        private List<OpinionDraft> opinions; // AI 从现场发言提炼的委员意见（入库带"现场·AI"标，可认领）
+    }
+
+    /** 现场发言提炼出的单条意见。speaker 为转写中的发言人（名字或 S1 等编号，归属不明时由入库侧标"待认领"）。 */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OpinionDraft {
+        private String speaker;
+        private String text;
     }
 }

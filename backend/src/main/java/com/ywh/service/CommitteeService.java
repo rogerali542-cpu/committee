@@ -8,6 +8,7 @@ import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
 import com.ywh.dto.RecordingVO;
 import com.ywh.dto.quick.AsrResult;
+import com.ywh.dto.quick.QuickPolishVO;
 import com.ywh.dto.quick.QuickConfirmRequest;
 import com.ywh.dto.quick.QuickExtractionVO;
 import com.ywh.entity.*;
@@ -701,7 +702,11 @@ public class CommitteeService {
         }
         TopicOpinion op = findMeetingOpinion(meetingId, opinionId);
         Long urId = SecurityUtils.getCurrentUserId();
-        if (op.getUserRole() == null || !op.getUserRole().getId().equals(urId)) {
+        boolean own = op.getUserRole() != null && op.getUserRole().getId().equals(urId);
+        // 主任/副主任可纠正 AI 提炼偏差（仅未认领的现场意见）；委员本人意见仍只能本人改
+        boolean chairFixAi = "ai".equals(op.getSource()) && op.getUserRole() == null
+                && isChair(SecurityUtils.getCurrentUserRole());
+        if (!own && !chairFixAi) {
             throw new IllegalArgumentException("只能修改自己的意见");
         }
         op.setContent(content.trim());
@@ -732,6 +737,7 @@ public class CommitteeService {
 
     private Map<String, Object> opinionToMap(TopicOpinion op, UserRoleEntity current, boolean chair) {
         boolean own = op.getUserRole() != null && op.getUserRole().getId().equals(current.getId());
+        boolean aiUnclaimed = "ai".equals(op.getSource()) && op.getUserRole() == null;
         Map<String, Object> vo = new HashMap<>();
         vo.put("id", op.getId());
         vo.put("topicId", op.getTopic().getId());
@@ -742,8 +748,9 @@ public class CommitteeService {
         vo.put("content", op.getContent());
         vo.put("source", op.getSource());
         vo.put("isSelf", own);
-        vo.put("canEdit", own);
+        vo.put("canEdit", own || (chair && aiUnclaimed)); // 主任可纠正 AI 提炼偏差（仅未认领的）
         vo.put("canDelete", own || chair);
+        vo.put("claimable", aiUnclaimed); // AI 提炼且未归属 → 可"是我说的"认领
         vo.put("createdAt", op.getCreatedAt() != null ? op.getCreatedAt().toString() : null);
         return vo;
     }
@@ -773,6 +780,93 @@ public class CommitteeService {
             throw new IllegalArgumentException(svc.serviceUnreachable(e)
                     ? "AI 助手服务未启动，请稍后再试" : "AI 助手开小差了，请重试");
         }
+    }
+
+    /**
+     * 纪要生成顺带提炼的现场意见入库（source='ai'，展示带"现场·AI"标）。
+     * 幂等：重新生成纪要时只清掉未认领的旧 AI 意见，已认领的（userRole 非空）视为本人意见保留；
+     * 与已认领意见同议题同内容的不再重复插入。speaker 是 S1/说话人N/未知 等编号时不落名字（前端显示"现场发言·待认领"）。
+     */
+    @Transactional
+    public void saveAiOpinions(Long meetingId, QuickPolishVO vo) {
+        if (vo == null || vo.getTopics() == null || vo.getTopics().isEmpty()) return;
+        MeetingRecord record = getRecord(meetingId);
+        List<RecordTopic> topics = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        if (topics.isEmpty()) return;
+
+        List<TopicOpinion> existing = opinionRepo.findByTopicRecordIdOrderByCreatedAtAsc(record.getId());
+        List<TopicOpinion> staleAi = existing.stream()
+                .filter(op -> "ai".equals(op.getSource()) && op.getUserRole() == null)
+                .collect(Collectors.toList());
+        opinionRepo.deleteAll(staleAi);
+        Set<String> keepKeys = existing.stream()
+                .filter(op -> op.getUserRole() != null)
+                .map(op -> op.getTopic().getId() + "\n" + op.getContent())
+                .collect(Collectors.toSet());
+
+        for (QuickPolishVO.TopicSummary ts : vo.getTopics()) {
+            RecordTopic topic = resolveTopicByRef(topics, ts.getRef());
+            if (topic == null || ts.getOpinions() == null) continue;
+            for (QuickPolishVO.OpinionDraft draft : ts.getOpinions()) {
+                String text = draft.getText() == null ? "" : draft.getText().trim();
+                if (text.isEmpty() || keepKeys.contains(topic.getId() + "\n" + text)) continue;
+                opinionRepo.save(TopicOpinion.builder()
+                        .topic(topic)
+                        .userRole(null)
+                        .speakerName(normalizeSpeakerName(draft.getSpeaker()))
+                        .content(text)
+                        .source("ai")
+                        .build());
+            }
+        }
+    }
+
+    /** ref 兼容三种口径：topicId（非上下文路径）、议题序号 1..n（compact 上下文路径）、议题标题。 */
+    private RecordTopic resolveTopicByRef(List<RecordTopic> topics, String ref) {
+        if (ref == null || ref.isBlank()) return null;
+        String r = ref.trim();
+        try {
+            long n = Long.parseLong(r);
+            for (RecordTopic t : topics) {
+                if (t.getId().equals(n)) return t;
+            }
+            if (n >= 1 && n <= topics.size()) return topics.get((int) n - 1);
+        } catch (NumberFormatException ignored) { /* 非数字，走标题匹配 */ }
+        for (RecordTopic t : topics) {
+            if (t.getTitle() != null && (t.getTitle().equals(r) || r.contains(t.getTitle()))) return t;
+        }
+        return null;
+    }
+
+    /** S1/说话人2/未知发言人 等编号不算名字；真实姓名原样保留（是否本人由认领确定，不自动绑账号）。 */
+    private String normalizeSpeakerName(String speaker) {
+        if (speaker == null) return null;
+        String s = speaker.trim();
+        if (s.isEmpty()) return null;
+        if (s.matches("(?i)S\\d{1,3}") || s.matches("(说话人|发言人)\\s*\\d{1,3}") || s.contains("未知")) return null;
+        return s.length() > 20 ? null : s;
+    }
+
+    /**
+     * 认领/指派 AI 提炼的现场意见归属：不带 userRoleId 是本人认领；带 userRoleId 仅主任/副主任可指派。
+     * 只有 source='ai' 且未归属的意见可认领。
+     */
+    @Transactional
+    public Map<String, Object> claimOpinion(Long meetingId, Long opinionId, Long assignUserRoleId) {
+        TopicOpinion op = findMeetingOpinion(meetingId, opinionId);
+        if (!"ai".equals(op.getSource())) throw new IllegalArgumentException("只有 AI 提炼的现场意见可以认领");
+        if (op.getUserRole() != null) throw new IllegalArgumentException("这条意见已有归属");
+        UserRoleEntity current = SecurityUtils.getCurrentUserRole();
+        UserRoleEntity target = current;
+        if (assignUserRoleId != null && !assignUserRoleId.equals(current.getId())) {
+            if (!isChair(current)) throw new IllegalArgumentException("只有主任/副主任可以指派归属");
+            target = userRoleRepo.findById(assignUserRoleId)
+                    .orElseThrow(() -> new IllegalArgumentException("成员不存在"));
+        }
+        op.setUserRole(target);
+        op.setSpeakerName(target.getRealName());
+        opinionRepo.save(op);
+        return opinionToMap(op, current, isChair(current));
     }
 
     /** 意见语音输入：短语音同步转文字（直传 ocr-asr-service，不落盘）。服务未启用/连不上给友好提示。 */
@@ -834,13 +928,9 @@ public class CommitteeService {
             if (topic == null) {
                 throw new IllegalArgumentException("议题不属于本次会议");
             }
-            if (!isVoteTopic(topic)) {
-                continue;
-            }
-            // 快速模式：票数以主持人现场确认为准（聚合值存于 quickConfirmJson），
-            // 不再强制"同意+反对+弃权 == 签到人数"——避免因人数对不上而无法结束会议。
-            // 仅清理旧的逐人投票记录，不再合成逐人投票。
-            voteRepo.deleteAll(voteRepo.findByTopicId(topic.getId()));
+            // 快速模式：现场汇总票数存于 quickConfirmJson，与 app 内逐人投票并存——
+            // 逐人投票是委员真实表态（myVote/实名留痕都靠它），不再清除；
+            // 展示口径在 TopicVO 组装处按"逐桶取大"合并（现场汇总 vs 逐人计票）。
         }
     }
 
@@ -2170,10 +2260,12 @@ public class CommitteeService {
             QuickConfirmRequest.TopicResult quickResult = quickConfirmTopics.get(tp.getId());
             int countedVotes = votes.size();
             if (quickResult != null && quickResult.getForVotes() != null) {
-                forV = Optional.ofNullable(quickResult.getForVotes()).orElse(0);
-                agV = Optional.ofNullable(quickResult.getAgVotes()).orElse(0);
-                abV = Optional.ofNullable(quickResult.getAbVotes()).orElse(0);
-                countedVotes = forV + agV + abV;
+                // 理顺：现场确认的汇总票数与 app 内逐人投票"逐桶取大"合并展示——
+                // 现场汇总覆盖没在 app 投票的举手表决者，逐人票保证 app 已投的不被吞掉。
+                forV = Math.max(forV, Optional.ofNullable(quickResult.getForVotes()).orElse(0));
+                agV = Math.max(agV, Optional.ofNullable(quickResult.getAgVotes()).orElse(0));
+                abV = Math.max(abV, Optional.ofNullable(quickResult.getAbVotes()).orElse(0));
+                countedVotes = Math.max(votes.size(), forV + agV + abV);
             }
             boolean voteRequired = isVoteTopic(tp);
             boolean passed;

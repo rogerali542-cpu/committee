@@ -20,6 +20,7 @@ import com.ywh.service.quick.TopicSummaryTaskService;
 import com.ywh.service.quick.TranscriptCorrectionService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/committees/{id}/quick")
 @RequiredArgsConstructor
@@ -186,6 +188,12 @@ public class QuickMeetingController {
                     vo.getTopicReportMarkdown(),
                     vo.getTodoListMarkdown()
             );
+        }
+        // 纪要顺带提炼的现场意见入库（带"现场·AI"标，可认领）。失败不影响纪要本身。
+        try {
+            committeeService.saveAiOpinions(id, vo);
+        } catch (Exception e) {
+            log.warn("[MINUTES] AI 现场意见入库失败 meetingId={}: {}", id, e.getMessage());
         }
         return Result.ok(vo);
     }

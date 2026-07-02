@@ -116,6 +116,10 @@ export default {
   committeeVoiceToText: function (id, fileOrBlob) {
     return core.uploadFile('/api/committees/' + id + '/asr', fileOrBlob, 'file', {}, { timeout: 60000 });
   },
+  // 认领/指派 AI 提炼的现场意见：不带 userRoleId 是本人认领；带 userRoleId 仅主任可指派
+  committeeClaimOpinion: function (id, opinionId, userRoleId) {
+    return core.request('PUT', '/api/committees/' + id + '/opinions/' + opinionId + '/claim', userRoleId ? { userRoleId: userRoleId } : {});
+  },
   // 意见 AI 助手：mode=polish 润色已有意见 / mode=draft 按口头描述代拟发言（真调大模型，可能要十几秒）
   committeeOpinionAssist: function (id, topicId, mode, text) {
     return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/opinions/assist', { mode: mode, text: text }, { timeout: 120000 });
