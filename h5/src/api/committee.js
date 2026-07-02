@@ -112,6 +112,10 @@ export default {
   committeeRemoveOpinion: function (id, opinionId) {
     return core.request('DELETE', '/api/committees/' + id + '/opinions/' + opinionId);
   },
+  // 意见语音输入：短语音同步转文字（豆包 ASR 转写在服务端做，可能要十几秒）
+  committeeVoiceToText: function (id, fileOrBlob) {
+    return core.uploadFile('/api/committees/' + id + '/asr', fileOrBlob, 'file', {}, { timeout: 60000 });
+  },
   committeeProxyTargets: function (id, keyword) {
     var params = keyword ? '?keyword=' + encodeURIComponent(keyword) : '';
     return core.request('GET', '/api/committees/' + id + '/proxy-targets' + params);

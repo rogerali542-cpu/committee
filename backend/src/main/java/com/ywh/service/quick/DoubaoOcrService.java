@@ -110,6 +110,39 @@ public class DoubaoOcrService {
         return callOcrDocument(props.getOcr(), filename, fileType, data);
     }
 
+    /**
+     * 短语音同步识别（议题意见语音输入等即时场景）：浏览器录音 Blob（webm/mp4/ogg）直传
+     * ocr-asr-service /v1/asr/recognize（服务内 ffmpeg 转 16k PCM 调豆包流式 ASR），返回全文文字。
+     * 与 OCR 同一服务、同一凭证；失败直接抛异常，由调用方决定提示/降级。
+     */
+    public String asrRecognizeSync(String filename, String contentType, byte[] data) throws Exception {
+        DoubaoProperties.Ocr cfg = props.getOcr();
+        String base = cfg.getBaseUrl() == null ? "" : cfg.getBaseUrl().replaceAll("/+$", "");
+        String boundary = "----ywhAsr" + UUID.randomUUID().toString().replace("-", "");
+        String ct = (contentType == null || contentType.isBlank()) ? "application/octet-stream" : contentType;
+        byte[] body = buildMultipart(boundary, "file",
+                (filename == null || filename.isBlank()) ? "voice.webm" : filename, ct, data);
+
+        HttpRequest.Builder rb = HttpRequest.newBuilder()
+                .uri(URI.create(base + "/v1/asr/recognize"))
+                .timeout(Duration.ofSeconds(Math.max(60, cfg.getReadTimeoutSeconds())))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body));
+        if (cfg.getInternalToken() != null && !cfg.getInternalToken().isBlank()) {
+            rb.header("X-Internal-Token", cfg.getInternalToken());
+        }
+        HttpResponse<String> resp = http.send(rb.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (resp.statusCode() != 200) {
+            throw new IllegalStateException("ASR 服务返回 " + resp.statusCode() + ": " + truncate(resp.body(), 300));
+        }
+        return mapper.readTree(resp.body()).path("text").asText("");
+    }
+
+    /** 判断异常是否属于"服务连不上"（没起/网络不通）——供调用方区分提示用。 */
+    public boolean serviceUnreachable(Throwable e) {
+        return isServiceUnreachable(e);
+    }
+
     // ── 调用 ocr-asr-service /v1/ocr/document（multipart 上传单个文件，收 JSON.text）──
     private String callOcrDocument(DoubaoProperties.Ocr cfg, String filename, String fileType, byte[] data)
             throws Exception {

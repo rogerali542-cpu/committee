@@ -241,6 +241,16 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 意见语音输入：浏览器录音（webm/mp4）直传，同步转文字返回，前端填入可编辑输入框。 */
+    @PostMapping("/{id}/asr")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Map<String, Object>> voiceToText(@PathVariable Long id,
+                                                   @RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) return Result.fail("音频为空");
+        String text = service.recognizeVoice(id, file.getOriginalFilename(), file.getContentType(), file.getBytes());
+        return Result.ok(Map.of("text", text == null ? "" : text));
+    }
+
     @GetMapping("/{id}/proxy-targets")
     @RequireRole({"主任", "副主任"})
     public Result<List<ProxyTargetVO>> proxyTargets(@PathVariable Long id,

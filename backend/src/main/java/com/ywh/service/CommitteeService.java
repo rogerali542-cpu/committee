@@ -748,6 +748,19 @@ public class CommitteeService {
         return vo;
     }
 
+    /** 意见语音输入：短语音同步转文字（直传 ocr-asr-service，不落盘）。服务未启用/连不上给友好提示。 */
+    public String recognizeVoice(Long meetingId, String filename, String contentType, byte[] data) {
+        getRecord(meetingId); // 校验会议存在
+        DoubaoOcrService svc = ocrServiceProvider.getIfAvailable();
+        if (svc == null) throw new IllegalArgumentException("语音识别未启用，请打字输入");
+        try {
+            return svc.asrRecognizeSync(filename, contentType, data);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(svc.serviceUnreachable(e)
+                    ? "语音识别服务未启动，请打字输入" : "语音识别失败，请重试或打字输入");
+        }
+    }
+
     @Transactional
     public void applyQuickConfirm(Long meetingId, QuickConfirmRequest req) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)

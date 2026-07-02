@@ -56,9 +56,22 @@
       </div>
 
       <!-- 输入区：会议进行中且已签到 -->
-      <div v-if="interactive && signedIn" class="ts-input">
+      <div v-if="interactive && signedIn && !voiceOn" class="ts-input">
+        <button class="ts-mic" @click="startVoice">🎤</button>
         <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
         <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
+      </div>
+      <!-- 语音条：录音中 / 识别中（识别完文字进上面的输入框，可改再发表） -->
+      <div v-else-if="interactive && signedIn && voiceOn" class="ts-voicebar">
+        <template v-if="!voiceBusy">
+          <span class="ts-voice-dot"></span>
+          <span class="ts-voice-txt">正在听你说… {{ recTimeText }}</span>
+          <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
+          <button class="ts-voice-done" @click="finishVoice">说完了</button>
+        </template>
+        <template v-else>
+          <span class="ts-voice-txt busy">正在把语音变成文字…</span>
+        </template>
       </div>
       <div v-else-if="interactive && !signedIn" class="ts-input-hint">签到后可发表意见</div>
     </div>
@@ -66,9 +79,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
+import { useRecorder } from '@/composables/useRecorder'
+import { applyHotwords } from '@/utils/helpers'
 
 const props = defineProps({
   meetingId: { type: [String, Number], required: true },
@@ -94,10 +109,55 @@ const tagLabel = computed(() => {
   return t === 'decision' ? '表决' : (t === 'notice' ? '通报' : '讨论')
 })
 
-// 打开（topic 切换/出现）时拉取本议题意见
+// ── 语音输入意见：useRecorder 录音 → 后端 ASR 转文字 → 填入输入框（可改）→ 发表 ──
+// 注意声明须在下面 immediate watch 之前（watch 首跑就会调 cancelVoice）
+const rec = useRecorder()
+const recTimeText = rec.timeText
+const voiceOn = ref(false)      // 语音条显示中（录音/识别）
+const voiceBusy = ref(false)    // 识别中
+const draftFromVoice = ref(false) // 本条草稿是否来自语音（发表时 source 用 voice）
+
+// 打开（topic 切换/出现）时拉取本议题意见；关闭/切议题时收掉语音条（释放麦克风）
 watch(() => props.topic && props.topic.id, (id) => {
-  if (id) { draft.value = ''; loadOpinions() }
+  cancelVoice()
+  if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
+onBeforeUnmount(cancelVoice)
+
+async function startVoice() {
+  if (!rec.supported.value) { toast({ title: '当前浏览器不支持录音（需 HTTPS 且允许麦克风）', icon: 'none' }); return }
+  try {
+    await rec.start()
+    voiceOn.value = true
+  } catch (e) {
+    // getUserMedia 的报错是英文（如 Permission denied），统一换成看得懂的提示
+    toast({ title: '无法使用麦克风，请在浏览器允许麦克风后再试', icon: 'none' })
+  }
+}
+function cancelVoice() {
+  rec.reset()
+  voiceOn.value = false
+  voiceBusy.value = false
+}
+async function finishVoice() {
+  if (voiceBusy.value) return
+  voiceBusy.value = true
+  try {
+    const out = await rec.stop()
+    if (!out || !out.blob || out.blob.size === 0) { toast({ title: '没有录到声音，再试一次', icon: 'none' }); return }
+    const file = new File([out.blob], 'voice.' + out.ext, { type: out.mimeType })
+    const res = await api.committeeVoiceToText(props.meetingId, file)
+    const text = applyHotwords(((res && res.text) || '').trim())
+    if (!text) { toast({ title: '没有识别到文字，请再说一次', icon: 'none' }); return }
+    draft.value = draft.value ? (draft.value + text) : text
+    draftFromVoice.value = true
+    nextTick(autoGrow)
+  } catch (e) { /* uploadFile/request 已 toast */ } finally {
+    rec.reset()
+    voiceOn.value = false
+    voiceBusy.value = false
+  }
+}
 
 async function loadOpinions() {
   loading.value = true
@@ -143,9 +203,10 @@ async function submitOpinion() {
   if (!content || sending.value) return
   sending.value = true
   try {
-    const created = await api.committeeAddOpinion(props.meetingId, props.topic.id, content, 'text')
+    const created = await api.committeeAddOpinion(props.meetingId, props.topic.id, content, draftFromVoice.value ? 'voice' : 'text')
     opinions.value = opinions.value.concat([created])
     draft.value = ''
+    draftFromVoice.value = false
     if (taEl.value) taEl.value.style.height = 'auto'
     emit('changed')
   } catch (e) { /* 已 toast */ } finally { sending.value = false }
@@ -202,6 +263,16 @@ async function removeOpinion(op) {
 .ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; }
 
 .ts-input { display: flex; align-items: flex-end; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; position: sticky; bottom: 0; background: #fff; }
+.ts-mic { flex-shrink: 0; width: 84rpx; height: 84rpx; border: 2rpx solid #D8DBE0; border-radius: 50%; background: #fff; font-size: 40rpx; line-height: 1; padding: 0; }
+.ts-mic:active { background: #FFF6E8; border-color: #FFA800; }
+/* 语音条：录音中/识别中占满输入区，大按钮 */
+.ts-voicebar { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; position: sticky; bottom: 0; background: #fff; min-height: 96rpx; box-sizing: border-box; }
+.ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
+@keyframes ts-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.ts-voice-txt { flex: 1; min-width: 0; font-size: 30rpx; color: #333; }
+.ts-voice-txt.busy { text-align: center; color: #E8890C; font-weight: 600; }
+.ts-voice-cancel { flex-shrink: 0; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #666; font-size: 30rpx; padding: 16rpx 26rpx; }
+.ts-voice-done { flex-shrink: 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-ta { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 18rpx; padding: 16rpx 20rpx; font-size: 30rpx; line-height: 1.4; resize: none; box-sizing: border-box; max-height: 160px; font-family: inherit; }
 .ts-ta:focus { border-color: #FFA800; outline: none; }
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
