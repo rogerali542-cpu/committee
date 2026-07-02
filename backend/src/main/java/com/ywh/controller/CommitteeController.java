@@ -241,6 +241,16 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 意见 AI 助手：mode=polish 润色已有意见 / mode=draft 按口头描述代拟发言。只回文本不入库。 */
+    @PostMapping("/{id}/topics/{topicId}/opinions/assist")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Map<String, Object>> assistOpinion(@PathVariable Long id, @PathVariable Long topicId,
+                                                     @RequestBody Map<String, Object> req) {
+        String mode = req == null ? null : (String) req.get("mode");
+        String text = req == null ? null : (String) req.get("text");
+        return Result.ok(service.assistOpinion(id, topicId, mode, text));
+    }
+
     /** 意见语音输入：浏览器录音（webm/mp4）直传，同步转文字返回，前端填入可编辑输入框。 */
     @PostMapping("/{id}/asr")
     @RequireRole({"主任", "副主任", "委员"})

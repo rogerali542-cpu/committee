@@ -748,6 +748,33 @@ public class CommitteeService {
         return vo;
     }
 
+    /**
+     * 意见 AI 助手：mode=polish 把已有意见润色得正式规范 / mode=draft 按委员口头描述代拟发言。
+     * 只生成文本回给前端供确认/修改，不入库。返回 { text, tokens }。
+     */
+    public Map<String, Object> assistOpinion(Long meetingId, Long topicId, String mode, String text) {
+        if (text == null || text.trim().isEmpty()) {
+            throw new IllegalArgumentException("请先说说或写下你的想法");
+        }
+        RecordTopic topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        MeetingRecord record = topic.getRecord();
+        if (record == null || !record.getId().equals(getRecord(meetingId).getId())) {
+            throw new IllegalArgumentException("议题不属于本次会议");
+        }
+        DoubaoOcrService svc = ocrServiceProvider.getIfAvailable();
+        if (svc == null) throw new IllegalArgumentException("AI 助手未启用");
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        try {
+            return svc.opinionAssistSync("draft".equals(mode) ? "draft" : "polish",
+                    topic.getTitle(), topic.getType() != null ? topic.getType().name() : "",
+                    ur.getRole().name(), text.trim());
+        } catch (Exception e) {
+            throw new IllegalArgumentException(svc.serviceUnreachable(e)
+                    ? "AI 助手服务未启动，请稍后再试" : "AI 助手开小差了，请重试");
+        }
+    }
+
     /** 意见语音输入：短语音同步转文字（直传 ocr-asr-service，不落盘）。服务未启用/连不上给友好提示。 */
     public String recognizeVoice(Long meetingId, String filename, String contentType, byte[] data) {
         getRecord(meetingId); // 校验会议存在

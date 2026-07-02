@@ -21,6 +21,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -141,6 +143,43 @@ public class DoubaoOcrService {
     /** 判断异常是否属于"服务连不上"（没起/网络不通）——供调用方区分提示用。 */
     public boolean serviceUnreachable(Throwable e) {
         return isServiceUnreachable(e);
+    }
+
+    /**
+     * 议题意见 AI 助手（同步）：mode=polish 润色已有意见 / mode=draft 按口头描述代拟发言。
+     * 调 ocr-asr-service /v1/opinions/assist（内部走方舟大模型），返回 { text, tokens }。
+     * 产出只回给前端供委员确认/修改，不入库；失败抛异常由调用方给提示。
+     */
+    public Map<String, Object> opinionAssistSync(String mode, String topicTitle, String topicType,
+                                                 String speakerRole, String text) throws Exception {
+        DoubaoProperties.Ocr cfg = props.getOcr();
+        String base = cfg.getBaseUrl() == null ? "" : cfg.getBaseUrl().replaceAll("/+$", "");
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("mode", mode);
+        payload.put("topic_title", topicTitle == null ? "" : topicTitle);
+        payload.put("topic_type", topicType == null ? "" : topicType);
+        payload.put("speaker_role", speakerRole == null ? "" : speakerRole);
+        payload.put("text", text);
+
+        HttpRequest.Builder rb = HttpRequest.newBuilder()
+                .uri(URI.create(base + "/v1/opinions/assist"))
+                .timeout(Duration.ofSeconds(Math.max(120, cfg.getReadTimeoutSeconds())))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload), StandardCharsets.UTF_8));
+        if (cfg.getInternalToken() != null && !cfg.getInternalToken().isBlank()) {
+            rb.header("X-Internal-Token", cfg.getInternalToken());
+        }
+        HttpResponse<String> resp = http.send(rb.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (resp.statusCode() != 200) {
+            throw new IllegalStateException("AI 助手服务返回 " + resp.statusCode() + ": " + truncate(resp.body(), 300));
+        }
+        JsonNode root = mapper.readTree(resp.body());
+        Map<String, Object> out = new HashMap<>();
+        out.put("text", root.path("text").asText(""));
+        // tokens: {input, output} → 汇总成总数给前端低调展示
+        int tokens = root.path("tokens").path("input").asInt(0) + root.path("tokens").path("output").asInt(0);
+        out.put("tokens", tokens);
+        return out;
     }
 
     // ── 调用 ocr-asr-service /v1/ocr/document（multipart 上传单个文件，收 JSON.text）──

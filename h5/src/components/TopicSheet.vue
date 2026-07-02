@@ -56,23 +56,44 @@
       </div>
 
       <!-- 输入区：会议进行中且已签到 -->
-      <div v-if="interactive && signedIn && !voiceOn" class="ts-input">
-        <button class="ts-mic" @click="startVoice">🎤</button>
-        <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
-        <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
-      </div>
-      <!-- 语音条：录音中 / 识别中（识别完文字进上面的输入框，可改再发表） -->
-      <div v-else-if="interactive && signedIn && voiceOn" class="ts-voicebar">
-        <template v-if="!voiceBusy">
-          <span class="ts-voice-dot"></span>
-          <span class="ts-voice-txt">正在听你说… {{ recTimeText }}</span>
-          <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
-          <button class="ts-voice-done" @click="finishVoice">说完了</button>
-        </template>
+      <template v-if="interactive && signedIn">
+        <!-- 语音条：录音中 / 识别中（识别完文字回到对应输入框，可改再发表） -->
+        <div v-if="voiceOn" class="ts-voicebar">
+          <template v-if="!voiceBusy">
+            <span class="ts-voice-dot"></span>
+            <span class="ts-voice-txt">正在听你说… {{ recTimeText }}</span>
+            <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
+            <button class="ts-voice-done" @click="finishVoice">说完了</button>
+          </template>
+          <template v-else>
+            <span class="ts-voice-txt busy">正在把语音变成文字…</span>
+          </template>
+        </div>
+        <!-- AI 小助手：不知道怎么说时，先随便说说，AI 代拟正式发言 -->
+        <div v-else-if="helperOn" class="ts-helper">
+          <div class="ts-helper-head">🤖 AI 小助手<span class="ts-helper-close" @click="helperOn = false">×</span></div>
+          <div class="ts-helper-q">想对这个议题说点什么？不用讲究措辞，随便说说，我来帮你整理成正式发言。</div>
+          <textarea v-model="helperDraft" class="ts-ta ts-helper-ta" rows="2" placeholder="比如：我觉得方案挺好，就是钱有点多…"></textarea>
+          <div class="ts-helper-btns">
+            <button class="ts-helper-voice" :disabled="aiBusy" @click="startVoice('helper')">🎤 用说的</button>
+            <button class="ts-helper-go" :disabled="!helperDraft.trim() || aiBusy" @click="draftByAi">{{ aiBusy ? 'AI 正在写…' : '帮我写好' }}</button>
+          </div>
+        </div>
+        <!-- 常规输入行 + AI 助手行 -->
         <template v-else>
-          <span class="ts-voice-txt busy">正在把语音变成文字…</span>
+          <div class="ts-input">
+            <button class="ts-mic" @click="startVoice('draft')">🎤</button>
+            <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
+            <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
+          </div>
+          <div class="ts-ai-row">
+            <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi">{{ aiBusy ? '✨ AI 正在润色…' : '✨ AI 帮我润色' }}</button>
+            <button v-else class="ts-ai-btn" @click="helperOn = true">✨ 不会说？AI 帮我写</button>
+            <span v-if="polishUndo !== null" class="ts-ai-undo" @click="undoPolish">还原原文</span>
+            <span v-if="aiTokens" class="ts-ai-token">本次消耗 {{ aiTokens.toLocaleString() }} token</span>
+          </div>
         </template>
-      </div>
+      </template>
       <div v-else-if="interactive && !signedIn" class="ts-input-hint">签到后可发表意见</div>
     </div>
   </div>
@@ -115,19 +136,30 @@ const rec = useRecorder()
 const recTimeText = rec.timeText
 const voiceOn = ref(false)      // 语音条显示中（录音/识别）
 const voiceBusy = ref(false)    // 识别中
+const voiceTarget = ref('draft') // 识别结果回填目标：draft=意见输入框 / helper=小助手输入框
 const draftFromVoice = ref(false) // 本条草稿是否来自语音（发表时 source 用 voice）
 
-// 打开（topic 切换/出现）时拉取本议题意见；关闭/切议题时收掉语音条（释放麦克风）
+// ── AI 助手：润色已有意见 / 小助手代拟发言 ──
+const helperOn = ref(false)     // 小助手面板
+const helperDraft = ref('')     // 小助手里的"随便说说"
+const aiBusy = ref(false)       // AI 生成中
+const aiTokens = ref(0)         // 最近一次 AI 消耗 token（低调展示）
+const polishUndo = ref(null)    // 润色前的原文（可还原）；null=没有可还原的
+
+// 打开（topic 切换/出现）时拉取本议题意见；关闭/切议题时收掉语音条（释放麦克风）和 AI 状态
 watch(() => props.topic && props.topic.id, (id) => {
   cancelVoice()
+  helperOn.value = false; helperDraft.value = ''; aiBusy.value = false
+  aiTokens.value = 0; polishUndo.value = null
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
 onBeforeUnmount(cancelVoice)
 
-async function startVoice() {
+async function startVoice(target) {
   if (!rec.supported.value) { toast({ title: '当前浏览器不支持录音（需 HTTPS 且允许麦克风）', icon: 'none' }); return }
   try {
     await rec.start()
+    voiceTarget.value = target === 'helper' ? 'helper' : 'draft'
     voiceOn.value = true
   } catch (e) {
     // getUserMedia 的报错是英文（如 Permission denied），统一换成看得懂的提示
@@ -149,14 +181,59 @@ async function finishVoice() {
     const res = await api.committeeVoiceToText(props.meetingId, file)
     const text = applyHotwords(((res && res.text) || '').trim())
     if (!text) { toast({ title: '没有识别到文字，请再说一次', icon: 'none' }); return }
-    draft.value = draft.value ? (draft.value + text) : text
+    if (voiceTarget.value === 'helper') {
+      helperDraft.value = helperDraft.value ? (helperDraft.value + text) : text
+    } else {
+      draft.value = draft.value ? (draft.value + text) : text
+      nextTick(autoGrow)
+    }
     draftFromVoice.value = true
-    nextTick(autoGrow)
   } catch (e) { /* uploadFile/request 已 toast */ } finally {
     rec.reset()
     voiceOn.value = false
     voiceBusy.value = false
   }
+}
+
+// ── AI 润色 / 代拟 ──
+async function polishByAi() {
+  const text = draft.value.trim()
+  if (!text || aiBusy.value) return
+  aiBusy.value = true
+  try {
+    const res = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'polish', text)
+    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
+    polishUndo.value = text
+    draft.value = res.text
+    aiTokens.value = Number(res.tokens) || 0
+    nextTick(autoGrow)
+  } catch (e) {
+    toast({ title: (e && e.message) || 'AI 助手开小差了，请重试', icon: 'none' })
+  } finally { aiBusy.value = false }
+}
+function undoPolish() {
+  if (polishUndo.value === null) return
+  draft.value = polishUndo.value
+  polishUndo.value = null
+  aiTokens.value = 0
+  nextTick(autoGrow)
+}
+async function draftByAi() {
+  const text = helperDraft.value.trim()
+  if (!text || aiBusy.value) return
+  aiBusy.value = true
+  try {
+    const res = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'draft', text)
+    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
+    draft.value = res.text
+    aiTokens.value = Number(res.tokens) || 0
+    polishUndo.value = null
+    helperOn.value = false
+    helperDraft.value = ''
+    nextTick(autoGrow)
+  } catch (e) {
+    toast({ title: (e && e.message) || 'AI 助手开小差了，请重试', icon: 'none' })
+  } finally { aiBusy.value = false }
 }
 
 async function loadOpinions() {
@@ -207,6 +284,8 @@ async function submitOpinion() {
     opinions.value = opinions.value.concat([created])
     draft.value = ''
     draftFromVoice.value = false
+    polishUndo.value = null
+    aiTokens.value = 0
     if (taEl.value) taEl.value.style.height = 'auto'
     emit('changed')
   } catch (e) { /* 已 toast */ } finally { sending.value = false }
@@ -278,4 +357,23 @@ async function removeOpinion(op) {
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-send[disabled] { background: #E3D5C3; }
 .ts-input-hint { font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
+
+/* AI 助手行：润色 / 帮我写 入口 + 还原 + token 低调提示 */
+.ts-ai-row { display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; position: sticky; bottom: 0; background: #fff; }
+.ts-ai-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 12rpx 22rpx; }
+.ts-ai-btn:active { background: #FFF1DC; }
+.ts-ai-btn[disabled] { opacity: 0.55; }
+.ts-ai-undo { font-size: 26rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
+.ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
+
+/* AI 小助手面板 */
+.ts-helper { border: 2rpx solid #F0D9B8; border-radius: 18rpx; background: #FFFDF8; padding: 20rpx 22rpx; margin-top: 10rpx; position: sticky; bottom: 0; }
+.ts-helper-head { display: flex; align-items: center; font-size: 30rpx; font-weight: 700; color: #B06A00; margin-bottom: 8rpx; }
+.ts-helper-close { margin-left: auto; width: 52rpx; height: 52rpx; line-height: 48rpx; text-align: center; font-size: 40rpx; color: #999; }
+.ts-helper-q { font-size: 27rpx; color: #6B5A3E; line-height: 1.55; margin-bottom: 14rpx; }
+.ts-helper-ta { width: 100%; background: #fff; }
+.ts-helper-btns { display: flex; gap: 16rpx; margin-top: 14rpx; }
+.ts-helper-voice { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 29rpx; padding: 18rpx 0; }
+.ts-helper-go { flex: 1.4; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 29rpx; font-weight: 700; padding: 18rpx 0; }
+.ts-helper-go[disabled] { background: #E3D5C3; }
 </style>
