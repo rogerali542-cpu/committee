@@ -18,6 +18,7 @@
   <!-- Modal -->
   <div v-if="uiState.modal" class="ui-mask" @click.self="onCancel">
     <div class="ui-modal" :class="uiState.modal.size">
+      <span v-if="uiState.modal.showClose" class="ui-modal-x" @click="onClose">×</span>
       <div class="ui-modal-title">{{ uiState.modal.title }}</div>
       <div v-if="!uiState.modal.editable" class="ui-modal-content">{{ uiState.modal.content }}</div>
       <textarea v-else class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
@@ -46,6 +47,7 @@ watch(() => uiState.modal, (m) => { editText.value = m && m.editable ? (m.conten
 
 function onConfirm() { resolveModal({ confirm: true, content: editText.value }) }
 function onCancel() { resolveModal({ confirm: false, cancel: true }) }
+function onClose() { resolveModal({ confirm: false, close: true }) }
 function onSheetTap(idx) { resolveActionSheet({ tapIndex: idx }) }
 function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 </script>
@@ -63,7 +65,8 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-loading-text { font-size: 28rpx; }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
 
-.ui-modal { width: 600rpx; max-width: 84vw; background: #fff; border-radius: 24rpx; padding: 44rpx 40rpx 0; }
+.ui-modal { position: relative; width: 600rpx; max-width: 84vw; background: #fff; border-radius: 24rpx; padding: 44rpx 40rpx 0; }
+.ui-modal-x { position: absolute; top: 16rpx; right: 20rpx; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; line-height: 1; color: #999; }
 .ui-modal-title { font-size: 34rpx; font-weight: 700; text-align: center; color: #1a1a1a; }
 .ui-modal-content { font-size: 30rpx; color: #555; line-height: 1.7; margin-top: 24rpx; text-align: center; white-space: pre-wrap; }
 .ui-modal-input { width: 100%; min-height: 160rpx; margin-top: 24rpx; background: #f6f6f8; border-radius: 12rpx; padding: 20rpx; font-size: 30rpx; border: none; resize: none; box-sizing: border-box; }

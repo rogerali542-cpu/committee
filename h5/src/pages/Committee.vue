@@ -255,21 +255,35 @@
       </div>
     </div>
 
-    <!-- 模拟手机相机（测试用）：取景框对着纸质通知，按快门走真实识别；接真机后整块可删 -->
-    <div v-if="mockCameraVisible" class="mock-cam">
+    <!-- 模拟手机相机（测试用）：取景框对着纸质通知；拍后先进照片预览（重拍/使用照片），确认后才走识别；接真机后整块可删 -->
+    <div v-if="mockCameraVisible" class="mock-cam" :class="{ preview: !!mockShotUrl }">
       <div class="mc-top">
-        <span class="mc-badge">模拟相机 · 测试</span>
+        <span class="mc-badge">{{ mockShotUrl ? '照片预览' : '模拟相机 · 测试' }}</span>
         <span class="mc-close" @click="closeMockCamera">×</span>
       </div>
-      <div class="mc-viewport">
-        <img class="mc-paper" :src="mockViewfinderUrl" alt="取景中的纸质文件" />
-        <span class="mc-corner tl"></span><span class="mc-corner tr"></span>
-        <span class="mc-corner bl"></span><span class="mc-corner br"></span>
-        <span class="mc-tip">将文件对准取景框</span>
-      </div>
-      <div class="mc-bottom">
-        <button class="mc-shutter" @click="mockShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
-      </div>
+      <!-- 取景模式 -->
+      <template v-if="!mockShotUrl">
+        <div class="mc-viewport">
+          <img class="mc-paper" :src="mockViewfinderUrl" alt="取景中的纸质文件" />
+          <span class="mc-corner tl"></span><span class="mc-corner tr"></span>
+          <span class="mc-corner bl"></span><span class="mc-corner br"></span>
+          <span class="mc-tip">将文件对准取景框</span>
+        </div>
+        <div class="mc-bottom">
+          <button class="mc-shutter" @click="mockShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
+        </div>
+      </template>
+      <!-- 拍后预览：像系统相机一样先看照片，确认后才开始 AI 识别 -->
+      <template v-else>
+        <div class="mc-viewport">
+          <img class="mc-paper shot" :src="mockShotUrl" alt="刚拍的照片" />
+        </div>
+        <div class="mc-confirm-tip">拍清楚了吗？点「使用照片」开始识别</div>
+        <div class="mc-bottom confirm">
+          <button class="mc-btn retake" @click="mockRetake">重拍</button>
+          <button class="mc-btn use" @click="mockUsePhoto">使用照片</button>
+        </div>
+      </template>
       <div class="mc-flash" :class="{ on: mockCamFlash }"></div>
     </div>
 
@@ -835,7 +849,9 @@ async function scanFile(file, source) {
 const mockCameraVisible = ref(false)
 const mockCamFlash = ref(false)
 const mockViewfinderUrl = ref('')
+const mockShotUrl = ref('')       // 拍后照片预览图（非空 = 预览确认模式）
 let _mockShotCanvas = null
+let _mockShotFile = null          // 预览中待确认的照片文件，点「使用照片」才送识别
 function buildSampleNoticeCanvas() {
   const cv = document.createElement('canvas'); cv.width = 750; cv.height = 940
   const ctx = cv.getContext('2d')
@@ -868,17 +884,45 @@ function buildSampleNoticeCanvas() {
 function openMockCamera() {
   _mockShotCanvas = buildSampleNoticeCanvas()
   mockViewfinderUrl.value = _mockShotCanvas.toDataURL('image/png')
+  mockShotUrl.value = ''
+  _mockShotFile = null
   mockCameraVisible.value = true
 }
-function closeMockCamera() { mockCameraVisible.value = false }
+function closeMockCamera() { mockCameraVisible.value = false; mockShotUrl.value = ''; _mockShotFile = null }
+// 模拟真实相机成片：按取景框比例出竖幅照片（纸张摆在深色桌面上），预览时能铺满屏幕
+function buildShotPhotoCanvas(paperCanvas) {
+  const vp = document.querySelector('.mc-viewport')
+  const ratio = Math.min(2.4, Math.max(1.2, vp ? vp.clientHeight / vp.clientWidth : 16 / 9))
+  const W = 750, H = Math.round(W * ratio)
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H
+  const ctx = cv.getContext('2d')
+  const g = ctx.createLinearGradient(0, 0, 0, H)
+  g.addColorStop(0, '#4A4640'); g.addColorStop(1, '#38352F')
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+  const pw = Math.round(W * 0.9), ph = Math.round(pw * paperCanvas.height / paperCanvas.width)
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10
+  ctx.drawImage(paperCanvas, (W - pw) / 2, (H - ph) / 2, pw, ph)
+  return cv
+}
+// 按快门：只拍照进预览确认（像系统相机），不直接识别
 async function mockShoot() {
   if (!_mockShotCanvas) return
   mockCamFlash.value = true
   setTimeout(() => { mockCamFlash.value = false }, 180)
-  const blob = await new Promise((r) => _mockShotCanvas.toBlob(r, 'image/png'))
-  const file = new File([blob], '拍照-纸质文件.png', { type: 'image/png' })
-  await new Promise((r) => setTimeout(r, 260)) // 让"咔嚓"闪一下再收
+  const shot = buildShotPhotoCanvas(_mockShotCanvas)
+  const blob = await new Promise((r) => shot.toBlob(r, 'image/png'))
+  _mockShotFile = new File([blob], '拍照-纸质文件.png', { type: 'image/png' })
+  await new Promise((r) => setTimeout(r, 260)) // 让"咔嚓"闪一下再切预览
+  mockShotUrl.value = shot.toDataURL('image/png')
+}
+function mockRetake() { mockShotUrl.value = ''; _mockShotFile = null }
+// 「使用照片」：用户确认照片没问题，收起相机开始识别
+async function mockUsePhoto() {
+  const file = _mockShotFile
+  if (!file) return
   mockCameraVisible.value = false
+  mockShotUrl.value = ''
+  _mockShotFile = null
   await scanFile(file, 'camera')
 }
 // 识别结果 → 按 AI 判类让用户确认；确认错了可一键改成另一类
@@ -893,8 +937,10 @@ async function handleScanResult(res) {
       content: '已深度识别文件内容，判定为会议通知。要按它自动填写会议信息吗？' + tokenNote,
       confirmText: '自动填写',
       cancelText: canAttach ? '改为会议材料' : '取消',
-      size: 'large'
+      size: 'large',
+      showClose: true
     })
+    if (r.close) return // 右上角 ×：只关弹窗，什么都不做
     if (r.confirm) applyPrefill(res)
     else if (canAttach) addScannedMaterial(res)
     return
@@ -905,8 +951,10 @@ async function handleScanResult(res) {
       content: '已深度识别文件内容，判定为会议材料，将在通知发出后发给委员传阅。' + tokenNote,
       confirmText: '添加为材料',
       cancelText: '改为自动填表',
-      size: 'large'
+      size: 'large',
+      showClose: true
     })
+    if (r.close) return
     if (r.confirm) addScannedMaterial(res)
     else applyPrefill(res) // 强制按通知抽取；字段可能为空，applyPrefill 会提示
     return
@@ -918,7 +966,8 @@ async function handleScanResult(res) {
       content: (res.message || '未能识别出文件内容') + '。要把它直接作为会议材料添加吗？',
       confirmText: '添加为材料',
       cancelText: '不用了',
-      size: 'large'
+      size: 'large',
+      showClose: true
     })
     if (r.confirm) addScannedMaterial(res)
   } else {
@@ -1416,11 +1465,11 @@ onActivated(show)
   display: flex; flex-direction: column; box-sizing: border-box;
 }
 /* 顶栏 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(8rpx + env(safe-area-inset-top)) 32rpx 18rpx; background: var(--c-primary-dark); }
-.hd-left { display: flex; flex-direction: column; padding-top: 8rpx; }
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: env(safe-area-inset-top) 32rpx 10rpx; background: var(--c-primary-dark); }
+.hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 52rpx; font-weight: 700; color: #fff; }
 .hd-sub { font-size: 34rpx; color: #fff; margin-top: 8rpx; }
-.hd-bell { position: relative; padding: 8rpx; }
+.hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
 /* 当前会议主卡片 */
@@ -1618,6 +1667,12 @@ onActivated(show)
 .mc-close { width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 52rpx; line-height: 1; background: rgba(255,255,255,0.14); border-radius: 50%; }
 .mc-viewport { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; padding: 30rpx 44rpx; }
 .mc-paper { max-width: 100%; max-height: 100%; border-radius: 6rpx; box-shadow: 0 10rpx 50rpx rgba(0,0,0,0.8); transform: rotate(-1.2deg); }
+/* 拍后预览：背景放柔（深灰替代纯黑），照片尽量占满取景区 */
+.mock-cam.preview { background: #2F3136; }
+.mock-cam.preview .mc-viewport { padding: 12rpx 16rpx; }
+.mc-paper.shot { width: 100%; height: 100%; object-fit: contain; transform: none; box-shadow: none; border-radius: 0; }
+.mc-confirm-tip { flex-shrink: 0; text-align: center; font-size: 28rpx; color: rgba(255,255,255,0.85); padding-top: 14rpx; }
+.mock-cam.preview .mc-bottom { padding-top: 20rpx; }
 .mc-corner { position: absolute; width: 52rpx; height: 52rpx; border: 5rpx solid #FFD34D; }
 .mc-corner.tl { top: 18rpx; left: 26rpx; border-right: none; border-bottom: none; border-radius: 10rpx 0 0 0; }
 .mc-corner.tr { top: 18rpx; right: 26rpx; border-left: none; border-bottom: none; border-radius: 0 10rpx 0 0; }
@@ -1628,6 +1683,10 @@ onActivated(show)
 .mc-shutter { width: 140rpx; height: 140rpx; border-radius: 50%; background: transparent; border: 8rpx solid #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
 .mc-shutter-core { width: 104rpx; height: 104rpx; border-radius: 50%; background: #fff; transition: transform .12s ease; }
 .mc-shutter:active .mc-shutter-core { transform: scale(0.85); }
+.mc-bottom.confirm { gap: 28rpx; padding-left: 44rpx; padding-right: 44rpx; }
+.mc-btn { flex: 1; height: 96rpx; border-radius: 48rpx; font-size: 34rpx; font-weight: 700; border: none; }
+.mc-btn.retake { background: rgba(255,255,255,0.16); color: #fff; }
+.mc-btn.use { background: var(--c-primary-dark); color: #fff; }
 .mc-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .1s ease; }
 .mc-flash.on { opacity: 0.9; }
 /* 会议材料行：小图标 + 可点文件名（点开全屏预览）+ 大小 + 删除 */

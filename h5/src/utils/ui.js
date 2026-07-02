@@ -37,6 +37,7 @@ export function showModal(opts = {}) {
       editable: !!opts.editable,
       placeholderText: opts.placeholderText || '',
       size: opts.size || '',   // 'large' = 加大版（识别结果等重要确认框用）
+      showClose: !!opts.showClose, // 右上角 ×：单纯关闭，resolve {close:true}（区别于 cancel 按钮的动作）
       _resolve: resolve
     }
   })
