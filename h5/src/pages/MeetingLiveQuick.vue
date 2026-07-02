@@ -14,7 +14,7 @@
       <div class="lp-info-head">
         <span class="lp-info-title">会议议题</span>
         <!-- 实时添加议题（主任/副主任）：从录音卡挪进议题卡，弱化成小链接 -->
-        <span v-if="isChair" class="lp-add-topic" @click="openAddTopic">+ 添加议题</span>
+        <span v-if="isChair" class="lp-add-topic" @click="openAddTopic">+ 临时添加</span>
       </div>
       <div class="lp-info-row top">
         <div class="lp-agenda">
