@@ -26,6 +26,8 @@
         <span class="mm-topic-arrow">›</span>
       </div>
       <span v-if="!signedIn" class="mm-topics-hint">签到后可表决、发表意见</span>
+      <!-- 引导按钮：告诉委员议题可以点；点按钮直接打开第一个待办议题（优先没投票的表决项） -->
+      <button v-else class="mm-topics-cta" @click="openFirstPendingTopic">💬 点击上方议题，可以表决、发表意见</button>
     </div>
 
     <!-- 进行中：录音 + 材料 -->
@@ -199,6 +201,13 @@ const sheetTopicId = ref(null)
 const sheetTopic = computed(() => rawTopics.value.find(t => t.id === sheetTopicId.value) || null)
 function openTopicSheet(item) { sheetTopicId.value = item.id }
 function openTopicSheetById(id) { if (id != null) sheetTopicId.value = id }
+// 引导按钮入口：优先打开还没投票的表决议题，其次第一个议题
+function openFirstPendingTopic() {
+  const list = rawTopics.value || []
+  const pending = list.find(t => t.voteRequired && !t.myVote)
+  const target = pending || list[0]
+  if (target) sheetTopicId.value = target.id
+}
 function memberBadgeText(item) {
   if (item.voteRequired) return item.myVote ? '已表决' : '去表决'
   return item.opinionCount > 0 ? '意见 ' + item.opinionCount : '发表意见'
@@ -549,6 +558,9 @@ onUnmounted(() => {
 .mm-topic-badge.done { background: #EAF6E5; color: #2E7D32; font-weight: 600; }
 .mm-topic-arrow { flex-shrink: 0; font-size: 40rpx; color: #C2C6CC; }
 .mm-topics-hint { display: block; text-align: center; font-size: 26rpx; color: #9AA0A6; padding-top: 14rpx; }
+/* 引导按钮：柔和橙底，告知"议题可点"，点了直接打开第一个待办议题 */
+.mm-topics-cta { display: block; width: 100%; box-sizing: border-box; margin-top: 18rpx; border: 2rpx solid #F0D9B8; border-radius: 16rpx; background: #FFF9F0; color: #B06A00; font-size: 29rpx; padding: 18rpx 0; text-align: center; }
+.mm-topics-cta:active { background: #FFF1DC; }
 
 /* 会议材料 */
 .mm-mat {
