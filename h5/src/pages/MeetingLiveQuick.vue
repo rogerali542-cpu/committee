@@ -1110,8 +1110,8 @@ async function uploadAndRecognize() {
   // 完成后遮罩切完成态（「录音识别完成 → 下一步」），点下一步走 onAiWorkDone → voteCheckFlow
 }
 
-// 第一步按钮「上传录音并生成会议纪要」：上传(如有在手录音)→识别→表决核对(只填票数)。
-// 识别完成后不再自动生成，录音页改显「继续上传录音 / 生成会议纪要」两键，由后者正式生成。
+// 「上传录音并生成会议纪要」：上传(如有在手录音)→识别→表决核对。
+// 核对后：有未完成表决的议题→弹提示；否则直接进入生成纪要页（见 voteCheckFlow）。
 async function uploadAndGenerate() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可生成纪要', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
@@ -1124,7 +1124,7 @@ async function uploadAndGenerate() {
   await runRecognizeThenGenerate()
 }
 
-// 识别(如需)→表决核对(只填票数)。识别完不再自动生成，改由「生成会议纪要」按钮触发。
+// 识别(如需)→表决核对→按情况生成/提示。已识别则直接进核对。
 async function runRecognizeThenGenerate() {
   if (needRecognize.value) { await uploadAndRecognize(); return } // 识别完由遮罩「下一步」进 voteCheckFlow
   await voteCheckFlow()
@@ -1145,45 +1145,74 @@ function generateNow() {
   continueGenerateMinutes(false)
 }
 
-// app 内逐人投票情况：topicId → 是否已有人投票（表决"是否已处理"的判断之一）
-function _appVotedMap() {
-  const m = {}
+// 真实议题里"需要表决的"（用 detail.record.topics 的 voteRequired，不依赖 ASR 抽取的 presetTopics）
+function realVoteTopics() {
   const raw = (detail.value && detail.value.record && detail.value.record.topics) || []
-  raw.forEach(t => { m[t.id] = (t.voted || 0) > 0 })
-  return m
+  return raw.filter(t => t.voteRequired)
+}
+// 真实议题里"还没完成表决的"：voteRequired 且没投票数(voted=0)、也没达成结论(status 非 passed/failed)
+function unvotedRealTopics() {
+  return realVoteTopics().filter(t => (t.voted || 0) === 0 && t.status !== 'passed' && t.status !== 'failed')
 }
 
-// 识别完成后的表决"核对"（只填票数、不生成）：录音里 AI 识别到票数就弹确认，主任确认后自动填入。
-// 其余情况直接返回——识别完统一回录音页显示「继续上传录音 / 生成会议纪要」两键，生成由后者触发。
-// （"还有议题没有表决"的提示改到点「生成会议纪要」时由 continueGenerateMinutes 的守卫给出。）
+// 识别完成后的表决核对（由「上传录音并生成会议纪要」触发）：检查有没有未完成表决的议题，
+// 有 → 弹提示；没有 → 直接生成纪要（进纪要页）。表决状态一律以真实议题为准，不靠 ASR 抽取。
+// 1) 无表决议题 → 直接生成
+// 2) AI 识别到票数 → 确认填写后生成（生成前守卫再提示其它仍未表决的议题）
+// 3) 有表决议题但没识别到票数、也没 app 投票 → 弹「还有议题没有表决」提示
+// 4) 有表决议题且都已表决 → 直接生成
 async function voteCheckFlow() {
   try { await loadDetail() } catch (e) { /* 刷新失败不阻断核对 */ }
-  const voteTopics = (presetTopics.value || []).filter(t => t.voteRequired)
-  const recognized = voteTopics.filter(t => t.aiVote)
-  if (!recognized.length) return // 没识别到票数：不打扰，回两键
 
-  const lines = recognized.map(t =>
-    '「' + t.title + '」同意 ' + t.voteFor + ' · 反对 ' + t.voteAgainst + ' · 弃权 ' + t.voteAbstain
-    + '（' + t.aiVoteLabel + '，建议：' + t.resultLabel + '）')
-  const r = await showModal({
-    title: 'AI 识别到表决结果',
-    content: lines.join('\n') + '\n\n要按识别结果自动填写吗？填写后以此计入表决。',
-    confirmText: '确认填写',
-    cancelText: '暂不填写',
-    size: 'large'
-  })
-  if (!r.confirm) {
-    toast({ title: '未填写表决结果，可点议题手动表决', icon: 'none' })
+  // 1) 没有需要表决的议题 → 直接生成
+  if (!realVoteTopics().length) { continueGenerateMinutes(true); return }
+
+  const recognized = (presetTopics.value || []).filter(t => t.voteRequired && t.aiVote)
+
+  // 2) AI 识别到票数 → 确认填写后生成
+  if (recognized.length) {
+    const lines = recognized.map(t =>
+      '「' + t.title + '」同意 ' + t.voteFor + ' · 反对 ' + t.voteAgainst + ' · 弃权 ' + t.voteAbstain
+      + '（' + t.aiVoteLabel + '，建议：' + t.resultLabel + '）')
+    const r = await showModal({
+      title: 'AI 识别到表决结果',
+      content: lines.join('\n') + '\n\n要按识别结果自动填写吗？填写后以此计入表决。',
+      confirmText: '确认填写',
+      cancelText: '暂不填写',
+      size: 'large'
+    })
+    if (r.confirm) {
+      recognized.forEach(t => { t.confirmed = true })
+      try {
+        await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload())
+        toast({ title: '已填写表决结果', icon: 'success' })
+        await loadDetail()
+      } catch (e) {
+        toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
+        return
+      }
+      continueGenerateMinutes(false) // 守卫再检查其它没被识别、也没 app 投票的表决议题
+      return
+    }
+    toast({ title: '未填写表决结果，可点议题手动表决后再生成', icon: 'none' })
     return
   }
-  recognized.forEach(t => { t.confirmed = true })
-  try {
-    await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload())
-    toast({ title: '已填写表决结果', icon: 'success' })
-    await loadDetail()
-  } catch (e) {
-    toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
+
+  // 3) 有表决议题、没识别到票数、也没 app 投票 → 弹提示（仍要生成 / 先去表决）
+  const missing = unvotedRealTopics()
+  if (missing.length) {
+    const r = await showModal({
+      title: '还有议题没有表决',
+      content: '「' + missing[0].title + '」' + (missing.length > 1 ? '等 ' + missing.length + ' 个表决议题' : '') + '还没有表决结果。',
+      confirmText: '仍要生成',
+      cancelText: '先去表决'
+    })
+    if (r.confirm) continueGenerateMinutes(true)
+    return
   }
+
+  // 4) 有表决议题且都已有表决结果 → 直接生成
+  continueGenerateMinutes(true)
 }
 
 // 「继续生成会议纪要」：确认票数落库 + 大模型生成（遮罩 gen）。skipGuard=true 表示表决核对刚做过，不再重复提醒
@@ -1192,8 +1221,7 @@ async function continueGenerateMinutes(skipGuard) {
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
   if (!generated.value) { toast({ title: '请先上传录音完成识别', icon: 'none' }); return }
   if (!skipGuard) {
-    const appVoted = _appVotedMap()
-    const missing = (presetTopics.value || []).filter(t => t.voteRequired && !t.confirmed && !t.aiVote && !appVoted[t.id])
+    const missing = unvotedRealTopics()
     if (missing.length) {
       const r = await showModal({
         title: '还有议题没有表决',
