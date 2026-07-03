@@ -72,6 +72,13 @@
         结束录音并上传
       </button>
 
+      <!-- 只要有已上传的录音就常驻「生成会议纪要」入口；未识别则先识别再生成，已识别则直接生成。
+           idleAfterUpload 且已识别时由上面的"继续生成会议纪要"承担，避免重复。 -->
+      <button v-if="hasSavedRecordings && !recActive && !isPaused && !uploading && !generatingMinutes && !(idleAfterUpload && !needRecognize)"
+        class="lp-primary-btn gen-standalone" @click="generateMinutesFromRecording" :disabled="polling || extracting">
+        <span class="qra-main">生成会议纪要</span>
+      </button>
+
     </div>
 
     <!-- 原「录音转写」(step3 选片转写) 和「整理会议纪要」(step4 核对/AI生成/手写) 两步已并入录音页的一键「生成会议纪要」，均删除 -->
@@ -1101,6 +1108,17 @@ async function uploadAndRecognize() {
   await transcribeSelected()
   if (generated.value) recognizedIds.value = (recordings.value || []).map(r => r.id)
   // 完成后遮罩切完成态（「录音识别完成 → 下一步」），点下一步走 onAiWorkDone → voteCheckFlow
+}
+
+// 常驻「生成会议纪要」按钮：只要有已上传录音就能点。
+// 未识别 → 先走识别（后续由遮罩「下一步」进表决核对→继续生成，与「上传录音」同一条流程）；
+// 已识别 → 直接进「继续生成会议纪要」（含表决未完成的提醒）。
+async function generateMinutesFromRecording() {
+  if (!isChair.value) { toast({ title: '仅主任/副主任可生成纪要', icon: 'none' }); return }
+  if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
+  if (!hasSavedRecordings.value) { toast({ title: '还没有上传录音', icon: 'none' }); return }
+  if (needRecognize.value) { await uploadAndRecognize(); return }
+  await continueGenerateMinutes(false)
 }
 
 // app 内逐人投票情况：topicId → 是否已有人投票（表决"是否已处理"的判断之一）
@@ -2207,6 +2225,9 @@ function exitLive() {
 /* 生成会议纪要：与"结束录音并上传"同尺寸的小胶囊，并上移 16rpx(8px) */
 .qk-rec-actions .lp-primary-btn.gen-minutes { flex:0 0 auto; width:fit-content; margin:-16rpx auto 0; padding:12rpx 36rpx; }
 .gen-minutes .qra-main { font-size:26rpx; }
+/* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
+.gen-standalone { width:fit-content; margin:14rpx auto 0; padding:16rpx 52rpx; display:flex; align-items:center; justify-content:center; }
+.gen-standalone .qra-main { font-size:30rpx; font-weight:700; }
 .qra-main { font-size:34rpx; font-weight:700; }
 .qra-sub { font-size:24rpx; font-weight:400; opacity:0.92; }
 /* 选择已有录音文件上传：窄一点、居中 */
