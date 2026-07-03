@@ -1,6 +1,6 @@
 <template>
   <div v-if="topic" class="ts-mask" @click="$emit('close')">
-    <div class="ts-sheet" @click.stop>
+    <div class="ts-sheet" :class="{ 'is-notice': topic.type === 'notice' }" @click.stop>
       <div class="ts-handle"></div>
       <div class="ts-head">
         <span class="ts-title">{{ topic.title }}</span>
@@ -505,6 +505,19 @@ async function removeOpinion(op) {
 .ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
 .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 4rpx 8rpx; }
 .ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; }
+
+/* 通报类议题：标题/正文加大两号、间距拉大，意见汇总区收小（通报一般不讨论） */
+.ts-sheet.is-notice .ts-title { font-size: 42rpx; line-height: 1.5; }
+.ts-sheet.is-notice .ts-notice { padding: 30rpx 26rpx 26rpx; margin-bottom: 26rpx; }
+.ts-sheet.is-notice .ts-notice-label { font-size: 30rpx; margin-bottom: 18rpx; }
+.ts-sheet.is-notice .ts-notice-body { font-size: 40rpx; line-height: 1.95; }
+.ts-sheet.is-notice .ts-notice-foot { margin-top: 28rpx; }
+.ts-sheet.is-notice .ts-notice-status { font-size: 28rpx; }
+.ts-sheet.is-notice .ts-ops { padding-top: 14rpx; }
+.ts-sheet.is-notice .ts-ops-head { font-size: 26rpx; color: #9AA0A6; margin-bottom: 10rpx; }
+.ts-sheet.is-notice .ts-op-name { font-size: 26rpx; }
+.ts-sheet.is-notice .ts-op-content { font-size: 27rpx; line-height: 1.5; }
+.ts-sheet.is-notice .ts-empty { font-size: 25rpx; padding: 12rpx 0 16rpx; }
 .ts-op-claim-tag { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; cursor: pointer; }
 .ts-op-claim-tag:active { opacity: 0.7; }
 .ts-op-claim-tag.on { background: #C0392B; color: #fff; }
