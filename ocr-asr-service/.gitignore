@@ -1,0 +1,13 @@
+# 密钥, 切勿提交（KEYS.txt 是真实密钥清单，只留 .env.example 作模板）
+.env
+KEYS.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# 日志
+*.log
