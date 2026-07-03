@@ -2002,8 +2002,8 @@ function exitLive() {
 .lp-fold { display:flex; flex-direction:column; min-height:calc(100vh - 96rpx); }
 
 /* 会议信息卡 */
-.lp-info-card { background:#fff; border-radius:24rpx; padding:32rpx 32rpx 0; margin-top:24rpx; margin-bottom:44rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡间距 +8px(28→44) */
-.lp-info-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16rpx; } /* 居中对齐：临时添加与标题齐平 */
+.lp-info-card { background:#fff; border-radius:24rpx; padding:24rpx 28rpx 0; margin-top:24rpx; margin-bottom:44rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡间距 +8px(28→44)；卡片缩小一号(内边距收紧，内容不变) */
+.lp-info-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; } /* 居中对齐：临时添加与标题齐平 */
 .lp-info-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; line-height:1.35; } /* 标题缩两号(42→34) */
 /* 临时添加：蓝字白底小按钮，与标题齐平、往右边缘挪(负右边距) */
 .lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:0 -12rpx 0 0; }
@@ -2016,7 +2016,7 @@ function exitLive() {
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
 .lp-info-v { flex:1; min-width:0; word-break:break-all; }
 /* 议题区固定高度(约4行)：卡片大小恒定；放不下先缩字号(下面 fs 档)，仍放不下则本区下拉滚动 */
-.lp-agenda { flex:1; min-width:0; height:336rpx; overflow-y:auto; }
+.lp-agenda { flex:1; min-width:0; height:300rpx; overflow-y:auto; } /* 卡片缩小一号：议题区固定高度 336→300(内容字号不变) */
 /* 字号自适应档位：每档缩一号(4rpx=2px)，最多缩到 28rpx(fs2)；高档同时压缩行距让更多议题露出 */
 .lp-agenda--fs1 .lp-agenda-title { font-size:32rpx; }
 .lp-agenda--fs2 .lp-agenda-title { font-size:28rpx; }
@@ -2136,9 +2136,9 @@ function exitLive() {
 
 /* 录音控件 */
 /* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字。整体缩两号+紧凑 */
-.lp-rec { padding:28rpx 28rpx 12rpx; }
+.lp-rec { padding:22rpx 28rpx 8rpx; } /* 卡片缩小一号：内边距收紧(圆圈/字号不变) */
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
-.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:14rpx; padding:20rpx 0 10rpx; }
+.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:10rpx; padding:12rpx 0 6rpx; }
 .qk-rec-circle { width:228rpx; height:228rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:40rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:9rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 圆圈114px、圈内字加大两号(32→40) */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
@@ -2146,7 +2146,7 @@ function exitLive() {
 .qk-rec-circle:disabled { background:#E5E8EC; color:#999; border-color:#F2F2F4; box-shadow:none; }
 .qk-rec-circle.on { background:#E74C3C; border-color:#FDECEA; box-shadow:0 8rpx 22rpx rgba(231,76,60,0.30); animation:qkpulse 1.2s ease-in-out infinite; }
 @keyframes qkpulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.55; transform:scale(.92); } }
-.qk-rec-time { font-size:40rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:16rpx; } /* 计时缩一号(44→40)，比之前回大一点 */
+.qk-rec-time { font-size:40rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:10rpx; } /* 计时字号不变(40)，上距收紧让卡片更紧凑 */
 
 .qk-note { font-size:28rpx; color:#666; line-height:1.6; margin-top:20rpx; background:#FAFBFC; border-radius:14rpx; padding:18rpx 20rpx; }
 .qk-note.warn { color:#C77700; background:#FFF8EC; }
