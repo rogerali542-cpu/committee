@@ -107,7 +107,7 @@
           <div class="ts-ai-row">
             <button class="ts-mic" @click="startVoice('draft')">🎤</button>
             <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi">{{ aiBusy ? '✨ AI 正在润色…' : '✨ AI 帮我润色' }}</button>
-            <button v-else class="ts-ai-btn" @click="helperOn = true">✨ 不会说？AI 帮我写</button>
+            <button v-else class="ts-ai-btn" :disabled="aiBusy" @click="onHelpWrite">{{ helpWriteLabel }}</button>
             <span v-if="aiTokens" class="ts-ai-token">本次消耗 {{ aiTokens.toLocaleString() }} token</span>
           </div>
         </template>
@@ -228,7 +228,9 @@ function showAiDoneCard(mode, t0, tokens) {
   const sec = Math.max(0.1, (Date.now() - t0) / 1000).toFixed(1)
   showModal({
     title: '✨ AI 已帮你' + (mode === 'polish' ? '润色意见' : '生成意见'),
-    content: '内容已填入下方输入框，你可以再修改后发表。\n\n耗时 ' + sec + ' 秒 · 消耗 ' + (Number(tokens) || 0).toLocaleString() + ' token',
+    // 先耗时/token，再告知已填好；size:large → 大字纯黑
+    content: '耗时 ' + sec + ' 秒 · 消耗 ' + (Number(tokens) || 0).toLocaleString() + ' token\n\n内容已经帮你填好，可修改后发表。',
+    size: 'large',
     showCancel: false,
     confirmText: '好的'
   })
@@ -270,6 +272,49 @@ async function draftByAi() {
     polishUndo.value = null
     helperOn.value = false
     helperDraft.value = ''
+    nextTick(autoGrow)
+    showAiDoneCard('draft', t0, aiTokens.value)
+  } catch (e) {
+    toast({ title: (e && e.message) || 'AI 助手开小差了，请重试', icon: 'none' })
+  } finally { aiBusy.value = false }
+}
+
+// 「AI 帮我写」按钮点击：已表决 → 无需输入，直接按身份+表决结果代拟；未表决 → 打开小助手手动说
+function onHelpWrite() {
+  if (props.topic && props.topic.myVote) { draftFromVote(); return }
+  helperOn.value = true
+}
+// 已表决时的按钮文案：提示会按本人表决直接生成
+const helpWriteLabel = computed(() => {
+  if (aiBusy.value) return 'AI 正在写…'
+  return (props.topic && props.topic.myVote) ? '✨ 按我的表决，帮我写发言' : '✨ 不会说？AI 帮我写'
+})
+// 由本人表决结果生成一句"口头表态"喂给 draft（后端已带委员身份 speaker_role，AI 据此写正式发言）
+function voteStanceSeed() {
+  const t = props.topic
+  if (!t || !t.myVote) return ''
+  if ((t.decisionType || 'simple') === 'multi_choice') {
+    const opt = (t.options || []).find(o => String(o.id) === String(t.myVote))
+    return opt ? ('我在这个议题上选择了「' + opt.label + '」，请据此帮我写一段简短的表态发言。') : ''
+  }
+  if (t.myVote === 'for_vote') return '我对这个议题投了赞成票，总体认同这个方案，支持通过。'
+  if (t.myVote === 'against') return '我对这个议题投了反对票，对这个方案还有顾虑，暂不赞成。'
+  if (t.myVote === 'abstain') return '我对这个议题投了弃权票，还想再多了解一些情况，暂不表态。'
+  return ''
+}
+// 表决后一键代拟：不用输入，按身份+表决态度生成发言，填入输入框
+async function draftFromVote() {
+  if (aiBusy.value) return
+  const seed = voteStanceSeed()
+  if (!seed) { helperOn.value = true; return } // 拿不到表决结果就退回手动
+  aiBusy.value = true
+  const t0 = Date.now()
+  try {
+    const res = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'draft', seed)
+    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
+    draft.value = res.text
+    aiTokens.value = Number(res.tokens) || 0
+    polishUndo.value = null
     nextTick(autoGrow)
     showAiDoneCard('draft', t0, aiTokens.value)
   } catch (e) {
