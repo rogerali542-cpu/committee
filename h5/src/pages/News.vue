@@ -1,25 +1,26 @@
 <template>
   <div class="news-page">
-    <PageNav title="党建新闻" style="margin:0 0 0;" />
+    <PageNav :title="pageTitle" style="margin:0 0 0;" />
 
     <div class="news-scroll" style="overflow-y:auto;">
       <div class="news-paper" v-if="news">
         <div class="news-flag">
-          <span class="nf-badge">党建融媒 · AI 生成</span>
+          <span class="nf-badge">{{ isPartyNews ? '党建融媒 · AI 生成' : 'AI 生成' }}</span>
           <span class="nf-date">{{ today }}</span>
         </div>
         <h1 class="news-title">{{ news.title }}</h1>
         <div class="news-rule"><span class="nr-star">★</span></div>
         <p class="news-para" v-for="(p, i) in paras" :key="i">{{ p }}</p>
         <div class="news-sign">
-          <span class="ns-org">中共社区党支部委员会</span>
+          <span class="ns-org">{{ isPartyNews ? '中共社区党支部委员会' : '社区业主委员会' }}</span>
           <span class="ns-date">{{ today }}</span>
         </div>
         <div class="news-note">本篇由豆包大模型依据会议纪要自动生成，仅供参考，发布前请人工审核。</div>
         <div class="news-actions">
-          <button class="news-btn" @click="copyAll">复制全文</button>
           <button class="news-btn ghost" @click="regen" :disabled="loading">{{ loading ? '生成中…' : '重新生成' }}</button>
+          <button class="news-btn" @click="goHome">回到首页</button>
         </div>
+        <div class="news-copy-link" @click="copyAll">复制全文</div>
       </div>
 
       <div v-else class="news-empty">
@@ -38,6 +39,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast } from '@/utils/ui'
+import { redirectTo } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 
@@ -51,6 +53,14 @@ const NEWS_KEY = (id) => 'committee_news_' + id
 
 const paras = computed(() => String(news.value && news.value.content || '')
   .split(/\n+/).map(s => s.trim()).filter(Boolean))
+
+// 大多数会议纪要生成的是党建新闻；但内容明显不是党建主题时，不再冠以「党建新闻」，改用中性「会议新闻」。
+const PARTY_KW = ['党建', '党支部', '党员', '党组织', '党委', '党的', '党风', '党性', '主题党日', '三会一课', '两学一做', '初心使命', '红色教育', '党史']
+const isPartyNews = computed(() => {
+  const txt = (news.value ? ((news.value.title || '') + (news.value.content || '')) : '')
+  return PARTY_KW.some(k => txt.includes(k))
+})
+const pageTitle = computed(() => (news.value && !isPartyNews.value) ? '会议新闻' : '党建新闻')
 
 const today = (() => {
   const d = new Date()
@@ -90,6 +100,12 @@ async function regen() {
 // 遮罩「查看新闻稿」/关闭：新闻已在本页，直接收起遮罩即可
 function onDone() {}
 function onClose() {}
+
+// 回到首页（业委会主页 /main）：硬导航兜底，避免软路由偶发不切换
+function goHome() {
+  try { redirectTo('/main') } catch (e) {}
+  setTimeout(() => { if (!location.pathname.startsWith('/main')) location.href = '/main' }, 300)
+}
 
 function copyAll() {
   const text = (news.value ? (news.value.title + '\n\n' + news.value.content) : '')
@@ -139,6 +155,8 @@ function copyAll() {
 .news-btn:active { opacity: .9; }
 .news-btn.ghost { background: #fff; color: #C0141B; border: 2rpx solid #C0141B; box-shadow: none; }
 .news-btn:disabled { opacity: .6; }
+/* 复制全文：降级为文字链接（不再占按钮位） */
+.news-copy-link { text-align: center; margin-top: 20rpx; font-size: 28rpx; color: #C0141B; font-weight: 600; padding: 8rpx; }
 
 .news-empty { display: flex; flex-direction: column; align-items: center; gap: 24rpx; padding: 120rpx 40rpx; }
 .ne-flag { font-size: 40rpx; font-weight: 800; color: #C0141B; letter-spacing: 4rpx; }

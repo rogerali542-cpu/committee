@@ -227,7 +227,7 @@
           <div class="arc-bottom-action" v-if="detail.compliance !== 'invalid'">
             <div class="ended-btn-row">
               <button class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
-              <button class="ended-news-btn" @click="generateNews">AI生成新闻</button>
+              <button class="ended-news-btn" @click="generateNews">AI生成新闻稿</button>
             </div>
             <div v-if="detail.publish && detail.publish.published" class="arp-done">
               <div class="arp-status">
@@ -271,7 +271,7 @@
           <div class="arc-bottom-action" v-else>
             <div class="ended-btn-row">
               <button class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
-              <button class="ended-news-btn" @click="generateNews">AI生成新闻</button>
+              <button class="ended-news-btn" @click="generateNews">AI生成新闻稿</button>
             </div>
           </div>
         </template>
@@ -2495,7 +2495,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ended-minutes-btn { display:block; width:76%; height:84px; margin:0 auto 10px; border-radius:16px; background:var(--c-primary-dark); color:#fff; font-size:28px; font-weight:700; border:none; cursor:pointer; box-shadow:0 6px 18px rgba(168,88,0,0.28); }
 .ended-minutes-btn:active { opacity:0.9; }
 /* 结束页两个主按钮：查看会议纪要 + AI生成新闻，上下排列 */
-.ended-btn-row { display:flex; flex-direction:column; align-items:center; gap:25px; margin-bottom:6px; }
+.ended-btn-row { display:flex; flex-direction:column; align-items:center; gap:25px; margin-bottom:34px; }
 .ended-btn-row .ended-minutes-btn,
 .ended-btn-row .ended-news-btn { width:64%; height:66px; margin:0; font-size:22px; }
 .ended-news-btn { display:block; width:76%; height:76px; border-radius:16px; background:linear-gradient(90deg,#C0141B,#E23A2E); color:#fff; font-size:26px; font-weight:700; border:none; cursor:pointer; box-shadow:0 6px 18px rgba(200,30,30,0.28); }
