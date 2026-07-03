@@ -115,7 +115,7 @@
 
     <!-- 议题弹层：表决 + 意见 -->
     <TopicSheet v-if="meetingIdRef" :meeting-id="meetingIdRef" :topic="sheetTopic" :interactive="stage === 'ongoing'"
-                :signed-in="signedIn" @close="sheetTopicId = null" @changed="loadDetail" />
+                :signed-in="signedIn" :has-next="sheetHasNext" @close="sheetTopicId = null" @changed="loadDetail" @next="gotoNextTopic" />
   </div>
 </template>
 
@@ -188,6 +188,15 @@ const meetingIdRef = ref(null)       // meetingId 的响应式镜像（传给弹
 const sheetTopicId = ref(null)
 const sheetTopic = computed(() => rawTopics.value.find(t => t.id === sheetTopicId.value) || null)
 function openTopicSheetById(id) { if (id != null) sheetTopicId.value = id }
+// 弹层"下一个议题"
+const sheetHasNext = computed(() => {
+  const i = rawTopics.value.findIndex(t => t.id === sheetTopicId.value)
+  return i >= 0 && i < rawTopics.value.length - 1
+})
+function gotoNextTopic() {
+  const i = rawTopics.value.findIndex(t => t.id === sheetTopicId.value)
+  if (i >= 0 && i < rawTopics.value.length - 1) sheetTopicId.value = rawTopics.value[i + 1].id
+}
 
 // ── 会议通知正文（与主任通知页一致：微信口吻整段）──
 function fmtHm(t) { return String(t || '').slice(0, 5) }

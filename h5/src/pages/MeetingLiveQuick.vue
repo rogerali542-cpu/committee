@@ -119,9 +119,10 @@
       <button v-if="isChair" class="lp-nav-btn ghost" @click="exportAttendance">导出签到名单</button>
     </div>
 
-    <!-- 议题弹层：表决 + 意见（点议题行打开） -->
+    <!-- 议题弹层：表决 + 意见（点议题行打开）；下一个议题直接切换 -->
     <TopicSheet :meeting-id="meetingId" :topic="sheetTopic" :interactive="detail.stage === 'ongoing'"
-                :signed-in="signedIn" :is-chair="isChair" @close="sheetTopicId = null" @changed="loadDetail" />
+                :signed-in="signedIn" :is-chair="isChair" :has-next="sheetHasNext"
+                @close="sheetTopicId = null" @changed="loadDetail" @next="gotoNextTopic" />
 
     <!-- 转录文本查看 -->
     <div v-if="transcriptVisible" class="qk-modal-mask" @click="closeTranscript">
@@ -418,6 +419,17 @@ const sheetTopic = computed(() => {
   return list.find(t => t.id === sheetTopicId.value) || null
 })
 function openTopicSheet(item) { sheetTopicId.value = item.id }
+// 弹层"下一个议题"：当前议题是否还有下一个 + 切到下一个
+const sheetHasNext = computed(() => {
+  const list = (detail.value && detail.value.record && detail.value.record.topics) || []
+  const i = list.findIndex(t => t.id === sheetTopicId.value)
+  return i >= 0 && i < list.length - 1
+})
+function gotoNextTopic() {
+  const list = (detail.value && detail.value.record && detail.value.record.topics) || []
+  const i = list.findIndex(t => t.id === sheetTopicId.value)
+  if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id
+}
 // 委员引导按钮入口：优先打开还没投票的表决议题，其次第一个议题
 function openFirstPendingTopic() {
   const list = (detail.value && detail.value.record && detail.value.record.topics) || []
@@ -539,9 +551,16 @@ const voteNeed = ref(0)
 const attendanceList = ref([])
 const signinPanelOpen = ref(false)
 const signinStats = computed(() => {
-  const list = attendanceList.value || []
-  const total = list.length
-  const signedCount = list.filter(a => a.signedIn).length
+  const raw = attendanceList.value || []
+  const total = raw.length
+  const signedCount = raw.filter(a => a.signedIn).length
+  // 正在录音时，把录音人(本人)排到名单最前，一眼看到谁在录
+  let list = raw
+  if (recActive.value || isPaused.value) {
+    list = [...raw]
+    const i = list.findIndex(a => a.isSelf)
+    if (i > 0) { const [self] = list.splice(i, 1); list.unshift(self) }
+  }
   const pct = total ? Math.round((signedCount / total) * 100) : 0
   return { total, signedCount, pct, list }
 })
@@ -2016,7 +2035,7 @@ function exitLive() {
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
 .lp-info-v { flex:1; min-width:0; word-break:break-all; }
 /* 议题区固定高度(约4行)：卡片大小恒定；放不下先缩字号(下面 fs 档)，仍放不下则本区下拉滚动 */
-.lp-agenda { flex:1; min-width:0; height:300rpx; overflow-y:auto; } /* 卡片缩小一号：议题区固定高度 336→300(内容字号不变) */
+.lp-agenda { flex:1; min-width:0; height:256rpx; overflow-y:auto; } /* 再缩一号：议题区固定高度→256，腾空间给名单 */
 /* 字号自适应档位：每档缩一号(4rpx=2px)，最多缩到 28rpx(fs2)；高档同时压缩行距让更多议题露出 */
 .lp-agenda--fs1 .lp-agenda-title { font-size:32rpx; }
 .lp-agenda--fs2 .lp-agenda-title { font-size:28rpx; }
@@ -2139,7 +2158,7 @@ function exitLive() {
 .lp-rec { padding:14rpx 26rpx 4rpx; } /* 卡片再缩一号：内边距进一步收紧(圆圈/字号不变) */
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
 .qk-recorder { display:flex; flex-direction:column; align-items:center; gap:6rpx; padding:6rpx 0 2rpx; }
-.qk-rec-circle { width:228rpx; height:228rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:40rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:9rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 圆圈114px、圈内字加大两号(32→40) */
+.qk-rec-circle { width:204rpx; height:204rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:36rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:8rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 再缩一号：圆圈228→204、字40→36，腾空间给名单 */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
 .qk-rec-circle:active { transform:scale(0.95); }

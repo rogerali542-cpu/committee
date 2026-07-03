@@ -115,6 +115,9 @@
         </template>
       </template>
       <div v-else-if="interactive && !signedIn" class="ts-input-hint">签到后可发表意见</div>
+
+      <!-- 跳转下一个议题：处理完当前议题直接切到下一个，不用先关弹层 -->
+      <button v-if="hasNext" class="ts-next-btn" @click="$emit('next')">下一个议题 ›</button>
     </div>
   </div>
 </template>
@@ -131,9 +134,10 @@ const props = defineProps({
   topic: { type: Object, default: null },        // detail.record.topics 里的一项（TopicVO）
   interactive: { type: Boolean, default: false }, // 会议进行中（可表决/发言）
   signedIn: { type: Boolean, default: false },
-  isChair: { type: Boolean, default: false }
+  isChair: { type: Boolean, default: false },
+  hasNext: { type: Boolean, default: false } // 是否还有下一个议题（父组件按列表算）
 })
-const emit = defineEmits(['close', 'changed'])
+const emit = defineEmits(['close', 'changed', 'next'])
 
 const opinions = ref([])
 const loading = ref(false)
@@ -419,6 +423,9 @@ async function removeOpinion(op) {
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-send[disabled] { background: #E3D5C3; }
 .ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
+/* 下一个议题：固定在弹层最底部，处理完直接切下一个 */
+.ts-next-btn { flex-shrink: 0; width: 100%; box-sizing: border-box; margin-top: 14rpx; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 0; }
+.ts-next-btn:active { background: #ECEEF1; }
 
 /* AI 助手行：润色 / 帮我写 入口 + 还原 + token 低调提示 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
