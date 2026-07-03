@@ -68,10 +68,10 @@
       <span class="doc-body-title">{{ prettyTitle }}</span>
       <span class="doc-body">{{ prettyBody }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
-        <!-- 两个主操作：确认 / 编辑，并排缩小 -->
+        <!-- 两个主操作：编辑(左·浅色) / 确认无误(右·深色更醒目) -->
         <div class="action-row">
+          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn ghost" @click="startEdit">编辑纪要</button>
           <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
-          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" @click="startEdit">编辑纪要</button>
         </div>
         <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
         <div class="more-links">
@@ -152,10 +152,10 @@
       <span class="doc-foot">本纪要由系统根据会议记录自动生成 · {{ minutes.draft ? '草稿' : '已定稿' }}</span>
 
       <div class="minutes-actions" v-if="!aiGenerating">
-        <!-- 两个主操作：确认 / 编辑，并排缩小 -->
+        <!-- 两个主操作：编辑(左·浅色) / 确认无误(右·深色更醒目) -->
         <div class="action-row">
+          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn ghost" @click="startEdit">编辑纪要</button>
           <button v-if="canEditMinutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
-          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" @click="startEdit">编辑纪要</button>
         </div>
         <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
         <div class="more-links">
@@ -709,7 +709,7 @@ function viewTodoList() {
 
 /* 操作区 */
 .minutes-actions { display:flex; flex-direction:column; align-items:stretch; gap:16rpx; margin-top:28rpx; }
-/* 确认无误 / 编辑纪要：两个主操作并排缩小，统一深橙填充按钮 */
+/* 编辑纪要(左·ghost 浅色) / 确认无误(右·深橙填充更醒目)：两个主操作并排缩小 */
 .action-row { display:flex; gap:20rpx; }
 .action-row .end-meeting-btn, .action-row .edit-minutes-btn { flex:1; width:auto; padding:20rpx 0; font-size:32rpx; }
 .end-meeting-btn { width:100%; padding:24rpx 0; background:var(--c-primary-dark); color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }

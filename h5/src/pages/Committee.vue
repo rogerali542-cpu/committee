@@ -1514,7 +1514,7 @@ onActivated(show)
 .idle-hint { font-size: 38rpx; color: var(--c-text-mid); margin-bottom: 8rpx; }
 .idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 /* 更多功能（主任视图紧跟卡片；委员视图沉底） */
-.more { margin: 0 28rpx; padding-top: 40rpx; }
+.more { margin: 0 28rpx; padding-top: 76rpx; }
 .more-sink { margin-top: auto; }
 .more-title { font-size: 28rpx; color: var(--c-text-weak); padding-left: 6rpx; }
 .more-grid { display: flex; margin-top: 14rpx; gap: 16rpx; }
