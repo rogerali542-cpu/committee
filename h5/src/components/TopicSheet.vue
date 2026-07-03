@@ -103,13 +103,12 @@
         <template v-else>
           <div class="ts-input">
             <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
-            <button class="ts-mic" @click="startVoice('draft')">🎤</button>
             <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
           </div>
           <div class="ts-ai-row">
+            <button class="ts-mic" @click="startVoice('draft')">🎤</button>
             <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi">{{ aiBusy ? '✨ AI 正在润色…' : '✨ AI 帮我润色' }}</button>
             <button v-else class="ts-ai-btn" @click="helperOn = true">✨ 不会说？AI 帮我写</button>
-            <span v-if="polishUndo !== null" class="ts-ai-undo" @click="undoPolish">还原原文</span>
             <span v-if="aiTokens" class="ts-ai-token">本次消耗 {{ aiTokens.toLocaleString() }} token</span>
           </div>
         </template>
