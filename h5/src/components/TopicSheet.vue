@@ -50,6 +50,16 @@
         </div>
       </div>
 
+      <!-- 通报区（仅通报类议题）：展示通知正文 + 已通报状态 + 「已宣读」 -->
+      <div v-if="topic.type === 'notice'" class="ts-notice">
+        <div class="ts-notice-label">通知内容</div>
+        <div class="ts-notice-body">{{ topic.content || '（暂无通知正文）' }}</div>
+        <div class="ts-notice-foot">
+          <span class="ts-notice-status" :class="{ done: topic.notified }">{{ topic.notified ? '✓ 已通报' : '待通报' }}</span>
+          <button v-if="interactive && signedIn && !topic.notified" class="ts-notice-read" @click="markNoticeRead">已宣读</button>
+        </div>
+      </div>
+
       <!-- 意见区 -->
       <div class="ts-ops">
         <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
@@ -180,9 +190,32 @@ watch(() => props.topic && props.topic.id, (id) => {
   cancelVoice()
   helperOn.value = false; helperDraft.value = ''; aiBusy.value = false
   aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null
-  if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
+  if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions(); recordNoticeView() }
 }, { immediate: true })
 onBeforeUnmount(cancelVoice)
+
+// 打开通报类议题即记录"本人已看过"；全体已签到委员都看过时后端会自动标记已通报。
+async function recordNoticeView() {
+  const t = props.topic
+  if (!t || t.type !== 'notice') return
+  if (!props.interactive || !props.signedIn) return
+  if (t.viewedByMe) return // 已看过，不再重复上报
+  try {
+    await api.committeeNoticeView(props.meetingId, t.id)
+    emit('changed') // 刷新状态（可能刚好凑齐"全体已看"→已通报）
+  } catch (e) { /* 静默 */ }
+}
+
+// 「已宣读」：任一委员/主任点了 → 该通报议题标记已通报。
+async function markNoticeRead() {
+  const t = props.topic
+  if (!t || t.type !== 'notice') return
+  try {
+    await api.committeeNoticeRead(props.meetingId, t.id)
+    toast({ title: '已标记为已通报', icon: 'success' })
+    emit('changed')
+  } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
+}
 
 async function startVoice(target) {
   if (!rec.supported.value) { toast({ title: '当前浏览器不支持录音（需 HTTPS 且允许麦克风）', icon: 'none' }); return }
@@ -450,6 +483,15 @@ async function removeOpinion(op) {
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 
+/* 通报类议题：通知正文 + 已通报状态 */
+.ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 18rpx; margin-bottom: 18rpx; }
+.ts-notice-label { font-size: 26rpx; font-weight: 700; color: #B06A00; margin-bottom: 12rpx; }
+.ts-notice-body { font-size: 32rpx; color: #1f2329; line-height: 1.7; white-space: pre-wrap; }
+.ts-notice-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
+.ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
+.ts-notice-status.done { color: #2E7D32; }
+.ts-notice-read { border: none; background: #FFA800; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 14rpx 34rpx; }
+.ts-notice-read:active { background: #F09600; }
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }

@@ -24,5 +24,6 @@ public class CreateMeetingRequest {
         private String decisionType;
         private List<Map<String, Object>> options;
         private Boolean realNameVote;
+        private String content;   // 通报类议题正文
     }
 }

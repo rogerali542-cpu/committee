@@ -178,9 +178,10 @@ public class CommitteeController {
                                          @RequestParam String type,
                                          @RequestParam(required = false) String decisionType,
                                          @RequestParam(required = false) String options,
-                                         @RequestParam(required = false, defaultValue = "false") Boolean realNameVote) {
+                                         @RequestParam(required = false, defaultValue = "false") Boolean realNameVote,
+                                         @RequestParam(required = false) String content) {
         // 仅返回必要字段，避免直接序列化 JPA 实体触发 Hibernate 懒加载代理(community 等)序列化失败
-        RecordTopic t = service.addTopic(id, title, type, decisionType, options, realNameVote);
+        RecordTopic t = service.addTopic(id, title, type, decisionType, options, realNameVote, content);
         java.util.Map<String, Object> vo = new java.util.HashMap<>();
         vo.put("id", t.getId());
         vo.put("title", t.getTitle());
@@ -191,6 +192,22 @@ public class CommitteeController {
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> removeTopic(@PathVariable Long id, @PathVariable Long topicId) {
         service.removeTopic(id, topicId);
+        return Result.ok();
+    }
+
+    /** 通报议题：记录当前用户已查看（全体已签到委员看完即自动已通报）。 */
+    @PostMapping("/{id}/topics/{topicId}/notice-view")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Void> noticeView(@PathVariable Long id, @PathVariable Long topicId) {
+        service.markNoticeViewed(id, topicId);
+        return Result.ok();
+    }
+
+    /** 通报议题：有人「已宣读」→ 标记已通报。 */
+    @PostMapping("/{id}/topics/{topicId}/notice-read")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Void> noticeRead(@PathVariable Long id, @PathVariable Long topicId) {
+        service.markNoticeRead(id, topicId);
         return Result.ok();
     }
 

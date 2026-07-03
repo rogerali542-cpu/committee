@@ -81,15 +81,24 @@ export default {
   committeeTranscribeRecording: function (id, recordingId) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/recordings/' + recordingId + '/transcribe');
   },
-  committeeAddTopic: function (id, title, type, decisionType, optionsJson, realNameVote) {
+  committeeAddTopic: function (id, title, type, decisionType, optionsJson, realNameVote, content) {
     var params = '?title=' + encodeURIComponent(title) + '&type=' + type;
     if (decisionType) params += '&decisionType=' + decisionType;
     if (optionsJson) params += '&options=' + encodeURIComponent(optionsJson);
     if (realNameVote) params += '&realNameVote=true';
+    if (content) params += '&content=' + encodeURIComponent(content);
     return core.realRequest('POST', '/api/committees/' + id + '/topics' + params);
   },
   committeeRemoveTopic: function (id, topicId) {
     return core.request('DELETE', '/api/committees/' + id + '/topics/' + topicId);
+  },
+  // 通报议题：记录本人已查看（全体已签到委员看完自动已通报）
+  committeeNoticeView: function (id, topicId) {
+    return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/notice-view');
+  },
+  // 通报议题：已宣读 → 标记已通报
+  committeeNoticeRead: function (id, topicId) {
+    return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/notice-read');
   },
   committeeRenameTopic: function (id, topicId, title) {
     return core.realRequest('PUT', '/api/committees/' + id + '/topics/' + topicId + '/title?title=' + encodeURIComponent(title));

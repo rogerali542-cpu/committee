@@ -547,7 +547,7 @@ public class CommitteeService {
     // ===== Topics & Votes =====
     @Transactional
     public RecordTopic addTopic(Long meetingId, String title, String type,
-                                 String decisionType, String options, Boolean realNameVote) {
+                                 String decisionType, String options, Boolean realNameVote, String content) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         // 规则8：议题为进行中现场新增
@@ -577,8 +577,60 @@ public class CommitteeService {
                 .createdById(ur != null ? ur.getId() : null)
                 .createdByName(ur != null ? ur.getRealName() : null)
                 .realNameVote(Boolean.TRUE.equals(realNameVote))
+                .content(tType == TopicType.notice ? content : null)
+                .notified(false)
                 .build();
         return topicRepo.save(topic);
+    }
+
+    // ===== 通报类议题：正文查看 / 已宣读 → 已通报 =====
+    private RecordTopic requireTopic(Long meetingId, Long topicId) {
+        RecordTopic topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        if (topic.getRecord() == null || !topic.getRecord().getId().equals(getRecord(meetingId).getId())) {
+            throw new IllegalArgumentException("议题不属于本次会议");
+        }
+        return topic;
+    }
+
+    private Set<Long> parseViewedBy(String json) {
+        if (json == null || json.isBlank()) return new LinkedHashSet<>();
+        try {
+            return new LinkedHashSet<>(objectMapper.readValue(json, new TypeReference<List<Long>>() {}));
+        } catch (Exception e) { return new LinkedHashSet<>(); }
+    }
+
+    private String writeViewedBy(Set<Long> ids) {
+        try { return objectMapper.writeValueAsString(new ArrayList<>(ids)); }
+        catch (Exception e) { return null; }
+    }
+
+    /** 通报议题：记录当前用户已查看；若全体已签到委员都看过，则自动标记已通报。 */
+    @Transactional
+    public void markNoticeViewed(Long meetingId, Long topicId) {
+        RecordTopic topic = requireTopic(meetingId, topicId);
+        if (topic.getType() != TopicType.notice) return;
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (ur == null) return;
+        Set<Long> viewed = parseViewedBy(topic.getViewedByJson());
+        viewed.add(ur.getId());
+        topic.setViewedByJson(writeViewedBy(viewed));
+        List<Long> signedIn = attendanceRepo.findByRecordId(topic.getRecord().getId()).stream()
+                .filter(a -> Boolean.TRUE.equals(a.getSignedIn()))
+                .map(a -> a.getUserRole().getId()).collect(Collectors.toList());
+        if (!signedIn.isEmpty() && viewed.containsAll(signedIn)) {
+            topic.setNotified(true);
+        }
+        topicRepo.save(topic);
+    }
+
+    /** 通报议题：有人「已宣读」→ 直接标记已通报。 */
+    @Transactional
+    public void markNoticeRead(Long meetingId, Long topicId) {
+        RecordTopic topic = requireTopic(meetingId, topicId);
+        if (topic.getType() != TopicType.notice) return;
+        topic.setNotified(true);
+        topicRepo.save(topic);
     }
 
     @Transactional
@@ -1985,6 +2037,8 @@ public class CommitteeService {
                     .createdById(ur != null ? ur.getId() : null)
                     .createdByName(ur != null ? ur.getRealName() : null)
                     .realNameVote(Boolean.TRUE.equals(reqTopic.getRealNameVote()))
+                    .content(type == TopicType.notice ? reqTopic.getContent() : null)
+                    .notified(false)
                     .build();
             topicRepo.save(topic);
         }
@@ -2346,6 +2400,10 @@ public class CommitteeService {
             tv.setPassed(passed);
             tv.setStatus(!voteRequired ? "recorded" : (passed ? "passed" : (countedVotes < total ? "pending" : "failed")));
             tv.setText(statusText);
+            // 通报类：正文 + 已通报 + 本人是否看过
+            tv.setContent(tp.getContent());
+            tv.setNotified(Boolean.TRUE.equals(tp.getNotified()));
+            tv.setViewedByMe(parseViewedBy(tp.getViewedByJson()).contains(ur.getId()));
 
             TopicVote myVote = votes.stream()
                     .filter(v -> v.getUserRole().getId().equals(ur.getId()))

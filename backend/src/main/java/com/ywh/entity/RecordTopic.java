@@ -33,6 +33,16 @@ public class RecordTopic {
     @Column(name = "options_json", columnDefinition = "TEXT")
     private String optionsJson;
 
+    // ===== 通报类议题：正文 + 已通报状态 + 已查看名单 =====
+    @Column(name = "content", columnDefinition = "TEXT")
+    private String content;                 // 通报正文（点开弹窗展示）
+
+    @Column(name = "notified")
+    private Boolean notified = false;        // 已通报（有人点「已宣读」或全体签到者都看过）
+
+    @Column(name = "viewed_by_json", columnDefinition = "TEXT")
+    private String viewedByJson;             // 看过本议题的 userRoleId 集合（JSON 数组）
+
     @Column(name = "sort_order")
     private Integer sortOrder;
 

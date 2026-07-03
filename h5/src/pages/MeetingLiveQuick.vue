@@ -164,6 +164,10 @@
           <span class="qk-type" :class="newTopicForm.type === 'discussion' ? 'on' : ''" @click="pickTopicType('discussion')">讨论事项</span>
           <span class="qk-type" :class="newTopicForm.type === 'decision' ? 'on' : ''" @click="pickTopicType('decision')">表决事项</span>
         </div>
+        <template v-if="newTopicForm.type === 'notice'">
+          <div class="qk-modal-label">通知正文</div>
+          <textarea class="qk-modal-input qk-modal-textarea" placeholder="填写要通报给委员的内容（点开议题时展示）" v-model="newTopicForm.content" rows="3"></textarea>
+        </template>
         <template v-if="newTopicForm.type === 'decision'">
           <div class="qk-modal-label">表决方式</div>
           <div class="qk-modal-types">
@@ -436,7 +440,8 @@ function openFirstPendingTopic() {
 // 录音经 ASR 识别+确认后 status/opinionCount 会更新，loadDetail 刷新后标签自动翻成"已"。
 function topicBadgeDone(item) {
   if (item.voteRequired) return item.status === 'passed' || item.status === 'failed' // 表决达成(含ASR识别票数确认后)
-  return (item.opinionCount || 0) > 0 // 通报/讨论：录音里被提到/有意见 = 已处理
+  if (item.type === 'notice') return !!item.notified || (item.opinionCount || 0) > 0 // 通报：已宣读/全体已看，或录音里被提到
+  return (item.opinionCount || 0) > 0 // 讨论：录音里被提到/有意见 = 已处理
 }
 function topicBadgeText(item) {
   const done = topicBadgeDone(item)
@@ -568,7 +573,7 @@ const signinLevel = computed(() => {
   return 'low'
 })
 const addTopicVisible = ref(false)
-const newTopicForm = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [] })
+const newTopicForm = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 
 // 选片高亮（this._transcribingRecordingId）改为响应式以驱动样式
 const _transcribingRecordingId = ref('')
@@ -1888,6 +1893,7 @@ function openAddTopic() {
   newTopicForm.type = 'discussion'
   newTopicForm.decisionType = 'none'
   newTopicForm.options = []
+  newTopicForm.content = ''
 }
 function closeAddTopic() { addTopicVisible.value = false; cancelTopicVoice() }
 
@@ -1963,8 +1969,8 @@ async function submitAddTopic() {
   }
   const dt = f.type === 'decision' ? f.decisionType : 'none'
   try {
-    // 现场新增只允许通报/讨论/表决，重大事项后端会拦截
-    await api.committeeAddTopic(meetingId.value, f.title.trim(), f.type, dt, optionsJson, false)
+    // 现场新增只允许通报/讨论/表决，重大事项后端会拦截；通报类带正文
+    await api.committeeAddTopic(meetingId.value, f.title.trim(), f.type, dt, optionsJson, false, f.type === 'notice' ? (f.content || '').trim() : null)
     toast({ title: '议题已添加', icon: 'success' })
     addTopicVisible.value = false
     loadDetail()
@@ -2363,6 +2369,7 @@ function exitLive() {
 .qk-modal { width:88%; max-height:84vh; overflow-y:auto; box-sizing:border-box; background:#fff; border-radius:24rpx; padding:54rpx 44rpx 48rpx; }
 .qk-modal-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; margin-bottom:46rpx; }
 .qk-modal-input { box-sizing:border-box; width:100%; height:88rpx; line-height:88rpx; background:#F6F6F8; border-radius:14rpx; padding:0 20rpx; font-size:30rpx; margin-bottom:18rpx; border:0; }
+.qk-modal-textarea { height:auto; min-height:150rpx; line-height:1.6; padding:16rpx 20rpx; resize:none; font-family:inherit; }
 .qk-modal-types { display:flex; gap:18rpx; margin-bottom:46rpx; }
 .qk-type { font-size:28rpx; padding:12rpx 26rpx; border-radius:24rpx; background:#F6F6F8; color:#6B6E76; border:2rpx solid #ECECEF; }
 .qk-type.on { background:#FFF3E0; color:#E67E22; border-color:#F4D08A; }

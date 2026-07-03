@@ -153,6 +153,10 @@ public class MeetingDetailVO {
             private String status;     // passed, pending, failed
             private String text;
             private String decisionType;
+            // 通报类：正文 + 已通报状态 + 本人是否看过
+            private String content;
+            private Boolean notified;
+            private Boolean viewedByMe;
             private List<Map<String, Object>> options;
             private String myVote;
             private Long mySelectedId;

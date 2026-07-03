@@ -368,6 +368,10 @@
               <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决事项</span>
             </div>
           </div>
+          <div class="form-group" v-if="topicDraft.type === 'notice'">
+            <span class="form-label">通知正文</span>
+            <textarea class="form-input" v-model="topicDraft.content" placeholder="填写要通报给委员的内容（点开议题时展示）" style="height:auto;min-height:160rpx;line-height:1.6;resize:none;padding:16rpx 20rpx;"></textarea>
+          </div>
           <div class="form-group" v-if="topicDraft.type === 'decision'">
             <span class="form-label">表决方式 *</span>
             <div class="type-row" style="margin-bottom:0;">
@@ -478,7 +482,7 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 // 议题编辑弹窗
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
-const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [] })
+const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 const topicInput = ref('') // 议题输入框当前内容（打字/语音），点"确定"加入 topics 列表
 
 // 会议名称：自增高文本框（空/短=一行，超长自动到两行，max-height 封顶）
@@ -1181,6 +1185,7 @@ function openAddTopic() {
   topicDraft.type = 'discussion'
   topicDraft.decisionType = 'none'
   topicDraft.options = []
+  topicDraft.content = ''
   topicDialogOpen.value = true
 }
 
@@ -1191,6 +1196,7 @@ function openEditTopic(idx) {
   topicDraft.type = t.type || 'discussion'
   topicDraft.decisionType = t.decisionType || 'none'
   topicDraft.options = (t.options || []).map(function (o) { return { id: o.id, label: o.label } })
+  topicDraft.content = t.content || ''
   topicDialogOpen.value = true
 }
 
@@ -1225,7 +1231,8 @@ function confirmTopic() {
     title: topicDraft.title.trim(),
     type: topicDraft.type,
     decisionType: topicDraft.decisionType,
-    options: (topicDraft.options || []).map(function (o) { return { id: o.id, label: o.label } })
+    options: (topicDraft.options || []).map(function (o) { return { id: o.id, label: o.label } }),
+    content: topicDraft.type === 'notice' ? (topicDraft.content || '').trim() : ''
   }
   if (topicEditIdx.value >= 0) {
     const arr = createForm.topics.slice()
