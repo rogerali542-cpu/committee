@@ -575,8 +575,8 @@ function decorateCurrent(m, chair) {
   let ctaLabel, ctaIcon, tag
   if (m.stage === 'preparing') {
     if (chair) {
-      ctaLabel = m.allReplied ? '会议已就绪' : '继续开会'
-      ctaIcon = m.allReplied ? '✅' : '📋'
+      ctaLabel = m.allReplied ? '会议已就绪' : '继续通知'
+      ctaIcon = m.allReplied ? '✅' : '📣'
     } else {
       ctaLabel = '查看会议通知'
       ctaIcon = '📋'
@@ -1496,14 +1496,14 @@ onActivated(show)
 .step-line { flex: 1; height: 6rpx; border-radius: 3rpx; margin-top: 28rpx; }
 .step-line.done { background: var(--c-primary); }
 .step-line.todo { background: #E3E5E9; }
-/* 大按钮（描边幽灵：白底 + 橙边橙字；去开会与卡片"继续开会"同款同大小、字略放大） */
+/* 大按钮（描边幽灵：白底 + 橙边橙字；去开会与卡片"继续通知"同款同大小、字略放大） */
 .big-btn { display: flex; align-items: center; justify-content: center; height: 140rpx; border-radius: 22rpx; background: var(--c-bg-card); border: 3rpx solid var(--c-primary-dark); margin-top: 8rpx; }
 .big-btn:active { background: var(--c-primary-soft); }
 .big-btn-ico { font-size: 54rpx; margin-right: 14rpx; }
 .big-btn-text { font-size: 52rpx; font-weight: 700; color: var(--c-primary-dark); }
 /* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
 .go-meeting { margin: auto auto 16rpx; width: 84%; }
-/* 卡片内"继续开会"：略收窄并居中 */
+/* 卡片内"继续通知"：略收窄并居中 */
 .meet-card .big-btn { width: 90%; margin-left: auto; margin-right: auto; }
 /* 删除会议（测试用，弱化） */
 .meet-del { text-align: center; color: var(--c-danger); font-size: 30rpx; margin-top: 28rpx; padding: 8rpx; }
