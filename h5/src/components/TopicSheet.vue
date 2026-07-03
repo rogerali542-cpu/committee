@@ -34,7 +34,6 @@
           <!-- 已投后不再显示文字提示：按钮已高亮锁定，含义自明 -->
           <div v-if="!topic.myVote && !interactive" class="ts-vote-hint">会议进行中才可表决</div>
           <div v-else-if="!topic.myVote && !signedIn" class="ts-vote-hint">签到后即可表决</div>
-          <div v-else-if="!topic.myVote" class="ts-vote-hint">请点选你的意见</div>
         </div>
 
         <!-- ② 全体表决情况：汇总计票，独立浅底卡片；与个人区拉开距离，避免误认成个人结果 -->
