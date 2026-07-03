@@ -8,39 +8,52 @@
         <span class="ts-close" @click="$emit('close')">×</span>
       </div>
 
-      <!-- 表决区（仅表决类议题） -->
+      <!-- 可滚动区：表决 + 意见汇总（输入框固定在底部，这里滚动看更多意见） -->
+      <div class="ts-scroll">
+      <!-- 表决区（仅表决类议题）：分「我的表决」和「全体表决情况」两块，避免个人/全体状态挤在一起 -->
       <div v-if="topic.voteRequired" class="ts-vote">
-        <!-- 简单表决：三颗大按钮；已投后锁定高亮 -->
-        <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
-          <div class="ts-vote-btns">
-            <button class="ts-vote-btn agree" :class="{ on: topic.myVote === 'for_vote', off: lockedOther('for_vote') }" @click="castVote('for_vote')">同意</button>
-            <button class="ts-vote-btn against" :class="{ on: topic.myVote === 'against', off: lockedOther('against') }" @click="castVote('against')">不同意</button>
-            <button class="ts-vote-btn abstain" :class="{ on: topic.myVote === 'abstain', off: lockedOther('abstain') }" @click="castVote('abstain')">弃权</button>
-          </div>
-        </template>
-        <!-- 多选项表决：选项行 -->
-        <template v-else>
-          <div class="ts-opt" v-for="o in (topic.options || [])" :key="o.id"
-               :class="{ on: String(topic.myVote) === String(o.id), off: topic.myVote && String(topic.myVote) !== String(o.id) }"
-               @click="castVote(null, o)">
-            <span class="ts-opt-label">{{ o.label }}</span>
-            <span class="ts-opt-votes" v-if="o.votes != null">{{ o.votes }} 票</span>
-          </div>
-        </template>
-        <div class="ts-tally">
-          已表决 {{ topic.voted != null ? topic.voted : 0 }}/{{ topic.total || 0 }}
+        <!-- ① 我的表决：投票按钮（按钮含义自明，不加标签）+ 我的状态 -->
+        <div class="ts-vote-mine">
+          <!-- 简单表决：三颗大按钮；已投后锁定高亮 -->
           <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
-            · 同意 {{ topic.forVotes || 0 }} · 不同意 {{ topic.agVotes || 0 }} · 弃权 {{ topic.abVotes || 0 }}
+            <div class="ts-vote-btns">
+              <button class="ts-vote-btn agree" :class="{ on: topic.myVote === 'for_vote', off: lockedOther('for_vote') }" @click="castVote('for_vote')">同意</button>
+              <button class="ts-vote-btn against" :class="{ on: topic.myVote === 'against', off: lockedOther('against') }" @click="castVote('against')">不同意</button>
+              <button class="ts-vote-btn abstain" :class="{ on: topic.myVote === 'abstain', off: lockedOther('abstain') }" @click="castVote('abstain')">弃权</button>
+            </div>
           </template>
+          <!-- 多选项表决：选项行（右侧票数=全体该项得票） -->
+          <template v-else>
+            <div class="ts-opt" v-for="o in (topic.options || [])" :key="o.id"
+                 :class="{ on: String(topic.myVote) === String(o.id), off: topic.myVote && String(topic.myVote) !== String(o.id) }"
+                 @click="castVote(null, o)">
+              <span class="ts-opt-label">{{ o.label }}</span>
+              <span class="ts-opt-votes" v-if="o.votes != null">{{ o.votes }} 票</span>
+            </div>
+          </template>
+          <div v-if="topic.myVote" class="ts-vote-hint mine">✓ 你投了{{ myVoteText }}</div>
+          <div v-else-if="!interactive" class="ts-vote-hint">会议进行中才可表决</div>
+          <div v-else-if="!signedIn" class="ts-vote-hint">签到后即可表决</div>
+          <div v-else class="ts-vote-hint">请点选你的意见</div>
         </div>
-        <div v-if="topic.myVote" class="ts-vote-hint">已表决，不可更改</div>
-        <div v-else-if="!interactive" class="ts-vote-hint">会议进行中才可表决</div>
-        <div v-else-if="!signedIn" class="ts-vote-hint">签到后即可表决</div>
+
+        <!-- ② 全体表决情况：汇总计票，独立浅底卡片；与个人区拉开距离，避免误认成个人结果 -->
+        <div class="ts-vote-all">
+          <div class="ts-tally">
+            <span class="ts-tally-scope">全体</span>
+            <span class="ts-tally-total">已表决 {{ topic.voted != null ? topic.voted : 0 }}/{{ topic.total || 0 }}</span>
+            <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
+              <span class="ts-tally-stat agree">同意 {{ topic.forVotes || 0 }}</span>
+              <span class="ts-tally-stat against">不同意 {{ topic.agVotes || 0 }}</span>
+              <span class="ts-tally-stat abstain">弃权 {{ topic.abVotes || 0 }}</span>
+            </template>
+          </div>
+        </div>
       </div>
 
       <!-- 意见区 -->
       <div class="ts-ops">
-        <div class="ts-ops-head">意见<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
+        <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
         <div v-else class="ts-op" v-for="op in opinions" :key="op.id">
@@ -60,8 +73,9 @@
           </div>
         </div>
       </div>
+      </div><!-- /ts-scroll -->
 
-      <!-- 输入区：会议进行中且已签到 -->
+      <!-- 输入区：固定在弹层底部 -->
       <template v-if="interactive && signedIn">
         <!-- 语音条：录音中 / 识别中（识别完文字回到对应输入框，可改再发表） -->
         <div v-if="voiceOn" class="ts-voicebar">
@@ -88,8 +102,8 @@
         <!-- 常规输入行 + AI 助手行 -->
         <template v-else>
           <div class="ts-input">
-            <button class="ts-mic" @click="startVoice('draft')">🎤</button>
             <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
+            <button class="ts-mic" @click="startVoice('draft')">🎤</button>
             <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
           </div>
           <div class="ts-ai-row">
@@ -134,6 +148,16 @@ const tagClass = computed(() => {
 const tagLabel = computed(() => {
   const t = props.topic && props.topic.type
   return t === 'decision' ? '表决' : (t === 'notice' ? '通报' : '讨论')
+})
+// 我这一票投的是什么（多选项显示选项名，简单表决显示同意/不同意/弃权）
+const myVoteText = computed(() => {
+  const t = props.topic
+  if (!t || !t.myVote) return ''
+  if ((t.decisionType || 'simple') === 'multi_choice') {
+    const o = (t.options || []).find(x => String(x.id) === String(t.myVote))
+    return o ? o.label : '已选'
+  }
+  return t.myVote === 'for_vote' ? '同意' : (t.myVote === 'against' ? '不同意' : '弃权')
 })
 
 // ── 语音输入意见：useRecorder 录音 → 后端 ASR 转文字 → 填入输入框（可改）→ 发表 ──
@@ -334,9 +358,12 @@ async function removeOpinion(op) {
 
 <style scoped>
 .ts-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 120; display: flex; flex-direction: column; justify-content: flex-end; }
-.ts-sheet { background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 30rpx calc(24rpx + env(safe-area-inset-bottom)); max-height: 78vh; overflow-y: auto; }
-.ts-handle { width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #E4E6EA; margin: 0 auto 16rpx; }
-.ts-head { display: flex; align-items: flex-start; gap: 12rpx; margin-bottom: 20rpx; }
+/* 弹层：flex 列——把手/标题固定在上，意见汇总区(.ts-scroll)独占中间可滚动，输入区固定在底部 */
+.ts-sheet { background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 30rpx calc(24rpx + env(safe-area-inset-bottom)); height: 88vh; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; }
+.ts-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #E4E6EA; margin: 0 auto 16rpx; }
+.ts-head { flex-shrink: 0; display: flex; align-items: flex-start; gap: 12rpx; margin-bottom: 20rpx; }
+/* 中间可滚动区：意见多了在这里滚，输入框始终露在底部 */
+.ts-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ts-title { flex: 1; font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
 .ts-tag { flex-shrink: 0; font-size: 24rpx; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; margin-top: 4rpx; }
 .ts-tag.vote { background: #FFF3E0; color: #E67E22; }
@@ -354,8 +381,17 @@ async function removeOpinion(op) {
 .ts-opt.on { background: #FFF6E8; border-color: #FFA800; color: #9A6A00; font-weight: 700; }
 .ts-opt.off { opacity: 0.4; }
 .ts-opt-votes { font-size: 26rpx; color: #999; }
-.ts-tally { font-size: 26rpx; color: #666; margin-top: 14rpx; }
-.ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 6rpx; }
+/* 全体计票：独立浅底卡片，与个人投票区拉开距离(避免误认成个人结果)；"全体"前缀点明范围 */
+.ts-vote-all { margin-top: 44rpx; }
+.ts-tally { display: flex; flex-wrap: wrap; align-items: center; gap: 10rpx 18rpx; background: #F6F7F9; border-radius: 14rpx; padding: 18rpx 22rpx; font-size: 26rpx; color: #666; }
+.ts-tally-scope { font-weight: 700; color: #6B7078; background: #E9EBEF; border-radius: 8rpx; padding: 2rpx 12rpx; font-size: 24rpx; }
+.ts-tally-total { font-weight: 700; color: #1f2329; }
+.ts-tally-stat { font-size: 26rpx; }
+.ts-tally-stat.agree { color: #2E7D32; }
+.ts-tally-stat.against { color: #C0392B; }
+.ts-tally-stat.abstain { color: #7A7F87; }
+.ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
+.ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
@@ -377,11 +413,11 @@ async function removeOpinion(op) {
 .ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 10rpx 22rpx; }
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
-.ts-input { display: flex; align-items: flex-end; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; position: sticky; bottom: 0; background: #fff; }
+.ts-input { flex-shrink: 0; display: flex; align-items: flex-end; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; }
 .ts-mic { flex-shrink: 0; width: 84rpx; height: 84rpx; border: 2rpx solid #D8DBE0; border-radius: 50%; background: #fff; font-size: 40rpx; line-height: 1; padding: 0; }
 .ts-mic:active { background: #FFF6E8; border-color: #FFA800; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
-.ts-voicebar { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; position: sticky; bottom: 0; background: #fff; min-height: 96rpx; box-sizing: border-box; }
+.ts-voicebar { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; min-height: 96rpx; box-sizing: border-box; }
 .ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
 @keyframes ts-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .ts-voice-txt { flex: 1; min-width: 0; font-size: 30rpx; color: #333; }
@@ -392,10 +428,10 @@ async function removeOpinion(op) {
 .ts-ta:focus { border-color: #FFA800; outline: none; }
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-send[disabled] { background: #E3D5C3; }
-.ts-input-hint { font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
+.ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
 
 /* AI 助手行：润色 / 帮我写 入口 + 还原 + token 低调提示 */
-.ts-ai-row { display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; position: sticky; bottom: 0; background: #fff; }
+.ts-ai-row { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
 .ts-ai-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 12rpx 22rpx; }
 .ts-ai-btn:active { background: #FFF1DC; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
@@ -403,7 +439,7 @@ async function removeOpinion(op) {
 .ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
 
 /* AI 小助手面板 */
-.ts-helper { border: 2rpx solid #F0D9B8; border-radius: 18rpx; background: #FFFDF8; padding: 20rpx 22rpx; margin-top: 10rpx; position: sticky; bottom: 0; }
+.ts-helper { flex-shrink: 0; border: 2rpx solid #F0D9B8; border-radius: 18rpx; background: #FFFDF8; padding: 20rpx 22rpx; margin-top: 10rpx; }
 .ts-helper-head { display: flex; align-items: center; font-size: 30rpx; font-weight: 700; color: #B06A00; margin-bottom: 8rpx; }
 .ts-helper-close { margin-left: auto; width: 52rpx; height: 52rpx; line-height: 48rpx; text-align: center; font-size: 40rpx; color: #999; }
 .ts-helper-q { font-size: 27rpx; color: #6B5A3E; line-height: 1.55; margin-bottom: 14rpx; }
