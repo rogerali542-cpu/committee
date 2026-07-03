@@ -367,12 +367,23 @@ public class QuickExtractionServiceStub implements QuickExtractionService {
                 .forVotes(agree).agVotes(reject).abVotes(abstain).unanimous(false).source("counted").build();
     }
 
-    /** 在文本里找「数字 + (票) + 关键词」，返回数字（支持中文数字）；找不到返回 null。 */
+    /**
+     * 在文本里找某表态的票数，支持两种语序（中文数字亦可）；找不到返回 null。
+     *   ①「关键词 + 数字 + 单位」：同意七票 / 同意 7 人（口播常见语序，优先）
+     *   ②「数字 + (票) + 关键词」：七票同意 / 7 人赞成
+     */
     private Integer findCount(String text, String kw) {
-        java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("([0-9零〇○两一二三四五六七八九十]{1,4})\\s*票?\\s*(?:人?\\s*)?" + kw)
+        String num = "([0-9零〇○两一二三四五六七八九十]{1,4})";
+        // ① 关键词在前：需带单位(票/人/名/个/张)以免把"同意该方案"之类误判
+        java.util.regex.Matcher m1 = java.util.regex.Pattern
+                .compile(kw + "\\s*(?:的|了|有|共)?\\s*" + num + "\\s*(?:票|人|名|个|张)")
                 .matcher(text);
-        if (m.find()) return chineseToInt(m.group(1));
+        if (m1.find()) return chineseToInt(m1.group(1));
+        // ② 数字在前
+        java.util.regex.Matcher m2 = java.util.regex.Pattern
+                .compile(num + "\\s*票?\\s*(?:人?\\s*)?" + kw)
+                .matcher(text);
+        if (m2.find()) return chineseToInt(m2.group(1));
         return null;
     }
 
