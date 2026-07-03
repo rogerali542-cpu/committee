@@ -76,7 +76,7 @@
            idleAfterUpload 且已识别时由上面的"继续生成会议纪要"承担，避免重复。 -->
       <button v-if="hasSavedRecordings && !recActive && !isPaused && !uploading && !generatingMinutes && !(idleAfterUpload && !needRecognize)"
         class="lp-primary-btn gen-standalone" @click="generateMinutesFromRecording" :disabled="polling || extracting">
-        <span class="qra-main">生成会议纪要</span>
+        <span class="qra-main">识别录音并生成会议纪要</span>
       </button>
 
     </div>
@@ -1166,7 +1166,8 @@ async function voteCheckFlow() {
         confirmText: '继续生成',
         cancelText: '稍后再说'
       })
-      if (g.confirm) continueGenerateMinutes(true)
+      // false：仍要检查"其它没被识别、也没 app 投票"的表决议题，缺表决时给提示
+      if (g.confirm) continueGenerateMinutes(false)
       return
     }
     toast({ title: '未填写。可点议题手动表决后，再点「继续生成会议纪要」', icon: 'none' })
@@ -2226,8 +2227,8 @@ function exitLive() {
 .qk-rec-actions .lp-primary-btn.gen-minutes { flex:0 0 auto; width:fit-content; margin:-16rpx auto 0; padding:12rpx 36rpx; }
 .gen-minutes .qra-main { font-size:26rpx; }
 /* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
-.gen-standalone { width:fit-content; margin:14rpx auto 0; padding:16rpx 52rpx; display:flex; align-items:center; justify-content:center; }
-.gen-standalone .qra-main { font-size:30rpx; font-weight:700; }
+.gen-standalone { width:fit-content; max-width:100%; margin:14rpx auto 0; padding:16rpx 40rpx; display:flex; align-items:center; justify-content:center; }
+.gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
 .qra-main { font-size:34rpx; font-weight:700; }
 .qra-sub { font-size:24rpx; font-weight:400; opacity:0.92; }
 /* 选择已有录音文件上传：窄一点、居中 */
