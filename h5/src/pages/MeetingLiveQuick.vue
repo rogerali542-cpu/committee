@@ -30,9 +30,9 @@
           <span v-else class="lp-agenda-empty">暂无议题</span>
         </div>
       </div>
-      <!-- 委员引导：告知议题可点；点按钮直达第一个待办议题（优先没投票的表决项） -->
-      <button v-if="!isChair && signedIn && detail.record && detail.record.topics && detail.record.topics.length"
-              class="lp-topics-cta" @click="openFirstPendingTopic">💬 点击上方议题，可以表决、发表意见</button>
+      <!-- 提示（所有身份）：告知点击议题可表决/发表意见；点它直达第一个待办议题（优先没投票的表决项） -->
+      <button v-if="detail.record && detail.record.topics && detail.record.topics.length"
+              class="lp-topics-cta" @click="openFirstPendingTopic">💬 点击议题，可表决或发表意见</button>
     </div>
 
     <!-- 签到卡（精简版，无标题）：一颗签到按钮 + 一行提示（文案按角色） -->
@@ -2122,7 +2122,7 @@ function exitLive() {
 /* 没有新录音可传时，"结束录音并上传"弱化为不可用样子（仍可点，点了弹提示说明已上传） */
 .lp-ghost-btn.muted { color:#BBB; border-color:#E2E2E2; background:#FAFAFA; }
 /* 结束录音并上传：浅橙填充，明显一点（覆盖 muted 灰化，始终醒目） */
-.lp-ghost-btn.finish-upload, .lp-ghost-btn.finish-upload.muted { background:#FFF1E0; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); font-weight:700; width:fit-content; margin-left:auto; margin-right:auto; padding:12rpx 36rpx; font-size:26rpx; }
+.lp-ghost-btn.finish-upload, .lp-ghost-btn.finish-upload.muted { background:#FFF1E0; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); font-weight:700; width:fit-content; margin-left:auto; margin-right:auto; margin-top:8rpx; padding:10rpx 34rpx; font-size:26rpx; } /* 上距收紧让录音卡更紧凑 */
 /* 上传后空闲提示：已录段数会合并为一份 */
 .qk-seg-hint { font-size:26rpx; color:#9A6A00; line-height:1.5; margin:6rpx 0 2rpx; background:#FFF8EC; border-radius:12rpx; padding:14rpx 18rpx; text-align:center; }
 
@@ -2136,9 +2136,9 @@ function exitLive() {
 
 /* 录音控件 */
 /* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字。整体缩两号+紧凑 */
-.lp-rec { padding:22rpx 28rpx 8rpx; } /* 卡片缩小一号：内边距收紧(圆圈/字号不变) */
+.lp-rec { padding:14rpx 26rpx 4rpx; } /* 卡片再缩一号：内边距进一步收紧(圆圈/字号不变) */
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
-.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:10rpx; padding:12rpx 0 6rpx; }
+.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:6rpx; padding:6rpx 0 2rpx; }
 .qk-rec-circle { width:228rpx; height:228rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:40rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:9rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 圆圈114px、圈内字加大两号(32→40) */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
@@ -2146,7 +2146,7 @@ function exitLive() {
 .qk-rec-circle:disabled { background:#E5E8EC; color:#999; border-color:#F2F2F4; box-shadow:none; }
 .qk-rec-circle.on { background:#E74C3C; border-color:#FDECEA; box-shadow:0 8rpx 22rpx rgba(231,76,60,0.30); animation:qkpulse 1.2s ease-in-out infinite; }
 @keyframes qkpulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.55; transform:scale(.92); } }
-.qk-rec-time { font-size:40rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:10rpx; } /* 计时字号不变(40)，上距收紧让卡片更紧凑 */
+.qk-rec-time { font-size:40rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:6rpx; } /* 计时字号不变(40)，上距再收紧 */
 
 .qk-note { font-size:28rpx; color:#666; line-height:1.6; margin-top:20rpx; background:#FAFBFC; border-radius:14rpx; padding:18rpx 20rpx; }
 .qk-note.warn { color:#C77700; background:#FFF8EC; }
