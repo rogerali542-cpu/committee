@@ -58,12 +58,16 @@
       </div>
       <!-- 上传中提示 -->
       <div v-if="uploading" class="qk-seg-hint">⏳ 正在上传录音…</div>
-      <!-- 唯一动作按钮：上传录音并生成会议纪要。
-           点击后台自动分情况：有表决议题→识别后核对票数(自动填入/缺则提示)再生成；无表决议题→直接生成。 -->
-      <button v-if="!uploading && !polling && !extracting && !generatingMinutes && (canUpload || hasSavedRecordings)"
+      <!-- 第一次：单键「上传录音并生成会议纪要」（上传→识别→核对票数）。 -->
+      <button v-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
         class="lp-primary-btn gen-standalone" @click="uploadAndGenerate">
         <span class="qra-main">上传录音并生成会议纪要</span>
       </button>
+      <!-- 识别完成后：拆两键「继续上传录音」(浅) / 「生成会议纪要」(深)。 -->
+      <div v-else-if="!uploading && !polling && !extracting && !generatingMinutes && !needRecognize && hasSavedRecordings" class="qk-two-btns">
+        <button class="lp-primary-btn qk-two-btn ghost" @click="continueRecordUpload"><span class="qra-main">继续上传录音</span></button>
+        <button class="lp-primary-btn qk-two-btn" @click="generateNow"><span class="qra-main">生成会议纪要</span></button>
+      </div>
 
     </div>
 
@@ -1101,9 +1105,8 @@ async function uploadAndRecognize() {
   // 完成后遮罩切完成态（「录音识别完成 → 下一步」），点下一步走 onAiWorkDone → voteCheckFlow
 }
 
-// 唯一动作：「上传录音并生成会议纪要」。对用户只有一个按钮，后台自动分步：
-// ①有正在录/在手未上传的新录音 → 先上传（上传成功后由 uploadRecordingFile 自动接着识别+生成）；
-// ②已有上传录音 → 直接进 识别→表决核对(分情况)→生成。
+// 第一步按钮「上传录音并生成会议纪要」：上传(如有在手录音)→识别→表决核对(只填票数)。
+// 识别完成后不再自动生成，录音页改显「继续上传录音 / 生成会议纪要」两键，由后者正式生成。
 async function uploadAndGenerate() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可生成纪要', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
@@ -1116,10 +1119,25 @@ async function uploadAndGenerate() {
   await runRecognizeThenGenerate()
 }
 
-// 识别(如需)→表决核对(分情况自动填/提示)→生成。已识别则直接进核对。
+// 识别(如需)→表决核对(只填票数)。识别完不再自动生成，改由「生成会议纪要」按钮触发。
 async function runRecognizeThenGenerate() {
   if (needRecognize.value) { await uploadAndRecognize(); return } // 识别完由遮罩「下一步」进 voteCheckFlow
   await voteCheckFlow()
+}
+
+// 识别完成后的两键之一——「继续上传录音」：录了新的一段就上传并识别（识别完仍回两键）。
+function continueRecordUpload() {
+  if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
+  if (!(rec.recording.value || rec.hasRecording.value)) {
+    toast({ title: '请先点上方圆圈「继续录音」，录好后再上传', icon: 'none' })
+    return
+  }
+  uploadAndGenerate() // 上传在手录音→识别
+}
+
+// 识别完成后的两键之一——「生成会议纪要」：正式生成（守卫会提示仍未表决的议题）。
+function generateNow() {
+  continueGenerateMinutes(false)
 }
 
 // app 内逐人投票情况：topicId → 是否已有人投票（表决"是否已处理"的判断之一）
@@ -1130,66 +1148,37 @@ function _appVotedMap() {
   return m
 }
 
-// 识别完成后的表决核对（由「上传录音并生成会议纪要」触发，用户已表明要生成，故核对完自动生成、不再多问）：
-// 1) 没有需要表决的议题 → 直接生成
-// 2) AI 识别到票数 → 确认后自动填写，再生成（生成前守卫会提示其它仍未表决的议题）
-// 3) 有表决议题但录音没识别到票数、也没 app 投票 → 提示，可"仍要生成"或"先去表决"
-// 4) 有表决议题且都已有表决结果 → 直接生成
+// 识别完成后的表决"核对"（只填票数、不生成）：录音里 AI 识别到票数就弹确认，主任确认后自动填入。
+// 其余情况直接返回——识别完统一回录音页显示「继续上传录音 / 生成会议纪要」两键，生成由后者触发。
+// （"还有议题没有表决"的提示改到点「生成会议纪要」时由 continueGenerateMinutes 的守卫给出。）
 async function voteCheckFlow() {
   try { await loadDetail() } catch (e) { /* 刷新失败不阻断核对 */ }
   const voteTopics = (presetTopics.value || []).filter(t => t.voteRequired)
-
-  // 1) 没有需要表决的议题 → 直接生成
-  if (!voteTopics.length) { continueGenerateMinutes(true); return }
-
-  const appVoted = _appVotedMap()
   const recognized = voteTopics.filter(t => t.aiVote)
+  if (!recognized.length) return // 没识别到票数：不打扰，回两键
 
-  // 2) AI 识别到票数 → 确认填写后生成
-  if (recognized.length) {
-    const lines = recognized.map(t =>
-      '「' + t.title + '」同意 ' + t.voteFor + ' · 反对 ' + t.voteAgainst + ' · 弃权 ' + t.voteAbstain
-      + '（' + t.aiVoteLabel + '，建议：' + t.resultLabel + '）')
-    const r = await showModal({
-      title: 'AI 识别到表决结果',
-      content: lines.join('\n') + '\n\n要按识别结果自动填写吗？填写后以此计入表决。',
-      confirmText: '确认填写',
-      cancelText: '暂不填写',
-      size: 'large'
-    })
-    if (r.confirm) {
-      recognized.forEach(t => { t.confirmed = true })
-      try {
-        await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload())
-        toast({ title: '已填写表决结果', icon: 'success' })
-        await loadDetail()
-      } catch (e) {
-        toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
-        return
-      }
-      // false：生成前守卫仍会检查"其它没被识别、也没 app 投票"的表决议题，缺表决时给提示
-      continueGenerateMinutes(false)
-      return
-    }
-    toast({ title: '未填写表决结果，可点议题手动表决后再生成', icon: 'none' })
+  const lines = recognized.map(t =>
+    '「' + t.title + '」同意 ' + t.voteFor + ' · 反对 ' + t.voteAgainst + ' · 弃权 ' + t.voteAbstain
+    + '（' + t.aiVoteLabel + '，建议：' + t.resultLabel + '）')
+  const r = await showModal({
+    title: 'AI 识别到表决结果',
+    content: lines.join('\n') + '\n\n要按识别结果自动填写吗？填写后以此计入表决。',
+    confirmText: '确认填写',
+    cancelText: '暂不填写',
+    size: 'large'
+  })
+  if (!r.confirm) {
+    toast({ title: '未填写表决结果，可点议题手动表决', icon: 'none' })
     return
   }
-
-  // 3) 有表决议题、录音没识别到票数：仍缺表决的给提示（可仍要生成 / 先去表决）
-  const missing = voteTopics.filter(t => !appVoted[t.id])
-  if (missing.length) {
-    const r = await showModal({
-      title: '还有议题没有表决',
-      content: '「' + missing[0].title + '」' + (missing.length > 1 ? '等 ' + missing.length + ' 个表决议题' : '') + '还没有表决结果。',
-      confirmText: '仍要生成',
-      cancelText: '先去表决'
-    })
-    if (r.confirm) continueGenerateMinutes(true)
-    return
+  recognized.forEach(t => { t.confirmed = true })
+  try {
+    await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload())
+    toast({ title: '已填写表决结果', icon: 'success' })
+    await loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
   }
-
-  // 4) 有表决议题且都已有表决结果 → 直接生成
-  continueGenerateMinutes(true)
 }
 
 // 「继续生成会议纪要」：确认票数落库 + 大模型生成（遮罩 gen）。skipGuard=true 表示表决核对刚做过，不再重复提醒
@@ -2226,6 +2215,12 @@ function exitLive() {
 /* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
 .gen-standalone { width:fit-content; max-width:100%; margin:14rpx auto 0; padding:16rpx 40rpx; display:flex; align-items:center; justify-content:center; }
 .gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
+/* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深) */
+.qk-two-btns { display:flex; gap:16rpx; margin-top:14rpx; }
+.qk-two-btns .lp-primary-btn.qk-two-btn { flex:1; width:auto; margin-top:0; padding:18rpx 0; display:flex; align-items:center; justify-content:center; }
+.qk-two-btn .qra-main { font-size:28rpx; font-weight:700; white-space:nowrap; }
+.qk-two-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); }
+.qk-two-btn.ghost:active { background:#FFF6E8; }
 .qra-main { font-size:34rpx; font-weight:700; }
 .qra-sub { font-size:24rpx; font-weight:400; opacity:0.92; }
 /* 选择已有录音文件上传：窄一点、居中 */

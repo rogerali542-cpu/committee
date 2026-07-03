@@ -118,6 +118,8 @@
       <div v-if="hasPrev || hasNext" class="ts-nav-row">
         <button v-if="hasPrev" class="ts-nav-btn" @click="$emit('prev')">‹ 上一个议题</button>
         <button v-if="hasNext" class="ts-nav-btn" @click="$emit('next')">下一个议题 ›</button>
+        <!-- 最后一个议题：右侧改为「完成」，点了收起弹层 -->
+        <button v-else class="ts-nav-btn done" @click="$emit('close')">完成</button>
       </div>
     </div>
   </div>
@@ -488,6 +490,9 @@ async function removeOpinion(op) {
 .ts-nav-row { flex-shrink: 0; display: flex; gap: 14rpx; margin-top: 14rpx; }
 .ts-nav-btn { flex: 1; box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 0; }
 .ts-nav-btn:active { background: #ECEEF1; }
+/* 最后一个议题的「完成」：填充橙色，作为收尾动作更醒目 */
+.ts-nav-btn.done { background: #FFA800; border-color: #FFA800; color: #fff; }
+.ts-nav-btn.done:active { background: #F09600; }
 
 /* AI 助手行：润色 / 帮我写 入口 + 还原 + token 低调提示 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
