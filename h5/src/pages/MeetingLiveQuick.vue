@@ -1180,8 +1180,7 @@ async function voteCheckFlow() {
   if (missing.length) {
     const r = await showModal({
       title: '还有议题没有表决',
-      content: '「' + missing[0].title + '」' + (missing.length > 1 ? '等 ' + missing.length + ' 个表决议题' : '') +
-        '还没有表决结果，录音里也没识别到票数。\n可点击上方议题完成表决（委员也可在自己手机上表决）后再生成，或仍要现在生成。',
+      content: '「' + missing[0].title + '」' + (missing.length > 1 ? '等 ' + missing.length + ' 个表决议题' : '') + '还没有表决结果。',
       confirmText: '仍要生成',
       cancelText: '先去表决'
     })
