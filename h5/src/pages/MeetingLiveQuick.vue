@@ -93,8 +93,8 @@
       <div class="qk-rec-list-head">已录制 {{ recordings.length }} 段</div>
       <div class="qk-rec-list-item" v-for="(item, idx) in recordings" :key="item.id">
         <span class="qrl-idx">{{ idx + 1 }}</span>
-        <div class="qrl-info">
-          <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
+        <div class="qrl-info" @click="showRecordingDetail(item, idx)">
+          <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }} <span class="qrl-detail-hint">详情›</span></span>
           <span class="qrl-meta">{{ fmtTime(item.createdAt) }}</span>
         </div>
         <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
@@ -1254,6 +1254,34 @@ function fmtTime(iso) {
   return m ? (m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5]) : String(iso)
 }
 
+// 点击已有录音条 → 弹窗显示该段详细内容（测试/排查用）
+function asrStatusLabel(s) {
+  if (s === 'done') return '已识别'
+  if (s === 'processing') return '识别中'
+  if (s === 'pending') return '待识别'
+  if (s === 'failed') return '识别失败'
+  return s || '未识别'
+}
+function showRecordingDetail(item, idx) {
+  const kb = item.fileSize ? Math.round(item.fileSize / 1024) + ' KB' : '—'
+  const lines = [
+    '第 ' + (idx + 1) + ' 段录音',
+    '时长：' + fmtDur(item.durationSec),
+    '上传时间：' + (fmtTime(item.createdAt) || '—'),
+    '上传人：' + (item.uploaderName || '—'),
+    '识别状态：' + asrStatusLabel(item.asrStatus),
+    '文件：' + (item.fileName || '—') + '（' + kb + '）',
+    '录音ID：' + item.id
+  ]
+  const tr = (transcriptFullText.value || '').trim()
+  if (tr) {
+    lines.push('')
+    lines.push('【本次会议转写内容】')
+    lines.push(tr.length > 500 ? tr.slice(0, 500) + '…（余略）' : tr)
+  }
+  showModal({ title: '录音详情（测试）', content: lines.join('\n'), showCancel: false, confirmText: '关闭' })
+}
+
 // 转写页录音回放：点播放试听这段录音，再点暂停；切到另一段会停掉上一段
 function togglePlay(item) {
   const url = item && item.recordingUrl
@@ -2222,10 +2250,10 @@ function exitLive() {
 /* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
 .gen-standalone { width:fit-content; max-width:100%; margin:14rpx auto 0; padding:16rpx 40rpx; display:flex; align-items:center; justify-content:center; }
 .gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
-/* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深) */
-.qk-two-btns { display:flex; gap:16rpx; margin-top:14rpx; }
-.qk-two-btns .lp-primary-btn.qk-two-btn { flex:1; width:auto; margin-top:0; padding:18rpx 0; display:flex; align-items:center; justify-content:center; }
-.qk-two-btn .qra-main { font-size:28rpx; font-weight:700; white-space:nowrap; }
+/* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
+.qk-two-btns { display:flex; gap:36rpx; margin-top:14rpx; padding:0 24rpx; }
+.qk-two-btns .lp-primary-btn.qk-two-btn { flex:1; width:auto; margin-top:0; padding:12rpx 0; display:flex; align-items:center; justify-content:center; }
+.qk-two-btn .qra-main { font-size:25rpx; font-weight:700; white-space:nowrap; }
 .qk-two-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); }
 .qk-two-btn.ghost:active { background:#FFF6E8; }
 .qra-main { font-size:34rpx; font-weight:700; }
@@ -2342,6 +2370,7 @@ function exitLive() {
 .qrl-idx { width:44rpx; height:44rpx; flex-shrink:0; border-radius:50%; background:#FFF1E0; color:var(--c-primary-dark); font-size:28rpx; font-weight:700; text-align:center; line-height:44rpx; }
 .qrl-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4rpx; }
 .qrl-name { font-size:32rpx; color:#1F2024; font-weight:600; }
+.qrl-detail-hint { font-size:24rpx; color:#B06A00; font-weight:600; margin-left:6rpx; }
 .qrl-meta { font-size:26rpx; color:#999; }
 .qrl-play { flex-shrink:0; width:56rpx; height:56rpx; border-radius:50%; background:#FFF1E0; color:var(--c-primary-dark); font-size:30rpx; text-align:center; line-height:56rpx; }
 .qrl-play.on { background:var(--c-primary-dark); color:#fff; }
