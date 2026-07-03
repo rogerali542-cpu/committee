@@ -30,9 +30,9 @@
           <span v-else class="lp-agenda-empty">暂无议题</span>
         </div>
       </div>
-      <!-- 提示（所有身份）：告知点击议题可表决/发表意见；点它直达第一个待办议题（优先没投票的表决项） -->
+      <!-- 提示（所有身份）：灰色小字注释，点它直达第一个待办议题（优先没投票的表决项） -->
       <button v-if="detail.record && detail.record.topics && detail.record.topics.length"
-              class="lp-topics-cta" @click="openFirstPendingTopic">💬 点击议题，可表决或发表意见</button>
+              class="lp-topics-note" @click="openFirstPendingTopic">点击议题参与讨论</button>
     </div>
 
     <!-- 签到卡（精简版，无标题）：一颗签到按钮 + 一行提示（文案按角色） -->
@@ -2031,8 +2031,9 @@ function exitLive() {
 .lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:0 -12rpx 0 0; }
 .lp-add-topic:active { background:#F0F6FF; }
 /* 委员引导按钮：柔和橙底，告知"议题可点"，点了直达第一个待办议题（卡片 padding-bottom 为 0，按钮自带下边距） */
-.lp-topics-cta { display:block; width:100%; box-sizing:border-box; margin:6rpx 0 26rpx; border:2rpx solid #F0D9B8; border-radius:16rpx; background:#FFF9F0; color:#B06A00; font-size:29rpx; padding:18rpx 0; text-align:center; }
-.lp-topics-cta:active { background:#FFF1DC; }
+/* 灰色小字注释：不再是按钮外观，仅作提示（仍可点，跳到第一个待办议题） */
+.lp-topics-note { display:block; width:100%; box-sizing:border-box; margin:4rpx 0 20rpx; border:none; background:none; color:#9AA0A6; font-size:24rpx; padding:6rpx 0; text-align:center; }
+.lp-topics-note:active { color:#7B8085; }
 .lp-info-row { display:flex; align-items:flex-start; gap:18rpx; font-size:34rpx; color:#444; margin-bottom:6rpx; }
 .lp-info-row.top { align-items:flex-start; }
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
