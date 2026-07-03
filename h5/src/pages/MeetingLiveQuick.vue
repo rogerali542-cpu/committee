@@ -52,31 +52,17 @@
       </div>
       <!-- 暂停态补充操作：重新录音（"继续"由圆圈承担；窄款居中） -->
       <div v-if="isPaused" class="qk-rec-actions">
-        <button class="lp-primary-btn qk-rec-act narrow40" @click="restartRecording" :disabled="uploading || polling || extracting">
+        <button class="lp-primary-btn qk-rec-act narrow40" @click="restartRecording" :disabled="uploading || polling || extracting || generatingMinutes">
           <span class="qra-main">重新录音</span>
-        </button>
-      </div>
-      <!-- 上传后空闲：先「上传录音」给大模型识别（转写+提炼表决），识别完成后变「继续生成会议纪要」 -->
-      <div v-else-if="idleAfterUpload" class="qk-rec-actions">
-        <button v-if="needRecognize" class="lp-primary-btn qk-rec-act gen-minutes" @click="uploadAndRecognize" :disabled="uploading || polling || extracting || generatingMinutes">
-          <span class="qra-main">上传录音</span>
-        </button>
-        <button v-else class="lp-primary-btn qk-rec-act gen-minutes" @click="continueGenerateMinutes(false)" :disabled="uploading || polling || extracting || generatingMinutes">
-          <span class="qra-main">继续生成会议纪要</span>
         </button>
       </div>
       <!-- 上传中提示 -->
       <div v-if="uploading" class="qk-seg-hint">⏳ 正在上传录音…</div>
-      <!-- "结束录音并上传"：上传后空闲态不显示（改用上面的"继续上传录音/开始转写"） -->
-      <button v-if="!idleAfterUpload" class="lp-ghost-btn finish-upload" :class="{ muted: !canUpload }" @click="finishRecord" :disabled="uploading || polling || extracting">
-        结束录音并上传
-      </button>
-
-      <!-- 只要有已上传的录音就常驻「生成会议纪要」入口；未识别则先识别再生成，已识别则直接生成。
-           idleAfterUpload 且已识别时由上面的"继续生成会议纪要"承担，避免重复。 -->
-      <button v-if="hasSavedRecordings && !recActive && !isPaused && !uploading && !generatingMinutes && !(idleAfterUpload && !needRecognize)"
-        class="lp-primary-btn gen-standalone" @click="generateMinutesFromRecording" :disabled="polling || extracting">
-        <span class="qra-main">识别录音并生成会议纪要</span>
+      <!-- 唯一动作按钮：上传录音并生成会议纪要。
+           点击后台自动分情况：有表决议题→识别后核对票数(自动填入/缺则提示)再生成；无表决议题→直接生成。 -->
+      <button v-if="!uploading && !polling && !extracting && !generatingMinutes && (canUpload || hasSavedRecordings)"
+        class="lp-primary-btn gen-standalone" @click="uploadAndGenerate">
+        <span class="qra-main">上传录音并生成会议纪要</span>
       </button>
 
     </div>
@@ -595,6 +581,7 @@ const audioFileInput = ref(null)
 // onLoad/this 级上下文
 let _pollCount = 0
 let _asrDoneHandled = false
+let _genAfterUpload = false // 「上传录音并生成会议纪要」标记：上传成功后自动接着识别+生成
 let _pollTimer = null
 let _booted = false
 let _attendanceTimer = null // 主任签到进度的轻量轮询
@@ -862,7 +849,7 @@ async function toggleRecord() {
   if (rec.recording.value && !rec.paused.value) {
     rec.pause()
     if (!rec.paused.value) {
-      toast({ title: '本设备不支持暂停，可直接点“结束录音并上传”', icon: 'none' })
+      toast({ title: '本设备不支持暂停，可直接点“上传录音并生成会议纪要”', icon: 'none' })
     }
     return
   }
@@ -889,6 +876,7 @@ async function toggleRecord() {
 async function startRecord() {
   clearPoll()
   clearQuickState()
+  _genAfterUpload = false // 重新开录，清掉可能残留的"上传后自动生成"标记
   generated.value = false
   extraction.value = null
   aiTopics.value = []
@@ -1061,11 +1049,14 @@ async function uploadRecordingFile(file, durationSec) {
     toast({ title: '录音已上传', icon: 'success' })
     uploading.value = false
     rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
-    currentStep.value = 2 // 停在录音页：显示"继续上传录音 / 开始转写"两个按钮
-    loadDetail() // 刷新录音列表
+    currentStep.value = 2 // 停在录音页：显示"上传录音并生成会议纪要"按钮
+    await loadDetail() // 刷新录音列表（await 确保新录音进入列表后再自动识别）
+    // 「上传录音并生成会议纪要」发起的上传 → 自动接着识别+生成
+    if (_genAfterUpload) { _genAfterUpload = false; runRecognizeThenGenerate() }
   } catch (e) {
+    _genAfterUpload = false
     uploading.value = false
-    currentStep.value = 2 // 退回录音步，可在"结束录音并上传"复用已录音频重试
+    currentStep.value = 2 // 退回录音步，可复用已录音频重试
     processText.value = '上传失败，请重试'
     toast({ title: e.message || '上传失败', icon: 'none' })
   }
@@ -1110,15 +1101,25 @@ async function uploadAndRecognize() {
   // 完成后遮罩切完成态（「录音识别完成 → 下一步」），点下一步走 onAiWorkDone → voteCheckFlow
 }
 
-// 常驻「生成会议纪要」按钮：只要有已上传录音就能点。
-// 未识别 → 先走识别（后续由遮罩「下一步」进表决核对→继续生成，与「上传录音」同一条流程）；
-// 已识别 → 直接进「继续生成会议纪要」（含表决未完成的提醒）。
-async function generateMinutesFromRecording() {
+// 唯一动作：「上传录音并生成会议纪要」。对用户只有一个按钮，后台自动分步：
+// ①有正在录/在手未上传的新录音 → 先上传（上传成功后由 uploadRecordingFile 自动接着识别+生成）；
+// ②已有上传录音 → 直接进 识别→表决核对(分情况)→生成。
+async function uploadAndGenerate() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可生成纪要', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
-  if (!hasSavedRecordings.value) { toast({ title: '还没有上传录音', icon: 'none' }); return }
-  if (needRecognize.value) { await uploadAndRecognize(); return }
-  await continueGenerateMinutes(false)
+  if (rec.recording.value || rec.hasRecording.value) {
+    _genAfterUpload = true
+    await finishRecord()
+    return
+  }
+  if (!hasSavedRecordings.value) { toast({ title: '请先开始录音', icon: 'none' }); return }
+  await runRecognizeThenGenerate()
+}
+
+// 识别(如需)→表决核对(分情况自动填/提示)→生成。已识别则直接进核对。
+async function runRecognizeThenGenerate() {
+  if (needRecognize.value) { await uploadAndRecognize(); return } // 识别完由遮罩「下一步」进 voteCheckFlow
+  await voteCheckFlow()
 }
 
 // app 内逐人投票情况：topicId → 是否已有人投票（表决"是否已处理"的判断之一）
@@ -1129,16 +1130,22 @@ function _appVotedMap() {
   return m
 }
 
-// 识别完成后的表决核对：
-// 1) AI 识别到票数 → 询问确认后自动填写，再问是否继续生成纪要
-// 2) 有表决议题但既无识别结果也无 app 投票 → 提醒先表决
-// 3) 没有表决议题（或都已有 app 票）→ 直接询问是否继续生成
+// 识别完成后的表决核对（由「上传录音并生成会议纪要」触发，用户已表明要生成，故核对完自动生成、不再多问）：
+// 1) 没有需要表决的议题 → 直接生成
+// 2) AI 识别到票数 → 确认后自动填写，再生成（生成前守卫会提示其它仍未表决的议题）
+// 3) 有表决议题但录音没识别到票数、也没 app 投票 → 提示，可"仍要生成"或"先去表决"
+// 4) 有表决议题且都已有表决结果 → 直接生成
 async function voteCheckFlow() {
   try { await loadDetail() } catch (e) { /* 刷新失败不阻断核对 */ }
   const voteTopics = (presetTopics.value || []).filter(t => t.voteRequired)
+
+  // 1) 没有需要表决的议题 → 直接生成
+  if (!voteTopics.length) { continueGenerateMinutes(true); return }
+
   const appVoted = _appVotedMap()
   const recognized = voteTopics.filter(t => t.aiVote)
 
+  // 2) AI 识别到票数 → 确认填写后生成
   if (recognized.length) {
     const lines = recognized.map(t =>
       '「' + t.title + '」同意 ' + t.voteFor + ' · 反对 ' + t.voteAgainst + ' · 弃权 ' + t.voteAbstain
@@ -1155,51 +1162,42 @@ async function voteCheckFlow() {
       try {
         await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload())
         toast({ title: '已填写表决结果', icon: 'success' })
-        loadDetail()
+        await loadDetail()
       } catch (e) {
         toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
         return
       }
-      const g = await showModal({
-        title: '继续生成会议纪要？',
-        content: '表决结果已填写。现在就用 AI 生成会议纪要吗？',
-        confirmText: '继续生成',
-        cancelText: '稍后再说'
-      })
-      // false：仍要检查"其它没被识别、也没 app 投票"的表决议题，缺表决时给提示
-      if (g.confirm) continueGenerateMinutes(false)
+      // false：生成前守卫仍会检查"其它没被识别、也没 app 投票"的表决议题，缺表决时给提示
+      continueGenerateMinutes(false)
       return
     }
-    toast({ title: '未填写。可点议题手动表决后，再点「继续生成会议纪要」', icon: 'none' })
+    toast({ title: '未填写表决结果，可点议题手动表决后再生成', icon: 'none' })
     return
   }
 
+  // 3) 有表决议题、录音没识别到票数：仍缺表决的给提示（可仍要生成 / 先去表决）
   const missing = voteTopics.filter(t => !appVoted[t.id])
   if (missing.length) {
-    await showModal({
+    const r = await showModal({
       title: '还有议题没有表决',
       content: '「' + missing[0].title + '」' + (missing.length > 1 ? '等 ' + missing.length + ' 个表决议题' : '') +
-        '还没有表决结果，录音里也没识别到票数。\n请点击上方议题完成表决（委员可在自己手机上表决），之后再点「继续生成会议纪要」。',
-      confirmText: '知道了',
-      showCancel: false
+        '还没有表决结果，录音里也没识别到票数。\n可点击上方议题完成表决（委员也可在自己手机上表决）后再生成，或仍要现在生成。',
+      confirmText: '仍要生成',
+      cancelText: '先去表决'
     })
+    if (r.confirm) continueGenerateMinutes(true)
     return
   }
 
-  const g = await showModal({
-    title: '继续生成会议纪要？',
-    content: (voteTopics.length ? '表决议题已有表决结果。' : '本次会议没有需要表决的议题。') + '现在就用 AI 生成会议纪要吗？',
-    confirmText: '继续生成',
-    cancelText: '稍后再说'
-  })
-  if (g.confirm) continueGenerateMinutes(true)
+  // 4) 有表决议题且都已有表决结果 → 直接生成
+  continueGenerateMinutes(true)
 }
 
 // 「继续生成会议纪要」：确认票数落库 + 大模型生成（遮罩 gen）。skipGuard=true 表示表决核对刚做过，不再重复提醒
 async function continueGenerateMinutes(skipGuard) {
   if (!isChair.value) { toast({ title: '仅主任/副主任可生成纪要', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
-  if (!generated.value) { toast({ title: '请先点「上传录音」完成识别', icon: 'none' }); return }
+  if (!generated.value) { toast({ title: '请先上传录音完成识别', icon: 'none' }); return }
   if (!skipGuard) {
     const appVoted = _appVotedMap()
     const missing = (presetTopics.value || []).filter(t => t.voteRequired && !t.confirmed && !t.aiVote && !appVoted[t.id])
