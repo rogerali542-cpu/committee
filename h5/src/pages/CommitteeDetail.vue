@@ -324,10 +324,9 @@
             <div class="fw-linkrow" v-if="detail.location" @click="openMap(detail.location)"><span class="fw-lr-ico">📍</span><span class="fw-lr-txt">地图导航</span><span class="fw-lr-go">›</span></div>
           </div>
         </div>
-        <div class="fw-hint fw-sub">复制的文本会自动带上以上两个网址，微信里可直接点开</div>
         <div class="fw-actions">
-          <button class="fw-btn primary" @click="copyShareText">复制通知</button>
-          <button class="fw-btn ghost" @click="openWechat">打开微信</button>
+          <button class="fw-btn" @click="copyShareText">复制通知内容</button>
+          <button class="fw-btn" @click="openWechat">转发到微信</button>
         </div>
         <span class="fw-close" @click="closeForward">完成</span>
       </div>
@@ -1555,16 +1554,26 @@ async function startMeeting() {
   try {
     await api.committeeAdvance(meetingId, 'start', 'quick')
     toast({ title: '会议已开始', icon: 'success' })
-    // 开始会议后直接进入「会议进行」录音向导（用 redirectTo=router.replace 可靠跳转；
-    // 不走 loadDetail 的条件跳转，避免 fromNotice 流程下 !fromNotice 守卫把跳转挡掉、停在详情页）
-    redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+    goLive() // 进入「会议进行」录音向导（带硬导航兜底）
   } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
 
-// 进入「会议进行」全屏向导页：仅快速模式
-function enterLive() {
-  navigateTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+// 进入「会议进行」全屏向导页：仅快速模式（软路由偶发"URL变了却不切换视图"——加硬导航兜底确保必达，
+// 对齐 Committee.vue「去通知」的做法；软跳后延时校验录音页 .live-page 是否真挂上，没挂上就 window.location 硬跳）
+function goLive() {
+  const target = '/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId
+  const browserUrl = '/meeting-live-quick?type=committee&meetingId=' + meetingId
+  try { redirectTo(target) } catch (navErr) { console.error('[开始会议] 软跳 reject：', navErr) }
+  setTimeout(() => {
+    if (!document.querySelector('.live-page')) {
+      console.warn('[开始会议] 软跳未挂载录音页，硬导航兜底 →', browserUrl)
+      window.location.href = browserUrl
+    }
+  }, 500)
 }
+
+// 进入「会议进行」全屏向导页：仅快速模式
+function enterLive() { goLive() }
 
 async function endMeeting() {
   try {
@@ -1683,22 +1692,31 @@ function openJoin() {
   const url = joinUrl.value
   try { window.open(url, '_blank') } catch (e) { window.location.href = url }
 }
-function copyShareText() {
+// 把通知文本写进剪贴板（返回 Promise，供"复制通知内容"和"转发到微信"共用）
+function writeShareToClipboard() {
   const text = shareText.value
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => toast({ title: '已复制，去微信粘贴', icon: 'success' }))
-    } else {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text)
+  }
+  return new Promise((resolve, reject) => {
+    try {
       const ta = document.createElement('textarea')
       ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
-      toast({ title: '已复制，去微信粘贴', icon: 'success' })
-    }
-  } catch (e) { toast({ title: '复制失败，请长按文本手动复制', icon: 'none' }) }
+      resolve()
+    } catch (e) { reject(e) }
+  })
 }
-// 转发到微信（测试版）：通过 URL scheme 唤起微信 App（真机装了微信会跳转）；暂不做真正的图片转发
+function copyShareText() {
+  writeShareToClipboard()
+    .then(() => toast({ title: '已复制，去微信粘贴', icon: 'success' }))
+    .catch(() => toast({ title: '复制失败，请长按文本手动复制', icon: 'none' }))
+}
+// 转发到微信：先自动复制通知内容，再唤起微信（真机装了微信会跳转），到群里直接粘贴即可
 function openWechat() {
-  toast({ title: '正在打开微信…', icon: 'none' })
-  try { window.location.href = 'weixin://' } catch (e) {}
+  writeShareToClipboard()
+    .then(() => toast({ title: '已复制通知，正在打开微信…', icon: 'none' }))
+    .catch(() => toast({ title: '正在打开微信…', icon: 'none' }))
+    .finally(() => { try { window.location.href = 'weixin://' } catch (e) {} })
 }
 
 // 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
@@ -2610,7 +2628,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
 .fw-hint { font-size:26rpx; color:#888; text-align:center; margin:10rpx 0 20rpx; line-height:1.5; }
 /* 转发预览：与通知页一致的格式化通知（首行缩进/地点蓝链/落款靠右）+ 附带链接行 */
-.fw-preview { box-sizing:border-box; margin:0 0 6rpx; border:2rpx solid #eee; border-radius:16rpx; padding:24rpx 26rpx; background:#FAFAFA; }
+.fw-preview { box-sizing:border-box; margin:0 0 24rpx; border:2rpx solid #eee; border-radius:16rpx; padding:24rpx 26rpx; background:#FAFAFA; }
 .fw-para { font-size:30rpx; color:#1a1a1a; line-height:1.8; text-align:left; text-indent:2em; }
 .fw-sign { text-align:right; font-size:30rpx; font-weight:700; color:#1a1a1a; margin-top:6rpx; }
 .fw-linkrows { margin-top:14rpx; padding-top:10rpx; border-top:1px dashed #e2e2e2; }
@@ -2618,11 +2636,10 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .fw-lr-ico { font-size:30rpx; flex-shrink:0; }
 .fw-lr-txt { flex:1; min-width:0; font-size:28rpx; color:#1A73E8; text-decoration:underline; word-break:break-all; }
 .fw-lr-go { flex-shrink:0; color:#1A73E8; font-weight:700; }
-.fw-sub { margin:0 0 18rpx; font-size:24rpx; }
 .fw-actions { display:flex; gap:18rpx; }
-.fw-btn { flex:1; height:84rpx; border:none; border-radius:42rpx; font-size:30rpx; font-weight:600; }
-.fw-btn.ghost { background:#f0f0f0; color:#555; }
-.fw-btn.primary { background:#C76A00; color:#fff; }
+/* 复制通知 / 打开微信：统一浅橙底 + 深橙字 + 淡橙描边（两个按钮同款） */
+.fw-btn { flex:1; height:84rpx; border:2rpx solid #F0D9B8; border-radius:42rpx; font-size:30rpx; font-weight:600; background:var(--c-primary-soft, #FFF3E0); color:var(--c-primary-dark, #A85800); }
+.fw-btn:active { background:#FDE8CC; }
 .fw-close { display:block; text-align:center; margin-top:16rpx; font-size:28rpx; color:#999; padding:8rpx; }
 
 /* 准备阶段会议头部 */
