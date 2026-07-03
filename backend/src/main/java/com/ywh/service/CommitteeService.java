@@ -784,8 +784,13 @@ public class CommitteeService {
 
     /**
      * 纪要生成顺带提炼的现场意见入库（source='ai'，展示带"现场·AI"标）。
-     * 幂等：重新生成纪要时只清掉未认领的旧 AI 意见，已认领的（userRole 非空）视为本人意见保留；
-     * 与已认领意见同议题同内容的不再重复插入。speaker 是 S1/说话人N/未知 等编号时不落名字（前端显示"现场发言·待认领"）。
+     *
+     * 提炼语义上是"从录音一次性抽取"：只要本会议已经有过 AI 提炼的意见（无论是否被认领），
+     * 就认为已提炼过，**再次生成纪要（markdown）时不重复提炼**——从根上杜绝"重生成产生近似重复条目"
+     * （大模型重跑同一段转写会换措辞，字符去重挡不住语义近似，故直接不重跑提炼）。
+     * 首次提炼时对本轮结果做议题内精确/近似去重（防大模型一次吐两条几乎一样的）。
+     * speaker 是 S1/说话人N/未知 等编号时不落名字（前端显示"现场发言·待认领"）。
+     * 主任若想重新提炼（如补录了录音），先删掉现有 AI 意见再生成即可。
      */
     @Transactional
     public void saveAiOpinions(Long meetingId, QuickPolishVO vo) {
@@ -795,21 +800,19 @@ public class CommitteeService {
         if (topics.isEmpty()) return;
 
         List<TopicOpinion> existing = opinionRepo.findByTopicRecordIdOrderByCreatedAtAsc(record.getId());
-        List<TopicOpinion> staleAi = existing.stream()
-                .filter(op -> "ai".equals(op.getSource()) && op.getUserRole() == null)
-                .collect(Collectors.toList());
-        opinionRepo.deleteAll(staleAi);
-        Set<String> keepKeys = existing.stream()
-                .filter(op -> op.getUserRole() != null)
-                .map(op -> op.getTopic().getId() + "\n" + op.getContent())
-                .collect(Collectors.toSet());
+        // 已提炼过（存在任一 source='ai' 的意见）→ 视为本次录音的意见已抽取，重生成纪要不再重复提炼
+        boolean alreadyExtracted = existing.stream().anyMatch(op -> "ai".equals(op.getSource()));
+        if (alreadyExtracted) return;
 
+        // 首次提炼：议题内去重（精确 + 近似），防大模型一次返回多条几乎一样的意见
+        Map<Long, List<String>> insertedTexts = new HashMap<>();
         for (QuickPolishVO.TopicSummary ts : vo.getTopics()) {
             RecordTopic topic = resolveTopicByRef(topics, ts.getRef());
             if (topic == null || ts.getOpinions() == null) continue;
+            List<String> topicTexts = insertedTexts.computeIfAbsent(topic.getId(), k -> new ArrayList<>());
             for (QuickPolishVO.OpinionDraft draft : ts.getOpinions()) {
                 String text = draft.getText() == null ? "" : draft.getText().trim();
-                if (text.isEmpty() || keepKeys.contains(topic.getId() + "\n" + text)) continue;
+                if (text.isEmpty() || isNearDuplicateOpinion(text, topicTexts)) continue;
                 opinionRepo.save(TopicOpinion.builder()
                         .topic(topic)
                         .userRole(null)
@@ -817,8 +820,35 @@ public class CommitteeService {
                         .content(text)
                         .source("ai")
                         .build());
+                topicTexts.add(text);
             }
         }
+    }
+
+    /** 意见文本是否与已有任一条精确/近似重复（字符 bigram Jaccard ≥ 0.72 即视为同一条发言的不同措辞）。 */
+    private boolean isNearDuplicateOpinion(String text, List<String> existing) {
+        if (existing == null || existing.isEmpty()) return false;
+        Set<String> a = opinionBigrams(text);
+        for (String other : existing) {
+            if (text.equals(other)) return true;
+            Set<String> b = opinionBigrams(other);
+            if (a.isEmpty() || b.isEmpty()) continue;
+            int inter = 0;
+            for (String g : a) if (b.contains(g)) inter++;
+            double jaccard = (double) inter / (a.size() + b.size() - inter);
+            if (jaccard >= 0.72) return true;
+        }
+        return false;
+    }
+
+    /** 归一化后取字符 2-gram 集合：只留中文/字母/数字，去标点空白，抹平措辞里的虚词标点差异。 */
+    private Set<String> opinionBigrams(String s) {
+        if (s == null) return Collections.emptySet();
+        String norm = s.replaceAll("[^\\p{IsHan}a-zA-Z0-9]", "");
+        Set<String> grams = new HashSet<>();
+        if (norm.length() < 2) { if (!norm.isEmpty()) grams.add(norm); return grams; }
+        for (int i = 0; i < norm.length() - 1; i++) grams.add(norm.substring(i, i + 2));
+        return grams;
     }
 
     /** ref 兼容三种口径：topicId（非上下文路径）、议题序号 1..n（compact 上下文路径）、议题标题。 */
