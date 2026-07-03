@@ -31,10 +31,10 @@
               <span class="ts-opt-votes" v-if="o.votes != null">{{ o.votes }} 票</span>
             </div>
           </template>
-          <div v-if="topic.myVote" class="ts-vote-hint mine">✓ 你投了{{ myVoteText }}</div>
-          <div v-else-if="!interactive" class="ts-vote-hint">会议进行中才可表决</div>
-          <div v-else-if="!signedIn" class="ts-vote-hint">签到后即可表决</div>
-          <div v-else class="ts-vote-hint">请点选你的意见</div>
+          <!-- 已投后不再显示文字提示：按钮已高亮锁定，含义自明 -->
+          <div v-if="!topic.myVote && !interactive" class="ts-vote-hint">会议进行中才可表决</div>
+          <div v-else-if="!topic.myVote && !signedIn" class="ts-vote-hint">签到后即可表决</div>
+          <div v-else-if="!topic.myVote" class="ts-vote-hint">请点选你的意见</div>
         </div>
 
         <!-- ② 全体表决情况：汇总计票，独立浅底卡片；与个人区拉开距离，避免误认成个人结果 -->
@@ -148,16 +148,6 @@ const tagClass = computed(() => {
 const tagLabel = computed(() => {
   const t = props.topic && props.topic.type
   return t === 'decision' ? '表决' : (t === 'notice' ? '通报' : '讨论')
-})
-// 我这一票投的是什么（多选项显示选项名，简单表决显示同意/不同意/弃权）
-const myVoteText = computed(() => {
-  const t = props.topic
-  if (!t || !t.myVote) return ''
-  if ((t.decisionType || 'simple') === 'multi_choice') {
-    const o = (t.options || []).find(x => String(x.id) === String(t.myVote))
-    return o ? o.label : '已选'
-  }
-  return t.myVote === 'for_vote' ? '同意' : (t.myVote === 'against' ? '不同意' : '弃权')
 })
 
 // ── 语音输入意见：useRecorder 录音 → 后端 ASR 转文字 → 填入输入框（可改）→ 发表 ──
@@ -369,7 +359,7 @@ async function removeOpinion(op) {
 .ts-tag.vote { background: #FFF3E0; color: #E67E22; }
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
-.ts-vote { margin-bottom: 24rpx; }
+.ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
 .ts-vote-btn { border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; font-weight: 700; padding: 22rpx 0; }
 .ts-vote-btn.agree.on { background: #EAF6E5; border-color: #52A344; color: #2E7D32; }
