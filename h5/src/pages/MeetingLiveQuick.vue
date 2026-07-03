@@ -17,7 +17,8 @@
         <span v-if="isChair" class="lp-add-topic" @click="openAddTopic">+ 临时添加</span>
       </div>
       <div class="lp-info-row top">
-        <div class="lp-agenda">
+        <!-- 固定高度：议题多了先自动缩字号(最多3号)，仍放不下则本区内下拉滚动，卡片大小不变 -->
+        <div class="lp-agenda" :class="'lp-agenda--fs' + agendaFontLevel" ref="agendaEl">
           <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
             <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id" @click="openTopicSheet(item)">
               <span class="lp-agenda-idx">{{ index + 1 }}</span>
@@ -211,7 +212,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onActivated, onUnmounted, onDeactivated } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onActivated, onUnmounted, onDeactivated } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
@@ -436,6 +437,27 @@ function topicBadgeText(item) {
   if (item.type === 'notice') return done ? '已通报' : '待通报'
   return done ? '已讨论' : '待讨论'
 }
+
+// 议题区固定高度，字体自适应：内容放不下时逐级缩小(最多3号)，仍放不下则本区下拉滚动（卡片大小不变）
+const agendaEl = ref(null)
+const agendaFontLevel = ref(0) // 0=原字号，1/2/3=各缩一号
+// 用 rAF 递归逐档缩小：每档改字号后等下一帧重新测量，避免"固定高度样式未生效时误判放得下"
+function fitAgenda() {
+  const raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : ((cb) => setTimeout(cb, 16))
+  agendaFontLevel.value = 0
+  const step = () => {
+    const e = agendaEl.value
+    if (!e) return
+    if (agendaFontLevel.value < 2 && e.scrollHeight > e.clientHeight + 1) { // 最多缩到 fs2(28rpx)，再放不下就滚动
+      agendaFontLevel.value += 1
+      raf(step)
+    }
+  }
+  raf(() => raf(step)) // 双帧：等固定高度布局稳定后再开始测量
+}
+// 议题数量变化时重新适配（flush:post 确保 DOM 已更新）
+watch(() => (detail.value && detail.value.record && detail.value.record.topics
+  ? detail.value.record.topics.length : 0), () => { fitAgenda() }, { flush: 'post' })
 // 步骤条 UI 已删（steps 数组随之移除）；currentStep 仍驱动 签到卡(1)/录音卡(2) 的切换
 const currentStep = ref(1)
 const signedIn = ref(false)        // 后端持久态：会议开始时已清空，ongoing 阶段即"本人会上是否已签到"（按用户区分、服务器持久）
@@ -573,6 +595,7 @@ onMounted(() => {
   loadDetail()
   // 主任端每 12s 轻量刷新签到进度（委员陆续签到时进度自动增加）
   _attendanceTimer = setInterval(refreshAttendance, 12000)
+  if (typeof window !== 'undefined') window.addEventListener('resize', fitAgenda)
 })
 
 // onShow → onMounted 首跑 + onActivated（保持热切回页刷新；但避免与 onMounted 重复首跑）
@@ -586,7 +609,10 @@ onUnmounted(() => {
   clearPoll()
   if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
   if (_playAudio) { try { _playAudio.pause() } catch (e) {} _playAudio = null }
-  if (typeof window !== 'undefined') window.removeEventListener('beforeunload', _beforeUnloadGuard)
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('beforeunload', _beforeUnloadGuard)
+    window.removeEventListener('resize', fitAgenda)
+  }
   rec.reset() // 释放麦克风
 })
 
@@ -1977,10 +2003,10 @@ function exitLive() {
 
 /* 会议信息卡 */
 .lp-info-card { background:#fff; border-radius:24rpx; padding:32rpx 32rpx 0; margin-top:24rpx; margin-bottom:28rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
-.lp-info-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20rpx; }
-.lp-info-title { display:block; font-size:42rpx; font-weight:700; color:#1F2024; line-height:1.35; }
-/* 添加议题：蓝字白底小按钮，与标题顶对齐（略靠上） */
-.lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:8rpx 22rpx; line-height:1.3; }
+.lp-info-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16rpx; }
+.lp-info-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; line-height:1.35; } /* 标题缩两号(42→34) */
+/* 临时添加：蓝字白底小按钮，缩一号(26→22)并往右上边缘挪(负外边距) */
+.lp-add-topic { font-size:22rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:-10rpx -12rpx 0 0; }
 .lp-add-topic:active { background:#F0F6FF; }
 /* 委员引导按钮：柔和橙底，告知"议题可点"，点了直达第一个待办议题（卡片 padding-bottom 为 0，按钮自带下边距） */
 .lp-topics-cta { display:block; width:100%; box-sizing:border-box; margin:6rpx 0 26rpx; border:2rpx solid #F0D9B8; border-radius:16rpx; background:#FFF9F0; color:#B06A00; font-size:29rpx; padding:18rpx 0; text-align:center; }
@@ -1989,7 +2015,12 @@ function exitLive() {
 .lp-info-row.top { align-items:flex-start; }
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
 .lp-info-v { flex:1; min-width:0; word-break:break-all; }
-.lp-agenda { flex:1; min-width:0; }
+/* 议题区固定高度(约4行)：卡片大小恒定；放不下先缩字号(下面 fs 档)，仍放不下则本区下拉滚动 */
+.lp-agenda { flex:1; min-width:0; height:336rpx; overflow-y:auto; }
+/* 字号自适应档位：每档缩一号(4rpx=2px)，最多缩到 28rpx(fs2)；高档同时压缩行距让更多议题露出 */
+.lp-agenda--fs1 .lp-agenda-title { font-size:32rpx; }
+.lp-agenda--fs2 .lp-agenda-title { font-size:28rpx; }
+.lp-agenda--fs2 .lp-agenda-item { padding:12rpx 0; }
 .lp-agenda-item { display:flex; align-items:center; gap:16rpx; padding:18rpx 0; border-bottom:2rpx solid #F2F2F4; }
 .lp-agenda-item:last-child { border-bottom:0; }
 .lp-agenda-item:active { background:#FAFAFA; }
@@ -2060,7 +2091,13 @@ function exitLive() {
 /* 参会人员名单卡：列表滚动区 */
 /* 人员名单卡（仅列表）收窄留白；沉底的统计卡（标题+进度条） */
 .lp-roster { padding:16rpx 32rpx; }
-.lp-roster-stats .ls-head { margin-bottom:16rpx; }
+/* 签到统计卡整体缩小约 30%（卡片内边距 + 标题 + 数字 + 进度条一并缩） */
+.lp-roster-stats { padding:27rpx 22rpx; }
+.lp-roster-stats .ls-head { margin-bottom:11rpx; }
+.lp-roster-stats .lp-card-title { font-size:28rpx; }
+.lp-roster-stats .ls-count { font-size:24rpx; }
+.lp-roster-stats .ls-count b { font-size:30rpx; }
+.lp-roster-stats .ls-bar { height:13rpx; border-radius:7rpx; }
 /* 名单完整展示（不做内部滚动）；首屏自然只露出前几行，往下滚页面看其余 */
 .lr-list { margin-top:8rpx; }
 /* 行内「正在录音」标签（并入右侧状态栏，未录音时隐藏；录音蓝 / 暂停黑，避免与缺席红混淆） */
@@ -2097,17 +2134,18 @@ function exitLive() {
 .qk-minor-link { font-size:28rpx; color:#777; padding:12rpx 16rpx; }
 
 /* 录音控件 */
-/* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字 */
-.lp-rec { padding:32rpx 32rpx 14rpx; }
-.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding:26rpx 0 12rpx; }
-.qk-rec-circle { width:220rpx; height:220rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:36rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:10rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; }
+/* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字。整体缩两号+紧凑 */
+.lp-rec { padding:24rpx 26rpx 10rpx; }
+.lp-rec .lp-card-title { font-size:32rpx; } /* 标题缩两号(40→32) */
+.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:12rpx; padding:16rpx 0 8rpx; }
+.qk-rec-circle { width:188rpx; height:188rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:8rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; }
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
 .qk-rec-circle:active { transform:scale(0.95); }
 .qk-rec-circle:disabled { background:#E5E8EC; color:#999; border-color:#F2F2F4; box-shadow:none; }
 .qk-rec-circle.on { background:#E74C3C; border-color:#FDECEA; box-shadow:0 8rpx 22rpx rgba(231,76,60,0.30); animation:qkpulse 1.2s ease-in-out infinite; }
 @keyframes qkpulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.55; transform:scale(.92); } }
-.qk-rec-time { font-size:44rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:20rpx; }
+.qk-rec-time { font-size:36rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:12rpx; } /* 计时缩两号(44→36)+紧凑 */
 
 .qk-note { font-size:28rpx; color:#666; line-height:1.6; margin-top:20rpx; background:#FAFBFC; border-radius:14rpx; padding:18rpx 20rpx; }
 .qk-note.warn { color:#C77700; background:#FFF8EC; }
