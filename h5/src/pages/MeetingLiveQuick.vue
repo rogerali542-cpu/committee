@@ -2002,7 +2002,7 @@ function exitLive() {
 .lp-fold { display:flex; flex-direction:column; min-height:calc(100vh - 96rpx); }
 
 /* 会议信息卡 */
-.lp-info-card { background:#fff; border-radius:24rpx; padding:32rpx 32rpx 0; margin-top:24rpx; margin-bottom:28rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.lp-info-card { background:#fff; border-radius:24rpx; padding:32rpx 32rpx 0; margin-top:24rpx; margin-bottom:44rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡间距 +8px(28→44) */
 .lp-info-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16rpx; }
 .lp-info-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; line-height:1.35; } /* 标题缩两号(42→34) */
 /* 临时添加：蓝字白底小按钮，缩一号(26→22)并往右上边缘挪(负外边距) */
@@ -2099,7 +2099,8 @@ function exitLive() {
 .lp-roster-stats .ls-count b { font-size:30rpx; }
 .lp-roster-stats .ls-bar { height:13rpx; border-radius:7rpx; }
 /* 名单完整展示（不做内部滚动）；首屏自然只露出前几行，往下滚页面看其余 */
-.lr-list { margin-top:8rpx; }
+/* 默认只露约 3-4 人，其余在本区下拉查看（不撑高卡片） */
+.lr-list { margin-top:8rpx; max-height:300rpx; overflow-y:auto; }
 /* 行内「正在录音」标签（并入右侧状态栏，未录音时隐藏；录音蓝 / 暂停黑，避免与缺席红混淆） */
 .lr-rec-tag { display:inline-flex; align-items:center; gap:8rpx; flex-shrink:0; font-size:26rpx; font-weight:700; color:#2563EB; background:#E8F0FE; padding:4rpx 14rpx; border-radius:12rpx; margin-right:20rpx; }
 .lr-rec-tag.paused { color:#1F2024; background:#EDEEF0; }
@@ -2107,7 +2108,7 @@ function exitLive() {
 .lr-rec-tag.paused .lr-rec-dot { animation:none; opacity:.85; background:#1F2024; }
 
 /* 步骤卡片 */
-.lp-card { background:#fff; border-radius:24rpx; padding:38rpx 32rpx; margin-bottom:28rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.lp-card { background:#fff; border-radius:24rpx; padding:38rpx 32rpx; margin-bottom:44rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡间距 +8px(28→44) */
 .lp-card-step { display:block; font-size:28rpx; color:#D88900; font-weight:700; margin-bottom:12rpx; }
 .lp-card-title { display:block; font-size:40rpx; font-weight:700; color:#1f2329; line-height:1.4; }
 
@@ -2135,17 +2136,17 @@ function exitLive() {
 
 /* 录音控件 */
 /* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字。整体缩两号+紧凑 */
-.lp-rec { padding:24rpx 26rpx 10rpx; }
-.lp-rec .lp-card-title { font-size:32rpx; } /* 标题缩两号(40→32) */
-.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:12rpx; padding:16rpx 0 8rpx; }
-.qk-rec-circle { width:188rpx; height:188rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:8rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; }
+.lp-rec { padding:28rpx 28rpx 12rpx; }
+.lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
+.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:14rpx; padding:20rpx 0 10rpx; }
+.qk-rec-circle { width:204rpx; height:204rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:32rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:9rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; }
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
 .qk-rec-circle:active { transform:scale(0.95); }
 .qk-rec-circle:disabled { background:#E5E8EC; color:#999; border-color:#F2F2F4; box-shadow:none; }
 .qk-rec-circle.on { background:#E74C3C; border-color:#FDECEA; box-shadow:0 8rpx 22rpx rgba(231,76,60,0.30); animation:qkpulse 1.2s ease-in-out infinite; }
 @keyframes qkpulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.55; transform:scale(.92); } }
-.qk-rec-time { font-size:36rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:12rpx; } /* 计时缩两号(44→36)+紧凑 */
+.qk-rec-time { font-size:40rpx; font-weight:700; color:#1f2329; letter-spacing:4rpx; margin-top:16rpx; } /* 计时缩一号(44→40)，比之前回大一点 */
 
 .qk-note { font-size:28rpx; color:#666; line-height:1.6; margin-top:20rpx; background:#FAFBFC; border-radius:14rpx; padding:18rpx 20rpx; }
 .qk-note.warn { color:#C77700; background:#FFF8EC; }
