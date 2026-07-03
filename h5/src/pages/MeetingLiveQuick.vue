@@ -2003,10 +2003,10 @@ function exitLive() {
 
 /* 会议信息卡 */
 .lp-info-card { background:#fff; border-radius:24rpx; padding:32rpx 32rpx 0; margin-top:24rpx; margin-bottom:44rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡间距 +8px(28→44) */
-.lp-info-head { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16rpx; }
+.lp-info-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16rpx; } /* 居中对齐：临时添加与标题齐平 */
 .lp-info-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; line-height:1.35; } /* 标题缩两号(42→34) */
-/* 临时添加：蓝字白底小按钮，缩一号(26→22)并往右上边缘挪(负外边距) */
-.lp-add-topic { font-size:22rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:-10rpx -12rpx 0 0; }
+/* 临时添加：蓝字白底小按钮，与标题齐平、往右边缘挪(负右边距) */
+.lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:0 -12rpx 0 0; }
 .lp-add-topic:active { background:#F0F6FF; }
 /* 委员引导按钮：柔和橙底，告知"议题可点"，点了直达第一个待办议题（卡片 padding-bottom 为 0，按钮自带下边距） */
 .lp-topics-cta { display:block; width:100%; box-sizing:border-box; margin:6rpx 0 26rpx; border:2rpx solid #F0D9B8; border-radius:16rpx; background:#FFF9F0; color:#B06A00; font-size:29rpx; padding:18rpx 0; text-align:center; }
@@ -2139,7 +2139,7 @@ function exitLive() {
 .lp-rec { padding:28rpx 28rpx 12rpx; }
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
 .qk-recorder { display:flex; flex-direction:column; align-items:center; gap:14rpx; padding:20rpx 0 10rpx; }
-.qk-rec-circle { width:204rpx; height:204rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:32rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:9rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; }
+.qk-rec-circle { width:228rpx; height:228rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:40rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:9rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 圆圈114px、圈内字加大两号(32→40) */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
 .qk-rec-circle:active { transform:scale(0.95); }
