@@ -22,7 +22,7 @@
             <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id" @click="openTopicSheet(item)">
               <span class="lp-agenda-idx">{{ index + 1 }}</span>
               <span class="lp-agenda-title">{{ item.title }}</span>
-              <span class="lp-agenda-badge" :class="{ vote: item.voteRequired }">{{ topicBadgeText(item) }}</span>
+              <span class="lp-agenda-badge" :class="topicBadgeDone(item) ? 'done' : 'wait'">{{ topicBadgeText(item) }}</span>
               <span class="lp-agenda-arrow">›</span>
             </div>
           </template>
@@ -424,9 +424,17 @@ function openFirstPendingTopic() {
   const target = pending || list[0]
   if (target) sheetTopicId.value = target.id
 }
+// 议题状态标签：显示"待/已"状态而非属性。状态由后端 TopicVO 字段驱动，
+// 录音经 ASR 识别+确认后 status/opinionCount 会更新，loadDetail 刷新后标签自动翻成"已"。
+function topicBadgeDone(item) {
+  if (item.voteRequired) return item.status === 'passed' || item.status === 'failed' // 表决达成(含ASR识别票数确认后)
+  return (item.opinionCount || 0) > 0 // 通报/讨论：录音里被提到/有意见 = 已处理
+}
 function topicBadgeText(item) {
-  if (item.voteRequired) return (item.voted || 0) + '/' + (item.total || 0) + ' 票'
-  return item.opinionCount > 0 ? '意见 ' + item.opinionCount : '发表意见'
+  const done = topicBadgeDone(item)
+  if (item.voteRequired) return done ? '已表决' : '待表决'
+  if (item.type === 'notice') return done ? '已通报' : '待通报'
+  return done ? '已讨论' : '待讨论'
 }
 // 步骤条 UI 已删（steps 数组随之移除）；currentStep 仍驱动 签到卡(1)/录音卡(2) 的切换
 const currentStep = ref(1)
@@ -1985,9 +1993,10 @@ function exitLive() {
 .lp-agenda-item { display:flex; align-items:center; gap:16rpx; padding:18rpx 0; border-bottom:2rpx solid #F2F2F4; }
 .lp-agenda-item:last-child { border-bottom:0; }
 .lp-agenda-item:active { background:#FAFAFA; }
-/* 议题行角标：表决=进度票数(橙)、其他=意见数；行尾小箭头提示可点 */
-.lp-agenda-badge { flex-shrink:0; font-size:24rpx; color:#666; background:#F2F2F4; border-radius:999rpx; padding:6rpx 16rpx; line-height:1.3; }
-.lp-agenda-badge.vote { background:#FFF3E0; color:#C77700; font-weight:600; }
+/* 议题行角标：显示待/已状态——待处理=橙(提醒)、已处理=绿；行尾小箭头提示可点 */
+.lp-agenda-badge { flex-shrink:0; font-size:24rpx; color:#666; background:#F2F2F4; border-radius:999rpx; padding:6rpx 16rpx; line-height:1.3; font-weight:600; }
+.lp-agenda-badge.wait { background:#FFF3E0; color:#C77700; }
+.lp-agenda-badge.done { background:#EAF6E5; color:#2E7D32; }
 .lp-agenda-arrow { flex-shrink:0; color:#C2C6CC; font-size:34rpx; margin-left:-6rpx; }
 .lp-agenda-idx { width:44rpx; height:44rpx; flex-shrink:0; border-radius:50%; background:#F2F2F4; color:#666; font-size: 30rpx; text-align:center; line-height:44rpx; }
 .lp-agenda-title { flex:1; min-width:0; color:#1F2024; word-break:break-all; font-size:36rpx; line-height:1.35; }
