@@ -607,7 +607,8 @@
     <!-- 议题弹层：表决 + 意见（进行中可操作，其余阶段只读查看） -->
     <TopicSheet v-if="detail && meetingIdRef" :meeting-id="meetingIdRef" :topic="sheetTopic"
                 :interactive="detail.stage === 'ongoing'" :signed-in="selfSignedIn" :is-chair="userView === 'chair'"
-                :has-next="sheetHasNext" @close="sheetTopicId = null" @changed="loadDetail" @next="gotoNextTopic" />
+                :has-prev="sheetHasPrev" :has-next="sheetHasNext"
+                @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
   </div>
 </template>
 
@@ -846,17 +847,15 @@ const sheetTopic = computed(() => {
   const list = (d && d.record && d.record.topics) || []
   return list.find(t => t.id === sheetTopicId.value) || null
 })
-// 弹层"下一个议题"
-const sheetHasNext = computed(() => {
+// 弹层"上一个/下一个议题"
+function _sheetTopicIndex() {
   const list = (detail.value && detail.value.record && detail.value.record.topics) || []
-  const i = list.findIndex(t => t.id === sheetTopicId.value)
-  return i >= 0 && i < list.length - 1
-})
-function gotoNextTopic() {
-  const list = (detail.value && detail.value.record && detail.value.record.topics) || []
-  const i = list.findIndex(t => t.id === sheetTopicId.value)
-  if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id
+  return { list, i: list.findIndex(t => t.id === sheetTopicId.value) }
 }
+const sheetHasPrev = computed(() => _sheetTopicIndex().i > 0)
+const sheetHasNext = computed(() => { const { list, i } = _sheetTopicIndex(); return i >= 0 && i < list.length - 1 })
+function gotoPrevTopic() { const { list, i } = _sheetTopicIndex(); if (i > 0) sheetTopicId.value = list[i - 1].id }
+function gotoNextTopic() { const { list, i } = _sheetTopicIndex(); if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id }
 const selfSignedIn = computed(() => {
   const d = detail.value
   const atts = (d && d.record && d.record.attendances) || []

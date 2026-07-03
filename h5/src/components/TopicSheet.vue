@@ -116,8 +116,11 @@
       </template>
       <div v-else-if="interactive && !signedIn" class="ts-input-hint">签到后可发表意见</div>
 
-      <!-- 跳转下一个议题：处理完当前议题直接切到下一个，不用先关弹层 -->
-      <button v-if="hasNext" class="ts-next-btn" @click="$emit('next')">下一个议题 ›</button>
+      <!-- 上一个 / 下一个议题：处理完当前议题直接切换，不用先关弹层 -->
+      <div v-if="hasPrev || hasNext" class="ts-nav-row">
+        <button v-if="hasPrev" class="ts-nav-btn" @click="$emit('prev')">‹ 上一个议题</button>
+        <button v-if="hasNext" class="ts-nav-btn" @click="$emit('next')">下一个议题 ›</button>
+      </div>
     </div>
   </div>
 </template>
@@ -135,9 +138,10 @@ const props = defineProps({
   interactive: { type: Boolean, default: false }, // 会议进行中（可表决/发言）
   signedIn: { type: Boolean, default: false },
   isChair: { type: Boolean, default: false },
-  hasNext: { type: Boolean, default: false } // 是否还有下一个议题（父组件按列表算）
+  hasPrev: { type: Boolean, default: false }, // 是否有上一个议题（父组件按列表算）
+  hasNext: { type: Boolean, default: false }  // 是否有下一个议题
 })
-const emit = defineEmits(['close', 'changed', 'next'])
+const emit = defineEmits(['close', 'changed', 'prev', 'next'])
 
 const opinions = ref([])
 const loading = ref(false)
@@ -221,10 +225,21 @@ async function finishVoice() {
 }
 
 // ── AI 润色 / 代拟 ──
+// AI 完成后弹卡片：告知已生成、耗时、消耗 token
+function showAiDoneCard(mode, t0, tokens) {
+  const sec = Math.max(0.1, (Date.now() - t0) / 1000).toFixed(1)
+  showModal({
+    title: '✨ AI 已帮你' + (mode === 'polish' ? '润色意见' : '生成意见'),
+    content: '内容已填入下方输入框，你可以再修改后发表。\n\n耗时 ' + sec + ' 秒 · 消耗 ' + (Number(tokens) || 0).toLocaleString() + ' token',
+    showCancel: false,
+    confirmText: '好的'
+  })
+}
 async function polishByAi() {
   const text = draft.value.trim()
   if (!text || aiBusy.value) return
   aiBusy.value = true
+  const t0 = Date.now()
   try {
     const res = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'polish', text)
     if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
@@ -232,6 +247,7 @@ async function polishByAi() {
     draft.value = res.text
     aiTokens.value = Number(res.tokens) || 0
     nextTick(autoGrow)
+    showAiDoneCard('polish', t0, aiTokens.value)
   } catch (e) {
     toast({ title: (e && e.message) || 'AI 助手开小差了，请重试', icon: 'none' })
   } finally { aiBusy.value = false }
@@ -247,6 +263,7 @@ async function draftByAi() {
   const text = helperDraft.value.trim()
   if (!text || aiBusy.value) return
   aiBusy.value = true
+  const t0 = Date.now()
   try {
     const res = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'draft', text)
     if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
@@ -256,6 +273,7 @@ async function draftByAi() {
     helperOn.value = false
     helperDraft.value = ''
     nextTick(autoGrow)
+    showAiDoneCard('draft', t0, aiTokens.value)
   } catch (e) {
     toast({ title: (e && e.message) || 'AI 助手开小差了，请重试', icon: 'none' })
   } finally { aiBusy.value = false }
@@ -423,9 +441,10 @@ async function removeOpinion(op) {
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-send[disabled] { background: #E3D5C3; }
 .ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
-/* 下一个议题：固定在弹层最底部，处理完直接切下一个 */
-.ts-next-btn { flex-shrink: 0; width: 100%; box-sizing: border-box; margin-top: 14rpx; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 0; }
-.ts-next-btn:active { background: #ECEEF1; }
+/* 上一个/下一个议题：固定在弹层最底部，一行两键（缺一个时另一个占满） */
+.ts-nav-row { flex-shrink: 0; display: flex; gap: 14rpx; margin-top: 14rpx; }
+.ts-nav-btn { flex: 1; box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 0; }
+.ts-nav-btn:active { background: #ECEEF1; }
 
 /* AI 助手行：润色 / 帮我写 入口 + 还原 + token 低调提示 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }

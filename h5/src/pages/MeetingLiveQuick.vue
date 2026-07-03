@@ -121,8 +121,8 @@
 
     <!-- 议题弹层：表决 + 意见（点议题行打开）；下一个议题直接切换 -->
     <TopicSheet :meeting-id="meetingId" :topic="sheetTopic" :interactive="detail.stage === 'ongoing'"
-                :signed-in="signedIn" :is-chair="isChair" :has-next="sheetHasNext"
-                @close="sheetTopicId = null" @changed="loadDetail" @next="gotoNextTopic" />
+                :signed-in="signedIn" :is-chair="isChair" :has-prev="sheetHasPrev" :has-next="sheetHasNext"
+                @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
 
     <!-- 转录文本查看 -->
     <div v-if="transcriptVisible" class="qk-modal-mask" @click="closeTranscript">
@@ -419,17 +419,15 @@ const sheetTopic = computed(() => {
   return list.find(t => t.id === sheetTopicId.value) || null
 })
 function openTopicSheet(item) { sheetTopicId.value = item.id }
-// 弹层"下一个议题"：当前议题是否还有下一个 + 切到下一个
-const sheetHasNext = computed(() => {
+// 弹层"上一个/下一个议题"：当前议题在列表中的位置 + 切换
+function _sheetTopicIndex() {
   const list = (detail.value && detail.value.record && detail.value.record.topics) || []
-  const i = list.findIndex(t => t.id === sheetTopicId.value)
-  return i >= 0 && i < list.length - 1
-})
-function gotoNextTopic() {
-  const list = (detail.value && detail.value.record && detail.value.record.topics) || []
-  const i = list.findIndex(t => t.id === sheetTopicId.value)
-  if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id
+  return { list, i: list.findIndex(t => t.id === sheetTopicId.value) }
 }
+const sheetHasPrev = computed(() => _sheetTopicIndex().i > 0)
+const sheetHasNext = computed(() => { const { list, i } = _sheetTopicIndex(); return i >= 0 && i < list.length - 1 })
+function gotoPrevTopic() { const { list, i } = _sheetTopicIndex(); if (i > 0) sheetTopicId.value = list[i - 1].id }
+function gotoNextTopic() { const { list, i } = _sheetTopicIndex(); if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id }
 // 委员引导按钮入口：优先打开还没投票的表决议题，其次第一个议题
 function openFirstPendingTopic() {
   const list = (detail.value && detail.value.record && detail.value.record.topics) || []
