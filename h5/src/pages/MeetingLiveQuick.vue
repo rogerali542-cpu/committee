@@ -63,10 +63,10 @@
         class="lp-primary-btn gen-standalone" @click="uploadRecordingStep">
         <span class="qra-main">上传录音</span>
       </button>
-      <!-- 识别完成后：拆两键「继续上传录音」(浅) / 「生成会议纪要」(深)。 -->
+      <!-- 识别完成后：上下堆叠——主「生成会议纪要」(深实心)在上，次「继续上传录音」(描边)在下。 -->
       <div v-else-if="!uploading && !polling && !extracting && !generatingMinutes && !needRecognize && hasSavedRecordings" class="qk-two-btns">
-        <button class="lp-primary-btn qk-two-btn ghost" @click="continueRecordUpload"><span class="qra-main">继续上传录音</span></button>
         <button class="lp-primary-btn qk-two-btn" @click="generateNow"><span class="qra-main">生成会议纪要</span></button>
+        <button class="lp-primary-btn qk-two-btn ghost" @click="continueRecordUpload"><span class="qra-main">继续上传录音</span></button>
       </div>
 
     </div>
@@ -2267,11 +2267,10 @@ function exitLive() {
 .gen-standalone { width:60%; max-width:100%; margin:30rpx auto 0; padding:16rpx 0; display:flex; align-items:center; justify-content:center; }
 .gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
 /* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
-.qk-two-btns { display:flex; gap:36rpx; margin-top:14rpx; padding:0 24rpx; }
-.qk-two-btns .lp-primary-btn.qk-two-btn { flex:1; width:auto; margin-top:0; padding:12rpx 0; display:flex; align-items:center; justify-content:center; }
-/* 宽度占比区分：继续上传录音收窄(次)，生成会议纪要占大头(主) */
-.qk-two-btns .lp-primary-btn.qk-two-btn.ghost { flex:0 0 38%; }
-.qk-two-btn .qra-main { font-size:25rpx; font-weight:700; white-space:nowrap; }
+/* 上下堆叠、居中、宽度 60%：主(生成纪要)实心在上，次(继续上传)描边在下 */
+.qk-two-btns { display:flex; flex-direction:column; align-items:center; gap:14rpx; margin-top:14rpx; padding:0; }
+.qk-two-btns .lp-primary-btn.qk-two-btn { width:60%; flex:none; margin-top:0; padding:20rpx 0; display:flex; align-items:center; justify-content:center; }
+.qk-two-btn .qra-main { font-size:28rpx; font-weight:700; white-space:nowrap; }
 .qk-two-btns .lp-primary-btn.qk-two-btn:not(.ghost) .qra-main { font-size:30rpx; }
 .qk-two-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); }
 .qk-two-btn.ghost:active { background:#FFF6E8; }
