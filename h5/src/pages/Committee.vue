@@ -160,22 +160,31 @@
             </div>
             <div class="vi-row topic-input-row">
               <input class="form-input topic-input" :class="{ 'field-error': fieldErrors.topics }" v-model="topicInput" placeholder="输入一条议题" @focus="clearFieldError('topics')" @keyup.enter="addTopicFromInput" />
-              <button class="voice-mic-btn" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')" aria-label="语音输入">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
-              </button>
-              <button class="topic-confirm-btn" @click="addTopicFromInput">确定</button>
+              <div class="topic-actions-col">
+                <button class="voice-mic-btn" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')" aria-label="语音输入">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
+                </button>
+                <button class="topic-confirm-btn" @click="addTopicFromInput">确定</button>
+              </div>
             </div>
           </div>
 
           <!-- 会议材料（拍照/上传判类为材料的文件；建会后自动挂到会议供委员传阅） -->
           <div v-if="pendingMaterials.length" class="create-section">
-            <span class="section-title">会议材料（{{ pendingMaterials.length }}）</span>
-            <div v-for="(m, idx) in pendingMaterials" :key="m.url" class="mat-line">
-              <span class="mat-ico">{{ matIcon(m) }}</span>
-              <span class="mat-name" @click="openMaterialViewer(m)">{{ m.fileName }}</span>
-              <span class="mat-size" v-if="m.sizeText">{{ m.sizeText }}</span>
-              <span class="topic-line-del" @click="removePendingMaterial(idx)">×</span>
+            <div class="section-title-row mat-head" @click="materialsOpen = !materialsOpen">
+              <span class="section-title">会议材料（{{ pendingMaterials.length }}）</span>
+              <span class="mat-toggle" :class="{ open: materialsOpen }" aria-label="展开查看材料详情">›</span>
             </div>
+            <template v-if="materialsOpen">
+              <div v-for="(m, idx) in pendingMaterials" :key="m.url" class="mat-card" @click="openMaterialViewer(m)">
+                <span class="mat-badge" :class="'t-' + matBadge(m).cls">{{ matBadge(m).label }}</span>
+                <div class="mat-info">
+                  <span class="mat-fname">{{ m.fileName }}</span>
+                  <span class="mat-fsize" v-if="m.sizeText">{{ m.sizeText }}</span>
+                </div>
+                <span class="mat-del" @click.stop="removePendingMaterial(idx)">×</span>
+              </div>
+            </template>
           </div>
 
           <!-- 居委会见证（说明式开关卡片，精简为一行）：仅标记 hasMajorIssue，不自动通知 -->
@@ -209,7 +218,7 @@
             </button>
           </div>
           <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
-            {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始 AI 识别（' + scanItems.length + '）' }}
+            {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
           </button>
         </div>
 
@@ -843,15 +852,26 @@ const docPrefilled = ref(false)   // 已成功预填过一次（保留状态位�
 // ——— 待挂载的会议材料（供委员传阅：如上级文件精神、报价单等）———
 // 「去通知」建会成功后再逐份挂到会议（届时触发 OCR）。来源：拍照/上传 AI 判类为 material 的文件。
 const pendingMaterials = ref([])      // [{ url, fileName, fileType, fileSize, sizeText }]
+const materialsOpen = ref(false)      // 会议材料：默认折叠只显示份数，点标题右侧图标展开看详情
 function removePendingMaterial(idx) {
   pendingMaterials.value = pendingMaterials.value.filter((_, i) => i !== idx)
 }
 // 材料行小图标：按文件类型区分（图片/PDF/其他）
-function matIcon(m) {
-  const t = String((m && m.fileType) || '').toLowerCase()
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(t)) return '🖼️'
-  if (t === 'pdf') return '📄'
-  return '📎'
+function matExt(m) {
+  let t = String((m && m.fileType) || '').toLowerCase()
+  if (!t && m && m.fileName && m.fileName.indexOf('.') >= 0) t = m.fileName.split('.').pop().toLowerCase()
+  return t
+}
+// 微信式文件卡：按类型给短标签 + 配色
+function matBadge(m) {
+  const t = matExt(m)
+  if (t === 'pdf') return { label: 'PDF', cls: 'pdf' }
+  if (['doc', 'docx'].includes(t)) return { label: 'DOC', cls: 'doc' }
+  if (['xls', 'xlsx', 'csv'].includes(t)) return { label: 'XLS', cls: 'xls' }
+  if (['ppt', 'pptx'].includes(t)) return { label: 'PPT', cls: 'ppt' }
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(t)) return { label: 'IMG', cls: 'img' }
+  if (t === 'txt') return { label: 'TXT', cls: 'txt' }
+  return { label: t ? t.slice(0, 3).toUpperCase() : '文件', cls: 'file' }
 }
 
 // ——— 拍照/上传 → 攒进暂存列表（缩略图预览）→ 一起「开始 AI 识别」→ 自动分辨通知/材料 ———
@@ -1889,8 +1909,8 @@ onActivated(show)
 /* AI 识别完成：精美结果卡 */
 .scan-result-mask { position: fixed; inset: 0; z-index: 3060; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
 .scan-result { position: relative; width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 24%); border: 1rpx solid rgba(255, 168, 0, 0.22); border-radius: 30rpx; padding: 40rpx 40rpx 34rpx; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.05); box-sizing: border-box; display: flex; flex-direction: column; align-items: center; }
-.sr-badge { width: 100rpx; height: 100rpx; border-radius: 50%; background: linear-gradient(135deg, #40C56F, #27AE60); display: flex; align-items: center; justify-content: center; box-shadow: 0 10rpx 24rpx rgba(39, 174, 96, 0.34); margin-bottom: 16rpx; }
-.sr-check { color: #fff; font-size: 54rpx; font-weight: 700; line-height: 1; }
+.sr-badge { width: 92rpx; height: 92rpx; border-radius: 50%; background: linear-gradient(135deg, #40C56F, #27AE60); display: flex; align-items: center; justify-content: center; box-shadow: 0 10rpx 24rpx rgba(39, 174, 96, 0.34); margin-bottom: 16rpx; }
+.sr-check { color: #fff; font-size: 50rpx; font-weight: 700; line-height: 1; }
 .sr-head { font-size: 38rpx; font-weight: 800; color: #1f2329; letter-spacing: 1rpx; margin-bottom: 24rpx; }
 .sr-body { width: 100%; display: flex; flex-direction: column; gap: 16rpx; }
 .sr-card { background: #FBF7F0; border: 1rpx solid #F0E6D6; border-radius: 18rpx; padding: 22rpx 24rpx; }
@@ -1953,25 +1973,39 @@ onActivated(show)
 .mc-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .1s ease; }
 .mc-flash.on { opacity: 0.9; }
 /* 会议材料行：小图标 + 可点文件名（点开全屏预览）+ 大小 + 删除 */
-.mat-line { display: flex; align-items: center; gap: 14rpx; padding: 18rpx 4rpx; border-bottom: 1rpx solid #f0f0f0; }
-.mat-line:last-child { border-bottom: none; }
-.mat-ico { flex-shrink: 0; font-size: 36rpx; line-height: 1; }
-.mat-name { flex: 1; min-width: 0; font-size: 30rpx; color: #0051FF; text-decoration: underline; text-underline-offset: 6rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-.mat-name:active { opacity: 0.6; }
-.mat-size { flex-shrink: 0; font-size: 26rpx; color: #999; font-weight: 400; }
+/* 会议材料折叠头：标题 + 右侧小箭头，点击展开详情 */
+.mat-head { cursor: pointer; }
+.mat-toggle { flex-shrink: 0; font-size: 40rpx; line-height: 1; color: var(--c-primary-dark); font-weight: 700; transition: transform .2s ease; }
+.mat-toggle.open { transform: rotate(90deg); }
+/* 微信式文件卡：类型图标 + 文件名 + 下方大小 */
+.mat-card { display: flex; align-items: center; gap: 18rpx; background: #F7F8FA; border: 1rpx solid #ECEEF1; border-radius: 14rpx; padding: 16rpx 18rpx; margin-top: 14rpx; cursor: pointer; }
+.mat-card:active { background: #EEF0F3; }
+.mat-badge { flex-shrink: 0; width: 72rpx; height: 72rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22rpx; font-weight: 700; letter-spacing: 1rpx; }
+.mat-badge.t-pdf  { background: #E5533C; }
+.mat-badge.t-doc  { background: #2B7CD3; }
+.mat-badge.t-xls  { background: #1E9E5A; }
+.mat-badge.t-ppt  { background: #E07B2E; }
+.mat-badge.t-img  { background: #17A2A2; }
+.mat-badge.t-txt  { background: #7A8598; }
+.mat-badge.t-file { background: #9AA0A6; }
+.mat-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.mat-fname { font-size: 28rpx; color: #1f2329; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mat-fsize { font-size: 24rpx; color: #9aa0a6; }
+.mat-del { flex-shrink: 0; font-size: 40rpx; color: #c4c8cd; padding: 0 6rpx; line-height: 1; }
+.mat-del:active { color: #999; }
 /* 转圈圈：按钮内白色细环旋转（识别中显示，模拟进度数字在按钮文字里） */
 .ai-fill-spin { width: 34rpx; height: 34rpx; border-radius: 50%; border: 5rpx solid rgba(255,255,255,0.45); border-top-color: #fff; box-sizing: border-box; animation: aiSpin 0.7s linear infinite; }
 @keyframes aiSpin { to { transform: rotate(360deg); } }
 /* 居委会见证（创建页，移自通知页）：白卡 + 标题/说明 + 适老化大复选框 */
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
 /* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
-.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 18rpx; padding: 24rpx; margin-top: 20rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); cursor: pointer; }
-.juwei-title { flex: 1; min-width: 0; font-size: 32rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
+.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 18rpx 20rpx; margin-top: 16rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); cursor: pointer; }
+.juwei-title { flex: 1; min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
 /* 开关 */
-.juwei-switch { flex-shrink: 0; width: 96rpx; height: 56rpx; border-radius: 999rpx; background: #D3D6DB; position: relative; transition: background .2s ease; }
-.juwei-switch::after { content: ""; position: absolute; top: 5rpx; left: 5rpx; width: 46rpx; height: 46rpx; border-radius: 50%; background: #fff; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: left .2s ease; }
+.juwei-switch { flex-shrink: 0; width: 84rpx; height: 48rpx; border-radius: 999rpx; background: #D3D6DB; position: relative; transition: background .2s ease; }
+.juwei-switch::after { content: ""; position: absolute; top: 5rpx; left: 5rpx; width: 38rpx; height: 38rpx; border-radius: 50%; background: #fff; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: left .2s ease; }
 .juwei-switch.on { background: var(--c-primary-dark); }
-.juwei-switch.on::after { left: 45rpx; }
+.juwei-switch.on::after { left: 41rpx; }
 .assist-row { display: flex; gap: 18rpx; margin-bottom: 18rpx; }
 .assist-btn { flex: 1; height: 80rpx; line-height: 80rpx; border-radius: 40rpx; background: #fff; color: #C77800; border: 2rpx solid #FFE0A3; font-size: 28rpx; font-weight: 600; padding: 0 20rpx; margin: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
 .assist-btn.primary { background: #FFA800; color: #fff; border-color: #FFA800; }
@@ -2020,8 +2054,11 @@ onActivated(show)
 .topic-line { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 18rpx 4rpx; }
 .topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
 .topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
-.topic-input-row { margin-top: 6rpx; }
+.vi-row.topic-input-row { margin-top: 6rpx; align-items: center; }
 .topic-input { flex: 1; min-width: 0; }
+/* 麦克风与确定竖排：确定落在麦克风下方 */
+.topic-actions-col { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 12rpx; }
+.topic-actions-col .voice-mic-btn { align-self: center; }
 .topic-confirm-btn { flex-shrink: 0; height: 80rpx; padding: 0 24rpx; border: none; border-radius: 14rpx; background: var(--c-primary-dark); color: #fff; font-size: 28rpx; font-weight: 600; }
 .topic-confirm-btn:active { background: var(--c-primary-strong); }
 .ct-option-row { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
