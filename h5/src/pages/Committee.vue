@@ -663,7 +663,8 @@ async function loadUnread() {
 
 // 给当前会议附加：三步进度、主操作按钮文案/图标
 function decorateCurrent(m, chair) {
-  const step = STEP_BY_STAGE[m.stage] || 1
+  // 纪要已生成的已结束会议 → 三步全部完成(step=4)；否则按阶段(ended=3，会后总结进行中)
+  const step = (m.stage === 'ended' && m.minutesGenerated) ? 4 : (STEP_BY_STAGE[m.stage] || 1)
   const steps = [1, 2, 3].map((no) => ({
     no: no,
     label: STEP_LABELS[no],
@@ -684,8 +685,9 @@ function decorateCurrent(m, chair) {
     ctaIcon = chair ? '🎙️' : '👀'
     tag = '正在开的会'
   } else {
-    ctaLabel = '整理会议记录'
-    ctaIcon = '📝'
+    // ended：纪要已生成 → 查看会议；未生成 → 整理会议记录
+    ctaLabel = m.minutesGenerated ? '查看会议' : '整理会议记录'
+    ctaIcon = m.minutesGenerated ? '👀' : '📝'
     tag = '会后总结'
   }
   return {

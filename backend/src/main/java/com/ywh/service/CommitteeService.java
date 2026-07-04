@@ -120,6 +120,11 @@ public class CommitteeService {
             card.put("myNoticeUnread", isNoticeUnreadForMe(m, currentUr));
             // 准备阶段：被通知委员是否都已回复（确认/缺席）→ 首页主按钮显示"会议已就绪"
             card.put("allReplied", isPreparingAllReplied(m));
+            // ended 会议：纪要是否已生成 → 前端把"整理会议记录"改为"查看会议"
+            card.put("minutesGenerated", m.getStage() == MeetingStage.ended
+                    && recordRepo.findByMeetingId(m.getId())
+                        .map(rec -> rec.getMinutesText() != null && !rec.getMinutesText().isBlank())
+                        .orElse(false));
             return card;
         }).collect(Collectors.toList());
     }
@@ -305,8 +310,8 @@ public class CommitteeService {
             if ("invalid".equals(level)) {
                 m.setCompliance(ComplianceStatus.invalid);
                 m.setStage(MeetingStage.ended);
-                // Auto-create re-do meeting
-                createRecreation(m);
+                // 测试阶段：判定无效即可，不自动重新开会（不是每次都全员签到）
+                // createRecreation(m);
             } else if ("flawed".equals(level)) {
                 m.setCompliance(ComplianceStatus.flawed);
                 m.setStage(MeetingStage.ended);
