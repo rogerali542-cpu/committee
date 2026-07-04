@@ -1800,8 +1800,8 @@ onActivated(show)
 .big-btn-text { font-size: 50rpx; font-weight: 700; color: #fff; }
 /* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
 .go-meeting { margin: auto auto 16rpx; width: 84%; }
-/* 卡片内"去开会"：略收窄并居中 */
-.meet-card .big-btn { width: 90%; margin-left: auto; margin-right: auto; }
+/* 卡片内"去开会"：略收窄并居中；光晕收敛（大弥散光晕留给底部灰底上的独立按钮，白卡里会外溢显脏） */
+.meet-card .big-btn { width: 90%; margin-left: auto; margin-right: auto; box-shadow: 0 6rpx 22rpx rgba(232, 140, 20, 0.18); }
 /* 删除会议（测试用，弱化） */
 .meet-del { text-align: center; color: var(--c-danger); font-size: 30rpx; margin-top: 28rpx; padding: 8rpx; }
 .meet-del:active { opacity: 0.6; }
