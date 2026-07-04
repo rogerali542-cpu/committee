@@ -102,7 +102,7 @@ onMounted(() => {
 
 .minutes-actions { margin-top: 16rpx; }
 .copy-btn { width: 100%; }
-.btn-primary { background: #FFA800; color: #fff; border-radius: 18rpx; font-size: 34rpx; font-weight: 600; height: 96rpx; line-height: 96rpx; }
+.btn-primary { background: var(--c-primary-dark); color: #fff; border-radius: 18rpx; font-size: 34rpx; font-weight: 600; height: 96rpx; line-height: 96rpx; }
 
 .empty-state { text-align: center; color: #666; font-size: 32rpx; padding: 80rpx 0; }
 </style>

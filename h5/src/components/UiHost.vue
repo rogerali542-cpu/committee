@@ -73,7 +73,7 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal-actions { display: flex; margin-top: 40rpx; border-top: 1rpx solid #eee; }
 .ui-modal-btn { flex: 1; padding: 28rpx 0; font-size: 32rpx; background: none; }
 .ui-modal-btn.cancel { color: #666; border-right: 1rpx solid #eee; }
-.ui-modal-btn.confirm { color: #FFA800; font-weight: 600; }
+.ui-modal-btn.confirm { color: var(--c-primary-dark); font-weight: 600; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
 .ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }

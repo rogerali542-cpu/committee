@@ -336,7 +336,7 @@ onMounted(() => {
 /* 操作区 */
 .action-card { background: #fff; border-radius: 24rpx; padding: 28rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .ac-hint { font-size: 28rpx; color: #666; display: block; margin-bottom: 20rpx; }
-.btn-primary { width: 100%; height: 96rpx; line-height: 96rpx; border-radius: 48rpx; background: #FFA800; color: #fff; font-size: 34rpx; font-weight: 600; border: none; margin: 0; }
+.btn-primary { width: 100%; height: 96rpx; line-height: 96rpx; border-radius: 48rpx; background: var(--c-primary-dark); color: #fff; font-size: 34rpx; font-weight: 600; border: none; margin: 0; }
 .btn-primary.finish { background: #5DADE2; }
 
 /* 无权限 / 已完成 */

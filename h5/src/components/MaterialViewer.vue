@@ -149,7 +149,7 @@ async function renderPdf(url) {
   align-items: center;
   gap: 16rpx;
   padding: calc(20rpx + env(safe-area-inset-top)) 24rpx 20rpx;
-  background: linear-gradient(160deg, #FFCC44 0%, #FFA800 100%);
+  background: var(--c-primary-dark);
   flex-shrink: 0;
 }
 .mv-back {

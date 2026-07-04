@@ -79,9 +79,9 @@
           <textarea class="form-textarea" v-model="replyText" placeholder="例如：已安排维修人员于X月X日完成处理，并恢复正常。" />
         </div>
 
-        <div class="sheet-actions">
+        <div class="sheet-actions weighted-actions">
           <button class="btn btn-ghost" @click="closeReply">取消</button>
-          <button class="btn btn-primary" @click="submitReply" :disabled="submitting">提交完成</button>
+          <button class="btn btn-primary" @click="submitReply" :disabled="submitting">提交完成<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -274,7 +274,7 @@ onActivated(onShow)
 .tc-hint { font-size: 28rpx; color: #B8500B; flex: 1; }
 .btn { font-size: 30rpx; border-radius: 22rpx; }
 .btn.mini { padding: 8rpx 24rpx; }
-.btn-primary { background: #FFA800; color: #fff; }
+.btn-primary { background: var(--c-primary-dark); color: #fff; }
 .btn-ghost { background: #f2f2f2; color: #666; }
 
 .empty-state { display: flex; flex-direction: column; align-items: center; color: #777; font-size: 32rpx; padding-top: 120rpx; }

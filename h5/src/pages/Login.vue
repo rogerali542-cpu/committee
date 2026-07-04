@@ -43,7 +43,7 @@ function doLogin(r) {
 </script>
 
 <style scoped>
-.login { min-height: 100vh; background: linear-gradient(180deg, #FFCC44 0%, #FFA800 220rpx, #f5f5f7 220rpx); padding: 0 32rpx; }
+.login { min-height: 100vh; background: linear-gradient(180deg, var(--c-primary-dark) 0%, var(--c-primary-dark) 220rpx, #f5f5f7 220rpx); padding: 0 32rpx; }
 .login-head { text-align: center; padding: 90rpx 0 50rpx; }
 .login-logo { width: 120rpx; height: 120rpx; margin: 0 auto 24rpx; background: #fff; color: #FFA800; border-radius: 28rpx; font-size: 64rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.12); }
 .login-title { font-size: 44rpx; font-weight: 800; color: #fff; }

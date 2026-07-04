@@ -152,7 +152,7 @@
           <textarea class="form-textarea" v-model="createForm.description" placeholder="简述学习内容和目的" style="min-height:80px;height:80px;"></textarea>
         </div>
 
-        <div class="sheet-actions">
+        <div class="sheet-actions weighted-actions">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
           <button class="btn btn-primary" @click="submitCreate">确认创建</button>
         </div>
@@ -367,7 +367,7 @@ onUnmounted(() => {
 /* 类型标签 */
 .type-tabs { display: flex; gap: 16rpx; margin: 20rpx 0; }
 .type-tab { flex: 1; padding: 20rpx; text-align: center; background: #fff; border-radius: 18rpx; font-size: 30rpx; color: #666; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); font-weight: 500; }
-.type-tab.active { background: #FFA800; color: #fff; font-weight: 700; }
+.type-tab.active { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
 
 /* 年度目标 */
 .learn-target { margin: 0 0 20rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
@@ -403,7 +403,7 @@ onUnmounted(() => {
 /* 筛选标签 */
 .filter-tabs { display: flex; gap: 0; margin-bottom: 20rpx; background: #fff; border-radius: 18rpx; padding: 8rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); }
 .f-tab { flex: 1; padding: 16rpx 8rpx; text-align: center; font-size: 28rpx; color: #666; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 8rpx; }
-.f-tab.active { background: #FFA800; color: #fff; font-weight: 700; }
+.f-tab.active { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
 .f-count { font-size: 28rpx; opacity: 0.85; }
 
 /* 学习卡片 */
@@ -425,14 +425,14 @@ onUnmounted(() => {
 .lc-footer { display: flex; justify-content: flex-end; gap: 14rpx; margin-top: 16rpx; border-top: 2rpx solid #f5f5f5; padding-top: 16rpx; }
 .lc-arrow { position: absolute; right: 24rpx; top: 50%; transform: translateY(-50%); font-size: 44rpx; color: #666; }
 .lc-btn { min-height: 64rpx; line-height: 64rpx; padding: 0 30rpx; border-radius: 20rpx; border: none; font-size: 28rpx; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; }
-.lc-btn.start { background: #FFA800; color: #fff; }
+.lc-btn.start { background: var(--c-primary-dark); color: #fff; }
 .lc-btn.finish { background: #5DADE2; color: #fff; }
 
 .undo-toast { position: fixed; left: 24rpx; right: 24rpx; bottom: 40rpx; z-index: 40; background: rgba(45,45,45,0.94); color: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.2); }
 .undo-btn { color: #F4D03F; font-weight: 700; padding-left: 24rpx; }
 
 /* FAB */
-.fab { position: fixed; bottom: 48rpx; right: 36rpx; width: 104rpx; height: 104rpx; background: #FFA800; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.45); z-index: 30; }
+.fab { position: fixed; bottom: 48rpx; right: 36rpx; width: 104rpx; height: 104rpx; background: var(--c-primary-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.45); z-index: 30; }
 .fab-icon { font-size: 56rpx; color: #fff; font-weight: 300; }
 
 /* 创建弹窗 */
@@ -457,5 +457,5 @@ onUnmounted(() => {
 .sheet-actions { display: flex; gap: 16rpx; padding-top: 12rpx; }
 .sheet-actions .btn { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; font-size: 32rpx; font-weight: 600; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .btn-ghost { color: #777; background: #f5f5f5; }
-.btn-primary { color: #fff; background: #FFA800; }
+.btn-primary { color: #fff; background: var(--c-primary-dark); }
 </style>

@@ -14,9 +14,9 @@
         </div>
         <span v-if="reviseMode" class="revise-hint" style="margin-bottom:16rpx;display:block;">修订模式：原归档版本将保留，本次修改作为新版本生效，提交时需填写修订原因。</span>
         <textarea class="edit-modal-textarea" v-model="editText" placeholder="编辑纪要全文..."></textarea>
-        <div class="edit-modal-actions">
+        <div class="edit-modal-actions weighted-actions">
           <button class="btn btn-ghost" @click="cancelEdit">取消</button>
-          <button class="btn btn-primary" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存并确认' }}</button>
+          <button class="btn btn-primary" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存并确认' }}<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -45,9 +45,9 @@
           v-model="editText"
           placeholder="请输入会议纪要内容…（也可返回上一页改用 AI 自动生成）"
         ></textarea>
-        <div class="edit-actions">
+        <div class="edit-actions weighted-actions">
           <button class="btn btn-ghost" @click="cancelEdit">取消</button>
-          <button class="btn btn-primary" @click="saveEdit">保存并确认</button>
+          <button class="btn btn-primary" @click="saveEdit">保存并确认<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -709,9 +709,11 @@ function viewTodoList() {
 
 /* 操作区 */
 .minutes-actions { display:flex; flex-direction:column; align-items:stretch; gap:16rpx; margin-top:28rpx; }
-/* 编辑纪要(左·ghost 浅色) / 确认无误(右·深橙填充更醒目)：两个主操作并排缩小 */
-.action-row { display:flex; gap:20rpx; }
-.action-row .end-meeting-btn, .action-row .edit-minutes-btn { flex:1; width:auto; padding:20rpx 0; font-size:32rpx; }
+/* 编辑纪要(左·ghost 浅色·次) / 确认无误(右·深橙填充·主)：约 4:6 主次，确认无误更宽更醒目 */
+.action-row { display:flex; gap:20rpx; align-items:center; }
+.action-row .end-meeting-btn, .action-row .edit-minutes-btn { width:auto; padding:20rpx 0; font-size:32rpx; }
+.action-row .edit-minutes-btn { flex:0 0 40%; }
+.action-row .end-meeting-btn { flex:1; }
 .end-meeting-btn { width:100%; padding:24rpx 0; background:var(--c-primary-dark); color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
 .end-meeting-btn:active { background:var(--c-primary-strong); }
 .edit-minutes-btn { width:100%; padding:24rpx 0; background:var(--c-primary-dark); color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
@@ -725,12 +727,12 @@ function viewTodoList() {
 /* 编辑纪要弹窗 —— 全屏模式，方便老年人操作 */
 .edit-modal-mask { position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; background:#fff; }
 .edit-modal { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-.edit-modal-head { display:flex; align-items:center; justify-content:space-between; padding:calc(24rpx + env(safe-area-inset-top)) 32rpx 24rpx; background:linear-gradient(160deg,#FFC23D,#FFA800); flex-shrink:0; }
+.edit-modal-head { display:flex; align-items:center; justify-content:space-between; padding:calc(24rpx + env(safe-area-inset-top)) 32rpx 24rpx; background:var(--c-primary-dark); flex-shrink:0; }
 .edit-modal-title { font-size:44rpx; font-weight:700; color:#fff; }
 .edit-modal-close { font-size:68rpx; color:rgba(255,255,255,0.88); padding:0 8rpx; line-height:1; }
 .edit-modal-textarea { flex:1; width:100%; background:#fff; border:none; resize:none; font-family:inherit; box-sizing:border-box; overflow-y:auto; padding:36rpx 32rpx; font-size:38rpx; color:#1a1a1a; line-height:2; }
 .edit-modal-actions { display:flex; gap:24rpx; flex-shrink:0; padding:24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom)); background:#f6f6f8; border-top:2rpx solid #ebebeb; }
 .edit-modal-actions .btn { flex:1; line-height:3; font-size:38rpx; border-radius:44rpx; border:none; font-weight:700; }
 .edit-modal-actions .btn-ghost { background:#fff; color:#666; border:2rpx solid #ddd; }
-.edit-modal-actions .btn-primary { background:#FFA800; color:#fff; }
+.edit-modal-actions .btn-primary { background:var(--c-primary-dark); color:#fff; }
 </style>

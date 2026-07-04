@@ -15,7 +15,7 @@ function back() { navigateBack() }
 <style scoped>
 .page-nav {
   position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(160deg, #FFCC44 0%, #FFA800 100%);
+  background: var(--c-primary-dark);
   padding-top: env(safe-area-inset-top);
   display: flex; align-items: center;
   height: calc(124rpx + env(safe-area-inset-top));

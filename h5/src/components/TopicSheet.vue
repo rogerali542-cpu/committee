@@ -380,7 +380,7 @@ async function castVote(choice, option) {
   const t = props.topic
   if (!t || t.myVote) return
   if (!props.interactive) { toast({ title: '会议进行中才可表决', icon: 'none' }); return }
-  if (!props.signedIn) { toast({ title: '请先签到再表决', icon: 'none' }); return }
+  if (!props.signedIn) { toast({ title: '请先完成签到', icon: 'none' }); return }
   const label = option ? option.label : (choice === 'for_vote' ? '同意' : choice === 'against' ? '不同意' : '弃权')
   const res = await showModal({
     title: '确认你的选择',

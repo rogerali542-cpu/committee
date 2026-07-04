@@ -478,7 +478,7 @@ onActivated(show)
 .page-head { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 24rpx 0; }
 .page-title { display: block; font-size: 40rpx; font-weight: 700; color: #1f2329; }
 .page-sub { display: block; font-size: 28rpx; color: #666; margin-top: 6rpx; }
-.head-btn { background: #FFA800; color: #fff; border-radius: 30rpx; font-size: 28rpx; font-weight: 600; padding: 0 28rpx; line-height: 2.6; border: none; }
+.head-btn { background: var(--c-primary-dark); color: #fff; border-radius: 30rpx; font-size: 28rpx; font-weight: 600; padding: 0 28rpx; line-height: 2.6; border: none; }
 
 /* 接待制度 */
 .recep-system { margin: 24rpx 24rpx 0; background: #fff; border-radius: 24rpx; padding: 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); border-left: 8rpx solid #FFA800; }
@@ -527,7 +527,7 @@ onActivated(show)
 .rc-next.info { background: #F5F7FA; border-color: #E6E9ee; }
 .rc-next-text { font-size: 28rpx; color: #B8500B; flex: 1; }
 .rc-next.info .rc-next-text { color: #8a93a0; }
-.rc-next-btn { font-size: 28rpx; font-weight: 600; color: #fff; background: #FFA800; padding: 10rpx 24rpx; border-radius: 24rpx; white-space: nowrap; }
+.rc-next-btn { font-size: 28rpx; font-weight: 600; color: #fff; background: var(--c-primary-dark); padding: 10rpx 24rpx; border-radius: 24rpx; white-space: nowrap; }
 .rc-prop-reply { font-size: 30rpx; color: #33373d; line-height: 1.6; background: #FFF6E9; border-radius: 14rpx; padding: 18rpx 20rpx; margin: 14rpx 0; border-left: 6rpx solid #FFA800; }
 .rc-prop-reply .rc-res-label { color: #E67E22; }
 .rc-prop-by { display: block; font-size: 28rpx; color: #777; margin-top: 8rpx; }
@@ -577,5 +577,5 @@ onActivated(show)
 .sheet-actions { display: flex; gap: 16rpx; padding-top: 12rpx; }
 .sheet-actions .btn { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; font-size: 32rpx; font-weight: 600; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .btn-ghost { color: #777; background: #f5f5f5; }
-.btn-primary { color: #fff; background: #FFA800; }
+.btn-primary { color: #fff; background: var(--c-primary-dark); }
 </style>

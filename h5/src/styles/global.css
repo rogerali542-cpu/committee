@@ -54,6 +54,13 @@ textarea, input { font-family: inherit; }
 .btn-warn    { background: var(--c-warning); color: #fff; }
 .btn-disabled { background: #E8E8E8; color: var(--c-text-weak); }
 
+/* 主次两按钮：给动作容器加 .weighted-actions —— 次要按钮固定较窄(38%)，主按钮占满剩余(主宽次窄)。
+   保留各自原有高度/颜色/圆角，只调宽度权重；配合 .btn-arrow 给"生成/提交/保存"类主按钮加前进箭头。 */
+.weighted-actions { align-items: center; }
+.weighted-actions .btn.btn-ghost { flex: 0 0 38% !important; }
+.weighted-actions .btn.btn-primary { flex: 1 !important; }
+.btn-arrow { font-size: 40rpx; font-weight: 700; line-height: 1; margin-left: 2rpx; margin-top: -4rpx; }
+
 /* ========== 阶段标签（小面积·底+同色深字） ========== */
 .stage-pill { font-size: 28rpx; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
 .stage-pill.preparing { background: var(--c-warning-soft); color: var(--c-warning); }

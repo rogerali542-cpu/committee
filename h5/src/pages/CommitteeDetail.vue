@@ -368,7 +368,7 @@
           </div>
         </div>
 
-        <div class="sheet-actions">
+        <div class="sheet-actions weighted-actions">
           <button class="btn btn-ghost" @click="closeAddTopic">取消</button>
           <button class="btn btn-primary" @click="submitAddTopic">确认添加</button>
         </div>
@@ -494,9 +494,9 @@
           <textarea class="form-textarea" style="min-height:160px;height:160px;" :value="editForm.content" @input="onEditContentInput" placeholder="通知正文"></textarea>
         </div>
 
-        <div class="sheet-actions">
+        <div class="sheet-actions weighted-actions">
           <button class="btn btn-ghost" @click="closeEdit">取消</button>
-          <button class="btn btn-primary" @click="submitEdit">保存修改</button>
+          <button class="btn btn-primary" @click="submitEdit">保存修改<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -597,9 +597,9 @@
           <textarea class="form-textarea" style="min-height:200px;height:200px;" v-model="noticeEditForm.content" placeholder="通知正文"></textarea>
         </div>
 
-        <div class="sheet-actions">
+        <div class="sheet-actions weighted-actions">
           <button class="btn btn-ghost" @click="closeNoticeEdit">取消</button>
-          <button class="btn btn-primary" @click="submitNoticeEdit">保存</button>
+          <button class="btn btn-primary" @click="submitNoticeEdit">保存<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -2201,7 +2201,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .proxy-entry-desc { display:block; font-size: 28rpx; color:#666; margin-top:3px; line-height:1.4; }
 .proxy-entry-btn {
   width:78px; height:36px; line-height:36px; margin:0; padding:0;
-  border-radius:18px; border:0; background:#FFA800; color:#fff;
+  border-radius:18px; border:0; background:var(--c-primary-dark); color:#fff;
   font-size: 28rpx; font-weight:700; flex-shrink:0;
 }
 .proxy-entry-btn.disabled { background:#e8e8e8; color:#666; }
@@ -2211,7 +2211,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .nd-status { flex-shrink:0; font-size: 28rpx; color:#D88900; background:#fff; border-radius:12px; padding:3px 9px; line-height:1.35; }
 .nd-status.ok { color:#1D9E75; background:#E1F5EE; }
 .nd-content { display:block; font-size: 28rpx; color:#6B5300; line-height:1.7; white-space:pre-wrap; word-break:break-all; }
-.nd-confirm-btn { margin-top:14px; width:100%; min-height:44px; padding:11px; background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; font-size: 30rpx; font-weight:700; border:none; border-radius:12px; }
+.nd-confirm-btn { margin-top:14px; width:100%; min-height:44px; padding:11px; background:var(--c-primary-dark); color:#fff; font-size: 30rpx; font-weight:700; border:none; border-radius:12px; }
 .notice-package-card {
   background:#fff; border-radius:16px; padding:16px; margin-bottom:12px;
   border:1px solid #FFE0A3; box-shadow:0 1px 3px rgba(0,0,0,0.04);
@@ -2276,7 +2276,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .step-locked-text { font-size: 28rpx; color:#666; display:block; margin-top:6px; }
 .step-sub-text { font-size: 28rpx; color:#666; display:block; margin:6px 0; }
 .step-btn { margin-top:6px; }
-.step-btn.primary { background:#FFA800; color:#fff; border:none; border-radius:20px; padding:8px 16px; font-size: 28rpx; }
+.step-btn.primary { background:var(--c-primary-dark); color:#fff; border:none; border-radius:20px; padding:8px 16px; font-size: 28rpx; }
 
 .topic-card { background:#fafafa; border-radius:14px; padding:16px; margin-top:12px; }
 .tp-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
@@ -2673,8 +2673,8 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .pc-head-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .pc-link { color:#D88900; font-size:12.5px; line-height:1.35; }
 .pc-title-wrap { display:flex; align-items:center; gap:10px; min-width:0; }
-.pc-edit-btn { font-size:26rpx; color:#fff; background:#FFA800; border:0; border-radius:16px; padding:6px 18px; line-height:1.3; flex-shrink:0; font-weight:600; box-shadow:0 4rpx 12rpx rgba(255,168,0,0.3); }
-.upload-btn { font-size:28rpx; color:#fff; background:#FFA800; border-radius:18px; padding:8px 22px; font-weight:600; line-height:1.3; flex-shrink:0; box-shadow:0 4rpx 12rpx rgba(255,168,0,0.3); }
+.pc-edit-btn { font-size:26rpx; color:#fff; background:var(--c-primary-dark); border:0; border-radius:16px; padding:6px 18px; line-height:1.3; flex-shrink:0; font-weight:600; box-shadow:0 4rpx 12rpx rgba(255,168,0,0.3); }
+.upload-btn { font-size:28rpx; color:#fff; background:var(--c-primary-dark); border-radius:18px; padding:8px 22px; font-weight:600; line-height:1.3; flex-shrink:0; box-shadow:0 4rpx 12rpx rgba(255,168,0,0.3); }
 .pc-badge { font-size: 26rpx; font-weight:700; padding:2px 9px; border-radius:20px; }
 .pc-badge.warn { color:#8A5A0B; background:#FEF4E2; border:0.5px solid #F4D08A; }
 .pc-badge.ok { color:#1D9E75; background:#E1F5EE; }
@@ -2766,7 +2766,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .wc-info span { font-size: 28rpx; color:#555; line-height:1.55; }
 .wc-check { color:#27AE60 !important; font-weight:600; }
 .wc-empty { text-align:center; color:#666; font-size: 30rpx; padding:22px 0; display:block; }
-.wc-confirm { width:100%; min-height:54px; padding:14px; background:linear-gradient(135deg,#FFCC44,#FFA800); color:#fff; font-size: 34rpx; font-weight:700; border:none; border-radius:14px; margin-top:10px; }
+.wc-confirm { width:100%; min-height:54px; padding:14px; background:var(--c-primary-dark); color:#fff; font-size: 34rpx; font-weight:700; border:none; border-radius:14px; margin-top:10px; }
 .wc-done-banner { text-align:center; background:#EAF7EF; padding:14px; border-radius:12px; font-size: 30rpx; color:#27AE60; font-weight:700; line-height:1.5; }
 
 /* 会议录音存档卡 */
@@ -2871,7 +2871,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
   display:flex; align-items:center; justify-content:center; box-sizing:border-box;
 }
 .btn-ghost { color:#777; background:#f5f5f5; }
-.btn-primary { color:#fff; background:linear-gradient(135deg,#FFCC44,#FFA800); }
+.btn-primary { color:#fff; background:var(--c-primary-dark); }
 
 .modal-mask {
   position:fixed; inset:0; z-index:100;
@@ -2942,7 +2942,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* —— 适老化补充：委员纪要按钮 + 归档页折叠头 —— */
 .member-doc-actions { display:flex; gap:16rpx; margin-bottom:12px; }
-.doc-btn { flex:1; height:88rpx; line-height:88rpx; border-radius:44rpx; background:#FFA800; color:#fff; font-size:30rpx; font-weight:600; margin:0; border:0; }
+.doc-btn { flex:1; height:88rpx; line-height:88rpx; border-radius:44rpx; background:var(--c-primary-dark); color:#fff; font-size:30rpx; font-weight:600; margin:0; border:0; }
 .doc-btn.ghost { background:#fff; color:#C77800; border:2rpx solid #FFA800; }
 .fsc-toggle { font-size: 28rpx; color:#C77800; font-weight:600; flex-shrink:0; white-space:nowrap; }
 .arclog-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
@@ -2951,7 +2951,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* —— 委员确认参会 / 无法参会 —— */
 .attend-actions { display:flex; flex-direction:column; gap:20rpx; margin-top:24rpx; }
 .attend-btn { border:none; margin:0; }
-.attend-btn.primary { width:100%; min-height:104rpx; line-height:104rpx; border-radius:18rpx; font-size:34rpx; font-weight:700; background:#FFA800; color:#fff; box-shadow:0 8rpx 22rpx rgba(255,168,0,0.4); }
+.attend-btn.primary { width:100%; min-height:104rpx; line-height:104rpx; border-radius:18rpx; font-size:34rpx; font-weight:700; background:var(--c-primary-dark); color:#fff; box-shadow:0 8rpx 22rpx rgba(255,168,0,0.4); }
 .attend-btn.ghost { align-self:center; width:auto; min-height:84rpx; line-height:84rpx; padding:0 72rpx; border-radius:42rpx; font-size:32rpx; font-weight:600; background:#eef0f3; color:#5b6673; }
 .mdc-big.declined { color:#E67E22; }
 .pp-declined { display:block; font-size: 28rpx; color:#E67E22; margin-top:10rpx; }
