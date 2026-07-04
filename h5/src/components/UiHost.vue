@@ -19,10 +19,10 @@
   <div v-if="uiState.modal" class="ui-mask" @click.self="onCancel">
     <div class="ui-modal" :class="uiState.modal.size">
       <span v-if="uiState.modal.showClose" class="ui-modal-x" @click="onClose">×</span>
-      <div class="ui-modal-title">{{ uiState.modal.title }}</div>
-      <div v-if="!uiState.modal.editable" class="ui-modal-content">{{ uiState.modal.content }}</div>
+      <div v-if="uiState.modal.title" class="ui-modal-title">{{ uiState.modal.title }}</div>
+      <div v-if="!uiState.modal.editable" class="ui-modal-content" :class="{ bold: uiState.modal.contentBold }">{{ uiState.modal.content }}</div>
       <textarea v-else class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
-      <div class="ui-modal-actions">
+      <div class="ui-modal-actions" :class="{ 'emphasize-confirm': uiState.modal.emphasizeConfirm }">
         <button v-if="uiState.modal.showCancel" class="ui-modal-btn cancel" @click="onCancel">{{ uiState.modal.cancelText }}</button>
         <button class="ui-modal-btn confirm" @click="onConfirm">{{ uiState.modal.confirmText }}</button>
       </div>
@@ -69,11 +69,16 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal-x { position: absolute; top: 16rpx; right: 20rpx; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; line-height: 1; color: #999; }
 .ui-modal-title { font-size: 34rpx; font-weight: 700; text-align: center; color: #1a1a1a; }
 .ui-modal-content { font-size: 30rpx; color: #555; line-height: 1.7; margin-top: 24rpx; text-align: center; white-space: pre-wrap; }
+/* 正文加粗加深加大（contentBold）：需强调的确认弹窗用 */
+.ui-modal-content.bold { color: #1a1a1a; font-weight: 700; font-size: 38rpx; }
 .ui-modal-input { width: 100%; min-height: 160rpx; margin-top: 24rpx; background: #f6f6f8; border-radius: 12rpx; padding: 20rpx; font-size: 30rpx; border: none; resize: none; box-sizing: border-box; }
 .ui-modal-actions { display: flex; margin-top: 40rpx; border-top: 1rpx solid #eee; }
 .ui-modal-btn { flex: 1; padding: 28rpx 0; font-size: 32rpx; background: none; }
 .ui-modal-btn.cancel { color: #666; border-right: 1rpx solid #eee; }
 .ui-modal-btn.confirm { color: var(--c-primary-dark); font-weight: 600; }
+/* 突出确认（emphasizeConfirm）：取消收窄、确认占大头，并加粗强调 */
+.ui-modal-actions.emphasize-confirm .ui-modal-btn.cancel { flex: 0 0 34%; }
+.ui-modal-actions.emphasize-confirm .ui-modal-btn.confirm { flex: 1; font-weight: 700; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
 .ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }

@@ -29,7 +29,7 @@ export function hideLoading() { uiState.loading = { show: false, title: '' } }
 export function showModal(opts = {}) {
   return new Promise((resolve) => {
     uiState.modal = {
-      title: opts.title || '提示',
+      title: opts.title !== undefined ? opts.title : '提示',  // 显式传 '' 可无标题
       content: opts.content || '',
       confirmText: opts.confirmText || '确定',
       cancelText: opts.cancelText || '取消',
@@ -37,6 +37,8 @@ export function showModal(opts = {}) {
       editable: !!opts.editable,
       placeholderText: opts.placeholderText || '',
       size: opts.size || '',   // 'large' = 加大版（识别结果等重要确认框用）
+      contentBold: !!opts.contentBold,       // 正文加粗加深（黑体）
+      emphasizeConfirm: !!opts.emphasizeConfirm, // 确认按钮加宽、取消收窄，突出确认动作
       showClose: !!opts.showClose, // 右上角 ×：单纯关闭，resolve {close:true}（区别于 cancel 按钮的动作）
       _resolve: resolve
     }

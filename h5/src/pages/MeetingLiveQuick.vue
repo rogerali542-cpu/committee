@@ -961,10 +961,12 @@ function resumeRecording() {
 async function restartRecording() {
   if (uploading.value || polling.value || extracting.value) return
   const res = await showModal({
-    title: '重新录音',
-    content: '已有一段录音，重新开始会覆盖当前录音。是否继续？',
+    title: '',
+    content: '将覆盖当前录音，确定重录？',
     confirmText: '重新录音',
-    cancelText: '取消'
+    cancelText: '取消',
+    contentBold: true,
+    emphasizeConfirm: true
   })
   if (res.confirm) await startRecord()
 }
@@ -2262,12 +2264,15 @@ function exitLive() {
 .qk-rec-actions .lp-primary-btn.gen-minutes { flex:0 0 auto; width:fit-content; margin:-16rpx auto 0; padding:12rpx 36rpx; }
 .gen-minutes .qra-main { font-size:26rpx; }
 /* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
-.gen-standalone { width:60%; max-width:100%; margin:14rpx auto 0; padding:16rpx 0; display:flex; align-items:center; justify-content:center; }
+.gen-standalone { width:60%; max-width:100%; margin:30rpx auto 0; padding:16rpx 0; display:flex; align-items:center; justify-content:center; }
 .gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
 /* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
 .qk-two-btns { display:flex; gap:36rpx; margin-top:14rpx; padding:0 24rpx; }
 .qk-two-btns .lp-primary-btn.qk-two-btn { flex:1; width:auto; margin-top:0; padding:12rpx 0; display:flex; align-items:center; justify-content:center; }
+/* 宽度占比区分：继续上传录音收窄(次)，生成会议纪要占大头(主) */
+.qk-two-btns .lp-primary-btn.qk-two-btn.ghost { flex:0 0 38%; }
 .qk-two-btn .qra-main { font-size:25rpx; font-weight:700; white-space:nowrap; }
+.qk-two-btns .lp-primary-btn.qk-two-btn:not(.ghost) .qra-main { font-size:30rpx; }
 .qk-two-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); }
 .qk-two-btn.ghost:active { background:#FFF6E8; }
 .qra-main { font-size:34rpx; font-weight:700; }
