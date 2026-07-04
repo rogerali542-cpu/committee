@@ -16,6 +16,8 @@
         <!-- 实时添加议题（主任/副主任）：从录音卡挪进议题卡，弱化成小链接 -->
         <span v-if="isChair" class="lp-add-topic" @click="openAddTopic">+ 临时添加</span>
       </div>
+      <!-- 引导语（灰色小字，纯提示不可点）：告知点议题行可参与讨论 -->
+      <div v-if="detail.record && detail.record.topics && detail.record.topics.length" class="lp-topics-note">点击下方议题参与讨论</div>
       <div class="lp-info-row top">
         <!-- 固定高度：议题多了先自动缩字号(最多3号)，仍放不下则本区内下拉滚动，卡片大小不变 -->
         <div class="lp-agenda" :class="'lp-agenda--fs' + agendaFontLevel" ref="agendaEl">
@@ -30,9 +32,6 @@
           <span v-else class="lp-agenda-empty">暂无议题</span>
         </div>
       </div>
-      <!-- 提示（所有身份）：灰色小字注释，点它直达第一个待办议题（优先没投票的表决项） -->
-      <button v-if="detail.record && detail.record.topics && detail.record.topics.length"
-              class="lp-topics-note" @click="openFirstPendingTopic">点击议题参与讨论</button>
     </div>
 
     <!-- 签到卡（精简版，无标题）：一颗签到按钮（文本加大、按钮收窄） -->
@@ -427,13 +426,6 @@ const sheetHasPrev = computed(() => _sheetTopicIndex().i > 0)
 const sheetHasNext = computed(() => { const { list, i } = _sheetTopicIndex(); return i >= 0 && i < list.length - 1 })
 function gotoPrevTopic() { const { list, i } = _sheetTopicIndex(); if (i > 0) sheetTopicId.value = list[i - 1].id }
 function gotoNextTopic() { const { list, i } = _sheetTopicIndex(); if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id }
-// 委员引导按钮入口：优先打开还没投票的表决议题，其次第一个议题
-function openFirstPendingTopic() {
-  const list = (detail.value && detail.value.record && detail.value.record.topics) || []
-  const pending = list.find(t => t.voteRequired && !t.myVote)
-  const target = pending || list[0]
-  if (target) sheetTopicId.value = target.id
-}
 // 议题状态标签：显示"待/已"状态而非属性。状态由后端 TopicVO 字段驱动，
 // 录音经 ASR 识别+确认后 status/opinionCount 会更新，loadDetail 刷新后标签自动翻成"已"。
 function topicBadgeDone(item) {
@@ -2083,10 +2075,8 @@ function exitLive() {
 /* 临时添加：蓝字白底小按钮，与标题齐平、往右边缘挪(负右边距) */
 .lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:0 -12rpx 0 0; }
 .lp-add-topic:active { background:#F0F6FF; }
-/* 委员引导按钮：柔和橙底，告知"议题可点"，点了直达第一个待办议题（卡片 padding-bottom 为 0，按钮自带下边距） */
-/* 灰色小字注释：不再是按钮外观，仅作提示（仍可点，跳到第一个待办议题） */
-.lp-topics-note { display:block; width:100%; box-sizing:border-box; margin:4rpx 0 20rpx; border:none; background:none; color:#9AA0A6; font-size:24rpx; padding:6rpx 0; text-align:center; }
-.lp-topics-note:active { color:#7B8085; }
+/* 灰色小字引导语：纯提示、不可点，放在议题标题下方、列表上方 */
+.lp-topics-note { display:block; width:100%; box-sizing:border-box; margin:2rpx 0 12rpx; color:#9AA0A6; font-size:24rpx; text-align:center; }
 .lp-info-row { display:flex; align-items:flex-start; gap:18rpx; font-size:34rpx; color:#444; margin-bottom:6rpx; }
 .lp-info-row.top { align-items:flex-start; }
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
@@ -2214,6 +2204,7 @@ function exitLive() {
 /* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字。整体缩两号+紧凑 */
 .lp-rec { padding:14rpx 26rpx 4rpx; } /* 卡片再缩一号：内边距进一步收紧(圆圈/字号不变) */
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
+.lp-rec { padding-bottom:64rpx; } /* 录音卡底部多留空隙，按钮不贴边 */
 .qk-recorder { display:flex; flex-direction:column; align-items:center; gap:6rpx; padding:6rpx 0 2rpx; }
 .qk-rec-circle { width:204rpx; height:204rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:36rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:8rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 再缩一号：圆圈228→204、字40→36，腾空间给名单 */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
@@ -2261,12 +2252,13 @@ function exitLive() {
 .qk-rec-actions { display:flex; gap:16rpx; margin-top:12rpx; }
 .qk-rec-actions .lp-primary-btn { flex:1; width:auto; margin-top:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2rpx; padding:16rpx 6rpx; line-height:1.25; }
 /* 重新录音：窄款（约缩40%）居中 */
-.qk-rec-actions .lp-primary-btn.narrow40 { flex:0 0 60%; max-width:60%; margin:0 auto; }
+.qk-rec-actions .lp-primary-btn.narrow40 { flex:0 0 60%; max-width:60%; margin:0 auto; padding:16rpx 0; }
+.qk-rec-actions .lp-primary-btn.narrow40 .qra-main { font-size:30rpx; }
 /* 生成会议纪要：与"结束录音并上传"同尺寸的小胶囊，并上移 16rpx(8px) */
 .qk-rec-actions .lp-primary-btn.gen-minutes { flex:0 0 auto; width:fit-content; margin:-16rpx auto 0; padding:12rpx 36rpx; }
 .gen-minutes .qra-main { font-size:26rpx; }
 /* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
-.gen-standalone { width:fit-content; max-width:100%; margin:14rpx auto 0; padding:16rpx 40rpx; display:flex; align-items:center; justify-content:center; }
+.gen-standalone { width:60%; max-width:100%; margin:14rpx auto 0; padding:16rpx 0; display:flex; align-items:center; justify-content:center; }
 .gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
 /* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
 .qk-two-btns { display:flex; gap:36rpx; margin-top:14rpx; padding:0 24rpx; }
