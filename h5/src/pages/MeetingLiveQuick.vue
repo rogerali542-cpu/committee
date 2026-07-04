@@ -12,12 +12,14 @@
 
     <div class="lp-info-card">
       <div class="lp-info-head">
-        <span class="lp-info-title">会议议题</span>
+        <div class="lp-info-title-wrap">
+          <span class="lp-info-title">会议议题</span>
+          <!-- 引导语（灰色小字，纯提示不可点）：与标题同排 -->
+          <span v-if="detail.record && detail.record.topics && detail.record.topics.length" class="lp-topics-note">点击议题参与讨论</span>
+        </div>
         <!-- 实时添加议题（主任/副主任）：从录音卡挪进议题卡，弱化成小链接 -->
         <span v-if="isChair" class="lp-add-topic" @click="openAddTopic">+ 临时添加</span>
       </div>
-      <!-- 引导语（灰色小字，纯提示不可点）：告知点议题行可参与讨论 -->
-      <div v-if="detail.record && detail.record.topics && detail.record.topics.length" class="lp-topics-note">点击下方议题参与讨论</div>
       <div class="lp-info-row top">
         <!-- 固定高度：议题多了先自动缩字号(最多3号)，仍放不下则本区内下拉滚动，卡片大小不变 -->
         <div class="lp-agenda" :class="'lp-agenda--fs' + agendaFontLevel" ref="agendaEl">
@@ -2075,8 +2077,10 @@ function exitLive() {
 /* 临时添加：蓝字白底小按钮，与标题齐平、往右边缘挪(负右边距) */
 .lp-add-topic { font-size:26rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:6rpx 18rpx; line-height:1.3; margin:0 -12rpx 0 0; }
 .lp-add-topic:active { background:#F0F6FF; }
-/* 灰色小字引导语：纯提示、不可点，放在议题标题下方、列表上方 */
-.lp-topics-note { display:block; width:100%; box-sizing:border-box; margin:2rpx 0 12rpx; color:#9AA0A6; font-size:24rpx; text-align:center; }
+/* 标题 + 引导语同排一组；+临时添加靠右 */
+.lp-info-title-wrap { display:flex; align-items:baseline; gap:14rpx; min-width:0; flex:1; }
+/* 灰色小字引导语：纯提示、不可点，与标题齐平 */
+.lp-topics-note { color:#9AA0A6; font-size:24rpx; white-space:nowrap; }
 .lp-info-row { display:flex; align-items:flex-start; gap:18rpx; font-size:34rpx; color:#444; margin-bottom:6rpx; }
 .lp-info-row.top { align-items:flex-start; }
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
