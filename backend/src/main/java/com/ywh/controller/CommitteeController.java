@@ -77,6 +77,33 @@ public class CommitteeController {
         return Result.ok(vo);
     }
 
+    /**
+     * 新建会议——一次上传多张照片/多个文件，统一 OCR + 大模型识别：逐个判类（通知/材料），
+     * 通知类合并抽取会议信息预填，材料类回传 fileUrl 供挂载。返回 MeetingPrefillVO（含 files 列表）。
+     */
+    @PostMapping("/parse-documents")
+    @RequireRole({"主任", "副主任"})
+    public Result<MeetingPrefillVO> parseDocuments(@RequestParam("files") MultipartFile[] files) throws IOException {
+        if (files == null || files.length == 0) return Result.fail("文件为空");
+        java.util.List<DocumentPrefillService.Doc> docs = new java.util.ArrayList<>();
+        for (MultipartFile f : files) {
+            if (f == null || f.isEmpty()) continue;
+            docs.add(new DocumentPrefillService.Doc(
+                    f.getOriginalFilename(), extractExt(f.getOriginalFilename()), f.getSize(), f.getBytes()));
+        }
+        if (docs.isEmpty()) return Result.fail("文件为空");
+        MeetingPrefillVO vo = prefillService.parseMulti(docs);
+        // 逐个落库存储，回填 fileUrl（顺序与 docs 一致）；存储失败不影响识别结果返回。
+        for (int i = 0; i < docs.size() && i < vo.getFiles().size(); i++) {
+            DocumentPrefillService.Doc d = docs.get(i);
+            MeetingPrefillVO.FileInfo fi = vo.getFiles().get(i);
+            try {
+                fi.setFileUrl(audioStorage.save(0L, d.data(), d.fileType().isBlank() ? "bin" : d.fileType()));
+            } catch (Exception e) { /* 单个存储失败不影响其余 */ }
+        }
+        return Result.ok(vo);
+    }
+
     private String extractExt(String filename) {
         if (filename == null) return "";
         int dot = filename.lastIndexOf('.');

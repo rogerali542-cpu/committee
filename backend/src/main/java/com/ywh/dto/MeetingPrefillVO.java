@@ -28,6 +28,8 @@ public class MeetingPrefillVO {
 
     /** AI 判类：notice=会议通知（可预填表单）/ material=会议材料（供委员传阅）/ ""=未判出。 */
     private String category = "";
+    /** 多份通知的会议时间/地点互相矛盾时的一句话说明；不矛盾或单份通知为空串。 */
+    private String conflictNote = "";
     /** 本次大模型抽取消耗的 token（Ark usage.total_tokens；未调用/失败为 0）。 */
     private long tokens;
 
@@ -36,6 +38,23 @@ public class MeetingPrefillVO {
     private String fileName = "";
     private String fileType = "";
     private long fileSize;
+
+    /**
+     * 多文件识别（/parse-documents）时，逐个文件的信息与判类，顺序与上传顺序一致。
+     * 单文件接口(/parse-document)不填此列表。
+     */
+    private List<FileInfo> files = new ArrayList<>();
+
+    /** 单个上传文件的落库信息 + AI 判类。 */
+    @Data
+    public static class FileInfo {
+        private String fileUrl = "";
+        private String fileName = "";
+        private String fileType = "";
+        private long fileSize;
+        /** AI 判类：notice=会议通知 / material=会议材料 / ""=未判出。 */
+        private String category = "";
+    }
 
     public static MeetingPrefillVO unavailable(String message) {
         MeetingPrefillVO vo = new MeetingPrefillVO();
