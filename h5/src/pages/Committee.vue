@@ -81,22 +81,13 @@
       <span class="big-btn-text">去通知</span>
     </div>
 
-    <!-- 更多功能 -->
-    <div class="more" :class="{ 'more-sink': !isChair }">
+    <!-- 更多功能（扁平化：无图标、纯文本三格，贴近底部） -->
+    <div class="more">
       <span class="more-title">更多功能</span>
       <div class="more-grid">
-        <div class="more-item" @click="goReception">
-          <span class="more-ico">🤝</span>
-          <span class="more-label">接待记录</span>
-        </div>
-        <div class="more-item" @click="goLearning">
-          <span class="more-ico">📖</span>
-          <span class="more-label">学习培训</span>
-        </div>
-        <div v-if="canViewInternal" class="more-item" @click="goLibrary">
-          <span class="more-ico">📚</span>
-          <span class="more-label">历史会议</span>
-        </div>
+        <div class="more-item" @click="goReception">接待记录</div>
+        <div class="more-item" @click="goLearning">学习培训</div>
+        <div v-if="canViewInternal" class="more-item" @click="goLibrary">历史会议</div>
       </div>
     </div>
 
@@ -112,14 +103,17 @@
           <!-- 会议标题（置顶） -->
           <div class="create-section title-card">
             <div class="form-group">
-              <div class="title-input-wrap">
-                <textarea ref="titleEl" class="form-input large title-ta" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @keydown.enter.prevent></textarea>
-                <!-- 推荐标题：半透明显示在文本框内，点文字直接填入 -->
-                <span v-if="suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle">{{ suggestedTitle }}</span>
-                <span class="title-clear" :class="{ dim: !createForm.title && !suggestedTitle }" @click="clearTitleOrGhost">×</span>
-              </div>
-              <div class="title-voice-row">
-                <button class="voice-input-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startStreamingVoice('title')">🎤 语音输入</button>
+              <div class="req-mark-row"><span class="req-mark">必填 <span class="req-star">*</span></span></div>
+              <div class="title-row">
+                <div class="title-input-wrap">
+                  <textarea ref="titleEl" class="form-input large title-ta" :class="{ 'field-error': fieldErrors.title }" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @focus="clearFieldError('title')" @keydown.enter.prevent></textarea>
+                  <!-- 推荐标题：半透明显示在文本框内，点文字直接填入 -->
+                  <span v-if="suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle; clearFieldError('title')">{{ suggestedTitle }}</span>
+                  <span class="title-clear" :class="{ dim: !createForm.title && !suggestedTitle }" @click="clearTitleOrGhost">×</span>
+                </div>
+                <button class="voice-mic-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startStreamingVoice('title')" aria-label="语音输入">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -141,29 +135,32 @@
               </div>
             </div>
             <div class="loc-row">
-              <select v-if="locationPreset !== '__other__'" class="picker-field loc-select" :value="locationPreset" @change="onLocationPreset">
+              <select class="picker-field loc-select" :class="{ 'field-error': fieldErrors.location }" :value="locationPreset" @focus="clearFieldError('location')" @change="onLocationPreset">
                 <option v-for="loc in commonLocations" :key="loc" :value="loc">{{ loc }}</option>
                 <option value="__other__">其他地点（手动填写）</option>
               </select>
-              <input v-else class="form-input loc-input" v-model="createForm.location" placeholder="请输入会议地点" />
               <button class="loc-map-btn" @click="pickLocationOnMap" aria-label="在地图上选择地点"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2C8.1 2 5 5.1 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
             </div>
-            <span v-if="locationPreset === '__other__'" class="loc-back" @click="resetLocPreset">选常用地点</span>
+            <!-- 选「其他地点」时在下拉下方补手填框；下拉始终保留，可随时切回常用地点 -->
+            <input v-if="locationPreset === '__other__'" class="form-input loc-input loc-input-manual" :class="{ 'field-error': fieldErrors.location }" v-model="createForm.location" placeholder="请输入会议地点" @focus="clearFieldError('location')" />
           </div>
 
           <!-- 会议议程项（弹窗逐条添加） -->
           <div class="create-section">
-            <span class="section-title">会议议题</span>
+            <div class="section-title-row">
+              <span class="section-title">会议议题</span>
+              <span class="req-mark">必填 <span class="req-star">*</span></span>
+            </div>
             <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line">
               <span class="topic-line-text"><b>{{ idx + 1 }}.</b> {{ topic.title }}</span>
               <span class="topic-line-del" @click="removeCreateTopic(idx)">×</span>
             </div>
             <div class="vi-row topic-input-row">
-              <input class="form-input topic-input" v-model="topicInput" placeholder="输入一条议题" @keyup.enter="addTopicFromInput" />
+              <input class="form-input topic-input" :class="{ 'field-error': fieldErrors.topics }" v-model="topicInput" placeholder="输入一条议题" @focus="clearFieldError('topics')" @keyup.enter="addTopicFromInput" />
+              <button class="voice-mic-btn" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')" aria-label="语音输入">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
+              </button>
               <button class="topic-confirm-btn" @click="addTopicFromInput">确定</button>
-            </div>
-            <div class="title-voice-row">
-              <button class="voice-input-btn" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')">🎤 语音输入</button>
             </div>
           </div>
 
@@ -178,36 +175,44 @@
             </div>
           </div>
 
-          <!-- 居委会见证（选项，非卡片）：勾选则建会后标记为重大事项 -->
-          <label class="juwei-row">
-            <span class="juwei-label">居委会见证</span>
-            <input type="checkbox" class="juwei-check" v-model="createForm.juweiWitness" />
-          </label>
+          <!-- 居委会见证（说明式开关卡片，精简为一行）：仅标记 hasMajorIssue，不自动通知 -->
+          <div class="juwei-card" @click="createForm.juweiWitness = !createForm.juweiWitness">
+            <div class="juwei-title">含重大事项，需居委会到场见证</div>
+            <span class="juwei-switch" :class="{ on: createForm.juweiWitness }" role="switch" :aria-checked="createForm.juweiWitness"></span>
+          </div>
 
         </div>
 
-        <!-- 拍照/上传（双卡片）：选介质即可，AI 识别后自动判定是会议通知(预填)还是会议材料(传阅) -->
+        <!-- 拍照/上传：可拍多张/多选文件，先攒进列表看缩略图，再「开始 AI 识别」统一判类（通知预填/材料传阅） -->
         <div class="doc-scan-bar">
+          <!-- 缩略图预览条：图片显缩略图，PDF/其他显图标；可逐个删除 -->
+          <div v-if="scanItems.length" class="ds-preview">
+            <div v-for="it in scanItems" :key="it.id" class="ds-thumb">
+              <img v-if="it.isImage && it.thumbUrl" class="ds-thumb-img" :src="it.thumbUrl" :alt="it.name" />
+              <span v-else class="ds-thumb-file"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span><span class="ds-thumb-ext">{{ it.ext || '文件' }}</span></span>
+              <span class="ds-thumb-del" @click="removeScanItem(it.id)">×</span>
+            </div>
+          </div>
           <div class="ds-cards">
-            <button class="ds-card" :class="{ busy: scanBusy === 'camera' }" :disabled="!!scanBusy" @click="startDocScan('camera')">
-              <span v-if="scanBusy === 'camera'" class="ds-spin"></span>
-              <span v-else class="ds-ico or">📷</span>
-              <span class="ds-t">{{ scanBusy === 'camera' ? '识别中 ' + docProgress + '%' : '拍照' }}</span>
+            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('camera')">
+              <span class="ds-ico or">📷</span>
+              <span class="ds-t">拍照</span>
               <span class="ds-s">纸质文件</span>
             </button>
-            <button class="ds-card" :class="{ busy: scanBusy === 'file' }" :disabled="!!scanBusy" @click="startDocScan('file')">
-              <span v-if="scanBusy === 'file'" class="ds-spin"></span>
-              <span v-else class="ds-ico bl">📁</span>
-              <span class="ds-t">{{ scanBusy === 'file' ? '识别中 ' + docProgress + '%' : '上传文件' }}</span>
+            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
+              <span class="ds-ico bl">📁</span>
+              <span class="ds-t">上传文件</span>
               <span class="ds-s">电子文件</span>
             </button>
           </div>
-          <span v-if="lastScanTokens > 0 && !scanBusy" class="ds-tokens">本次识别消耗 {{ lastScanTokens.toLocaleString() }} token</span>
+          <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
+            {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始 AI 识别（' + scanItems.length + '）' }}
+          </button>
         </div>
 
         <div class="sheet-actions fixed">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
-          <button class="btn btn-primary" @click="submitNewMeeting">生成通知</button>
+          <button class="btn btn-primary" @click="submitNewMeeting">生成通知<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -228,6 +233,7 @@
     <!-- 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案；不做整页进度页） -->
     <div v-if="scanBusy" class="scan-pop-mask">
       <div class="scan-pop">
+        <span class="sp-close" @click="cancelRecognize" aria-label="取消识别">×</span>
         <!-- 文档扫描动画：纸面 + 橙色扫描线来回扫 -->
         <div class="sp-doc">
           <span class="sp-doc-line w80"></span>
@@ -255,33 +261,69 @@
       </div>
     </div>
 
+    <!-- AI 识别完成：定制结果卡（识别为通知/材料、已识别/待补填字段、耗时+token） -->
+    <div v-if="scanResultCard" class="scan-result-mask" @click.self="closeScanResult">
+      <div class="scan-result">
+        <div class="sr-badge"><span class="sr-check">✓</span></div>
+        <div class="sr-head">已完成 AI 智能识别</div>
+
+        <div class="sr-body">
+          <div v-if="scanResultCard.mode === 'notice'" class="sr-card">
+            <div class="sr-row-top"><span class="sr-pill notice">会议通知</span><span class="sr-row-note">识别到通知内容</span></div>
+            <div v-if="scanResultCard.conflictNote" class="sr-alert">{{ scanResultCard.conflictNote }}</div>
+            <div v-if="scanResultCard.missingRequired.length" class="sr-alert">缺少必填：{{ scanResultCard.missingRequired.join('、') }}，请手动填写</div>
+          </div>
+
+          <div v-if="scanResultCard.materialCount" class="sr-card">
+            <div class="sr-row-top"><span class="sr-pill material">会议材料</span><span class="sr-row-note">识别到 {{ scanResultCard.materialCount }} 份</span></div>
+          </div>
+
+          <div v-if="scanResultCard.mode === 'material'" class="sr-tip">会议信息请手动填写</div>
+          <div v-if="scanResultCard.dirty" class="sr-tip warn">将覆盖当前已填写的信息</div>
+        </div>
+
+        <div class="sr-meta">耗时 {{ scanResultCard.seconds }}s<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
+
+        <div class="sr-actions">
+          <button class="sr-btn ghost" @click="closeScanResult">{{ scanResultCard.dirty ? '保留原信息' : '取消' }}</button>
+          <button class="sr-btn primary" @click="confirmScanResult">{{ scanResultCard.mode === 'material' ? '加入材料' : (scanResultCard.dirty ? '覆盖填写' : '填入信息') }}</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 模拟手机相机（测试用）：取景框对着纸质通知；拍后先进照片预览（重拍/使用照片），确认后才走识别；接真机后整块可删 -->
     <div v-if="mockCameraVisible" class="mock-cam" :class="{ preview: !!mockShotUrl }">
       <div class="mc-top">
         <span class="mc-badge">{{ mockShotUrl ? '照片预览' : '模拟相机 · 测试' }}</span>
+        <span v-if="scanItems.length && !mockShotUrl" class="mc-count">已拍 {{ scanItems.length }} 张</span>
         <span class="mc-close" @click="closeMockCamera">×</span>
       </div>
       <!-- 取景模式 -->
       <template v-if="!mockShotUrl">
-        <div class="mc-viewport">
+        <div class="mc-viewport" @touchstart.passive="onVfTouchStart" @touchend.passive="onVfTouchEnd">
           <img class="mc-paper" :src="mockViewfinderUrl" alt="取景中的纸质文件" />
           <span class="mc-corner tl"></span><span class="mc-corner tr"></span>
           <span class="mc-corner bl"></span><span class="mc-corner br"></span>
-          <span class="mc-tip">将文件对准取景框</span>
+          <!-- 左右切换样张（模拟不同纸质文件） -->
+          <button class="mc-nav prev" @click.stop="prevSample" aria-label="上一张">‹</button>
+          <button class="mc-nav next" @click.stop="nextSample" aria-label="下一张">›</button>
+          <span class="mc-sample-ind">{{ mockSampleIdx + 1 }} / {{ MOCK_SAMPLES.length }} · {{ currentSampleLabel }}</span>
+          <span class="mc-tip">左右滑动切换文件 · 对准取景框</span>
         </div>
         <div class="mc-bottom">
           <button class="mc-shutter" @click="mockShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
+          <button v-if="scanItems.length" class="mc-done" @click="closeMockCamera">完成（{{ scanItems.length }}）</button>
         </div>
       </template>
-      <!-- 拍后预览：像系统相机一样先看照片，确认后才开始 AI 识别 -->
+      <!-- 拍后预览：像系统相机一样先看照片，确认后再加入 -->
       <template v-else>
         <div class="mc-viewport">
           <img class="mc-paper shot" :src="mockShotUrl" alt="刚拍的照片" />
         </div>
-        <div class="mc-confirm-tip">拍清楚了吗？点「使用照片」开始识别</div>
+        <div class="mc-confirm-tip">拍清楚了吗？点「确定」加入，可继续拍下一张</div>
         <div class="mc-bottom confirm">
           <button class="mc-btn retake" @click="mockRetake">重拍</button>
-          <button class="mc-btn use" @click="mockUsePhoto">使用照片</button>
+          <button class="mc-btn use" @click="mockUsePhoto">确定</button>
         </div>
       </template>
       <div class="mc-flash" :class="{ on: mockCamFlash }"></div>
@@ -408,7 +450,7 @@ import { navigateTo, redirectTo } from '@/utils/navigate'
 import { getStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
-import { pickFile, humanSize } from '@/utils/upload'
+import { pickFile, pickFiles, humanSize } from '@/utils/upload'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 
@@ -484,6 +526,13 @@ const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 const topicInput = ref('') // 议题输入框当前内容（打字/语音），点"确定"加入 topics 列表
+
+// 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
+// 用户点进对应输入框（focus）即清除红框。
+const fieldErrors = reactive({ title: false, topics: false, location: false })
+function clearFieldError(k) { if (fieldErrors[k]) fieldErrors[k] = false }
+// 议题只要加进去一条（打字/语音/弹窗任一路径），红框就撤掉
+watch(() => createForm.topics.length, (n) => { if (n > 0) fieldErrors.topics = false })
 
 // 会议名称：自增高文本框（空/短=一行，超长自动到两行，max-height 封顶）
 const titleEl = ref(null)
@@ -579,7 +628,7 @@ function decorateCurrent(m, chair) {
   let ctaLabel, ctaIcon, tag
   if (m.stage === 'preparing') {
     if (chair) {
-      ctaLabel = m.allReplied ? '会议已就绪' : '继续通知'
+      ctaLabel = m.allReplied ? '会议已就绪' : '去开会'
       ctaIcon = m.allReplied ? '✅' : '📣'
     } else {
       ctaLabel = '查看会议通知'
@@ -602,12 +651,22 @@ function decorateCurrent(m, chair) {
   }
 }
 
-function goCurrent(cur) {
+async function goCurrent(cur) {
   const chair = perm.isChair() || perm.isRecorder()
-  const url = chair
+  const target = chair
     ? '/pages/committee-detail/committee-detail?id=' + cur.id
     : '/pages/my-meeting/my-meeting?id=' + cur.id
-  navigateTo(url)
+  // 硬导航兜底：navigateTo(router.push) 偶发"URL变了却不切换视图"，把用户留在主页（如"继续通知/去开会"回不到通知页）。
+  // 软跳后延时校验目标页根节点是否真的挂上（详情页 .detail-page / 我的会议 .mm），没挂上就 window.location 硬跳，确保必达。
+  const browserUrl = chair ? '/committee-detail?id=' + cur.id : '/my-meeting?id=' + cur.id
+  const rootSel = chair ? '.detail-page' : '.mm'
+  try { await navigateTo(target) } catch (navErr) { console.error('[去开会] 软跳 reject：', navErr) }
+  setTimeout(() => {
+    if (!document.querySelector(rootSel)) {
+      console.warn('[去开会] 软跳未挂载目标页，硬导航兜底 →', browserUrl)
+      window.location.href = browserUrl
+    }
+  }, 500)
 }
 
 async function removeCurrent(cur) {
@@ -711,6 +770,8 @@ function closeCreate() {
   topicDialogOpen.value = false
   timePickerOpen.value = false
   datePickerOpen.value = false
+  clearScanItems()
+  scanResultCard.value = null
 }
 
 function toggleMaterialPrefill() {
@@ -781,21 +842,98 @@ function matIcon(m) {
   return '📎'
 }
 
-// ——— 拍照/上传 → OCR 识别 → AI 判类（通知/材料）→ 用户确认 ———
-const scanBusy = ref('')          // '' | 'camera' | 'file'：正在识别的入口卡片
+// ——— 拍照/上传 → 攒进暂存列表（缩略图预览）→ 一起「开始 AI 识别」→ 自动分辨通知/材料 ———
+const scanBusy = ref('')          // '' | 'file'：识别中（复用识别弹窗），空=空闲
+const scanRecognizing = ref(false) // 正在多文件识别（用于禁用卡片/按钮）
 const lastScanTokens = ref(0)     // 上次识别消耗的 token（低调显示在卡片下方）
+
+// 暂存待识别的照片/文件：[{ id, file, name, ext, isImage, thumbUrl }]
+const scanItems = ref([])
+let _scanId = 0
+const IMG_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']
+function addScanItem(file, thumbUrl) {
+  if (!file) return
+  const ext = String((file.name || '').split('.').pop() || '').toLowerCase()
+  const isImage = IMG_EXT.includes(ext) || String(file.type || '').startsWith('image/')
+  scanItems.value = scanItems.value.concat([{
+    id: ++_scanId, file, name: file.name || '文件', ext, isImage,
+    thumbUrl: thumbUrl || (isImage ? URL.createObjectURL(file) : '')
+  }])
+}
+function removeScanItem(id) {
+  const it = scanItems.value.find((x) => x.id === id)
+  if (it && it.thumbUrl && it.thumbUrl.indexOf('blob:') === 0) { try { URL.revokeObjectURL(it.thumbUrl) } catch (e) {} }
+  scanItems.value = scanItems.value.filter((x) => x.id !== id)
+}
+function clearScanItems() {
+  scanItems.value.forEach((it) => { if (it.thumbUrl && it.thumbUrl.indexOf('blob:') === 0) { try { URL.revokeObjectURL(it.thumbUrl) } catch (e) {} } })
+  scanItems.value = []
+}
+function scanThumbIcon(ext) { return ext === 'pdf' ? '📄' : '📎' }
+
 async function startDocScan(source) {
-  if (scanBusy.value) return
+  if (scanRecognizing.value) return
   if (source === 'camera') {
-    // 测试阶段：先模拟系统相机权限申请，允许后弹模拟相机（取景+快门）。后续接真机时改回：
-    // const file = await pickFile('image/*', 'environment')
+    // 测试阶段：先模拟系统相机权限申请，允许后弹模拟相机（取景+快门，可连拍多张）。后续接真机时改回：
+    // const files = await pickFiles('image/*'); files.forEach((f) => addScanItem(f))
     if (camPermGranted.value) openMockCamera()
     else camPermVisible.value = true
     return
   }
-  const file = await pickFile('image/*,application/pdf')
-  if (!file) return // 用户取消
-  await scanFile(file, source)
+  // 上传文件：支持多选，全部攒进暂存列表（不立即识别）
+  const files = await pickFiles('image/*,application/pdf')
+  if (!files || !files.length) return // 用户取消
+  files.forEach((f) => addScanItem(f))
+}
+
+// 识别中窗口点 × 取消：收起窗口、复位状态；在途请求返回后按标志丢弃，文件保留可重试
+let _recognizeCancelled = false
+function cancelRecognize() {
+  _recognizeCancelled = true
+  stopDocProgress()
+  clearInterval(_scanSecTimer)
+  _scanSecTimer = null
+  scanBusy.value = ''
+  docProgress.value = 0
+  scanRecognizing.value = false
+  toast({ title: '已取消识别', icon: 'none' })
+}
+
+// 「开始 AI 识别（N）」：把暂存的 N 个文件一起送后端统一识别
+async function recognizeScanItems() {
+  if (scanRecognizing.value || !scanItems.value.length) return
+  const files = scanItems.value.map((x) => x.file)
+  _recognizeCancelled = false
+  scanRecognizing.value = true
+  scanBusy.value = 'file'
+  startDocProgress()
+  scanSec.value = 0
+  clearInterval(_scanSecTimer)
+  _scanSecTimer = setInterval(() => { scanSec.value += 1 }, 1000)
+  try {
+    const res = await api.committeeParseDocuments(files)
+    if (_recognizeCancelled) return // 用户已点 × 取消：丢弃结果，保留暂存文件可重试
+    stopDocProgress()
+    docProgress.value = 100
+    await new Promise((r) => setTimeout(r, 350))
+    if (res && res.tokens > 0) lastScanTokens.value = res.tokens
+    clearInterval(_scanSecTimer)
+    _scanSecTimer = null
+    scanBusy.value = ''
+    docProgress.value = 0
+    await handleMultiScanResult(res)
+    clearScanItems()
+  } catch (e) {
+    if (_recognizeCancelled) return
+    stopDocProgress()
+    toast({ title: '识别失败，请重试或手动填写', icon: 'none' })
+  } finally {
+    clearInterval(_scanSecTimer)
+    _scanSecTimer = null
+    scanBusy.value = ''
+    docProgress.value = 0
+    scanRecognizing.value = false
+  }
 }
 
 // ——— 模拟系统相机权限弹窗（真机上由系统/微信弹出，这里演示流程；每次会话只问一次） ———
@@ -820,43 +958,15 @@ const scanSay = computed(() => {
   return '正在理解内容、判断文件类型…'
 })
 
-// 拿到文件（拍照/选文件）后的统一识别链路
-async function scanFile(file, source) {
-  scanBusy.value = source
-  startDocProgress()
-  scanSec.value = 0
-  clearInterval(_scanSecTimer)
-  _scanSecTimer = setInterval(() => { scanSec.value += 1 }, 1000)
-  try {
-    const res = await api.committeeParseDocument(file)
-    stopDocProgress()
-    docProgress.value = 100
-    await new Promise((r) => setTimeout(r, 350))
-    if (res && res.tokens > 0) lastScanTokens.value = res.tokens
-    // 先收起识别弹窗，再弹结果确认框（否则确认框会压在识别弹窗上）
-    clearInterval(_scanSecTimer)
-    _scanSecTimer = null
-    scanBusy.value = ''
-    docProgress.value = 0
-    await handleScanResult(res)
-  } catch (e) {
-    stopDocProgress()
-    toast({ title: '识别失败，请重试或手动填写', icon: 'none' })
-  } finally {
-    clearInterval(_scanSecTimer)
-    _scanSecTimer = null
-    scanBusy.value = ''
-    docProgress.value = 0
-  }
-}
-
-// ——— 模拟手机相机（测试用）：全屏取景框对着一张"纸质会议通知"，按快门出照片走真实识别 ———
+// ——— 模拟手机相机（测试用）：全屏取景框对着一张"纸质会议通知"，按快门出照片；使用照片=加入暂存，可连拍多张 ———
 const mockCameraVisible = ref(false)
 const mockCamFlash = ref(false)
 const mockViewfinderUrl = ref('')
 const mockShotUrl = ref('')       // 拍后照片预览图（非空 = 预览确认模式）
 let _mockShotCanvas = null
 let _mockShotFile = null          // 预览中待确认的照片文件，点「使用照片」才送识别
+const mockSampleIdx = ref(0)      // 当前取景样张下标（左右滑动/箭头切换，模拟拍不同纸质文件）
+let _mockSampleCanvases = []      // 本次相机会话预生成的各样张 canvas
 function buildSampleNoticeCanvas() {
   const cv = document.createElement('canvas'); cv.width = 750; cv.height = 940
   const ctx = cv.getContext('2d')
@@ -886,8 +996,67 @@ function buildSampleNoticeCanvas() {
   let y = 180; for (const l of lines) { ctx.fillText(l, 64, y); y += 46 }
   return cv
 }
+// 通用纸质文件样张：白纸 + 标题 + 正文若干行
+function buildDocCanvas(title, lines) {
+  const cv = document.createElement('canvas'); cv.width = 750; cv.height = 940
+  const ctx = cv.getContext('2d')
+  ctx.fillStyle = '#fdfcf8'; ctx.fillRect(0, 0, 750, 940)
+  ctx.fillStyle = '#111'; ctx.textAlign = 'center'
+  ctx.font = 'bold 44px serif'
+  ctx.fillText(title, 375, 96)
+  ctx.font = '30px serif'; ctx.textAlign = 'left'
+  let y = 180; for (const l of lines) { ctx.fillText(l, 64, y); y += 44 }
+  return cv
+}
+// 多个样张，供左右滑动切换（覆盖 通知/材料 多种情形，方便测试连拍多张）
+const MOCK_SAMPLES = [
+  { label: '会议通知', build: buildSampleNoticeCanvas },
+  { label: '维保报价单', build: () => buildDocCanvas('电梯维保报价单', [
+    '致：阳光家园业主委员会',
+    '',
+    '我司就贵小区电梯维保报价如下：',
+    '一、维保范围：4部乘客电梯；',
+    '二、维保周期：每月2次例行保养；',
+    '三、报价：每部每年8000元；',
+    '四、全年合计：32000元；',
+    '五、合同期限：一年。',
+    '',
+    '            宏达电梯维保有限公司',
+    '              2026年7月1日'
+  ]) },
+  { label: '施工方案', build: () => buildDocCanvas('消防设施改造施工方案', [
+    '一、项目背景：',
+    '   小区消防管网老化，需整体改造。',
+    '二、施工内容：',
+    '   更换消防主管道及喷淋头；',
+    '   增设室内消防栓12处。',
+    '三、工期：预计45天；',
+    '四、预算：约人民币38万元；',
+    '五、资金来源：专项维修资金。'
+  ]) }
+]
+const currentSampleLabel = computed(() => (MOCK_SAMPLES[mockSampleIdx.value] || {}).label || '')
+function switchSample(idx) {
+  const n = _mockSampleCanvases.length
+  if (!n) return
+  mockSampleIdx.value = ((idx % n) + n) % n
+  _mockShotCanvas = _mockSampleCanvases[mockSampleIdx.value]
+  mockViewfinderUrl.value = _mockShotCanvas.toDataURL('image/png')
+}
+function nextSample() { switchSample(mockSampleIdx.value + 1) }
+function prevSample() { switchSample(mockSampleIdx.value - 1) }
+let _mcTouchX = 0
+function onVfTouchStart(e) { _mcTouchX = (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : e.clientX) || 0 }
+function onVfTouchEnd(e) {
+  const x = (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : e.clientX) || 0
+  const dx = x - _mcTouchX
+  if (Math.abs(dx) < 40) return
+  if (dx < 0) nextSample(); else prevSample()
+}
 function openMockCamera() {
-  _mockShotCanvas = buildSampleNoticeCanvas()
+  _mockSampleCanvases = MOCK_SAMPLES.map((s) => s.build())
+  mockSampleIdx.value = 0
+  _mockShotCanvas = _mockSampleCanvases[0]
   mockViewfinderUrl.value = _mockShotCanvas.toDataURL('image/png')
   mockShotUrl.value = ''
   _mockShotFile = null
@@ -916,80 +1085,79 @@ async function mockShoot() {
   setTimeout(() => { mockCamFlash.value = false }, 180)
   const shot = buildShotPhotoCanvas(_mockShotCanvas)
   const blob = await new Promise((r) => shot.toBlob(r, 'image/png'))
-  _mockShotFile = new File([blob], '拍照-纸质文件.png', { type: 'image/png' })
+  _mockShotFile = new File([blob], '拍照-' + (scanItems.value.length + 1) + '.png', { type: 'image/png' })
   await new Promise((r) => setTimeout(r, 260)) // 让"咔嚓"闪一下再切预览
   mockShotUrl.value = shot.toDataURL('image/png')
 }
 function mockRetake() { mockShotUrl.value = ''; _mockShotFile = null }
-// 「使用照片」：用户确认照片没问题，收起相机开始识别
-async function mockUsePhoto() {
+// 「使用照片」：加入暂存列表，并回到取景，可继续连拍多张（点右上角完成/× 退出）
+function mockUsePhoto() {
   const file = _mockShotFile
   if (!file) return
-  mockCameraVisible.value = false
+  addScanItem(file, mockShotUrl.value) // 用拍照 dataURL 作缩略图
   mockShotUrl.value = ''
   _mockShotFile = null
-  await scanFile(file, 'camera')
+  // 回到取景，保持当前样张；用户可左右滑动切到别的文件再拍
 }
-// 识别结果 → 按 AI 判类让用户确认；确认错了可一键改成另一类
-async function handleScanResult(res) {
-  if (!res) { toast({ title: '未识别到内容，请手动填写', icon: 'none' }); return }
-  const canAttach = !!res.fileUrl // 文件已存服务器，可直接作为材料挂载
-  // token 消耗放进结果弹窗括号里：让用户直观感到 AI 真干活了
-  const tokenNote = res.tokens > 0 ? '（本次智能识别消耗 ' + Number(res.tokens).toLocaleString() + ' token）' : ''
-  if (res.available && res.category === 'notice') {
-    // 已填过会议信息（识别或手填）→ 改问“是否覆盖”，避免再次拍照悄悄冲掉上一次的内容
-    const dirty = formHasUserContent()
-    const r = await showModal({
-      title: dirty ? '覆盖已填写的信息？' : 'AI 智能识别：会议通知',
-      content: dirty
-        ? '当前已填写会议信息。要用这次识别的内容覆盖吗？' + tokenNote
-        : '已深度识别文件内容，判定为会议通知。要按它自动填写会议信息吗？' + tokenNote,
-      confirmText: dirty ? '覆盖填写' : '自动填写',
-      cancelText: dirty ? '保留原信息' : (canAttach ? '改为会议材料' : '取消'),
-      size: 'large',
-      showClose: true
-    })
-    if (r.close) return // 右上角 ×：只关弹窗，什么都不做
-    if (r.confirm) applyPrefill(res, { skipOverwriteConfirm: true }) // 覆盖已在上面确认过
-    else if (!dirty && canAttach) addScannedMaterial(res)
-    // dirty 且取消 = 保留原信息，什么都不做
+
+// AI 识别完成结果卡（自定义精美弹层，替代通用 showModal）
+const scanResultCard = ref(null)
+function closeScanResult() { scanResultCard.value = null }
+function confirmScanResult() {
+  const c = scanResultCard.value
+  if (!c) return
+  if (c.mode === 'notice') applyPrefill(c.res, { skipOverwriteConfirm: true })
+  if (c.materials && c.materials.length) {
+    c.materials.forEach(addScannedMaterialFromInfo)
+    if (c.mode === 'material') toast({ title: '已加入 ' + c.materials.length + ' 份会议材料', icon: 'success' })
+    else toast({ title: '已加入 ' + c.materials.length + ' 份会议材料', icon: 'none' })
+  }
+  scanResultCard.value = null
+}
+
+// 多文件识别结果 → 组装结果卡：识别为通知/材料、已识别/待补填字段、耗时+token
+function handleMultiScanResult(res) {
+  if (!res) { toast({ title: '识别未完成，请重试或手动填写', icon: 'none' }); return }
+  const filesArr = Array.isArray(res.files) ? res.files : []
+  const materialFiles = filesArr.filter((f) => f.category === 'material' && f.fileUrl)
+  const hasPrefill = res.available && !!(res.title || res.meetingDate || res.meetingTime || res.location || (Array.isArray(res.topics) && res.topics.length))
+  const seconds = scanSec.value || 0
+  const tokens = res.tokens || 0
+
+  // 全部是材料（没抽到通知信息）
+  if (!hasPrefill) {
+    const attachable = filesArr.filter((f) => f.fileUrl)
+    if (!attachable.length) { toast({ title: '请手动填写会议信息', icon: 'none' }); return }
+    scanResultCard.value = {
+      mode: 'material', materialCount: attachable.length, noticeN: 0,
+      filled: [], missing: [], seconds, tokens, dirty: false, res, materials: attachable
+    }
     return
   }
-  if (res.available && res.category === 'material') {
-    const r = await showModal({
-      title: 'AI 智能识别：会议材料',
-      content: '已深度识别文件内容，判定为会议材料，将在通知发出后发给委员传阅。' + tokenNote,
-      confirmText: '添加为材料',
-      cancelText: '改为自动填表',
-      size: 'large',
-      showClose: true
-    })
-    if (r.close) return
-    if (r.confirm) addScannedMaterial(res)
-    else applyPrefill(res) // 强制按通知抽取；字段可能为空，applyPrefill 会提示
-    return
-  }
-  // 识别失败/未判出类别：文件已存的话，问要不要直接作为材料
-  if (canAttach) {
-    const r = await showModal({
-      title: '未能识别内容',
-      content: (res.message || '未能识别出文件内容') + '。要把它直接作为会议材料添加吗？',
-      confirmText: '添加为材料',
-      cancelText: '不用了',
-      size: 'large',
-      showClose: true
-    })
-    if (r.confirm) addScannedMaterial(res)
-  } else {
-    toast({ title: res.message || '未能识别，请手动填写', icon: 'none' })
+
+  // 识别为会议通知：只在缺必填(标题/议题)或多份通知时间地点冲突时红字提示
+  const REQUIRED = [
+    { label: '标题', has: !!(res.title && res.title.trim()) },
+    { label: '议题', has: !!(Array.isArray(res.topics) && res.topics.length) }
+  ]
+  scanResultCard.value = {
+    mode: 'notice',
+    materialCount: materialFiles.length,
+    missingRequired: REQUIRED.filter((f) => !f.has).map((f) => f.label),
+    conflictNote: (res.conflictNote || '').trim(),
+    seconds, tokens,
+    dirty: formHasUserContent(),
+    res, materials: materialFiles
   }
 }
-function addScannedMaterial(res) {
+// 把某个已落库的文件加入待挂载材料（去重：同 url 不重复加）
+function addScannedMaterialFromInfo(f) {
+  if (!f || !f.fileUrl) return
+  if (pendingMaterials.value.some((m) => m.url === f.fileUrl)) return
   pendingMaterials.value = pendingMaterials.value.concat([{
-    url: res.fileUrl, fileName: res.fileName || '识别文件', fileType: res.fileType || '',
-    fileSize: res.fileSize || 0, sizeText: humanSize(res.fileSize || 0)
+    url: f.fileUrl, fileName: f.fileName || '识别文件', fileType: f.fileType || '',
+    fileSize: f.fileSize || 0, sizeText: humanSize(f.fileSize || 0)
   }])
-  toast({ title: '已加入会议材料', icon: 'success' })
 }
 const docProgress = ref(0)
 let docProgTimer = null
@@ -1062,6 +1230,7 @@ function onLocationPreset(e) {
   const v = e.target.value
   locationPreset.value = v
   createForm.location = (v === '__other__') ? '' : v
+  clearFieldError('location')
 }
 
 // 地图选点（接口预留）：点地图图标 → 选高德/百度 → 真实接入时打开地图 app 选点回传地址。
@@ -1077,11 +1246,6 @@ async function pickLocationOnMap() {
 }
 
 // 从"其他/地图选点"切回常用地点下拉
-function resetLocPreset() {
-  locationPreset.value = '社区活动室'
-  createForm.location = '社区活动室'
-}
-
 // 日期选择器：点击字段任意位置弹出，年/月/日三列
 function openDatePicker() {
   const parts = (createForm.meetingDate || todayStr()).split('-')
@@ -1248,14 +1412,25 @@ async function submitNewMeeting() {
   var form = createForm
   // OCR 还在识别时先别提交：此刻 createForm 可能是中间态，等识别完再去通知
   if (scanBusy.value) { toast({ title: '正在识别中，请稍候…', icon: 'none' }); return }
-  if (!form.title || !form.meetingDate || !form.meetingTime || !form.location) {
-    toast({ title: '请补全标题、时间和地点', icon: 'none' })
-    return
-  }
   // 议题：逐条添加在 createForm.topics（过滤空标题）
   var topics = (form.topics || []).filter(function (t) { return t.title && t.title.trim() })
-  if (!topics.length) {
-    toast({ title: '请至少添加一个会议议题', icon: 'none' })
+  // 必填校验：会议名称 / 会议地点 / 会议议题。缺失 → 弹卡片列出，确认后亮红框
+  fieldErrors.title = false; fieldErrors.location = false; fieldErrors.topics = false
+  const missing = []
+  if (!form.title || !form.title.trim()) missing.push('会议名称')
+  if (!form.location || !form.location.trim()) missing.push('会议地点')
+  if (!topics.length) missing.push('会议议题')
+  if (missing.length) {
+    await showModal({
+      title: '还有内容没填写',
+      content: '请先补全以下内容：\n' + missing.map((m) => '· ' + m).join('\n'),
+      confirmText: '知道了',
+      showCancel: false,
+      size: 'large'
+    })
+    if (missing.includes('会议名称')) fieldErrors.title = true
+    if (missing.includes('会议地点')) fieldErrors.location = true
+    if (missing.includes('会议议题')) fieldErrors.topics = true
     return
   }
   try {
@@ -1474,8 +1649,8 @@ onActivated(show)
 <style scoped>
 .home {
   min-height: 100vh; background: var(--c-bg-page);
-  /* 底部留足空间：清开固定 TabBar(100rpx) 再多留 ~80rpx，避免有进行中会议内容超一屏时"更多功能"被导航栏挡住 */
-  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  /* 底部留空：清开固定 TabBar(100rpx) 再留一点缝隙；更多功能靠 margin-top:auto 贴底 */
+  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; box-sizing: border-box;
 }
 /* 顶栏 */
@@ -1503,14 +1678,14 @@ onActivated(show)
 .step-line { flex: 1; height: 6rpx; border-radius: 3rpx; margin-top: 28rpx; }
 .step-line.done { background: var(--c-primary); }
 .step-line.todo { background: #E3E5E9; }
-/* 大按钮（描边幽灵：白底 + 橙边橙字；去开会与卡片"继续通知"同款同大小、字略放大） */
+/* 大按钮（描边幽灵：白底 + 橙边橙字；"去通知"与卡片"去开会"同款同大小、字略放大） */
 .big-btn { display: flex; align-items: center; justify-content: center; height: 140rpx; border-radius: 22rpx; background: var(--c-bg-card); border: 3rpx solid var(--c-primary-dark); margin-top: 8rpx; }
 .big-btn:active { background: var(--c-primary-soft); }
 .big-btn-ico { font-size: 54rpx; margin-right: 14rpx; }
 .big-btn-text { font-size: 52rpx; font-weight: 700; color: var(--c-primary-dark); }
 /* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
 .go-meeting { margin: auto auto 16rpx; width: 84%; }
-/* 卡片内"继续通知"：略收窄并居中 */
+/* 卡片内"去开会"：略收窄并居中 */
 .meet-card .big-btn { width: 90%; margin-left: auto; margin-right: auto; }
 /* 删除会议（测试用，弱化） */
 .meet-del { text-align: center; color: var(--c-danger); font-size: 30rpx; margin-top: 28rpx; padding: 8rpx; }
@@ -1520,15 +1695,13 @@ onActivated(show)
 .idle-emoji { font-size: 104rpx; margin-bottom: 24rpx; }
 .idle-hint { font-size: 38rpx; color: var(--c-text-mid); margin-bottom: 8rpx; }
 .idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
-/* 更多功能（主任视图紧跟卡片；委员视图沉底） */
-.more { margin: 0 28rpx; padding-top: 76rpx; }
-.more-sink { margin-top: auto; }
+/* 更多功能（扁平化：无图标、纯文本三格分隔；margin-top:auto 贴近底部） */
+.more { margin: auto 28rpx 0; padding-top: 40rpx; }
 .more-title { font-size: 28rpx; color: var(--c-text-weak); padding-left: 6rpx; }
-.more-grid { display: flex; margin-top: 14rpx; gap: 16rpx; }
-.more-item { flex: 1; background: var(--c-bg-card); border-radius: 18rpx; padding: 36rpx 0 32rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
-.more-item:active { background: #FAFBFC; }
-.more-ico { font-size: 44rpx; line-height: 1.1; }
-.more-label { font-size: 28rpx; color: var(--c-text-mid); margin-top: 14rpx; }
+.more-grid { display: flex; margin-top: 14rpx; background: var(--c-bg-card); border-radius: 18rpx; overflow: hidden; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+.more-item { flex: 1; text-align: center; padding: 30rpx 0; font-size: 30rpx; font-weight: 500; color: var(--c-text-mid); }
+.more-item + .more-item { border-left: 1rpx solid #EDEFF1; }
+.more-item:active { background: #F7F8FA; }
 
 /* 综合评分小字（占位分数） */
 .score-line { display: flex; align-items: center; gap: 10rpx; margin: 24rpx 28rpx 0; font-size: 32rpx; color: var(--c-text-mid); }
@@ -1595,10 +1768,19 @@ onActivated(show)
 .create-title { flex: 1; text-align: center; color: #fff; font-size: 38rpx; font-weight: 700; line-height: 1.35; }
 .create-nav-ph { width: 96rpx; flex-shrink: 0; }
 .close-btn { width: 60rpx; height: 60rpx; line-height: 56rpx; text-align: center; border-radius: 30rpx; color: #666; background: #f5f5f5; font-size: 40rpx; flex-shrink: 0; }
-.create-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24rpx 26rpx; box-sizing: border-box; }
+.create-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14rpx 26rpx 24rpx; box-sizing: border-box; }
 .create-section { background: #fafbfc; border-radius: 18rpx; padding: 24rpx; margin-bottom: 20rpx; border: 2rpx solid #f0f0f0; }
-.create-section.title-card { margin-top: 20rpx; margin-bottom: 30px; }
-.create-section.info-card { margin-bottom: 30px; }
+.create-section.title-card { margin-top: 0; margin-bottom: 30px; }
+.create-section.info-card { margin-bottom: 20rpx; padding: 16rpx 20rpx; }
+/* 时间/地点卡片收紧（仅本卡片，不影响标题/议题输入框）：标题、日期时间、地点框都变矮变小 */
+.info-card .section-title { font-size: 30rpx; margin-bottom: 10rpx; }
+.info-card .form-row { gap: 14rpx; }
+.info-card .picker-field { min-height: 72rpx; font-size: 30rpx; border-radius: 12rpx; padding: 0 18rpx; }
+.info-card .tf-text { font-size: 30rpx; }
+.info-card .loc-row { margin-top: 12rpx; }
+.info-card .loc-input.form-input { height: 72rpx; min-height: 72rpx; font-size: 30rpx; border-radius: 12rpx; }
+.loc-input-manual { margin-top: 12rpx; }
+.info-card .loc-map-btn { width: 84rpx; border-radius: 12rpx; }
 
 .prefill-entry { background: #FFF8EA; border: 2rpx solid #FFE0A3; border-radius: 18rpx; padding: 22rpx; margin-bottom: 20rpx; display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
 .prefill-copy { flex: 1; min-width: 0; }
@@ -1629,8 +1811,24 @@ onActivated(show)
 .ds-t { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
 .ds-s { font-size: 24rpx; color: #999; text-align: center; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
+/* 待识别缩略图预览条：横向排列，可删 */
+.ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
+.ds-thumb { position: relative; width: 108rpx; height: 108rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
+.ds-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ds-thumb-file { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; background: #FAF7F1; }
+.ds-thumb-ico { font-size: 44rpx; line-height: 1; }
+.ds-thumb-ext { font-size: 20rpx; color: #A98; text-transform: uppercase; }
+.ds-thumb-del { position: absolute; top: -2rpx; right: -2rpx; width: 38rpx; height: 38rpx; border-radius: 0 14rpx 0 14rpx; background: rgba(0,0,0,0.55); color: #fff; font-size: 30rpx; line-height: 38rpx; text-align: center; }
+/* 开始 AI 识别：实心橙大按钮，攒了文件才出现 */
+/* 开始 AI 识别：深青绿 + 居中变窄(70%) + 边缘淡淡发光(轻脉冲)，醒目且与橙色协调 */
+.ds-recognize { display: block; width: 70%; height: 92rpx; margin: 16rpx auto 4rpx; border: none; border-radius: 18rpx; background: #0E8A7B; color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 14rpx rgba(30,180,155,0.5); animation: dsGlow 1.9s ease-in-out infinite; }
+.ds-recognize:active { background: #0B6F63; }
+.ds-recognize:disabled { opacity: 0.72; animation: none; }
+@keyframes dsGlow {
+  0%, 100% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 12rpx rgba(30,180,155,0.38); }
+  50% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 26rpx rgba(40,200,170,0.82); }
+}
 /* token 消耗：低调小字，识别完成后显示 */
-.ds-tokens { display: block; text-align: center; font-size: 22rpx; color: #bbb; margin-top: 10rpx; }
 
 /* 模拟系统相机权限弹窗（仿系统样式：居中白盒 + 细线分隔双按钮） */
 .perm-mask { position: fixed; inset: 0; z-index: 3100; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
@@ -1646,7 +1844,9 @@ onActivated(show)
 
 /* 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案） */
 .scan-pop-mask { position: fixed; inset: 0; z-index: 3050; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; }
-.scan-pop { width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 30%); border: 1rpx solid rgba(255, 168, 0, 0.25); border-radius: 30rpx; padding: 48rpx 44rpx 38rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.06); box-sizing: border-box; }
+.scan-pop { position: relative; width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 30%); border: 1rpx solid rgba(255, 168, 0, 0.25); border-radius: 30rpx; padding: 48rpx 44rpx 38rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.06); box-sizing: border-box; }
+.sp-close { position: absolute; top: 10rpx; right: 16rpx; width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; font-size: 48rpx; line-height: 1; color: #B0A48E; z-index: 2; }
+.sp-close:active { color: #7A6E58; }
 /* 文档扫描动画：白纸 + 灰色文字行 + 橙色扫描线上下来回 */
 .sp-doc { position: relative; width: 240rpx; height: 288rpx; background: #fff; border: 2rpx solid #F0E6D6; border-radius: 14rpx; box-shadow: 0 6rpx 18rpx rgba(160, 110, 20, 0.12); padding: 30rpx 26rpx; box-sizing: border-box; display: flex; flex-direction: column; gap: 26rpx; overflow: hidden; margin-bottom: 28rpx; }
 .sp-doc-line { height: 12rpx; border-radius: 6rpx; background: #EAE4D8; }
@@ -1672,7 +1872,32 @@ onActivated(show)
 .sp-bar { flex: 1; height: 18rpx; border-radius: 10rpx; background: #F0F0F2; overflow: hidden; }
 .sp-fill { height: 100%; border-radius: 10rpx; background: linear-gradient(90deg, #FFA800, #C76A00); transition: width .35s ease; }
 .sp-pct { font-size: 38rpx; color: #C76A00; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 96rpx; text-align: right; }
-.sp-foot { font-size: 26rpx; color: #C0B49E; margin-top: 24rpx; }
+.sp-foot { font-size: 24rpx; color: #B7A98E; margin-top: 26rpx; background: #FBF6EC; border: 1rpx solid #F0E6D2; padding: 8rpx 22rpx; border-radius: 999rpx; }
+
+/* AI 识别完成：精美结果卡 */
+.scan-result-mask { position: fixed; inset: 0; z-index: 3060; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
+.scan-result { position: relative; width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 24%); border: 1rpx solid rgba(255, 168, 0, 0.22); border-radius: 30rpx; padding: 40rpx 40rpx 34rpx; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.05); box-sizing: border-box; display: flex; flex-direction: column; align-items: center; }
+.sr-badge { width: 100rpx; height: 100rpx; border-radius: 50%; background: linear-gradient(135deg, #40C56F, #27AE60); display: flex; align-items: center; justify-content: center; box-shadow: 0 10rpx 24rpx rgba(39, 174, 96, 0.34); margin-bottom: 16rpx; }
+.sr-check { color: #fff; font-size: 54rpx; font-weight: 700; line-height: 1; }
+.sr-head { font-size: 38rpx; font-weight: 800; color: #1f2329; letter-spacing: 1rpx; margin-bottom: 24rpx; }
+.sr-body { width: 100%; display: flex; flex-direction: column; gap: 16rpx; }
+.sr-card { background: #FBF7F0; border: 1rpx solid #F0E6D6; border-radius: 18rpx; padding: 22rpx 24rpx; }
+.sr-row-top { display: flex; align-items: center; gap: 14rpx; }
+.sr-pill { font-size: 24rpx; font-weight: 700; color: #fff; padding: 6rpx 18rpx; border-radius: 999rpx; flex-shrink: 0; }
+.sr-pill.notice { background: var(--c-primary-dark); }
+.sr-pill.material { background: #2E86C1; }
+.sr-row-note { font-size: 30rpx; color: #4A5560; font-weight: 600; }
+/* 红字提示：仅在缺必填或多份通知时间地点冲突时出现 */
+.sr-alert { margin-top: 12rpx; font-size: 27rpx; line-height: 1.5; color: #C0392B; font-weight: 600; }
+.sr-tip { font-size: 28rpx; color: #6A7480; text-align: center; padding: 4rpx; }
+.sr-tip.warn { color: #C0392B; font-weight: 600; }
+.sr-meta { font-size: 24rpx; color: #B08968; margin: 22rpx 0 26rpx; }
+.sr-actions { display: flex; align-items: center; gap: 18rpx; width: 100%; }
+.sr-btn { height: 92rpx; border: none; border-radius: 46rpx; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.sr-btn.ghost { flex: 0 0 30%; background: #f2f2f2; color: #777; }
+.sr-btn.ghost:active { background: #e9e9e9; }
+.sr-btn.primary { flex: 1; background: var(--c-primary-dark); color: #fff; box-shadow: 0 6rpx 16rpx rgba(168, 88, 0, 0.24); }
+.sr-btn.primary:active { background: var(--c-primary-strong); }
 
 /* 模拟手机相机（测试用） */
 .mock-cam { position: fixed; inset: 0; z-index: 3000; background: #000; display: flex; flex-direction: column; }
@@ -1693,11 +1918,23 @@ onActivated(show)
 .mc-corner.bl { bottom: 18rpx; left: 26rpx; border-right: none; border-top: none; border-radius: 0 0 0 10rpx; }
 .mc-corner.br { bottom: 18rpx; right: 26rpx; border-left: none; border-top: none; border-radius: 0 0 10rpx 0; }
 .mc-tip { position: absolute; bottom: 34rpx; left: 0; right: 0; text-align: center; font-size: 26rpx; color: rgba(255,255,255,0.75); }
-.mc-bottom { flex-shrink: 0; display: flex; justify-content: center; padding: 30rpx 0 calc(46rpx + env(safe-area-inset-bottom)); }
+/* 左右切换样张：半透明圆形箭头 + 顶部样张指示 */
+.mc-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 72rpx; height: 72rpx; border-radius: 50%; background: rgba(0,0,0,0.4); color: #fff; font-size: 48rpx; line-height: 1; border: none; display: flex; align-items: center; justify-content: center; }
+.mc-nav.prev { left: 18rpx; }
+.mc-nav.next { right: 18rpx; }
+.mc-nav:active { background: rgba(0,0,0,0.6); }
+.mc-sample-ind { position: absolute; top: 20rpx; left: 50%; transform: translateX(-50%); font-size: 24rpx; color: #fff; background: rgba(0,0,0,0.42); padding: 6rpx 22rpx; border-radius: 999rpx; white-space: nowrap; }
+.mc-bottom { flex-shrink: 0; position: relative; display: flex; justify-content: center; padding: 30rpx 0 calc(46rpx + env(safe-area-inset-bottom)); }
+.mc-count { font-size: 24rpx; color: #fff; background: rgba(255,255,255,0.18); padding: 6rpx 18rpx; border-radius: 999rpx; }
+.mc-done { position: absolute; right: 40rpx; top: 50%; transform: translateY(-50%); height: 78rpx; padding: 0 32rpx; border: none; border-radius: 40rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+.mc-done:active { background: var(--c-primary-strong); }
 .mc-shutter { width: 140rpx; height: 140rpx; border-radius: 50%; background: transparent; border: 8rpx solid #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
 .mc-shutter-core { width: 104rpx; height: 104rpx; border-radius: 50%; background: #fff; transition: transform .12s ease; }
 .mc-shutter:active .mc-shutter-core { transform: scale(0.85); }
 .mc-bottom.confirm { gap: 28rpx; padding-left: 44rpx; padding-right: 44rpx; }
+/* 重拍/确定 = 35:65，突出确定 */
+.mc-bottom.confirm .mc-btn.retake { flex: 0 0 35%; }
+.mc-bottom.confirm .mc-btn.use { flex: 1; }
 .mc-btn { flex: 1; height: 96rpx; border-radius: 48rpx; font-size: 34rpx; font-weight: 700; border: none; }
 .mc-btn.retake { background: rgba(255,255,255,0.16); color: #fff; }
 .mc-btn.use { background: var(--c-primary-dark); color: #fff; }
@@ -1715,9 +1952,14 @@ onActivated(show)
 @keyframes aiSpin { to { transform: rotate(360deg); } }
 /* 居委会见证（创建页，移自通知页）：白卡 + 标题/说明 + 适老化大复选框 */
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
-.juwei-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; cursor: pointer; padding: 10rpx 24rpx; margin-top: 40rpx; margin-bottom: 24rpx; }
-.juwei-label { font-size: 32rpx; color: #1f2329; font-weight: 600; }
-.juwei-check { width: 44rpx; height: 44rpx; flex-shrink: 0; accent-color: var(--c-primary-dark); }
+/* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
+.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 18rpx; padding: 24rpx; margin-top: 20rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); cursor: pointer; }
+.juwei-title { flex: 1; min-width: 0; font-size: 32rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
+/* 开关 */
+.juwei-switch { flex-shrink: 0; width: 96rpx; height: 56rpx; border-radius: 999rpx; background: #D3D6DB; position: relative; transition: background .2s ease; }
+.juwei-switch::after { content: ""; position: absolute; top: 5rpx; left: 5rpx; width: 46rpx; height: 46rpx; border-radius: 50%; background: #fff; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: left .2s ease; }
+.juwei-switch.on { background: var(--c-primary-dark); }
+.juwei-switch.on::after { left: 45rpx; }
 .assist-row { display: flex; gap: 18rpx; margin-bottom: 18rpx; }
 .assist-btn { flex: 1; height: 80rpx; line-height: 80rpx; border-radius: 40rpx; background: #fff; color: #C77800; border: 2rpx solid #FFE0A3; font-size: 28rpx; font-weight: 600; padding: 0 20rpx; margin: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
 .assist-btn.primary { background: #FFA800; color: #fff; border-color: #FFA800; }
@@ -1750,7 +1992,11 @@ onActivated(show)
 .form-textarea { min-height: 200rpx; height: 200rpx; line-height: 1.5; padding: 18rpx 20rpx; }
 
 .sheet-actions { display: flex; gap: 18rpx; justify-content: space-between; padding-top: 12rpx; }
-.sheet-actions.fixed { padding: 20rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid #f2f2f2; flex-shrink: 0; }
+.sheet-actions.fixed { padding: 20rpx 28rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; border-top: 2rpx solid #f2f2f2; flex-shrink: 0; align-items: center; }
+/* 方案D（回调版）：主次靠宽度区分为主，两按钮等高；生成通知加宽带箭头，取消收窄 */
+.sheet-actions.fixed .btn-ghost { flex: 0 0 38%; height: 96rpx; }
+.sheet-actions.fixed .btn-primary { flex: 1; height: 96rpx; border-radius: 48rpx; font-size: 33rpx; gap: 6rpx; }
+.sheet-actions.fixed .btn-primary .btn-arrow { font-size: 40rpx; font-weight: 700; line-height: 1; margin-top: -4rpx; }
 .btn, .btn-ghost, .btn-primary { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; text-align: center; font-size: 32rpx; font-weight: 600; box-sizing: border-box; white-space: nowrap; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; }
 .btn-ghost { color: #777; background: #f5f5f5; }
 /* 主按钮统一深橙（与顶栏同色），按下更深 */
@@ -1764,7 +2010,7 @@ onActivated(show)
 .topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
 .topic-input-row { margin-top: 6rpx; }
 .topic-input { flex: 1; min-width: 0; }
-.topic-confirm-btn { flex-shrink: 0; height: 88rpx; padding: 0 28rpx; border: none; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 600; }
+.topic-confirm-btn { flex-shrink: 0; height: 80rpx; padding: 0 24rpx; border: none; border-radius: 14rpx; background: var(--c-primary-dark); color: #fff; font-size: 28rpx; font-weight: 600; }
 .topic-confirm-btn:active { background: var(--c-primary-strong); }
 .ct-option-row { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
 .ct-opt-num { font-size: 28rpx; color: #666; width: 40rpx; text-align: right; flex-shrink: 0; }
@@ -1790,12 +2036,24 @@ onActivated(show)
 .title-clear { position: absolute; right: 12rpx; top: 50%; transform: translateY(-50%); font-size: 44rpx; color: #999; line-height: 1; padding: 0 8rpx; cursor: pointer; }
 /* 文本框空时：叉淡化 */
 .title-clear.dim { opacity: 0.25; }
+/* 必填标记：灰色小字 + 红星（会议名称在文本框右上角绝对定位，会议议题在标题行右侧） */
+.req-mark { font-size: 22rpx; color: #9aa0a6; font-weight: 500; line-height: 1; white-space: nowrap; }
+.req-star { color: #E4572E; font-weight: 700; }
+.req-mark-row { display: flex; justify-content: flex-end; margin-bottom: 8rpx; padding-right: 6rpx; }
+/* 必填未填的红框提醒：点进对应输入框（focus）即消失 */
+.field-error { border-color: #E4572E !important; box-shadow: 0 0 0 2rpx rgba(228,87,46,0.16); }
 /* 推荐标题：半透明覆盖在文本框内，点文字自动填入 */
 .title-ghost { position: absolute; left: 20rpx; top: 22rpx; right: 78rpx; font-size: 40rpx; font-weight: 600; color: rgba(31, 32, 36, 0.32); line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-/* 语音输入按钮：文本框右下方 */
-.title-voice-row { display: flex; justify-content: flex-end; margin-top: 14rpx; }
-.voice-input-btn { display: inline-flex; align-items: center; gap: 6rpx; border: 2rpx solid #FFD79A; background: #FFF6E6; color: #C76A00; font-size: 28rpx; font-weight: 600; padding: 10rpx 24rpx; border-radius: 999rpx; line-height: 1.3; }
-.voice-input-btn.on { background: #FFA800; border-color: #FFA800; color: #fff; animation: vi-pulse 1.2s ease-in-out infinite; }
+/* 会议名称：输入框 + 右侧圆形麦克风按钮 同排 */
+.title-row { display: flex; align-items: center; gap: 16rpx; }
+.title-row .title-input-wrap { flex: 1; min-width: 0; }
+/* 语音输入：框右实心橙圆钮（纯图标，方案④），标题与议题共用 */
+.voice-mic-btn { flex-shrink: 0; width: 84rpx; height: 84rpx; border-radius: 50%; background: var(--c-primary-dark); border: none; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 4rpx 12rpx rgba(168,88,0,0.28); }
+.voice-mic-btn svg { width: 40rpx; height: 40rpx; display: block; }
+.voice-mic-btn:active { background: var(--c-primary-strong); }
+.voice-mic-btn.on { background: #E8620E; animation: vi-pulse 1.2s ease-in-out infinite; }
+/* 议题行的麦克风钮略小一号 */
+.topic-input-row .voice-mic-btn { width: 80rpx; height: 80rpx; }
 
 /* 会议地点下拉 */
 .loc-select { width: 100%; margin-top: 16rpx; appearance: none; -webkit-appearance: none; padding-right: 60rpx; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M5 7l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 20rpx center; }
@@ -1805,7 +2063,6 @@ onActivated(show)
 .loc-map-btn svg { width: 46rpx; height: 46rpx; display: block; }
 .loc-map-btn:active { background: #D6E4FC; }
 .loc-row .loc-input { flex: 1; min-width: 0; width: auto; }
-.loc-back { display: inline-block; margin-top: 14rpx; font-size: 28rpx; color: var(--c-primary-dark); }
 .loc-other { margin-top: 16rpx; }
 
 /* 日期/时间选择字段 */

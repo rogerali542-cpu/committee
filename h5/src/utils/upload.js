@@ -34,6 +34,34 @@ export function pickFile(accept = '*/*', capture = '') {
   })
 }
 
+// 弹出系统文件选择框（多选），返回选中的 File[]；用户取消返回 []。
+export function pickFiles(accept = '*/*') {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = accept
+    input.multiple = true
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+    let settled = false
+    const done = (v) => {
+      if (settled) return
+      settled = true
+      window.removeEventListener('focus', onFocus, true)
+      try { document.body.removeChild(input) } catch (e) {}
+      resolve(v)
+    }
+    const onFocus = () => {
+      setTimeout(() => { if (!settled && (!input.files || !input.files.length)) done([]) }, 600)
+    }
+    input.addEventListener('change', () => done(input.files ? Array.from(input.files) : []))
+    input.addEventListener('cancel', () => done([]))
+    window.addEventListener('focus', onFocus, true)
+    document.body.appendChild(input)
+    input.click()
+  })
+}
+
 // 上传单个文件到通用附件接口，返回 { url, fileName, fileType, fileSize }。
 export function uploadAttachment(file) {
   return core.uploadFile('/api/attachments/upload', file, 'file')
@@ -55,4 +83,4 @@ export function humanSize(bytes) {
   return (bytes / 1024 / 1024).toFixed(1) + 'MB'
 }
 
-export default { pickFile, uploadAttachment, pickAndUpload, humanSize }
+export default { pickFile, pickFiles, uploadAttachment, pickAndUpload, humanSize }

@@ -64,9 +64,20 @@ export function uploadFile(path, fileOrBlob, name = 'file', formData = {}, optio
   )
 }
 
+// 多文件上传：同一字段名 append 多个 File（后端用 MultipartFile[] 接）。
+export function uploadFiles(path, files, name = 'files', formData = {}, options = {}) {
+  const fd = new FormData()
+  ;(files || []).forEach((f) => fd.append(name, f, (f && f.name) || 'upload'))
+  Object.keys(formData || {}).forEach((k) => fd.append(k, formData[k]))
+  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: options.timeout || 30000 }).then(
+    unwrap,
+    (err) => { toast({ title: '上传失败', icon: 'none' }); return Promise.reject(err) }
+  )
+}
+
 export const get = (p, d) => request('GET', p, d)
 export const post = (p, d) => request('POST', p, d)
 export const put = (p, d) => request('PUT', p, d)
 export const del = (p, d) => request('DELETE', p, d)
 
-export default { request, realRequest, uploadFile, get, post, put, delete: del, BASE }
+export default { request, realRequest, uploadFile, uploadFiles, get, post, put, delete: del, BASE }

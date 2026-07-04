@@ -179,6 +179,11 @@ export default {
   committeeParseDocument: function (file) {
     return core.uploadFile('/api/committees/parse-document', file, 'file', {}, { timeout: 120000 });
   },
+  // 新建会议：一次上传多张照片/多个文件，后端逐个 OCR + 一次大模型统一识别（返回 MeetingPrefillVO，含 files[]）
+  // 多文件 OCR+抽取更慢，放开超时到 180s
+  committeeParseDocuments: function (files) {
+    return core.uploadFiles('/api/committees/parse-documents', files, 'files', {}, { timeout: 180000 });
+  },
   committeePublishScore: function () {
     return core.request('GET', '/api/committees/publish-score');
   },
