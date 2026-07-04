@@ -17,7 +17,7 @@
       <div class="score-line">
         <span class="score-ico">🏅</span>
         <span>业委会综合评分</span>
-        <span class="score-num">{{ score }}</span>
+        <span class="score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="score-unit">分</span>
       </div>
 
@@ -60,8 +60,10 @@
         </div>
 
         <div class="big-btn" @click="goCurrent(cur)">
-          <span class="big-btn-ico">{{ cur.ctaIcon }}</span>
-          <span class="big-btn-text">{{ cur.ctaLabel }}</span>
+          <div class="big-btn-inner">
+            <span class="big-btn-ico">{{ cur.ctaIcon }}</span>
+            <span class="big-btn-text">{{ cur.ctaLabel }}</span>
+          </div>
         </div>
 
         <div v-if="isChair" class="meet-del" @click="removeCurrent(cur)">删除会议</div>
@@ -77,8 +79,10 @@
 
     <!-- 去开会：在"更多功能"上方的拇指区；主任点了当场弹出"新建会议"，不再跳页 -->
     <div v-if="isChair" class="big-btn primary go-meeting" @click="openNewMeeting">
-      <span class="big-btn-ico">📝</span>
-      <span class="big-btn-text">去通知</span>
+      <div class="big-btn-inner">
+        <span class="big-btn-ico">📝</span>
+        <span class="big-btn-text">去通知</span>
+      </div>
     </div>
 
     <!-- 更多功能（扁平化：无图标、纯文本三格，贴近底部） -->
@@ -467,6 +471,15 @@ const STEP_BY_STAGE = { preparing: 1, ongoing: 2, ended: 3 }
 const STEP_LABELS = ['', '准备开会', '正式开会', '会后总结']
 // —— 首页指标（占位数字，计算规则待定后再接后端，届时替换这三个值即可）——
 const score = ref(92)        // 业委会综合评分
+// 评分按高低走渐变(亮→深，红绿灯阶梯，background-clip:text)：≥90祖母绿 / 80-89草绿 / 70-79黄绿 / 60-69琥珀 / <60朱红
+const scoreGradient = computed(() => {
+  const s = score.value
+  if (s >= 90) return 'linear-gradient(135deg, #17A673 0%, #0B6E43 100%)'
+  if (s >= 80) return 'linear-gradient(135deg, #5BB85C 0%, #2E7D32 100%)'
+  if (s >= 70) return 'linear-gradient(135deg, #9BC53D 0%, #5E8A1A 100%)'
+  if (s >= 60) return 'linear-gradient(135deg, #EDB731 0%, #B87908 100%)'
+  return 'linear-gradient(135deg, #E8553D 0%, #B02A1E 100%)'
+})
 const monthNeed = ref(1)     // 本期会议：当月需召开
 const overdueCount = ref(2)  // 逾期会议：往月该开未开
 const curMonth = new Date().getMonth() + 1
@@ -1678,11 +1691,12 @@ onActivated(show)
 .step-line { flex: 1; height: 6rpx; border-radius: 3rpx; margin-top: 28rpx; }
 .step-line.done { background: var(--c-primary); }
 .step-line.todo { background: #E3E5E9; }
-/* 大按钮（描边幽灵：白底 + 橙边橙字；"去通知"与卡片"去开会"同款同大小、字略放大） */
-.big-btn { display: flex; align-items: center; justify-content: center; height: 140rpx; border-radius: 22rpx; background: var(--c-bg-card); border: 3rpx solid var(--c-primary-dark); margin-top: 8rpx; }
-.big-btn:active { background: var(--c-primary-soft); }
-.big-btn-ico { font-size: 54rpx; margin-right: 14rpx; }
-.big-btn-text { font-size: 52rpx; font-weight: 700; color: var(--c-primary-dark); }
+/* 大按钮（方案④ 浅橙卡包实心钮：外层浅橙框 + 内层深橙实心白字）*/
+.big-btn { padding: 18rpx; border-radius: 30rpx; background: var(--c-primary-soft); margin-top: 8rpx; box-sizing: border-box; box-shadow: 0 12rpx 84rpx 12rpx rgba(232, 140, 20, 0.26); }
+.big-btn-inner { display: flex; align-items: center; justify-content: center; height: 116rpx; border-radius: 18rpx; background: var(--c-primary); }
+.big-btn:active .big-btn-inner { background: var(--c-primary-strong); }
+.big-btn-ico { font-size: 50rpx; margin-right: 14rpx; }
+.big-btn-text { font-size: 50rpx; font-weight: 700; color: #fff; }
 /* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
 .go-meeting { margin: auto auto 16rpx; width: 84%; }
 /* 卡片内"去开会"：略收窄并居中 */
@@ -1697,16 +1711,15 @@ onActivated(show)
 .idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 /* 更多功能（扁平化：无图标、纯文本三格分隔；margin-top:auto 贴近底部） */
 .more { margin: auto 28rpx 0; padding-top: 40rpx; }
-.more-title { font-size: 28rpx; color: var(--c-text-weak); padding-left: 6rpx; }
-.more-grid { display: flex; margin-top: 14rpx; background: var(--c-bg-card); border-radius: 18rpx; overflow: hidden; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
-.more-item { flex: 1; text-align: center; padding: 30rpx 0; font-size: 30rpx; font-weight: 500; color: var(--c-text-mid); }
-.more-item + .more-item { border-left: 1rpx solid #EDEFF1; }
+.more-title { font-size: 36rpx; font-weight: 700; color: var(--c-text-strong); padding-left: 6rpx; }
+.more-grid { display: flex; gap: 20rpx; margin-top: 14rpx; }
+.more-item { flex: 1; text-align: center; padding: 30rpx 0; font-size: 30rpx; font-weight: 500; color: var(--c-text-mid); background: var(--c-bg-card); border-radius: 16rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
 .more-item:active { background: #F7F8FA; }
 
 /* 综合评分小字（占位分数） */
 .score-line { display: flex; align-items: center; gap: 10rpx; margin: 24rpx 28rpx 0; font-size: 32rpx; color: var(--c-text-mid); }
 .score-ico { font-size: 38rpx; }
-.score-num { font-size: 46rpx; font-weight: 700; color: var(--c-primary-dark); margin-left: 6rpx; }
+.score-num { font-size: 46rpx; font-weight: 800; margin-left: 6rpx; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .score-unit { font-size: 30rpx; color: var(--c-text-weak); }
 /* 目标卡片（放大一些） */
 .target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24rpx; padding: 24rpx 24rpx 0; }
