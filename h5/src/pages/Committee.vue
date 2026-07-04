@@ -782,6 +782,8 @@ async function openNewMeeting() {
   createForm.description = ''
   createForm.topics = []
   createForm.juweiWitness = false
+  // 快照默认占位值：日期/时间/地点等于这些默认时视为"未填"，不参与冲突判定，可被识别值直接填入
+  createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
   topicInput.value = ''
   suggestedTitle.value = ''
   pendingMaterials.value = []
@@ -875,6 +877,13 @@ function scanMaterialPrefill() {
 
 // —— 拍照/上传文档 → 后端 OCR + 大模型识别 → 回填表单（OCR/AI 未开或失败则提示并回退手填） ——
 const docPrefilled = ref(false)   // 已成功预填过一次（保留状态位，供后续提示用）
+const createInitialDefaults = ref({})  // 表单打开时的默认占位值快照（日期/时间/地点）
+// 字段是否为"用户真正填过"（手动改或识别填过）——等于初始默认占位则视为未填
+function isFieldUserSet(key) {
+  const v = (createForm[key] == null ? '' : String(createForm[key])).trim()
+  const def = (createInitialDefaults.value && createInitialDefaults.value[key]) || ''
+  return !!v && v !== def
+}
 
 // ——— 待挂载的会议材料（供委员传阅：如上级文件精神、报价单等）———
 // 「去通知」建会成功后再逐份挂到会议（届时触发 OCR）。来源：拍照/上传 AI 判类为 material 的文件。
@@ -1223,23 +1232,24 @@ function noticeConflicts(res) {
     const b = (nv == null ? '' : String(nv)).trim()
     if (a && b && a !== b) out.push({ label, cur: a, nv: b })
   }
-  cmp('会议名称', createForm.title, res.title)
-  cmp('日期', createForm.meetingDate, res.meetingDate)
-  cmp('时间', createForm.meetingTime, res.meetingTime)
-  cmp('地点', createForm.location, res.location)
+  // 仅"用户真正填过"的字段才参与冲突比对（等于默认占位值的视为未填，不冲突）
+  cmp('会议名称', isFieldUserSet('title') ? createForm.title : '', res.title)
+  cmp('日期', isFieldUserSet('meetingDate') ? createForm.meetingDate : '', res.meetingDate)
+  cmp('时间', isFieldUserSet('meetingTime') ? createForm.meetingTime : '', res.meetingTime)
+  cmp('地点', isFieldUserSet('location') ? createForm.location : '', res.location)
   const curT = (createForm.topics || []).map((t) => t.title).join('｜')
   const newT = (Array.isArray(res.topics) ? res.topics : []).map((t) => String(t)).join('｜')
   if (curT && newT && curT !== newT) out.push({ label: '议题', cur: curT, nv: newT })
   return out
 }
 
-// 应用通知字段：空字段总是填；已填且冲突的字段仅 overwrite 时才覆盖
+// 应用通知字段：未填(空或仍是默认占位)的总是填；用户已填且冲突的字段仅 overwrite 时才覆盖
 function applyNoticeFields(res, overwrite) {
   let changed = false
-  if (res.title && (!createForm.title || overwrite)) { createForm.title = res.title; changed = true }
-  if (res.meetingDate && (!createForm.meetingDate || overwrite)) { createForm.meetingDate = res.meetingDate; changed = true }
-  if (res.meetingTime && (!createForm.meetingTime || overwrite)) { createForm.meetingTime = res.meetingTime; changed = true }
-  if (res.location && (!createForm.location || overwrite)) { createForm.location = res.location; syncLocationPreset(res.location); changed = true }
+  if (res.title && (!isFieldUserSet('title') || overwrite)) { createForm.title = res.title; changed = true }
+  if (res.meetingDate && (!isFieldUserSet('meetingDate') || overwrite)) { createForm.meetingDate = res.meetingDate; changed = true }
+  if (res.meetingTime && (!isFieldUserSet('meetingTime') || overwrite)) { createForm.meetingTime = res.meetingTime; changed = true }
+  if (res.location && (!isFieldUserSet('location') || overwrite)) { createForm.location = res.location; syncLocationPreset(res.location); changed = true }
   if (Array.isArray(res.topics) && res.topics.length && (!(createForm.topics && createForm.topics.length) || overwrite)) {
     createForm.topics = res.topics.map((t) => ({ title: String(t), type: 'decision', decisionType: 'simple', options: [] }))
     changed = true
