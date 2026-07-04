@@ -61,7 +61,7 @@
 
         <div class="big-btn" @click="goCurrent(cur)">
           <div class="big-btn-inner">
-            <span class="big-btn-ico">{{ cur.ctaIcon }}</span>
+            <span v-if="cur.ctaIcon" class="big-btn-ico">{{ cur.ctaIcon }}</span>
             <span class="big-btn-text">{{ cur.ctaLabel }}</span>
           </div>
         </div>
@@ -685,9 +685,9 @@ function decorateCurrent(m, chair) {
     ctaIcon = chair ? '🎙️' : '👀'
     tag = '正在开的会'
   } else {
-    // ended：纪要已生成 → 查看会议；未生成 → 整理会议记录
+    // ended：纪要已生成 → 查看会议(无图标)；未生成 → 整理会议记录
     ctaLabel = m.minutesGenerated ? '查看会议' : '整理会议记录'
-    ctaIcon = m.minutesGenerated ? '👀' : '📝'
+    ctaIcon = m.minutesGenerated ? '' : '📝'
     tag = '会后总结'
   }
   return {
