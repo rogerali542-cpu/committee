@@ -91,7 +91,7 @@
       <div class="more-grid">
         <div class="more-item" @click="goReception">接待记录</div>
         <div class="more-item" @click="goLearning">学习培训</div>
-        <div v-if="canViewInternal" class="more-item" @click="goLibrary">历史会议</div>
+        <div v-if="canViewInternal" class="more-item" @click="goLibrary">历史记录</div>
       </div>
     </div>
 
@@ -107,7 +107,7 @@
           <!-- 会议标题（置顶） -->
           <div class="create-section title-card">
             <div class="form-group">
-              <div class="req-mark-row"><span class="req-mark">必填 <span class="req-star">*</span></span></div>
+              <div class="section-title-row"><span class="section-title">会议名称 <span class="req-star">*</span></span></div>
               <div class="title-row">
                 <div class="title-input-wrap">
                   <textarea ref="titleEl" class="form-input large title-ta" :class="{ 'field-error': fieldErrors.title }" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @focus="clearFieldError('title')" @keydown.enter.prevent></textarea>
@@ -152,8 +152,7 @@
           <!-- 会议议程项（弹窗逐条添加） -->
           <div class="create-section">
             <div class="section-title-row">
-              <span class="section-title">会议议题</span>
-              <span class="req-mark">必填 <span class="req-star">*</span></span>
+              <span class="section-title">会议议题 <span class="req-star">*</span></span>
             </div>
             <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line">
               <span class="topic-line-text"><b>{{ idx + 1 }}.</b> {{ topic.title }}</span>
@@ -2050,9 +2049,7 @@ onActivated(show)
 /* 文本框空时：叉淡化 */
 .title-clear.dim { opacity: 0.25; }
 /* 必填标记：灰色小字 + 红星（会议名称在文本框右上角绝对定位，会议议题在标题行右侧） */
-.req-mark { font-size: 22rpx; color: #9aa0a6; font-weight: 500; line-height: 1; white-space: nowrap; }
 .req-star { color: #E4572E; font-weight: 700; }
-.req-mark-row { display: flex; justify-content: flex-end; margin-bottom: 8rpx; padding-right: 6rpx; }
 /* 必填未填的红框提醒：点进对应输入框（focus）即消失 */
 .field-error { border-color: #E4572E !important; box-shadow: 0 0 0 2rpx rgba(228,87,46,0.16); }
 /* 推荐标题：半透明覆盖在文本框内，点文字自动填入 */

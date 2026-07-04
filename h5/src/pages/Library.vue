@@ -1,6 +1,6 @@
 <template>
   <div class="pub-page lib-page">
-    <PublishNav title="历史会议" />
+    <PublishNav title="历史记录" />
 
     <div class="pub-wrap">
       <!-- 顶部分类切换（蓝色） -->
@@ -111,9 +111,19 @@ onActivated(enter)
 </script>
 
 <style scoped>
-.lib-page { padding-bottom: 40rpx; }
+/* 本页统一为深橙风格：仅在 .lib-page 作用域内把共享的蓝色 --pub-* 覆盖成橙，
+   并给 PublishNav 传橙色渐变(--pub-nav-grad)。不影响其它 publish 页（它们不设这些变量→维持蓝）。 */
+.lib-page {
+  padding-bottom: 40rpx;
+  --pub-blue: #A85800;
+  --pub-blue-2: #C76A00;
+  --pub-blue-deep: #8F4A06;
+  --pub-blue-soft: #FFF3E0;
+  --pub-blue-line: #F0E1CE;
+  --pub-nav-grad: linear-gradient(160deg, #C76A00 0%, #A85800 100%);
+}
 
-/* 蓝色分类切换 */
+/* 分类切换（深橙） */
 .lib-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
 .lib-tab {
   flex: 1; text-align: center; font-size: 30rpx; color: var(--pub-sub);
