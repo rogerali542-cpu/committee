@@ -290,15 +290,25 @@
             <div class="sr-row-top"><span class="sr-pill material">会议材料</span><span class="sr-row-note">识别到 {{ scanResultCard.materialCount }} 份</span></div>
           </div>
 
+          <!-- 信息冲突：材料仍会添加，仅询问是否覆盖冲突字段 -->
+          <div v-if="scanResultCard.conflicts && scanResultCard.conflicts.length" class="sr-card sr-conflict">
+            <div class="sr-row-top"><span class="sr-pill warn">信息冲突</span><span class="sr-row-note">与已填写的不一致，是否覆盖？</span></div>
+            <div v-for="(cf, i) in scanResultCard.conflicts" :key="i" class="sr-conf-line">
+              <span class="sr-conf-label">{{ cf.label }}</span>
+              <span class="sr-conf-old">{{ cf.cur }}</span>
+              <span class="sr-conf-arrow">→</span>
+              <span class="sr-conf-new">{{ cf.nv }}</span>
+            </div>
+          </div>
+
           <div v-if="scanResultCard.mode === 'material'" class="sr-tip">会议信息请手动填写</div>
-          <div v-if="scanResultCard.dirty" class="sr-tip warn">将覆盖当前已填写的信息</div>
         </div>
 
         <div class="sr-meta">耗时 {{ scanResultCard.seconds }}s<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
 
         <div class="sr-actions">
-          <button class="sr-btn ghost" @click="closeScanResult">{{ scanResultCard.dirty ? '保留原信息' : '取消' }}</button>
-          <button class="sr-btn primary" @click="confirmScanResult">{{ scanResultCard.mode === 'material' ? '加入材料' : (scanResultCard.dirty ? '覆盖填写' : '填入信息') }}</button>
+          <button class="sr-btn ghost" @click="scanResultCard.needOverwriteAsk ? confirmScanResult(false) : closeScanResult()">{{ scanResultCard.ghostLabel }}</button>
+          <button class="sr-btn primary" @click="confirmScanResult(scanResultCard.needOverwriteAsk)">{{ scanResultCard.primaryLabel }}</button>
         </div>
       </div>
     </div>
@@ -1135,51 +1145,93 @@ function mockUsePhoto() {
 // AI 识别完成结果卡（自定义精美弹层，替代通用 showModal）
 const scanResultCard = ref(null)
 function closeScanResult() { scanResultCard.value = null }
-function confirmScanResult() {
+function confirmScanResult(overwrite) {
   const c = scanResultCard.value
   if (!c) return
-  if (c.mode === 'notice') applyPrefill(c.res, { skipOverwriteConfirm: true })
+  // 通知字段：空字段总是填入；有冲突的字段仅当用户选择「覆盖」时才改写。材料一律添加。
+  if (c.mode === 'notice') applyNoticeFields(c.res, !!overwrite)
   if (c.materials && c.materials.length) {
     c.materials.forEach(addScannedMaterialFromInfo)
-    if (c.mode === 'material') toast({ title: '已加入 ' + c.materials.length + ' 份会议材料', icon: 'success' })
-    else toast({ title: '已加入 ' + c.materials.length + ' 份会议材料', icon: 'none' })
+    toast({ title: '已加入 ' + c.materials.length + ' 份会议材料', icon: 'none' })
+  } else if (c.mode === 'notice') {
+    toast({ title: '已自动填写，请核对', icon: 'none' })
   }
   scanResultCard.value = null
+}
+
+// 会议通知字段：与当前表单比对，返回冲突项（两边都有值且不同）
+function noticeConflicts(res) {
+  const out = []
+  const cmp = (label, cur, nv) => {
+    const a = (cur == null ? '' : String(cur)).trim()
+    const b = (nv == null ? '' : String(nv)).trim()
+    if (a && b && a !== b) out.push({ label, cur: a, nv: b })
+  }
+  cmp('会议名称', createForm.title, res.title)
+  cmp('日期', createForm.meetingDate, res.meetingDate)
+  cmp('时间', createForm.meetingTime, res.meetingTime)
+  cmp('地点', createForm.location, res.location)
+  const curT = (createForm.topics || []).map((t) => t.title).join('｜')
+  const newT = (Array.isArray(res.topics) ? res.topics : []).map((t) => String(t)).join('｜')
+  if (curT && newT && curT !== newT) out.push({ label: '议题', cur: curT, nv: newT })
+  return out
+}
+
+// 应用通知字段：空字段总是填；已填且冲突的字段仅 overwrite 时才覆盖
+function applyNoticeFields(res, overwrite) {
+  let changed = false
+  if (res.title && (!createForm.title || overwrite)) { createForm.title = res.title; changed = true }
+  if (res.meetingDate && (!createForm.meetingDate || overwrite)) { createForm.meetingDate = res.meetingDate; changed = true }
+  if (res.meetingTime && (!createForm.meetingTime || overwrite)) { createForm.meetingTime = res.meetingTime; changed = true }
+  if (res.location && (!createForm.location || overwrite)) { createForm.location = res.location; syncLocationPreset(res.location); changed = true }
+  if (Array.isArray(res.topics) && res.topics.length && (!(createForm.topics && createForm.topics.length) || overwrite)) {
+    createForm.topics = res.topics.map((t) => ({ title: String(t), type: 'decision', decisionType: 'simple', options: [] }))
+    changed = true
+  }
+  if (changed) docPrefilled.value = true
+  return changed
 }
 
 // 多文件识别结果 → 组装结果卡：识别为通知/材料、已识别/待补填字段、耗时+token
 function handleMultiScanResult(res) {
   if (!res) { toast({ title: '识别未完成，请重试或手动填写', icon: 'none' }); return }
   const filesArr = Array.isArray(res.files) ? res.files : []
-  const materialFiles = filesArr.filter((f) => f.category === 'material' && f.fileUrl)
   const hasPrefill = res.available && !!(res.title || res.meetingDate || res.meetingTime || res.location || (Array.isArray(res.topics) && res.topics.length))
+  const materials = hasPrefill
+    ? filesArr.filter((f) => f.category === 'material' && f.fileUrl)
+    : filesArr.filter((f) => f.fileUrl)
   const seconds = scanSec.value || 0
   const tokens = res.tokens || 0
 
-  // 全部是材料（没抽到通知信息）
+  // 全部是材料（没抽到通知信息）：默认添加
   if (!hasPrefill) {
-    const attachable = filesArr.filter((f) => f.fileUrl)
-    if (!attachable.length) { toast({ title: '请手动填写会议信息', icon: 'none' }); return }
+    if (!materials.length) { toast({ title: '请手动填写会议信息', icon: 'none' }); return }
     scanResultCard.value = {
-      mode: 'material', materialCount: attachable.length, noticeN: 0,
-      filled: [], missing: [], seconds, tokens, dirty: false, res, materials: attachable
+      mode: 'material', materialCount: materials.length,
+      missingRequired: [], conflictNote: '', conflicts: [],
+      needOverwriteAsk: false, primaryLabel: '加入材料', ghostLabel: '取消',
+      seconds, tokens, res, materials
     }
     return
   }
 
-  // 识别为会议通知：只在缺必填(标题/议题)或多份通知时间地点冲突时红字提示
+  // 识别为会议通知：冲突 = 新识别值与「已填写」的不同 → 才问覆盖；否则空字段直填、材料照加
+  const conflicts = noticeConflicts(res)
+  const hasConf = conflicts.length > 0
   const REQUIRED = [
     { label: '标题', has: !!(res.title && res.title.trim()) },
     { label: '议题', has: !!(Array.isArray(res.topics) && res.topics.length) }
   ]
   scanResultCard.value = {
     mode: 'notice',
-    materialCount: materialFiles.length,
+    materialCount: materials.length,
     missingRequired: REQUIRED.filter((f) => !f.has).map((f) => f.label),
     conflictNote: (res.conflictNote || '').trim(),
-    seconds, tokens,
-    dirty: formHasUserContent(),
-    res, materials: materialFiles
+    conflicts,
+    needOverwriteAsk: hasConf,
+    primaryLabel: hasConf ? '覆盖并添加' : (materials.length ? '填入并添加' : '填入信息'),
+    ghostLabel: hasConf ? '保留原信息' : '取消',
+    seconds, tokens, res, materials
   }
 }
 // 把某个已落库的文件加入待挂载材料（去重：同 url 不重复加）
@@ -1208,44 +1260,6 @@ function stopDocProgress() {
   clearInterval(docProgTimer)
   docProgTimer = null
 }
-// 表单是否已有“实质内容”：日期/时间/地点开窗时就带默认值不算数，
-// 只认 识别预填过(docPrefilled) / 手填了标题 / 加了议题 —— 用来决定再次识别时是否要问“覆盖”
-function formHasUserContent() {
-  return docPrefilled.value
-    || !!(createForm.title && createForm.title.trim())
-    || (Array.isArray(createForm.topics) && createForm.topics.length > 0)
-}
-async function applyPrefill(data, opts = {}) {
-  if (!data) { toast({ title: '未识别到内容，请手动填写', icon: 'none' }); return }
-  const hasFields = !!(data.title || data.meetingDate || data.meetingTime || data.location || (Array.isArray(data.topics) && data.topics.length))
-  if (data.available && hasFields) {
-    // 已有会议信息且外层没先确认过 → 先问是否覆盖（“改为自动填表”等入口也会走到这里）
-    if (!opts.skipOverwriteConfirm && formHasUserContent()) {
-      const c = await showModal({
-        title: '覆盖已填写的信息？',
-        content: '当前已填写会议信息。要用这次识别的内容覆盖吗？',
-        confirmText: '覆盖填写',
-        cancelText: '保留原信息',
-        showClose: true
-      })
-      if (!c.confirm) return // 保留原信息 / × ：不覆盖
-    }
-    if (data.title) createForm.title = data.title
-    if (data.meetingDate) createForm.meetingDate = data.meetingDate
-    if (data.meetingTime) createForm.meetingTime = data.meetingTime
-    if (data.location) { createForm.location = data.location; syncLocationPreset(data.location) }
-    if (Array.isArray(data.topics) && data.topics.length) {
-      createForm.topics = data.topics.map((t) => ({ title: String(t), type: 'decision', decisionType: 'simple', options: [] }))
-    }
-    docPrefilled.value = true
-    toast({ title: '已自动填写，请核对', icon: 'none' })
-  } else if (data.available) {
-    toast({ title: '未识别出会议信息，请手动填写', icon: 'none' })
-  } else {
-    toast({ title: data.message || '未能识别，请手动填写', icon: 'none' })
-  }
-}
-
 // 预填/历史地点回填时同步下拉选中态：命中常用项→选它；非预设值→切"其他"并在手填框回显
 function syncLocationPreset(val) {
   if (val && commonLocations.indexOf(val) >= 0) {
@@ -1918,7 +1932,15 @@ onActivated(show)
 .sr-pill { font-size: 24rpx; font-weight: 700; color: #fff; padding: 6rpx 18rpx; border-radius: 999rpx; flex-shrink: 0; }
 .sr-pill.notice { background: var(--c-primary-dark); }
 .sr-pill.material { background: #2E86C1; }
+.sr-pill.warn { background: #C0392B; }
 .sr-row-note { font-size: 30rpx; color: #4A5560; font-weight: 600; }
+/* 信息冲突卡：偏红底 + 逐条「原值 → 新值」 */
+.sr-conflict { background: #FCEFEC; border-color: #F3D2CB; }
+.sr-conf-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx; margin-top: 12rpx; font-size: 27rpx; line-height: 1.4; }
+.sr-conf-label { color: #8A5A52; font-weight: 700; margin-right: 4rpx; }
+.sr-conf-old { color: #9aa0a6; text-decoration: line-through; }
+.sr-conf-arrow { color: #C0392B; }
+.sr-conf-new { color: #C0392B; font-weight: 700; }
 /* 红字提示：仅在缺必填或多份通知时间地点冲突时出现 */
 .sr-alert { margin-top: 12rpx; font-size: 27rpx; line-height: 1.5; color: #C0392B; font-weight: 600; }
 .sr-tip { font-size: 28rpx; color: #6A7480; text-align: center; padding: 4rpx; }
