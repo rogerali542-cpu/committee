@@ -81,7 +81,7 @@
     <div v-if="isChair" class="big-btn primary go-meeting" @click="openNewMeeting">
       <div class="big-btn-inner">
         <span class="big-btn-ico">📝</span>
-        <span class="big-btn-text">去通知</span>
+        <span class="big-btn-text">{{ hasOngoingMeeting ? '新会议' : '去通知' }}</span>
       </div>
     </div>
 
@@ -690,10 +690,12 @@ function decorateCurrent(m, chair) {
   }
   return {
     id: m.id, title: m.title, meetingDate: m.meetingDate, meetingTime: (m.meetingTime || '').slice(0, 5),
-    location: m.location, step: step, steps: steps,
+    location: m.location, step: step, steps: steps, stage: m.stage,
     ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag
   }
 }
+// 有进行中会议时，首页「去通知」按钮改为「新会议」（此时再发通知即另起一场）
+const hasOngoingMeeting = computed(() => currents.value.some((c) => c.stage === 'ongoing'))
 
 async function goCurrent(cur) {
   const chair = perm.isChair() || perm.isRecorder()
