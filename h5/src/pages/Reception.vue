@@ -2,31 +2,23 @@
   <div class="page" style="overflow-y:auto">
     <PageNav title="接待记录" />
     <div class="page-head">
-      <div>
-        <span class="page-sub">登记诉求、处理结果和反馈闭环</span>
-      </div>
+      <div></div>
       <button v-if="canManage" class="head-btn" @click="openCreate">登记</button>
     </div>
 
-    <!-- 接待制度公示 -->
-    <div class="recep-system" :class="sys.published ? '' : 'unpub'">
-      <div class="rs-head">
+    <!-- 接待制度公示：折叠成小文字串，点击展开查看 -->
+    <div class="recep-system">
+      <div class="rs-strip" @click="sysOpen = !sysOpen">
         <span class="rs-title">📍 接待制度公示</span>
-        <span v-if="canManage" class="rs-edit" @click="openSysEditor">编辑</span>
+        <span class="rs-strip-hint">{{ sysOpen ? '收起 ▴' : '点击查看 ›' }}</span>
       </div>
-      <div class="rs-rows">
-        <div class="rs-row"><span class="rs-key">定时</span><span class="rs-val">{{ sys.timeDesc }}</span></div>
-        <div class="rs-row"><span class="rs-key">定点</span><span class="rs-val">{{ sys.place }}</span></div>
-        <div class="rs-row"><span class="rs-key">定人</span><span class="rs-val">{{ sys.person }}</span></div>
-      </div>
-      <div class="rs-pub-row">
-        <span class="rs-pub-label">向全体业主公开接待信息</span>
-        <template v-if="sys.published">
-          <span class="rs-pub-ok">✓ 已公示</span>
-          <span v-if="canManage" class="rs-edit unpub" @click="togglePublish" style="color:#666;">取消公示</span>
-        </template>
-        <span v-if="!sys.published && canManage" class="rs-publish-btn" @click="togglePublish">◯ 标记已公示</span>
-        <span v-if="!sys.published && !canManage" class="rs-pub-ok" style="color:#E67E22;">未公示</span>
+      <div v-if="sysOpen" class="rs-detail">
+        <div class="rs-rows">
+          <div class="rs-row"><span class="rs-key">定时</span><span class="rs-val">{{ sys.timeDesc }}</span></div>
+          <div class="rs-row"><span class="rs-key">定点</span><span class="rs-val">{{ sys.place }}</span></div>
+          <div class="rs-row"><span class="rs-key">定人</span><span class="rs-val">{{ sys.person }}</span></div>
+        </div>
+        <span v-if="canManage" class="rs-edit" @click.stop="openSysEditor">编辑</span>
       </div>
     </div>
 
@@ -59,7 +51,7 @@
         <div class="recep-card" v-for="item in records" :key="item.id">
           <div class="rc-header">
             <span class="rc-visitor">{{ item.visitorName }}{{ item.room ? ' · ' + item.room : '' }}</span>
-            <span class="stage-pill" :class="item.done ? 'ended' : 'preparing'">{{ item.done ? '已办结' : '待跟进' }}</span>
+            <span v-if="item.done" class="stage-pill ended">已办结</span>
           </div>
           <!-- 下一步指引：补齐闭环断点 -->
           <div v-if="item.nextAction" class="rc-next" :class="item.nextAction.action ? '' : 'info'">
@@ -219,6 +211,7 @@ import { toast, showModal } from '@/utils/ui'
 import { pickAndUpload } from '@/utils/upload'
 
 const sys = ref({ published: true, timeDesc: '', place: '', person: '' })
+const sysOpen = ref(false)   // 接待制度公示：默认折叠，点击小文字串展开
 const stats = ref({ monthCount: 0, monthLabel: '', pending: 0, yearCount: 0, done: 0, total: 0 })
 const records = ref([])
 const filter = ref('all')
@@ -355,13 +348,6 @@ async function openSysEditor() {
   }
 }
 
-async function togglePublish() {
-  try {
-    await api.receptionUpdateSystem({ published: !sys.value.published })
-    loadAll()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
 function openResolutionEditor(id) {
   const record = records.value.find(function (r) { return r.id === id })
   resolutionVisible.value = true
@@ -481,19 +467,19 @@ onActivated(show)
 .head-btn { background: var(--c-primary-dark); color: #fff; border-radius: 30rpx; font-size: 28rpx; font-weight: 600; padding: 0 28rpx; line-height: 2.6; border: none; }
 
 /* 接待制度 */
-.recep-system { margin: 24rpx 24rpx 0; background: #fff; border-radius: 24rpx; padding: 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); border-left: 8rpx solid #FFA800; }
-.recep-system.unpub { border-left-color: #E67E22; }
-.rs-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.recep-system { margin: 24rpx 24rpx 0; background: #fff; border-radius: 24rpx; padding: 22rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); border-left: 8rpx solid var(--c-primary-dark); }
+/* 折叠态：一行可点击的小文字串 */
+.rs-strip { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.rs-strip-hint { font-size: 28rpx; color: var(--c-primary-dark); font-weight: 600; }
 .rs-title { font-size: 30rpx; font-weight: 700; color: #1f2329; }
-.rs-edit { font-size: 28rpx; color: #C77800; font-weight: 600; }
-.rs-rows { display: flex; flex-direction: column; gap: 12rpx; margin-bottom: 16rpx; }
+.rs-edit { display: inline-block; font-size: 28rpx; color: var(--c-primary-dark); font-weight: 600; }
+/* 展开态：点击后显示的定时/定点/定人 */
+.rs-detail { margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #e8e8e8; }
+.rs-rows { display: flex; flex-direction: column; gap: 12rpx; }
 .rs-row { display: flex; align-items: center; gap: 14rpx; }
 .rs-key { font-size: 28rpx; font-weight: 600; color: #666; width: 64rpx; flex-shrink: 0; }
 .rs-val { font-size: 30rpx; color: #33373d; }
-.rs-pub-row { display: flex; align-items: center; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx dashed #e8e8e8; }
-.rs-pub-label { font-size: 28rpx; color: #666; flex: 1; }
-.rs-pub-ok { font-size: 28rpx; color: #27AE60; font-weight: 600; }
-.rs-publish-btn { font-size: 28rpx; padding: 8rpx 22rpx; border-radius: 24rpx; background: #FFF3DC; color: #C77800; font-weight: 600; }
+.rs-detail .rs-edit { margin-top: 16rpx; }
 
 /* 统计 */
 .stats-row { display: flex; gap: 16rpx; padding: 24rpx; }
@@ -505,7 +491,7 @@ onActivated(show)
 /* 筛选 */
 .filter-tabs { display: flex; gap: 0; margin: 0 24rpx 20rpx; background: #fff; border-radius: 18rpx; padding: 8rpx; }
 .f-tab { flex: 1; padding: 16rpx 8rpx; text-align: center; font-size: 28rpx; color: #666; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 8rpx; }
-.f-tab.active { background: #FFA800; color: #fff; font-weight: 700; }
+.f-tab.active { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
 .f-count { font-size: 28rpx; opacity: 0.85; }
 
 /* 记录卡片 */
