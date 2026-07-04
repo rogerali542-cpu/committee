@@ -45,6 +45,13 @@ public class MeetingPrefillVO {
      */
     private List<FileInfo> files = new ArrayList<>();
 
+    /**
+     * 识别到的每一份"不同"的会议通知（同一通知的多页已合并为一份）。
+     * 仅当识别出「多份内容不同的通知」时长度>1，供前端列出让用户选择正确的一份；
+     * 单份或没有通知时为空列表（前端用顶层 title/meetingDate/... 即可）。
+     */
+    private List<NoticeOption> notices = new ArrayList<>();
+
     /** 单个上传文件的落库信息 + AI 判类。 */
     @Data
     public static class FileInfo {
@@ -54,6 +61,16 @@ public class MeetingPrefillVO {
         private long fileSize;
         /** AI 判类：notice=会议通知 / material=会议材料 / ""=未判出。 */
         private String category = "";
+    }
+
+    /** 一份会议通知抽取出的字段（用于"多份不同通知"时供用户择一填入）。 */
+    @Data
+    public static class NoticeOption {
+        private String title = "";
+        private String meetingDate = "";
+        private String meetingTime = "";
+        private String location = "";
+        private List<String> topics = new ArrayList<>();
     }
 
     public static MeetingPrefillVO unavailable(String message) {

@@ -280,6 +280,19 @@
         <div class="sr-head">已完成 AI 智能识别</div>
 
         <div class="sr-body">
+          <!-- 多份不同的会议通知：列出每份，让用户选正确的一份填入（或手动填写） -->
+          <div v-if="scanResultCard.mode === 'multi-notice'" class="sr-card sr-multi">
+            <div class="sr-row-top"><span class="sr-pill warn">多份通知</span><span class="sr-row-note">识别到多个不同的会议通知，请选择正确的一份</span></div>
+            <div v-for="(opt, i) in scanResultCard.noticeOptions" :key="i" class="sr-notice-opt" :class="{ sel: scanResultCard.selectedNotice === i }" @click="scanResultCard.selectedNotice = i">
+              <span class="sr-radio" :class="{ on: scanResultCard.selectedNotice === i }"></span>
+              <div class="sr-notice-body">
+                <div class="sr-notice-title">{{ opt.title || '（未填会议名称）' }}</div>
+                <div class="sr-notice-meta">{{ [opt.meetingDate, opt.meetingTime, opt.location].filter(Boolean).join(' · ') || '时间地点未填' }}</div>
+                <div v-if="opt.topics && opt.topics.length" class="sr-notice-topics">议题：{{ opt.topics.join('、') }}</div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="scanResultCard.mode === 'notice'" class="sr-card">
             <div class="sr-row-top"><span class="sr-pill notice">会议通知</span><span class="sr-row-note">识别到通知内容</span></div>
             <div v-if="scanResultCard.conflictNote" class="sr-alert">{{ scanResultCard.conflictNote }}</div>
@@ -307,7 +320,7 @@
         <div class="sr-meta">耗时 {{ scanResultCard.seconds }}s<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
 
         <div class="sr-actions">
-          <button class="sr-btn ghost" @click="scanResultCard.needOverwriteAsk ? confirmScanResult(false) : closeScanResult()">{{ scanResultCard.ghostLabel }}</button>
+          <button class="sr-btn ghost" @click="onScanGhost()">{{ scanResultCard.ghostLabel }}</button>
           <button class="sr-btn primary" @click="confirmScanResult(scanResultCard.needOverwriteAsk)">{{ scanResultCard.primaryLabel }}</button>
         </div>
       </div>
@@ -1148,15 +1161,54 @@ function closeScanResult() { scanResultCard.value = null }
 function confirmScanResult(overwrite) {
   const c = scanResultCard.value
   if (!c) return
-  // 通知字段：空字段总是填入；有冲突的字段仅当用户选择「覆盖」时才改写。材料一律添加。
-  if (c.mode === 'notice') applyNoticeFields(c.res, !!overwrite)
+  let filled = false
+  if (c.mode === 'multi-notice') {
+    // 用户从多份通知中选定一份 → 覆盖填入该份
+    const src = (c.selectedNotice != null && c.selectedNotice >= 0) ? c.noticeOptions[c.selectedNotice] : null
+    if (src) { applyNoticeFields(src, true); filled = true }
+  } else if (c.mode === 'notice') {
+    // 空字段总是填入；有冲突的字段仅当用户选择「覆盖」时才改写
+    applyNoticeFields(c.res, !!overwrite); filled = true
+  }
   if (c.materials && c.materials.length) {
     c.materials.forEach(addScannedMaterialFromInfo)
     toast({ title: '已加入 ' + c.materials.length + ' 份会议材料', icon: 'none' })
-  } else if (c.mode === 'notice') {
+  } else if (filled) {
     toast({ title: '已自动填写，请核对', icon: 'none' })
   }
   scanResultCard.value = null
+}
+// 多份通知的「手动填写」：不填通知字段，但仍把材料加上
+function manualFillScanResult() {
+  const c = scanResultCard.value
+  if (!c) return
+  if (c.materials && c.materials.length) {
+    c.materials.forEach(addScannedMaterialFromInfo)
+    toast({ title: '已加入 ' + c.materials.length + ' 份会议材料，会议信息请手动填写', icon: 'none' })
+  }
+  scanResultCard.value = null
+}
+// 结果卡次按钮分流：多份通知→手动填写（加材料）；冲突→保留原信息（填空+加材料）；否则→取消
+function onScanGhost() {
+  const c = scanResultCard.value
+  if (!c) return
+  if (c.mode === 'multi-notice') { manualFillScanResult(); return }
+  if (c.needOverwriteAsk) { confirmScanResult(false); return }
+  closeScanResult()
+}
+// 通知去重：过滤全空、按关键字段签名去重
+function noticeSig(o) {
+  return [o.title || '', o.meetingDate || '', o.meetingTime || '', o.location || '', (o.topics || []).join('｜')].join('|')
+}
+function dedupeNotices(arr) {
+  const seen = new Set(), out = []
+  for (const o of (arr || [])) {
+    const sig = noticeSig(o)
+    if (sig === '||||') continue
+    if (seen.has(sig)) continue
+    seen.add(sig); out.push(o)
+  }
+  return out
 }
 
 // 会议通知字段：与当前表单比对，返回冲突项（两边都有值且不同）
@@ -1210,6 +1262,22 @@ function handleMultiScanResult(res) {
       mode: 'material', materialCount: materials.length,
       missingRequired: [], conflictNote: '', conflicts: [],
       needOverwriteAsk: false, primaryLabel: '加入材料', ghostLabel: '取消',
+      seconds, tokens, res, materials
+    }
+    return
+  }
+
+  // 识别到多份"不同"的会议通知 → 让用户选一份填入（或手动填写）；材料仍会添加
+  const noticeOpts = dedupeNotices(res.notices)
+  if (noticeOpts.length > 1) {
+    scanResultCard.value = {
+      mode: 'multi-notice',
+      materialCount: materials.length,
+      noticeOptions: noticeOpts,
+      selectedNotice: 0,
+      missingRequired: [], conflictNote: '', conflicts: [],
+      needOverwriteAsk: false,
+      primaryLabel: '填入所选', ghostLabel: '手动填写',
       seconds, tokens, res, materials
     }
     return
@@ -1934,6 +2002,16 @@ onActivated(show)
 .sr-pill.material { background: #2E86C1; }
 .sr-pill.warn { background: #C0392B; }
 .sr-row-note { font-size: 30rpx; color: #4A5560; font-weight: 600; }
+/* 多份通知选择卡：逐份单选 */
+.sr-multi { background: #FBF7F0; border-color: #F0E6D6; }
+.sr-notice-opt { display: flex; align-items: flex-start; gap: 14rpx; margin-top: 14rpx; padding: 16rpx 16rpx; background: #fff; border: 2rpx solid #EDE4D4; border-radius: 14rpx; cursor: pointer; }
+.sr-notice-opt.sel { border-color: var(--c-primary-dark); background: #FFF7EC; }
+.sr-radio { flex-shrink: 0; width: 34rpx; height: 34rpx; margin-top: 4rpx; border-radius: 50%; border: 3rpx solid #C9CDD4; box-sizing: border-box; }
+.sr-radio.on { border-color: var(--c-primary-dark); background: radial-gradient(circle at center, var(--c-primary-dark) 0 44%, #fff 46% 100%); }
+.sr-notice-body { flex: 1; min-width: 0; }
+.sr-notice-title { font-size: 30rpx; font-weight: 700; color: #1f2329; line-height: 1.35; }
+.sr-notice-meta { font-size: 26rpx; color: #4A5560; margin-top: 6rpx; }
+.sr-notice-topics { font-size: 25rpx; color: #6A7480; margin-top: 4rpx; line-height: 1.4; }
 /* 信息冲突卡：偏红底 + 逐条「原值 → 新值」 */
 .sr-conflict { background: #FCEFEC; border-color: #F3D2CB; }
 .sr-conf-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx; margin-top: 12rpx; font-size: 27rpx; line-height: 1.4; }

@@ -62,16 +62,17 @@ public class DocumentPrefillService {
             - "notice"：会议通知/开会安排——写明会议时间、地点、议题，目的是通知大家来开会；同一份通知被拆成多页/多张照片时，每一份都算 notice。
             - "material"：会议材料——供参会人传阅的资料，如报价单、施工方案、合同、财务报表、上级文件精神、工作报告等。
             - 拿不准时：有明确的开会时间+地点安排就算 notice，否则算 material。
-            二、把所有 notice 文件的内容合并（多页通知合并成一份），提取“新建会议”所需信息，仅依据原文、不得编造；material 文件不参与提取。
-            三、若有两份及以上 notice 文件，且它们给出的会议时间或会议地点互相矛盾，用一句话写进 conflict 字段（如“两份通知的会议时间不一致”或“通知的会议地点不一致”）；不矛盾、或只有一份通知，则 conflict 为空字符串 ""。
+            二、把 notice 文件按“是否同一场会议”归并：同一份通知被拆成多页/多张照片的合并为一份；会议名称/时间/地点/议题明显不同的各算一份。在 notices 数组里逐份输出每份通知的字段（仅依据原文、不得编造；material 不参与）。
+            三、顶层 title/meetingDate/meetingTime/location/topics 填最主要的一份（通常取 notices 的第一份）。
+            四、若 notices 有两份及以上（识别到多份不同的通知），conflict 用一句话说明（如“识别到多份不同的会议通知”）；只有一份或没有通知则 conflict 为空字符串 ""。
             只输出一个 JSON 对象，不要任何解释、不要 Markdown 代码块：
-            {"fileCategories":["notice或material", ...],"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["议题标题1","议题标题2"],"conflict":"冲突说明或空串"}
+            {"fileCategories":["notice或material", ...],"notices":[{"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["议题标题1"]}],"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["议题标题1","议题标题2"],"conflict":"冲突说明或空串"}
             要求：
             1. 只从给定文字提取；缺失的字段用空字符串 ""，topics 缺失用空数组 []，不要编造。
             2. 日期归一化为 YYYY-MM-DD；只有“X月X日”没有年份时用我给的“当前年份”。
             3. 时间归一化为 24 小时制 HH:mm（如“下午两点半”→“14:30”）。
             4. topics 只取会议要讨论/审议/表决的议题标题，简洁，一条一个。
-            5. 若没有任何 notice 文件，title/meetingDate/meetingTime/location 留空、topics 留空数组，fileCategories 照常逐个给出，conflict 为空串。
+            5. 若没有任何 notice 文件，notices 为空数组 []、title/meetingDate/meetingTime/location 留空、topics 留空数组，fileCategories 照常逐个给出，conflict 为空串。
             """;
 
     /** 多文件识别的输入项：文件名 / 扩展名 / 大小 / 原始字节。 */
@@ -195,6 +196,29 @@ public class DocumentPrefillService {
             for (int i = 0; i < vo.getFiles().size() && i < cats.size(); i++) {
                 String c = cats.get(i).asText("").trim().toLowerCase();
                 vo.getFiles().get(i).setCategory("notice".equals(c) || "material".equals(c) ? c : "material");
+            }
+        }
+        // 逐份通知（供前端在"多份不同通知"时择一）
+        JsonNode notices = n.path("notices");
+        if (notices.isArray()) {
+            for (JsonNode nn : notices) {
+                MeetingPrefillVO.NoticeOption opt = new MeetingPrefillVO.NoticeOption();
+                opt.setTitle(nn.path("title").asText("").trim());
+                opt.setMeetingDate(nn.path("meetingDate").asText("").trim());
+                opt.setMeetingTime(nn.path("meetingTime").asText("").trim());
+                opt.setLocation(nn.path("location").asText("").trim());
+                JsonNode tp = nn.path("topics");
+                if (tp.isArray()) {
+                    for (JsonNode t : tp) {
+                        String tt = t.isObject() ? t.path("title").asText("") : t.asText("");
+                        if (tt != null && !tt.isBlank()) opt.getTopics().add(tt.trim());
+                    }
+                }
+                // 至少有个会议名称或时间/地点才算有效一份
+                if (!opt.getTitle().isEmpty() || !opt.getMeetingDate().isEmpty()
+                        || !opt.getMeetingTime().isEmpty() || !opt.getLocation().isEmpty()) {
+                    vo.getNotices().add(opt);
+                }
             }
         }
         fillEmptyCategories(vo);
