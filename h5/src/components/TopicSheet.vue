@@ -547,7 +547,7 @@ async function removeOpinion(op) {
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
 /* 发表意见卡片：暖米底把"写意见"整块框起来，与下方导航区分开 */
-.ts-compose { flex-shrink: 0; background: #FBF3E7; border: 2rpx solid #EFE2CD; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
+.ts-compose { flex-shrink: 0; background: #FCF9F3; border: 2rpx solid #F0EAE0; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
 .ts-input { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; background: transparent; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
 .ts-voicebar { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; min-height: 96rpx; box-sizing: border-box; }
