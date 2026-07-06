@@ -463,9 +463,14 @@ async function removeOpinion(op) {
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
 .ts-vote-btn { border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; font-weight: 700; padding: 22rpx 0; }
-.ts-vote-btn.agree.on { background: #EAF6E5; border-color: #52A344; color: #2E7D32; }
-.ts-vote-btn.against.on { background: #FDECEA; border-color: #E74C3C; color: #C0392B; }
-.ts-vote-btn.abstain.on { background: #F2F2F4; border-color: #9AA0A6; color: #555; }
+/* 方案B：默认就带语义色(浅底+彩边+彩字)，同意绿/不同意红/弃权灰，一眼分清 */
+.ts-vote-btn.agree { background: #EAF6E5; border-color: #52A344; color: #2E7D32; }
+.ts-vote-btn.against { background: #FDECEA; border-color: #E74C3C; color: #C0392B; }
+.ts-vote-btn.abstain { background: #F2F2F4; border-color: #9AA0A6; color: #5F6570; }
+/* 选中态：加深为实心白字 + 色环，与默认浅底拉开层次 */
+.ts-vote-btn.agree.on { background: #3E9B34; border-color: #3E9B34; color: #fff; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.22); }
+.ts-vote-btn.against.on { background: #E24B3A; border-color: #E24B3A; color: #fff; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.22); }
+.ts-vote-btn.abstain.on { background: #9AA0A6; border-color: #9AA0A6; color: #fff; box-shadow: 0 0 0 4rpx rgba(154,160,166,0.26); }
 .ts-vote-btn.off { opacity: 0.35; }
 .ts-vote-btn:active { transform: scale(0.97); }
 .ts-opt { display: flex; align-items: center; justify-content: space-between; border: 2rpx solid #D8DBE0; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; font-size: 32rpx; color: #333; }
