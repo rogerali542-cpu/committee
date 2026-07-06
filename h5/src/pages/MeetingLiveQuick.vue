@@ -48,20 +48,18 @@
 
       <!-- 圆圈即录音按钮：灰=点击开始，红(呼吸)=录音中点击暂停；暂停/上传后显示"继续" -->
       <div class="qk-recorder">
-        <button class="qk-rec-circle" :class="{ on: recDotOn }" @click="onCircleTap" :disabled="uploading || polling || extracting"><span class="qrc-txt">{{ recCircleLabel }}</span></button>
+        <button class="qk-rec-circle" :class="{ on: recDotOn }" @click="onCircleTap" :disabled="uploading"><span class="qrc-txt">{{ recCircleLabel }}</span></button>
         <span class="qk-rec-time">{{ timeText }}</span>
       </div>
       <!-- 暂停态补充操作：重新录音（"继续"由圆圈承担；窄款居中） -->
       <div v-if="isPaused" class="qk-rec-actions">
-        <button class="lp-primary-btn qk-rec-act narrow40" @click="restartRecording" :disabled="uploading || polling || extracting || generatingMinutes">
+        <button class="lp-primary-btn qk-rec-act narrow40" @click="restartRecording" :disabled="uploading || generatingMinutes">
           <span class="qra-main">重新录音</span>
         </button>
       </div>
       <!-- 上传中提示：转圈 + 实时上传进度 -->
       <div v-if="uploading" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0" class="qk-up-pct">{{ uploadPct }}%</span></div>
-      <!-- 后台识别中：转写/抽取静默进行，只给行内提示，不弹全屏遮罩 -->
-      <div v-else-if="polling || extracting" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>{{ processText || '正在识别录音…' }}</div>
-      <!-- 识别失败/空转写：明确红色提示，按钮区已退回「上传录音」可直接重试 -->
+      <!-- 转写在后台静默进行：不显示进度（可继续录音）；只在识别失败/空转写时给明确红色提示 -->
       <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="qk-seg-hint asr-error">⚠ {{ asrErrorText }}</div>
       <!-- 第一次：单键「上传录音」（上传→识别，不生成；识别完拆成两键）。 -->
       <button v-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
@@ -869,7 +867,7 @@ async function toggleRecord() {
     toast({ title: '当前浏览器不支持录音（需 HTTPS 且允许麦克风）', icon: 'none' })
     return
   }
-  if (uploading.value || polling.value || extracting.value) return
+  if (uploading.value) return // 转写在后台跑不拦录音；仅上传中(占用同段)时不响应
 
   // 录音中且未暂停 → 暂停（个别 iOS 不支持暂停，pause 静默失败时提示用户）
   if (rec.recording.value && !rec.paused.value) {
@@ -900,22 +898,24 @@ async function toggleRecord() {
 }
 
 async function startRecord() {
-  clearPoll()
-  clearQuickState()
-  _recognizeAfterUpload = false // 重新开录，清掉可能残留的"上传后自动识别"标记
-  generated.value = false
-  extraction.value = null
-  aiTopics.value = []
-  transcript.value = []
-  transcriptPreview.value = ''
-  transcriptFullText.value = ''
-  transcriptCharCount.value = 0
-  transcriptVisible.value = false
-  uploading.value = false
-  polling.value = false
-  extracting.value = false
-  taskId.value = ''
-  asrStatus.value = ''
+  // 后台正在转写上一段 → 只启动新录音，绝不 clearPoll / 重置转写状态，避免打断后台转写
+  const bgTranscribing = polling.value || extracting.value
+  if (!bgTranscribing) {
+    clearPoll()
+    clearQuickState()
+    _recognizeAfterUpload = false // 重新开录，清掉可能残留的"上传后自动识别"标记
+    generated.value = false
+    extraction.value = null
+    aiTopics.value = []
+    transcript.value = []
+    transcriptPreview.value = ''
+    transcriptFullText.value = ''
+    transcriptCharCount.value = 0
+    transcriptVisible.value = false
+    uploading.value = false
+    taskId.value = ''
+    asrStatus.value = ''
+  }
   processText.value = '正在录音...'
   try {
     rec.reset()
@@ -953,7 +953,12 @@ async function finishRecord() {
     }
     return
   }
-  if (uploading.value || polling.value || extracting.value) return
+  if (uploading.value) return
+  // 上一段还在后台识别 → 本段先留在本地(不并发第二个转写)，等识别完再传
+  if (polling.value || extracting.value) {
+    toast({ title: '上一段还在识别，识别完就能上传这段', icon: 'none' })
+    return
+  }
 
   // 仍在录音会话中 → 先停拿产出上传（对齐原 recorderStarted 分支：stop 后上传）
   if (rec.recording.value) {
@@ -978,13 +983,13 @@ async function finishRecord() {
 
 // 继续录音：恢复同一录音会话（chunks 持续累积），整段始终是一个文件，不另存为新文件
 function resumeRecording() {
-  if (uploading.value || polling.value || extracting.value) return
+  if (uploading.value) return
   if (rec.recording.value && rec.paused.value) rec.resume()
 }
 
 // 重新录音：放弃当前这段，从头开始（需确认）
 async function restartRecording() {
-  if (uploading.value || polling.value || extracting.value) return
+  if (uploading.value) return
   const res = await showModal({
     title: '',
     content: '将覆盖当前录音，确定重录？',
