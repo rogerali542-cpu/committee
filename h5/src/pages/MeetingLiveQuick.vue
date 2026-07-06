@@ -2071,7 +2071,7 @@ function exitLive() {
 .lp-fold { display:flex; flex-direction:column; min-height:calc(100vh - 96rpx); }
 
 /* 会议信息卡 */
-.lp-info-card { background:#fff; border-radius:24rpx; padding:24rpx 28rpx 0; margin-top:24rpx; margin-bottom:44rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡间距 +8px(28→44)；卡片缩小一号(内边距收紧，内容不变) */
+.lp-info-card { background:#fff; border-radius:24rpx; padding:24rpx 28rpx 0; margin-top:24rpx; margin-bottom:84rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); } /* 卡下方再 +20px(44→84)；卡片缩小一号(内边距收紧，内容不变) */
 .lp-info-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; } /* 居中对齐：临时添加与标题齐平 */
 .lp-info-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; line-height:1.35; } /* 标题缩两号(42→34) */
 /* 临时添加：蓝字白底小按钮，与标题齐平、往右边缘挪(负右边距) */
@@ -2084,12 +2084,12 @@ function exitLive() {
 .lp-info-k { color:#666; flex-shrink:0; width:80rpx; font-size:34rpx; }
 .lp-info-v { flex:1; min-width:0; word-break:break-all; }
 /* 议题区固定高度(约4行)：卡片大小恒定；放不下先缩字号(下面 fs 档)，仍放不下则本区下拉滚动 */
-.lp-agenda { flex:1; min-width:0; height:256rpx; overflow-y:auto; } /* 再缩一号：议题区固定高度→256，腾空间给名单 */
+.lp-agenda { flex:1; min-width:0; max-height:256rpx; overflow-y:auto; } /* 议题少时贴合内容(胶囊下方不留空白)，多时封顶256滚动 */
 /* 字号自适应档位：每档缩一号(4rpx=2px)，最多缩到 28rpx(fs2)；高档同时压缩行距让更多议题露出 */
 .lp-agenda--fs1 .lp-agenda-title { font-size:32rpx; }
 .lp-agenda--fs2 .lp-agenda-title { font-size:28rpx; }
 .lp-agenda--fs2 .lp-agenda-item { padding:12rpx 0; }
-.lp-agenda-item { display:flex; align-items:center; gap:14rpx; padding:16rpx 0; border-bottom:2rpx solid #F2F2F4; }
+.lp-agenda-item { display:flex; align-items:center; gap:14rpx; padding:22rpx 0; border-bottom:2rpx solid #F2F2F4; }
 .lp-agenda-item:last-child { border-bottom:0; }
 /* 方案D：状态胶囊即按钮。待办=亮橙可点(白字不加粗、含›)；已办=绿(仍可点看结果)。议题文字本身不可点 */
 .lp-agenda-pill { flex-shrink:0; display:inline-flex; align-items:center; gap:2rpx; border:0; font-family:inherit;
@@ -2207,7 +2207,7 @@ function exitLive() {
 /* 录音卡（精简版）：圆圈即录音按钮——橙芯白环=待录，红芯呼吸=录音中；无说明/状态小字。整体缩两号+紧凑 */
 .lp-rec { padding:14rpx 26rpx 4rpx; } /* 卡片再缩一号：内边距进一步收紧(圆圈/字号不变) */
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
-.lp-rec { padding-bottom:64rpx; } /* 录音卡底部多留空隙，按钮不贴边 */
+.lp-rec { padding-bottom:34rpx; } /* 录音卡缩小15px(底部64→34)，整体更紧凑 */
 .qk-recorder { display:flex; flex-direction:column; align-items:center; gap:6rpx; padding:6rpx 0 2rpx; }
 .qk-rec-circle { width:204rpx; height:204rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:36rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:8rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 再缩一号：圆圈228→204、字40→36，腾空间给名单 */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
