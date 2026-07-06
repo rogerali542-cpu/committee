@@ -85,6 +85,10 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.large .ui-modal-content { font-size: 36rpx; color: #000; line-height: 1.8; margin-top: 28rpx; }
 .ui-modal.large .ui-modal-actions { margin-top: 48rpx; }
 .ui-modal.large .ui-modal-btn { padding: 34rpx 0; font-size: 38rpx; font-weight: 700; }
+/* 表决二次确认（size:'vote'）：文案精简、字体加大两号，方便老人看清投的是哪项 */
+.ui-modal.vote .ui-modal-content { font-size: 38rpx; color: #1a1a1a; margin-top: 8rpx; }
+.ui-modal.vote .ui-modal-btn { padding: 32rpx 0; font-size: 40rpx; }
+.ui-modal.vote .ui-modal-btn.confirm { font-weight: 700; }
 
 .ui-sheet { width: 100%; background: #f4f4f6; padding-bottom: env(safe-area-inset-bottom); }
 .ui-sheet-item { display: block; width: 100%; padding: 32rpx 0; font-size: 32rpx; background: #fff; border-bottom: 1rpx solid #eee; color: #1a1a1a; }

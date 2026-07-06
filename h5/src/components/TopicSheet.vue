@@ -382,10 +382,11 @@ async function castVote(choice, option) {
   if (!props.signedIn) { toast({ title: '请先完成签到', icon: 'none' }); return }
   const label = option ? option.label : (choice === 'for_vote' ? '同意' : choice === 'against' ? '不同意' : '弃权')
   const res = await showModal({
-    title: '确认你的选择',
-    content: '你选择了「' + label + '」。确认后这项不能修改。',
-    confirmText: '确认选择',
-    cancelText: '再看看'
+    title: '',
+    content: '投「' + label + '」，提交后不能改',
+    confirmText: '确认',
+    cancelText: '再看看',
+    size: 'vote'
   })
   if (!res.confirm) return
   try {
