@@ -207,17 +207,12 @@
             </div>
           </div>
           <div class="ds-cards">
-            <button class="ds-card" :disabled="scanRecognizing" @click="openRealCamera()">
-              <span class="ds-ico gn">📷</span>
-              <span class="ds-t">相机</span>
-              <span class="ds-s">实时拍摄</span>
-            </button>
-            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('camera')">
-              <span class="ds-ico or">🖼️</span>
+            <button class="ds-card" :disabled="scanRecognizing" @click="startCamera()">
+              <span class="ds-ico or">📷</span>
               <span class="ds-t">拍照</span>
-              <span class="ds-s">模拟样张</span>
+              <span class="ds-s">纸质文件</span>
             </button>
-            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
+            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan()">
               <span class="ds-ico bl">📁</span>
               <span class="ds-t">上传</span>
               <span class="ds-s">电子文件</span>
@@ -231,19 +226,6 @@
         <div class="sheet-actions fixed">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
           <button class="btn btn-primary" @click="submitNewMeeting">生成通知<span class="btn-arrow">›</span></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 模拟系统相机权限弹窗（真机由系统弹出，这里演示流程） -->
-    <div v-if="camPermVisible" class="perm-mask">
-      <div class="perm-box">
-        <span class="perm-ico">📷</span>
-        <span class="perm-title">“业委专区”想使用您的相机</span>
-        <span class="perm-sub">用于拍摄纸质文件进行 AI 识别</span>
-        <div class="perm-btns">
-          <button class="perm-btn deny" @click="denyCamPerm">不允许</button>
-          <button class="perm-btn allow" @click="allowCamPerm">允许</button>
         </div>
       </div>
     </div>
@@ -370,7 +352,7 @@
       <div class="mc-flash" :class="{ on: mockCamFlash }"></div>
     </div>
 
-    <!-- 真·相机（getUserMedia 实时取景）：与模拟相机并行；桌面用网络摄像头、手机自动后置摄像头。需 HTTPS/localhost -->
+    <!-- 真·相机（getUserMedia 实时取景）：拍照按钮先申请权限，授权后进这里；桌面用网络摄像头、手机自动后置摄像头 -->
     <div v-if="realCamVisible" class="mock-cam real-cam" :class="{ preview: !!realShotUrl }">
       <div class="mc-top">
         <span class="mc-badge">{{ realShotUrl ? '照片预览' : '相机 · 实时取景' }}</span>
@@ -383,16 +365,10 @@
           <video ref="realVideoEl" class="mc-video" autoplay muted playsinline webkit-playsinline></video>
           <span class="mc-corner tl"></span><span class="mc-corner tr"></span>
           <span class="mc-corner bl"></span><span class="mc-corner br"></span>
-          <div v-if="realCamStarting" class="mc-cam-state">正在打开相机…</div>
-          <div v-else-if="realCamError" class="mc-cam-state err">
-            <span class="mc-cam-err-ico">📷</span>
-            <span class="mc-cam-err-msg">{{ realCamError }}</span>
-            <button class="mc-cam-retry" @click="retryRealCamera">重试</button>
-          </div>
-          <span v-else class="mc-tip">对准纸质文件 · 点圆钮拍摄</span>
+          <span class="mc-tip">对准纸质文件 · 点圆钮拍摄</span>
         </div>
         <div class="mc-bottom">
-          <button class="mc-shutter" :disabled="!!realCamError || realCamStarting" @click="realShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
+          <button class="mc-shutter" @click="realShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
           <button v-if="scanItems.length" class="mc-done" @click="closeRealCamera">完成（{{ scanItems.length }}）</button>
         </div>
       </template>
@@ -992,16 +968,9 @@ function openScanItemPreview(it) {
   openMaterialViewer({ url, name: it.name, fileType: (it.file && it.file.type) || it.ext || '' })
 }
 
-async function startDocScan(source) {
+// 上传文件：支持多选，全部攒进暂存列表（不立即识别）
+async function startDocScan() {
   if (scanRecognizing.value) return
-  if (source === 'camera') {
-    // 测试阶段：先模拟系统相机权限申请，允许后弹模拟相机（取景+快门，可连拍多张）。后续接真机时改回：
-    // const files = await pickFiles('image/*'); files.forEach((f) => addScanItem(f))
-    if (camPermGranted.value) openMockCamera()
-    else camPermVisible.value = true
-    return
-  }
-  // 上传文件：支持多选，全部攒进暂存列表（不立即识别）
   const files = await pickFiles('image/*,application/pdf')
   if (!files || !files.length) return // 用户取消
   files.forEach((f) => addScanItem(f))
@@ -1057,18 +1026,6 @@ async function recognizeScanItems() {
   }
 }
 
-// ——— 模拟系统相机权限弹窗（真机上由系统/微信弹出，这里演示流程；每次会话只问一次） ———
-const camPermVisible = ref(false)
-const camPermGranted = ref(false)
-function allowCamPerm() {
-  camPermGranted.value = true
-  camPermVisible.value = false
-  openMockCamera()
-}
-function denyCamPerm() {
-  camPermVisible.value = false
-  toast({ title: '未获得相机权限，无法拍照', icon: 'none' })
-}
 // 识别弹窗的阶段与文案：按进度分 上传→OCR提取→AI理解 三步（模拟节奏，后端一次性返回）
 const scanSec = ref(0)
 let _scanSecTimer = null
@@ -1221,25 +1178,15 @@ function mockUsePhoto() {
   // 回到取景，保持当前样张；用户可左右滑动切到别的文件再拍
 }
 
-// ——— 真·相机（getUserMedia 实时取景 + 抓帧成图）：与模拟相机并行，桌面用网络摄像头、真机后置摄像头 ———
-// 需安全上下文（HTTPS 或 localhost）；LAN IP + http 会被浏览器拦截 getUserMedia，此时给出提示。
+// ——— 真·相机（getUserMedia 实时取景 + 抓帧成图）：拍照按钮授权后进此界面，抓帧汇入识别队列 ———
+// 需安全上下文（HTTPS 或 localhost）；LAN IP + http 会被浏览器拦截 getUserMedia，此时回退模拟界面。
 const realCamVisible = ref(false)
 const realCamFlash = ref(false)
 const realShotUrl = ref('')       // 拍后预览 dataURL（非空 = 预览确认模式）
-const realCamError = ref('')      // 打不开相机时的可读提示
-const realCamStarting = ref(false)
 const realVideoEl = ref(null)     // <video> 模板引用
 let _realStream = null
 let _realShotFile = null
 
-function mapCamError(e) {
-  const n = (e && e.name) || ''
-  if (!window.isSecureContext) return '相机需在 HTTPS 或 localhost 下使用；当前用局域网 IP 访问被浏览器拦截，请改用 localhost 或部署 HTTPS'
-  if (n === 'NotAllowedError' || n === 'SecurityError') return '相机权限被拒绝，请在浏览器地址栏允许相机后点「重试」'
-  if (n === 'NotFoundError' || n === 'OverconstrainedError') return '未检测到可用摄像头'
-  if (n === 'NotReadableError') return '摄像头被其他程序占用，请关闭后点「重试」'
-  return (e && e.message) || '无法打开相机'
-}
 function stopRealStream() {
   if (_realStream) { try { _realStream.getTracks().forEach((t) => t.stop()) } catch (e) {} }
   _realStream = null
@@ -1254,37 +1201,32 @@ async function bindStreamToVideo() {
   if (!v) return
   try { v.srcObject = _realStream; await v.play().catch(() => {}) } catch (e) {}
 }
-async function openRealCamera() {
+// 统一「拍照」入口：先申请真实相机权限（浏览器弹系统授权框）——
+// 授权 → 进实时取景；拒绝 / 无摄像头 / 非安全上下文(局域网 http) → 转入模拟样张界面展示。
+async function startCamera() {
   if (scanRecognizing.value) return
-  realShotUrl.value = ''
-  _realShotFile = null
-  realCamError.value = ''
-  realCamStarting.value = true
-  realCamVisible.value = true
-  await nextTick()
+  const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext
+  if (!supported) { openMockCamera(); return }
   try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('当前浏览器不支持相机接口')
-    }
     _realStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
     })
+    realShotUrl.value = ''
+    _realShotFile = null
+    realCamVisible.value = true
     await bindStreamToVideo()
   } catch (e) {
-    realCamError.value = mapCamError(e)
+    // 权限被拒绝 / 无摄像头 / 被占用 → 转入模拟界面
     stopRealStream()
-  } finally {
-    realCamStarting.value = false
+    openMockCamera()
   }
 }
-function retryRealCamera() { openRealCamera() }
 function closeRealCamera() {
   stopRealStream()
   realCamVisible.value = false
   realShotUrl.value = ''
   _realShotFile = null
-  realCamError.value = ''
 }
 // 按快门：抓当前视频帧到 canvas → 预览确认（不直接识别，和模拟/上传一致）
 async function realShoot() {
@@ -2082,7 +2024,6 @@ onActivated(show)
 .ds-ico { width: 76rpx; height: 76rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40rpx; margin-bottom: 4rpx; }
 .ds-ico.or { background: #FFF3E0; }
 .ds-ico.bl { background: #EAF2FF; }
-.ds-ico.gn { background: #E7F7EE; }
 .ds-t { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
 .ds-s { font-size: 24rpx; color: #999; text-align: center; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
@@ -2109,16 +2050,6 @@ onActivated(show)
 /* token 消耗：低调小字，识别完成后显示 */
 
 /* 模拟系统相机权限弹窗（仿系统样式：居中白盒 + 细线分隔双按钮） */
-.perm-mask { position: fixed; inset: 0; z-index: 3100; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; }
-.perm-box { width: 540rpx; background: #fff; border-radius: 28rpx; padding: 44rpx 36rpx 0; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.25); }
-.perm-ico { font-size: 64rpx; line-height: 1; margin-bottom: 18rpx; }
-.perm-title { font-size: 34rpx; font-weight: 700; color: #1a1a1a; line-height: 1.45; }
-.perm-sub { font-size: 28rpx; color: #888; line-height: 1.5; margin: 10rpx 0 34rpx; }
-.perm-btns { display: flex; width: calc(100% + 72rpx); margin: 0 -36rpx; border-top: 1rpx solid #e5e5e5; }
-.perm-btn { flex: 1; height: 100rpx; background: none; border: none; font-size: 34rpx; }
-.perm-btn.deny { color: #666; border-right: 1rpx solid #e5e5e5; }
-.perm-btn.allow { color: #0A7CFF; font-weight: 700; }
-.perm-btn:active { background: #f5f5f5; }
 
 /* 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案） */
 .scan-pop-mask { position: fixed; inset: 0; z-index: 3050; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; }
@@ -2240,11 +2171,6 @@ onActivated(show)
 /* 真·相机：实时视频铺满取景区；打不开时的状态/错误提示 */
 .real-cam .mc-viewport { padding: 8rpx 12rpx; }
 .mc-video { width: 100%; height: 100%; object-fit: cover; background: #000; border-radius: 6rpx; }
-.mc-cam-state { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 18rpx; padding: 0 64rpx; text-align: center; color: #fff; font-size: 28rpx; }
-.mc-cam-state.err .mc-cam-err-ico { font-size: 84rpx; opacity: 0.65; }
-.mc-cam-err-msg { line-height: 1.6; color: rgba(255,255,255,0.9); }
-.mc-cam-retry { margin-top: 6rpx; height: 76rpx; padding: 0 46rpx; border: none; border-radius: 40rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
-.mc-shutter:disabled { opacity: 0.4; }
 /* 会议材料行：小图标 + 可点文件名（点开全屏预览）+ 大小 + 删除 */
 /* 会议材料折叠头：标题 + 右侧小箭头，点击展开详情 */
 .mat-head { cursor: pointer; }
