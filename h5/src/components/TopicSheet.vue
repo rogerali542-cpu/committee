@@ -485,7 +485,7 @@ async function removeOpinion(op) {
 /* 选中态：加深为实心白字 + 色环，与默认浅底拉开层次 */
 .ts-vote-btn.agree.on { background: #3E9B34; border-color: #3E9B34; color: #fff; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.22); }
 .ts-vote-btn.against.on { background: #E24B3A; border-color: #E24B3A; color: #fff; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.22); }
-.ts-vote-btn.abstain.on { background: #9AA0A6; border-color: #9AA0A6; color: #fff; box-shadow: 0 0 0 4rpx rgba(154,160,166,0.26); }
+.ts-vote-btn.abstain.on { background: #4D5158; border-color: #4D5158; color: #fff; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.28); }
 .ts-vote-btn.off { opacity: 0.35; }
 .ts-vote-btn:active { transform: scale(0.97); }
 .ts-opt { display: flex; align-items: center; justify-content: space-between; border: 2rpx solid #D8DBE0; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; font-size: 32rpx; color: #333; }
@@ -565,8 +565,8 @@ async function removeOpinion(op) {
 .ts-nav-btn { flex: 1; box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 0; }
 .ts-nav-btn:active { background: #ECEEF1; }
 /* 最后一个议题的「完成」：填充橙色，作为收尾动作更醒目 */
-.ts-nav-btn.done { background: #FFA800; border-color: #FFA800; color: #fff; }
-.ts-nav-btn.done:active { background: #F09600; }
+.ts-nav-btn.done { background: #C76A00; border-color: #C76A00; color: #fff; }
+.ts-nav-btn.done:active { background: #A85800; }
 
 /* AI 助手行：AI 帮写 / 语音输入 两个等宽按钮并排，文本框下方 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
