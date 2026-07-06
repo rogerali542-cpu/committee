@@ -59,7 +59,9 @@
       </div>
       <!-- 上传中提示：转圈 + 实时上传进度 -->
       <div v-if="uploading" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0" class="qk-up-pct">{{ uploadPct }}%</span></div>
-      <!-- 转写在后台静默进行：不显示进度（可继续录音）；只在识别失败/空转写时给明确红色提示 -->
+      <!-- 转写后台进行：低调状态(不显示进度/百分比)，避免按钮区空白，并告知可继续录音 -->
+      <div v-else-if="polling || extracting" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可生成纪要</div>
+      <!-- 识别失败/空转写：明确红色提示，按钮区已退回「上传录音」可直接重试 -->
       <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="qk-seg-hint asr-error">⚠ {{ asrErrorText }}</div>
       <!-- 第一次：单键「上传录音」（上传→识别，不生成；识别完拆成两键）。 -->
       <button v-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
