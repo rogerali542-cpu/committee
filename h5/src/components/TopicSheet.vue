@@ -114,12 +114,12 @@
             <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
             <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
           </div>
+          <div v-if="aiTokens && !aiBusy" class="ts-ai-tokenline">本次消耗 {{ aiTokens.toLocaleString() }} token</div>
           <div class="ts-ai-row">
             <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中 ' + aiProgress + '%' : 'AI 润色' }}</button>
             <button v-else class="ts-ai-btn" :disabled="aiBusy" @click="onHelpWrite"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 写作中 ' + aiProgress + '%' : 'AI 帮写' }}</button>
             <button class="ts-ai-btn" :disabled="aiBusy" @click="startVoice('draft')">语音输入</button>
           </div>
-          <div v-if="aiTokens && !aiBusy" class="ts-ai-tokenline">本次消耗 {{ aiTokens.toLocaleString() }} token</div>
         </template>
       </template>
       <div v-else-if="interactive && !signedIn" class="ts-input-hint">签到后可发表意见</div>
@@ -546,7 +546,7 @@ async function removeOpinion(op) {
 .ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 10rpx 22rpx; }
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
-.ts-input { flex-shrink: 0; display: flex; align-items: flex-end; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; }
+.ts-input { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
 .ts-voicebar { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; min-height: 96rpx; box-sizing: border-box; }
 .ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
