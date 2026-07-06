@@ -64,18 +64,24 @@
         <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
-        <div v-else class="ts-op" v-for="op in opinions" :key="op.id">
-          <div class="ts-op-meta" @click="toggleOp(op)">
+        <div v-else class="ts-op" :class="{ open: openOpIds.has(op.id) }" v-for="op in opinions" :key="op.id" @click="toggleOp(op)">
+          <div class="ts-op-l1">
             <span class="ts-op-name">{{ op.name }}</span>
+            <span v-if="opVote(op)" class="ts-op-vote" :class="opVote(op).cls">{{ opVote(op).text }}</span>
             <span v-if="op.claimable" class="ts-op-claim-tag" :class="{ on: claimShowId === op.id }"
                   @click.stop="toggleClaimRow(op)">未认领</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
-            <span v-if="op.canDelete" class="ts-op-del" @click.stop="removeOpinion(op)">删除</span>
-            <span class="ts-op-toggle">{{ openOpIds.has(op.id) ? '收起' : '查看' }}<span class="ts-op-chev">{{ openOpIds.has(op.id) ? '⌄' : '›' }}</span></span>
           </div>
-          <div v-if="openOpIds.has(op.id)" class="ts-op-content">{{ op.content }}</div>
+          <div class="ts-op-l2">
+            <span class="ts-op-sum">{{ op.content }}</span>
+            <span class="ts-op-toggle">{{ openOpIds.has(op.id) ? '收起' : '查看' }}</span>
+          </div>
+          <!-- 展开后才显示删除，避免和"查看"挤在一排 -->
+          <div v-if="openOpIds.has(op.id) && op.canDelete" class="ts-op-actions" @click.stop>
+            <button class="ts-op-del" @click="removeOpinion(op)">删除</button>
+          </div>
           <!-- AI 从现场发言提炼、还没归属到人：认领按钮默认藏着，点"未认领"标签才展开 -->
-          <div v-if="op.claimable && claimShowId === op.id" class="ts-op-claimrow">
+          <div v-if="op.claimable && claimShowId === op.id" class="ts-op-claimrow" @click.stop>
             <button class="ts-op-claim-btn" @click="claimOpinion(op)">🙋 是我说的</button>
           </div>
         </div>
@@ -384,6 +390,18 @@ async function loadOpinions() {
 
 function fmtTime(iso) { return iso && iso.length >= 16 ? iso.slice(11, 16) : '' }
 function lockedOther(choice) { return !!props.topic.myVote && props.topic.myVote !== choice }
+// 该委员对本议题的表决结果标签（仅实名表决议题有 voterChoices，按姓名匹配；匿名/未投票则不显示）
+function opVote(op) {
+  const vc = props.topic && props.topic.voterChoices
+  if (!Array.isArray(vc) || !vc.length || !op || !op.name) return null
+  const hit = vc.find(v => v && v.name === op.name)
+  if (!hit) return null
+  if (hit.label) return { text: hit.label, cls: 'opt' } // 多选项表决：显示所选选项
+  if (hit.choice === 'for_vote') return { text: '同意', cls: 'agree' }
+  if (hit.choice === 'against') return { text: '不同意', cls: 'against' }
+  if (hit.choice === 'abstain') return { text: '弃权', cls: 'abstain' }
+  return null
+}
 
 function autoGrow() {
   const el = taEl.value
@@ -522,16 +540,25 @@ async function removeOpinion(op) {
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
-.ts-op { padding: 12rpx 0 16rpx; border-bottom: 2rpx solid #F7F7F8; }
+/* 意见条（方案C 极简两行式）：第一行 姓名+表决标签+时间，第二行 意见摘要+查看；点击整条展开全文 */
+.ts-op { padding: 16rpx 0; border-bottom: 2rpx solid #F2F0EC; cursor: pointer; }
 .ts-op:last-child { border-bottom: 0; }
-.ts-op-meta { display: flex; align-items: center; gap: 10rpx; margin-bottom: 6rpx; flex-wrap: wrap; cursor: pointer; }
+.ts-op-l1 { display: flex; align-items: center; gap: 12rpx; margin-bottom: 8rpx; }
 .ts-op-name { font-size: 28rpx; font-weight: 600; color: #333; }
+/* 表决结果标签：同意绿 / 不同意红 / 弃权灰 / 多选项蓝，与表决按钮同一套语义色 */
+.ts-op-vote { flex-shrink: 0; font-size: 22rpx; font-weight: 600; padding: 2rpx 12rpx; border-radius: 8rpx; }
+.ts-op-vote.agree { background: #EAF6E5; color: #2E7D32; }
+.ts-op-vote.against { background: #FDECEA; color: #C0392B; }
+.ts-op-vote.abstain { background: #F2F2F4; color: #5F6570; }
+.ts-op-vote.opt { background: #EAF2FD; color: #1F6FB2; }
 .ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
-.ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 4rpx 8rpx; }
-/* 意见正文默认折叠，右侧"查看/收起"提示引导点开 */
-.ts-op-toggle { display: inline-flex; align-items: center; gap: 4rpx; font-size: 24rpx; color: #C76A00; padding: 4rpx 2rpx; }
-.ts-op-chev { font-size: 26rpx; line-height: 1; }
-.ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; margin-top: 4rpx; }
+.ts-op-l2 { display: flex; align-items: baseline; gap: 12rpx; }
+.ts-op-sum { flex: 1; min-width: 0; font-size: 26rpx; color: #7A756E; line-height: 1.5; word-break: break-all;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.ts-op.open .ts-op-sum { -webkit-line-clamp: unset; color: #1f2329; font-size: 30rpx; }
+.ts-op-toggle { flex-shrink: 0; font-size: 24rpx; color: #C76A00; font-weight: 600; }
+.ts-op-actions { margin-top: 10rpx; text-align: right; }
+.ts-op-actions .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 6rpx 10rpx; background: none; border: none; }
 
 /* 通报类议题：标题/正文加大两号、间距拉大，意见汇总区收小（通报一般不讨论） */
 .ts-sheet.is-notice .ts-title { font-size: 42rpx; line-height: 1.5; }
@@ -543,7 +570,8 @@ async function removeOpinion(op) {
 .ts-sheet.is-notice .ts-ops { padding-top: 14rpx; }
 .ts-sheet.is-notice .ts-ops-head { font-size: 26rpx; color: #9AA0A6; margin-bottom: 10rpx; }
 .ts-sheet.is-notice .ts-op-name { font-size: 26rpx; }
-.ts-sheet.is-notice .ts-op-content { font-size: 27rpx; line-height: 1.5; }
+.ts-sheet.is-notice .ts-op-sum { font-size: 25rpx; }
+.ts-sheet.is-notice .ts-op.open .ts-op-sum { font-size: 27rpx; line-height: 1.5; }
 .ts-sheet.is-notice .ts-empty { font-size: 25rpx; padding: 12rpx 0 16rpx; }
 .ts-op-claim-tag { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; cursor: pointer; }
 .ts-op-claim-tag:active { opacity: 0.7; }
