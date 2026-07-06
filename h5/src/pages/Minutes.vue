@@ -624,7 +624,12 @@ function viewInternalTopicReport() {
 
 function viewTodoList() {
   // 改为独立页结构化卡片展示，避免 showModal 截断/挤成一坨
+  // 软路由偶发不切换（URL 变了却停在本页）→ 加硬导航兜底，确保一定跳过去
+  const target = '/minutes-todos?meetingId=' + meetingId
   navigateTo('/pages/minutes-todos/minutes-todos?meetingId=' + meetingId)
+  setTimeout(() => {
+    if (document.querySelector('.minutes-page')) window.location.href = target
+  }, 300)
 }
 </script>
 

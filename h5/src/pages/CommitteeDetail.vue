@@ -1973,7 +1973,12 @@ function viewInternalReport() {
 
 // 会议待办事项独立页
 function viewTodos() {
+  // 软路由偶发不切换 → 硬导航兜底
+  const target = '/minutes-todos?meetingId=' + meetingId
   navigateTo('/pages/minutes-todos/minutes-todos?meetingId=' + meetingId)
+  setTimeout(() => {
+    if (document.querySelector('.detail-page')) window.location.href = target
+  }, 300)
 }
 
 // (4) 补充归档材料：先填补充原因，再选文件上传 → committeeAddArchiveExtra → 刷新
