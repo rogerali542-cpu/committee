@@ -67,8 +67,6 @@
         <div v-else class="ts-op" v-for="op in opinions" :key="op.id">
           <div class="ts-op-meta">
             <span class="ts-op-name">{{ op.name }}</span>
-            <span v-if="op.role" class="ts-op-role">{{ op.role }}</span>
-            <span class="ts-op-src" :class="op.source">{{ srcLabel(op.source) }}</span>
             <span v-if="op.claimable" class="ts-op-claim-tag" :class="{ on: claimShowId === op.id }"
                   @click="toggleClaimRow(op)">未认领</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
@@ -110,15 +108,17 @@
         </div>
         <!-- 常规输入行 + AI 助手行 -->
         <template v-else>
-          <div class="ts-input">
-            <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
-            <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
-          </div>
-          <div v-if="aiTokens && !aiBusy" class="ts-ai-tokenline">本次消耗 {{ aiTokens.toLocaleString() }} token</div>
-          <div class="ts-ai-row">
-            <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中 ' + aiProgress + '%' : 'AI 润色' }}</button>
-            <button v-else class="ts-ai-btn" :disabled="aiBusy" @click="onHelpWrite"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 写作中 ' + aiProgress + '%' : 'AI 帮写' }}</button>
-            <button class="ts-ai-btn" :disabled="aiBusy" @click="startVoice('draft')">语音输入</button>
+          <div class="ts-compose">
+            <div class="ts-input">
+              <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
+              <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
+            </div>
+            <div v-if="aiTokens && !aiBusy" class="ts-ai-tokenline">本次消耗 {{ aiTokens.toLocaleString() }} token</div>
+            <div class="ts-ai-row">
+              <button v-if="draft.trim()" class="ts-ai-btn ai" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中 ' + aiProgress + '%' : 'AI 润色' }}</button>
+              <button v-else class="ts-ai-btn ai" :disabled="aiBusy" @click="onHelpWrite"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 写作中 ' + aiProgress + '%' : 'AI 帮写' }}</button>
+              <button class="ts-ai-btn voice" :disabled="aiBusy" @click="startVoice('draft')">语音输入</button>
+            </div>
           </div>
         </template>
       </template>
@@ -126,8 +126,8 @@
 
       <!-- 上一个 / 下一个议题：处理完当前议题直接切换，不用先关弹层 -->
       <div v-if="hasPrev || hasNext" class="ts-nav-row">
-        <button v-if="hasPrev" class="ts-nav-btn" @click="$emit('prev')">‹ 上一个议题</button>
-        <button v-if="hasNext" class="ts-nav-btn" @click="$emit('next')">下一个议题 ›</button>
+        <button v-if="hasPrev" class="ts-nav-btn prev" @click="$emit('prev')">‹ 上一个议题</button>
+        <button v-if="hasNext" class="ts-nav-btn next" @click="$emit('next')">下一个议题 ›</button>
         <!-- 最后一个议题：右侧改为「完成」，点了收起弹层 -->
         <button v-else class="ts-nav-btn done" @click="$emit('close')">完成</button>
       </div>
@@ -546,7 +546,9 @@ async function removeOpinion(op) {
 .ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 10rpx 22rpx; }
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
-.ts-input { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; }
+/* 发表意见卡片：暖米底把"写意见"整块框起来，与下方导航区分开 */
+.ts-compose { flex-shrink: 0; background: #FBF3E7; border: 2rpx solid #EFE2CD; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
+.ts-input { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; background: transparent; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
 .ts-voicebar { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; min-height: 96rpx; box-sizing: border-box; }
 .ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
@@ -560,18 +562,28 @@ async function removeOpinion(op) {
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-send[disabled] { background: #E3D5C3; }
 .ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
-/* 上一个/下一个议题：固定在弹层最底部，一行两键（缺一个时另一个占满） */
-.ts-nav-row { flex-shrink: 0; display: flex; gap: 14rpx; margin-top: 14rpx; }
-.ts-nav-btn { flex: 1; box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 0; }
+/* 导航：在输入卡片之外、弹层最底部。上一个=文字链靠左，下一个/完成=实心窄按钮靠右，两端隔开 */
+.ts-nav-row { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; margin-top: 18rpx; }
+.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 44rpx; }
 .ts-nav-btn:active { background: #ECEEF1; }
-/* 最后一个议题的「完成」：填充橙色，作为收尾动作更醒目 */
+/* 上一个议题：弱化成文字链靠左，把右侧推进按钮顶到最右 */
+.ts-nav-btn.prev { margin-right: auto; border: none; background: none; color: #8B8680; font-weight: 500; text-decoration: underline; text-underline-offset: 4rpx; padding: 20rpx 6rpx; }
+.ts-nav-btn.prev:active { background: none; color: #6B6560; }
+/* 下一个议题 / 完成：内容宽度(不占满)、靠右 */
+.ts-nav-btn.next, .ts-nav-btn.done { margin-left: auto; }
+.ts-nav-btn.next { background: #FFF1E2; border-color: #F0D3AE; color: #C76A00; }
+.ts-nav-btn.next:active { background: #FBE6CF; }
+/* 最后一个议题的「完成」：深橙实心收尾动作 */
 .ts-nav-btn.done { background: #C76A00; border-color: #C76A00; color: #fff; }
 .ts-nav-btn.done:active { background: #A85800; }
 
-/* AI 助手行：AI 帮写 / 语音输入 两个等宽按钮并排，文本框下方 */
-.ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
-.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
-.ts-ai-btn:active { background: #FFF1DC; }
+/* AI 助手行：AI 帮写(橙) / 语音输入(蓝) 两个等宽按钮并排，卡片内文本框下方，双色区分 */
+.ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 0 0; background: transparent; }
+.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
+.ts-ai-btn.ai { background: #FFF1E2; border-color: #F0D3AE; color: #C76A00; }
+.ts-ai-btn.ai:active { background: #FBE6CF; }
+.ts-ai-btn.voice { background: #EAF3FC; border-color: #C6DDF3; color: #1F6FB2; }
+.ts-ai-btn.voice:active { background: #DCEAF8; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
 .ts-ai-undo { font-size: 26rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
 .ts-ai-tokenline { flex-shrink: 0; text-align: right; font-size: 22rpx; color: #C2C6CC; padding: 8rpx 2rpx 0; }
