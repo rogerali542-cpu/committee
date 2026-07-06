@@ -65,14 +65,15 @@
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
         <div v-else class="ts-op" v-for="op in opinions" :key="op.id">
-          <div class="ts-op-meta">
+          <div class="ts-op-meta" @click="toggleOp(op)">
             <span class="ts-op-name">{{ op.name }}</span>
             <span v-if="op.claimable" class="ts-op-claim-tag" :class="{ on: claimShowId === op.id }"
-                  @click="toggleClaimRow(op)">未认领</span>
+                  @click.stop="toggleClaimRow(op)">未认领</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
-            <span v-if="op.canDelete" class="ts-op-del" @click="removeOpinion(op)">删除</span>
+            <span v-if="op.canDelete" class="ts-op-del" @click.stop="removeOpinion(op)">删除</span>
+            <span class="ts-op-toggle">{{ openOpIds.has(op.id) ? '收起' : '查看' }}<span class="ts-op-chev">{{ openOpIds.has(op.id) ? '⌄' : '›' }}</span></span>
           </div>
-          <div class="ts-op-content">{{ op.content }}</div>
+          <div v-if="openOpIds.has(op.id)" class="ts-op-content">{{ op.content }}</div>
           <!-- AI 从现场发言提炼、还没归属到人：认领按钮默认藏着，点"未认领"标签才展开 -->
           <div v-if="op.claimable && claimShowId === op.id" class="ts-op-claimrow">
             <button class="ts-op-claim-btn" @click="claimOpinion(op)">🙋 是我说的</button>
@@ -199,12 +200,18 @@ watch(aiBusy, (busy) => {
 })
 const polishUndo = ref(null)    // 润色前的原文（可还原）；null=没有可还原的
 const claimShowId = ref(null)   // 认领按钮默认藏着：点"未认领"标签展开的那条意见 id（声明须在下方 immediate watch 之前）
+const openOpIds = ref(new Set())  // 意见正文默认折叠，点"查看"展开的意见 id 集合
+function toggleOp(op) {
+  const s = new Set(openOpIds.value)
+  s.has(op.id) ? s.delete(op.id) : s.add(op.id)
+  openOpIds.value = s
+}
 
 // 打开（topic 切换/出现）时拉取本议题意见；关闭/切议题时收掉语音条（释放麦克风）和 AI 状态
 watch(() => props.topic && props.topic.id, (id) => {
   cancelVoice()
   helperOn.value = false; helperDraft.value = ''; aiBusy.value = false
-  aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null
+  aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null; openOpIds.value = new Set()
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions(); recordNoticeView() }
 }, { immediate: true })
 onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
@@ -375,7 +382,6 @@ async function loadOpinions() {
   } catch (e) { /* request 已 toast */ } finally { loading.value = false }
 }
 
-function srcLabel(s) { return s === 'voice' ? '语音' : (s === 'ai' ? '现场·AI' : '打字') }
 function fmtTime(iso) { return iso && iso.length >= 16 ? iso.slice(11, 16) : '' }
 function lockedOther(choice) { return !!props.topic.myVote && props.topic.myVote !== choice }
 
@@ -518,14 +524,14 @@ async function removeOpinion(op) {
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
 .ts-op { padding: 12rpx 0 16rpx; border-bottom: 2rpx solid #F7F7F8; }
 .ts-op:last-child { border-bottom: 0; }
-.ts-op-meta { display: flex; align-items: center; gap: 10rpx; margin-bottom: 6rpx; flex-wrap: wrap; }
+.ts-op-meta { display: flex; align-items: center; gap: 10rpx; margin-bottom: 6rpx; flex-wrap: wrap; cursor: pointer; }
 .ts-op-name { font-size: 28rpx; font-weight: 600; color: #333; }
-.ts-op-role { font-size: 22rpx; color: #999; }
-.ts-op-src { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #EAF2FD; color: #1A73E8; }
-.ts-op-src.ai { background: #FFF3E0; color: #C77700; }
 .ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
 .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 4rpx 8rpx; }
-.ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; }
+/* 意见正文默认折叠，右侧"查看/收起"提示引导点开 */
+.ts-op-toggle { display: inline-flex; align-items: center; gap: 4rpx; font-size: 24rpx; color: #C76A00; padding: 4rpx 2rpx; }
+.ts-op-chev { font-size: 26rpx; line-height: 1; }
+.ts-op-content { font-size: 30rpx; color: #1f2329; line-height: 1.55; word-break: break-all; margin-top: 4rpx; }
 
 /* 通报类议题：标题/正文加大两号、间距拉大，意见汇总区收小（通报一般不讨论） */
 .ts-sheet.is-notice .ts-title { font-size: 42rpx; line-height: 1.5; }
