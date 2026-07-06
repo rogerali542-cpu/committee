@@ -3,8 +3,7 @@
     <div class="ts-sheet" :class="{ 'is-notice': topic.type === 'notice' }" @click.stop>
       <div class="ts-handle"></div>
       <div class="ts-head">
-        <span class="ts-title">{{ topic.title }}</span>
-        <span class="ts-tag" :class="tagClass">{{ tagLabel }}</span>
+        <span class="ts-titlewrap"><span class="ts-title">{{ topic.title }}</span><span class="ts-tag" :class="tagClass">{{ tagLabel }}</span></span>
         <span class="ts-close" @click="$emit('close')">×</span>
       </div>
 
@@ -452,10 +451,12 @@ async function removeOpinion(op) {
 .ts-sheet { background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 30rpx calc(24rpx + env(safe-area-inset-bottom)); height: 88vh; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; }
 .ts-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #E4E6EA; margin: 0 auto 16rpx; }
 .ts-head { flex-shrink: 0; display: flex; align-items: flex-start; gap: 12rpx; margin-bottom: 20rpx; }
+.ts-titlewrap { flex: 1; min-width: 0; }
 /* 中间可滚动区：意见多了在这里滚，输入框始终露在底部 */
 .ts-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.ts-title { flex: 1; font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
-.ts-tag { flex-shrink: 0; font-size: 24rpx; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; margin-top: 4rpx; }
+.ts-title { font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
+/* 表决标签：紧跟标题之后（内联），不再顶到右上角 */
+.ts-tag { display: inline-block; margin-left: 12rpx; vertical-align: middle; font-size: 24rpx; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
 .ts-tag.vote { background: #FFF3E0; color: #E67E22; }
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
