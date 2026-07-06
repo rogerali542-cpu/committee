@@ -6,6 +6,7 @@
   "description": "业委专区 H5（由微信小程序迁移而来）",
   "scripts": {
     "dev": "vite",
+    "dev:https": "vite --config vite.config.https.js",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -17,6 +18,7 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "postcss-px-to-viewport-8-plugin": "^1.2.5",
     "vite": "^6.0.7"

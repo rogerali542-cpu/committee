@@ -2,8 +2,9 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
-// 开发期：前端 5173，/api 反代到后端 8080，避免跨域 + 混合内容（手机微信里也走同源）
-export default defineConfig({
+// 开发期：前端 5173，/api 反代到后端 8080，避免跨域 + 混合内容（手机微信里也走同源）。
+// 基础配置抽出复用：vite.config.https.js 会在此之上叠加自签 HTTPS（手机真机测相机用）。
+export const baseConfig = {
   plugins: [vue()],
   // 预构建 pdfjs，避免首次动态加载 PDF 预览时触发整页 reload
   optimizeDeps: {
@@ -24,4 +25,6 @@ export default defineConfig({
       }
     }
   }
-})
+}
+
+export default defineConfig(baseConfig)

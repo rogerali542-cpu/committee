@@ -200,9 +200,10 @@
           <!-- 缩略图预览条：图片显缩略图，PDF/其他显图标；可逐个删除 -->
           <div v-if="scanItems.length" class="ds-preview">
             <div v-for="it in scanItems" :key="it.id" class="ds-thumb">
-              <img v-if="it.isImage && it.thumbUrl" class="ds-thumb-img" :src="it.thumbUrl" :alt="it.name" />
-              <span v-else class="ds-thumb-file"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span><span class="ds-thumb-ext">{{ it.ext || '文件' }}</span></span>
-              <span class="ds-thumb-del" @click="removeScanItem(it.id)">×</span>
+              <img v-if="it.isImage && it.thumbUrl" class="ds-thumb-img" :src="it.thumbUrl" :alt="it.name" @click="openScanItemPreview(it)" />
+              <span v-else class="ds-thumb-file" @click="openScanItemPreview(it)"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span><span class="ds-thumb-ext">{{ it.ext || '文件' }}</span></span>
+              <span v-if="it.isImage && it.thumbUrl" class="ds-thumb-zoom" @click.stop="openScanItemPreview(it)">⤢</span>
+              <span class="ds-thumb-del" @click.stop="removeScanItem(it.id)">×</span>
             </div>
           </div>
           <div class="ds-cards">
@@ -983,6 +984,13 @@ function clearScanItems() {
   scanItems.value = []
 }
 function scanThumbIcon(ext) { return ext === 'pdf' ? '📄' : '📎' }
+// 点击暂存缩略图 → 复用全屏材料查看器放大看清（图片可再放大，PDF 也能预览）
+function openScanItemPreview(it) {
+  if (!it) return
+  const url = it.thumbUrl || (it.file ? URL.createObjectURL(it.file) : '')
+  if (!url) return
+  openMaterialViewer({ url, name: it.name, fileType: (it.file && it.file.type) || it.ext || '' })
+}
 
 async function startDocScan(source) {
   if (scanRecognizing.value) return
@@ -2081,7 +2089,10 @@ onActivated(show)
 /* 待识别缩略图预览条：横向排列，可删 */
 .ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
 .ds-thumb { position: relative; width: 108rpx; height: 108rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
-.ds-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ds-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+.ds-thumb-file { cursor: pointer; }
+/* 放大角标：提示缩略图可点击展开看清（左下角，避开右上删除×） */
+.ds-thumb-zoom { position: absolute; bottom: 0; left: 0; width: 36rpx; height: 36rpx; border-radius: 0 12rpx 0 12rpx; background: rgba(0,0,0,0.5); color: #fff; font-size: 24rpx; line-height: 36rpx; text-align: center; }
 .ds-thumb-file { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; background: #FAF7F1; }
 .ds-thumb-ico { font-size: 44rpx; line-height: 1; }
 .ds-thumb-ext { font-size: 20rpx; color: #A98; text-transform: uppercase; }
