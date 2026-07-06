@@ -5,7 +5,8 @@
     <PageNav :title="isChair ? '会议录音' : '会议进行'" style="margin:-3.2vw -3.2vw 0;" />
 
     <!-- AI 工作中：一个遮罩连续覆盖 转写(asr) → 生成纪要(gen)；全部完成后显"已生成会议纪要"、点击进纪要页 -->
-    <AiWorkingOverlay :active="polling || extracting || generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
+    <!-- 遮罩只在「生成会议纪要」阶段弹；上传/转写在后台静默进行，靠录音卡下方行内提示 -->
+    <AiWorkingOverlay :active="generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
 
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
     <div class="lp-fold">
@@ -58,6 +59,10 @@
       </div>
       <!-- 上传中提示：转圈 + 实时上传进度 -->
       <div v-if="uploading" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0" class="qk-up-pct">{{ uploadPct }}%</span></div>
+      <!-- 后台识别中：转写/抽取静默进行，只给行内提示，不弹全屏遮罩 -->
+      <div v-else-if="polling || extracting" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>{{ processText || '正在识别录音…' }}</div>
+      <!-- 识别失败/空转写：明确红色提示，按钮区已退回「上传录音」可直接重试 -->
+      <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="qk-seg-hint asr-error">⚠ {{ asrErrorText }}</div>
       <!-- 第一次：单键「上传录音」（上传→识别，不生成；识别完拆成两键）。 -->
       <button v-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
         class="lp-primary-btn gen-standalone" @click="uploadRecordingStep">
@@ -527,6 +532,12 @@ const asrStatus = ref('')
 const processText = ref('正在上传录音...')
 const finishText = ref('录音已转写，规则抽取结果已生成')
 const generated = ref(false)
+// 识别失败/空转写的行内提示文案（后台转写不弹遮罩，失败靠这条明确告知 + 引导重试）
+const asrErrorText = computed(() => {
+  if (asrStatus.value === 'empty') return '没识别到说话声，可能录到了静音或太轻。请点上方圆圈重新录音，靠近麦克风、说清楚些再试。'
+  if (asrStatus.value === 'failed') return (processText.value || '录音识别失败') + '　可点「上传录音」重试'
+  return ''
+})
 const extraction = ref(null)
 
 const presetTopics = ref([])
@@ -1049,6 +1060,7 @@ async function uploadRecordingFile(file, durationSec) {
   // 上传期间留在录音页(step 2)，显示"正在上传录音…"，不再自动跳转写页
   uploading.value = true
   uploadPct.value = 0
+  asrStatus.value = ''
   polling.value = false
   extracting.value = false
   generated.value = false
@@ -1119,8 +1131,11 @@ async function uploadAndRecognize() {
   overlayPhase.value = 'recognize'
   pickedIds.value = (recordings.value || []).filter(r => r.asrStatus !== 'done').map(r => r.id)
   await transcribeSelected()
-  if (generated.value) recognizedIds.value = (recordings.value || []).map(r => r.id)
-  // 完成后遮罩切完成态（「录音识别完成 → 下一步」），点下一步走 onAiWorkDone → voteCheckFlow
+  if (generated.value) {
+    recognizedIds.value = (recordings.value || []).map(r => r.id)
+    // 后台识别完成（无遮罩）：给一条成功提示，引导去点「生成会议纪要」
+    toast({ title: '录音识别完成，可生成会议纪要', icon: 'success' })
+  }
 }
 
 // 「上传录音」：上传在手录音 → 识别（转写→提炼），不生成。识别完关遮罩，露出「继续上传录音 / 生成会议纪要」两键。
@@ -1498,10 +1513,11 @@ function statusText(status, message) {
 }
 
 function asrFailMessage(message) {
-  if (message && String(message).indexOf('45000006') >= 0) {
-    return '音频公网地址无法访问，请返回上一步重新上传录音。'
-  }
-  return message || '转写失败'
+  const m = String(message || '')
+  if (m.indexOf('45000006') >= 0) return '音频文件读取失败，请返回上一步重新上传录音'
+  if (/timeout|timed out|超时/i.test(m)) return '录音较大，转写提交超时了。建议分段录制、缩短单段时长后重试'
+  if (/network|连接|refused|unreachable/i.test(m)) return '网络不稳定，转写没提交成功，请稍后重试'
+  return m || '录音转写失败，请重试'
 }
 
 async function handleAsrDone(task) {
@@ -1552,8 +1568,10 @@ async function finalizeTranscription() {
     persistQuickState()
   } catch (e) {
     extracting.value = false
-    processText.value = '规则抽取失败'
-    toast({ title: e.message || '抽取失败', icon: 'none' })
+    generated.value = false
+    asrStatus.value = 'failed'
+    processText.value = '录音识别成功，但整理议题失败'
+    toast({ title: e.message || '整理议题失败，请重试', icon: 'none' })
     return
   }
 
@@ -2226,6 +2244,8 @@ function exitLive() {
 .qk-up-spin { width:30rpx; height:30rpx; border:5rpx solid #F0D9B8; border-top-color:#C76A00; border-radius:50%; animation:qk-up-spin 0.7s linear infinite; }
 .qk-up-pct { color:#C76A00; font-variant-numeric:tabular-nums; }
 @keyframes qk-up-spin { to { transform:rotate(360deg); } }
+/* 识别失败/空转写：明确红色提示条 */
+.qk-seg-hint.asr-error { background:#FDECEA; color:#C0392B; font-weight:600; text-align:left; }
 
 /* 第4步底部：次要操作弱化为小链接 */
 .qk-sub-actions { display:flex; align-items:center; justify-content:center; gap:18rpx; margin-top:18rpx; }
