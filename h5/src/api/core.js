@@ -58,7 +58,7 @@ export function uploadFile(path, fileOrBlob, name = 'file', formData = {}, optio
   const fd = new FormData()
   fd.append(name, fileOrBlob, (fileOrBlob && fileOrBlob.name) || 'upload')
   Object.keys(formData || {}).forEach((k) => fd.append(k, formData[k]))
-  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: options.timeout || 30000 }).then(
+  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: options.timeout || 30000, onUploadProgress: options.onUploadProgress }).then(
     unwrap,
     (err) => { toast({ title: '上传失败', icon: 'none' }); return Promise.reject(err) }
   )

@@ -56,8 +56,8 @@
           <span class="qra-main">重新录音</span>
         </button>
       </div>
-      <!-- 上传中提示 -->
-      <div v-if="uploading" class="qk-seg-hint">⏳ 正在上传录音…</div>
+      <!-- 上传中提示：转圈 + 实时上传进度 -->
+      <div v-if="uploading" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0" class="qk-up-pct">{{ uploadPct }}%</span></div>
       <!-- 第一次：单键「上传录音」（上传→识别，不生成；识别完拆成两键）。 -->
       <button v-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
         class="lp-primary-btn gen-standalone" @click="uploadRecordingStep">
@@ -516,6 +516,7 @@ function onCircleTap() {
 }
 
 const uploading = ref(false)
+const uploadPct = ref(0)   // 上传录音的实时进度百分比（0=未知/刚开始，靠 axios onUploadProgress 更新）
 const polling = ref(false)
 const extracting = ref(false)
 const overlayPhase = ref('asr') // AI 工作遮罩阶段：转写=asr / 生成纪要=gen（一键流程内切换）
@@ -1047,6 +1048,7 @@ async function uploadRecordingFile(file, durationSec) {
   _asrDoneHandled = false
   // 上传期间留在录音页(step 2)，显示"正在上传录音…"，不再自动跳转写页
   uploading.value = true
+  uploadPct.value = 0
   polling.value = false
   extracting.value = false
   generated.value = false
@@ -1061,7 +1063,11 @@ async function uploadRecordingFile(file, durationSec) {
 
   try {
     // 上传只存，不自动转写 — 返回录音记录信息（带上时长，供转写页展示）
-    await api.committeeUploadRecording(meetingId.value, file, durationSec)
+    // 第4参：axios 上传进度回调，实时更新百分比（到 100% 后仍在等服务器保存/转码，转圈继续）
+    await api.committeeUploadRecording(meetingId.value, file, durationSec, (e) => {
+      if (e && e.total) uploadPct.value = Math.min(100, Math.round((e.loaded / e.total) * 100))
+    })
+    uploadPct.value = 100
     toast({ title: '录音已上传', icon: 'success' })
     uploading.value = false
     rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
@@ -2215,6 +2221,11 @@ function exitLive() {
 .lp-ghost-btn.finish-upload, .lp-ghost-btn.finish-upload.muted { background:#FFF1E0; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); font-weight:700; width:fit-content; margin-left:auto; margin-right:auto; margin-top:8rpx; padding:10rpx 34rpx; font-size:26rpx; } /* 上距收紧让录音卡更紧凑 */
 /* 上传后空闲提示：已录段数会合并为一份 */
 .qk-seg-hint { font-size:26rpx; color:#9A6A00; line-height:1.5; margin:6rpx 0 2rpx; background:#FFF8EC; border-radius:12rpx; padding:14rpx 18rpx; text-align:center; }
+/* 上传录音中：转圈 + 实时进度百分比 */
+.qk-seg-hint.uploading { display:flex; align-items:center; justify-content:center; gap:12rpx; font-weight:600; }
+.qk-up-spin { width:30rpx; height:30rpx; border:5rpx solid #F0D9B8; border-top-color:#C76A00; border-radius:50%; animation:qk-up-spin 0.7s linear infinite; }
+.qk-up-pct { color:#C76A00; font-variant-numeric:tabular-nums; }
+@keyframes qk-up-spin { to { transform:rotate(360deg); } }
 
 /* 第4步底部：次要操作弱化为小链接 */
 .qk-sub-actions { display:flex; align-items:center; justify-content:center; gap:18rpx; margin-top:18rpx; }
