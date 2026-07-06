@@ -1203,10 +1203,16 @@ async function bindStreamToVideo() {
 }
 // 统一「拍照」入口：先申请真实相机权限（浏览器弹系统授权框）——
 // 授权 → 进实时取景；拒绝 / 无摄像头 / 非安全上下文(局域网 http) → 转入模拟样张界面展示。
+// 注意：权限框只在“能调用相机”时才会弹；非安全上下文或没有摄像头时浏览器根本不弹，
+// 会直接落到模拟——这属正常，给个 toast 说明原因，避免误以为没生效。
 async function startCamera() {
   if (scanRecognizing.value) return
-  const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext
-  if (!supported) { openMockCamera(); return }
+  const hasApi = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+  if (!hasApi || !window.isSecureContext) {
+    toast({ title: '当前环境无法调用相机（需 HTTPS 或 localhost），已进入模拟拍摄', icon: 'none' })
+    openMockCamera()
+    return
+  }
   try {
     _realStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -1217,8 +1223,14 @@ async function startCamera() {
     realCamVisible.value = true
     await bindStreamToVideo()
   } catch (e) {
-    // 权限被拒绝 / 无摄像头 / 被占用 → 转入模拟界面
+    // 权限被拒绝 / 无摄像头 / 被占用 → 转入模拟界面。无设备时浏览器不弹权限，故给提示。
     stopRealStream()
+    const name = (e && e.name) || ''
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
+      toast({ title: '未检测到摄像头，已进入模拟拍摄', icon: 'none' })
+    } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+      toast({ title: '摄像头被其他程序占用，已进入模拟拍摄', icon: 'none' })
+    }
     openMockCamera()
   }
 }
