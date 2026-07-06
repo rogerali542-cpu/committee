@@ -457,8 +457,11 @@ async function removeOpinion(op) {
 .ts-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ts-title { font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
 /* 表决标签：紧跟标题之后（内联），不再顶到右上角 */
-.ts-tag { display: inline-block; margin-left: 12rpx; vertical-align: middle; font-size: 24rpx; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
-.ts-tag.vote { background: #FFF3E0; color: #E67E22; }
+.ts-tag { display: inline-block; margin-left: 12rpx; vertical-align: middle; font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
+/* 三类议题各一专属色（浅底彩字，方案A）——讨论蓝 / 表决橙 / 通报紫，刻意避开绿(=同意票色) */
+.ts-tag.discuss { background: #E9F2FB; color: #1F6FB2; }
+.ts-tag.vote { background: #FFF1E2; color: #C76A00; }
+.ts-tag.notice { background: #F1EBFB; color: #6D3FC4; }
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
