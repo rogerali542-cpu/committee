@@ -1223,13 +1223,18 @@ async function startCamera() {
     realCamVisible.value = true
     await bindStreamToVideo()
   } catch (e) {
-    // 权限被拒绝 / 无摄像头 / 被占用 → 转入模拟界面。无设备时浏览器不弹权限，故给提示。
+    // 权限被拒绝 / 无摄像头 / 被占用 → 转入模拟界面。多数情况浏览器不弹权限，故给提示说明。
     stopRealStream()
     const name = (e && e.name) || ''
     if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
       toast({ title: '未检测到摄像头，已进入模拟拍摄', icon: 'none' })
     } else if (name === 'NotReadableError' || name === 'TrackStartError') {
       toast({ title: '摄像头被其他程序占用，已进入模拟拍摄', icon: 'none' })
+    } else if (name === 'NotAllowedError' || name === 'SecurityError') {
+      // 曾点过“阻止”后 Chrome 会记住、不再弹框直接拒绝——提示如何解除
+      toast({ title: '相机权限被禁用，点地址栏相机图标改为“允许”后重试；已进入模拟', icon: 'none', duration: 3000 })
+    } else {
+      toast({ title: '相机打开失败，已进入模拟拍摄', icon: 'none' })
     }
     openMockCamera()
   }
