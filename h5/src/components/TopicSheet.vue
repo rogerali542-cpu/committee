@@ -115,11 +115,11 @@
             <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
           </div>
           <div class="ts-ai-row">
-            <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi">{{ aiBusy ? '✨ AI 正在润色…' : '✨ AI 帮我润色' }}</button>
-            <button v-else class="ts-ai-btn" :disabled="aiBusy" @click="onHelpWrite">{{ helpWriteLabel }}</button>
-            <span v-if="aiBusy" class="ts-ai-prog"><span class="ts-ai-spin"></span>{{ aiProgress }}%</span>
-            <span v-else-if="aiTokens" class="ts-ai-token">本次消耗 {{ aiTokens.toLocaleString() }} token</span>
+            <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中 ' + aiProgress + '%' : 'AI 润色' }}</button>
+            <button v-else class="ts-ai-btn" :disabled="aiBusy" @click="onHelpWrite"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 写作中 ' + aiProgress + '%' : 'AI 帮写' }}</button>
+            <button class="ts-ai-btn" :disabled="aiBusy" @click="startVoice('draft')">语音输入</button>
           </div>
+          <div v-if="aiTokens && !aiBusy" class="ts-ai-tokenline">本次消耗 {{ aiTokens.toLocaleString() }} token</div>
         </template>
       </template>
       <div v-else-if="interactive && !signedIn" class="ts-input-hint">签到后可发表意见</div>
@@ -334,11 +334,6 @@ function onHelpWrite() {
   if (props.topic && props.topic.myVote) { draftFromVote(); return }
   helperOn.value = true
 }
-// 已表决时的按钮文案：提示会按本人表决直接生成
-const helpWriteLabel = computed(() => {
-  if (aiBusy.value) return 'AI 正在写…'
-  return (props.topic && props.topic.myVote) ? '✨ 按我的表决，帮我写发言' : '✨ 不会说？AI 帮我写'
-})
 // 由本人表决结果生成一句"口头表态"喂给 draft（后端已带委员身份 speaker_role，AI 据此写正式发言）
 function voteStanceSeed() {
   const t = props.topic
@@ -573,12 +568,13 @@ async function removeOpinion(op) {
 .ts-nav-btn.done { background: #FFA800; border-color: #FFA800; color: #fff; }
 .ts-nav-btn.done:active { background: #F09600; }
 
-/* AI 助手行：润色 / 帮我写 入口 + 还原 + token 低调提示 */
-.ts-ai-row { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
-.ts-ai-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 12rpx 22rpx; }
+/* AI 助手行：AI 帮写 / 语音输入 两个等宽按钮并排，文本框下方 */
+.ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 2rpx 2rpx; background: #fff; }
+.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
 .ts-ai-btn:active { background: #FFF1DC; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
 .ts-ai-undo { font-size: 26rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
+.ts-ai-tokenline { flex-shrink: 0; text-align: right; font-size: 22rpx; color: #C2C6CC; padding: 8rpx 2rpx 0; }
 .ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
 /* AI 生成中：转圈图标 + 假进度百分比 */
 .ts-ai-prog { display: inline-flex; align-items: center; gap: 8rpx; font-size: 24rpx; font-weight: 600; color: #B06A00; font-variant-numeric: tabular-nums; }
