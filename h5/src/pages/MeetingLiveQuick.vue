@@ -63,8 +63,13 @@
       <div v-else-if="polling || extracting" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可生成纪要</div>
       <!-- 识别失败/空转写：明确红色提示，按钮区已退回「上传录音」可直接重试 -->
       <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="qk-seg-hint asr-error">⚠ {{ asrErrorText }}</div>
+      <!-- 纪要已生成：查看会议纪要(主) + 重新生成纪要(次)，优先于生成/上传两键 -->
+      <div v-if="!uploading && !polling && !extracting && !generatingMinutes && minutesGenerated" class="qk-two-btns">
+        <button class="lp-primary-btn qk-two-btn" @click="viewMinutes"><span class="qra-main">查看会议纪要</span></button>
+        <button class="lp-primary-btn qk-two-btn ghost" @click="regenerateMinutes"><span class="qra-main">重新生成纪要</span></button>
+      </div>
       <!-- 第一次：单键「上传录音」（上传→识别，不生成；识别完拆成两键）。 -->
-      <button v-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
+      <button v-else-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
         class="lp-primary-btn gen-standalone" @click="uploadRecordingStep">
         <span class="qra-main">上传录音</span>
       </button>
@@ -1823,6 +1828,20 @@ function buildConfirmPayload() {
 // 仅查看已保存的纪要草稿，不触发重新生成
 function viewMinutes() {
   navigateTo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&view=1')
+}
+
+// 重新生成纪要：会覆盖当前草稿，先确认再走生成流程（表决核对 → 生成）
+async function regenerateMinutes() {
+  const res = await showModal({
+    title: '',
+    content: '将重新生成会议纪要，覆盖当前草稿。确认重新生成？',
+    confirmText: '重新生成',
+    cancelText: '取消',
+    contentBold: true,
+    emphasizeConfirm: true
+  })
+  if (!res.confirm) return
+  generateNow()
 }
 
 // ── 重做后的「最后一步」：表决核对 / 生成纪要 / 结束会议 ──
