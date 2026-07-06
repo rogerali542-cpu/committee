@@ -1,6 +1,7 @@
 <template>
-  <div class="aio-mask" :class="{ 'theme-party': theme === 'party' }" v-if="shown">
+  <div class="aio-mask" :class="{ 'theme-party': theme === 'party' }" v-if="shown && !minimized">
     <div class="aio-card" :class="{ 'theme-party': theme === 'party' }">
+      <button class="aio-min" @click="minimize" aria-label="最小化">–</button>
       <button class="aio-close" @click="onClose" aria-label="关闭">×</button>
       <span class="aio-pt" style="top:8%;left:10%;width:8rpx;height:8rpx"></span>
       <span class="aio-pt" style="top:14%;left:86%;width:10rpx;height:10rpx;animation-delay:.6s"></span>
@@ -58,6 +59,12 @@
       <div v-else class="aio-by">由 <b>豆包大模型</b> 提供 · 完成后自动通知您 🔔</div>
     </div>
   </div>
+
+  <!-- 最小化后的悬浮球：后台继续处理，点击展开回大窗；完成时自动弹回 -->
+  <div v-if="shown && minimized" class="aio-fab" :class="{ 'theme-party': theme === 'party' }" @click="restore">
+    <span class="aio-fab-ico"></span>
+    <span class="aio-fab-txt">{{ done ? '已完成 · 点此查看' : badge }}</span>
+  </div>
 </template>
 
 <script setup>
@@ -66,6 +73,7 @@
 // 深蓝科技风 + 发光能量核心 + 实时运行数据(耗时真、token/预计完成估算剧场化)；进度只升不退；prefers-reduced-motion 降级。
 // 入参 active = AI 任务进行中；active 由 true→false 视为"已完成"(假定成功)。另存档"全屏版"见记忆 ai-working-screen-design。
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { showModal } from '@/utils/ui'
 
 const props = defineProps({
   active: { type: Boolean, default: false },
@@ -88,8 +96,17 @@ const CFG = {
 
 const shown = ref(false)
 const done = ref(false)
+const minimized = ref(false)   // 最小化：收起大窗、悬浮球代替，后台任务不受影响
 const sec = ref(0)
 let timer = null
+
+// X 关闭的确认文案（按阶段：中止对应的 AI 任务）
+const closeMsg = computed(() => {
+  if (props.phase === 'gen') return '将中止 AI 生成会议纪要，确认要关闭吗？'
+  if (props.phase === 'news') return '将中止 AI 生成党建新闻，确认要关闭吗？'
+  if (props.phase === 'asr' || props.phase === 'recognize') return '将中止录音识别，确认要关闭吗？'
+  return '将中止本次 AI 处理，确认要关闭吗？'
+})
 
 const cfg = computed(() => {
   const base = CFG[props.phase] || CFG.asr
@@ -143,13 +160,32 @@ function stop() { if (timer) { clearInterval(timer); timer = null } }
 function finish() { stop(); done.value = true } // 冻结耗时，切完成态等用户确认
 
 watch(() => props.active, (a) => {
-  if (a) { shown.value = true; start() }
+  if (a) { shown.value = true; minimized.value = false; start() } // 每次新开都从大窗开始
   else if (shown.value) { finish() } // 进行中 → 完成
 }, { immediate: true })
 watch(() => props.phase, () => { if (props.active) start() })
+// 处理完成时若正最小化 → 自动弹回大窗，让用户看到「已完成 → 查看」
+watch(done, (d) => { if (d && minimized.value) minimized.value = false })
 
-function onConfirm() { shown.value = false; done.value = false; emit('confirm') }
-function onClose() { stop(); shown.value = false; done.value = false; emit('close') }
+function minimize() { minimized.value = true }
+function restore() { minimized.value = false }
+
+function onConfirm() { shown.value = false; done.value = false; minimized.value = false; emit('confirm') }
+async function onClose() {
+  // 已完成态无需确认，直接关；进行中关闭 = 中止任务，先确认
+  if (!done.value) {
+    const res = await showModal({
+      title: '',
+      content: closeMsg.value,
+      confirmText: '确认关闭',
+      cancelText: '继续等待',
+      contentBold: true,
+      emphasizeConfirm: true
+    })
+    if (!res.confirm) return
+  }
+  stop(); shown.value = false; done.value = false; minimized.value = false; emit('close')
+}
 
 onUnmounted(stop)
 </script>
@@ -173,6 +209,16 @@ onUnmounted(stop)
 }
 .aio-close { position: absolute; top: 18rpx; right: 20rpx; z-index: 3; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; color: #AECBF0; font-size: 48rpx; line-height: 1; background: rgba(255,255,255,.1); border: 2rpx solid rgba(150,190,255,.22); border-radius: 50%; padding: 0; }
 .aio-close:active { background: rgba(255,255,255,.2); }
+/* 最小化按钮：X 左侧 */
+.aio-min { position: absolute; top: 18rpx; right: 92rpx; z-index: 3; width: 60rpx; height: 60rpx; display: flex; align-items: center; justify-content: center; color: #AECBF0; font-size: 44rpx; line-height: 1; background: rgba(255,255,255,.1); border: 2rpx solid rgba(150,190,255,.22); border-radius: 50%; padding: 0; }
+.aio-min:active { background: rgba(255,255,255,.2); }
+.theme-party .aio-min { color: #FFE1C4; background: rgba(255,255,255,.12); border-color: rgba(255,210,150,.35); }
+/* 最小化悬浮球：固定右下，后台处理中/已完成 */
+.aio-fab { position: fixed; right: 28rpx; bottom: 44rpx; z-index: 1000; display: inline-flex; align-items: center; gap: 12rpx; padding: 16rpx 28rpx; border-radius: 999rpx; background: linear-gradient(90deg,#2E73E6,#1B47AE); color: #EAF2FF; font-size: 26rpx; font-weight: 600; box-shadow: 0 10rpx 30rpx rgba(20,50,120,.5); border: 2rpx solid rgba(140,185,255,.4); }
+.aio-fab:active { filter: brightness(1.08); }
+.aio-fab-ico { width: 26rpx; height: 26rpx; border: 4rpx solid rgba(180,210,255,.4); border-top-color: #fff; border-radius: 50%; animation: aioSpin 0.8s linear infinite; }
+.aio-fab.theme-party { background: linear-gradient(90deg,#D5262B,#8E0F14); border-color: rgba(255,210,150,.45); color: #FFE6CE; }
+.aio-fab.theme-party .aio-fab-ico { border-color: rgba(255,210,150,.4); border-top-color: #fff; }
 .aio-pt { position: absolute; border-radius: 50%; background: #8FC6FF; box-shadow: 0 0 12rpx 2rpx rgba(120,180,255,.8); animation: aioTwk 3.2s ease-in-out infinite; }
 /* 右侧留出关闭按钮的位置，避免状态标签与右上角关闭圆圈重叠 */
 .aio-hdr { display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; padding-right: 72rpx; }
