@@ -1,6 +1,6 @@
 <template>
   <div class="page minutes-page">
-    <PageNav title="会议纪要" style="display:block;margin:-24rpx -24rpx 0;" />
+    <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;" />
 
     <!-- AI 工作中：纪要页 gen=1 大模型生成等待时显"生成纪要"态；完成后出确认按钮（覆盖原"生成中"提示） -->
     <AiWorkingOverlay :active="aiGenerating" phase="gen" />

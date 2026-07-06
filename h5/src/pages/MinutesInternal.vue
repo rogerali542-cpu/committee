@@ -1,6 +1,6 @@
 <template>
   <div class="page minutes-internal-page" style="overflow-y:auto;">
-    <PageNav title="内部总结" style="display:block;margin:-24rpx -24rpx 0;" />
+    <PageNav title="内部总结" style="margin:-24rpx -24rpx 0;" />
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <div v-else-if="!reportText" class="access-card">
