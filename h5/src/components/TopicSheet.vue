@@ -468,12 +468,12 @@ async function removeOpinion(op) {
 .ts-sheet { background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 30rpx calc(24rpx + env(safe-area-inset-bottom)); height: 88vh; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; }
 .ts-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #E4E6EA; margin: 0 auto 16rpx; }
 .ts-head { flex-shrink: 0; display: flex; align-items: flex-start; gap: 12rpx; margin-bottom: 20rpx; }
-.ts-titlewrap { flex: 1; min-width: 0; }
+.ts-titlewrap { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; column-gap: 12rpx; row-gap: 4rpx; }
 /* 中间可滚动区：意见多了在这里滚，输入框始终露在底部 */
 .ts-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.ts-title { font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
+.ts-title { min-width: 0; font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
 /* 表决标签：紧跟标题之后（内联），不再顶到右上角 */
-.ts-tag { display: inline-block; margin-left: 12rpx; vertical-align: middle; font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
+.ts-tag { flex-shrink: 0; font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
 /* 三类议题各一专属色（浅底彩字，方案A）——讨论蓝 / 表决橙 / 通报紫，刻意避开绿(=同意票色) */
 .ts-tag.discuss { background: #E9F2FB; color: #1F6FB2; }
 .ts-tag.vote { background: #FFF1E2; color: #C76A00; }
@@ -516,8 +516,8 @@ async function removeOpinion(op) {
 .ts-notice-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
 .ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
 .ts-notice-status.done { color: #2E7D32; }
-.ts-notice-read { border: none; background: #FFA800; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 14rpx 34rpx; }
-.ts-notice-read:active { background: #F09600; }
+.ts-notice-read { border: none; background: #3E9B34; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 14rpx 34rpx; }
+.ts-notice-read:active { background: #34842C; }
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
