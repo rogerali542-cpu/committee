@@ -105,6 +105,7 @@
           <div class="ts-helper-btns">
             <button class="ts-helper-voice" :disabled="aiBusy" @click="startVoice('helper')">🎤 用说的</button>
             <button class="ts-helper-go" :disabled="!helperDraft.trim() || aiBusy" @click="draftByAi">{{ aiBusy ? 'AI 正在写…' : '帮我写好' }}</button>
+            <span v-if="aiBusy" class="ts-ai-prog"><span class="ts-ai-spin"></span>{{ aiProgress }}%</span>
           </div>
         </div>
         <!-- 常规输入行 + AI 助手行 -->
@@ -114,10 +115,10 @@
             <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
           </div>
           <div class="ts-ai-row">
-            <button class="ts-mic" @click="startVoice('draft')">🎤</button>
             <button v-if="draft.trim()" class="ts-ai-btn" :disabled="aiBusy" @click="polishByAi">{{ aiBusy ? '✨ AI 正在润色…' : '✨ AI 帮我润色' }}</button>
             <button v-else class="ts-ai-btn" :disabled="aiBusy" @click="onHelpWrite">{{ helpWriteLabel }}</button>
-            <span v-if="aiTokens" class="ts-ai-token">本次消耗 {{ aiTokens.toLocaleString() }} token</span>
+            <span v-if="aiBusy" class="ts-ai-prog"><span class="ts-ai-spin"></span>{{ aiProgress }}%</span>
+            <span v-else-if="aiTokens" class="ts-ai-token">本次消耗 {{ aiTokens.toLocaleString() }} token</span>
           </div>
         </template>
       </template>
@@ -181,6 +182,21 @@ const helperOn = ref(false)     // 小助手面板
 const helperDraft = ref('')     // 小助手里的"随便说说"
 const aiBusy = ref(false)       // AI 生成中
 const aiTokens = ref(0)         // 最近一次 AI 消耗 token（低调展示）
+// AI 生成时的"假进度"：转圈图标旁滚动到 ~97% 制造"正在写"的观感（真实完成靠 aiBusy 收尾）
+const aiProgress = ref(0)
+let aiProgTimer = null
+watch(aiBusy, (busy) => {
+  clearInterval(aiProgTimer); aiProgTimer = null
+  if (busy) {
+    aiProgress.value = 4
+    aiProgTimer = setInterval(() => {
+      const step = Math.max(1, Math.round((97 - aiProgress.value) * 0.14)) // 越接近 97 走得越慢
+      aiProgress.value = Math.min(97, aiProgress.value + step)
+    }, 240)
+  } else {
+    aiProgress.value = 0
+  }
+})
 const polishUndo = ref(null)    // 润色前的原文（可还原）；null=没有可还原的
 const claimShowId = ref(null)   // 认领按钮默认藏着：点"未认领"标签展开的那条意见 id（声明须在下方 immediate watch 之前）
 
@@ -191,7 +207,7 @@ watch(() => props.topic && props.topic.id, (id) => {
   aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions(); recordNoticeView() }
 }, { immediate: true })
-onBeforeUnmount(cancelVoice)
+onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
 
 // 打开通报类议题即记录"本人已看过"；全体已签到委员都看过时后端会自动标记已通报。
 async function recordNoticeView() {
@@ -495,7 +511,7 @@ async function removeOpinion(op) {
 
 /* 通报类议题：通知正文 + 已通报状态 */
 .ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 18rpx; margin-bottom: 18rpx; }
-.ts-notice-label { font-size: 26rpx; font-weight: 700; color: #B06A00; margin-bottom: 12rpx; }
+.ts-notice-label { font-size: 26rpx; font-weight: 700; color: #A85800; margin-bottom: 12rpx; }
 .ts-notice-body { font-size: 32rpx; color: #1f2329; line-height: 1.7; white-space: pre-wrap; }
 .ts-notice-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
 .ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
@@ -536,8 +552,6 @@ async function removeOpinion(op) {
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
 .ts-input { flex-shrink: 0; display: flex; align-items: flex-end; gap: 14rpx; padding-top: 16rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; }
-.ts-mic { flex-shrink: 0; width: 84rpx; height: 84rpx; border: 2rpx solid #D8DBE0; border-radius: 50%; background: #fff; font-size: 40rpx; line-height: 1; padding: 0; }
-.ts-mic:active { background: #FFF6E8; border-color: #FFA800; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
 .ts-voicebar { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; min-height: 96rpx; box-sizing: border-box; }
 .ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
@@ -566,6 +580,10 @@ async function removeOpinion(op) {
 .ts-ai-btn[disabled] { opacity: 0.55; }
 .ts-ai-undo { font-size: 26rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
 .ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
+/* AI 生成中：转圈图标 + 假进度百分比 */
+.ts-ai-prog { display: inline-flex; align-items: center; gap: 8rpx; font-size: 24rpx; font-weight: 600; color: #B06A00; font-variant-numeric: tabular-nums; }
+.ts-ai-spin { width: 26rpx; height: 26rpx; border: 4rpx solid #F0D9B8; border-top-color: #C76A00; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
+@keyframes ts-ai-spin { to { transform: rotate(360deg); } }
 
 /* AI 小助手面板 */
 .ts-helper { flex-shrink: 0; border: 2rpx solid #F0D9B8; border-radius: 18rpx; background: #FFFDF8; padding: 20rpx 22rpx; margin-top: 10rpx; }

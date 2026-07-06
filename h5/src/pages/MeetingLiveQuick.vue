@@ -24,7 +24,7 @@
             <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id">
               <span class="lp-agenda-idx">{{ index + 1 }}</span>
               <span class="lp-agenda-title">{{ item.title }}</span>
-              <button class="lp-agenda-pill" :class="topicBadgeDone(item) ? 'done' : ''" @click="openTopicSheet(item)">{{ topicPillLabel(item) }}<span class="lp-pill-chev">{{ topicBadgeDone(item) ? '✓' : '›' }}</span></button>
+              <button class="lp-agenda-pill" :class="topicBadgeDone(item) ? 'done' : topicPillType(item)" @click="openTopicSheet(item)">{{ topicPillLabel(item) }}<span class="lp-pill-chev">{{ topicBadgeDone(item) ? '✓' : '›' }}</span></button>
             </div>
           </template>
           <span v-else class="lp-agenda-empty">暂无议题</span>
@@ -447,6 +447,12 @@ function topicPillLabel(item) {
   if (item.voteRequired) return '去表决'
   if (item.type === 'notice') return '去通报'
   return '去讨论'
+}
+// 胶囊按钮按议题类型着色，与议题弹层标签同一套：表决橙 / 通报紫 / 讨论蓝
+function topicPillType(item) {
+  if (item.voteRequired) return 'vote'
+  if (item.type === 'notice') return 'notice'
+  return 'discuss'
 }
 
 // 议题区固定高度，字体自适应：内容放不下时逐级缩小(最多3号)，仍放不下则本区下拉滚动（卡片大小不变）
@@ -2108,6 +2114,10 @@ function exitLive() {
   box-shadow:0 3rpx 10rpx rgba(199,106,0,0.22); }
 .lp-agenda-pill:active { background:#FFF6EC; }
 .lp-pill-chev { font-size:28rpx; line-height:1; margin-top:-2rpx; }
+/* 按议题类型着色，与议题弹层标签同一套：表决橙 / 通报紫 / 讨论蓝 */
+.lp-agenda-pill.vote { border-color:#E68A2E; color:#C76A00; box-shadow:0 3rpx 10rpx rgba(199,106,0,0.22); }
+.lp-agenda-pill.notice { border-color:#9B6BE0; color:#6D3FC4; box-shadow:0 3rpx 10rpx rgba(109,63,196,0.20); }
+.lp-agenda-pill.discuss { border-color:#3E8FCF; color:#1F6FB2; box-shadow:0 3rpx 10rpx rgba(31,111,178,0.20); }
 .lp-agenda-pill.done { background:#fff; border-color:#BFE0B2; color:#2E7D32; box-shadow:0 3rpx 10rpx rgba(46,125,50,0.16); }
 .lp-agenda-idx { width:42rpx; height:42rpx; flex-shrink:0; border-radius:50%; background:#F2F2F4; color:#666; font-size: 28rpx; text-align:center; line-height:42rpx; }
 .lp-agenda-title { flex:1; min-width:0; color:#1F2024; word-break:break-all; font-size:34rpx; line-height:1.35; cursor:default; }
