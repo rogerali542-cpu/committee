@@ -994,7 +994,7 @@ async function restartRecording() {
   if (uploading.value) return
   const res = await showModal({
     title: '',
-    content: '将覆盖当前录音，确定重录？',
+    content: '将清除当前录音片段，确认重录？',
     confirmText: '重新录音',
     cancelText: '取消',
     contentBold: true,
