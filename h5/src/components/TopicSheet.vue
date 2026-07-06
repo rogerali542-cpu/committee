@@ -580,8 +580,8 @@ async function removeOpinion(op) {
 /* AI 助手行：AI 帮写(橙) / 语音输入(蓝) 两个等宽按钮并排，卡片内文本框下方，双色区分 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 0 0; background: transparent; }
 .ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
-.ts-ai-btn.ai { background: #FFF1E2; border-color: #F0D3AE; color: #C76A00; }
-.ts-ai-btn.ai:active { background: #FBE6CF; }
+.ts-ai-btn.ai { background: #EEF6E2; border-color: #BAD79A; color: #4F8B34; }
+.ts-ai-btn.ai:active { background: #E3F0D2; }
 .ts-ai-btn.voice { background: #EAF3FC; border-color: #C6DDF3; color: #1F6FB2; }
 .ts-ai-btn.voice:active { background: #DCEAF8; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
@@ -590,7 +590,7 @@ async function removeOpinion(op) {
 .ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
 /* AI 生成中：转圈图标 + 假进度百分比 */
 .ts-ai-prog { display: inline-flex; align-items: center; gap: 8rpx; font-size: 24rpx; font-weight: 600; color: #B06A00; font-variant-numeric: tabular-nums; }
-.ts-ai-spin { width: 26rpx; height: 26rpx; border: 4rpx solid #F0D9B8; border-top-color: #C76A00; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
+.ts-ai-spin { width: 26rpx; height: 26rpx; border: 4rpx solid #CDE3B4; border-top-color: #4F8B34; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
 @keyframes ts-ai-spin { to { transform: rotate(360deg); } }
 
 /* AI 小助手面板 */
