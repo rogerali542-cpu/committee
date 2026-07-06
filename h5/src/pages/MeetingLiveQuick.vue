@@ -15,7 +15,7 @@
         <div class="lp-info-title-wrap">
           <span class="lp-info-title">会议议题</span>
           <!-- 引导语（灰色小字，纯提示不可点）：与标题同排 -->
-          <span v-if="detail.record && detail.record.topics && detail.record.topics.length" class="lp-topics-note">点击议题参与讨论</span>
+          <span v-if="detail.record && detail.record.topics && detail.record.topics.length" class="lp-topics-note">点右侧按钮参与</span>
         </div>
         <!-- 实时添加议题（主任/副主任）：从录音卡挪进议题卡，弱化成小链接 -->
         <span v-if="isChair" class="lp-add-topic" @click="openAddTopic">+ 临时添加</span>
@@ -24,11 +24,11 @@
         <!-- 固定高度：议题多了先自动缩字号(最多3号)，仍放不下则本区内下拉滚动，卡片大小不变 -->
         <div class="lp-agenda" :class="'lp-agenda--fs' + agendaFontLevel" ref="agendaEl">
           <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
-            <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id" @click="openTopicSheet(item)">
+            <!-- 方案D：状态胶囊即按钮（点它进表决/讨论）；议题文字本身不可点。待办=橙可点，已办=绿(仍可点看结果) -->
+            <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id">
               <span class="lp-agenda-idx">{{ index + 1 }}</span>
               <span class="lp-agenda-title">{{ item.title }}</span>
-              <span class="lp-agenda-badge" :class="topicBadgeDone(item) ? 'done' : 'wait'">{{ topicBadgeText(item) }}</span>
-              <span class="lp-agenda-arrow">›</span>
+              <button class="lp-agenda-pill" :class="topicBadgeDone(item) ? 'done' : ''" @click="openTopicSheet(item)">{{ topicBadgeText(item) }}<span v-if="!topicBadgeDone(item)" class="lp-pill-chev">›</span></button>
             </div>
           </template>
           <span v-else class="lp-agenda-empty">暂无议题</span>
@@ -2093,16 +2093,17 @@ function exitLive() {
 .lp-agenda--fs1 .lp-agenda-title { font-size:32rpx; }
 .lp-agenda--fs2 .lp-agenda-title { font-size:28rpx; }
 .lp-agenda--fs2 .lp-agenda-item { padding:12rpx 0; }
-.lp-agenda-item { display:flex; align-items:center; gap:16rpx; padding:18rpx 0; border-bottom:2rpx solid #F2F2F4; }
+.lp-agenda-item { display:flex; align-items:center; gap:14rpx; padding:16rpx 0; border-bottom:2rpx solid #F2F2F4; }
 .lp-agenda-item:last-child { border-bottom:0; }
-.lp-agenda-item:active { background:#FAFAFA; }
-/* 议题行角标：显示待/已状态——待处理=橙(提醒)、已处理=绿；行尾小箭头提示可点 */
-.lp-agenda-badge { flex-shrink:0; font-size:24rpx; color:#666; background:#F2F2F4; border-radius:999rpx; padding:6rpx 16rpx; line-height:1.3; font-weight:600; }
-.lp-agenda-badge.wait { background:#FFF3E0; color:#C77700; }
-.lp-agenda-badge.done { background:#EAF6E5; color:#2E7D32; }
-.lp-agenda-arrow { flex-shrink:0; color:#C2C6CC; font-size:34rpx; margin-left:-6rpx; }
-.lp-agenda-idx { width:44rpx; height:44rpx; flex-shrink:0; border-radius:50%; background:#F2F2F4; color:#666; font-size: 30rpx; text-align:center; line-height:44rpx; }
-.lp-agenda-title { flex:1; min-width:0; color:#1F2024; word-break:break-all; font-size:36rpx; line-height:1.35; }
+/* 方案D：状态胶囊即按钮。待办=亮橙可点(白字不加粗、含›)；已办=绿(仍可点看结果)。议题文字本身不可点 */
+.lp-agenda-pill { flex-shrink:0; display:inline-flex; align-items:center; gap:2rpx; border:0; font-family:inherit;
+  font-size:24rpx; font-weight:400; line-height:1.3; border-radius:999rpx; padding:8rpx 14rpx;
+  background:var(--c-primary); color:#fff; }
+.lp-agenda-pill:active { background:var(--c-primary-dark); }
+.lp-pill-chev { font-size:28rpx; line-height:1; margin-top:-2rpx; }
+.lp-agenda-pill.done { background:#EAF6E5; color:#2E7D32; }
+.lp-agenda-idx { width:42rpx; height:42rpx; flex-shrink:0; border-radius:50%; background:#F2F2F4; color:#666; font-size: 28rpx; text-align:center; line-height:42rpx; }
+.lp-agenda-title { flex:1; min-width:0; color:#1F2024; word-break:break-all; font-size:34rpx; line-height:1.35; cursor:default; }
 .lp-agenda-tag { flex-shrink:0; font-size: 30rpx; padding:4rpx 14rpx; border-radius:12rpx; background:#F2F2F4; color:#666; }
 .lp-agenda-tag.vote { background:#FFF3E0; color:#E67E22; }
 .lp-agenda-tag.major { background:#FDECEA; color:#E74C3C; }
