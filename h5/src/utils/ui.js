@@ -39,6 +39,7 @@ export function showModal(opts = {}) {
       size: opts.size || '',   // 'large' = 加大版（识别结果等重要确认框用）
       contentBold: !!opts.contentBold,       // 正文加粗加深（黑体）
       emphasizeConfirm: !!opts.emphasizeConfirm, // 确认按钮加宽、取消收窄，突出确认动作
+      emphasizeCancel: !!opts.emphasizeCancel,   // 反过来：取消按钮加宽加粗为主，确认收窄弱化（破坏性确认宜次要）
       showClose: !!opts.showClose, // 右上角 ×：单纯关闭，resolve {close:true}（区别于 cancel 按钮的动作）
       _resolve: resolve
     }

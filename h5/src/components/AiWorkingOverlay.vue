@@ -180,7 +180,7 @@ async function onClose() {
       confirmText: '确认关闭',
       cancelText: '继续等待',
       contentBold: true,
-      emphasizeConfirm: true
+      emphasizeCancel: true // 「继续等待」为主(突出)、「确认关闭」为次
     })
     if (!res.confirm) return
   }

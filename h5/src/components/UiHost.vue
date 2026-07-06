@@ -22,7 +22,7 @@
       <div v-if="uiState.modal.title" class="ui-modal-title">{{ uiState.modal.title }}</div>
       <div v-if="!uiState.modal.editable" class="ui-modal-content" :class="{ bold: uiState.modal.contentBold }">{{ uiState.modal.content }}</div>
       <textarea v-else class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
-      <div class="ui-modal-actions" :class="{ 'emphasize-confirm': uiState.modal.emphasizeConfirm }">
+      <div class="ui-modal-actions" :class="{ 'emphasize-confirm': uiState.modal.emphasizeConfirm, 'emphasize-cancel': uiState.modal.emphasizeCancel }">
         <button v-if="uiState.modal.showCancel" class="ui-modal-btn cancel" @click="onCancel">{{ uiState.modal.cancelText }}</button>
         <button class="ui-modal-btn confirm" @click="onConfirm">{{ uiState.modal.confirmText }}</button>
       </div>
@@ -79,6 +79,9 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 /* 突出确认（emphasizeConfirm）：取消收窄、确认占大头，并加粗强调 */
 .ui-modal-actions.emphasize-confirm .ui-modal-btn.cancel { flex: 0 0 34%; }
 .ui-modal-actions.emphasize-confirm .ui-modal-btn.confirm { flex: 1; font-weight: 700; }
+/* 突出取消（emphasizeCancel）：取消占大头并主色加粗为主，确认收窄、灰化为次要（破坏性确认宜次要） */
+.ui-modal-actions.emphasize-cancel .ui-modal-btn.cancel { flex: 1; color: var(--c-primary-dark); font-weight: 700; }
+.ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { flex: 0 0 34%; color: #999; font-weight: 400; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
 .ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }
