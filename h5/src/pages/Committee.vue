@@ -21,21 +21,22 @@
         <span class="score-unit">分</span>
       </div>
 
-      <div class="target-row">
-        <div class="target-card">
-          <div class="tc-head"><span class="tc-label">本期会议</span></div>
-          <div class="tc-num">{{ monthNeed }}<span class="tc-unit">次</span></div>
-          <span class="tc-sub">{{ curMonth }}月需召开</span>
+      <!-- 顶部会议统计（紧凑横向，可点进历史）：仅「无进行中会议」时显示——
+           有会议时焦点在会议进度卡上，这两卡是干扰，整块隐藏减负 -->
+      <div v-if="!(currents && currents.length)" class="target-row">
+        <div class="target-card" @click="openPeriodCard">
+          <span class="tc-main">
+            <span class="tc-label">本期会议</span>
+            <span class="tc-sub" :class="{ 'sub-ok': monthNeed === 0 }">{{ monthNeed > 0 ? curPeriodLabel + '需召开' : '本期已完成' }}</span>
+          </span>
+          <span class="tc-val" :class="{ ok: monthNeed === 0 }">{{ monthNeed }}<i class="tc-unit">次</i></span>
         </div>
-
-        <div class="target-card">
-          <div class="tc-head">
+        <div class="target-card" @click="goLibrary">
+          <span class="tc-main">
             <span class="tc-label">逾期会议</span>
-            <span v-if="overdueCount > 0" class="tc-badge warn">需补开</span>
-          </div>
-          <div class="tc-num">{{ overdueCount }}<span class="tc-unit">次</span></div>
-          <span v-if="overdueCount > 0" class="tc-sub tc-sub-warn">{{ overdueMonths }}的会还没开，请尽快补上！</span>
-          <span v-else class="tc-sub">近期都按时开了</span>
+            <span class="tc-sub" :class="{ 'sub-warn': overdueCount > 0 }">{{ overdueCount > 0 ? overdueMonths + '还没开' : '近期都按时' }}</span>
+          </span>
+          <span class="tc-val" :class="{ over: overdueCount > 0 }">{{ overdueCount }}<i class="tc-unit">次</i></span>
         </div>
       </div>
     </template>
@@ -77,11 +78,23 @@
       <span class="idle-sub">有新会议时，会在这里提醒您</span>
     </div>
 
-    <!-- 去开会：在"更多功能"上方的拇指区；主任点了当场弹出"新建会议"，不再跳页 -->
-    <div v-if="isChair" class="big-btn primary go-meeting" @click="openNewMeeting">
+    <!-- 待发送草稿卡：发起会议填了一半返回，内容自动存草稿，放大成首页主角，突出「继续通知」 -->
+    <div v-if="isChair && hasDraft" class="draft-card">
+      <div class="draft-card-top">
+        <span class="draft-badge">📝 待发送 · 草稿</span>
+        <span class="draft-discard" @click.stop="discardDraft">放弃草稿</span>
+      </div>
+      <div class="draft-title">{{ draftTitle }}</div>
+      <div v-if="draftSummary" class="draft-summary">{{ draftSummary }}</div>
+      <div v-if="draftMaterialCount" class="draft-mat">📎 已附 {{ draftMaterialCount }} 份材料</div>
+      <button class="draft-continue" @click="continueDraft">继续通知<span class="btn-arrow">›</span></button>
+    </div>
+
+    <!-- 去开会：在"更多功能"上方的拇指区；主任点了当场弹出"新建会议"，不再跳页。有草稿时草稿卡负责「继续」，本按钮退为次要的「新会议」 -->
+    <div v-if="isChair" class="big-btn primary go-meeting" :class="{ minor: hasDraft }" @click="openNewMeeting">
       <div class="big-btn-inner">
         <span class="big-btn-ico">📝</span>
-        <span class="big-btn-text">{{ hasOngoingMeeting ? '新会议' : '去通知' }}</span>
+        <span class="big-btn-text">{{ (hasDraft || hasOngoingMeeting) ? '新会议' : '去通知' }}</span>
       </div>
     </div>
 
@@ -234,14 +247,16 @@
     <div v-if="scanBusy" class="scan-pop-mask">
       <div class="scan-pop">
         <span class="sp-close" @click="cancelRecognize" aria-label="取消识别">×</span>
-        <!-- 文档扫描动画：纸面 + 橙色扫描线来回扫 -->
-        <div class="sp-doc">
-          <span class="sp-doc-line w80"></span>
-          <span class="sp-doc-line w95"></span>
-          <span class="sp-doc-line w70"></span>
-          <span class="sp-doc-line w90"></span>
-          <span class="sp-doc-line w60"></span>
-          <span class="sp-scanline"></span>
+        <!-- 动态扫描小图标：扫描框四角 + 橙色激光上下扫 + 轻微脉冲 -->
+        <div class="sp-scan">
+          <span class="sp-scan-corner tl"></span>
+          <span class="sp-scan-corner tr"></span>
+          <span class="sp-scan-corner bl"></span>
+          <span class="sp-scan-corner br"></span>
+          <span class="sp-scan-line l1"></span>
+          <span class="sp-scan-line l2"></span>
+          <span class="sp-scan-line l3"></span>
+          <span class="sp-scan-laser"></span>
         </div>
         <span class="sp-title">AI 智能识别中</span>
         <span class="sp-say">{{ scanSay }}</span>
@@ -334,6 +349,10 @@
           <span class="mc-tip">左右滑动切换文件 · 对准取景框</span>
         </div>
         <div class="mc-bottom">
+          <button v-if="lastShotThumb" class="mc-roll" @click="closeMockCamera" aria-label="查看已拍照片">
+            <img class="mc-roll-img" :src="lastShotThumb" alt="上一张" />
+            <span class="mc-roll-badge">{{ scanItems.length }}</span>
+          </button>
           <button class="mc-shutter" @click="mockShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
           <button v-if="scanItems.length" class="mc-done" @click="closeMockCamera">完成（{{ scanItems.length }}）</button>
         </div>
@@ -368,6 +387,10 @@
           <span class="mc-tip">对准纸质文件 · 点圆钮拍摄</span>
         </div>
         <div class="mc-bottom">
+          <button v-if="lastShotThumb" class="mc-roll" @click="closeRealCamera" aria-label="查看已拍照片">
+            <img class="mc-roll-img" :src="lastShotThumb" alt="上一张" />
+            <span class="mc-roll-badge">{{ scanItems.length }}</span>
+          </button>
           <button class="mc-shutter" @click="realShoot" aria-label="拍照"><span class="mc-shutter-core"></span></button>
           <button v-if="scanItems.length" class="mc-done" @click="closeRealCamera">完成（{{ scanItems.length }}）</button>
         </div>
@@ -504,10 +527,10 @@ import api from '@/api'
 import perm from '@/utils/perm'
 import { showModal, showActionSheet, toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
-import { getStorage } from '@/utils/storage'
+import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
-import { pickFile, pickFiles, humanSize } from '@/utils/upload'
+import { pickFiles, humanSize } from '@/utils/upload'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 
@@ -533,12 +556,35 @@ const scoreGradient = computed(() => {
   if (s >= 60) return 'linear-gradient(135deg, #EDB731 0%, #B87908 100%)'
   return 'linear-gradient(135deg, #E8553D 0%, #B02A1E 100%)'
 })
-const monthNeed = ref(1)     // 本期会议：当月需召开
-const overdueCount = ref(2)  // 逾期会议：往月该开未开
 const curMonth = new Date().getMonth() + 1
-// 逾期月份文案（规定每两月须开一次；占位取当前双月期的前一期，真实值待后端给出）
-const _ovBm = Math.ceil(curMonth / 2) > 1 ? Math.ceil(curMonth / 2) - 1 : 6
-const overdueMonths = ((_ovBm - 1) * 2 + 1) + '-' + (_ovBm * 2) + '月'
+const curYear = new Date().getFullYear()
+const curPeriod = Math.ceil(curMonth / 2)   // 双月一期：1-2/3-4/5-6/7-8…；7月→第4期(7-8月)
+const allMeetings = ref([])                 // 全部业委会会议（loadAll 填充），按期真实统计
+const REQUIRED_PER_PERIOD = 1               // 例会规则：每个双月期应召开 1 次（接后端规则后可调）
+function periodLabel(p) { return ((p - 1) * 2 + 1) + '-' + (p * 2) + '月' }
+const curPeriodLabel = periodLabel(curPeriod)   // "7-8月"
+// 「完整走完流程」= 已结束(ended) 且 非无效
+function isHeldMeeting(m) { return !!m && m.stage === 'ended' && m.compliance !== 'invalid' }
+// 会议属于本年第几期（非本年→0）
+function meetingPeriod(m) {
+  if (!m || !m.meetingDate) return 0
+  const p = String(m.meetingDate).split('-')
+  if (Number(p[0]) !== curYear) return 0
+  return Math.ceil(Number(p[1]) / 2)
+}
+// 本期(当前双月)已完成会议数
+const completedThisPeriod = computed(() => (allMeetings.value || []).filter((m) => isHeldMeeting(m) && meetingPeriod(m) === curPeriod).length)
+// 本期会议卡数字：还需召开 = 应召开 − 已完成（封底 0）。本期会议完整结束后此数自动 −1
+const monthNeed = computed(() => Math.max(0, REQUIRED_PER_PERIOD - completedThisPeriod.value))
+// 逾期：本年当前期之前、没有有效会议的期（真实动态，跟历史一致）
+const overduePeriods = computed(() => {
+  const held = new Set((allMeetings.value || []).filter(isHeldMeeting).map(meetingPeriod))
+  const arr = []
+  for (let p = 1; p < curPeriod; p++) if (!held.has(p)) arr.push(p)
+  return arr
+})
+const overdueCount = computed(() => overduePeriods.value.length)
+const overdueMonths = computed(() => overduePeriods.value.map(periodLabel).join('、'))
 const currentStage = ref('preparing')
 const meetings = ref([])
 const pending = ref([])
@@ -632,6 +678,10 @@ function show() {
   setupRoleView()
   loadUnread()
   loadAll()
+  loadDraft()
+  // 从「会议通知」页左箭头返回：以编辑模式打开该会议（一次性交接，用完即清）
+  const _editId = getStorage('editMeetingId', null)
+  if (_editId) { removeStorage('editMeetingId'); openMeetingForEdit(Number(_editId)) }
 }
 
 function setupRoleView() {
@@ -653,6 +703,7 @@ async function loadAll() {
       api.committeeStats()
     ])
     const all = Array.isArray(listRes) ? listRes : []
+    allMeetings.value = all   // 供「本期会议」按本月真实统计（完整结束的会议计入已完成）
     const st = statsRes || {}
     const now = new Date()
     const bimonth = Math.ceil((now.getMonth() + 1) / 2)
@@ -695,8 +746,9 @@ function decorateCurrent(m, chair) {
   let ctaLabel, ctaIcon, tag
   if (m.stage === 'preparing') {
     if (chair) {
-      ctaLabel = m.allReplied ? '会议已就绪' : '去开会'
-      ctaIcon = m.allReplied ? '✅' : '📣'
+      // 准备阶段(会议通知阶段)：卡片按钮统一「继续通知」——点回会议通知页继续发送/开始会议
+      ctaLabel = '继续通知'
+      ctaIcon = '📣'
     } else {
       ctaLabel = '查看会议通知'
       ctaIcon = '📋'
@@ -760,6 +812,22 @@ function goNotifications() { navigateTo('/pages/notifications/notifications') }
 function goReception() { navigateTo('/pages/reception/reception') }
 function goLearning() { navigateTo('/pages/learning/learning') }
 function goLibrary() { navigateTo('/pages/library/library') }
+// 「本期会议」轻量弹卡：显示本月应开/已开/还差；未达标给「发起会议」入口（不跳历史）
+async function openPeriodCard() {
+  const done = completedThisPeriod.value
+  const need = monthNeed.value
+  const body = need > 0
+    ? ('本期(' + curPeriodLabel + ')应召开 ' + REQUIRED_PER_PERIOD + ' 次例会\n已召开 ' + done + ' 次，还差 ' + need + ' 次')
+    : ('本期(' + curPeriodLabel + ')应召开 ' + REQUIRED_PER_PERIOD + ' 次例会\n已召开 ' + done + ' 次，本期已完成 ✓')
+  const res = await showModal({
+    title: curPeriodLabel + '会议召开情况',
+    content: body,
+    confirmText: need > 0 ? '发起会议' : '知道了',
+    showCancel: need > 0,
+    cancelText: '知道了'
+  })
+  if (need > 0 && res && res.confirm) openNewMeeting()
+}
 
 function onSearch(e) { keyword.value = e.target.value; loadAll() }
 function clearSearch() { keyword.value = ''; loadAll() }
@@ -788,6 +856,7 @@ function openMinutes(id) {
 
 async function openNewMeeting() {
   createVisible.value = true
+  editingMeetingId.value = null   // 全新会议：非编辑模式
   docPrefilled.value = false
   materialPrefillOpen.value = false
   materialText.value = ''
@@ -838,12 +907,160 @@ function computeSuggestedTitle(list) {
 }
 
 function closeCreate() {
+  // 编辑已建会议时不存草稿（它是正式会议不是草稿）；新建会议才把半成品存草稿
+  if (editingMeetingId.value) editingMeetingId.value = null
+  else persistDraft()
   createVisible.value = false
   topicDialogOpen.value = false
   timePickerOpen.value = false
   datePickerOpen.value = false
   clearScanItems()
   scanResultCard.value = null
+}
+
+// ——— 会议草稿：发起会议填了一半返回首页时自动保存，首页出「待发送·草稿」卡片可继续 ———
+// 只存可序列化内容（表单字段 + 已识别落库的材料）；未识别的暂存照片(scanItems 含 File)不入草稿。
+const DRAFT_KEY = 'committee_meeting_draft'
+const draft = ref(null)            // 当前草稿快照（供首页卡片展示）；null=无草稿
+
+// 快照当前发起会议表单为可序列化对象
+function snapshotDraft() {
+  return {
+    title: createForm.title || '',
+    meetingDate: createForm.meetingDate || '',
+    meetingTime: createForm.meetingTime || '',
+    location: createForm.location || '',
+    description: createForm.description || '',
+    juweiWitness: !!createForm.juweiWitness,
+    topics: JSON.parse(JSON.stringify(createForm.topics || [])),
+    locationPreset: locationPreset.value || '',
+    pendingMaterials: JSON.parse(JSON.stringify(pendingMaterials.value || [])),
+    materialFiles: JSON.parse(JSON.stringify(materialFiles.value || [])),
+    savedAt: Date.now()
+  }
+}
+// 值不值得存草稿：填了会议名 / 加了议题 / 有材料才算（日期/时间/地点是开窗默认值，不算）
+function draftHasContent(d) {
+  if (!d) return false
+  return !!(String(d.title || '').trim()
+    || (d.topics && d.topics.length)
+    || (d.pendingMaterials && d.pendingMaterials.length)
+    || (d.materialFiles && d.materialFiles.length))
+}
+// 有实质内容才落盘并提示；空表单直接返回不动已有草稿
+function persistDraft() {
+  const snap = snapshotDraft()
+  if (!draftHasContent(snap)) return
+  setStorage(DRAFT_KEY, snap)
+  draft.value = snap
+  toast({ title: '已保存草稿，可在首页继续', icon: 'none' })
+}
+function loadDraft() {
+  const d = getStorage(DRAFT_KEY, null)
+  draft.value = draftHasContent(d) ? d : null
+}
+function clearDraft() {
+  removeStorage(DRAFT_KEY)
+  draft.value = null
+}
+const hasDraft = computed(() => draftHasContent(draft.value))
+// 草稿卡片摘要：会议名（缺省占位）
+const draftTitle = computed(() => (draft.value && String(draft.value.title || '').trim()) || '未命名会议')
+// 草稿卡片摘要：日期 时间 · 地点（有啥显啥）
+const draftSummary = computed(() => {
+  const d = draft.value
+  if (!d) return ''
+  const dt = [d.meetingDate, d.meetingTime].filter(Boolean).join(' ')
+  return [dt, d.location].filter(Boolean).join(' · ')
+})
+const draftMaterialCount = computed(() => {
+  const d = draft.value
+  if (!d) return 0
+  return (d.pendingMaterials ? d.pendingMaterials.length : 0) + (d.materialFiles ? d.materialFiles.length : 0)
+})
+
+// 「继续通知」：把草稿还原进表单并打开发起会议面板（不重置）
+async function continueDraft() {
+  const d = draft.value
+  if (!d) { openNewMeeting(); return }
+  createVisible.value = true
+  docPrefilled.value = false
+  materialPrefillOpen.value = false
+  materialText.value = ''
+  materialScanResult.value = null
+  topicDialogOpen.value = false
+  timePickerOpen.value = false
+  datePickerOpen.value = false
+  createForm.title = d.title || ''
+  createForm.meetingDate = d.meetingDate || todayStr()
+  createForm.meetingTime = d.meetingTime || '09:00'
+  createForm.location = d.location || ''
+  createForm.description = d.description || ''
+  createForm.topics = JSON.parse(JSON.stringify(d.topics || []))
+  createForm.juweiWitness = !!d.juweiWitness
+  locationPreset.value = d.locationPreset || (d.location ? '__other__' : '社区活动室')
+  syncLocationPreset(createForm.location)
+  pendingMaterials.value = JSON.parse(JSON.stringify(d.pendingMaterials || []))
+  materialFiles.value = JSON.parse(JSON.stringify(d.materialFiles || []))
+  createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
+  topicInput.value = ''
+  scanBusy.value = ''
+  lastScanTokens.value = 0
+  // 标题推荐：还是给个下一次序号推荐（草稿已填标题时不显示 ghost）
+  try {
+    const all = await api.committeeList(null)
+    suggestedTitle.value = computeSuggestedTitle(all || [])
+  } catch (e) { suggestedTitle.value = '' }
+}
+
+// 「放弃草稿」：确认后清除
+async function discardDraft() {
+  const r = await showModal({
+    title: '放弃这份草稿？',
+    content: '放弃后，' + draftTitle.value + ' 已填写的内容将被清除，且无法找回。',
+    confirmText: '放弃草稿',
+    cancelText: '再想想',
+    size: 'large'
+  })
+  if (r && r.confirm) { clearDraft(); toast({ title: '已放弃草稿', icon: 'none' }) }
+}
+
+// ——— 编辑已建会议：从「会议通知」页左箭头返回时，用本表单以「编辑模式」打开该会议，保存=更新不新建 ———
+const editingMeetingId = ref(null)     // 非空=当前是在编辑已存在的会议（提交走 committeeUpdate）
+const editInitialJuwei = ref(false)    // 载入时的居委会见证态，提交时对比决定是否翻转标记
+async function openMeetingForEdit(id) {
+  try {
+    const d = await api.committeeDetail(id)
+    if (!d) { toast({ title: '会议信息加载失败', icon: 'none' }); return }
+    createVisible.value = true
+    editingMeetingId.value = id
+    docPrefilled.value = false
+    materialPrefillOpen.value = false
+    materialText.value = ''; materialFiles.value = []; materialScanResult.value = null
+    topicDialogOpen.value = false; timePickerOpen.value = false; datePickerOpen.value = false
+    createForm.title = d.title || ''
+    createForm.meetingDate = d.meetingDate || todayStr()
+    createForm.meetingTime = (d.meetingTime || '09:00').slice(0, 5)
+    createForm.location = d.location || ''
+    createForm.description = d.description || ''
+    createForm.topics = (((d.record && d.record.topics) || d.topics) || []).map((t) => ({
+      title: t.title || '',
+      type: t.type || 'decision',
+      decisionType: t.decisionType || 'none',
+      options: Array.isArray(t.options) ? JSON.parse(JSON.stringify(t.options)) : [],
+      content: t.content || '',
+      realNameVote: !!t.realNameVote
+    }))
+    createForm.juweiWitness = !!(d.hasMajorIssue || d.juweiWitness)
+    editInitialJuwei.value = createForm.juweiWitness
+    locationPreset.value = commonLocations.indexOf(createForm.location) >= 0
+      ? createForm.location : (createForm.location ? '__other__' : '社区活动室')
+    createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
+    topicInput.value = ''; suggestedTitle.value = ''
+    pendingMaterials.value = []; scanBusy.value = ''; lastScanTokens.value = 0
+  } catch (e) {
+    toast({ title: (e && e.message) || '会议信息加载失败', icon: 'none' })
+  }
 }
 
 function toggleMaterialPrefill() {
@@ -857,12 +1074,13 @@ function onMaterialTextInput() {
 async function chooseMaterialFile() {
   // 新建会议阶段尚无会议 id，不能直接上传后端。
   // 沿用原"资料预填"语义：仅选文件、记下文件名（供扫描预填用），并提示创建后到详情页上传。
-  const file = await pickFile()
-  if (!file) return // 用户取消
-  materialFiles.value = materialFiles.value.concat([{
-    name: file.name,
-    sizeText: humanSize(file.size)
-  }])
+  // 支持一次多选：全部加进材料列表，不必选一个就返回再重选。
+  const files = await pickFiles()
+  if (!files || !files.length) return // 用户取消
+  materialFiles.value = materialFiles.value.concat(files.map((f) => ({
+    name: f.name,
+    sizeText: humanSize(f.size)
+  })))
   materialScanResult.value = null
   toast({ title: '会议创建后可在详情页上传文件', icon: 'none' })
 }
@@ -960,6 +1178,12 @@ function clearScanItems() {
   scanItems.value = []
 }
 function scanThumbIcon(ext) { return ext === 'pdf' ? '📄' : '📎' }
+// 相机取景界面左下角「相册」缩略图：取最近一张有缩略图的照片（像系统相机连拍）
+const lastShotThumb = computed(() => {
+  const arr = scanItems.value
+  for (let i = arr.length - 1; i >= 0; i--) { if (arr[i].isImage && arr[i].thumbUrl) return arr[i].thumbUrl }
+  return ''
+})
 // 点击暂存缩略图 → 复用全屏材料查看器放大看清（图片可再放大，PDF 也能预览）
 function openScanItemPreview(it) {
   if (!it) return
@@ -1175,7 +1399,8 @@ function mockUsePhoto() {
   addScanItem(file, mockShotUrl.value) // 用拍照 dataURL 作缩略图
   mockShotUrl.value = ''
   _mockShotFile = null
-  // 回到取景，保持当前样张；用户可左右滑动切到别的文件再拍
+  // 确定后自动切到下一张样张，连拍更顺手（仍可左右滑动手动切换）
+  nextSample()
 }
 
 // ——— 真·相机（getUserMedia 实时取景 + 抓帧成图）：拍照按钮授权后进此界面，抓帧汇入识别队列 ———
@@ -1432,16 +1657,17 @@ function addScannedMaterialFromInfo(f) {
 }
 const docProgress = ref(0)
 let docProgTimer = null
-// 模拟进度：后端一次性返回拿不到真实百分比，定时器渐进逼近 90%（越近越慢），完成时跳 100%
+// 模拟进度：后端一次性返回拿不到真实百分比，定时器渐进逼近 90%（越近越慢），完成时跳 100%。
+// 节奏放慢到约 12-13s 到 90%，与后端识别耗时(约 10-15s)对齐，避免前段冲太快、后段干等。
 function startDocProgress() {
   docProgress.value = 0
   clearInterval(docProgTimer)
   docProgTimer = setInterval(() => {
     const p = docProgress.value
     if (p >= 90) return
-    const step = p < 60 ? 7 : p < 80 ? 3 : 1
+    const step = p < 60 ? 5 : p < 80 ? 2 : 1
     docProgress.value = Math.min(90, p + step)
-  }, 350)
+  }, 400)
 }
 function stopDocProgress() {
   clearInterval(docProgTimer)
@@ -1666,6 +1892,30 @@ async function submitNewMeeting() {
     if (missing.includes('会议议题')) fieldErrors.topics = true
     return
   }
+  // 编辑模式：更新本会议（不新建），完成后回到该会议的「会议通知」页
+  if (editingMeetingId.value) {
+    const id = editingMeetingId.value
+    try {
+      await api.committeeUpdate(id, {
+        title: form.title, meetingDate: form.meetingDate, meetingTime: form.meetingTime,
+        location: form.location, description: form.description, topics: topics
+      })
+      // 居委会见证态若有变，翻转标记（toggle 语义：与载入态不同才切）
+      if (form.juweiWitness !== editInitialJuwei.value) {
+        try { await api.committeeToggleFlag(id, 'hasMajorIssue') } catch (e) {}
+      }
+      editingMeetingId.value = null
+      createVisible.value = false
+      toast({ title: '已保存修改', icon: 'success' })
+      const target = '/pages/committee-detail/committee-detail?id=' + id
+      const browserUrl = '/committee-detail?id=' + id
+      try { await navigateTo(target) } catch (navErr) { console.error('[编辑会议] 软跳 reject：', navErr) }
+      setTimeout(() => { if (!document.querySelector('.detail-page')) window.location.href = browserUrl }, 500)
+    } catch (e) {
+      toast({ title: (e && e.message) || '保存失败', icon: 'none' })
+    }
+    return
+  }
   try {
     const created = await api.committeeCreate({
       title: form.title,
@@ -1687,6 +1937,7 @@ async function submitNewMeeting() {
     }
     console.log('[去通知] created =', JSON.stringify(created))
     createVisible.value = false
+    clearDraft()   // 会议已发出，草稿完成使命，清掉首页草稿卡
     currentStage.value = 'preparing'
     if (created && created.id) {
       // 竞态兜底：navigateTo(router.push) 偶发被取消/重复导航会 reject，或"URL变了却不切换视图"，
@@ -1919,11 +2170,29 @@ onActivated(show)
 .big-btn-text { font-size: 50rpx; font-weight: 700; color: #fff; }
 /* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
 .go-meeting { margin: auto auto 16rpx; width: 84%; }
+/* 有草稿时本按钮退为次要：整体缩小、收窄、弱化光晕，把视觉重心让给草稿卡的「继续通知」 */
+.big-btn.minor { width: 60%; padding: 12rpx; box-shadow: 0 6rpx 30rpx 4rpx rgba(232, 140, 20, 0.16); }
+.big-btn.minor .big-btn-inner { height: 84rpx; }
+.big-btn.minor .big-btn-ico { font-size: 34rpx; margin-right: 10rpx; }
+.big-btn.minor .big-btn-text { font-size: 34rpx; }
 /* 卡片内"去开会"：略收窄并居中；光晕收敛（大弥散光晕留给底部灰底上的独立按钮，白卡里会外溢显脏） */
 .meet-card .big-btn { width: 90%; margin-left: auto; margin-right: auto; box-shadow: 0 6rpx 22rpx rgba(232, 140, 20, 0.18); }
 /* 删除会议（测试用，弱化） */
 .meet-del { text-align: center; color: var(--c-danger); font-size: 30rpx; margin-top: 28rpx; padding: 8rpx; }
 .meet-del:active { opacity: 0.6; }
+
+/* 待发送草稿卡：放大成首页主角，橙调、看得见的"没写完的会议"，底部整行大按钮=继续通知 */
+.draft-card { width: 94%; margin: 8rpx auto 20rpx; box-sizing: border-box; background: var(--c-bg-card, #fff); border: 2rpx solid rgba(232,140,20,0.4); border-left: 14rpx solid var(--c-primary); border-radius: 28rpx; padding: 30rpx 32rpx 34rpx; box-shadow: 0 10rpx 34rpx rgba(232,140,20,0.18); }
+.draft-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.draft-badge { font-size: 30rpx; font-weight: 700; color: var(--c-primary-strong, #c96a12); background: var(--c-primary-soft, #fdf0e0); padding: 8rpx 20rpx; border-radius: 999rpx; }
+.draft-discard { font-size: 28rpx; color: #9aa0a6; padding: 8rpx 10rpx; }
+.draft-discard:active { color: var(--c-danger); }
+.draft-title { font-size: 46rpx; font-weight: 700; color: #1f2329; line-height: 1.3; word-break: break-all; }
+.draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
+.draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
+.draft-continue { width: 80%; margin: 26rpx auto 0; height: 104rpx; border: none; border-radius: 24rpx; background: var(--c-primary); color: #fff; font-size: 42rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 26rpx rgba(232,140,20,0.28); }
+.draft-continue:active { background: var(--c-primary-strong); transform: scale(0.99); }
+.draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
 /* 空闲态 */
 .idle { margin: 64rpx 24rpx 0; display: flex; flex-direction: column; align-items: center; }
 .idle-emoji { font-size: 104rpx; margin-bottom: 24rpx; }
@@ -1941,18 +2210,19 @@ onActivated(show)
 .score-ico { font-size: 38rpx; }
 .score-num { font-size: 46rpx; font-weight: 800; margin-left: 6rpx; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .score-unit { font-size: 30rpx; color: var(--c-text-weak); }
-/* 目标卡片（放大一些） */
-.target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24rpx; padding: 24rpx 24rpx 0; }
-.target-card { background: var(--c-bg-card); border-radius: 24rpx; padding: 44rpx 32rpx; box-shadow: 0 6rpx 20rpx rgba(0,0,0,0.06); }
-.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; margin-bottom: 20rpx; }
-.tc-label { font-size: 36rpx; color: var(--c-text-mid); font-weight: 500; line-height: 1.35; word-break: break-all; }
-.tc-badge { font-size: 28rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; line-height: 1.35; white-space: nowrap; }
-.tc-badge.ok { background: var(--c-success-soft); color: var(--c-success); }
-.tc-badge.warn { background: var(--c-warning-soft); color: var(--c-warning); }
-.tc-num { font-size: 84rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1; margin-bottom: 16rpx; font-variant-numeric: tabular-nums; }
-.tc-unit { font-size: 34rpx; font-weight: 500; color: var(--c-text-mid); margin-left: 10rpx; }
-.tc-sub { font-size: 30rpx; font-weight: 600; color: var(--c-text-weak); margin-bottom: 4rpx; display: block; line-height: 1.55; word-break: break-all; }
-.tc-sub-warn { color: var(--c-warning); font-weight: 500; }
+/* 目标卡片（紧凑横向：标签左、数字右一行；仅无进行中会议时显示，故底部留白拉开与主按钮距离） */
+.target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; padding: 20rpx 24rpx 0; margin-bottom: 40rpx; }
+.target-card { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; background: var(--c-bg-card); border-radius: 18rpx; padding: 30rpx 26rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.08s; }
+.target-card:active { transform: scale(0.98); }
+.tc-main { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; }
+.tc-label { font-size: 32rpx; color: var(--c-text-mid); font-weight: 500; line-height: 1.2; white-space: nowrap; }
+.tc-sub { font-size: 24rpx; color: var(--c-text-weak); line-height: 1.2; white-space: nowrap; }
+.tc-sub.sub-warn { color: var(--c-warning); }
+.tc-val { font-size: 48rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.tc-val.over { color: var(--c-warning); }
+.tc-val.ok { color: #3E9B34; }
+.tc-sub.sub-ok { color: #3E9B34; }
+.tc-unit { font-size: 26rpx; font-weight: 500; color: var(--c-text-weak); font-style: normal; margin-left: 2rpx; }
 .tc-progress { background: #E3E5E9; border-radius: 6rpx; height: 12rpx; overflow: hidden; margin-bottom: 10rpx; }
 .tc-fill { height: 100%; border-radius: 6rpx; background: var(--c-primary); }
 .tc-rule { font-size: 28rpx; color: var(--c-text-mid); line-height: 1.45; word-break: break-all; }
@@ -2073,12 +2343,20 @@ onActivated(show)
 .scan-pop { position: relative; width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 30%); border: 1rpx solid rgba(255, 168, 0, 0.25); border-radius: 30rpx; padding: 48rpx 44rpx 38rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.06); box-sizing: border-box; }
 .sp-close { position: absolute; top: 10rpx; right: 16rpx; width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; font-size: 48rpx; line-height: 1; color: #B0A48E; z-index: 2; }
 .sp-close:active { color: #7A6E58; }
-/* 文档扫描动画：白纸 + 灰色文字行 + 橙色扫描线上下来回 */
-.sp-doc { position: relative; width: 240rpx; height: 288rpx; background: #fff; border: 2rpx solid #F0E6D6; border-radius: 14rpx; box-shadow: 0 6rpx 18rpx rgba(160, 110, 20, 0.12); padding: 30rpx 26rpx; box-sizing: border-box; display: flex; flex-direction: column; gap: 26rpx; overflow: hidden; margin-bottom: 28rpx; }
-.sp-doc-line { height: 12rpx; border-radius: 6rpx; background: #EAE4D8; }
-.sp-doc-line.w80 { width: 80%; } .sp-doc-line.w95 { width: 95%; } .sp-doc-line.w70 { width: 70%; } .sp-doc-line.w90 { width: 90%; } .sp-doc-line.w60 { width: 60%; }
-.sp-scanline { position: absolute; left: 6rpx; right: 6rpx; top: 0; height: 50rpx; border-radius: 6rpx; background: linear-gradient(180deg, rgba(255,168,0,0) 0%, rgba(255,168,0,0.28) 55%, rgba(199,106,0,0.55) 100%); border-bottom: 3rpx solid #FFA800; box-shadow: 0 6rpx 14rpx rgba(255,168,0,0.35); animation: spScan 2.2s ease-in-out infinite; }
-@keyframes spScan { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(238rpx); } }
+/* 动态扫描小图标：扫描框四角 + 内部文字线 + 橙色激光上下来回 + 轻微脉冲光 */
+.sp-scan { position: relative; width: 150rpx; height: 150rpx; margin-bottom: 26rpx; border-radius: 16rpx; background: linear-gradient(180deg, #FFFDF8, #FFF6E9); box-shadow: 0 6rpx 18rpx rgba(160, 110, 20, 0.14); animation: spScanPulse 1.8s ease-in-out infinite; }
+.sp-scan-corner { position: absolute; width: 34rpx; height: 34rpx; border: 5rpx solid #FFA800; }
+.sp-scan-corner.tl { top: -3rpx; left: -3rpx; border-right: none; border-bottom: none; border-top-left-radius: 12rpx; }
+.sp-scan-corner.tr { top: -3rpx; right: -3rpx; border-left: none; border-bottom: none; border-top-right-radius: 12rpx; }
+.sp-scan-corner.bl { bottom: -3rpx; left: -3rpx; border-right: none; border-top: none; border-bottom-left-radius: 12rpx; }
+.sp-scan-corner.br { bottom: -3rpx; right: -3rpx; border-left: none; border-top: none; border-bottom-right-radius: 12rpx; }
+.sp-scan-line { position: absolute; left: 30rpx; height: 9rpx; border-radius: 5rpx; background: #EFE4D2; }
+.sp-scan-line.l1 { top: 44rpx; width: 90rpx; }
+.sp-scan-line.l2 { top: 70rpx; width: 70rpx; }
+.sp-scan-line.l3 { top: 96rpx; width: 84rpx; }
+.sp-scan-laser { position: absolute; left: 10rpx; right: 10rpx; top: 12rpx; height: 6rpx; border-radius: 6rpx; background: linear-gradient(90deg, rgba(255,168,0,0), #FFA800 50%, rgba(255,168,0,0)); box-shadow: 0 0 14rpx 2rpx rgba(255,168,0,0.6); animation: spLaser 1.6s ease-in-out infinite; }
+@keyframes spLaser { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(114rpx); } }
+@keyframes spScanPulse { 0%, 100% { box-shadow: 0 6rpx 18rpx rgba(160,110,20,0.14); } 50% { box-shadow: 0 6rpx 22rpx rgba(255,168,0,0.34); } }
 .sp-title { font-size: 42rpx; font-weight: 700; color: #1f2329; letter-spacing: 1rpx; }
 .sp-say { font-size: 32rpx; color: #B07400; margin: 12rpx 0 30rpx; min-height: 44rpx; }
 /* 三步流程点 */
@@ -2172,6 +2450,11 @@ onActivated(show)
 .mc-count { font-size: 24rpx; color: #fff; background: rgba(255,255,255,0.18); padding: 6rpx 18rpx; border-radius: 999rpx; }
 .mc-done { position: absolute; right: 40rpx; top: 50%; transform: translateY(-50%); height: 78rpx; padding: 0 32rpx; border: none; border-radius: 40rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
 .mc-done:active { background: var(--c-primary-strong); }
+/* 左下角相册缩略图（像系统相机连拍）：显示最近一张 + 张数角标，点击=完成并回到列表查看/删除 */
+.mc-roll { position: absolute; left: 40rpx; top: 50%; transform: translateY(-50%); width: 92rpx; height: 92rpx; padding: 0; border: 4rpx solid rgba(255,255,255,0.9); border-radius: 16rpx; background: rgba(0,0,0,0.3); overflow: visible; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.35); }
+.mc-roll:active { transform: translateY(-50%) scale(0.92); }
+.mc-roll-img { width: 100%; height: 100%; object-fit: cover; border-radius: 12rpx; display: block; }
+.mc-roll-badge { position: absolute; top: -14rpx; right: -14rpx; min-width: 36rpx; height: 36rpx; padding: 0 8rpx; box-sizing: border-box; border-radius: 999rpx; background: var(--c-primary-strong); color: #fff; font-size: 24rpx; font-weight: 700; line-height: 36rpx; text-align: center; border: 3rpx solid #fff; }
 .mc-shutter { width: 140rpx; height: 140rpx; border-radius: 50%; background: transparent; border: 8rpx solid #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
 .mc-shutter-core { width: 104rpx; height: 104rpx; border-radius: 50%; background: #fff; transition: transform .12s ease; }
 .mc-shutter:active .mc-shutter-core { transform: scale(0.85); }

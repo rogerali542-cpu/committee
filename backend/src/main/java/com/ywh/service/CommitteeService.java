@@ -237,6 +237,28 @@ public class CommitteeService {
         if (req.getMeetingTime() != null) m.setMeetingTime(req.getMeetingTime());
         if (req.getLocation() != null) m.setLocation(req.getLocation());
         if (req.getDescription() != null) m.setDescription(req.getDescription());
+        // 带来了议题列表（来自"发起业委会"编辑表单）→ 重建预设议题；
+        // 不带 topics 的调用方（通知草稿编辑弹窗只传标题/时间/地点/正文）不进此分支，议题保持不变。
+        if (req.getTopics() != null && !req.getTopics().isEmpty()) {
+            List<CreateMeetingRequest.TopicRequest> meetingTopics = normalizeCreateTopics(req.getTopics());
+            MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElse(null);
+            if (record == null) {
+                record = recordRepo.save(MeetingRecord.builder()
+                        .meeting(m).hasDecision(true)
+                        .hasMajorIssue(meetingTopics.stream().anyMatch(t -> "major".equals(t.getType())))
+                        .juweiName("王红梅（社区居委会）").juweiSigned(false)
+                        .build());
+            } else {
+                // 准备阶段无表决/意见数据，但仍按删会同款顺序清理依赖，防外键约束
+                List<RecordTopic> old = topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+                opinionRepo.deleteAll(opinionRepo.findByTopicRecordIdOrderByCreatedAtAsc(record.getId()));
+                old.forEach(t -> voteRepo.deleteAll(voteRepo.findByTopicId(t.getId())));
+                topicRepo.deleteAll(old);
+                record.setHasMajorIssue(meetingTopics.stream().anyMatch(t -> "major".equals(t.getType())));
+                recordRepo.save(record);
+            }
+            savePresetTopics(record, meetingTopics);
+        }
         applyGeneratedNoticeDraft(m);
         meetingRepo.save(m);
     }
@@ -1314,8 +1336,9 @@ public class CommitteeService {
         // if (info.getDaysLeft() != null && info.getDaysLeft() < 0) {
         //     throw new IllegalArgumentException("已超过会议结束后三日公示期限，不再补公示");
         // }
+        // 无效会议此前未初始化公示记录（仅非无效会议会预建）→ 这里按需创建，保证无效会议也能公示
         MeetingPublish pub = publishRepo.findByMeetingId(meetingId)
-                .orElseThrow(() -> new IllegalArgumentException("公示记录不存在"));
+                .orElseGet(() -> MeetingPublish.builder().meeting(m).published(false).withdrawn(false).build());
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         pub.setPublished(true);
         pub.setPublishDate(TODAY);
