@@ -39,10 +39,6 @@ export default {
   receptionPropertyTasks: function (status) {
     return core.request('GET', '/api/receptions/property-tasks' + (status ? '?status=' + status : ''));
   },
-  // 物业事项公示看板（全体业主可见）
-  receptionPropertyPublic: function () {
-    return core.request('GET', '/api/receptions/property-public');
-  },
   receptionStats: function () {
     return core.request('GET', '/api/receptions/stats');
   },

@@ -1,6 +1,0 @@
-<view class="qnav" style="padding-top:{{statusBarHeight}}px">
-  <view class="qnav-bar">
-    <text class="qnav-back" bindtap="goBack">‹</text>
-    <text class="qnav-title">{{title}}</text>
-  </view>
-</view>

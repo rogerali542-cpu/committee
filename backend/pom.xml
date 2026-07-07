@@ -92,7 +92,8 @@
             <version>2.5.0</version>
         </dependency>
 
-        <!-- 音频转码（内置 ffmpeg，免在服务器单独安装）：把浏览器 H5 录音 webm/mp4 转成豆包 ASR 友好的 16k 单声道 mp3 -->
+        <!-- jave2：AudioTranscodeService 用它把 H5 上传的录音(webm/opus、mp4/m4a)转成 16k mono mp3 喂豆包录音识别。
+             内置各平台 ffmpeg 二进制(~200MB 不可压缩，撑大镜像)；QuickMeetingController /recording/upload 在用，不可删。 -->
         <dependency>
             <groupId>ws.schild</groupId>
             <artifactId>jave-all-deps</artifactId>
