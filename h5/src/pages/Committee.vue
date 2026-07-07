@@ -715,10 +715,13 @@ async function loadAll() {
     const chair = isChair.value || isRecorder.value
     let actives = all.filter((m) => m.stage === 'preparing' || m.stage === 'ongoing')
     if (chair) {
-      // 【测试阶段】已结束会议一律保留在首页卡片（含已公示），不因公示 / 看党建新闻返回而消失。
-      // 上线前复原：加回 && (!m.publish || !m.publish.published) 让已公示会议从首页收起。
+      // 【测试阶段】历史演示例会（第1、2次）：只进「历史记录」，不在首页当前会议卡片显示。
+      // 已结束会议一律保留在首页卡片（含已公示），手动删除前不消失；仅历史例会按标题挡掉。
+      // 上线前复原：删掉 HISTORY_ONLY_TITLES 排除；并加回 && (!m.publish || !m.publish.published)。
+      const HISTORY_ONLY_TITLES = ['2026年第1次业委会例会', '2026年第2次业委会例会']
       const pend = all.filter((m) => m.stage === 'ended'
-        && m.compliance !== 'invalid')
+        && m.compliance !== 'invalid'
+        && !HISTORY_ONLY_TITLES.includes(m.title))
       actives = [...actives, ...pend]
     }
     currents.value = actives.map((m) => decorateCurrent(m, chair))
