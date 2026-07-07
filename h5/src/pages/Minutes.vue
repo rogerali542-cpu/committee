@@ -1,6 +1,10 @@
 <template>
   <div class="page minutes-page">
-    <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;" />
+    <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;">
+      <template #right>
+        <button class="nav-home" @click="goHome">首页</button>
+      </template>
+    </PageNav>
 
     <!-- AI 工作中：纪要页 gen=1 大模型生成等待时显"生成纪要"态；完成后出确认按钮（覆盖原"生成中"提示） -->
     <AiWorkingOverlay :active="aiGenerating" phase="gen" />
@@ -505,6 +509,10 @@ async function endMeetingFromMinutes() {
   // 结束后跳到会议详情页（公示页面）：主任可在此「发起公示」
   const goPublish = function () {
     redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId)
+    // 软路由偶发不切换（URL 变了却停在纪要页）→ 500ms 后仍在本页则硬导航兜底
+    setTimeout(() => {
+      if (document.querySelector('.minutes-page')) window.location.replace('/committee-detail?id=' + meetingId)
+    }, 500)
   }
   const doEnd = async function () {
     showLoading({ title: '正在结束…' })
@@ -622,6 +630,15 @@ function viewInternalTopicReport() {
   navigateTo('/pages/minutes-internal/minutes-internal?meetingId=' + meetingId)
 }
 
+// 右上角「首页」：直接回业委会主页（redirectTo 硬替换，避免返回栈残留在纪要页）
+function goHome() {
+  redirectTo('/main')
+  // 软路由偶发不切换（URL 变了却停在纪要页）→ 500ms 后仍在本页则硬导航兜底
+  setTimeout(() => {
+    if (document.querySelector('.minutes-page')) window.location.replace('/main')
+  }, 500)
+}
+
 function viewTodoList() {
   // 改为独立页结构化卡片展示，避免 showModal 截断/挤成一坨
   // 软路由偶发不切换（URL 变了却停在本页）→ 加硬导航兜底，确保一定跳过去
@@ -637,6 +654,9 @@ function viewTodoList() {
 /* 顶栏统一为纯深橙（与其他页一致，覆盖 PageNav 默认黄橙渐变） */
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .page { min-height:100vh; background:#f4f5f7; padding:24rpx 24rpx 100rpx; box-sizing:border-box; }
+/* 顶栏右上角「首页」：白描边药丸，适配深橙 PageNav 头 */
+.nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:30rpx; font-weight:600; line-height:1; }
+.nav-home:active { background:rgba(255,255,255,0.28); }
 .doc { background:#fff; border-radius:24rpx; padding:36rpx 32rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .access-card { background:#fff; border-radius:24rpx; padding:64rpx 36rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); text-align:center; }
 .access-icon { width:96rpx; height:96rpx; border-radius:50%; background:#FFF3E0; color:#E67E22; display:flex; align-items:center; justify-content:center; margin:0 auto 24rpx; font-size:52rpx; font-weight:700; }

@@ -103,11 +103,14 @@
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可生成纪要</div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <template v-if="!uploading && !polling && !extracting && !generatingMinutes">
-          <template v-if="minutesGenerated">
+          <!-- 手里有还没上传的录音（正录/暂停/内存里）→ 永远最先给「上传并识别录音」，优先于纪要按钮；
+               否则纪要已生成(minutesGenerated)或已识别完后再「继续录音」补录，新录音会没有上传入口而卡住 -->
+          <button v-if="canUpload" class="lp-primary-btn rec-main" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别录音</button>
+          <template v-else-if="minutesGenerated">
             <button class="lp-primary-btn rec-main" @click="viewMinutes">查看会议纪要</button>
             <button class="rec-sub" @click="regenerateMinutes">重新生成纪要</button>
           </template>
-          <button v-else-if="needRecognize && (canUpload || hasSavedRecordings)" class="lp-primary-btn rec-main" @click="uploadRecordingStep">上传并识别录音</button>
+          <button v-else-if="needRecognize && hasSavedRecordings" class="lp-primary-btn rec-main" @click="uploadRecordingStep">上传并识别录音</button>
           <button v-else-if="!needRecognize && hasSavedRecordings" class="lp-primary-btn rec-main" @click="generateNow">生成会议纪要</button>
         </template>
       </div>
@@ -623,6 +626,8 @@ onUnmounted(onRecDragEnd) // 卸载兜底：清掉可能残留的全局监听
 // 当前是否有"可上传的新内容"（正在录 / 暂停中 / 内存里有还没上传的录音）。
 // 上传成功后已 rec.reset()，此值变 false → "结束录音并上传"置灰，避免重复上传同一段。
 const canUpload = computed(() => recActive.value || isPaused.value || rec.hasRecording.value)
+// 手里这段录音时长为 0（还没录到内容）→ 禁用「上传并识别录音」，避免上传空录音（火山必判静音失败）
+const freshRecEmpty = computed(() => (rec.seconds.value || 0) < 1)
 // 已上传过录音、且当前没有新录音在手 → 上传后的"空闲"态，引导继续录下一段
 const idleAfterUpload = computed(() => !rec.recording.value && !rec.hasRecording.value && hasSavedRecordings.value)
 // 本轮识别已覆盖的录音 id（识别成功/恢复历史转写时回填）——用它判断是否还有新录音没识别，
@@ -810,6 +815,7 @@ function persistQuickState(extra) {
     savedAt: Date.now(),
     currentStep: currentStep.value,
     generated: generated.value,
+    minutesGenerated: minutesGenerated.value, // 纪要已生成标志：持久化，避免回首页再进来退回「生成会议纪要」单键
     taskId: taskId.value,
     asrStatus: asrStatus.value,
     processText: processText.value,
@@ -837,6 +843,7 @@ function restoreQuickState(signedInArg) {
 
   currentStep.value = step
   generated.value = !!saved.generated
+  minutesGenerated.value = !!saved.minutesGenerated // 恢复「纪要已生成」→ 显示 查看纪要/重新生成 两键，而非「生成会议纪要」
   if (saved.generated) recognizedIds.value = (recordings.value || []).map(r => r.id) // 恢复的转写已覆盖当前录音
   taskId.value = saved.taskId || ''
   asrStatus.value = saved.asrStatus || ''
@@ -1938,7 +1945,12 @@ function buildConfirmPayload() {
 
 // 仅查看已保存的纪要草稿，不触发重新生成
 function viewMinutes() {
-  navigateTo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&view=1')
+  const q = 'meetingId=' + meetingId.value + '&from=meeting-live-quick&view=1'
+  navigateTo('/pages/minutes/minutes?' + q)
+  // 软路由偶发不切换（URL 变了却停在录音页）→ 500ms 后仍在本页则硬导航兜底
+  setTimeout(() => {
+    if (document.querySelector('.live-page')) window.location.href = '/minutes?' + q
+  }, 500)
 }
 
 // 重新生成纪要：会覆盖当前草稿，先确认再走生成流程（表决核对 → 生成）
@@ -2236,6 +2248,10 @@ function exitLive() {
 // 顶栏右上「首页」：回业委会主页
 function goHome() {
   redirectTo('/main')
+  // 软路由偶发不切换（URL 变了却停在录音页）→ 500ms 后仍在本页则硬导航兜底
+  setTimeout(() => {
+    if (document.querySelector('.live-page')) window.location.replace('/main')
+  }, 500)
 }
 
 // 顶栏左上返回：签到已拆成单独一步，录音步(step2)点返回=回上一步「签到页」并回到未签到态(方便重签/调试)；

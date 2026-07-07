@@ -374,16 +374,15 @@ function showAiDoneCard(mode, t0, tokens) {
     })
     return
   }
-  // 代拟/帮写：告知 + 顺手问要不要再润色（点了就接着润一遍，draft 已填好）
+  // 代拟/帮写：只告知已写好 + 耗时/token，提示去查看内容。此刻用户还没看到正文，不该追问是否润色；
+  // 想润色让用户看完后自己点下方「AI 润色」（帮写后该按钮本就从「AI 帮写」变成「AI 润色」）。
   showModal({
     title: '',
-    content: '已经帮你写好啦，需要再润色一下吗？',
+    content: '已经帮你写好啦，请查看内容',
     meta,
     size: 'aicard',
-    confirmText: '好，再润色',
-    cancelText: '先这样'
-  }).then((res) => {
-    if (res && res.confirm) polishByAi()
+    showCancel: false,
+    confirmText: '好的'
   })
 }
 async function polishByAi() {
