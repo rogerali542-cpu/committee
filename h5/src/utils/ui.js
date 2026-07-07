@@ -31,6 +31,7 @@ export function showModal(opts = {}) {
     uiState.modal = {
       title: opts.title !== undefined ? opts.title : '提示',  // 显式传 '' 可无标题
       content: opts.content || '',
+      meta: opts.meta || '',   // 正文下方的小字（如"用了X秒·N token"），独立成行、可控间距
       confirmText: opts.confirmText || '确定',
       cancelText: opts.cancelText || '取消',
       showCancel: opts.showCancel !== false,

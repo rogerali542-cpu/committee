@@ -90,16 +90,31 @@
 
       <!-- 输入区：固定在弹层底部 -->
       <template v-if="interactive && signedIn">
-        <!-- 语音条：录音中 / 识别中（识别完文字回到对应输入框，可改再发表） -->
-        <div v-if="voiceOn" class="ts-voicebar">
-          <template v-if="!voiceBusy">
-            <span class="ts-voice-dot"></span>
-            <span class="ts-voice-txt">正在听你说… {{ recTimeText }}</span>
-            <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
-            <button class="ts-voice-done" @click="finishVoice">说完了</button>
+        <!-- 语音条：听写中(边说边出字) / 整理中 / 完成待确认 -->
+        <div v-if="voiceOn" class="ts-voicebar" :class="'stage-' + voiceStage">
+          <!-- 听写中：实时出字 -->
+          <template v-if="voiceStage === 'listening'">
+            <div class="ts-voice-live">
+              <span class="ts-voice-dot"></span>
+              <span class="ts-voice-live-txt" :class="{ ph: voiceFallback || !asrLive }">{{ voiceFallback ? '正在听你说…' : (asrLive || '请开始说话，文字会实时显示…') }}</span>
+            </div>
+            <div class="ts-voice-foot">
+              <span class="ts-voice-time">{{ voiceFallback ? recTimeText : asrTime }}</span>
+              <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
+              <button class="ts-voice-done" @click="finishVoice">说完了</button>
+            </div>
           </template>
+          <!-- 整理中 -->
+          <template v-else-if="voiceStage === 'finishing'">
+            <span class="ts-voice-txt busy"><span class="ts-voice-spin"></span>正在整理文字…</span>
+          </template>
+          <!-- 完成：确认 / 取消 -->
           <template v-else>
-            <span class="ts-voice-txt busy">正在把语音变成文字…</span>
+            <div class="ts-voice-result">{{ voiceResult }}</div>
+            <div class="ts-voice-foot">
+              <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
+              <button class="ts-voice-done" @click="confirmVoice">确认使用</button>
+            </div>
           </template>
         </div>
         <!-- AI 小助手：不知道怎么说时，先随便说说，AI 代拟正式发言 -->
@@ -147,6 +162,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
 import { useRecorder } from '@/composables/useRecorder'
+import { useAsrStream } from '@/composables/useAsrStream'
 import { applyHotwords } from '@/utils/helpers'
 
 const props = defineProps({
@@ -177,11 +193,16 @@ const tagLabel = computed(() => {
 
 // ── 语音输入意见：useRecorder 录音 → 后端 ASR 转文字 → 填入输入框（可改）→ 发表 ──
 // 注意声明须在下面 immediate watch 之前（watch 首跑就会调 cancelVoice）
-const rec = useRecorder()
+const rec = useRecorder()        // 降级：流式不可用/连不上时的整段录音 + 一次性识别
 const recTimeText = rec.timeText
-const voiceOn = ref(false)      // 语音条显示中（录音/识别）
-const voiceBusy = ref(false)    // 识别中
-const voiceTarget = ref('draft') // 识别结果回填目标：draft=意见输入框 / helper=小助手输入框
+const asr = useAsrStream()        // 首选：真·实时流式识别（边说边出字）
+const asrLive = asr.liveText      // 实时累积的识别文字
+const asrTime = asr.timeText
+const voiceOn = ref(false)        // 语音条显示中
+const voiceStage = ref('listening') // listening=听写中 / finishing=整理中 / confirm=待确认
+const voiceResult = ref('')       // 识别结果（待用户确认的文本）
+const voiceTarget = ref('draft')  // 识别结果回填目标：draft=意见输入框 / helper=小助手输入框
+const voiceFallback = ref(false)  // 本次是否走了降级录音路径
 const draftFromVoice = ref(false) // 本条草稿是否来自语音（发表时 source 用 voice）
 
 // ── AI 助手：润色已有意见 / 小助手代拟发言 ──
@@ -245,57 +266,124 @@ async function markNoticeRead() {
   } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
 
+// 开始语音输入：首选真·实时流式（边说边出字）；连不上/不支持时降级到整段录音+一次性识别。
 async function startVoice(target) {
-  if (!rec.supported.value) { toast({ title: '当前浏览器不支持录音（需 HTTPS 且允许麦克风）', icon: 'none' }); return }
+  voiceTarget.value = target === 'helper' ? 'helper' : 'draft'
+  voiceResult.value = ''
+  voiceFallback.value = false
+  if (asr.supported.value) {
+    try {
+      voiceStage.value = 'listening'
+      voiceOn.value = true
+      await asr.start()
+      return
+    } catch (e) {
+      // 麦克风被拒 → 明确提示，不必再降级（降级同样拿不到麦克风）
+      const name = e && (e.name || '')
+      if (name === 'NotAllowedError' || name === 'NotFoundError' || String(e && e.message).includes('Permission')) {
+        voiceOn.value = false
+        toast({ title: '无法使用麦克风，请在浏览器/微信里允许麦克风后再试', icon: 'none' })
+        return
+      }
+      asr.cancel() // WS 连不上等 → 落到下面的降级录音
+    }
+  }
+  if (!rec.supported.value) {
+    voiceOn.value = false
+    toast({ title: '当前浏览器不支持录音（需 HTTPS 且允许麦克风）', icon: 'none' })
+    return
+  }
   try {
-    await rec.start()
-    voiceTarget.value = target === 'helper' ? 'helper' : 'draft'
+    voiceFallback.value = true
+    voiceStage.value = 'listening'
     voiceOn.value = true
+    await rec.start()
   } catch (e) {
-    // getUserMedia 的报错是英文（如 Permission denied），统一换成看得懂的提示
+    voiceOn.value = false
     toast({ title: '无法使用麦克风，请在浏览器允许麦克风后再试', icon: 'none' })
   }
 }
+
 function cancelVoice() {
-  rec.reset()
+  try { asr.cancel() } catch (e) {}
+  try { rec.reset() } catch (e) {}
   voiceOn.value = false
-  voiceBusy.value = false
+  voiceStage.value = 'listening'
+  voiceResult.value = ''
+  voiceFallback.value = false
 }
+
+// 未检测到声音：明确提示（老人常见——离麦克风远/没说话/权限给了但静音）
+function noSoundPrompt() {
+  toast({ title: '未检测到声音，请靠近麦克风，慢一点再说一次', icon: 'none' })
+  cancelVoice()
+}
+
+// 说完了：停止采集，取到最终文字后进入「确认/取消」；识别不到则提示未检测到声音。
 async function finishVoice() {
-  if (voiceBusy.value) return
-  voiceBusy.value = true
-  try {
-    const out = await rec.stop()
-    if (!out || !out.blob || out.blob.size === 0) { toast({ title: '没有录到声音，再试一次', icon: 'none' }); return }
-    const file = new File([out.blob], 'voice.' + out.ext, { type: out.mimeType })
-    const res = await api.committeeVoiceToText(props.meetingId, file)
-    const text = applyHotwords(((res && res.text) || '').trim())
-    if (!text) { toast({ title: '没有识别到文字，请再说一次', icon: 'none' }); return }
-    if (voiceTarget.value === 'helper') {
-      helperDraft.value = helperDraft.value ? (helperDraft.value + text) : text
-    } else {
-      draft.value = draft.value ? (draft.value + text) : text
-      nextTick(autoGrow)
-    }
-    draftFromVoice.value = true
-  } catch (e) { /* uploadFile/request 已 toast */ } finally {
-    rec.reset()
-    voiceOn.value = false
-    voiceBusy.value = false
+  if (voiceStage.value !== 'listening') return
+  voiceStage.value = 'finishing'
+  let text = ''
+  if (!voiceFallback.value) {
+    const r = await asr.stop()
+    if (r.noSound) { noSoundPrompt(); return }
+    if (r.serviceError) { toast({ title: '语音识别失败：' + r.serviceError, icon: 'none' }); cancelVoice(); return }
+    text = (r.text || '').trim()
+  } else {
+    try {
+      const out = await rec.stop()
+      if (!out || !out.blob || out.blob.size === 0) { noSoundPrompt(); return }
+      const file = new File([out.blob], 'voice.' + out.ext, { type: out.mimeType })
+      const res = await api.committeeVoiceToText(props.meetingId, file)
+      text = ((res && res.text) || '').trim()
+    } catch (e) { toast({ title: '语音识别失败，请再试一次', icon: 'none' }); cancelVoice(); return }
   }
+  if (!text) { noSoundPrompt(); return }
+  voiceResult.value = applyHotwords(text)
+  voiceStage.value = 'confirm'
+}
+
+// 确认使用：把识别文字填入目标输入框（可再手改），关闭语音条。
+function confirmVoice() {
+  const text = (voiceResult.value || '').trim()
+  if (!text) { cancelVoice(); return }
+  if (voiceTarget.value === 'helper') {
+    helperDraft.value = helperDraft.value ? (helperDraft.value + text) : text
+  } else {
+    draft.value = draft.value ? (draft.value + text) : text
+    nextTick(autoGrow)
+  }
+  draftFromVoice.value = true
+  cancelVoice()
 }
 
 // ── AI 润色 / 代拟 ──
 // AI 完成后弹卡片：告知已生成、耗时、消耗 token
 function showAiDoneCard(mode, t0, tokens) {
   const sec = Math.max(0.1, (Date.now() - t0) / 1000).toFixed(1)
+  // 耗时/token 紧跟正文（只隔一行）、括号弱化
+  const meta = '（用了 ' + sec + ' 秒 · ' + (Number(tokens) || 0).toLocaleString() + ' token）'
+  if (mode === 'polish') {
+    showModal({
+      title: '',
+      content: '已经帮你润色好啦，满意吗？',
+      meta,
+      size: 'aicard',
+      showCancel: false,
+      confirmText: '好的'
+    })
+    return
+  }
+  // 代拟/帮写：告知 + 顺手问要不要再润色（点了就接着润一遍，draft 已填好）
   showModal({
-    title: '✨ AI 已帮你' + (mode === 'polish' ? '润色意见' : '生成意见'),
-    // 先耗时/token，再告知已填好；size:large → 大字纯黑
-    content: '耗时 ' + sec + ' 秒 · 消耗 ' + (Number(tokens) || 0).toLocaleString() + ' token\n\n内容已经帮你填好，可修改后发表。',
-    size: 'large',
-    showCancel: false,
-    confirmText: '好的'
+    title: '',
+    content: '已经帮你写好啦，需要再润色一下吗？',
+    meta,
+    size: 'aicard',
+    confirmText: '好，再润色',
+    cancelText: '先这样'
+  }).then((res) => {
+    if (res && res.confirm) polishByAi()
   })
 }
 async function polishByAi() {
@@ -347,23 +435,25 @@ function onHelpWrite() {
   if (props.topic && props.topic.myVote) { draftFromVote(); return }
   helperOn.value = true
 }
-// 由本人表决结果生成一句"口头表态"喂给 draft（后端已带委员身份 speaker_role，AI 据此写正式发言）
-function voteStanceSeed() {
+// 由本人表决结果生成一句"口头表态"喂给 draft（后端已带委员身份 speaker_role，AI 据此写正式发言）。
+// voteVal/option 可显式传入刚投的票（投票成功后立刻用，不必等 prop 回刷）；不传则读 topic.myVote。
+function voteStanceSeed(voteVal, option) {
   const t = props.topic
-  if (!t || !t.myVote) return ''
+  const mv = voteVal != null ? voteVal : (t && t.myVote)
+  if (!t || !mv) return ''
   if ((t.decisionType || 'simple') === 'multi_choice') {
-    const opt = (t.options || []).find(o => String(o.id) === String(t.myVote))
+    const opt = option || (t.options || []).find(o => String(o.id) === String(mv))
     return opt ? ('我在这个议题上选择了「' + opt.label + '」，请据此帮我写一段简短的表态发言。') : ''
   }
-  if (t.myVote === 'for_vote') return '我对这个议题投了赞成票，总体认同这个方案，支持通过。'
-  if (t.myVote === 'against') return '我对这个议题投了反对票，对这个方案还有顾虑，暂不赞成。'
-  if (t.myVote === 'abstain') return '我对这个议题投了弃权票，还想再多了解一些情况，暂不表态。'
+  if (mv === 'for_vote') return '我对这个议题投了赞成票，总体认同这个方案，支持通过。'
+  if (mv === 'against') return '我对这个议题投了反对票，对这个方案还有顾虑，暂不赞成。'
+  if (mv === 'abstain') return '我对这个议题投了弃权票，还想再多了解一些情况，暂不表态。'
   return ''
 }
 // 表决后一键代拟：不用输入，按身份+表决态度生成发言，填入输入框
-async function draftFromVote() {
+async function draftFromVote(voteVal, option) {
   if (aiBusy.value) return
-  const seed = voteStanceSeed()
+  const seed = voteStanceSeed(voteVal, option)
   if (!seed) { helperOn.value = true; return } // 拿不到表决结果就退回手动
   aiBusy.value = true
   const t0 = Date.now()
@@ -428,6 +518,24 @@ async function castVote(choice, option) {
     await api.committeeVote(props.meetingId, t.id, option ? null : choice, option ? option.id : null)
     toast({ title: '已表决', icon: 'success' })
     emit('changed')
+    // 若此前点了「AI 帮写」(小助手还开着)，投票后按投票态度提供"生成对应意见"的选择。
+    // 用刚投的 choice/option 直接生成，不必等 topic.myVote 回刷。
+    if (helperOn.value && !aiBusy.value) {
+      const stance = option ? option.label : (choice === 'for_vote' ? '同意' : choice === 'against' ? '不同意' : '弃权')
+      const r = await showModal({
+        title: '',
+        content: '已投「' + stance + '」。要我按这个态度帮你写一条意见吗？',
+        meta: '（也可以点“我自己说”，继续在小助手里手动说）',
+        size: 'aicard',
+        confirmText: '好，帮我写',
+        cancelText: '我自己说'
+      })
+      if (r && r.confirm) {
+        helperOn.value = false
+        helperDraft.value = ''
+        draftFromVote(option ? String(option.id) : choice, option)
+      }
+    }
   } catch (e) { /* 已 toast */ }
 }
 
@@ -584,13 +692,22 @@ async function removeOpinion(op) {
 .ts-compose { flex-shrink: 0; background: #FCF9F3; border: 2rpx solid #F0EAE0; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
 .ts-input { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; background: transparent; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
-.ts-voicebar { flex-shrink: 0; display: flex; align-items: center; gap: 16rpx; padding: 20rpx 4rpx 8rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; min-height: 96rpx; box-sizing: border-box; }
-.ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
+.ts-voicebar { flex-shrink: 0; padding: 18rpx 6rpx 10rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; box-sizing: border-box; }
+/* 听写中：实时出字区（可滚动，长句不撑破输入区） */
+.ts-voice-live { display: flex; align-items: flex-start; gap: 14rpx; max-height: 200rpx; overflow-y: auto; }
+.ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; margin-top: 12rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
 @keyframes ts-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-.ts-voice-txt { flex: 1; min-width: 0; font-size: 30rpx; color: #333; }
-.ts-voice-txt.busy { text-align: center; color: #E8890C; font-weight: 600; }
-.ts-voice-cancel { flex-shrink: 0; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #666; font-size: 30rpx; padding: 16rpx 26rpx; }
-.ts-voice-done { flex-shrink: 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
+.ts-voice-live-txt { flex: 1; min-width: 0; font-size: 34rpx; line-height: 1.5; color: #1a1a1a; word-break: break-word; }
+.ts-voice-live-txt.ph { color: #9AA0A6; }
+.ts-voice-foot { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; }
+.ts-voice-time { flex: 1; font-size: 26rpx; color: #999; }
+/* 完成待确认：结果预览 */
+.ts-voice-result { font-size: 34rpx; line-height: 1.5; color: #1a1a1a; max-height: 220rpx; overflow-y: auto; word-break: break-word; padding: 2rpx; }
+.ts-voice-txt { font-size: 30rpx; color: #333; }
+.ts-voice-txt.busy { display: flex; align-items: center; justify-content: center; gap: 14rpx; color: #E8890C; font-weight: 600; padding: 16rpx 0; }
+.ts-voice-spin { width: 28rpx; height: 28rpx; border: 4rpx solid #F0D9BC; border-top-color: #E8890C; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
+.ts-voice-cancel { flex-shrink: 0; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #666; font-size: 30rpx; padding: 16rpx 34rpx; }
+.ts-voice-done { flex-shrink: 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 30rpx; font-weight: 700; padding: 18rpx 44rpx; }
 .ts-ta { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 18rpx; padding: 16rpx 20rpx; font-size: 30rpx; line-height: 1.4; resize: none; box-sizing: border-box; max-height: 160px; font-family: inherit; }
 .ts-ta:focus { border-color: #FFA800; outline: none; }
 .ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }

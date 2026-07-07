@@ -21,7 +21,8 @@
       <span v-if="uiState.modal.showClose" class="ui-modal-x" @click="onClose">×</span>
       <div v-if="uiState.modal.title" class="ui-modal-title">{{ uiState.modal.title }}</div>
       <div v-if="!uiState.modal.editable" class="ui-modal-content" :class="{ bold: uiState.modal.contentBold }">{{ uiState.modal.content }}</div>
-      <textarea v-else class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
+      <div v-if="uiState.modal.meta && !uiState.modal.editable" class="ui-modal-meta">{{ uiState.modal.meta }}</div>
+      <textarea v-if="uiState.modal.editable" class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
       <div class="ui-modal-actions" :class="{ 'emphasize-confirm': uiState.modal.emphasizeConfirm, 'emphasize-cancel': uiState.modal.emphasizeCancel }">
         <button v-if="uiState.modal.showCancel" class="ui-modal-btn cancel" @click="onCancel">{{ uiState.modal.cancelText }}</button>
         <button class="ui-modal-btn confirm" @click="onConfirm">{{ uiState.modal.confirmText }}</button>
@@ -80,7 +81,9 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal-actions.emphasize-confirm .ui-modal-btn.cancel { flex: 0 0 34%; }
 .ui-modal-actions.emphasize-confirm .ui-modal-btn.confirm { flex: 1; font-weight: 700; }
 /* 突出取消（emphasizeCancel）：取消占大头并主色加粗为主，确认收窄、灰化为次要（破坏性确认宜次要） */
-.ui-modal-actions.emphasize-cancel .ui-modal-btn.cancel { flex: 1; color: var(--c-primary-dark); font-weight: 700; }
+/* row-reverse：左右互换位置——次要的「确认关闭」在左，主要的「继续等待」在右（语义不变，点遮罩仍=继续等待） */
+.ui-modal-actions.emphasize-cancel { flex-direction: row-reverse; }
+.ui-modal-actions.emphasize-cancel .ui-modal-btn.cancel { flex: 1; color: var(--c-primary-dark); font-weight: 700; border-right: none; border-left: 1rpx solid #eee; }
 .ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { flex: 0 0 34%; color: #999; font-weight: 400; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
@@ -88,10 +91,17 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.large .ui-modal-content { font-size: 36rpx; color: #000; line-height: 1.8; margin-top: 28rpx; }
 .ui-modal.large .ui-modal-actions { margin-top: 48rpx; }
 .ui-modal.large .ui-modal-btn { padding: 34rpx 0; font-size: 38rpx; font-weight: 700; }
-/* 表决二次确认（size:'vote'）：文案精简、字体加大两号，方便老人看清投的是哪项 */
-.ui-modal.vote .ui-modal-content { font-size: 38rpx; color: #1a1a1a; margin-top: 8rpx; }
+/* 表决二次确认（size:'vote'）：文案精简、加粗放大，方便老人看清投的是哪项 */
+.ui-modal.vote .ui-modal-content { font-size: 44rpx; font-weight: 700; color: #1a1a1a; margin-top: 8rpx; }
 .ui-modal.vote .ui-modal-btn { padding: 32rpx 0; font-size: 40rpx; }
 .ui-modal.vote .ui-modal-btn.confirm { font-weight: 700; }
+/* AI 帮写/润色完成卡（size:'aicard'）：无标题、正文+消耗紧凑、大字纯黑 */
+.ui-modal.aicard { padding: 44rpx 40rpx 0; }
+.ui-modal.aicard .ui-modal-content { font-size: 40rpx; color: #000; line-height: 1.5; margin-top: 0; }
+.ui-modal-meta { text-align: center; white-space: pre-wrap; }
+.ui-modal.aicard .ui-modal-meta { margin-top: 8px; font-size: 40rpx; color: #000; line-height: 1.5; }
+.ui-modal.aicard .ui-modal-btn { padding: 30rpx 0; font-size: 38rpx; }
+.ui-modal.aicard .ui-modal-btn.confirm { font-weight: 700; }
 
 .ui-sheet { width: 100%; background: #f4f4f6; padding-bottom: env(safe-area-inset-bottom); }
 .ui-sheet-item { display: block; width: 100%; padding: 32rpx 0; font-size: 32rpx; background: #fff; border-bottom: 1rpx solid #eee; color: #1a1a1a; }
