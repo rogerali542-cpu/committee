@@ -2,26 +2,123 @@
   <div class="live-page" style="overflow-y:auto;" v-if="detail">
 
     <!-- 页面对所有身份统一：主任/副主任可操作录音等，其余身份只读+表决/意见 -->
-    <PageNav :title="isChair ? '会议录音' : '会议进行'" style="margin:-3.2vw -3.2vw 0;" />
+    <PageNav :title="isChair ? '会议录音' : '会议进行'" style="margin:-3.2vw -3.2vw 0;">
+      <template #left>
+        <div class="mlq-back" @click="onNavBack">‹</div>
+      </template>
+      <template #right>
+        <button class="nav-home" @click="goHome">首页</button>
+      </template>
+    </PageNav>
+
+    <!-- 腾讯会议式录音悬浮标签：录音进行时固定悬浮，窄条两行（状态 + 录音人），放在录音卡右侧空白处 -->
+    <div v-if="isChair && currentStep === 2 && (recActive || isPaused)" class="rec-floating" :class="{ paused: isPaused }">
+      <span class="rec-fl-dot"></span>
+      <span class="rec-fl-txt">
+        <span class="rec-fl-l1">{{ isPaused ? '录音已暂停' : '正在录音' }}</span>
+        <span class="rec-fl-name">{{ recorderName }}</span>
+      </span>
+    </div>
 
     <!-- AI 工作中：一个遮罩连续覆盖 转写(asr) → 生成纪要(gen)；全部完成后显"已生成会议纪要"、点击进纪要页 -->
     <!-- 遮罩只在「生成会议纪要」阶段弹；上传/转写在后台静默进行，靠录音卡下方行内提示 -->
     <AiWorkingOverlay :active="generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
 
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
-    <div class="lp-fold">
+    <!-- 阶段条：①签到 ②录音 ③生成会议纪要 -->
+    <div class="lp-flow">
+      <div class="lp-flow-step" :class="flowStep > 1 ? 'done' : (flowStep === 1 ? 'on' : '')">
+        <span class="lp-flow-dot"><template v-if="flowStep > 1">✓</template><template v-else>1</template></span>
+        <span class="lp-flow-label">签到</span>
+      </div>
+      <span class="lp-flow-line" :class="{ done: flowStep > 1 }"></span>
+      <div class="lp-flow-step" :class="flowStep > 2 ? 'done' : (flowStep === 2 ? 'on' : '')">
+        <span class="lp-flow-dot"><template v-if="flowStep > 2">✓</template><template v-else>2</template></span>
+        <span class="lp-flow-label">录音</span>
+      </div>
+      <span class="lp-flow-line" :class="{ done: flowStep > 2 }"></span>
+      <div class="lp-flow-step" :class="flowStep >= 3 ? 'on' : ''">
+        <span class="lp-flow-dot">3</span>
+        <span class="lp-flow-label">生成会议纪要</span>
+      </div>
+    </div>
 
-    <div class="lp-info-card">
-      <div class="lp-info-head">
-        <div class="lp-info-title-wrap">
-          <span class="lp-info-title">会议议题</span>
+    <!-- ========== 步骤1：签到（纯签到页，主内容只有一个大签到按钮） ========== -->
+    <template v-if="currentStep === 1">
+      <div class="signin-page">
+        <div class="signin-page-emoji">✍️</div>
+        <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '签到' }}</button>
+        <div class="signin-page-tip">{{ signedIn ? '你已签到，点击进入' : '到会后请点此签到' }}</div>
+        <!-- 签到情况人员列表 -->
+        <div v-if="signinStats.total" class="signin-roster">
+          <div class="signin-roster-head">签到情况<span class="signin-roster-count"><b>{{ signinStats.signedCount }}</b> / {{ signinStats.total }} 已签到</span></div>
+          <div class="signin-roster-row" v-for="a in signinStats.list" :key="a.userRoleId">
+            <span class="srr-name">{{ a.name }}<span v-if="a.isSelf" class="srr-me">（我）</span></span>
+            <span class="srr-role">{{ a.role }}</span>
+            <span class="srr-state" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')">{{ a.signedIn ? '已签到' : (a.declined ? '缺席' : '未签到') }}</span>
+          </div>
         </div>
       </div>
-      <div class="lp-info-row top">
-        <!-- 固定高度：议题多了先自动缩字号(最多3号)，仍放不下则本区内下拉滚动，卡片大小不变 -->
+    </template>
+
+    <!-- ========== 步骤2：录音 ========== -->
+    <template v-else>
+      <!-- 录音主卡（仅主任/副主任）：圆圈 + 时长 + 工具(重录/上传文件) + 已录列表(折叠) -->
+      <div class="rec-hero" v-if="isChair">
+        <!-- 上传录音文件：右上角小角标（方案A，弱化——少用的备选路径，别抢录音钮的焦点） -->
+        <button v-if="!recDotOn && !isPaused && !uploading && !polling && !extracting && !generatingMinutes" class="rec-upload-corner" @click="chooseAudioFile" aria-label="上传录音文件">
+          <svg class="rec-upload-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>上传
+        </button>
+        <div class="qk-recorder">
+          <button class="qk-rec-circle" :class="{ on: recDotOn }" @click="onCircleTap" :disabled="uploading"><span class="qrc-txt">{{ recCircleLabel }}</span></button>
+          <span class="qk-rec-time">{{ timeText }}</span>
+        </div>
+        <div class="rec-hero-tools" v-if="isPaused && !uploading && !polling && !extracting && !generatingMinutes">
+          <button class="rec-tool-btn" @click="restartRecording">重新录音</button>
+        </div>
+        <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
+        <div v-if="recordings.length" class="rec-list">
+          <div class="rec-list-head" @click="recListOpen = !recListOpen">
+            <span>已录 {{ recordings.length }} 段</span>
+            <span class="rec-list-toggle">{{ recListOpen ? '收起 ▲' : '展开 ▾' }}</span>
+          </div>
+          <div v-if="recListOpen" class="rec-list-body">
+            <div class="qk-rec-list-item" v-for="(item, idx) in recordings" :key="item.id">
+              <span class="qrl-idx">{{ idx + 1 }}</span>
+              <div class="qrl-info" @click="showRecordingDetail(item, idx)">
+                <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }} <span class="qrl-detail-hint">详情›</span></span>
+                <span class="qrl-meta">{{ fmtTime(item.createdAt) }}</span>
+              </div>
+              <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
+              <span v-if="!polling && !extracting" class="qrl-del" @click="deleteRecording(item, idx)">删除</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 下一步：状态提示 + 单一主按钮（仅主任）——随阶段变：上传识别 → 生成纪要 → 查看纪要 -->
+      <div class="rec-action" v-if="isChair">
+        <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0"> {{ uploadPct }}%</span></div>
+        <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可生成纪要</div>
+        <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
+        <template v-if="!uploading && !polling && !extracting && !generatingMinutes">
+          <template v-if="minutesGenerated">
+            <button class="lp-primary-btn rec-main" @click="viewMinutes">查看会议纪要</button>
+            <button class="rec-sub" @click="regenerateMinutes">重新生成纪要</button>
+          </template>
+          <button v-else-if="needRecognize && (canUpload || hasSavedRecordings)" class="lp-primary-btn rec-main" @click="uploadRecordingStep">上传并识别录音</button>
+          <template v-else-if="!needRecognize && hasSavedRecordings">
+            <button class="lp-primary-btn rec-main" @click="generateNow">生成会议纪要</button>
+            <button class="rec-sub" @click="continueRecordUpload">继续录音</button>
+          </template>
+        </template>
+      </div>
+
+      <!-- 议题卡 -->
+      <div class="lp-info-card">
+        <div class="lp-info-head"><span class="lp-info-title">会议议题</span></div>
         <div class="lp-agenda" :class="'lp-agenda--fs' + agendaFontLevel" ref="agendaEl">
           <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
-            <!-- 方案D：状态胶囊即按钮(白底描边+投影 + 动词)；议题文字本身不可点。待办=橙可点，已办=绿(仍可点看结果) -->
             <div class="lp-agenda-item" v-for="(item, index) in detail.record.topics" :key="item.id">
               <span class="lp-agenda-idx">{{ index + 1 }}</span>
               <span class="lp-agenda-title">{{ item.title }}</span>
@@ -30,100 +127,45 @@
           </template>
           <span v-else class="lp-agenda-empty">暂无议题</span>
         </div>
-      </div>
-      <!-- 临时添加议题：移到卡片底部（主任/副主任） -->
-      <div v-if="isChair" class="lp-add-topic-row">
-        <button class="lp-add-topic" @click="openAddTopic">+ 临时添加议题</button>
-      </div>
-    </div>
-
-    <!-- 签到卡（精简版，无标题）：一颗签到按钮（文本加大、按钮收窄） -->
-    <div class="lp-card lp-sign" v-if="currentStep === 1">
-      <button class="lp-primary-btn narrow" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '签到' }}</button>
-    </div>
-
-    <!-- 录音操作卡：仅主任/副主任（其余身份只在底部看录音列表、可试听） -->
-    <div class="lp-card lp-rec" v-if="currentStep === 2 && isChair">
-      <span class="lp-card-title">会议录音</span>
-
-      <!-- 圆圈即录音按钮：灰=点击开始，红(呼吸)=录音中点击暂停；暂停/上传后显示"继续" -->
-      <div class="qk-recorder">
-        <button class="qk-rec-circle" :class="{ on: recDotOn }" @click="onCircleTap" :disabled="uploading"><span class="qrc-txt">{{ recCircleLabel }}</span></button>
-        <span class="qk-rec-time">{{ timeText }}</span>
-      </div>
-      <!-- 暂停态补充操作：重新录音（"继续"由圆圈承担；窄款居中） -->
-      <div v-if="isPaused" class="qk-rec-actions">
-        <button class="lp-primary-btn qk-rec-act narrow40" @click="restartRecording" :disabled="uploading || generatingMinutes">
-          <span class="qra-main">重新录音</span>
-        </button>
-      </div>
-      <!-- 上传中提示：转圈 + 实时上传进度 -->
-      <div v-if="uploading" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0" class="qk-up-pct">{{ uploadPct }}%</span></div>
-      <!-- 转写后台进行：低调状态(不显示进度/百分比)，避免按钮区空白，并告知可继续录音 -->
-      <div v-else-if="polling || extracting" class="qk-seg-hint uploading"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可生成纪要</div>
-      <!-- 识别失败/空转写：明确红色提示，按钮区已退回「上传录音」可直接重试 -->
-      <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="qk-seg-hint asr-error">⚠ {{ asrErrorText }}</div>
-      <!-- 纪要已生成：查看会议纪要(主) + 重新生成纪要(次)，优先于生成/上传两键 -->
-      <div v-if="!uploading && !polling && !extracting && !generatingMinutes && minutesGenerated" class="qk-two-btns">
-        <button class="lp-primary-btn qk-two-btn" @click="viewMinutes"><span class="qra-main">查看会议纪要</span></button>
-        <button class="lp-primary-btn qk-two-btn ghost" @click="regenerateMinutes"><span class="qra-main">重新生成纪要</span></button>
-      </div>
-      <!-- 第一次：单键「上传录音」（上传→识别，不生成；识别完拆成两键）。 -->
-      <button v-else-if="!uploading && !polling && !extracting && !generatingMinutes && needRecognize && (canUpload || hasSavedRecordings)"
-        class="lp-primary-btn gen-standalone" @click="uploadRecordingStep">
-        <span class="qra-main">上传录音</span>
-      </button>
-      <!-- 识别完成后：上下堆叠——主「生成会议纪要」(深实心)在上，次「继续上传录音」(描边)在下。 -->
-      <div v-else-if="!uploading && !polling && !extracting && !generatingMinutes && !needRecognize && hasSavedRecordings" class="qk-two-btns">
-        <button class="lp-primary-btn qk-two-btn" @click="generateNow"><span class="qra-main">生成会议纪要</span></button>
-        <button class="lp-primary-btn qk-two-btn ghost" @click="continueRecordUpload"><span class="qra-main">继续上传录音</span></button>
-      </div>
-
-    </div>
-
-    <!-- 原「录音转写」(step3 选片转写) 和「整理会议纪要」(step4 核对/AI生成/手写) 两步已并入录音页的一键「生成会议纪要」，均删除 -->
-
-    <!-- 人员名单（仅逐人状态，无标题/进度条）：首屏可见，录音人带红点标签 -->
-    <div class="lp-card lp-roster" v-if="signinStats.total">
-      <div class="lr-list">
-        <div class="ls-pop-item" v-for="a in signinStats.list" :key="a.userRoleId">
-          <span class="ls-dot" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')"></span>
-          <span class="ls-name">{{ a.name }}</span>
-          <span class="ls-role">{{ a.role }}</span>
-          <span v-if="a.isSelf && (recActive || isPaused)" class="lr-rec-tag" :class="{ paused: isPaused }"><span class="lr-rec-dot"></span>{{ recActive ? '正在录音' : '已暂停' }}</span>
-          <span class="ls-state" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')">{{ a.signedIn ? '已签到' : (a.declined ? '缺席' : '未签到') }}</span>
+        <div v-if="isChair" class="lp-add-topic-row">
+          <button class="lp-add-topic" @click="openAddTopic">+ 临时添加议题</button>
         </div>
       </div>
-    </div>
+    </template>
 
-    </div><!-- /lp-fold -->
-
-    <!-- 已录制的录音文件（可试听/删除）：沉到页面底部，不占首屏、不挡人员列表 -->
-    <div class="lp-card qk-rec-list" v-if="currentStep === 2 && recordings.length">
-      <div class="qk-rec-list-head">已录制 {{ recordings.length }} 段</div>
+    <!-- 非主任：录音试听列表（主任的录音列表已并入录音卡） -->
+    <div class="lp-card qk-rec-list" v-if="currentStep === 2 && !isChair && recordings.length">
+      <div class="qk-rec-list-head">会议录音 {{ recordings.length }} 段</div>
       <div class="qk-rec-list-item" v-for="(item, idx) in recordings" :key="item.id">
         <span class="qrl-idx">{{ idx + 1 }}</span>
-        <div class="qrl-info" @click="showRecordingDetail(item, idx)">
-          <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }} <span class="qrl-detail-hint">详情›</span></span>
+        <div class="qrl-info">
+          <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
           <span class="qrl-meta">{{ fmtTime(item.createdAt) }}</span>
         </div>
         <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
-        <span v-if="isChair && !polling && !extracting" class="qrl-del" @click="deleteRecording(item, idx)">删除</span>
       </div>
     </div>
 
-    <!-- 签到标题+进度条+统计：沉在最底下，需要时往下拉查看 -->
-    <div class="lp-card lp-roster-stats" v-if="signinStats.total">
-      <div class="ls-head">
+    <!-- 弹性占位：把参会人员卡顶到首屏之下，默认看不到，需向下拉才显示 -->
+    <div class="attend-spacer" v-if="currentStep !== 1 && signinStats.total"></div>
+    <!-- 参会人员（合并：计数 + 进度条 + 逐人名单，可展开）——默认收起、顶到底部 -->
+    <div class="lp-card attend-card" :class="{ open: attendOpen }" v-if="currentStep !== 1 && signinStats.total">
+      <div class="attend-bar" @click="attendOpen = !attendOpen">
         <span class="lp-card-title">参会人员</span>
-        <span class="ls-count" :class="signinLevel" style="margin-left:auto;"><b>{{ signinStats.signedCount }}</b>/{{ signinStats.total }} 已签到</span>
+        <span class="ls-count" :class="signinLevel"><b>{{ signinStats.signedCount }}</b>/{{ signinStats.total }} 已签到</span>
+        <span class="attend-caret">{{ attendOpen ? '收起 ▲' : '展开 ▾' }}</span>
       </div>
-      <div class="ls-bar"><div class="ls-fill" :class="signinLevel" :style="{ width: signinStats.pct + '%' }"></div></div>
-    </div>
-
-    <div class="lp-nav">
-      <button class="lp-nav-btn ghost" @click="exitLive">退出</button>
-      <button v-if="isChair" class="lp-nav-btn ghost" @click="exportAttendance">导出签到名单</button>
+      <div v-if="attendOpen" class="attend-detail">
+        <div class="ls-bar"><div class="ls-fill" :class="signinLevel" :style="{ width: signinStats.pct + '%' }"></div></div>
+        <div class="lr-list">
+          <div class="ls-pop-item" v-for="a in signinStats.list" :key="a.userRoleId">
+            <span class="ls-dot" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')"></span>
+            <span class="ls-name">{{ a.name }}</span>
+            <span class="ls-role">{{ a.role }}</span>
+            <span class="ls-state" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')">{{ a.signedIn ? '已签到' : (a.declined ? '缺席' : '未签到') }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 议题弹层：表决 + 意见（点议题行打开）；下一个议题直接切换 -->
@@ -219,6 +261,15 @@
       </div>
     </div>
 
+    <!-- 签到 → 录音 跳转动画：签到成功后短暂全屏，勾选动画 + 提示，随后进入录音步 -->
+    <div v-if="signinFx" class="signin-fx">
+      <div class="signin-fx-card">
+        <div class="signin-fx-check">✓</div>
+        <span class="signin-fx-title">签到成功</span>
+        <span class="signin-fx-sub">正在进入录音…</span>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -239,8 +290,19 @@ const route = useRoute()
 const rec = useRecorder()
 
 const POLL_INTERVAL = 1500
-const MAX_POLL_COUNT = 120
+const MAX_POLL_COUNT = 120        // 兜底：时长未知时至少轮询这么多次(≈3 分钟)
 const QUICK_STATE_PREFIX = 'committee_quick_meeting_state_'
+
+// 轮询上限按待转写音频时长动态给足余量。
+// 豆包大模型录音识别是异步的，处理耗时随录音时长增长；固定 3 分钟会在豆包仍在
+// 正常转写长录音时被误判为「转写超时」。这里用「基础 5 分钟 + 时长×2」估算预算，
+// 封顶 30 分钟，换算成轮询次数。时长未知时回退到 MAX_POLL_COUNT。
+function maxPollCount() {
+  const durSec = asrAudioDurSec.value || 0
+  if (durSec <= 0) return MAX_POLL_COUNT
+  const budgetSec = Math.min(1800, Math.max(300, 300 + durSec * 2))
+  return Math.max(MAX_POLL_COUNT, Math.ceil(budgetSec * 1000 / POLL_INTERVAL))
+}
 
 // ═══════════════════════════════════════════════
 // 顶层纯函数（自 meeting-live-quick.js 1:1 迁移）
@@ -428,7 +490,14 @@ const sheetTopic = computed(() => {
   const list = (detail.value && detail.value.record && detail.value.record.topics) || []
   return list.find(t => t.id === sheetTopicId.value) || null
 })
-function openTopicSheet(item) { sheetTopicId.value = item.id }
+function openTopicSheet(item) {
+  // 未签到不进表决/意见弹层：在点击时就提醒签到，而不是进去后再提示
+  if (!signedIn.value) {
+    toast({ title: '请先在下方签到，签到后即可表决/发言', icon: 'none' })
+    return
+  }
+  sheetTopicId.value = item.id
+}
 // 弹层"上一个/下一个议题"：当前议题在列表中的位置 + 切换
 function _sheetTopicIndex() {
   const list = (detail.value && detail.value.record && detail.value.record.topics) || []
@@ -500,6 +569,11 @@ const recDotOn = computed(() => recActive.value)
 const hasSavedRecordings = computed(() => (recordings.value || []).length > 0)
 // 暂停态：显示"继续录音/重新录音"并排按钮（继续=恢复同一会话，自然合并成一个文件）
 const isPaused = computed(() => rec.recording.value && rec.paused.value)
+// 悬浮窗显示的录音人姓名（本人＝当前录音的主任/副主任）
+const recorderName = computed(() => {
+  const role = getStorage('activeRole', null) || {}
+  return (selfAttendance.value && selfAttendance.value.name) || role.realName || '本人'
+})
 // 当前是否有"可上传的新内容"（正在录 / 暂停中 / 内存里有还没上传的录音）。
 // 上传成功后已 rec.reset()，此值变 false → "结束录音并上传"置灰，避免重复上传同一段。
 const canUpload = computed(() => recActive.value || isPaused.value || rec.hasRecording.value)
@@ -557,6 +631,17 @@ const ending = ref(false)
 // 重做后的「最后一步」：AI 纪要审核
 const minutesGenerated = ref(false)   // 是否已生成 AI 纪要草稿
 const generatingMinutes = ref(false)  // 生成中（按钮 loading 态）
+// —— 重做：阶段条 + 折叠态 + 签到跳转动画 ——
+// 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
+const flowStep = computed(() => minutesGenerated.value ? 3 : (currentStep.value === 1 ? 1 : 2))
+const recListOpen = ref(false)   // 录音卡内「已录N段」列表是否展开
+const attendOpen = ref(false)    // 参会名单是否展开
+const signinFx = ref(false)      // 签到→录音 跳转动画遮罩
+function playSigninFx() {
+  signinFx.value = true
+  setTimeout(() => { currentStep.value = 2; persistQuickState() }, 220) // 遮罩下快速切到录音步
+  setTimeout(() => { signinFx.value = false }, 520)                     // 一闪而过，别停留
+}
 const extraOpen = ref(false)          // 「AI 额外发现」是否展开
 
 // 角色 / 资料 / 实时议题 / 录音列表
@@ -835,22 +920,25 @@ async function confirmSignIn() {
     persistQuickState()
     return
   }
+  // 身份提示：优先用本人在本会议的参会身份，回退到登录角色
+  const role = getStorage('activeRole', null) || {}
+  const who = (selfAttendance.value && selfAttendance.value.name) || role.realName || '本人'
+  const roleName = (selfAttendance.value && selfAttendance.value.role) || role.role || ''
+  const idText = '你是「' + who + (roleName ? ' · ' + roleName : '') + '」。\n'
   const res = await showModal({
     title: '入会签到',
-    content: isChair.value
-      ? '请确认本人已进入本次业委会会议。签到后将进入录音转写流程。'
-      : '请确认本人已进入本次业委会会议。签到后即可对议题表决、发表意见。',
+    content: idText + (isChair.value
+      ? '请确认本人已到会。签到后即可开始会议录音，并围绕会议议题进行讨论与表决。'
+      : '请确认本人已到会。签到后即可围绕会议议题发表意见、参与表决。'),
     confirmText: '签到',
     cancelText: '再看看'
   })
   if (!res.confirm) return
   try {
     await api.committeeSelfToggle(meetingId.value, 'signedIn')
-    toast({ title: '已签到', icon: 'success' })
     signedIn.value = true
-    currentStep.value = 2
-    persistQuickState()
     loadDetail()
+    playSigninFx()   // 播放「签到成功 → 进入录音」跳转动画，动画中途切到录音步
   } catch (e) {
     toast({ title: e.message || '确认失败', icon: 'none' })
   }
@@ -1035,15 +1123,23 @@ function chooseAudioFile() {
 }
 
 async function onAudioFileChange(e) {
-  const file = e.target.files && e.target.files[0]
-  if (!file) {
+  const files = Array.from((e.target && e.target.files) || [])
+  if (!files.length) {
     toast({ title: '未选择文件', icon: 'none' })
     return
   }
-  asrFileSizeBytes.value = file.size
-  const dur = await getAudioDuration(file) // 读取已选音频的时长（秒），用于转写页展示
-  if (dur > 0) asrAudioDurSec.value = dur
-  await uploadRecordingFile(file, dur)
+  // 支持一次多选：逐个上传保存（不自动识别），全部传完后由「生成会议纪要」统一识别
+  let ok = 0
+  for (const file of files) {
+    asrFileSizeBytes.value = file.size
+    const dur = await getAudioDuration(file) // 读取已选音频的时长（秒），用于转写页展示
+    if (dur > 0) asrAudioDurSec.value = dur
+    try {
+      await uploadRecordingFile(file, dur)
+      ok++
+    } catch (err) { /* 单个失败 uploadRecordingFile 内已提示，继续传下一个 */ }
+  }
+  if (files.length > 1) toast({ title: '已上传 ' + ok + '/' + files.length + ' 个录音文件', icon: 'success' })
 }
 
 // 读取音频文件时长（秒）：临时 audio 元素读 metadata，失败返回 0
@@ -1293,11 +1389,15 @@ function onAiWorkDone() {
   }, 500)
 }
 
-// 关闭「AI 工作中」遮罩：停止前端等待态，回到当前页（后台若已转完，下次进入会自动恢复）
+// 关闭「AI 工作中」遮罩：停止前端等待态，回到当前页（后台若已转完，下次进入会自动恢复）。
+// 必须把 generatingMinutes 也置回 false——否则「生成会议纪要/继续上传/查看纪要」三组按钮
+// 都带 !generatingMinutes 条件会被一直隐藏，录音页只剩暂停态的「重新录音」。中止生成后应
+// 回到「生成会议纪要 + 继续上传录音」两键，方便重新生成。
 function onAiWorkClose() {
   clearPoll()
   polling.value = false
   extracting.value = false
+  generatingMinutes.value = false
   _transcribingRecordingId.value = ''
 }
 
@@ -1454,7 +1554,7 @@ function pollUntilDone(tid, resolve, reject) {
   _pollCount = 0
   _pollTimer = setInterval(async () => {
     _pollCount += 1
-    if (_pollCount > MAX_POLL_COUNT) {
+    if (_pollCount > maxPollCount()) {
       clearPoll()
       reject(new Error('转写超时，请稍后重试或换一条录音'))
       return
@@ -1477,7 +1577,7 @@ function startPoll(tid) {
   _pollCount = 0
   _pollTimer = setInterval(async () => {
     _pollCount += 1
-    if (_pollCount > MAX_POLL_COUNT) {
+    if (_pollCount > maxPollCount()) {
       clearPoll()
       polling.value = false
       asrStatus.value = 'failed'
@@ -2121,10 +2221,33 @@ function noop() {}
 function exitLive() {
   navigateBack()
 }
+
+// 顶栏右上「首页」：回业委会主页
+function goHome() {
+  redirectTo('/main')
+}
+
+// 顶栏左上返回：签到已拆成单独一步，录音步(step2)点返回=回上一步「签到页」并回到未签到态(方便重签/调试)；
+// 已经在签到页(step1)则真正返回上一个页面。
+async function onNavBack() {
+  if (currentStep.value === 2) {
+    try { if (signedIn.value) await api.committeeSelfToggle(meetingId.value, 'signedIn') } catch (e) { /* 回退失败不阻断 */ }
+    // 本地驱动切回签到页；不调 loadDetail（其自动进步逻辑会因刚 un-sign 的读取竞态把我们弹回录音步）。
+    signedIn.value = false
+    signinFx.value = false
+    currentStep.value = 1
+    persistQuickState()
+    refreshAttendance()   // 只刷新名单/进度，不动步骤机
+  } else {
+    navigateBack()
+  }
+}
 </script>
 
 <style scoped>
-.live-page { min-height:100vh; background:#f4f5f7; padding:24rpx; padding-bottom:48rpx; box-sizing:border-box; }
+/* 比一屏再高一截：配合弹性占位，把参会人员卡整条压到首屏之下（下拉才见） */
+.live-page { min-height:calc(100vh + 320rpx); background:#f4f5f7; padding:24rpx; padding-bottom:48rpx; box-sizing:border-box; display:flex; flex-direction:column; }
+.attend-spacer { flex:1 1 auto; min-height:32rpx; }
 /* 仅本页：顶栏矮 24rpx(12px)，124→100rpx（PageNav 是共享组件，其他页不动） */
 .live-page :deep(.page-nav) { height:calc(100rpx + env(safe-area-inset-top)); }
 .live-page :deep(.page-nav .nav-back) { height:100rpx; }
@@ -2287,7 +2410,7 @@ function exitLive() {
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
 .lp-rec { padding-bottom:22rpx; } /* 录音卡底部空白再收紧(34→22) */
 .qk-recorder { display:flex; flex-direction:column; align-items:center; gap:6rpx; padding:6rpx 0 2rpx; }
-.qk-rec-circle { width:204rpx; height:204rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:36rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:8rpx solid #FFF3E0; box-shadow:0 8rpx 22rpx rgba(199,106,0,0.28); box-sizing:border-box; } /* 再缩一号：圆圈228→204、字40→36，腾空间给名单 */
+.qk-rec-circle { width:120rpx; height:120rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:24rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:5rpx solid #FFF3E0; box-shadow:0 6rpx 16rpx rgba(199,106,0,0.24); box-sizing:border-box; } /* 方案A：大幅缩小 204→120、字36→24 */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
 .qk-rec-circle:active { transform:scale(0.95); }
@@ -2341,6 +2464,120 @@ function exitLive() {
 /* 常驻「生成会议纪要」：橙色小胶囊，居中，与录音卡内其它按钮呼应 */
 .gen-standalone { width:60%; max-width:100%; margin:30rpx auto 0; padding:16rpx 0; display:flex; align-items:center; justify-content:center; }
 .gen-standalone .qra-main { font-size:30rpx; font-weight:700; white-space:nowrap; }
+/* 上传本地录音文件：低调次级入口(虚线框)，与现场录音圈区分；支持一次多选 */
+.qk-import-row { display:flex; justify-content:center; margin-top:16rpx; }
+/* 样式A 橙色描边胶囊：白底+橙边+橙字，与录音卡其它按钮同一橙色系 */
+.qk-import-btn { display:inline-flex; align-items:center; gap:10rpx; background:#fff; border:3rpx solid var(--c-primary-dark, #E8890C); color:#C76A00; font-size:30rpx; font-weight:600; border-radius:999rpx; padding:20rpx 48rpx; }
+.qk-import-btn:active { background:#FFF6E8; }
+.qk-import-ico { width:34rpx; height:34rpx; color:var(--c-primary-dark, #E8890C); flex-shrink:0; }
+
+/* ============ 重做：阶段条 / 录音卡 / 单一主按钮 / 合并名单 / 签到动画 ============ */
+/* 阶段条 */
+/* 顶栏右上「首页」按钮（插槽内容走本页作用域） */
+/* 顶栏左上返回箭头（自定义 #left 插槽，走本页作用域） */
+.mlq-back { width:96rpx; height:64rpx; display:flex; align-items:center; justify-content:center; color:#fff; font-size:52rpx; font-weight:700; line-height:1; }
+.mlq-back:active { opacity:0.7; }
+.nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:30rpx; font-weight:600; line-height:1; }
+.nav-home:active { background:rgba(255,255,255,0.28); }
+/* 流程条：下移 10px；左右留白让首尾圆点不贴边；底部留白容纳绝对定位的文字 */
+.lp-flow { display:flex; align-items:center; padding:20rpx 40rpx 52rpx; margin-top:20rpx; }
+/* 步骤只由圆点决定宽度(文字绝对定位不撑宽)，三个步骤等宽 → 圆点等距对称 */
+.lp-flow-step { position:relative; flex-shrink:0; }
+.lp-flow-dot { width:64rpx; height:64rpx; border-radius:50%; background:#E4E6EA; color:#9AA0A6; font-size:34rpx; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+/* 文字绝对定位在圆点正下方居中，不影响圆点水平位置 */
+.lp-flow-label { position:absolute; top:calc(100% + 8rpx); left:50%; transform:translateX(-50%); font-size:24rpx; color:#9AA0A6; white-space:nowrap; }
+.lp-flow-step.on .lp-flow-dot { background:var(--c-primary-dark, #E8890C); color:#fff; box-shadow:0 0 0 6rpx rgba(232,137,12,0.18); }
+.lp-flow-step.on .lp-flow-label { color:var(--c-primary-dark, #E8890C); font-weight:600; }
+.lp-flow-step.done .lp-flow-dot { background:#3E9B34; color:#fff; }
+.lp-flow-step.done .lp-flow-label { color:#3E9B34; }
+/* 连线与圆点同在 align-items:center 下自然居中(步骤已只有圆点高，无需再补 margin) */
+.lp-flow-line { flex:1; height:4rpx; background:#E4E6EA; margin:0 12rpx; border-radius:2rpx; }
+.lp-flow-line.done { background:#3E9B34; }
+
+/* 录音主卡 */
+.rec-hero { position:relative; background:#fff; border-radius:24rpx; padding:30rpx 26rpx 22rpx; margin-bottom:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.rec-hero-tools { display:flex; justify-content:center; gap:20rpx; margin-top:16rpx; flex-wrap:wrap; }
+.rec-tool-btn { display:inline-flex; align-items:center; gap:8rpx; background:#fff; border:2rpx solid #D8DBE0; color:#5A6069; font-size:26rpx; border-radius:999rpx; padding:14rpx 30rpx; }
+.rec-tool-btn:active { background:#F5F6F8; }
+/* 方案A：上传录音——右上角小角标，弱化不抢焦点 */
+.rec-upload-corner { position:absolute; top:16rpx; right:16rpx; z-index:2; display:inline-flex; align-items:center; gap:6rpx; height:48rpx; padding:0 18rpx; border:1rpx solid #EAD9C4; border-radius:24rpx; background:#FBF6EF; color:#9C7A4A; font-size:22rpx; line-height:1; }
+.rec-upload-corner:active { background:#F3E9DA; }
+.rec-upload-ico { width:24rpx; height:24rpx; flex-shrink:0; }
+.rec-tool-ico { width:30rpx; height:30rpx; color:var(--c-primary-dark, #E8890C); flex-shrink:0; }
+/* 已录N段（折叠） */
+.rec-list { margin-top:20rpx; border-top:2rpx solid #F2F2F4; padding-top:14rpx; }
+.rec-list-head { display:flex; align-items:center; justify-content:space-between; font-size:28rpx; color:#5A6069; padding:6rpx 2rpx; }
+.rec-list-toggle { font-size:26rpx; color:var(--c-primary-dark, #E8890C); }
+.rec-list-body { margin-top:8rpx; }
+
+/* 下一步：单一主按钮区 */
+.rec-action { margin-bottom:24rpx; display:flex; flex-direction:column; align-items:center; gap:14rpx; }
+.rec-status { display:flex; align-items:center; justify-content:center; gap:12rpx; width:100%; font-size:28rpx; color:#E8890C; font-weight:600; padding:6rpx 0; }
+.rec-status.err { color:#C0392B; }
+.rec-main { width:52% !important; max-width:360rpx; margin:0 auto !important; font-size:26rpx !important; font-weight:700; padding:16rpx 0 !important; box-shadow:0 6rpx 16rpx rgba(232,137,12,0.22); } /* 缩小约40% */
+.rec-sub { background:none; border:0; color:#8A8F98; font-size:28rpx; padding:6rpx 20rpx; }
+.rec-sub:active { color:#5A6069; }
+
+/* 参会人员（默认收成一条可点窄条；点击展开进度条+名单；整体缩小、顶到底部） */
+.attend-card { padding-top:18rpx !important; padding-bottom:18rpx !important; }
+.attend-bar { display:flex; align-items:center; gap:12rpx; cursor:pointer; }
+.attend-bar .ls-count { margin-left:auto; }
+.attend-caret { font-size:24rpx; color:var(--c-primary-dark, #E8890C); flex-shrink:0; }
+.attend-bar:active { opacity:0.6; }
+.attend-detail { margin-top:16rpx; }
+.attend-card .lr-list { margin-top:12rpx; border-top:2rpx solid #F2F2F4; padding-top:8rpx; }
+/* 标题与文本整体缩小两号（仅本卡，不影响其它复用 .ls-* 的地方） */
+.attend-card .lp-card-title { font-size:28rpx; }
+.attend-card .ls-count { font-size:26rpx; }
+.attend-card .ls-count b { font-size:32rpx; }
+.attend-card .ls-name { font-size:26rpx; }
+.attend-card .ls-role { font-size:24rpx; }
+.attend-card .ls-state { font-size:24rpx; padding:3rpx 14rpx; }
+
+/* 录音悬浮标签：窄条两行（状态 / 录音人），下移到录音卡右侧空白处（录音时上传角标已隐藏，不冲突），不遮挡内容 */
+.rec-floating { position:fixed; top:calc(env(safe-area-inset-top) + 330rpx); right:16rpx; z-index:400;
+  display:flex; align-items:center; gap:10rpx; max-width:190rpx;
+  background:rgba(22,24,28,0.86); color:#fff; padding:12rpx 16rpx; border-radius:16rpx;
+  box-shadow:0 6rpx 18rpx rgba(0,0,0,0.26); line-height:1.3; -webkit-backdrop-filter:blur(6rpx); backdrop-filter:blur(6rpx); }
+.rec-fl-dot { width:14rpx; height:14rpx; border-radius:50%; background:#ff3b30; flex-shrink:0; box-shadow:0 0 0 0 rgba(255,59,48,0.55); animation:recFlPulse 1.3s ease-out infinite; }
+.rec-floating.paused { background:rgba(60,50,30,0.9); }
+.rec-floating.paused .rec-fl-dot { background:#F5A623; animation:none; }
+.rec-fl-txt { display:flex; flex-direction:column; min-width:0; }
+.rec-fl-l1 { font-size:22rpx; opacity:0.9; }
+.rec-fl-name { font-size:24rpx; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@keyframes recFlPulse { 0%{ box-shadow:0 0 0 0 rgba(255,59,48,0.55);} 70%{ box-shadow:0 0 0 14rpx rgba(255,59,48,0);} 100%{ box-shadow:0 0 0 0 rgba(255,59,48,0);} }
+@media (prefers-reduced-motion: reduce) { .rec-fl-dot { animation:none; } }
+.attend-card .lr-rec-tag { font-size:22rpx; }
+
+/* 签到 → 录音 跳转动画 */
+/* 签到页：大签到按钮 + 下方签到情况名单 */
+.signin-page { display:flex; flex-direction:column; align-items:center; padding:48rpx 0 24rpx; gap:22rpx; }
+.signin-page-emoji { font-size:88rpx; line-height:1; }
+.signin-big-btn { width:74% !important; max-width:560rpx; margin:0 auto !important; font-size:58rpx !important; font-weight:700; padding:42rpx 0 !important; border-radius:60rpx; box-shadow:0 10rpx 26rpx rgba(232,137,12,0.26); }
+.signin-page-tip { font-size:28rpx; color:#8A8F98; }
+/* 签到情况名单 */
+.signin-roster { width:88%; max-width:640rpx; margin-top:14rpx; background:#fff; border-radius:20rpx; padding:20rpx 26rpx 8rpx; box-shadow:0 6rpx 20rpx rgba(0,0,0,0.05); box-sizing:border-box; }
+.signin-roster-head { display:flex; align-items:center; justify-content:space-between; font-size:28rpx; font-weight:700; color:#1f2329; padding-bottom:12rpx; border-bottom:2rpx solid #F2F2F4; }
+.signin-roster-count { font-size:26rpx; color:#8A8F98; font-weight:400; }
+.signin-roster-count b { font-size:30rpx; color:#27AE60; font-weight:800; }
+.signin-roster-row { display:flex; align-items:center; gap:14rpx; padding:16rpx 0; border-bottom:2rpx solid #F6F6F8; }
+.signin-roster-row:last-child { border-bottom:0; }
+.srr-name { font-size:28rpx; color:#1f2329; font-weight:600; flex-shrink:0; }
+.srr-me { font-size:22rpx; color:#C76A00; margin-left:4rpx; }
+.srr-role { font-size:24rpx; color:#9AA0A6; flex:1; min-width:0; }
+.srr-state { font-size:24rpx; font-weight:600; padding:4rpx 16rpx; border-radius:12rpx; flex-shrink:0; }
+.srr-state.on { color:#27AE60; background:#E8F7EE; }
+.srr-state.off { color:#E74C3C; background:#FDECEA; }
+.srr-state.wait { color:#999; background:#F2F2F4; }
+/* 签到成功 → 录音 的一闪而过动画（时长收短，别停留） */
+.signin-fx { position:fixed; inset:0; z-index:1200; background:rgba(255,255,255,0.94); display:flex; align-items:center; justify-content:center; animation:sfxFade .14s ease; }
+.signin-fx-card { display:flex; flex-direction:column; align-items:center; gap:18rpx; animation:sfxRise .24s cubic-bezier(.2,.8,.3,1); }
+.signin-fx-check { width:150rpx; height:150rpx; border-radius:50%; background:#3E9B34; color:#fff; font-size:92rpx; font-weight:700; display:flex; align-items:center; justify-content:center; animation:sfxPop .3s cubic-bezier(.2,1.3,.4,1); box-shadow:0 12rpx 36rpx rgba(62,155,52,0.35); }
+.signin-fx-title { font-size:40rpx; font-weight:700; color:#1a1a1a; }
+.signin-fx-sub { font-size:28rpx; color:#8A8F98; }
+@keyframes sfxFade { from { opacity:0; } to { opacity:1; } }
+@keyframes sfxRise { from { opacity:0; transform:translateY(20rpx); } to { opacity:1; transform:translateY(0); } }
+@keyframes sfxPop { 0% { transform:scale(0.3); opacity:0; } 60% { transform:scale(1.12); } 100% { transform:scale(1); opacity:1; } }
 /* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
 /* 上下堆叠、居中、宽度 60%：主(生成纪要)实心在上，次(继续上传)描边在下 */
 .qk-two-btns { display:flex; flex-direction:column; align-items:center; gap:14rpx; margin-top:14rpx; padding:0; }

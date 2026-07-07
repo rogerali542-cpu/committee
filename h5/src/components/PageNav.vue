@@ -1,15 +1,24 @@
 <template>
   <header class="page-nav">
-    <div class="nav-back" @click="back">‹</div>
+    <!-- 左侧默认单返回；父组件可用 #left / #right 具名插槽自定义（如通知页左箭头、右首页） -->
+    <slot name="left"><div class="nav-back" @click="back">‹</div></slot>
     <div class="nav-title">{{ title }}</div>
-    <div class="nav-placeholder"></div>
+    <slot name="right"><div class="nav-placeholder"></div></slot>
   </header>
 </template>
 
 <script setup>
-import { navigateBack } from '@/utils/navigate'
-defineProps({ title: { type: String, default: '' } })
-function back() { navigateBack() }
+import { navigateBack, redirectTo } from '@/utils/navigate'
+// backTo：指定后退目标页(如 '/main')。给了就直接回该页(replace，不留在历史里)，
+// 避免 router.back() 弹到中间旧页面导致状态看起来“丢了”；不给则沿用弹历史栈。
+const props = defineProps({
+  title: { type: String, default: '' },
+  backTo: { type: String, default: '' }
+})
+function back() {
+  if (props.backTo) redirectTo(props.backTo)
+  else navigateBack()
+}
 </script>
 
 <style scoped>
