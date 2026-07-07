@@ -100,9 +100,8 @@
       <!-- 下一步：状态提示 + 单一主按钮（仅主任）——随阶段变：上传识别 → 生成纪要 → 查看纪要 -->
       <div class="rec-action" v-if="isChair">
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0"> {{ uploadPct }}%</span></div>
-        <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可生成纪要</div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
-        <template v-if="!uploading && !polling && !extracting && !generatingMinutes">
+        <template v-if="!uploading && !generatingMinutes">
           <!-- 手里有还没上传的录音（正录/暂停/内存里）→ 永远最先给「上传并识别录音」，优先于纪要按钮；
                否则纪要已生成(minutesGenerated)或已识别完后再「继续录音」补录，新录音会没有上传入口而卡住 -->
           <button v-if="canUpload" class="lp-primary-btn rec-main" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别录音</button>
@@ -110,9 +109,11 @@
             <button class="lp-primary-btn rec-main" @click="viewMinutes">查看会议纪要</button>
             <button class="rec-sub" @click="regenerateMinutes">重新生成纪要</button>
           </template>
-          <button v-else-if="needRecognize && hasSavedRecordings" class="lp-primary-btn rec-main" @click="uploadRecordingStep">上传并识别录音</button>
-          <button v-else-if="!needRecognize && hasSavedRecordings" class="lp-primary-btn rec-main" @click="generateNow">生成会议纪要</button>
+          <!-- 有已上传录音 →「生成会议纪要」常驻显示；转写没完成（未识别 / 识别中）时置灰不可点，识别完自动变亮 -->
+          <button v-else-if="hasSavedRecordings" class="lp-primary-btn rec-main" :disabled="needRecognize || polling || extracting" @click="generateNow">{{ (polling || extracting) ? '录音识别中…' : '生成会议纪要' }}</button>
         </template>
+        <!-- 识别中：主按钮已置灰，这里补一句可继续录音的说明 -->
+        <div v-if="(polling || extracting) && !uploading" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可点击生成</div>
       </div>
 
       <!-- 议题卡 -->
@@ -1195,6 +1196,8 @@ async function onAudioFileChange(e) {
     } catch (err) { /* 单个失败 uploadRecordingFile 内已提示，继续传下一个 */ }
   }
   if (files.length > 1) toast({ title: '已上传 ' + ok + '/' + files.length + ' 个录音文件', icon: 'success' })
+  // 全部文件上传完 → 自动统一识别（后台静默，不弹遮罩）；识别完成后「生成会议纪要」按钮自动变亮可点
+  if (ok > 0) uploadAndRecognize()
 }
 
 // 读取音频文件时长（秒）：临时 audio 元素读 metadata，失败返回 0
