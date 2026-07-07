@@ -732,7 +732,8 @@ function viewTodoList() {
 /* 编辑纪要弹窗 —— 全屏模式，方便老年人操作 */
 .edit-modal-mask { position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; background:#fff; }
 .edit-modal { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-.edit-modal-head { display:flex; align-items:center; justify-content:space-between; padding:calc(24rpx + env(safe-area-inset-top)) 32rpx 24rpx; background:var(--c-primary-dark); flex-shrink:0; }
+/* 编辑态顶栏用深蓝色（区别于查看页的深橙 PageNav）：布局与查看页几乎一致，靠顶栏换色让用户明确感知"已进入编辑模式" */
+.edit-modal-head { display:flex; align-items:center; justify-content:space-between; padding:calc(24rpx + env(safe-area-inset-top)) 32rpx 24rpx; background:#1A6296; flex-shrink:0; }
 .edit-modal-title { font-size:44rpx; font-weight:700; color:#fff; }
 .edit-modal-close { font-size:68rpx; color:rgba(255,255,255,0.88); padding:0 8rpx; line-height:1; }
 .edit-modal-textarea { flex:1; width:100%; background:#fff; border:none; resize:none; font-family:inherit; box-sizing:border-box; overflow-y:auto; padding:36rpx 32rpx; font-size:38rpx; color:#1a1a1a; line-height:2; }

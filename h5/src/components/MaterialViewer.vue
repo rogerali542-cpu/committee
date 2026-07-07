@@ -4,15 +4,14 @@
     <header class="mv-bar">
       <div class="mv-back" @click="close">‹ 返回</div>
       <div class="mv-title">{{ s.name }}</div>
-      <div class="mv-tools">
-        <span v-if="kind === 'image' && !error" class="mv-tool" @click="toggleZoom">{{ zoom > 1 ? '缩小' : '放大' }}</span>
-      </div>
+      <!-- 右侧占位：保持标题居中（放大/缩小按钮已移除） -->
+      <div class="mv-tools"></div>
     </header>
 
     <div ref="contentEl" class="mv-content" :class="kind === 'image' ? 'mv-dark' : 'mv-light'">
       <!-- 图片 -->
       <div v-if="kind === 'image'" class="mv-img-wrap">
-        <img :src="s.url" class="mv-img" :style="{ width: (zoom * 100) + '%' }" @error="onMediaError" />
+        <img :src="s.url" class="mv-img" @error="onMediaError" />
       </div>
 
       <!-- PDF -->
@@ -54,7 +53,6 @@ const contentEl = ref(null)
 const pdfPagesEl = ref(null)
 const loading = ref(false)
 const error = ref(false)
-const zoom = ref(1)
 const pdfTotal = ref(0)
 const pdfRendered = ref(0)
 let renderToken = 0
@@ -69,12 +67,10 @@ const kind = computed(() => {
 
 function close() { closeMaterialViewer() }
 function openExternal() { if (s.url) window.open(s.url, '_blank') }
-function toggleZoom() { zoom.value = zoom.value > 1 ? 1 : 2 }
 function onMediaError() { error.value = true }
 
 watch(() => s.visible, async (vis) => {
   if (vis) {
-    zoom.value = 1
     error.value = false
     document.body.style.overflow = 'hidden'
     if (kind.value === 'pdf') {
@@ -177,14 +173,6 @@ async function renderPdf(url) {
   display: flex;
   justify-content: flex-end;
 }
-.mv-tool {
-  font-size: 30rpx;
-  color: #fff;
-  padding: 6rpx 12rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.7);
-  border-radius: 16rpx;
-}
-.mv-tool:active { background: rgba(255, 255, 255, 0.2); }
 
 .mv-content {
   flex: 1;

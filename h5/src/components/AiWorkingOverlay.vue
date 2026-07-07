@@ -220,10 +220,10 @@ onUnmounted(stop)
 .aio-fab.theme-party { background: linear-gradient(90deg,#D5262B,#8E0F14); border-color: rgba(255,210,150,.45); color: #FFE6CE; }
 .aio-fab.theme-party .aio-fab-ico { border-color: rgba(255,210,150,.4); border-top-color: #fff; }
 .aio-pt { position: absolute; border-radius: 50%; background: #8FC6FF; box-shadow: 0 0 12rpx 2rpx rgba(120,180,255,.8); animation: aioTwk 3.2s ease-in-out infinite; }
-/* 右侧留出关闭按钮的位置，避免状态标签与右上角关闭圆圈重叠 */
-.aio-hdr { display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; padding-right: 72rpx; }
+/* 状态标签(草稿生成中)下移到右上角两个按钮(最小化/关闭)下方，避免重叠；标题仍留在顶部左侧 */
+.aio-hdr { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; box-sizing: border-box; padding-right: 20rpx; }
 .aio-title { font-size: 36rpx; font-weight: 700; color: #EAF2FF; text-shadow: 0 0 24rpx rgba(90,150,255,.5); }
-.aio-badge { display: inline-flex; align-items: center; gap: 8rpx; background: rgba(120,170,255,.16); color: #AED2FF; font-size: 24rpx; font-weight: 600; padding: 7rpx 18rpx; border-radius: 999rpx; border: 2rpx solid rgba(140,185,255,.28); white-space: nowrap; }
+.aio-badge { display: inline-flex; align-items: center; gap: 8rpx; margin-top: 52rpx; background: rgba(120,170,255,.16); color: #AED2FF; font-size: 24rpx; font-weight: 600; padding: 7rpx 18rpx; border-radius: 999rpx; border: 2rpx solid rgba(140,185,255,.28); white-space: nowrap; }
 .aio-bdot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #5FD2FF; box-shadow: 0 0 10rpx #5FD2FF; animation: aioBlink 1.4s ease-in-out infinite; }
 .aio-core { display: block; width: 280rpx; height: 218rpx; margin: 6rpx 0 0; }
 .aio-halo, .aio-ring, .aio-ring2, .aio-orb { transform-box: fill-box; transform-origin: center; }
