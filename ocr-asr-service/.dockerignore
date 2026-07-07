@@ -1,0 +1,9 @@
+# 语音/OCR 服务构建上下文忽略（防密钥进镜像）。
+.env
+KEYS.txt
+__pycache__
+**/__pycache__
+*.pyc
+.venv
+venv
+*.log

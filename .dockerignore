@@ -1,0 +1,24 @@
+# Docker 构建上下文忽略（加速 + 防止密钥/大目录进镜像）。
+# 注意：不要忽略 backend/src、h5/src、deploy/ —— 构建需要它们。
+.git
+**/node_modules
+h5/dist
+backend/target
+backend/data
+**/*.log
+**/*.err
+
+# 密钥 / 构建产物，绝不进上下文
+deploy/docker/.env
+deploy/docker/images.tar
+ocr-asr-service/.env
+ocr-asr-service/KEYS.txt
+
+# 与部署无关的大目录 / 文档 / 备份
+miniapp
+test-materials
+_backup_*
+_docx_scout
+_miniapp_shots
+*.docx
+*.pdf

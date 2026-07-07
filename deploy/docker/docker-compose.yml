@@ -1,0 +1,77 @@
+# ============================================================
+# 业委会 demo —— 资源底座沙箱 Docker 部署编排
+# 严格遵守平台约束：
+#   ① 每个 service 只用 image（不用 build）      ② 用 expose，不用 ports
+#   ③ 只用 named volume，不挂宿主机路径          ④ 入口服务加标签 sandbox.expose:"true"
+#   ⑤ 不用 YAML 锚点(& / *)                      ⑥ depends_on 不用 condition（仅列表式）
+# 密钥全部走平台「环境变量」注入（对应 .env.example），不写在本文件里。
+# 数据库：不打包 DB 镜像，后端连【外部云 MySQL】（DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD 由平台环境变量提供）。
+# ============================================================
+services:
+  # OCR / 实时语音服务（Python + ffmpeg）
+  ocr-asr-service:
+    image: ywh-ocr-asr:latest
+    environment:
+      INTERNAL_TOKEN: "${OCR_SERVICE_TOKEN}"
+      ARK_API_KEY: "${ARK_API_KEY}"
+      ARK_BASE_URL: "${ARK_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}"
+      ARK_MODEL_ID: "${ARK_MODEL_ID}"
+      OCR_VISION_MODEL_ID: "${OCR_VISION_MODEL_ID:-doubao-1-5-vision-pro-32k-250115}"
+      VOLC_ASR_ENABLED: "${VOLC_ASR_ENABLED:-true}"
+      VOLC_ASR_APP_ID: "${VOLC_ASR_APP_ID}"
+      VOLC_ASR_ACCESS_TOKEN: "${VOLC_ASR_ACCESS_TOKEN}"
+      VOLC_ASR_SECRET_KEY: "${VOLC_ASR_SECRET_KEY}"
+      VOLC_ASR_RESOURCE_ID: "${VOLC_ASR_RESOURCE_ID:-volc.bigasr.sauc.duration}"
+      PORT: "8003"
+      TZ: Asia/Shanghai
+    expose:
+      - "8003"
+
+  # 后端（Spring Boot / Java 17）
+  backend:
+    image: ywh-backend:latest
+    environment:
+      # 外部云 MySQL：DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD 由平台环境变量填入
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT:-3306}"
+      DB_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME:-ywh_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
+      DB_USER: "${DB_USER:-root}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      JWT_SECRET: "${JWT_SECRET}"
+      DOUBAO_ASR_ENABLED: "${DOUBAO_ASR_ENABLED:-true}"
+      DOUBAO_ASR_APP_KEY: "${DOUBAO_ASR_APP_KEY}"
+      DOUBAO_ASR_ACCESS_TOKEN: "${DOUBAO_ASR_ACCESS_TOKEN}"
+      DOUBAO_ASR_SECRET_KEY: "${DOUBAO_ASR_SECRET_KEY}"
+      DOUBAO_LLM_ENABLED: "${DOUBAO_LLM_ENABLED:-true}"
+      DOUBAO_LLM_API_KEY: "${DOUBAO_LLM_API_KEY}"
+      DOUBAO_LLM_MODEL: "${DOUBAO_LLM_MODEL:-doubao-seed-2-0-pro-260215}"
+      DOUBAO_OCR_ENABLED: "${DOUBAO_OCR_ENABLED:-true}"
+      OCR_SERVICE_BASE_URL: "http://ocr-asr-service:8003"
+      OCR_SERVICE_TOKEN: "${OCR_SERVICE_TOKEN}"
+      STORAGE_AUDIO_TYPE: "${STORAGE_AUDIO_TYPE:-local}"
+      STORAGE_AUDIO_DIR: "/app/data/audio"
+      # 演示假识别开关：默认 true=固定素材走查(不依赖容器能否连豆包 OCR)；设 false 走真实 OCR
+      DEMO_PREFILL_ENABLED: "${DEMO_PREFILL_ENABLED:-true}"
+      TZ: Asia/Shanghai
+    volumes:
+      - backend-audio:/app/data/audio
+    expose:
+      - "8080"
+    depends_on:
+      - ocr-asr-service
+
+  # 前端 + 入口反代（沙箱入口，平台把分配的域名指向它）
+  web:
+    image: ywh-frontend:latest
+    environment:
+      OCR_SERVICE_TOKEN: "${OCR_SERVICE_TOKEN}"
+    labels:
+      sandbox.expose: "true"
+    expose:
+      - "80"
+    depends_on:
+      - backend
+      - ocr-asr-service
+
+volumes:
+  backend-audio:

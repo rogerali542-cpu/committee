@@ -1,0 +1,48 @@
+# 入口反代：① 前端静态(SPA 回退) ② /api → 后端 ③ /asr-ws → 语音服务(WS，注入内网令牌)
+# ${OCR_SERVICE_TOKEN} 由容器启动时 envsubst 从环境变量注入（见 frontend.Dockerfile 说明）。
+server {
+    listen 80;
+    server_name _;
+
+    # 录音文件大：放开上传体积（对齐后端 200MB 上限）
+    client_max_body_size 210m;
+
+    # ① 前端静态 + history 模式回退
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ② 后端接口（同一编排里的 backend 服务）
+    location /api/ {
+        proxy_pass http://backend:8080;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # AI 润色最长 ~210s、OCR ~120s：默认 60s 会被掐断
+        proxy_connect_timeout 30s;
+        proxy_send_timeout    300s;
+        proxy_read_timeout    300s;
+        proxy_request_buffering off;   # 大录音别整包缓冲
+    }
+
+    # ③ 实时流式语音（边说边出字）：WS → ocr-asr-service，令牌在此注入不暴露给浏览器
+    location /asr-ws {
+        proxy_pass http://ocr-asr-service:8003/v1/asr/stream?token=${OCR_SERVICE_TOKEN};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host       $host;
+        proxy_read_timeout  600s;
+        proxy_send_timeout  600s;
+    }
+
+    # 带 hash 的静态资源长缓存
+    location /assets/ {
+        root /usr/share/nginx/html;
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800, immutable";
+    }
+}

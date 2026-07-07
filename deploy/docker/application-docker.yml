@@ -1,0 +1,97 @@
+# 业委会后端 —— 容器部署专用配置（纯环境变量驱动，不含任何真实密钥）。
+# 构建镜像时会用本文件覆盖 src/main/resources/application.yml，确保打进 jar/镜像的配置里
+# 没有密钥；真实密钥在运行时由平台「环境变量」注入。本文件可安全入库。
+server:
+  port: 8080
+  address: 0.0.0.0
+
+spring:
+  application:
+    name: ywh-backend
+  datasource:
+    # 连外部【云 MySQL】数据库；DB_URL/USER/PASSWORD 全部由平台环境变量提供（不打包 DB 镜像）
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/ywh_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update      # 云库已导入数据则只校验/补列；空库则建表
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+  flyway:
+    enabled: false
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+jwt:
+  secret: ${JWT_SECRET:ywh-dev-secret-key-must-be-at-least-256-bits-long-for-hs256}
+  expiration: ${JWT_EXPIRATION:604800000}
+
+wx:
+  miniapp:
+    appid: ${WX_MINIAPP_APPID:your-appid-here}
+    secret: ${WX_MINIAPP_SECRET:your-secret-here}
+
+# 豆包/火山：全部读环境变量，无默认密钥（不注入则相关 AI 功能不可用，但服务能起）
+doubao:
+  asr:
+    enabled: ${DOUBAO_ASR_ENABLED:true}
+    app-key: ${DOUBAO_ASR_APP_KEY:}
+    access-token: ${DOUBAO_ASR_ACCESS_TOKEN:}
+    secret-key: ${DOUBAO_ASR_SECRET_KEY:}
+    resource-id: ${DOUBAO_ASR_RESOURCE_ID:volc.bigasr.auc}
+    model-name: ${DOUBAO_ASR_MODEL_NAME:bigmodel}
+    submit-url: ${DOUBAO_ASR_SUBMIT_URL:https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit}
+    query-url: ${DOUBAO_ASR_QUERY_URL:https://openspeech.bytedance.com/api/v3/auc/bigmodel/query}
+    default-format: mp3
+  llm:
+    enabled: ${DOUBAO_LLM_ENABLED:true}
+    api-key: ${DOUBAO_LLM_API_KEY:}
+    model: ${DOUBAO_LLM_MODEL:doubao-seed-2-0-pro-260215}
+    base-url: ${DOUBAO_LLM_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+  embedding:
+    enabled: ${DOUBAO_EMBEDDING_ENABLED:false}
+    api-key: ${DOUBAO_EMBEDDING_API_KEY:${DOUBAO_LLM_API_KEY:}}
+    url: ${DOUBAO_EMBEDDING_URL:https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal}
+    model: ${DOUBAO_EMBEDDING_MODEL:doubao-embedding-vision-251215}
+    dimensions: ${DOUBAO_EMBEDDING_DIMENSIONS:1024}
+  ocr:
+    enabled: ${DOUBAO_OCR_ENABLED:true}
+    base-url: ${OCR_SERVICE_BASE_URL:http://ocr-asr-service:8003}
+    internal-token: ${OCR_SERVICE_TOKEN:}
+    connect-timeout-seconds: ${OCR_SERVICE_CONNECT_TIMEOUT:10}
+    read-timeout-seconds: ${OCR_SERVICE_READ_TIMEOUT:120}
+
+storage:
+  audio:
+    type: ${STORAGE_AUDIO_TYPE:local}
+    dir: ${STORAGE_AUDIO_DIR:/app/data/audio}
+    public-base-url: ${STORAGE_PUBLIC_BASE_URL:http://localhost:8080}
+    # ⚠ 必须用火山【S3 兼容】域名 tos-s3-<region>.volces.com + signing-service=s3（原生域名不认 AWS4 签名）
+    endpoint: ${STORAGE_TOS_ENDPOINT:https://tos-s3-cn-shanghai.volces.com}
+    region: ${STORAGE_TOS_REGION:cn-shanghai}
+    bucket: ${STORAGE_TOS_BUCKET:}
+    access-key: ${STORAGE_TOS_ACCESS_KEY:}
+    secret-key: ${STORAGE_TOS_SECRET_KEY:}
+    key-prefix: ${STORAGE_TOS_KEY_PREFIX:quick-audio}
+    signing-service: ${STORAGE_TOS_SIGNING_SERVICE:s3}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /api-docs
+
+logging:
+  level:
+    com.ywh: INFO
+    org.springframework.security: INFO

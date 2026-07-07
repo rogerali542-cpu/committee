@@ -92,11 +92,21 @@
             <version>2.5.0</version>
         </dependency>
 
-        <!-- jave2：AudioTranscodeService 用它把 H5 上传的录音(webm/opus、mp4/m4a)转成 16k mono mp3 喂豆包录音识别。
-             内置各平台 ffmpeg 二进制(~200MB 不可压缩，撑大镜像)；QuickMeetingController /recording/upload 在用，不可删。 -->
+        <!-- jave2：AudioTranscodeService 把 H5 上传录音(webm/opus、mp4/m4a)转 16k mono mp3 喂豆包录音识别（QuickMeetingController /recording/upload 在用，不可删）。
+             不用 jave-all-deps（它含 win/mac/linux/arm 全平台 ffmpeg，白撑 ~150MB）；只引 linux64（容器运行）+ win64（本地 Windows 开发）两个原生二进制。 -->
         <dependency>
             <groupId>ws.schild</groupId>
-            <artifactId>jave-all-deps</artifactId>
+            <artifactId>jave-core</artifactId>
+            <version>3.5.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ws.schild</groupId>
+            <artifactId>jave-nativebin-linux64</artifactId>
+            <version>3.5.0</version>
+        </dependency>
+        <dependency>
+            <groupId>ws.schild</groupId>
+            <artifactId>jave-nativebin-win64</artifactId>
             <version>3.5.0</version>
         </dependency>
 

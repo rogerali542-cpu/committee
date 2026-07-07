@@ -1,13 +1,17 @@
 # OCR & ASR Service 生产镜像
 # 构建 (在本目录): docker build -t ocr-asr-service:latest .
 ARG BASE_IMAGE=python:3.11-slim
+# 静态 ffmpeg（单个自包含二进制，~80MB）替代 apt 全套 ffmpeg（会拉 ~460MB 编解码依赖）
+FROM mwader/static-ffmpeg:7.0 AS ffmpeg
+
 FROM ${BASE_IMAGE}
 
 WORKDIR /app
 
-# ffmpeg: ASR 把浏览器 webm/opus 转 16k mono PCM 必需; curl: 健康检查用.
+# ffmpeg: ASR 把浏览器 webm/opus 转 16k mono PCM 必需（用静态二进制，省 ~380MB）; curl: 健康检查用.
+COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

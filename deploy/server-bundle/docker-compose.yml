@@ -1,0 +1,81 @@
+# ============================================================
+# 业委会 demo —— Linux amd64 服务器 Docker 部署
+# 用法（在本目录）：
+#   docker load -i images.tar
+#   docker compose --env-file .env up -d
+# 浏览器打开：http://<服务器IP>/
+#
+# 数据库：连【外部云 MySQL】（.env 里的 DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD）。
+#   首次部署前，先把 ywh_db_full.sql 导入云库 committee（见 README.md）。
+# 网络：仅 web(nginx) 对外发布 80 端口；backend/ocr 只在内部 docker 网络，
+#   由 web 反代 /api→backend:8080、/asr-ws→ocr-asr-service:8003。
+# ============================================================
+services:
+  # OCR / 实时语音服务（Python + ffmpeg）
+  ocr-asr-service:
+    image: ywh-ocr-asr:latest
+    restart: unless-stopped
+    environment:
+      INTERNAL_TOKEN: "${OCR_SERVICE_TOKEN}"
+      ARK_API_KEY: "${ARK_API_KEY}"
+      ARK_BASE_URL: "${ARK_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}"
+      ARK_MODEL_ID: "${ARK_MODEL_ID}"
+      OCR_VISION_MODEL_ID: "${OCR_VISION_MODEL_ID:-doubao-1-5-vision-pro-32k-250115}"
+      VOLC_ASR_ENABLED: "${VOLC_ASR_ENABLED:-true}"
+      VOLC_ASR_APP_ID: "${VOLC_ASR_APP_ID}"
+      VOLC_ASR_ACCESS_TOKEN: "${VOLC_ASR_ACCESS_TOKEN}"
+      VOLC_ASR_SECRET_KEY: "${VOLC_ASR_SECRET_KEY}"
+      VOLC_ASR_RESOURCE_ID: "${VOLC_ASR_RESOURCE_ID:-volc.bigasr.sauc.duration}"
+      PORT: "8003"
+      TZ: Asia/Shanghai
+    expose:
+      - "8003"
+
+  # 后端（Spring Boot / Java 17）
+  backend:
+    image: ywh-backend:latest
+    restart: unless-stopped
+    environment:
+      # 资源受限服务器：单线程 GC + 限 1 核 + 小堆，避免 JVM 创建大量 GC 线程失败（pthread EPERM / OOM）
+      JAVA_OPTS: "${JAVA_OPTS:--XX:+UseSerialGC -XX:ActiveProcessorCount=1 -Xmx256m -Xms64m -Xss512k}"
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT:-3306}"
+      DB_URL: "jdbc:mysql://${DB_HOST}:${DB_PORT:-3306}/${DB_NAME:-ywh_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false"
+      DB_USER: "${DB_USER:-root}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      JWT_SECRET: "${JWT_SECRET}"
+      DOUBAO_ASR_ENABLED: "${DOUBAO_ASR_ENABLED:-true}"
+      DOUBAO_ASR_APP_KEY: "${DOUBAO_ASR_APP_KEY}"
+      DOUBAO_ASR_ACCESS_TOKEN: "${DOUBAO_ASR_ACCESS_TOKEN}"
+      DOUBAO_ASR_SECRET_KEY: "${DOUBAO_ASR_SECRET_KEY}"
+      DOUBAO_LLM_ENABLED: "${DOUBAO_LLM_ENABLED:-true}"
+      DOUBAO_LLM_API_KEY: "${DOUBAO_LLM_API_KEY}"
+      DOUBAO_LLM_MODEL: "${DOUBAO_LLM_MODEL:-doubao-seed-2-0-pro-260215}"
+      DOUBAO_OCR_ENABLED: "${DOUBAO_OCR_ENABLED:-true}"
+      OCR_SERVICE_BASE_URL: "http://ocr-asr-service:8003"
+      OCR_SERVICE_TOKEN: "${OCR_SERVICE_TOKEN}"
+      STORAGE_AUDIO_TYPE: "${STORAGE_AUDIO_TYPE:-local}"
+      STORAGE_AUDIO_DIR: "/app/data/audio"
+      DEMO_PREFILL_ENABLED: "${DEMO_PREFILL_ENABLED:-true}"
+      TZ: Asia/Shanghai
+    volumes:
+      - backend-audio:/app/data/audio
+    expose:
+      - "8080"
+    depends_on:
+      - ocr-asr-service
+
+  # 前端 + 入口反代（对外发布 80）
+  web:
+    image: ywh-frontend:latest
+    restart: unless-stopped
+    environment:
+      OCR_SERVICE_TOKEN: "${OCR_SERVICE_TOKEN}"
+    ports:
+      - "9234:80"
+    depends_on:
+      - backend
+      - ocr-asr-service
+
+volumes:
+  backend-audio:
