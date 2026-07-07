@@ -1387,7 +1387,10 @@ async function mockShoot() {
   setTimeout(() => { mockCamFlash.value = false }, 180)
   const shot = buildShotPhotoCanvas(_mockShotCanvas)
   const blob = await new Promise((r) => shot.toBlob(r, 'image/png'))
-  _mockShotFile = new File([blob], '拍照-' + (scanItems.value.length + 1) + '.png', { type: 'image/png' })
+  // demo 判类只看文件名（含「通知」→通知，否则材料）：把当前样张类别写进文件名，
+  // 否则统一叫「拍照-N.png」会被判成材料。「会议通知」样张 →「会议通知-N.png」→ 正确判为通知。
+  const _lbl = currentSampleLabel.value || '拍照'
+  _mockShotFile = new File([blob], _lbl + '-' + (scanItems.value.length + 1) + '.png', { type: 'image/png' })
   await new Promise((r) => setTimeout(r, 260)) // 让"咔嚓"闪一下再切预览
   mockShotUrl.value = shot.toDataURL('image/png')
 }
