@@ -715,9 +715,10 @@ async function loadAll() {
     const chair = isChair.value || isRecorder.value
     let actives = all.filter((m) => m.stage === 'preparing' || m.stage === 'ongoing')
     if (chair) {
+      // 【测试阶段】已结束会议一律保留在首页卡片（含已公示），不因公示 / 看党建新闻返回而消失。
+      // 上线前复原：加回 && (!m.publish || !m.publish.published) 让已公示会议从首页收起。
       const pend = all.filter((m) => m.stage === 'ended'
-        && m.compliance !== 'invalid'
-        && (!m.publish || !m.publish.published))
+        && m.compliance !== 'invalid')
       actives = [...actives, ...pend]
     }
     currents.value = actives.map((m) => decorateCurrent(m, chair))

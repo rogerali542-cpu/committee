@@ -233,11 +233,13 @@
           </div>
           <!-- 底部操作栏（固定在页面底部）。无效会议也照常显示公示按钮；「会议无效」提示改到点击公示后再弹 -->
           <div class="arc-bottom-action">
-            <!-- 公示会议：未公示态置顶为第一个主操作 -->
+            <!-- 公示会议：未公示态置顶为第一个主操作；已公示后 → 同位置替换为「查看公示内容」 -->
             <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">公示会议</button>
+            <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示内容</button>
             <div class="ended-btn-row">
               <button class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
               <button class="ended-news-btn" @click="generateNews">AI生成新闻稿</button>
+              <button class="ended-home-btn" @click="goHome">返回首页</button>
             </div>
             <div v-if="detail.publish && detail.publish.published" class="arp-done">
               <div class="arp-status">
@@ -2597,6 +2599,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* AI生成新闻稿：描边红（辅助） */
 .ended-news-btn { display:flex; align-items:center; justify-content:center; width:86%; height:56px; margin:0 auto; border-radius:14px; background:#fff; color:#C0141B; font-size:21px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
+/* 返回首页：描边灰（中性辅助），与上面三个同尺寸同风格 */
+.ended-home-btn { display:flex; align-items:center; justify-content:center; width:86%; height:56px; margin:0 auto; border-radius:14px; background:#fff; color:#555; font-size:21px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
+.ended-home-btn:active { background:#F2F2F2; }
 /* 公示会议：实心深橙（主操作），与上面两个同尺寸 */
 .arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 12px; width:86%; height:56px; border-radius:14px; background:var(--c-primary-dark); border:none; color:#fff; font-size:21px; font-weight:700; cursor:pointer; }
 .arc-publish-main-btn:active { opacity:0.92; }
