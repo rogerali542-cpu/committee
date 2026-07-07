@@ -57,18 +57,23 @@ public class TosAudioStorageService implements AudioStorageService {
             String payloadHash = sha256Hex(data);
             String contentType = contentType(objectKey);
 
+            // 对象级公共读：只让本音频对象可匿名 GET（供豆包拉取），不必把整桶设为公共读。
+            // 规范头必须按字典序排列：host < x-amz-acl < x-amz-content-sha256 < x-amz-date。
+            String acl = "public-read";
             String canonicalHeaders = ""
                     + "host:" + host + "\n"
+                    + "x-amz-acl:" + acl + "\n"
                     + "x-amz-content-sha256:" + payloadHash + "\n"
                     + "x-amz-date:" + amzDate + "\n";
-            String signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+            String signedHeaders = "host;x-amz-acl;x-amz-content-sha256;x-amz-date";
             String canonicalRequest = "PUT\n"
                     + "/" + encodePath(objectKey) + "\n"
                     + "\n"
                     + canonicalHeaders + "\n"
                     + signedHeaders + "\n"
                     + payloadHash;
-            String scope = date + "/" + props.getRegion() + "/" + props.getSigningService() + "/request";
+            // SigV4 终止符固定为 aws4_request（火山 TOS 的 S3 兼容端点强校验此值）。
+            String scope = date + "/" + props.getRegion() + "/" + props.getSigningService() + "/aws4_request";
             String stringToSign = "AWS4-HMAC-SHA256\n"
                     + amzDate + "\n"
                     + scope + "\n"
@@ -78,9 +83,12 @@ public class TosAudioStorageService implements AudioStorageService {
                     + ", SignedHeaders=" + signedHeaders
                     + ", Signature=" + signature;
 
+            // 不能手动设 Host：java.net.http 把 Host 列为受限头，setHeader 会抛
+            // IllegalArgumentException。HttpClient 会自动按 URI 主机名发 Host，正好等于
+            // 我们签名里用的 host（committee.tos-s3-...），签名仍然对得上。
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .header("Content-Type", contentType)
-                    .header("Host", host)
+                    .header("x-amz-acl", acl)
                     .header("x-amz-content-sha256", payloadHash)
                     .header("x-amz-date", amzDate)
                     .header("Authorization", authorization)
@@ -91,8 +99,10 @@ public class TosAudioStorageService implements AudioStorageService {
                 throw new IllegalStateException("对象存储上传失败 status=" + response.statusCode() + " body=" + response.body());
             }
 
+            // public-base-url 仅在指向【公网可达的 CDN/网关】时才用它拼直链；
+            // 若为空或还残留 localhost/内网默认值（豆包拉不到），回退到 bucket 虚拟主机直链。
             String base = props.getPublicBaseUrl();
-            if (base == null || base.isBlank()) {
+            if (base == null || base.isBlank() || isPrivateHost(base)) {
                 base = scheme + "://" + host;
             }
             return trimRightSlash(base) + "/" + encodePath(objectKey);
@@ -104,6 +114,11 @@ public class TosAudioStorageService implements AudioStorageService {
     @Override
     public byte[] load(String filename) {
         throw new UnsupportedOperationException("TOS 音频不经过本地后端读取");
+    }
+
+    @Override
+    public boolean isRemote() {
+        return true; // 音频在 TOS，豆包直接按公网 URL 拉取，不必读回内联
     }
 
     private void validateConfig() {
@@ -127,7 +142,7 @@ public class TosAudioStorageService implements AudioStorageService {
         byte[] kDate = hmac(("AWS4" + props.getSecretKey()).getBytes(StandardCharsets.UTF_8), date);
         byte[] kRegion = hmac(kDate, props.getRegion());
         byte[] kService = hmac(kRegion, props.getSigningService());
-        return hmac(kService, "request");
+        return hmac(kService, "aws4_request");
     }
 
     private static byte[] hmac(byte[] key, String value) throws Exception {
@@ -163,6 +178,20 @@ public class TosAudioStorageService implements AudioStorageService {
 
     private static String trimRightSlash(String value) {
         return value == null ? "" : value.replaceAll("/+$", "");
+    }
+
+    /** 该 URL 的主机是否为 localhost/内网（豆包等公网服务拉不到）。 */
+    private static boolean isPrivateHost(String url) {
+        try {
+            String host = URI.create(url.trim()).getHost();
+            if (host == null) return true;
+            host = host.toLowerCase(Locale.ROOT);
+            if ("localhost".equals(host) || "127.0.0.1".equals(host) || host.startsWith("192.168.")
+                    || host.startsWith("10.")) return true;
+            return host.matches("172\\.(1[6-9]|2\\d|3[0-1])\\..*");
+        } catch (Exception e) {
+            return false; // 解析不了就不当内网，交给上传时报错
+        }
     }
 
     private static boolean isBlank(String value) {

@@ -11,4 +11,12 @@ public interface AudioStorageService {
 
     /** 读取已保存音频（供本地实现的对外 GET 服务用）。 */
     byte[] load(String filename);
+
+    /**
+     * 是否为远端对象存储（音频不落本机后端，豆包直接从云端公网 URL 拉取）。
+     * 远端实现（TOS/OSS）返回 true —— ASR 提交时无需把音频读回内联 Base64，直接给 URL。
+     */
+    default boolean isRemote() {
+        return false;
+    }
 }

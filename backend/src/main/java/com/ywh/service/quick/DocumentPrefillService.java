@@ -9,6 +9,7 @@ import com.ywh.dto.MeetingPrefillVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -39,6 +40,26 @@ public class DocumentPrefillService {
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10)).build();
+
+    /**
+     * 【仅演示】固定素材假识别开关。默认 false（走真实 OCR+大模型）；
+     * 本地演示时在 application.yml 置 demo.prefill.enabled=true：跳过真实识别，
+     * 按文件名判类、套用预置的会议通知内容、模拟 10~15s 耗时与 token，
+     * 便于用固定样本（材料1_会议通知 / 材料2_电梯维保 / 材料3_车库照明）稳定走查流程。
+     * 文件仍由控制器照常落库拿 fileUrl，材料可正常挂载传阅。上线务必保持 false。
+     */
+    @Value("${demo.prefill.enabled:false}")
+    private boolean demoPrefill;
+
+    // —— 演示预置：材料1_会议通知 抽取出的会议信息（真实大模型也会抽成这些字段）——
+    private static final String DEMO_TITLE = "2026年第3次业主委员会例会";
+    private static final String DEMO_DATE = "2026-06-29";
+    private static final String DEMO_TIME = "10:00";
+    private static final String DEMO_LOCATION = "社区活动室";
+    private static final List<String> DEMO_TOPICS = List.of(
+            "审议小区电梯年度维保方案",
+            "审议地下车库照明改造预算",
+            "讨论第三季度物业费调整事项");
 
     private static final String EXTRACT_SYSTEM = """
             你是业主委员会会议秘书助手。下面是从一份文件里 OCR 识别出来的文字，请完成两件事：
@@ -85,6 +106,7 @@ public class DocumentPrefillService {
     public MeetingPrefillVO parseMulti(List<Doc> docs) {
         MeetingPrefillVO vo = new MeetingPrefillVO();
         if (docs == null || docs.isEmpty()) return MeetingPrefillVO.unavailable("文件为空");
+        if (demoPrefill) return demoParseMulti(docs);
         for (Doc d : docs) {
             MeetingPrefillVO.FileInfo fi = new MeetingPrefillVO.FileInfo();
             fi.setFileName(d.filename() == null ? "" : d.filename());
@@ -143,6 +165,58 @@ public class DocumentPrefillService {
             vo.setMessage("已识别文字，但智能填写失败，请手动整理");
             return vo;
         }
+    }
+
+    /**
+     * 【仅演示】固定素材假识别：不调 OCR/大模型，按文件名判「通知/材料」，
+     * 通知套用预置会议信息，模拟 10~15s 真实耗时与合理 token 数。
+     * 文件由控制器照常落库拿 fileUrl（材料可挂载传阅），与真实流程表现一致。
+     */
+    private MeetingPrefillVO demoParseMulti(List<Doc> docs) {
+        log.info("[PREFILL-DEMO] 演示模式假识别（demo.prefill.enabled=true），共 {} 个文件", docs.size());
+        MeetingPrefillVO vo = new MeetingPrefillVO();
+        long tokens = 0;
+        boolean noticeFilled = false;
+        for (Doc d : docs) {
+            MeetingPrefillVO.FileInfo fi = new MeetingPrefillVO.FileInfo();
+            fi.setFileName(d.filename() == null ? "" : d.filename());
+            fi.setFileType(d.fileType() == null ? "" : d.fileType());
+            fi.setFileSize(d.fileSize());
+            if (looksLikeNotice(d.filename())) {
+                fi.setCategory("notice");
+                if (!noticeFilled) {   // 只用第一份通知预填顶层字段
+                    vo.setTitle(DEMO_TITLE);
+                    vo.setMeetingDate(DEMO_DATE);
+                    vo.setMeetingTime(DEMO_TIME);
+                    vo.setLocation(DEMO_LOCATION);
+                    vo.getTopics().addAll(DEMO_TOPICS);
+                    noticeFilled = true;
+                }
+                tokens += 1280;
+            } else {
+                fi.setCategory("material");
+                tokens += 860 + Math.round(Math.random() * 200);
+            }
+            vo.getFiles().add(fi);
+        }
+        vo.setTokens(tokens);
+        vo.setAvailable(true);
+        vo.setCategory(noticeFilled ? "notice" : "material");
+        vo.setMessage(noticeFilled ? "已识别并预填，请核对" : "已识别为会议材料");
+        // 模拟真实 OCR + 大模型耗时：10~15 秒（前端据此显示进度与用时）
+        try {
+            Thread.sleep(10000 + (long) (Math.random() * 5000));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+        return vo;
+    }
+
+    // 演示判类：文件名含「通知/notice」即当会议通知，其余当会议材料。
+    private boolean looksLikeNotice(String filename) {
+        if (filename == null) return false;
+        String n = filename.toLowerCase();
+        return n.contains("通知") || n.contains("notice");
     }
 
     // —— 多文件：一次调用返回 fileCategories + 合并后的通知字段；结果直接写入 vo ——

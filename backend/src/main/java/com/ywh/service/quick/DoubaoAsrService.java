@@ -91,9 +91,11 @@ public class DoubaoAsrService implements AsrService {
         // 优先：后端本地存有该音频 → 直接内联 Base64 发送，豆包无需联网拉取
         //（兼容 localhost / 局域网 / 隧道等任意 public-base-url，彻底规避 45000006「下载音频失败」）。
         // 兜底：本地取不到（如对象存储直链）且 URL 公网可达 → 让豆包按 URL 拉取。
+        // 远端对象存储(TOS)：音频不在本机、URL 公网可达 → 跳过内联，直接让豆包按 URL 拉，
+        // 避免把长音频读回内存编码成几十 MB 的 Base64 body（提交超时/内存压力的根因）。
         byte[] audioBytes = null;
         String filename = extractFilename(audioRef);
-        if (filename != null) {
+        if (!audioStorage.isRemote() && filename != null) {
             try {
                 audioBytes = audioStorage.load(filename);
             } catch (Exception e) {
