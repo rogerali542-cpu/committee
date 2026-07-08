@@ -32,6 +32,8 @@ public class SecurityConfig {
                 // 音频文件需被火山引擎(豆包ASR)匿名拉取，故公开（仅 GET 静态音频）
                 .requestMatchers(HttpMethod.GET, "/api/quick-audio/**").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/api/quick-audio/**").permitAll()
+                // 企业微信 JS-SDK 签名：内容不含机密（公开 URL + ticket 计算），放开鉴权
+                .requestMatchers(HttpMethod.GET, "/api/wecom/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

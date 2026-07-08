@@ -537,6 +537,7 @@ import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
 import { pickFiles, humanSize } from '@/utils/upload'
+import { isWecom, chooseWecomImages, isWecomCancel } from '@/utils/wecom'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 
@@ -1208,6 +1209,18 @@ function openScanItemPreview(it) {
 // 手机微信对"图片+文档混选"会退化成单选，纯 image/* 时一次多选更容易生效；选中的都攒进暂存列表(不立即识别)。
 async function startDocScan(source = 'image') {
   if (scanRecognizing.value) return
+  // 企业微信里「图片」走 JS-SDK 相册多选（内置浏览器把 <input multiple> 强制单选）；
+  // 用户取消就停手，配置/接口等异常则回退系统选择器，绝不打断。
+  if (source === 'image' && isWecom()) {
+    try {
+      const files = await chooseWecomImages(9)
+      files.forEach((f) => addScanItem(f))
+      return
+    } catch (e) {
+      if (isWecomCancel(e)) return
+      console.warn('[wecom] chooseImage 失败，回退系统选择器', e)
+    }
+  }
   const accept = source === 'file'
     ? '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf'
     : 'image/*'

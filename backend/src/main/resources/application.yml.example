@@ -42,6 +42,15 @@ wx:
     appid: your-appid-here
     secret: your-secret-here
 
+# 企业微信（WeCom）JS-SDK：让「图片」上传在企业微信内置浏览器调起相册多选。
+# enabled=true 且填好 corp-id/agent-id/secret 才生效；否则前端自动回退系统文件选择器。
+# ⚠ 还需把访问域名登记进「企业微信管理后台 → 应用 → 网页授权及JS-SDK → 可信域名」，否则签名校验不过。
+wecom:
+  enabled: ${WECOM_ENABLED:false}
+  corp-id: ${WECOM_CORP_ID:}      # 企业 ID（我的企业 → 企业信息）
+  agent-id: ${WECOM_AGENT_ID:0}   # 自建应用 AgentId
+  secret: ${WECOM_SECRET:}        # 自建应用 Secret
+
 # 豆包（火山引擎）。真实密钥请用环境变量注入，勿写进本文件提交。
 doubao:
   # 录音文件识别大模型（volc.bigasr.auc）。

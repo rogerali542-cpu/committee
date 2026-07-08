@@ -85,6 +85,13 @@
             <version>${wx-java.version}</version>
         </dependency>
 
+        <!-- 企业微信 SDK（JS-SDK 签名：相册多选 chooseImage） -->
+        <dependency>
+            <groupId>com.github.binarywang</groupId>
+            <artifactId>weixin-java-cp</artifactId>
+            <version>${wx-java.version}</version>
+        </dependency>
+
         <!-- Swagger / SpringDoc -->
         <dependency>
             <groupId>org.springdoc</groupId>
