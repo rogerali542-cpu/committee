@@ -1412,16 +1412,26 @@ async function continueGenerateMinutes(skipGuard) {
   }
   overlayPhase.value = 'gen'
   generatingMinutes.value = true
+  const mid = meetingId.value
   try {
-    await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload())
-    await api.committeeQuickPolish(meetingId.value) // 大模型生成纪要并落库
+    await api.committeeQuickConfirm(mid, buildConfirmPayload())
+    await api.committeeQuickPolish(mid) // 大模型生成纪要并落库（长请求，切到别的页面也不中断，后端继续跑）
     minutesGenerated.value = true
     persistQuickState()
+    // 生成在后台完成、而用户已切走或关掉遮罩 → 弹全局提示（toast 挂 App 根 UiHost，不随录音页卸载）
+    if (backgroundDone()) toast({ title: '会议纪要已生成，可在会议详情查看', icon: 'success', duration: 3000 })
   } catch (e) {
-    toast({ title: (e && e.message) || '生成纪要失败，请重试', icon: 'none' })
+    if (backgroundDone()) toast({ title: '会议纪要生成失败，请回到会议重试', icon: 'none', duration: 3000 })
+    else toast({ title: (e && e.message) || '生成纪要失败，请重试', icon: 'none' })
   } finally {
-    generatingMinutes.value = false // → 遮罩完成态「已生成会议纪要」
+    generatingMinutes.value = false // 仍在前台看 → 遮罩转完成态「已生成会议纪要」
   }
+}
+
+// 生成完成时用户是否已不在等这块遮罩：切到别的页面（.live-page 不在 DOM）或点×关了遮罩（generatingMinutes=false）
+// → 该用全局提示而非遮罩完成态。
+function backgroundDone() {
+  return !document.querySelector('.live-page') || !generatingMinutes.value
 }
 
 // 遮罩完成按钮：recognize 阶段 → 关遮罩，露出「继续上传录音 / 生成会议纪要」两键（不再自动生成）；
