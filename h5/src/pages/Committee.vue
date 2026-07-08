@@ -219,19 +219,24 @@
               <span class="ds-thumb-del" @click.stop="removeScanItem(it.id)">×</span>
             </div>
           </div>
-          <div class="ds-cards">
+          <div class="ds-cards ds-cards-3">
             <button class="ds-card" :disabled="scanRecognizing" @click="startCamera()">
               <span class="ds-ico or">📷</span>
               <span class="ds-t">{{ scanItems.length ? '继续拍照' : '拍照' }}</span>
               <span class="ds-s">纸质文件</span>
             </button>
-            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan()">
-              <span class="ds-ico bl">📁</span>
-              <span class="ds-t">{{ scanItems.length ? '继续上传' : '上传' }}</span>
-              <span class="ds-s">电子文件</span>
+            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('image')">
+              <span class="ds-ico bl">🖼️</span>
+              <span class="ds-t">图片</span>
+              <span class="ds-s">可选多张</span>
+            </button>
+            <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
+              <span class="ds-ico bl">📄</span>
+              <span class="ds-t">文件</span>
+              <span class="ds-s">PDF·Word</span>
             </button>
           </div>
-          <div class="ds-hint">可一次多选；也能多次点击，一份份添加</div>
+          <div class="ds-hint">「图片」可一次选多张；也能多次点击继续添加</div>
           <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
             {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
           </button>
@@ -1199,10 +1204,14 @@ function openScanItemPreview(it) {
   openMaterialViewer({ url, name: it.name, fileType: (it.file && it.file.type) || it.ext || '' })
 }
 
-// 上传文件：支持多选，全部攒进暂存列表（不立即识别）
-async function startDocScan() {
+// 上传：source='image' 选图片(可多张) / 'file' 选文档(PDF/Word 等)。拆两个入口——
+// 手机微信对"图片+文档混选"会退化成单选，纯 image/* 时一次多选更容易生效；选中的都攒进暂存列表(不立即识别)。
+async function startDocScan(source = 'image') {
   if (scanRecognizing.value) return
-  const files = await pickFiles('image/*,application/pdf')
+  const accept = source === 'file'
+    ? '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf'
+    : 'image/*'
+  const files = await pickFiles(accept)
   if (!files || !files.length) return // 用户取消
   files.forEach((f) => addScanItem(f))
 }
@@ -2315,6 +2324,8 @@ onActivated(show)
 /* 拍照/上传 双卡片（政务风功能入口）：图标圆 + 标题 + 两行说明整合在卡片内 */
 .doc-scan-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
 .ds-cards { display: flex; gap: 18rpx; }
+.ds-cards-3 { gap: 12rpx; }
+.ds-cards-3 .ds-card { padding: 18rpx 6rpx 14rpx; }
 .ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
 .ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
 .ds-card:disabled { opacity: 0.75; }

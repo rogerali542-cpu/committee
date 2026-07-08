@@ -87,7 +87,7 @@
               <span class="qrl-idx">{{ idx + 1 }}</span>
               <div class="qrl-info">
                 <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
-                <span class="qrl-meta">{{ fmtTime(item.createdAt) }}</span>
+                <span class="qrl-meta">{{ fmtTimeRange(item) }}</span>
                 <span v-if="hasTranscript" class="qrl-view" @click="openTranscript('short')">查看内容 ›</span>
               </div>
               <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
@@ -102,15 +102,21 @@
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0"> {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <template v-if="!uploading && !generatingMinutes">
-          <!-- 手里有还没上传的录音（正录/暂停/内存里）→ 永远最先给「上传并识别录音」，优先于纪要按钮；
-               否则纪要已生成(minutesGenerated)或已识别完后再「继续录音」补录，新录音会没有上传入口而卡住 -->
-          <button v-if="canUpload" class="lp-primary-btn rec-main" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别录音</button>
-          <template v-else-if="minutesGenerated">
+          <!-- 纪要已生成 → 查看 / 重新生成；若有补录未上传，再给个上传次按钮，避免新录音卡住 -->
+          <template v-if="minutesGenerated">
             <button class="lp-primary-btn rec-main" @click="viewMinutes">查看会议纪要</button>
             <button class="rec-sub" @click="regenerateMinutes">重新生成纪要</button>
+            <button v-if="canUpload" class="rec-sub" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别新录音</button>
           </template>
-          <!-- 有已上传录音 →「生成会议纪要」常驻显示；转写没完成（未识别 / 识别中）时置灰不可点，识别完自动变亮 -->
-          <button v-else-if="hasSavedRecordings" class="lp-primary-btn rec-main" :disabled="needRecognize || polling || extracting" @click="generateNow">{{ (polling || extracting) ? '录音识别中…' : '生成会议纪要' }}</button>
+          <template v-else>
+            <!-- ① 只要有任一段已转写出内容 →「生成会议纪要」即可点；转写中置灰并显示「正在转写，请稍候…」。
+                 ② 点击时若还有未上传的录音，先弹框问「停止并上传转写 / 继续录音」（见 generateNow）。 -->
+            <button v-if="hasAnyTranscribed" class="lp-primary-btn rec-main" :disabled="polling || extracting" @click="generateNow">{{ (polling || extracting) ? '正在转写，请稍候…' : '生成会议纪要' }}</button>
+            <!-- 手里有未上传录音：无任何已转写内容时作主按钮（先上传出第一段内容），已有转写内容时作次按钮 -->
+            <button v-if="canUpload" :class="hasAnyTranscribed ? 'rec-sub' : 'lp-primary-btn rec-main'" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别录音</button>
+            <!-- 有已上传录音但还没转写出内容、手里也没在录 → 转写中/失败，常驻一个置灰按钮 -->
+            <button v-else-if="!hasAnyTranscribed && hasSavedRecordings" class="lp-primary-btn rec-main" disabled>{{ (polling || extracting) ? '正在转写，请稍候…' : '生成会议纪要' }}</button>
+          </template>
         </template>
         <!-- 识别中：主按钮已置灰，这里补一句可继续录音的说明 -->
         <div v-if="(polling || extracting) && !uploading" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音，识别完即可点击生成</div>
@@ -142,7 +148,7 @@
         <span class="qrl-idx">{{ idx + 1 }}</span>
         <div class="qrl-info">
           <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
-          <span class="qrl-meta">{{ fmtTime(item.createdAt) }}</span>
+          <span class="qrl-meta">{{ fmtTimeRange(item) }}</span>
         </div>
         <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
       </div>
@@ -638,6 +644,9 @@ const recognizedIds = ref([])
 // 还有录音没经大模型识别 → 按钮显示「上传录音」；识别完变「继续生成会议纪要」
 const needRecognize = computed(() => !generated.value
   || (recordings.value || []).some(r => r.asrStatus !== 'done' && !recognizedIds.value.includes(r.id)))
+// 有任一段"已转写出内容"（done 或本轮已识别）→ 生成按钮即可用，不再要求全部段都识别完
+const hasAnyTranscribed = computed(() => (recordings.value || [])
+  .some(r => r.asrStatus === 'done' || recognizedIds.value.includes(r.id)))
 // 圆圈按钮（圆圈即录音键）文案：四字状态、圈内两行显示（开始/录音 各占一行）
 const recCircleLabel = computed(() => {
   if (recActive.value) return '暂停录音'
@@ -1320,7 +1329,31 @@ async function uploadRecordingStep() {
 
 // 识别完成后的主按钮——「生成会议纪要」：表决核对（AI票数确认/未表决提示）→ 生成。
 // （想再补录：直接点上方录音圆圈，此时它显示「继续录音」，录完会重新出现「上传并识别录音」）
-function generateNow() {
+async function generateNow() {
+  // ② 还有未上传的录音（正在录 / 暂停 / 内存里未上传）→ 先问：停止并上传转写，还是继续录音
+  if (canUpload.value) {
+    const r = await showModal({
+      title: '正在录音中',
+      content: '当前还有未上传的录音。要先停止并把这段一起上传、转写吗？（转写完成后，再点「生成会议纪要」）',
+      confirmText: '停止并上传转写',
+      cancelText: '继续录音'
+    })
+    // 方案B：确认后只停录+上传+转写；识别完按钮自动变亮，由用户手动再点生成
+    if (r.confirm) uploadRecordingStep()
+    return
+  }
+  // ④ 有"未检测到说话声"的空段 → 提示是哪几段，确认后忽略空段、用其余已转写内容生成
+  const empties = (recordings.value || []).filter(r => r.asrStatus === 'empty')
+  if (empties.length) {
+    const nums = empties.map(e => '第 ' + (((recordings.value || []).indexOf(e)) + 1) + ' 段').join('、')
+    const r = await showModal({
+      title: '部分录音没有声音',
+      content: nums + ' 未检测到说话声（可能录到了静音或声音太轻）。确认后将忽略这些段，用其余已转写的内容生成会议纪要。',
+      confirmText: '确认生成',
+      cancelText: '取消'
+    })
+    if (!r.confirm) return
+  }
   voteCheckFlow()
 }
 
@@ -1466,6 +1499,18 @@ function onAiWorkClose() {
 }
 
 // 录音时长（秒）→ "MM:SS"；无时长显示占位
+// 录音起止时间：createdAt=后端上传时刻(≈录音结束)，start=end−时长。显示 "MM-DD HH:MM:SS – HH:MM:SS"（近似，±上传耗时几秒）。
+function fmtTimeRange(item) {
+  const raw = item && item.createdAt
+  const end = raw ? new Date(String(raw).replace(' ', 'T')) : null
+  if (!end || isNaN(end.getTime())) return fmtTime(raw)
+  const dur = Number(item.durationSec) || 0
+  const start = new Date(end.getTime() - dur * 1000)
+  const p = (n) => String(n).padStart(2, '0')
+  const hms = (d) => p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds())
+  return p(end.getMonth() + 1) + '-' + p(end.getDate()) + ' ' + hms(start) + ' – ' + hms(end)
+}
+
 function fmtDur(sec) {
   const s = Number(sec)
   if (!s || s <= 0) return '未知'
