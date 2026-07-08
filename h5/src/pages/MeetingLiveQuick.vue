@@ -281,6 +281,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
+import { startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { useRecorder } from '@/composables/useRecorder'
 import { applyHotwords } from '@/utils/helpers'
@@ -1413,23 +1414,27 @@ async function continueGenerateMinutes(skipGuard) {
   overlayPhase.value = 'gen'
   generatingMinutes.value = true
   const mid = meetingId.value
+  // 全局后台任务：切到别的页面时顶部悬浮「会议纪要生成中…」，完成后可点直达纪要页
+  const minutesPath = '/pages/minutes/minutes?meetingId=' + mid + '&from=meeting-live-quick&view=1'
+  startAiTask({ label: '会议纪要生成中…', originPath: window.location.pathname, targetPath: minutesPath })
   try {
     await api.committeeQuickConfirm(mid, buildConfirmPayload())
     await api.committeeQuickPolish(mid) // 大模型生成纪要并落库（长请求，切到别的页面也不中断，后端继续跑）
     minutesGenerated.value = true
     persistQuickState()
-    // 生成在后台完成、而用户已切走或关掉遮罩 → 弹全局提示（toast 挂 App 根 UiHost，不随录音页卸载）
-    if (backgroundDone()) toast({ title: '会议纪要已生成，可在会议详情查看', icon: 'success', duration: 3000 })
+    // 已切走/关掉遮罩（后台完成）→ 全局完成条（可点直达纪要页）；仍在前台看遮罩 → 遮罩完成态接管
+    if (backgroundDone()) finishAiTask({ doneLabel: '会议纪要已生成' })
+    else clearAiTask()
   } catch (e) {
-    if (backgroundDone()) toast({ title: '会议纪要生成失败，请回到会议重试', icon: 'none', duration: 3000 })
-    else toast({ title: (e && e.message) || '生成纪要失败，请重试', icon: 'none' })
+    if (backgroundDone()) failAiTask({ failLabel: '会议纪要生成失败' })
+    else { clearAiTask(); toast({ title: (e && e.message) || '生成纪要失败，请重试', icon: 'none' }) }
   } finally {
     generatingMinutes.value = false // 仍在前台看 → 遮罩转完成态「已生成会议纪要」
   }
 }
 
 // 生成完成时用户是否已不在等这块遮罩：切到别的页面（.live-page 不在 DOM）或点×关了遮罩（generatingMinutes=false）
-// → 该用全局提示而非遮罩完成态。
+// → 该用全局悬浮提示而非遮罩完成态。
 function backgroundDone() {
   return !document.querySelector('.live-page') || !generatingMinutes.value
 }

@@ -653,6 +653,7 @@ import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
+import { startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
 import { pickAndUpload, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
@@ -2036,18 +2037,28 @@ function viewMinutes() {
 async function generateNews() {
   if (generatingNews.value) return
   generatingNews.value = true
+  // 全局后台任务：切到别的页面时顶部悬浮「党建新闻生成中…」，完成后可点直达新闻页
+  startAiTask({ label: '党建新闻生成中…', originPath: window.location.pathname, targetPath: '/pages/news/news?meetingId=' + meetingId })
   try {
     const res = await api.committeeGenerateNews(meetingId)
     if (res && res.content) {
       try { sessionStorage.setItem('committee_news_' + meetingId, JSON.stringify({ title: res.title, content: res.content })) } catch (e) {}
+      if (newsBackgroundDone()) finishAiTask({ doneLabel: '党建新闻已生成' })
+      else clearAiTask()
     } else {
-      toast({ title: '生成失败，请重试', icon: 'none' })
+      if (newsBackgroundDone()) failAiTask({ failLabel: '党建新闻生成失败' })
+      else { clearAiTask(); toast({ title: '生成失败，请重试', icon: 'none' }) }
     }
   } catch (e) {
-    toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' })
+    if (newsBackgroundDone()) failAiTask({ failLabel: '党建新闻生成失败' })
+    else { clearAiTask(); toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' }) }
   } finally {
     generatingNews.value = false // active→false 触发遮罩「完成」态，等用户点「查看新闻稿」
   }
+}
+// 生成完成时用户是否已离开详情页（.detail-page 不在 DOM）或关了遮罩（generatingNews=false）→ 用全局悬浮提示
+function newsBackgroundDone() {
+  return !document.querySelector('.detail-page') || !generatingNews.value
 }
 // 遮罩「查看新闻稿」：进入独立党建新闻页（带软路由不切换的硬导航兜底）
 function onNewsDone() {
