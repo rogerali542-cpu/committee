@@ -1116,6 +1116,7 @@ const sendSubmitting = ref(false)
 // onLoad 上下文（this.meetingId / this.fromNotice）
 let meetingId = null
 let fromNotice = false
+let stay = false   // stay=1：从会议进行页返回时带上，让进行中会议别再被弹回录音页（可停留看详情）
 // 录音上下文（this._recAudio）
 let _recAudio = null
 
@@ -1126,6 +1127,7 @@ let _recAudio = null
 onMounted(() => {
   meetingId = parseInt(route.query.id)
   fromNotice = route.query.fromNotice === '1'
+  stay = route.query.stay === '1'
   activeRole.value = getStorage('activeRole', null) || {}
   loadDetail()
 })
@@ -1192,7 +1194,7 @@ async function loadDetail() {
     // 委员：进行中与主任统一走「会议进行」页（表决/意见/看录音，主任专属操作按权限隐藏）；
     // 其余阶段仍走专属极简会议页，不进操作者用的详情页（覆盖通知、待办等入口）
     if (uv === 'member') {
-      if (d.stage === 'ongoing' && d.record) {
+      if (d.stage === 'ongoing' && d.record && !stay) {
         redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
         return
       }
@@ -1200,7 +1202,7 @@ async function loadDetail() {
       return
     }
     // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）
-    if (d.stage === 'ongoing' && d.record && !fromNotice &&
+    if (d.stage === 'ongoing' && d.record && !fromNotice && !stay &&
         uv === 'chair') {
       redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
       return

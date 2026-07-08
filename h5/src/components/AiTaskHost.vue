@@ -1,8 +1,10 @@
 <template>
-  <!-- 生成中：仅在「已切离发起页」时显示悬浮胶囊（发起页有全屏遮罩，避免重复） -->
-  <div v-if="aiTask.active && curPath !== aiTask.originPath" class="ait-pill running">
+  <!-- 生成中：只要没有全屏遮罩正盖着它，就显示可点悬浮胶囊（切走了/遮罩没恢复/落到无遮罩的详情页都算）。
+       点它直达目标页看进度/结果 —— 保证「重进会议也有入口」。 -->
+  <div v-if="aiTask.active && !aiTask.overlayShown" class="ait-pill running" @click="peekAiTask">
     <span class="ait-spin"></span>
     <span class="ait-txt">{{ aiTask.label }}</span>
+    <span class="ait-go">查看 ›</span>
   </div>
   <!-- 完成：可点直达目标页 -->
   <div v-else-if="aiTask.done" class="ait-pill done" @click="openAiTaskTarget">
@@ -19,13 +21,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { aiTask, openAiTaskTarget, clearAiTask } from '@/composables/aiTask'
+import { aiTask, openAiTaskTarget, clearAiTask, peekAiTask } from '@/composables/aiTask'
 import { navigateTo } from '@/utils/navigate'
-
-const route = useRoute()
-const curPath = computed(() => route.path)
 
 function onRetry() {
   const origin = aiTask.originPath
@@ -53,7 +50,7 @@ function onRetry() {
   animation: ait-in 0.24s ease;
 }
 @keyframes ait-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-.ait-pill.running { background: #333; color: #fff; }
+.ait-pill.running { background: #333; color: #fff; cursor: pointer; }
 .ait-pill.done { background: #1F9E5A; color: #fff; cursor: pointer; }
 .ait-pill.failed { background: #C0141B; color: #fff; cursor: pointer; }
 .ait-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

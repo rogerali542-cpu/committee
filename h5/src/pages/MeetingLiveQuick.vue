@@ -1,8 +1,8 @@
 <template>
-  <div class="live-page" style="overflow-y:auto;" v-if="detail">
+  <div class="live-page" :class="{ 'lp-signin': currentStep === 1 }" style="overflow-y:auto;" v-if="detail">
 
     <!-- 页面对所有身份统一：主任/副主任可操作录音等，其余身份只读+表决/意见 -->
-    <PageNav :title="isChair ? '会议录音' : '会议进行'" style="margin:-3.2vw -3.2vw 0;">
+    <PageNav :title="currentStep === 1 ? '会议签到' : (isChair ? '会议录音' : '会议进行')" style="margin:-3.2vw -3.2vw 0;">
       <template #left>
         <div class="mlq-back" @click="onNavBack">‹</div>
       </template>
@@ -43,20 +43,53 @@
       </div>
     </div>
 
-    <!-- ========== 步骤1：签到（纯签到页，主内容只有一个大签到按钮） ========== -->
+    <!-- ========== 步骤1：签到页（顶部精简会议卡·点开看议题 → 参会名单·默认收起 → 底部大签到钮·拇指区） ========== -->
     <template v-if="currentStep === 1">
       <div class="signin-page">
-        <div class="signin-page-emoji">✍️</div>
-        <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '签到' }}</button>
-        <div class="signin-page-tip">{{ signedIn ? '你已签到，点击进入' : '到会后请点此签到' }}</div>
-        <!-- 参会名单 -->
-        <div v-if="signinStats.total" class="signin-roster">
-          <div class="signin-roster-head">参会名单<span class="signin-roster-count"><b>{{ signinStats.signedCount }}</b> / {{ signinStats.total }} 已签到</span></div>
-          <div class="signin-roster-row" v-for="a in signinStats.list" :key="a.userRoleId">
-            <span class="srr-name">{{ a.name }}</span>
-            <span class="srr-role">{{ a.role }}</span>
-            <span class="srr-state" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')">{{ a.signedIn ? '已签到' : (a.declined ? '缺席' : '未签到') }}</span>
+        <!-- 顶部精简会议卡：名称/时间/地点，点击展开议题 -->
+        <div class="si-meet-card" @click="siMeetOpen = !siMeetOpen">
+          <div class="si-meet-main">
+            <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
+            <div class="si-meet-meta">
+              <span class="si-meet-row">🕒 {{ detail.meetingDate }} {{ detail.meetingTime }}</span>
+              <span v-if="detail.location" class="si-meet-row">📍 {{ detail.location }}</span>
+            </div>
           </div>
+          <span class="si-meet-caret">{{ siMeetOpen ? '收起 ▲' : '议题 ▾' }}</span>
+        </div>
+        <div v-if="siMeetOpen" class="si-meet-topics">
+          <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
+            <div class="si-topic-item" v-for="(item, index) in detail.record.topics" :key="item.id">
+              <span class="si-topic-idx">{{ index + 1 }}</span>
+              <span class="si-topic-title">{{ item.title }}</span>
+            </div>
+          </template>
+          <span v-else class="si-topic-empty">暂无议题</span>
+        </div>
+
+        <!-- 参会名单：默认收起，点击展开 -->
+        <div v-if="signinStats.total" class="si-roster" :class="{ open: siRosterOpen }">
+          <div class="si-roster-bar" @click="siRosterOpen = !siRosterOpen">
+            <span class="si-roster-title">参会名单</span>
+            <span class="si-roster-count"><b>{{ signinStats.signedCount }}</b> / {{ signinStats.total }} 已签到</span>
+            <span class="si-roster-caret">{{ siRosterOpen ? '收起 ▲' : '展开 ▾' }}</span>
+          </div>
+          <div v-if="siRosterOpen" class="si-roster-body">
+            <div class="signin-roster-row" v-for="a in signinStats.list" :key="a.userRoleId">
+              <span class="srr-name">{{ a.name }}</span>
+              <span class="srr-role">{{ a.role }}</span>
+              <span class="srr-state" :class="a.signedIn ? 'on' : (a.declined ? 'off' : 'wait')">{{ a.signedIn ? '已签到' : (a.declined ? '缺席' : '未签到') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 弹性占位：把签到钮压到底部拇指区 -->
+        <div class="si-spacer"></div>
+
+        <!-- 底部大签到按钮 -->
+        <div class="si-bottom">
+          <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '签到' }}</button>
+          <div class="signin-page-tip">{{ signedIn ? '你已签到，点击进入' : '到会后请点此签到' }}</div>
         </div>
       </div>
     </template>
@@ -102,8 +135,10 @@
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0"> {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <template v-if="!uploading && !generatingMinutes">
+          <!-- 内存后台任务因硬跳/刷新丢失后，据服务端+本地 durable 标记兜底恢复的「生成中」入口，点此进纪要页看进度/结果 -->
+          <button v-if="minutesResuming || bgMinutesGenerating" class="lp-primary-btn rec-main" @click="viewMinutes">会议纪要生成中…点此查看</button>
           <!-- 纪要已生成 → 查看 / 重新生成；若有补录未上传，再给个上传次按钮，避免新录音卡住 -->
-          <template v-if="minutesGenerated">
+          <template v-else-if="minutesGenerated">
             <button class="lp-primary-btn rec-main" @click="viewMinutes">查看会议纪要</button>
             <button class="lp-primary-btn rec-main" @click="regenerateMinutes">重新生成纪要</button>
             <button v-if="canUpload" class="lp-primary-btn rec-main" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别新录音</button>
@@ -719,6 +754,8 @@ const ending = ref(false)
 // 重做后的「最后一步」：AI 纪要审核
 const minutesGenerated = ref(false)   // 是否已生成 AI 纪要草稿
 const generatingMinutes = ref(false)  // 生成中（按钮 loading 态）
+const minutesGenAt = ref(0)           // 生成纪要发起时刻(ms)；>0且较近=生成在途。整页刷新/硬跳会丢内存 aiTask，用它+服务端从durable信号重建入口
+const minutesResuming = ref(false)    // 内存任务已丢、据 durable 标记+服务端轮询恢复出的「生成中」入口
 // 后台生成跨页恢复用（本页无 keep-alive，切走再回来是全新实例、generatingMinutes 会丢）：
 let _leftWhileGenerating = false // 生成中切走过本页 → 完成时该走全局悬浮条兜底，而非误判「仍在前台看遮罩」
 let _bgRehydrated = false        // 本页遮罩是「切回时按后台任务恢复」出来的（非本实例发起）→ 由 watch(aiTask) 收尾
@@ -745,11 +782,18 @@ watch(() => aiTask.active, (act) => {
   if (aiTask.done) { minutesGenerated.value = true; persistQuickState() }
   else loadDetail() // 被清除/失败 → 重新拉真实状态
 })
+// 本页全屏遮罩(AiWorkingOverlay :active=generatingMinutes)是否正盖着这个任务 → 同步给全局。
+// 遮罩在=悬浮胶囊隐藏(免重复)；遮罩不在(切走/resume 没恢复)=胶囊自动出来当兜底入口。
+watch(generatingMinutes, (v) => { aiTask.overlayShown = v }, { immediate: true })
+// 全局后台纪要任务是否属于本会议（与首页悬浮条同源）——内存任务还在时用它兜底显示「生成中」入口
+const bgMinutesGenerating = computed(() => aiTask.active && !!aiTask.targetPath && aiTask.targetPath.indexOf('meetingId=' + meetingId.value) >= 0)
 // —— 重做：阶段条 + 折叠态 + 签到跳转动画 ——
 // 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
 const flowStep = computed(() => minutesGenerated.value ? 3 : (currentStep.value === 1 ? 1 : 2))
 const recListOpen = ref(false)   // 录音卡内「已录N段」列表是否展开
 const attendOpen = ref(false)    // 参会名单是否展开
+const siMeetOpen = ref(false)    // 签到页：会议卡是否展开(看议题)
+const siRosterOpen = ref(false)  // 签到页：参会名单是否展开
 const signinFx = ref(false)      // 签到→录音 跳转动画遮罩
 function playSigninFx() {
   signinFx.value = true
@@ -847,8 +891,10 @@ onActivated(() => {
 // onUnload → onUnmounted
 onUnmounted(() => {
   if (generatingMinutes.value) _leftWhileGenerating = true // 生成中切走 → 完成走全局悬浮条兜底
+  aiTask.overlayShown = false // 本页遮罩随本页销毁 → 交还给全局悬浮胶囊兜底（保证切走后有入口）
   persistQuickState()
   clearPoll()
+  clearMinutesPoll()
   if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
   if (_playAudio) { try { _playAudio.pause() } catch (e) {} _playAudio = null }
   if (typeof window !== 'undefined') {
@@ -878,6 +924,7 @@ function persistQuickState(extra) {
     currentStep: currentStep.value,
     generated: generated.value,
     minutesGenerated: minutesGenerated.value, // 纪要已生成标志：持久化，避免回首页再进来退回「生成会议纪要」单键
+    minutesGenAt: minutesGenAt.value,         // 生成发起时刻：整页刷新丢了内存任务后，据此判断"生成在途"并轮询服务端恢复入口
     taskId: taskId.value,
     asrStatus: asrStatus.value,
     processText: processText.value,
@@ -906,6 +953,7 @@ function restoreQuickState(signedInArg) {
   currentStep.value = step
   generated.value = !!saved.generated
   minutesGenerated.value = !!saved.minutesGenerated // 恢复「纪要已生成」→ 显示 查看纪要/重新生成 两键，而非「生成会议纪要」
+  minutesGenAt.value = saved.minutesGenAt || 0      // 恢复「生成发起时刻」→ reconcileMinutesState 据此兜底恢复"生成中"入口
   if (saved.generated) recognizedIds.value = (recordings.value || []).map(r => r.id) // 恢复的转写已覆盖当前录音
   taskId.value = saved.taskId || ''
   asrStatus.value = saved.asrStatus || ''
@@ -973,7 +1021,8 @@ async function loadDetail() {
     if (d.stage === 'ongoing') {
       const restored = restoreQuickState(isSigned)
       if (isSigned && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
-      resumeBgAiTask() // 切回本页时恢复后台生成的遮罩/完成态
+      resumeBgAiTask() // 切回本页时恢复后台生成的遮罩/完成态（内存 aiTask 还在时）
+      reconcileMinutesState() // 内存任务丢失(硬跳/刷新)兜底：从服务端+本地durable标记重建"生成中/查看"入口
     } else {
       clearQuickState()
     }
@@ -1024,6 +1073,40 @@ async function tryRestoreGeneratedFromServer() {
     transcriptCharCount.value = tState.transcriptCharCount
     persistQuickState()
   } catch (e) {}
+}
+
+// —— 纪要状态兜底恢复：内存里的后台 aiTask 一旦因整页刷新/硬跳丢失，切回本页就没了「生成中/查看」入口。
+//    这里改从两处 durable 信号重建，不依赖内存单例：①服务端是否已有纪要 ②本地持久的"生成发起时刻"。
+let _minutesPollTimer = null
+function clearMinutesPoll() { if (_minutesPollTimer) { clearInterval(_minutesPollTimer); _minutesPollTimer = null } }
+async function reconcileMinutesState() {
+  if (!meetingId.value || minutesGenerated.value) return
+  if (typeof api.committeeMinutes !== 'function') return
+  // ① 服务端已有纪要 → 直接给「查看纪要」入口（最可靠，硬跳/换实例都不丢）
+  let hasServer = false
+  try { const t = await api.committeeMinutes(meetingId.value); hasServer = !!(t && String(t).trim()) } catch (e) {}
+  if (hasServer) { minutesGenerated.value = true; minutesGenAt.value = 0; minutesResuming.value = false; persistQuickState(); return }
+  // ② 服务端还没纪要：内存任务仍在(遮罩/悬浮条已接管)则不插手；否则据本地"生成发起时刻"兜底恢复「生成中」入口
+  if (generatingMinutes.value || bgMinutesGenerating.value) return
+  const RECENT = 5 * 60 * 1000
+  if (minutesGenAt.value && (Date.now() - minutesGenAt.value) < RECENT) startMinutesResumePoll()
+  else if (minutesGenAt.value) { minutesGenAt.value = 0; persistQuickState() } // 太旧的陈标记 → 清掉
+}
+// 轮询服务端直到纪要出现(生成完成)或超时(放弃 → 用户可重新生成)。仅在内存任务已丢时用。
+function startMinutesResumePoll() {
+  minutesResuming.value = true
+  clearMinutesPoll()
+  const deadline = (minutesGenAt.value || Date.now()) + 5 * 60 * 1000
+  const tick = async () => {
+    if (minutesGenerated.value) { minutesResuming.value = false; clearMinutesPoll(); return }
+    try {
+      const t = await api.committeeMinutes(meetingId.value)
+      if (t && String(t).trim()) { minutesGenerated.value = true; minutesGenAt.value = 0; minutesResuming.value = false; clearMinutesPoll(); persistQuickState(); return }
+    } catch (e) {}
+    if (Date.now() > deadline) { minutesResuming.value = false; minutesGenAt.value = 0; clearMinutesPoll(); persistQuickState() }
+  }
+  _minutesPollTimer = setInterval(tick, 4000)
+  tick()
 }
 
 function getSelfAttendance(d) {
@@ -1499,9 +1582,11 @@ async function continueGenerateMinutes(skipGuard) {
   overlayPhase.value = 'gen'
   generatingMinutes.value = true
   const mid = meetingId.value
+  minutesGenAt.value = Date.now() // durable「生成中」时刻：整页刷新/硬跳丢了内存 aiTask 后，切回本页据此从服务端恢复入口
   // 全局后台任务：切到别的页面时顶部悬浮「会议纪要生成中…」，完成后可点直达纪要页
   const minutesPath = '/pages/minutes/minutes?meetingId=' + mid + '&from=meeting-live-quick&view=1'
   startAiTask({ label: '会议纪要生成中…', originPath: window.location.pathname, targetPath: minutesPath })
+  persistQuickState() // 立刻落盘生成标记（原先要等生成成功才 persist，中途刷新就丢了 → 重进无入口）
   try {
     await api.committeeQuickConfirm(mid, buildConfirmPayload())
     await api.committeeQuickPolish(mid) // 大模型生成纪要并落库（长请求，切到别的页面也不中断，后端继续跑）
@@ -1515,6 +1600,8 @@ async function continueGenerateMinutes(skipGuard) {
     else { clearAiTask(); toast({ title: (e && e.message) || '生成纪要失败，请重试', icon: 'none' }) }
   } finally {
     generatingMinutes.value = false // 仍在前台看 → 遮罩转完成态「已生成会议纪要」
+    minutesGenAt.value = 0           // 生成已结束(成功/失败)→ 清 durable 标记，避免重进误显示"生成中"
+    persistQuickState()
   }
 }
 
@@ -2383,7 +2470,10 @@ async function onNavBack() {
     persistQuickState()
     refreshAttendance()   // 只刷新名单/进度，不动步骤机
   } else {
-    navigateBack()
+    // 签到页返回 → 回会议详情(来时那页)。⚠详情页读的是 query.id（不是 meetingId）；带 stay=1 让进行中会议别又弹回本页。软跳+硬导航兜底。
+    const url = '/committee-detail?id=' + meetingId.value + '&stay=1'
+    redirectTo(url)
+    setTimeout(() => { if (document.querySelector('.live-page')) window.location.href = url }, 500)
   }
 }
 </script>
@@ -2698,9 +2788,34 @@ async function onNavBack() {
 
 /* 签到 → 录音 跳转动画 */
 /* 签到页：大签到按钮 + 下方签到情况名单 */
-.signin-page { display:flex; flex-direction:column; align-items:center; padding:48rpx 0 24rpx; gap:22rpx; }
-.signin-page-emoji { font-size:88rpx; line-height:1; }
-.signin-big-btn { width:74% !important; max-width:560rpx; margin:0 auto !important; font-size:58rpx !important; font-weight:700; padding:42rpx 0 !important; border-radius:60rpx; box-shadow:0 10rpx 26rpx rgba(232,137,12,0.26); }
+/* ===== 步骤1 签到页：会议卡 + 名单(默认收起) + 底部大钮(拇指区) ===== */
+.live-page.lp-signin { min-height:100vh; }   /* 签到步按整屏排布，不要录音步那额外 320rpx */
+.signin-page { flex:1 1 auto; display:flex; flex-direction:column; gap:20rpx; padding:8rpx 0; }
+/* 顶部精简会议卡 */
+.si-meet-card { display:flex; align-items:center; gap:18rpx; background:#fff; border-radius:26rpx; padding:38rpx 34rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.si-meet-main { flex:1; min-width:0; }
+.si-meet-title { font-size:38rpx; font-weight:700; color:#1F2024; line-height:1.45; }
+.si-meet-meta { display:flex; flex-direction:column; gap:18rpx; margin-top:24rpx; }
+.si-meet-row { font-size:29rpx; color:#61656C; line-height:1.55; }
+.si-meet-caret { flex-shrink:0; font-size:26rpx; color:#E8890C; font-weight:600; }
+.si-meet-topics { background:#fff; border-radius:24rpx; padding:12rpx 28rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); margin-top:-8rpx; }
+.si-topic-item { display:flex; align-items:flex-start; gap:14rpx; padding:16rpx 0; border-bottom:2rpx solid #F4F4F6; }
+.si-topic-item:last-child { border-bottom:0; }
+.si-topic-idx { flex-shrink:0; width:40rpx; height:40rpx; border-radius:50%; background:#FFF1E0; color:#E8890C; font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.si-topic-title { flex:1; min-width:0; font-size:30rpx; color:#2B2E33; line-height:1.45; }
+.si-topic-empty { display:block; text-align:center; color:#9AA0A6; font-size:28rpx; padding:16rpx 0; }
+/* 参会名单：收起态一条，展开显示逐人 */
+.si-roster { background:#fff; border-radius:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); padding:0 28rpx; }
+.si-roster-bar { display:flex; align-items:center; gap:14rpx; padding:26rpx 0; }
+.si-roster-title { font-size:30rpx; font-weight:700; color:#1f2329; }
+.si-roster-count { flex:1; font-size:26rpx; color:#8A8F98; }
+.si-roster-count b { font-size:30rpx; color:#27AE60; font-weight:800; }
+.si-roster-caret { flex-shrink:0; font-size:26rpx; color:#8A8F98; }
+.si-roster-body { padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
+/* 底部拇指区 */
+.si-spacer { flex:1 1 auto; min-height:24rpx; }
+.si-bottom { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding-top:8rpx; }
+.signin-big-btn { width:72% !important; max-width:500rpx; margin:0 auto !important; font-size:46rpx !important; font-weight:700; letter-spacing:4rpx; padding:30rpx 0 !important; border-radius:56rpx; box-shadow:0 8rpx 22rpx rgba(232,137,12,0.24); }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
 /* 参会名单 */
 .signin-roster { width:88%; max-width:640rpx; margin-top:14rpx; background:#fff; border-radius:20rpx; padding:20rpx 26rpx 8rpx; box-shadow:0 6rpx 20rpx rgba(0,0,0,0.05); box-sizing:border-box; }

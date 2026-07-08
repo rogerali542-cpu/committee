@@ -7,8 +7,11 @@ import { navigateTo } from '@/utils/navigate'
 export const aiTask = reactive({
   active: false,     // 有任务在后台跑（生成中）
   label: '',         // 生成中文案，如「会议纪要生成中…」
-  originPath: '',    // 发起页 path（在该页时不显示悬浮"生成中"条，让页内遮罩负责）
-  targetPath: '',    // 完成后点击直达的路由
+  originPath: '',    // 发起页 path（失败时点「重试」回这里）
+  targetPath: '',    // 生成中/完成后点击直达的路由（含 meetingId）
+  // 发起页的全屏遮罩此刻是否正盖着这个任务：为真时隐藏悬浮条（避免与遮罩重复）；
+  // 为假时（切走了 / 遮罩没恢复 / 落到无遮罩的详情页）→ 悬浮条负责兜底，保证「生成中」永远有入口。
+  overlayShown: false,
   done: false,       // 已完成、待用户点击查看
   doneLabel: '',     // 「会议纪要已生成」
   failed: false,     // 失败、待用户点击重试
@@ -40,7 +43,12 @@ export function failAiTask(o = {}) {
 export function clearAiTask() {
   aiTask.active = false; aiTask.done = false; aiTask.failed = false
   aiTask.label = ''; aiTask.doneLabel = ''; aiTask.failLabel = ''
-  aiTask.originPath = ''; aiTask.targetPath = ''
+  aiTask.originPath = ''; aiTask.targetPath = ''; aiTask.overlayShown = false
+}
+
+// 点「生成中」悬浮条 → 直达目标页（任务仍在跑，不清空；到了目标页看进度/结果）
+export function peekAiTask() {
+  if (aiTask.targetPath) navigateTo(aiTask.targetPath)
 }
 
 // 点击"已完成"条 → 直达目标页并清空
