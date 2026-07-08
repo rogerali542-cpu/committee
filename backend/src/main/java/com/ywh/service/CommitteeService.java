@@ -1496,6 +1496,18 @@ public class CommitteeService {
         for (RecordTopic topic : topics) {
             QuickConfirmRequest.TopicResult r = confirmed.get(topic.getId());
             sb.append(idx++).append(". 【").append(topicTypeLabel(topic)).append("】").append(topic.getTitle()).append('\n');
+            // 委员意见：议题审议情况的【主要内容来源】。委员在线提交/语音/认领的意见逐条列出，
+            // 纪要的「议题审议」以此为主撰写，录音转写仅作补充。
+            List<TopicOpinion> topicOps = opinionRepo.findByTopicId(topic.getId());
+            if (!topicOps.isEmpty()) {
+                sb.append("   委员意见（议题审议以此为主，逐条源于委员本人表达）：\n");
+                for (TopicOpinion op : topicOps) {
+                    String sp = op.getUserRole() != null ? op.getUserRole().getRealName()
+                            : (op.getSpeakerName() != null && !op.getSpeakerName().isBlank() ? op.getSpeakerName() : "现场发言");
+                    sb.append("     - ").append(sp).append("：")
+                            .append(compactMinutesInput(op.getContent(), 140)).append('\n');
+                }
+            }
             if (r == null) {
                 sb.append("   记录状态：未明确说明\n");
                 continue;
