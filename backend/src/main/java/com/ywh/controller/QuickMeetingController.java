@@ -8,6 +8,7 @@ import com.ywh.dto.quick.AsrTaskVO;
 import com.ywh.dto.quick.QuickConfirmRequest;
 import com.ywh.dto.quick.QuickExtractionVO;
 import com.ywh.dto.quick.QuickPolishVO;
+import com.ywh.dto.quick.MinutesTaskStatusVO;
 import com.ywh.dto.quick.TopicSummaryRequest;
 import com.ywh.dto.quick.TopicSummaryTaskVO;
 import com.ywh.service.CommitteeService;
@@ -170,32 +171,49 @@ public class QuickMeetingController {
         return Result.ok();
     }
 
+    // 生成仍是同步长请求（客户端断连后 servlet 线程照样跑完、纪要照落库）；这里额外把"生成中/完成/失败"
+    // 落成任务状态，配合 GET /minutes-status，实现刷新/换设备/隔天重进也能查到进度、接回入口。
     @PostMapping("/polish")
     @RequireRole({"主任", "副主任"})
     public Result<QuickPolishVO> polish(@PathVariable Long id,
                                         @RequestBody(required = false) QuickConfirmRequest req) {
-        if (req != null) {
-            committeeService.applyQuickConfirm(id, req);
-        }
-        AsrResult asr = correctionService.correct(id, asrService.result(id));
-        QuickExtractionVO extraction = extractionService.extract(id, asr);
-        String context = committeeService.buildQuickMinutesContextCompact(id, extraction, asr);
-        QuickPolishVO vo = minutesGenService.polish(id, context, extraction, asr);
-        if (vo.getMinutesMarkdown() != null && !vo.getMinutesMarkdown().isBlank()) {
-            committeeService.updateQuickAiArtifacts(
-                    id,
-                    vo.getMinutesMarkdown(),
-                    vo.getTopicReportMarkdown(),
-                    vo.getTodoListMarkdown()
-            );
-        }
-        // 纪要顺带提炼的现场意见入库（带"现场·AI"标，可认领）。失败不影响纪要本身。
+        committeeService.markMinutesTaskRunning(id);
         try {
-            committeeService.saveAiOpinions(id, vo);
-        } catch (Exception e) {
-            log.warn("[MINUTES] AI 现场意见入库失败 meetingId={}: {}", id, e.getMessage());
+            if (req != null) {
+                committeeService.applyQuickConfirm(id, req);
+            }
+            AsrResult asr = correctionService.correct(id, asrService.result(id));
+            QuickExtractionVO extraction = extractionService.extract(id, asr);
+            String context = committeeService.buildQuickMinutesContextCompact(id, extraction, asr);
+            QuickPolishVO vo = minutesGenService.polish(id, context, extraction, asr);
+            boolean ok = vo.getMinutesMarkdown() != null && !vo.getMinutesMarkdown().isBlank();
+            if (ok) {
+                committeeService.updateQuickAiArtifacts(
+                        id,
+                        vo.getMinutesMarkdown(),
+                        vo.getTopicReportMarkdown(),
+                        vo.getTodoListMarkdown()
+                );
+            }
+            // 纪要顺带提炼的现场意见入库（带"现场·AI"标，可认领）。失败不影响纪要本身。
+            try {
+                committeeService.saveAiOpinions(id, vo);
+            } catch (Exception e) {
+                log.warn("[MINUTES] AI 现场意见入库失败 meetingId={}: {}", id, e.getMessage());
+            }
+            committeeService.markMinutesTaskDone(id, ok, ok ? null : "生成结果为空");
+            return Result.ok(vo);
+        } catch (RuntimeException e) {
+            committeeService.markMinutesTaskDone(id, false, e.getMessage());
+            throw e;
         }
-        return Result.ok(vo);
+    }
+
+    // 重进会议/刷新/换设备后查纪要生成进度：前端据此决定显示「生成中/查看/可重新生成」，不依赖前端内存。
+    @GetMapping("/minutes-status")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<MinutesTaskStatusVO> minutesStatus(@PathVariable Long id) {
+        return Result.ok(committeeService.getMinutesTaskStatus(id));
     }
 
     @GetMapping("/topic-report")

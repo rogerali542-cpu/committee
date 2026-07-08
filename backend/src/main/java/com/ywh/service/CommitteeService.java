@@ -11,6 +11,7 @@ import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.QuickPolishVO;
 import com.ywh.dto.quick.QuickConfirmRequest;
 import com.ywh.dto.quick.QuickExtractionVO;
+import com.ywh.dto.quick.MinutesTaskStatusVO;
 import com.ywh.entity.*;
 import com.ywh.enums.*;
 import com.ywh.repository.*;
@@ -51,6 +52,7 @@ public class CommitteeService {
     private final UserRoleRepository userRoleRepo;
     private final MeetingMaterialRepository materialRepo;
     private final ArchiveExtraRepository archiveExtraRepo;
+    private final MinutesTaskRepository minutesTaskRepo;
     private final ObjectMapper objectMapper;
     // 可选：仅 doubao.ocr.enabled=true 时存在，未启用时 getIfAvailable() 返回 null → OCR 跳过
     private final ObjectProvider<DoubaoOcrService> ocrServiceProvider;
@@ -277,6 +279,43 @@ public class CommitteeService {
         m.setNoticeContent(content);
         m.setNoticeStatus("edited");
         meetingRepo.save(m);
+    }
+
+    // ===== Minutes generation task（纪要生成任务：落库成服务端可查状态，跨刷新/换设备/隔天可接上）=====
+    /** 生成开始：复用 30s 内仍 running 的任务，否则新建 running；返回 taskId。 */
+    @Transactional
+    public Long markMinutesTaskRunning(Long meetingId) {
+        MinutesTask t = minutesTaskRepo.findTopByMeetingIdOrderByIdDesc(meetingId).orElse(null);
+        if (t != null && "running".equals(t.getStatus()) && t.getUpdatedAt() != null
+                && t.getUpdatedAt().isAfter(LocalDateTime.now().minusSeconds(30))) {
+            return t.getId();
+        }
+        MinutesTask nt = MinutesTask.builder().meetingId(meetingId).status("running").build();
+        minutesTaskRepo.save(nt);
+        return nt.getId();
+    }
+
+    /** 生成结束：把最新任务标记 success/failed。 */
+    @Transactional
+    public void markMinutesTaskDone(Long meetingId, boolean success, String err) {
+        minutesTaskRepo.findTopByMeetingIdOrderByIdDesc(meetingId).ifPresent(t -> {
+            t.setStatus(success ? "success" : "failed");
+            if (err != null) t.setErrorMsg(err.length() > 500 ? err.substring(0, 500) : err);
+            minutesTaskRepo.save(t);
+        });
+    }
+
+    /** 最新纪要生成任务状态（none/running/success/failed）；running 超 6 分钟没更新视为 failed（卡死兜底）。 */
+    @Transactional(readOnly = true)
+    public MinutesTaskStatusVO getMinutesTaskStatus(Long meetingId) {
+        MinutesTask t = minutesTaskRepo.findTopByMeetingIdOrderByIdDesc(meetingId).orElse(null);
+        if (t == null) return MinutesTaskStatusVO.builder().status("none").build();
+        String status = t.getStatus();
+        if ("running".equals(status) && t.getUpdatedAt() != null
+                && t.getUpdatedAt().isBefore(LocalDateTime.now().minusMinutes(6))) {
+            status = "failed";
+        }
+        return MinutesTaskStatusVO.builder().status(status).taskId(t.getId()).build();
     }
 
     // ===== Advance Stage =====
