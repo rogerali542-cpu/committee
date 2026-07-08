@@ -105,15 +105,15 @@
           <!-- 纪要已生成 → 查看 / 重新生成；若有补录未上传，再给个上传次按钮，避免新录音卡住 -->
           <template v-if="minutesGenerated">
             <button class="lp-primary-btn rec-main" @click="viewMinutes">查看会议纪要</button>
-            <button class="rec-sub" @click="regenerateMinutes">重新生成纪要</button>
-            <button v-if="canUpload" class="rec-sub" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别新录音</button>
+            <button class="lp-primary-btn rec-main" @click="regenerateMinutes">重新生成纪要</button>
+            <button v-if="canUpload" class="lp-primary-btn rec-main" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别新录音</button>
           </template>
           <template v-else>
             <!-- ① 只要有任一段已转写出内容 →「生成会议纪要」即可点；转写中置灰并显示「正在转写，请稍候…」。
                  ② 点击时若还有未上传的录音，先弹框问「停止并上传转写 / 继续录音」（见 generateNow）。 -->
             <button v-if="hasAnyTranscribed" class="lp-primary-btn rec-main" :disabled="polling || extracting" @click="generateNow">{{ (polling || extracting) ? '正在转写，请稍候…' : '生成会议纪要' }}</button>
-            <!-- 手里有未上传录音：无任何已转写内容时作主按钮（先上传出第一段内容），已有转写内容时作次按钮 -->
-            <button v-if="canUpload" :class="hasAnyTranscribed ? 'rec-sub' : 'lp-primary-btn rec-main'" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别录音</button>
+            <!-- 手里有未上传录音：始终用「生成会议纪要」同款主按钮（不再降级成灰色小字），提示补录需先上传识别 -->
+            <button v-if="canUpload" class="lp-primary-btn rec-main" :disabled="freshRecEmpty" @click="uploadRecordingStep">上传并识别录音</button>
             <!-- 有已上传录音但还没转写出内容、手里也没在录 → 转写中/失败，常驻一个置灰按钮 -->
             <button v-else-if="!hasAnyTranscribed && hasSavedRecordings" class="lp-primary-btn rec-main" disabled>{{ (polling || extracting) ? '正在转写，请稍候…' : '生成会议纪要' }}</button>
           </template>
@@ -287,7 +287,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
-import { startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
+import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { useRecorder } from '@/composables/useRecorder'
 import { applyHotwords } from '@/utils/helpers'
@@ -624,6 +624,7 @@ function onRecDragMove(e) {
 function onRecDragEnd() {
   recDragging.value = false
   _recDrag = null
+  if (recDragPos.value) setStorage('recFloatPos', recDragPos.value) // 记住拖到的位置（跨会话）
   window.removeEventListener('touchmove', onRecDragMove, { passive: false })
   window.removeEventListener('touchend', onRecDragEnd)
   window.removeEventListener('touchcancel', onRecDragEnd)
@@ -631,6 +632,29 @@ function onRecDragEnd() {
   window.removeEventListener('mouseup', onRecDragEnd)
 }
 onUnmounted(onRecDragEnd) // 卸载兜底：清掉可能残留的全局监听
+
+// 位置记忆：恢复上次拖到的位置（跨会话）。恢复的是绝对像素，卡片显示时再按当前视口夹紧，
+// 防止换设备/横竖屏后跑到屏幕外。
+const _savedRecFloatPos = getStorage('recFloatPos', null)
+if (_savedRecFloatPos && typeof _savedRecFloatPos.left === 'number' && typeof _savedRecFloatPos.top === 'number') {
+  recDragPos.value = { left: _savedRecFloatPos.left, top: _savedRecFloatPos.top }
+}
+function clampRecFloatIntoView() {
+  const el = recFloatEl.value
+  if (!el || !recDragPos.value) return
+  const r = el.getBoundingClientRect()
+  const margin = 6
+  const maxLeft = Math.max(margin, window.innerWidth - r.width - margin)
+  const maxTop = Math.max(margin, window.innerHeight - r.height - margin)
+  recDragPos.value = {
+    left: Math.min(Math.max(margin, recDragPos.value.left), maxLeft),
+    top: Math.min(Math.max(margin, recDragPos.value.top), maxTop),
+  }
+}
+// 卡片出现（开始/继续录音）时，按当前视口把记忆位置夹回屏内
+watch(() => recActive.value || isPaused.value, async (vis) => {
+  if (vis && recDragPos.value) { await nextTick(); clampRecFloatIntoView() }
+})
 // 当前是否有"可上传的新内容"（正在录 / 暂停中 / 内存里有还没上传的录音）。
 // 上传成功后已 rec.reset()，此值变 false → "结束录音并上传"置灰，避免重复上传同一段。
 const canUpload = computed(() => recActive.value || isPaused.value || rec.hasRecording.value)
@@ -695,6 +719,32 @@ const ending = ref(false)
 // 重做后的「最后一步」：AI 纪要审核
 const minutesGenerated = ref(false)   // 是否已生成 AI 纪要草稿
 const generatingMinutes = ref(false)  // 生成中（按钮 loading 态）
+// 后台生成跨页恢复用（本页无 keep-alive，切走再回来是全新实例、generatingMinutes 会丢）：
+let _leftWhileGenerating = false // 生成中切走过本页 → 完成时该走全局悬浮条兜底，而非误判「仍在前台看遮罩」
+let _bgRehydrated = false        // 本页遮罩是「切回时按后台任务恢复」出来的（非本实例发起）→ 由 watch(aiTask) 收尾
+
+// 切回本会议页时按全局后台任务恢复界面：仍在生成→重亮遮罩；已生成→显示「查看纪要」态。
+// 不恢复的话，切走再回来遮罩没了、悬浮条又在发起页隐藏，用户会以为任务中止了。
+function resumeBgAiTask() {
+  const mine = aiTask.targetPath && aiTask.targetPath.indexOf('meetingId=' + meetingId.value) >= 0
+  if (!mine) return
+  if (aiTask.active) {
+    overlayPhase.value = 'gen'
+    generatingMinutes.value = true
+    _bgRehydrated = true
+  } else if (aiTask.done) {
+    minutesGenerated.value = true
+  }
+}
+
+// 后台生成结束（完成/失败/清除）→ 收起「切回恢复」出来的遮罩，并把纪要状态反映到本页。
+watch(() => aiTask.active, (act) => {
+  if (act || !_bgRehydrated) return
+  _bgRehydrated = false
+  generatingMinutes.value = false
+  if (aiTask.done) { minutesGenerated.value = true; persistQuickState() }
+  else loadDetail() // 被清除/失败 → 重新拉真实状态
+})
 // —— 重做：阶段条 + 折叠态 + 签到跳转动画 ——
 // 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
 const flowStep = computed(() => minutesGenerated.value ? 3 : (currentStep.value === 1 ? 1 : 2))
@@ -796,6 +846,7 @@ onActivated(() => {
 
 // onUnload → onUnmounted
 onUnmounted(() => {
+  if (generatingMinutes.value) _leftWhileGenerating = true // 生成中切走 → 完成走全局悬浮条兜底
   persistQuickState()
   clearPoll()
   if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
@@ -922,6 +973,7 @@ async function loadDetail() {
     if (d.stage === 'ongoing') {
       const restored = restoreQuickState(isSigned)
       if (isSigned && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
+      resumeBgAiTask() // 切回本页时恢复后台生成的遮罩/完成态
     } else {
       clearQuickState()
     }
@@ -1466,10 +1518,12 @@ async function continueGenerateMinutes(skipGuard) {
   }
 }
 
-// 生成完成时用户是否已不在等这块遮罩：切到别的页面（.live-page 不在 DOM）或点×关了遮罩（generatingMinutes=false）
+// 生成完成时用户是否已不在等这块遮罩：生成中切走过本页（_leftWhileGenerating）或点×关了遮罩（generatingMinutes=false）
 // → 该用全局悬浮提示而非遮罩完成态。
+// ⚠ 不能用 document.querySelector('.live-page') 判断：本页无 keep-alive，切走再回来是全新实例，
+//   旧实例的 promise 完成时会误命中新实例的 .live-page，把「已生成」悬浮条错误清掉（=看着像中止）。
 function backgroundDone() {
-  return !document.querySelector('.live-page') || !generatingMinutes.value
+  return _leftWhileGenerating || !generatingMinutes.value
 }
 
 // 遮罩完成按钮：recognize 阶段 → 关遮罩，露出「继续上传录音 / 生成会议纪要」两键（不再自动生成）；
@@ -2499,7 +2553,7 @@ async function onNavBack() {
 .lp-rec { padding:14rpx 26rpx 4rpx; } /* 卡片再缩一号：内边距进一步收紧(圆圈/字号不变) */
 .lp-rec .lp-card-title { font-size:34rpx; } /* 标题缩一号(40→34)，比之前回大一点 */
 .lp-rec { padding-bottom:22rpx; } /* 录音卡底部空白再收紧(34→22) */
-.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:6rpx; padding:6rpx 0 2rpx; }
+.qk-recorder { display:flex; flex-direction:column; align-items:center; gap:4rpx; padding:2rpx 0 0; }
 .qk-rec-circle { width:120rpx; height:120rpx; border-radius:50%; background:var(--c-primary); color:#fff; font-size:24rpx; font-weight:700; display:flex; align-items:center; justify-content:center; border:5rpx solid #FFF3E0; box-shadow:0 6rpx 16rpx rgba(199,106,0,0.24); box-sizing:border-box; } /* 方案A：大幅缩小 204→120、字36→24 */
 /* 圈内文案固定两字一行（"开始/录音"两行） */
 .qrc-txt { display:block; width:2em; line-height:1.35; text-align:center; word-break:break-all; }
@@ -2507,7 +2561,7 @@ async function onNavBack() {
 .qk-rec-circle:disabled { background:#E5E8EC; color:#999; border-color:#F2F2F4; box-shadow:none; }
 .qk-rec-circle.on { background:#E74C3C; border-color:#FDECEA; box-shadow:0 8rpx 22rpx rgba(231,76,60,0.30); animation:qkpulse 1.2s ease-in-out infinite; }
 @keyframes qkpulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.55; transform:scale(.92); } }
-.qk-rec-time { font-size:40rpx; font-weight:700; color:#1f2329; letter-spacing:2rpx; margin-top:6rpx; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; } /* 计时用等宽数字(tabular)，秒数跳动不晃 */
+.qk-rec-time { font-size:36rpx; font-weight:700; color:#1f2329; letter-spacing:2rpx; margin-top:4rpx; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; } /* 计时用等宽数字(tabular)，秒数跳动不晃 */
 
 .qk-note { font-size:28rpx; color:#666; line-height:1.6; margin-top:20rpx; background:#FAFBFC; border-radius:14rpx; padding:18rpx 20rpx; }
 .qk-note.warn { color:#C77700; background:#FFF8EC; }
@@ -2585,20 +2639,20 @@ async function onNavBack() {
 .lp-flow-line.done { background:#3E9B34; }
 
 /* 录音主卡 */
-.rec-hero { position:relative; background:#fff; border-radius:24rpx; padding:30rpx 26rpx 22rpx; margin-bottom:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.rec-hero { position:relative; background:#F6F7F9; border-radius:24rpx; padding:20rpx 22rpx 14rpx; margin-bottom:18rpx; box-shadow:0 3rpx 14rpx rgba(0,0,0,0.045); }
 .rec-hero-tools { display:flex; justify-content:center; gap:20rpx; margin-top:16rpx; flex-wrap:wrap; }
-.rec-tool-btn { display:inline-flex; align-items:center; gap:8rpx; background:#fff; border:2rpx solid #D8DBE0; color:#5A6069; font-size:26rpx; border-radius:999rpx; padding:14rpx 30rpx; }
-.rec-tool-btn:active { background:#F5F6F8; }
+.rec-tool-btn { display:inline-flex; align-items:center; gap:8rpx; background:#8C3A2A; border:0; color:#fff; font-size:26rpx; font-weight:600; border-radius:999rpx; padding:14rpx 30rpx; box-shadow:0 4rpx 12rpx rgba(140,58,42,0.22); }
+.rec-tool-btn:active { background:#753023; }
 /* 方案A：上传录音——右上角小角标，弱化不抢焦点 */
 .rec-upload-corner { position:absolute; top:16rpx; right:16rpx; z-index:2; display:inline-flex; align-items:center; gap:6rpx; height:48rpx; padding:0 18rpx; border:1rpx solid #EAD9C4; border-radius:24rpx; background:#FBF6EF; color:#9C7A4A; font-size:22rpx; line-height:1; }
 .rec-upload-corner:active { background:#F3E9DA; }
 .rec-upload-ico { width:24rpx; height:24rpx; flex-shrink:0; }
 .rec-tool-ico { width:30rpx; height:30rpx; color:var(--c-primary-dark, #E8890C); flex-shrink:0; }
 /* 已录N段（折叠） */
-.rec-list { margin-top:20rpx; border-top:2rpx solid #F2F2F4; padding-top:14rpx; }
-.rec-list-head { display:flex; align-items:center; justify-content:space-between; font-size:28rpx; color:#5A6069; padding:6rpx 2rpx; }
-.rec-list-toggle { font-size:26rpx; color:var(--c-primary-dark, #E8890C); }
-.rec-list-body { margin-top:8rpx; }
+.rec-list { margin-top:12rpx; border-top:2rpx solid #ECEDEF; padding-top:10rpx; }
+.rec-list-head { display:flex; align-items:center; justify-content:space-between; font-size:24rpx; color:#5A6069; padding:4rpx 2rpx; }
+.rec-list-toggle { font-size:22rpx; color:var(--c-primary-dark, #E8890C); }
+.rec-list-body { margin-top:6rpx; }
 
 /* 下一步：单一主按钮区 */
 .rec-action { margin-bottom:24rpx; display:flex; flex-direction:column; align-items:center; gap:14rpx; }
