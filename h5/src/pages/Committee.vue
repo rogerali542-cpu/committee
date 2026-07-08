@@ -222,15 +222,16 @@
           <div class="ds-cards">
             <button class="ds-card" :disabled="scanRecognizing" @click="startCamera()">
               <span class="ds-ico or">📷</span>
-              <span class="ds-t">拍照</span>
+              <span class="ds-t">{{ scanItems.length ? '继续拍照' : '拍照' }}</span>
               <span class="ds-s">纸质文件</span>
             </button>
             <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan()">
               <span class="ds-ico bl">📁</span>
-              <span class="ds-t">上传</span>
+              <span class="ds-t">{{ scanItems.length ? '继续上传' : '上传' }}</span>
               <span class="ds-s">电子文件</span>
             </button>
           </div>
+          <div class="ds-hint">可一次多选；也能多次点击，一份份添加</div>
           <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
             {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
           </button>
@@ -716,11 +717,13 @@ async function loadAll() {
     let actives = all.filter((m) => m.stage === 'preparing' || m.stage === 'ongoing')
     if (chair) {
       // 【测试阶段】历史演示例会（第1、2次）：只进「历史记录」，不在首页当前会议卡片显示。
-      // 已结束会议一律保留在首页卡片（含已公示），手动删除前不消失；仅历史例会按标题挡掉。
-      // 上线前复原：删掉 HISTORY_ONLY_TITLES 排除；并加回 && (!m.publish || !m.publish.published)。
+      // 已结束会议一律保留在首页卡片（含已公示、含"会议无效"），手动删除前不消失；仅历史例会按标题挡掉。
+      // ⚠ 反复报的 bug 根因：原来这里有 && m.compliance !== 'invalid'，会把"无效"会议挡掉——
+      //   演示里会议多因签到不过半判 invalid，一公示/结束回首页卡片就消失。测试期去掉该条，无效会议也保留。
+      // 上线前复原：删掉 HISTORY_ONLY_TITLES 排除；按产品要求再决定是否加回 && m.compliance !== 'invalid'
+      //   与 && (!m.publish || !m.publish.published)。
       const HISTORY_ONLY_TITLES = ['2026年第1次业委会例会', '2026年第2次业委会例会']
       const pend = all.filter((m) => m.stage === 'ended'
-        && m.compliance !== 'invalid'
         && !HISTORY_ONLY_TITLES.includes(m.title))
       actives = [...actives, ...pend]
     }
@@ -2320,6 +2323,7 @@ onActivated(show)
 .ds-ico.bl { background: #EAF2FF; }
 .ds-t { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
 .ds-s { font-size: 24rpx; color: #999; text-align: center; line-height: 1.45; }
+.ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
 /* 待识别缩略图预览条：横向排列，可删 */
 .ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }

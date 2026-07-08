@@ -237,7 +237,8 @@
             <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">公示会议</button>
             <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示内容</button>
             <div class="ended-btn-row">
-              <button class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
+              <!-- 公示后隐藏「查看会议纪要」：顶部已替换为「查看公示内容」，避免重复入口 -->
+              <button v-if="!(detail.publish && detail.publish.published)" class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
               <button class="ended-news-btn" @click="generateNews">AI生成新闻稿</button>
               <button class="ended-home-btn" @click="goHome">返回首页</button>
             </div>
@@ -1803,12 +1804,22 @@ function copyShareText() {
     .then(() => toast({ title: '已复制，去微信粘贴', icon: 'success' }))
     .catch(() => toast({ title: '复制失败，请长按文本手动复制', icon: 'none' }))
 }
-// 转发到微信：先自动复制通知内容，再唤起微信（真机装了微信会跳转），到群里直接粘贴即可
+// 转发到微信：先复制通知内容，再"尽力"唤起微信（安卓多能跳转；iOS 常无效但不影响使用），到群里直接粘贴即可。
+// ⚠ 严禁用 window.location.href='weixin://' 顶层跳转——那会把当前 H5 页面 unload（真机表现为"网页被自动关闭"）。
+// 改用隐藏 iframe 唤起 scheme：唤得起就跳微信，唤不起也只是无效，当前页始终不被关闭/重置。
 function openWechat() {
   writeShareToClipboard()
-    .then(() => toast({ title: '已复制通知，正在打开微信…', icon: 'none' }))
-    .catch(() => toast({ title: '正在打开微信…', icon: 'none' }))
-    .finally(() => { try { window.location.href = 'weixin://' } catch (e) {} })
+    .then(() => toast({ title: '已复制通知，请到微信粘贴到业主群', icon: 'none' }))
+    .catch(() => toast({ title: '请长按下方文本手动复制后到微信粘贴', icon: 'none' }))
+    .finally(() => {
+      try {
+        const ifr = document.createElement('iframe')
+        ifr.style.cssText = 'display:none;width:0;height:0;border:0'
+        ifr.src = 'weixin://'
+        document.body.appendChild(ifr)
+        setTimeout(() => { try { document.body.removeChild(ifr) } catch (e) {} }, 1500)
+      } catch (e) {}
+    })
 }
 
 // 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
@@ -2282,7 +2293,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .del-meeting-link { color:#ccc; font-size:12px; border:1px solid #e8e8e8; border-radius:6px; padding:3px 10px; cursor:pointer; }
 .del-meeting-link:active { background:#f5f5f5; }
-.detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 260px; display:flex; flex-direction:column; box-sizing:border-box; }
+.detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 280px; display:flex; flex-direction:column; box-sizing:border-box; }
 .detail-body { flex:1 0 auto; }
 
 /* Task banner */
@@ -2520,10 +2531,10 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ar-verdict.flawed .arv-icon { background:#E67E22; }
 .ar-verdict.invalid .arv-icon { background:#E74C3C; }
 .arv-info { flex:1; }
-.arv-title { display:block; font-size: 30rpx; font-weight:700; color:#333; }
-.arv-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
-.arv-result { display:block; font-size: 28rpx; color:#666; margin-top:4px; font-weight:500; }
-.arv-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
+.arv-title { display:block; font-size: 26rpx; font-weight:700; color:#333; }
+.arv-meta { display:block; font-size: 24rpx; color:#666; margin-top:2px; }
+.arv-result { display:block; font-size: 24rpx; color:#666; margin-top:4px; font-weight:500; }
+.arv-reason { display:block; font-size: 24rpx; color:#666; margin-top:2px; }
 .arch-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
 
 /* 主任归档卡片 */
@@ -2538,13 +2549,13 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .arc-head { display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px 16px 24px; text-align:center; }
 /* 按议题数量动态调整字号 */
 .ar-card.card-sz-xl .arc-head { padding:32px 16px 36px; }
-.ar-card.card-sz-xl .arch-title { font-size:40px; }
+.ar-card.card-sz-xl .arch-title { font-size:34px; }
 .ar-card.card-sz-lg .arc-head { padding:26px 16px 30px; }
-.ar-card.card-sz-lg .arch-title { font-size:35px; }
+.ar-card.card-sz-lg .arch-title { font-size:30px; }
 .ar-card.card-sz-sm .arc-head { padding:16px 16px 20px; }
-.ar-card.card-sz-sm .arch-title { font-size:26px; }
+.ar-card.card-sz-sm .arch-title { font-size:22px; }
 .arch-info { flex:1; }
-.arch-title { display:block; margin-top:10px; font-size:30px; font-weight:700; color:#333; line-height:1.4; text-align:center; }
+.arch-title { display:block; margin-top:10px; font-size:26px; font-weight:700; color:#333; line-height:1.35; text-align:center; }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
 
 
@@ -2601,20 +2612,20 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* 公示（卡内主操作区） */
 /* 底部固定操作栏 */
-.arc-bottom-action { position:fixed; bottom:11px; left:0; right:0; background:transparent; padding:14px 20px calc(16px + env(safe-area-inset-bottom,0px)); z-index:20; }
+.arc-bottom-action { position:fixed; bottom:0; left:0; right:0; background:#f4f5f7; box-shadow:0 -6px 16px rgba(0,0,0,0.06); padding:12px 20px calc(14px + env(safe-area-inset-bottom,0px)); z-index:20; }
 /* 结束页三个按钮统一成一组（方案A）：同宽同高同字号；公示=实心主操作，查看纪要/AI新闻=描边辅助 */
-.ended-btn-row { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:12px; }
+.ended-btn-row { display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:8px; }
 /* 查看会议纪要：描边橙（辅助） */
-.ended-minutes-btn { display:flex; align-items:center; justify-content:center; width:86%; height:56px; margin:0 auto; border-radius:14px; background:#fff; color:var(--c-primary-dark); font-size:21px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
+.ended-minutes-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
 .ended-minutes-btn:active { background:#FDF3E7; }
 /* AI生成新闻稿：描边红（辅助） */
-.ended-news-btn { display:flex; align-items:center; justify-content:center; width:86%; height:56px; margin:0 auto; border-radius:14px; background:#fff; color:#C0141B; font-size:21px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
+.ended-news-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
 /* 返回首页：描边灰（中性辅助），与上面三个同尺寸同风格 */
-.ended-home-btn { display:flex; align-items:center; justify-content:center; width:86%; height:56px; margin:0 auto; border-radius:14px; background:#fff; color:#555; font-size:21px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
+.ended-home-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#555; font-size:17px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
 .ended-home-btn:active { background:#F2F2F2; }
 /* 公示会议：实心深橙（主操作），与上面两个同尺寸 */
-.arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 12px; width:86%; height:56px; border-radius:14px; background:var(--c-primary-dark); border:none; color:#fff; font-size:21px; font-weight:700; cursor:pointer; }
+.arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 8px; width:86%; height:44px; border-radius:12px; background:var(--c-primary-dark); border:none; color:#fff; font-size:18px; font-weight:700; cursor:pointer; }
 .arc-publish-main-btn:active { opacity:0.92; }
 .arc-invalid-note { padding:12px 0; color:#888; font-size:13px; text-align:center; border-bottom:1px solid #f0f0f0; margin-bottom:4px; }
 /* 三个横排快捷入口 */
@@ -2667,7 +2678,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .arp-actions { display:flex; width:100%; margin-top:6px; }
 .arp-actions .ar-skip { flex:1; margin-top:0; border-right:1px solid #e8e8e8; padding:4px 0; }
 .arp-actions .ar-skip:last-child { border-right:none; }
-.arc-bottom-action .arp-actions { margin-top:26px; }
+.arc-bottom-action .arp-actions { margin-top:16px; }
 .ext-hint.withdrawn { color:#E67E22; }
 
 /* Recorder */
@@ -3089,7 +3100,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* —— 适老化补充：委员纪要按钮 + 归档页折叠头 —— */
 .member-doc-actions { display:flex; gap:16rpx; margin-bottom:12px; }
-.doc-btn { flex:1; height:88rpx; line-height:88rpx; border-radius:44rpx; background:var(--c-primary-dark); color:#fff; font-size:30rpx; font-weight:600; margin:0; border:0; }
+.doc-btn { flex:1; height:72rpx; line-height:72rpx; border-radius:36rpx; background:var(--c-primary-dark); color:#fff; font-size:26rpx; font-weight:600; margin:0; border:0; }
 .doc-btn.ghost { background:#fff; color:#C77800; border:2rpx solid #FFA800; }
 .fsc-toggle { font-size: 28rpx; color:#C77800; font-weight:600; flex-shrink:0; white-space:nowrap; }
 .arclog-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
@@ -3272,28 +3283,35 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
   word-break:break-all;
 }
 
+/* 详情页议题正文整体缩两号（md=3议题基准，无 size 类走这里；xl/lg/sm 见下方各自覆盖，均已同步下调） */
+.ar-card .mtc-title-main { font-size:17px; }
+.ar-card .mtc-topic-title { font-size:17px; }
+.ar-card .mtc-status { font-size:15px; }
+.ar-card .mtc-summary { font-size:16px; }
+.ar-card .mtc-no { width:26px; height:26px; font-size:16px; }
+
 /* 按议题数量动态调整议题卡字号 */
-.ar-card.card-sz-xl .mtc-title-main { font-size:26px; }
-.ar-card.card-sz-xl .mtc-topic-title { font-size:26px; }
-.ar-card.card-sz-xl .mtc-status { font-size:24px; }
-.ar-card.card-sz-xl .mtc-no { font-size:24px; width:38px; height:38px; }
-.ar-card.card-sz-xl .mtc-chip { font-size:18px; padding:3px 9px; }
+.ar-card.card-sz-xl .mtc-title-main { font-size:22px; }
+.ar-card.card-sz-xl .mtc-topic-title { font-size:22px; }
+.ar-card.card-sz-xl .mtc-status { font-size:20px; }
+.ar-card.card-sz-xl .mtc-no { font-size:20px; width:32px; height:32px; }
+.ar-card.card-sz-xl .mtc-chip { font-size:16px; padding:3px 8px; }
 .ar-card.card-sz-xl .mtc-topic { padding:24px 0; }
 .ar-card.card-sz-xl .mtc-head { margin-bottom:18px; }
 
-.ar-card.card-sz-lg .mtc-title-main { font-size:23px; }
-.ar-card.card-sz-lg .mtc-topic-title { font-size:23px; }
-.ar-card.card-sz-lg .mtc-status { font-size:21px; }
-.ar-card.card-sz-lg .mtc-no { font-size:21px; width:34px; height:34px; }
-.ar-card.card-sz-lg .mtc-chip { font-size:17px; padding:3px 8px; }
+.ar-card.card-sz-lg .mtc-title-main { font-size:20px; }
+.ar-card.card-sz-lg .mtc-topic-title { font-size:20px; }
+.ar-card.card-sz-lg .mtc-status { font-size:18px; }
+.ar-card.card-sz-lg .mtc-no { font-size:18px; width:30px; height:30px; }
+.ar-card.card-sz-lg .mtc-chip { font-size:15px; padding:2px 7px; }
 .ar-card.card-sz-lg .mtc-topic { padding:20px 0; }
 .ar-card.card-sz-lg .mtc-head { margin-bottom:14px; }
 
-.ar-card.card-sz-sm .mtc-title-main { font-size:18px; }
-.ar-card.card-sz-sm .mtc-topic-title { font-size:18px; }
-.ar-card.card-sz-sm .mtc-status { font-size:17px; }
-.ar-card.card-sz-sm .mtc-no { font-size:17px; width:26px; height:26px; }
-.ar-card.card-sz-sm .mtc-chip { font-size:14px; padding:2px 6px; }
+.ar-card.card-sz-sm .mtc-title-main { font-size:16px; }
+.ar-card.card-sz-sm .mtc-topic-title { font-size:16px; }
+.ar-card.card-sz-sm .mtc-status { font-size:15px; }
+.ar-card.card-sz-sm .mtc-no { font-size:15px; width:24px; height:24px; }
+.ar-card.card-sz-sm .mtc-chip { font-size:13px; padding:2px 6px; }
 .ar-card.card-sz-sm .mtc-topic { padding:12px 0; }
 .ar-card.card-sz-sm .mtc-head { margin-bottom:10px; }
 </style>
