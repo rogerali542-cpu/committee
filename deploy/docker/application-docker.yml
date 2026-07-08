@@ -10,7 +10,9 @@ spring:
     name: ywh-backend
   datasource:
     # 连外部【云 MySQL】数据库；DB_URL/USER/PASSWORD 全部由平台环境变量提供（不打包 DB 镜像）
-    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/ywh_db?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    # 平台直接注入 DB_HOST/DB_PORT/DB_NAME 三个分量，这里自行拼 URL（平台不做 compose 插值，故不能靠编排拼 DB_URL）。
+    # 若平台直接给了完整 DB_URL 则优先用它。
+    url: ${DB_URL:jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:ywh_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${DB_USER:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -84,6 +86,12 @@ storage:
     secret-key: ${STORAGE_TOS_SECRET_KEY:}
     key-prefix: ${STORAGE_TOS_KEY_PREFIX:quick-audio}
     signing-service: ${STORAGE_TOS_SIGNING_SERVICE:s3}
+
+# 演示假识别开关：true=固定素材走查(不依赖容器能否连豆包 OCR)；false=走真实 OCR。demo 默认开。
+# （原先靠 compose 的 :-true 兜底；平台不做 compose 插值，故默认值挪到这里。平台可注入 DEMO_PREFILL_ENABLED=false 覆盖。）
+demo:
+  prefill:
+    enabled: ${DEMO_PREFILL_ENABLED:true}
 
 springdoc:
   swagger-ui:

@@ -98,7 +98,8 @@ _env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 _load_env_file(_env_path)
 
 settings = Settings(
-    INTERNAL_TOKEN=os.getenv("INTERNAL_TOKEN", ""),
+    # 平台/编排可能只注入三方共享的 OCR_SERVICE_TOKEN（而非 INTERNAL_TOKEN）；两者同义，做兜底。
+    INTERNAL_TOKEN=os.getenv("INTERNAL_TOKEN") or os.getenv("OCR_SERVICE_TOKEN", ""),
     PORT=_to_int(os.getenv("PORT", ""), "PORT", 8003),
     LOG_LEVEL=os.getenv("LOG_LEVEL", "INFO"),
     ARK_API_KEY=os.getenv("ARK_API_KEY", ""),

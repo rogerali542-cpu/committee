@@ -1,3 +1,5 @@
+# check=skip=SecretsUsedInArgOrEnv
+# ↑ OCR_SERVICE_TOKEN 只是给 nginx envsubst 兜底的【空占位】默认值（非真实密钥），真实值运行时注入。故跳过该 lint 误报。
 # 业委会前端（Vue3/Vite）+ 入口反代 nginx —— 同时是整个沙箱编排的【入口服务】。
 # 在【仓库根目录】构建：
 #   docker build --platform linux/amd64 -t ywh-frontend:latest -f deploy/docker/frontend.Dockerfile .
@@ -19,4 +21,8 @@ FROM nginx:1.27-alpine
 COPY deploy/docker/nginx-entry.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 ENV NGINX_ENVSUBST_FILTER=^OCR_
+# 兜底空值：即使平台没注入 OCR_SERVICE_TOKEN，envsubst 也能把模板里的 ${OCR_SERVICE_TOKEN} 替成空串，
+# nginx 不会因"unknown variable"启动失败（仅实时语音鉴权失败→前端自动降级为整段录音）。
+# 平台/运行时注入的真实值会覆盖此默认。
+ENV OCR_SERVICE_TOKEN=""
 EXPOSE 80

@@ -1,17 +1,27 @@
-# 仅用于【本地验证】：给入口服务映射一个宿主机端口，方便浏览器打开测试。
-# 平台部署【不要】上传本文件（平台用 expose + sandbox.expose 标签自动路由，不需要 ports）。
+# 仅用于【本地验证】：端口映射 + 用 env_file 从 .env【直接注入】环境变量。
+# 平台部署【不要】上传本文件（平台用 expose + sandbox.expose 标签自动路由，且自己注入环境变量）。
 # pull_policy: never —— 本地用刚构建好的镜像，别去 registry 拉（这些镜像不在任何仓库）。
 #
-# 本地跑：
-#   docker compose --env-file deploy/docker/.env \
-#     -f deploy/docker/docker-compose.yml -f deploy/docker/docker-compose.local.yml up -d
+# 为什么用 env_file 而不是 ${VAR} 插值：
+#   资源底座平台是把环境变量【直接注入容器】、不做 compose 插值。本地也用 env_file 直接注入，
+#   就能和平台【完全一致】地跑一遍，避免"本地用插值能过、上平台却拿到字面量 ${VAR}"的坑。
+#
+# 本地跑（在【本目录 deploy/docker/】下执行，保证 .env 路径解析正确）：
+#   cd deploy/docker
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up
 # 然后浏览器打开 http://localhost:8088
 services:
   ocr-asr-service:
     pull_policy: never
+    env_file:
+      - .env
   backend:
     pull_policy: never
+    env_file:
+      - .env
   web:
     pull_policy: never
+    env_file:
+      - .env
     ports:
       - "8088:80"
