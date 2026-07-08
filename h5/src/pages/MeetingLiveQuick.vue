@@ -1086,11 +1086,21 @@ async function reconcileMinutesState() {
   let hasServer = false
   try { const t = await api.committeeMinutes(meetingId.value); hasServer = !!(t && String(t).trim()) } catch (e) {}
   if (hasServer) { minutesGenerated.value = true; minutesGenAt.value = 0; minutesResuming.value = false; persistQuickState(); return }
-  // ② 服务端还没纪要：内存任务仍在(遮罩/悬浮条已接管)则不插手；否则据本地"生成发起时刻"兜底恢复「生成中」入口
+  // 内存任务仍在(遮罩/悬浮条已接管)则不插手
   if (generatingMinutes.value || bgMinutesGenerating.value) return
+  // ② 问服务端任务状态（权威，跨刷新/换设备/隔天，不依赖前端内存单例）
+  if (typeof api.committeeMinutesStatus === 'function') {
+    let st = null
+    try { st = await api.committeeMinutesStatus(meetingId.value) } catch (e) {}
+    const s = st && st.status
+    if (s === 'running' || s === 'success') { startMinutesResumePoll(); return } // 生成中/刚完成待落库 → 轮询到正文出现即转"查看"
+    if (s === 'failed') { minutesGenAt.value = 0; persistQuickState(); return }    // 失败 → 让用户可重新生成
+    if (s === 'none') { minutesGenAt.value = 0; persistQuickState(); return }      // 从没生成过 → 生成入口
+  }
+  // ③ 旧后端无 minutes-status 接口 → 退回本地"生成发起时刻"兜底
   const RECENT = 5 * 60 * 1000
   if (minutesGenAt.value && (Date.now() - minutesGenAt.value) < RECENT) startMinutesResumePoll()
-  else if (minutesGenAt.value) { minutesGenAt.value = 0; persistQuickState() } // 太旧的陈标记 → 清掉
+  else if (minutesGenAt.value) { minutesGenAt.value = 0; persistQuickState() }
 }
 // 轮询服务端直到纪要出现(生成完成)或超时(放弃 → 用户可重新生成)。仅在内存任务已丢时用。
 function startMinutesResumePoll() {

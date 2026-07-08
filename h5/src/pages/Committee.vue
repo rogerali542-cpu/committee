@@ -2246,9 +2246,10 @@ onActivated(show)
 .target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; padding: 20rpx 24rpx 0; margin-bottom: 40rpx; }
 .target-card { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; background: var(--c-bg-card); border-radius: 18rpx; padding: 30rpx 26rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.08s; }
 .target-card:active { transform: scale(0.98); }
-.tc-main { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; }
+.tc-main { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; flex: 1; }
 .tc-label { font-size: 32rpx; color: var(--c-text-mid); font-weight: 500; line-height: 1.2; white-space: nowrap; }
-.tc-sub { font-size: 24rpx; color: var(--c-text-weak); line-height: 1.2; white-space: nowrap; }
+/* 逾期期数多时，小字自动换行、卡片向下自适应变高（不再挤压/重叠右侧大数字） */
+.tc-sub { font-size: 24rpx; color: var(--c-text-weak); line-height: 1.35; word-break: break-word; }
 .tc-sub.sub-warn { color: var(--c-warning); }
 .tc-val { font-size: 48rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1; font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .tc-val.over { color: var(--c-warning); }

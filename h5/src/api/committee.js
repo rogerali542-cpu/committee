@@ -224,6 +224,10 @@ export default {
     // 大模型生成纪要较慢，放开默认 60s 超时（后端 LLM 上限 180s）
     return core.realRequest('POST', '/api/committees/' + id + '/quick/polish', data, { timeout: 210000 });
   },
+  committeeMinutesStatus: function (id) {
+    // 纪要生成任务状态（none/running/success/failed）：重进会议查它 → 跨刷新/换设备/隔天都能接回入口
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/minutes-status');
+  },
   committeeQuickTopicReport: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/topic-report');
   },
