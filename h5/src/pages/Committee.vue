@@ -22,21 +22,28 @@
       </div>
     </template>
 
-    <!-- 履职年历（方案B 年历总览，全员可见）：12 个月宫格一屏看全年——每月格按双月例会期
-         状态标色（已开绿/本期橙/逾期红/待排灰），右上角标=该月待办的接待/培训数；
-         逾期例会红色警示条置顶（点了可发起补开）；点月份下方看该月全部事项（会议+接待+培训
-         混合，按日期排，点行进对应详情）。仅「无进行中会议」时显示（有会议时聚焦会议进度卡）。 -->
+    <!-- 履职年历（全员可见）：顶部横栏按 开会（默认，核心价值）/培训/接待 分类，
+         12 个月宫格与下方当月清单都只反映当前类别——一眼看清该类全年"哪月做了/哪月逾期/接下来哪月"。
+         逾期警示条随类别（例会逾期红/培训过期红/接待待跟进橙）。类名 yc- 前缀（cal- 被小日历占用）。
+         仅「无进行中会议」时显示（有会议时聚焦会议进度卡）。 -->
     <div v-if="!(currents && currents.length)" class="plan-card">
         <div class="plan-head">
           <span class="plan-title">📅 {{ curYear }}年 · 履职日历</span>
-          <span class="plan-tip">点月份看当月事项</span>
+          <span v-if="planTab === 'meeting'" class="plan-tip">点月份看当月安排</span>
+          <span v-else class="plan-tip link" @click="planTab === 'reception' ? goReception() : goLearning()">查看全部 ›</span>
         </div>
-        <!-- 逾期警示：例会该开没开，赶紧补 -->
-        <div v-if="overduePeriodRows.length" class="yc-alert" @click="onOverdueTap">
-          <span class="yc-alert-txt">⚠ {{ overdueAlertText }}</span>
-          <span class="yc-alert-go">{{ isChair ? '去补开 ›' : '' }}</span>
+        <!-- 分类横栏：开会为主（默认），培训/接待切换后宫格+清单整体切到该类 -->
+        <div class="plan-tabs">
+          <div class="plan-tab" :class="{ active: planTab === 'meeting' }" @click="planTab = 'meeting'">开会</div>
+          <div class="plan-tab" :class="{ active: planTab === 'learning' }" @click="planTab = 'learning'">培训</div>
+          <div class="plan-tab" :class="{ active: planTab === 'reception' }" @click="planTab = 'reception'">接待</div>
         </div>
-        <!-- 12 月宫格（类名 yc- 前缀：cal- 已被日期选择弹窗的小日历占用，撞名会被覆盖成 7 列） -->
+        <!-- 警示条：该类"到期没做"的事，赶紧补 -->
+        <div v-if="calAlert" class="yc-alert" :class="calAlert.level" @click="calAlert.onTap()">
+          <span class="yc-alert-txt">⚠ {{ calAlert.text }}</span>
+          <span class="yc-alert-go">{{ calAlert.go }}</span>
+        </div>
+        <!-- 12 月宫格：状态/文字随类别 -->
         <div class="yc-grid">
           <div v-for="mc in monthCells" :key="mc.m" class="yc-cell" :class="[mc.status, { sel: calMonth === mc.m }]" @click="calMonth = mc.m">
             <span v-if="mc.todo" class="yc-corner">{{ mc.todo }}</span>
@@ -44,10 +51,10 @@
             <span class="yc-s">{{ mc.label }}</span>
           </div>
         </div>
-        <!-- 选中月事项：会议/接待/培训混合 -->
+        <!-- 选中月该类事项 -->
         <div class="yc-list">
-          <div class="yc-list-head">{{ calMonth }}月事项</div>
-          <div v-if="!calList.length" class="plan-empty">本月暂无安排</div>
+          <div class="yc-list-head">{{ calMonth }}月{{ planTabLabel }}</div>
+          <div v-if="!calList.length" class="plan-empty">本月暂无{{ planTabLabel }}安排</div>
           <div v-else v-for="it in calList" :key="it.key" class="yc-item" @click="it.onTap()">
             <span class="yc-item-ico">{{ it.icon }}</span>
             <div class="yc-item-info">
@@ -55,10 +62,6 @@
               <div class="yc-item-sub">{{ it.sub }}</div>
             </div>
             <span class="plan-badge" :class="it.status">{{ it.badge }}</span>
-          </div>
-          <div class="yc-links">
-            <span @click="goReception">接待记录 ›</span>
-            <span @click="goLearning">学习培训 ›</span>
           </div>
         </div>
       </div>
@@ -623,10 +626,12 @@ const yearPlan = computed(() => {
   return rows
 })
 
-// ── 履职年历（方案B）：12 月宫格 + 逾期警示 + 点月看当月事项（会议/接待/培训混合） ──
+// ── 履职年历：分类横栏（开会默认/培训/接待）+ 12 月宫格 + 警示条 + 点月看当月该类事项 ──
+const planTab = ref('meeting')   // 开会是本软件核心价值 → 默认
 const calMonth = ref(curMonth)   // 选中月，默认本月
 const calRecs = ref([])          // 全部接待记录（进页拉一次）
 const calLearns = ref([])        // 全部学习培训（internal+training 合并）
+const planTabLabel = computed(() => planTab.value === 'meeting' ? '会议' : (planTab.value === 'learning' ? '培训' : '接待'))
 // "2026-07-05" → "7月5日"（其他格式原样返回）
 function fmtPlanDate(s) {
   const p = String(s || '').split('-')
@@ -637,6 +642,8 @@ function inMonth(dateStr, m) {
   const p = String(dateStr || '').split('-')
   return p.length >= 2 && Number(p[0]) === curYear && Number(p[1]) === m
 }
+// 培训是否"过期未开展"（计划日期已过还没结束）；todayStr() 用页面下方现成的函数
+function isLearnOverdue(l) { return l.stage !== 'ended' && !!l.date && String(l.date) < todayStr() }
 function goLearningDetail(item) { navigateTo('/pages/learning-detail/learning-detail?id=' + item.id) }
 async function loadCalExtras() {
   const [recs, a, b] = await Promise.all([
@@ -647,87 +654,111 @@ async function loadCalExtras() {
   calRecs.value = recs || []
   calLearns.value = [...(a || []), ...(b || [])]
 }
-// 12 个月宫格：主状态=该月所在双月期的例会状态（已开绿✓/本期橙/逾期红!/待排灰）；
-// 右上角标=该月还没办完的接待+还没开的培训数（提醒"这个月还有事"）
+// 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
+// 开会=该月所在双月期例会状态（已开绿✓/本期橙/逾期红!/待排灰）
+// 培训=该月培训汇总（过期未开红!/N场待开橙/已完成绿✓/无灰—）
+// 接待=该月接待汇总（N件待办橙/已办结绿✓/无灰—）
 const monthCells = computed(() => {
   const cells = []
   for (let m = 1; m <= 12; m++) {
-    const row = yearPlan.value[Math.ceil(m / 2) - 1] || {}
-    const st = row.status || 'upcoming'
-    let label
-    if (st === 'done') label = row.meeting && inMonth(row.meeting.meetingDate, m) ? '已开 ✓' : (m === curMonth ? '本月' : '✓')
-    else if (st === 'current') label = m === curMonth ? '本月·待开' : '待开'
-    else if (st === 'overdue') label = '逾期 !'
-    else label = '待排'
-    const todo = calRecs.value.filter(r => !r.done && inMonth(r.date, m)).length
-      + calLearns.value.filter(l => l.stage !== 'ended' && inMonth(l.date, m)).length
-    cells.push({ m, status: st, label, todo: todo > 0 ? todo : 0 })
+    let st, label
+    if (planTab.value === 'meeting') {
+      const row = yearPlan.value[Math.ceil(m / 2) - 1] || {}
+      st = row.status || 'upcoming'
+      if (st === 'done') label = row.meeting && inMonth(row.meeting.meetingDate, m) ? '已开 ✓' : (m === curMonth ? '本月' : '✓')
+      else if (st === 'current') label = m === curMonth ? '本月·待开' : '待开'
+      else if (st === 'overdue') label = '逾期 !'
+      else label = '待排'
+    } else if (planTab.value === 'learning') {
+      const ls = calLearns.value.filter(l => inMonth(l.date, m))
+      const late = ls.filter(isLearnOverdue).length
+      const todo = ls.filter(l => l.stage !== 'ended').length
+      if (late) { st = 'overdue'; label = '过期未开 !' }
+      else if (todo) { st = 'current'; label = todo + '场待开' }
+      else if (ls.length) { st = 'done'; label = '已完成 ✓' }
+      else { st = 'upcoming'; label = '—' }
+    } else {
+      const rs = calRecs.value.filter(r => inMonth(r.date, m))
+      const todo = rs.filter(r => !r.done).length
+      if (todo) { st = 'current'; label = todo + '件待办' }
+      else if (rs.length) { st = 'done'; label = '已办结 ✓' }
+      else { st = 'upcoming'; label = '—' }
+    }
+    cells.push({ m, status: st, label, todo: 0 })
   }
   return cells
 })
-// 逾期未开的例会期 → 红色警示条（"到期没做要赶紧补"）
+// 警示条（"到期没做，赶紧补"，随分类）：例会逾期红 / 培训过期红 / 接待待跟进橙
 const overduePeriodRows = computed(() => yearPlan.value.filter(r => r.status === 'overdue'))
-const overdueAlertText = computed(() => {
-  const rows = overduePeriodRows.value
-  if (!rows.length) return ''
-  return rows.map(r => r.monthLabel).join('、') + '例会逾期未开'
+const calAlert = computed(() => {
+  if (planTab.value === 'meeting') {
+    const rows = overduePeriodRows.value
+    if (!rows.length) return null
+    return { level: '', text: rows.map(r => r.monthLabel).join('、') + '例会逾期未开', go: isChair.value ? '去补开 ›' : '', onTap: () => onPlanRow(rows[0]) }
+  }
+  if (planTab.value === 'learning') {
+    const n = calLearns.value.filter(isLearnOverdue).length
+    if (!n) return null
+    return { level: '', text: n + '场培训已过期未开展', go: '去查看 ›', onTap: goLearning }
+  }
+  const n = calRecs.value.filter(r => !r.done).length
+  if (!n) return null
+  return { level: 'warn', text: n + '件接待待跟进', go: '去处理 ›', onTap: goReception }
 })
-function onOverdueTap() {
-  const row = overduePeriodRows.value[0]
-  if (row) onPlanRow(row) // 主任→确认后发起补开；委员→提示等待（onPlanRow 已分流）
-}
-// 选中月事项清单：例会（真实会议 + 该期还没开的虚拟提醒行）+ 接待 + 培训，按日期排
+// 选中月该类事项清单
 const calList = computed(() => {
   const m = calMonth.value
   const items = []
-  // 该月真实会议（含已开/未开）
-  for (const mt of (allMeetings.value || [])) {
-    if (!inMonth(mt.meetingDate, m)) continue
-    const ended = mt.stage === 'ended'
-    items.push({
-      key: 'm' + mt.id, icon: '📅', date: mt.meetingDate,
-      title: mt.title || '业委会会议',
-      sub: fmtPlanDate(mt.meetingDate) + (mt.location ? ' · ' + mt.location : ''),
-      status: ended ? 'done' : 'current',
-      badge: ended ? '已开 ✓' : '待开',
-      onTap: () => openMeetingTap(mt)
-    })
-  }
-  // 该期例会还没开 → 虚拟提醒行置顶（本期待开/逾期赶紧补）
-  const row = yearPlan.value[Math.ceil(m / 2) - 1]
-  if (row && (row.status === 'current' || row.status === 'overdue')) {
-    items.unshift({
-      key: 'plan' + row.period, icon: '📅', date: '',
-      title: '第' + row.period + '期例会（' + row.monthLabel + '）',
-      sub: row.status === 'overdue' ? '已逾期，请尽快补开' : '本期还未召开',
-      status: row.status,
-      badge: row.status === 'overdue' ? '逾期' : '待开',
-      onTap: () => onPlanRow(row)
-    })
-  }
-  // 接待
-  for (const r of calRecs.value) {
-    if (!inMonth(r.date, m)) continue
-    items.push({
-      key: 'r' + r.id, icon: '🤝', date: r.date,
-      title: (r.visitorName || '来访') + ' 来访接待',
-      sub: fmtPlanDate(r.date) + ' · ' + String(r.content || '').slice(0, 14),
-      status: r.done ? 'done' : 'current',
-      badge: r.done ? '已办结' : '待跟进',
-      onTap: goReception
-    })
-  }
-  // 培训
-  for (const l of calLearns.value) {
-    if (!inMonth(l.date, m)) continue
-    items.push({
-      key: 'l' + l.id, icon: '📖', date: l.date,
-      title: l.title || '学习培训',
-      sub: fmtPlanDate(l.date) + (l.time ? ' ' + String(l.time).slice(0, 5) : ''),
-      status: l.stage === 'ended' ? 'done' : (l.stage === 'ongoing' ? 'current' : 'upcoming'),
-      badge: l.stage === 'ended' ? '已完成' : (l.stage === 'ongoing' ? '进行中' : '待开'),
-      onTap: () => goLearningDetail(l)
-    })
+  if (planTab.value === 'meeting') {
+    for (const mt of (allMeetings.value || [])) {
+      if (!inMonth(mt.meetingDate, m)) continue
+      const ended = mt.stage === 'ended'
+      items.push({
+        key: 'm' + mt.id, icon: '📅', date: mt.meetingDate,
+        title: mt.title || '业委会会议',
+        sub: fmtPlanDate(mt.meetingDate) + (mt.location ? ' · ' + mt.location : ''),
+        status: ended ? 'done' : 'current',
+        badge: ended ? '已开 ✓' : '待开',
+        onTap: () => openMeetingTap(mt)
+      })
+    }
+    // 该期例会还没开 → 虚拟提醒行置顶（本期待开/逾期赶紧补）
+    const row = yearPlan.value[Math.ceil(m / 2) - 1]
+    if (row && (row.status === 'current' || row.status === 'overdue')) {
+      items.unshift({
+        key: 'plan' + row.period, icon: '📅', date: '',
+        title: '第' + row.period + '期例会（' + row.monthLabel + '）',
+        sub: row.status === 'overdue' ? '已逾期，请尽快补开' : '本期还未召开',
+        status: row.status,
+        badge: row.status === 'overdue' ? '逾期' : '待开',
+        onTap: () => onPlanRow(row)
+      })
+    }
+  } else if (planTab.value === 'learning') {
+    for (const l of calLearns.value) {
+      if (!inMonth(l.date, m)) continue
+      const late = isLearnOverdue(l)
+      items.push({
+        key: 'l' + l.id, icon: '📖', date: l.date,
+        title: l.title || '学习培训',
+        sub: fmtPlanDate(l.date) + (l.time ? ' ' + String(l.time).slice(0, 5) : '') + (late ? ' · 已过期' : ''),
+        status: l.stage === 'ended' ? 'done' : (late ? 'overdue' : (l.stage === 'ongoing' ? 'current' : 'upcoming')),
+        badge: l.stage === 'ended' ? '已完成' : (late ? '过期未开' : (l.stage === 'ongoing' ? '进行中' : '待开')),
+        onTap: () => goLearningDetail(l)
+      })
+    }
+  } else {
+    for (const r of calRecs.value) {
+      if (!inMonth(r.date, m)) continue
+      items.push({
+        key: 'r' + r.id, icon: '🤝', date: r.date,
+        title: (r.visitorName || '来访') + ' 来访接待',
+        sub: fmtPlanDate(r.date) + ' · ' + String(r.content || '').slice(0, 14),
+        status: r.done ? 'done' : 'current',
+        badge: r.done ? '已办结' : '待跟进',
+        onTap: goReception
+      })
+    }
   }
   // 虚拟提醒行(无日期)保持最前，其余按日期升序
   return items.sort((a, b) => (a.date === '' ? -1 : b.date === '' ? 1 : String(a.date).localeCompare(String(b.date))))
@@ -2382,12 +2413,19 @@ onActivated(show)
 
 /* 今年会议计划：首页前置总览，竖向时间轴——一条主线贯全年，节点亮灭即进度 */
 .plan-card { margin: 0 24rpx 26rpx; background: var(--c-bg-card); border-radius: 18rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); overflow: hidden; }
-/* 履职年历（方案B）：12月宫格 + 逾期警示条 + 当月事项清单。
+/* 履职年历：分类横栏 + 12月宫格 + 警示条 + 当月清单。
    前缀 yc-（year calendar）：cal- 已被下方日期选择弹窗的小日历占用，同名会被其 7 列网格覆盖 */
+.plan-tabs { display: flex; gap: 10rpx; margin: 12rpx 20rpx 0; background: #F3F4F6; border-radius: 16rpx; padding: 8rpx; }
+.plan-tab { flex: 1; text-align: center; padding: 14rpx 0; font-size: 32rpx; font-weight: 600; color: var(--c-text-mid); border-radius: 12rpx; cursor: pointer; }
+.plan-tab.active { background: var(--c-primary); color: #fff; font-weight: 700; }
+.plan-tab:active { opacity: 0.75; }
 .yc-alert { display: flex; align-items: center; gap: 8rpx; margin: 12rpx 20rpx 0; background: #FDECEA; border: 2rpx solid #F5C6C0; border-radius: 14rpx; padding: 16rpx 20rpx; cursor: pointer; }
 .yc-alert:active { opacity: 0.8; }
 .yc-alert-txt { flex: 1; font-size: 28rpx; font-weight: 600; color: #B02A1E; line-height: 1.4; }
 .yc-alert-go { flex-shrink: 0; font-size: 28rpx; font-weight: 700; color: #B02A1E; }
+/* 接待待跟进：橙色警示（不如"逾期"严重） */
+.yc-alert.warn { background: var(--c-primary-soft); border-color: #F2CFA0; }
+.yc-alert.warn .yc-alert-txt, .yc-alert.warn .yc-alert-go { color: var(--c-primary-dark); }
 .yc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; padding: 16rpx 20rpx 8rpx; }
 .yc-cell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4rpx; padding: 18rpx 0 16rpx; border-radius: 16rpx; background: #F6F7F9; border: 3rpx solid transparent; cursor: pointer; }
 .yc-cell:active { opacity: 0.75; }
