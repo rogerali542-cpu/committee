@@ -21,22 +21,26 @@
         <span class="score-unit">分</span>
       </div>
 
-      <!-- 顶部会议统计（紧凑横向，可点进历史）：仅「无进行中会议」时显示——
-           有会议时焦点在会议进度卡上，这两卡是干扰，整块隐藏减负 -->
-      <div v-if="!(currents && currents.length)" class="target-row">
-        <div class="target-card" @click="openPeriodCard">
-          <span class="tc-main">
-            <span class="tc-label">本期会议</span>
-            <span class="tc-sub" :class="{ 'sub-ok': monthNeed === 0 }">{{ monthNeed > 0 ? curPeriodLabel + '需召开' : '本期已完成' }}</span>
-          </span>
-          <span class="tc-val" :class="{ ok: monthNeed === 0 }">{{ monthNeed }}<i class="tc-unit">次</i></span>
+      <!-- 今年会议计划（前置总览，取代原「本期/逾期」两张统计卡）：仅「无进行中会议」时显示——
+           有会议时焦点在下方会议进度卡上，本清单整块隐藏减负。
+           按双月例会规则铺开今年 6 期，每期一行标状态，一眼看清「按计划该开几次、开了没」。
+           点行按状态给对应操作（看历史/发起/提示）。 -->
+      <div v-if="!(currents && currents.length)" class="plan-card">
+        <div class="plan-head">
+          <span class="plan-title">📅 {{ curYear }}年会议计划</span>
+          <span class="plan-tip">每两个月至少一次业委会例会</span>
         </div>
-        <div class="target-card" @click="goLibrary">
-          <span class="tc-main">
-            <span class="tc-label">逾期会议</span>
-            <span class="tc-sub" :class="{ 'sub-warn': overdueCount > 0 }">{{ overdueCount > 0 ? overdueMonths + '还没开' : '近期都按时' }}</span>
-          </span>
-          <span class="tc-val" :class="{ over: overdueCount > 0 }">{{ overdueCount }}<i class="tc-unit">次</i></span>
+        <div class="plan-timeline">
+          <div v-for="row in yearPlan" :key="row.period" class="tl-i" :class="row.status" @click="onPlanRow(row)">
+            <div class="tl-rail"><div class="tl-node" :class="row.status">{{ row.node }}</div></div>
+            <div class="tl-body">
+              <div class="tl-info">
+                <div class="tl-month">{{ row.monthLabel }}</div>
+                <div class="tl-sub">{{ row.sub }}</div>
+              </div>
+              <span class="plan-badge" :class="row.status">{{ planBadge[row.status] }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </template>
@@ -567,9 +571,8 @@ const curMonth = new Date().getMonth() + 1
 const curYear = new Date().getFullYear()
 const curPeriod = Math.ceil(curMonth / 2)   // 双月一期：1-2/3-4/5-6/7-8…；7月→第4期(7-8月)
 const allMeetings = ref([])                 // 全部业委会会议（loadAll 填充），按期真实统计
-const REQUIRED_PER_PERIOD = 1               // 例会规则：每个双月期应召开 1 次（接后端规则后可调）
+// 例会规则：每个双月期应召开 1 次（下面 yearPlan 每期一行即体现；接后端可调规则）
 function periodLabel(p) { return ((p - 1) * 2 + 1) + '-' + (p * 2) + '月' }
-const curPeriodLabel = periodLabel(curPeriod)   // "7-8月"
 // 「完整走完流程」= 已结束(ended) 且 非无效
 function isHeldMeeting(m) { return !!m && m.stage === 'ended' && m.compliance !== 'invalid' }
 // 会议属于本年第几期（非本年→0）
@@ -579,19 +582,37 @@ function meetingPeriod(m) {
   if (Number(p[0]) !== curYear) return 0
   return Math.ceil(Number(p[1]) / 2)
 }
-// 本期(当前双月)已完成会议数
-const completedThisPeriod = computed(() => (allMeetings.value || []).filter((m) => isHeldMeeting(m) && meetingPeriod(m) === curPeriod).length)
-// 本期会议卡数字：还需召开 = 应召开 − 已完成（封底 0）。本期会议完整结束后此数自动 −1
-const monthNeed = computed(() => Math.max(0, REQUIRED_PER_PERIOD - completedThisPeriod.value))
-// 逾期：本年当前期之前、没有有效会议的期（真实动态，跟历史一致）
-const overduePeriods = computed(() => {
-  const held = new Set((allMeetings.value || []).filter(isHeldMeeting).map(meetingPeriod))
-  const arr = []
-  for (let p = 1; p < curPeriod; p++) if (!held.has(p)) arr.push(p)
-  return arr
+
+// 年度会议计划（今年 6 个双月期）：竖向时间轴总览，一条主线贯全年，节点亮灭即进度。放首页「前置」。
+// 状态：done=已召开(取该期首场有效会议)｜current=本期待开｜overdue=已过期未开｜upcoming=未到、待排
+// node=时间轴圆点内的字符：已开✓、逾期!、其余显期号(第几期)
+const planBadge = { done: '已开 ✓', current: '待开', overdue: '逾期', upcoming: '待排' }
+const yearPlan = computed(() => {
+  const heldByPeriod = {}
+  for (const m of (allMeetings.value || [])) {
+    if (!isHeldMeeting(m)) continue
+    const p = meetingPeriod(m)
+    if (p >= 1 && p <= 6 && !heldByPeriod[p]) heldByPeriod[p] = m
+  }
+  const rows = []
+  for (let p = 1; p <= 6; p++) {
+    const held = heldByPeriod[p]
+    let status, sub, node
+    if (held) {
+      status = 'done'; node = '✓'
+      const d = String(held.meetingDate || '').split('-')
+      sub = d.length === 3 ? (Number(d[1]) + '月' + Number(d[2]) + '日 已召开') : '已召开'
+    } else if (p === curPeriod) {
+      status = 'current'; sub = '本期待召开'; node = String(p)
+    } else if (p < curPeriod) {
+      status = 'overdue'; sub = '已逾期未召开'; node = '!'
+    } else {
+      status = 'upcoming'; sub = '按计划待召开'; node = String(p)
+    }
+    rows.push({ period: p, monthLabel: periodLabel(p), status, sub, node, meeting: held })
+  }
+  return rows
 })
-const overdueCount = computed(() => overduePeriods.value.length)
-const overdueMonths = computed(() => overduePeriods.value.map(periodLabel).join('、'))
 const currentStage = ref('preparing')
 const meetings = ref([])
 const pending = ref([])
@@ -825,21 +846,22 @@ function goNotifications() { navigateTo('/pages/notifications/notifications') }
 function goReception() { navigateTo('/pages/reception/reception') }
 function goLearning() { navigateTo('/pages/learning/learning') }
 function goLibrary() { navigateTo('/pages/library/library') }
-// 「本期会议」轻量弹卡：显示本月应开/已开/还差；未达标给「发起会议」入口（不跳历史）
-async function openPeriodCard() {
-  const done = completedThisPeriod.value
-  const need = monthNeed.value
-  const body = need > 0
-    ? ('本期(' + curPeriodLabel + ')应召开 ' + REQUIRED_PER_PERIOD + ' 次例会\n已召开 ' + done + ' 次，还差 ' + need + ' 次')
-    : ('本期(' + curPeriodLabel + ')应召开 ' + REQUIRED_PER_PERIOD + ' 次例会\n已召开 ' + done + ' 次，本期已完成 ✓')
-  const res = await showModal({
-    title: curPeriodLabel + '会议召开情况',
-    content: body,
-    confirmText: need > 0 ? '发起会议' : '知道了',
-    showCancel: need > 0,
-    cancelText: '知道了'
-  })
-  if (need > 0 && res && res.confirm) openNewMeeting()
+
+// 点计划某一期：已开→看这场会议；未开的（本期/逾期/未到）→主任可发起，未到期提示「提前召开」，委员提示等待
+async function onPlanRow(row) {
+  if (row.status === 'done' && row.meeting) { openMeetingTap(row.meeting); return }
+  // 未开的三态文案 + 主任发起时的按钮措辞（未到期=提前召开）
+  let tip, confirmText
+  if (row.status === 'current') { tip = '本期（' + row.monthLabel + '）还没召开例会。'; confirmText = '发起会议' }
+  else if (row.status === 'overdue') { tip = row.monthLabel + '这期还没召开例会，已逾期。'; confirmText = '发起会议' }
+  else { tip = row.monthLabel + '例会按计划还没到时间。'; confirmText = '提前召开' }
+  if (isChair.value) {
+    const ask = row.status === 'upcoming' ? '是否提前召开？' : '是否现在发起？'
+    const res = await showModal({ title: row.monthLabel + '例会', content: tip + ask, confirmText, cancelText: '暂不', showCancel: true })
+    if (res && res.confirm) openNewMeeting()
+  } else {
+    await showModal({ title: row.monthLabel + '例会', content: tip + '请等待主任发起。', showCancel: false, confirmText: '知道了' })
+  }
 }
 
 function onSearch(e) { keyword.value = e.target.value; loadAll() }
@@ -2242,20 +2264,39 @@ onActivated(show)
 .score-ico { font-size: 38rpx; }
 .score-num { font-size: 46rpx; font-weight: 800; margin-left: 6rpx; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .score-unit { font-size: 30rpx; color: var(--c-text-weak); }
-/* 目标卡片（紧凑横向：标签左、数字右一行；仅无进行中会议时显示，故底部留白拉开与主按钮距离） */
-.target-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; padding: 20rpx 24rpx 0; margin-bottom: 40rpx; }
-.target-card { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; background: var(--c-bg-card); border-radius: 18rpx; padding: 30rpx 26rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.08s; }
-.target-card:active { transform: scale(0.98); }
-.tc-main { display: flex; flex-direction: column; gap: 6rpx; min-width: 0; flex: 1; }
-.tc-label { font-size: 32rpx; color: var(--c-text-mid); font-weight: 500; line-height: 1.2; white-space: nowrap; }
-/* 逾期期数多时，小字自动换行、卡片向下自适应变高（不再挤压/重叠右侧大数字） */
-.tc-sub { font-size: 24rpx; color: var(--c-text-weak); line-height: 1.35; word-break: break-word; }
-.tc-sub.sub-warn { color: var(--c-warning); }
-.tc-val { font-size: 48rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.tc-val.over { color: var(--c-warning); }
-.tc-val.ok { color: #3E9B34; }
-.tc-sub.sub-ok { color: #3E9B34; }
-.tc-unit { font-size: 26rpx; font-weight: 500; color: var(--c-text-weak); font-style: normal; margin-left: 2rpx; }
+
+/* 今年会议计划：首页前置总览，竖向时间轴——一条主线贯全年，节点亮灭即进度 */
+.plan-card { margin: 0 24rpx 26rpx; background: var(--c-bg-card); border-radius: 18rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); overflow: hidden; }
+.plan-head { display: flex; align-items: baseline; justify-content: space-between; padding: 18rpx 28rpx 8rpx; }
+.plan-title { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); }
+.plan-tip { font-size: 24rpx; color: var(--c-text-weak); }
+/* 时间轴：左侧 52rpx 轨道列（贯穿细线+节点圆点），右侧内容行。紧凑以免顶下方主按钮 */
+.plan-timeline { padding: 2rpx 26rpx 10rpx; }
+.tl-i { display: grid; grid-template-columns: 52rpx 1fr; gap: 18rpx; cursor: pointer; }
+.tl-i:active { opacity: 0.55; }
+.tl-rail { position: relative; display: flex; justify-content: center; }
+.tl-rail::before { content: ''; position: absolute; top: 0; bottom: 0; width: 6rpx; background: var(--c-border); border-radius: 3rpx; }
+.tl-i:first-child .tl-rail::before { top: 30rpx; }
+.tl-i:last-child .tl-rail::before { bottom: calc(100% - 30rpx); }
+.tl-node { position: relative; z-index: 1; width: 44rpx; height: 44rpx; margin-top: 8rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; color: #fff; background: var(--c-border); font-variant-numeric: tabular-nums; }
+.tl-node.done { background: var(--c-success); }
+.tl-node.current { background: var(--c-primary); box-shadow: 0 0 0 6rpx var(--c-primary-soft); }
+.tl-node.overdue { background: #B02A1E; }
+.tl-node.upcoming { background: var(--c-bg-card); border: 5rpx solid var(--c-border); color: var(--c-text-weak); }
+.tl-body { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-width: 0; padding: 10rpx 0 16rpx; border-bottom: 2rpx solid #F1F2F4; }
+.tl-i:last-child .tl-body { border-bottom: none; padding-bottom: 4rpx; }
+.tl-info { min-width: 0; }
+.tl-month { font-size: 30rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1.2; }
+.tl-sub { font-size: 24rpx; color: var(--c-text-weak); margin-top: 4rpx; line-height: 1.3; }
+.tl-i.current .tl-month { color: var(--c-primary-dark); font-weight: 700; }
+.tl-i.done .tl-sub { color: var(--c-success); }
+.tl-i.overdue .tl-sub { color: #B02A1E; }
+.plan-badge { flex-shrink: 0; font-size: 26rpx; font-weight: 700; padding: 8rpx 20rpx; border-radius: 999rpx; line-height: 1.2; }
+/* 已开=绿｜待开=橙｜逾期=红｜待排=灰 */
+.plan-badge.done     { color: var(--c-success); background: var(--c-success-soft); }
+.plan-badge.current  { color: var(--c-primary-dark); background: var(--c-primary-soft); }
+.plan-badge.overdue  { color: #B02A1E; background: #FDECEA; }
+.plan-badge.upcoming { color: var(--c-text-weak); background: #EEF0F3; }
 .tc-progress { background: #E3E5E9; border-radius: 6rpx; height: 12rpx; overflow: hidden; margin-bottom: 10rpx; }
 .tc-fill { height: 100%; border-radius: 6rpx; background: var(--c-primary); }
 .tc-rule { font-size: 28rpx; color: var(--c-text-mid); line-height: 1.45; word-break: break-all; }

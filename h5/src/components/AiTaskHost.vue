@@ -6,14 +6,14 @@
     <span class="ait-txt">{{ aiTask.label }}</span>
     <span class="ait-go">查看 ›</span>
   </div>
-  <!-- 完成：可点直达目标页 -->
-  <div v-else-if="aiTask.done" class="ait-pill done" @click="openAiTaskTarget">
+  <!-- 完成：可点直达目标页（发起页全屏遮罩正显示完成态时先不重复显示，切走/关遮罩后再兜底） -->
+  <div v-else-if="aiTask.done && !aiTask.overlayShown" class="ait-pill done" @click="openAiTaskTarget">
     <span class="ait-ic">✓</span>
     <span class="ait-txt">{{ aiTask.doneLabel }}</span>
     <span class="ait-go">查看 ›</span>
   </div>
-  <!-- 失败：可点回发起页重试 -->
-  <div v-else-if="aiTask.failed" class="ait-pill failed" @click="onRetry">
+  <!-- 失败：可点回发起页重试（同样让位给发起页遮罩） -->
+  <div v-else-if="aiTask.failed && !aiTask.overlayShown" class="ait-pill failed" @click="onRetry">
     <span class="ait-ic">⚠</span>
     <span class="ait-txt">{{ aiTask.failLabel }}</span>
     <span class="ait-go">重试 ›</span>

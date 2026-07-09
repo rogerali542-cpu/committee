@@ -26,7 +26,7 @@
       <div v-else class="news-empty">
         <div class="ne-flag">党建融媒</div>
         <div class="ne-text">{{ loadingText }}</div>
-        <button v-if="!loading" class="news-btn" @click="regen">生成党建新闻</button>
+        <button v-if="!loading && !checking" class="news-btn" @click="regen">生成党建新闻</button>
       </div>
     </div>
 
@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast } from '@/utils/ui'
@@ -46,7 +46,8 @@ import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 const route = useRoute()
 const meetingId = ref(null)
 const news = ref(null)
-const loading = ref(false)
+const loading = ref(false)          // 真在生成/轮询中 → 开全屏遮罩
+const checking = ref(false)         // 仅进页查服务端状态 → 只显示文字，不弹遮罩（服务端已有成稿时直接展示）
 const loadingText = ref('正在准备党建新闻…')
 
 const NEWS_KEY = (id) => 'committee_news_' + id
@@ -67,33 +68,68 @@ const today = (() => {
   return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'
 })()
 
-onMounted(() => {
+let _pollTimer = null
+function stopPoll() { if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null } }
+
+onMounted(async () => {
   meetingId.value = route.query.meetingId
-  // 优先读会议详情页生成后缓存的新闻；没有再现场生成
+  // ① 先读本地缓存（详情页生成后存的），秒开
   try {
     const cached = sessionStorage.getItem(NEWS_KEY(meetingId.value))
     if (cached) news.value = JSON.parse(cached)
   } catch (e) {}
-  if (!news.value) regen()
+  if (news.value) return
+  // ② 无缓存（如退微信后 webview 重载、或换设备）→ 问服务端权威状态。
+  //    只是读取，不开遮罩（checking）；已有成稿直接展示，不弹「生成完成」。
+  checking.value = true
+  loadingText.value = '正在获取党建新闻…'
+  try {
+    const st = await api.committeeNewsStatus(meetingId.value)
+    if (st && st.status === 'success' && st.content) { applyNews(st); return }
+    if (st && st.status === 'running') { loadingText.value = '豆包正在撰写党建新闻…'; pollNews(); return } // 后台真在生成 → 开遮罩看进度
+  } catch (e) {}
+  finally { checking.value = false }
+  // ③ 从没生成过 / 失败 → 现场发起生成
+  regen()
 })
+
+onUnmounted(stopPoll)
+
+function applyNews(st) {
+  stopPoll()
+  news.value = { title: st.title, content: st.content }
+  try { sessionStorage.setItem(NEWS_KEY(meetingId.value), JSON.stringify(news.value)) } catch (e) {}
+  loading.value = false
+}
+
+// 轮询服务端新闻状态直到 success/failed（后端 @Async 后台生成，退微信也照跑）
+function pollNews() {
+  stopPoll()
+  loading.value = true
+  _pollTimer = setTimeout(async () => {
+    _pollTimer = null
+    try {
+      const st = await api.committeeNewsStatus(meetingId.value)
+      if (st && st.status === 'success' && st.content) return applyNews(st)
+      if (st && st.status === 'failed') { loading.value = false; loadingText.value = '生成失败，点下方按钮重试'; toast({ title: '生成失败，请重试', icon: 'none' }); return }
+    } catch (e) {}
+    pollNews()
+  }, 3000)
+}
 
 async function regen() {
   if (loading.value || !meetingId.value) return
   loading.value = true
   loadingText.value = '豆包正在撰写党建新闻…'
   try {
-    const res = await api.committeeGenerateNews(meetingId.value)
-    if (res && res.content) {
-      news.value = { title: res.title, content: res.content }
-      try { sessionStorage.setItem(NEWS_KEY(meetingId.value), JSON.stringify(news.value)) } catch (e) {}
-    } else {
-      toast({ title: '生成失败，请重试', icon: 'none' })
-    }
+    const st = await api.committeeGenerateNews(meetingId.value) // 发起（去重），后台 @Async 生成
+    if (st && st.status === 'success' && st.content) { applyNews(st); return }
+    if (st && st.status === 'failed') { loading.value = false; loadingText.value = '生成失败，点下方按钮重试'; toast({ title: '生成失败，请重试', icon: 'none' }); return }
+    pollNews() // running → 轮询到完成
   } catch (e) {
+    loading.value = false
     toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' })
     loadingText.value = '生成失败，点下方按钮重试'
-  } finally {
-    loading.value = false
   }
 }
 

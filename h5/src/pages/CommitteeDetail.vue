@@ -239,7 +239,7 @@
             <div class="ended-btn-row">
               <!-- 公示后隐藏「查看会议纪要」：顶部已替换为「查看公示内容」，避免重复入口 -->
               <button v-if="!(detail.publish && detail.publish.published)" class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
-              <button class="ended-news-btn" @click="generateNews">AI生成新闻稿</button>
+              <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
               <button class="ended-home-btn" @click="goHome">返回首页</button>
             </div>
             <div v-if="detail.publish && detail.publish.published" class="arp-done">
@@ -654,7 +654,7 @@ import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
-import { startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
+import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
 import { pickAndUpload, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
@@ -745,20 +745,21 @@ function topicTypeClass(topic) {
   return 'decision'
 }
 
-function topicStatusLabel(topic) {
+function topicStatusLabel(topic, ended) {
   if (!topic) return '待确认'
   if (topic.voteRequired === false) return '已记录'
   if (topic.status === 'passed' || topic.passed) return '已通过'
   if (topic.status === 'failed') return '未通过'
-  return '待完成'
+  // 会议已结束：无明确表决结果的议题不再显示「待完成」，会已开完即为「已完成」
+  return ended ? '已完成' : '待完成'
 }
 
-function topicStatusClass(topic) {
+function topicStatusClass(topic, ended) {
   if (!topic) return 'pending'
   if (topic.voteRequired === false) return 'recorded'
   if (topic.status === 'passed' || topic.passed) return 'passed'
   if (topic.status === 'failed') return 'failed'
-  return 'pending'
+  return ended ? 'recorded' : 'pending'
 }
 
 function topicVoteSummary(topic) {
@@ -779,11 +780,12 @@ function topicVoteSummary(topic) {
 
 function decorateMeetingTopics(detail) {
   if (!detail || !detail.record || !detail.record.topics) return
+  var ended = detail.stage === 'ended'
   detail.record.topics = detail.record.topics.map(function (topic) {
     topic.typeLabel = topicTypeLabel(topic)
     topic.typeClass = topicTypeClass(topic)
-    topic.statusLabel = topicStatusLabel(topic)
-    topic.statusClass = topicStatusClass(topic)
+    topic.statusLabel = topicStatusLabel(topic, ended)
+    topic.statusClass = topicStatusClass(topic, ended)
     topic.voteSummary = topicVoteSummary(topic)
     return topic
   })
@@ -1130,11 +1132,19 @@ onMounted(() => {
   stay = route.query.stay === '1'
   activeRole.value = getStorage('activeRole', null) || {}
   loadDetail()
+  reconcileNews() // 进入即对账新闻状态，露出「查看新闻稿/生成中」入口
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onNewsVisibility)
 })
 // onShow → onMounted + onActivated（本页 onShow 会重载 detail，务必保留刷新）
-onActivated(() => { loadDetail() })
+onActivated(() => { loadDetail(); reconcileNews() })
 // onUnload → onUnmounted
-onUnmounted(() => { destroyRecAudio() })
+onUnmounted(() => {
+  destroyRecAudio()
+  stopNewsPoll() // 本页轮询随页销毁；服务端 @Async 继续跑，切回时 reconcileNews 再接上
+  if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onNewsVisibility)
+  // 本页遮罩随本页销毁 → 交还全局悬浮胶囊（新闻生成中/已生成切走后仍有入口，不被隐藏）
+  if (aiTask.active || aiTask.done || aiTask.failed) aiTask.overlayShown = false
+})
 // onHide → onDeactivated（本页 onHide 暂停录音播放）
 onDeactivated(() => { pauseRecAudio() })
 
@@ -2047,48 +2057,117 @@ function viewMinutes() {
 }
 
 // AI 生成党建新闻：红色党建遮罩开跑 → 调大模型生成 → 缓存 → 完成后进独立新闻页
+// 新闻生成状态（服务端权威，切回自动对账）：none/running/success/failed
+const newsState = ref('none')
+let _newsPollTimer = null
+let _newsPolling = false
+function stopNewsPoll() { if (_newsPollTimer) { clearTimeout(_newsPollTimer); _newsPollTimer = null } _newsPolling = false }
+
+// 用户点「AI生成新闻稿」：后端 @Async 后台生成，前端发起即返回后轮询状态。
+// 退出微信 / 切到别的 App / 锁屏都不影响后台跑到底并落库；切回来对账即见结果。
 async function generateNews() {
   if (generatingNews.value) return
   generatingNews.value = true
-  // 全局后台任务：切到别的页面时顶部悬浮「党建新闻生成中…」，完成后可点直达新闻页
+  // overlayShown=true → 本页全屏遮罩盖着任务时隐藏全局悬浮胶囊（免重复）；关遮罩/切走时再交还胶囊。
+  aiTask.overlayShown = true
   startAiTask({ label: '党建新闻生成中…', originPath: window.location.pathname, targetPath: '/pages/news/news?meetingId=' + meetingId })
   try {
-    const res = await api.committeeGenerateNews(meetingId)
-    if (res && res.content) {
-      try { sessionStorage.setItem('committee_news_' + meetingId, JSON.stringify({ title: res.title, content: res.content })) } catch (e) {}
-      if (newsBackgroundDone()) finishAiTask({ doneLabel: '党建新闻已生成' })
-      else clearAiTask()
-    } else {
-      if (newsBackgroundDone()) failAiTask({ failLabel: '党建新闻生成失败' })
-      else { clearAiTask(); toast({ title: '生成失败，请重试', icon: 'none' }) }
-    }
+    const st = await api.committeeGenerateNews(meetingId) // 发起（30s 内已有 running 则去重）
+    if (st && st.status === 'success' && st.content) { onNewsSuccess(st); return }
+    if (st && st.status === 'failed') { onNewsFailed(); return }
+    newsState.value = 'running'
+    watchNews()
   } catch (e) {
-    if (newsBackgroundDone()) failAiTask({ failLabel: '党建新闻生成失败' })
-    else { clearAiTask(); toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' }) }
-  } finally {
-    generatingNews.value = false // active→false 触发遮罩「完成」态，等用户点「查看新闻稿」
+    onNewsFailed(e)
   }
 }
-// 生成完成时用户是否已离开详情页（.detail-page 不在 DOM）或关了遮罩（generatingNews=false）→ 用全局悬浮提示
-function newsBackgroundDone() {
-  return !document.querySelector('.detail-page') || !generatingNews.value
+
+// 轮询服务端新闻状态直到 success/failed（3s/次）；本页在前台就一直转，切走(unmount)则停、由服务端继续跑
+function watchNews() {
+  if (_newsPolling) return
+  _newsPolling = true
+  const tick = async () => {
+    _newsPollTimer = null
+    try {
+      const st = await api.committeeNewsStatus(meetingId)
+      if (st && st.status === 'success' && st.content) return onNewsSuccess(st)
+      if (st && st.status === 'failed') return onNewsFailed()
+      newsState.value = (st && st.status) || 'running'
+    } catch (e) {}
+    _newsPollTimer = setTimeout(tick, 3000)
+  }
+  _newsPollTimer = setTimeout(tick, 3000)
 }
-// 遮罩「查看新闻稿」：进入独立党建新闻页（带软路由不切换的硬导航兜底）
+
+function onNewsSuccess(st) {
+  stopNewsPoll()
+  newsState.value = 'success'
+  try { sessionStorage.setItem('committee_news_' + meetingId, JSON.stringify({ title: st.title, content: st.content })) } catch (e) {}
+  finishAiTask({ doneLabel: '党建新闻已生成' })
+  generatingNews.value = false // 遮罩转「完成」态，等用户点「查看新闻稿」
+}
+function onNewsFailed(e) {
+  stopNewsPoll()
+  newsState.value = 'failed'
+  failAiTask({ failLabel: '党建新闻生成失败' })
+  if (!newsOverlayGone()) toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' })
+  generatingNews.value = false
+}
+// 遮罩此刻是否已不在用户眼前（切走了详情页 / 关了遮罩）→ 决定失败是否需 toast（遮罩自己会显失败态）
+function newsOverlayGone() { return !document.querySelector('.detail-page') || !generatingNews.value }
+
+// 切回页面 / 进入已结束详情：对账服务端新闻状态，露出「查看新闻稿 / 生成中」入口；running 时接着轮询兜底
+async function reconcileNews() {
+  if (!meetingId) return
+  try {
+    const st = await api.committeeNewsStatus(meetingId)
+    newsState.value = (st && st.status) || 'none'
+    if (st && st.status === 'success' && st.content) {
+      try { sessionStorage.setItem('committee_news_' + meetingId, JSON.stringify({ title: st.title, content: st.content })) } catch (e) {}
+      if (aiTask.active) finishAiTask({ doneLabel: '党建新闻已生成' })
+    } else if (st && st.status === 'running') {
+      // 服务端仍在后台生成 → 全局悬浮胶囊兜底「生成中」入口，并接着轮询到完成
+      if (!aiTask.active && !aiTask.done && !aiTask.failed) {
+        startAiTask({ label: '党建新闻生成中…', originPath: '/pages/committee-detail/committee-detail?id=' + meetingId, targetPath: '/pages/news/news?meetingId=' + meetingId })
+      }
+      watchNews()
+    }
+  } catch (e) {}
+}
+// 页面重新可见（从微信后台切回 / 解锁）→ 对账一次，保证「切回有查看入口」
+function onNewsVisibility() { if (typeof document !== 'undefined' && document.visibilityState === 'visible') reconcileNews() }
+
+// 新闻按钮文案随状态：已生成→查看；生成中→去新闻页看进度；否则→生成
+const newsBtnLabel = computed(() => newsState.value === 'success' ? '查看新闻稿' : (newsState.value === 'running' ? '新闻生成中·查看' : 'AI生成新闻稿'))
+function onNewsBtn() {
+  if (newsState.value === 'success' || newsState.value === 'running') return onNewsDone()
+  generateNews()
+}
+
+// 遮罩「查看新闻稿」/按钮查看：进入独立党建新闻页（带软路由不切换的硬导航兜底）。已查看→清掉全局任务。
 function onNewsDone() {
+  aiTask.overlayShown = false
+  clearAiTask()
   const q = 'meetingId=' + meetingId
   navigateTo('/pages/news/news?' + q)
   setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = '/news?' + q }, 500)
 }
-function onNewsClose() { generatingNews.value = false }
+// 关闭遮罩：交还给全局悬浮胶囊（生成中→「生成中」胶囊；已完成→「已生成·查看」胶囊，不丢任务）
+function onNewsClose() { generatingNews.value = false; aiTask.overlayShown = false }
 
-// 面向民众的公开纪要：只读正式纪要正文，与内部工作视图分开
+// 面向民众的公开纪要：只读正式纪要正文，与内部工作视图分开。
+// ⚠ 软路由偶发不切换（见记忆 soft-router-push-intermittent-no-switch）→ 加硬导航兜底，否则「查看公示内容」偶尔点了没反应
 function viewPublicMinutes() {
+  const target = '/minutes-public?meetingId=' + meetingId
   navigateTo('/pages/minutes-public/minutes-public?meetingId=' + meetingId)
+  setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = target }, 300)
 }
 
-// 内部总结（内部 AI 议题报告详细版 + 决议），仅供业委会内部查看
+// 内部总结（内部 AI 议题报告详细版 + 决议），仅供业委会内部查看。同上加硬导航兜底
 function viewInternalReport() {
+  const target = '/minutes-internal?meetingId=' + meetingId
   navigateTo('/pages/minutes-internal/minutes-internal?meetingId=' + meetingId)
+  setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = target }, 300)
 }
 
 // 会议待办事项独立页

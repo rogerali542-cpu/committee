@@ -51,8 +51,8 @@
           <div class="si-meet-main">
             <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
             <div class="si-meet-meta">
-              <span class="si-meet-row">🕒 {{ detail.meetingDate }} {{ detail.meetingTime }}</span>
-              <span v-if="detail.location" class="si-meet-row">📍 {{ detail.location }}</span>
+              <span class="si-meet-row">{{ detail.meetingDate }} {{ detail.meetingTime }}</span>
+              <span v-if="detail.location" class="si-meet-row">{{ detail.location }}</span>
             </div>
           </div>
           <span class="si-meet-caret">{{ siMeetOpen ? '收起 ▲' : '议题 ▾' }}</span>
@@ -83,10 +83,7 @@
           </div>
         </div>
 
-        <!-- 弹性占位：把签到钮压到底部拇指区 -->
-        <div class="si-spacer"></div>
-
-        <!-- 底部大签到按钮 -->
+        <!-- 底部大签到按钮（si-bottom 用 margin-top:auto 吸底；名单展开占满剩余空间内部滚动，按钮不被挤走） -->
         <div class="si-bottom">
           <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '签到' }}</button>
           <div class="signin-page-tip">{{ signedIn ? '你已签到，点击进入' : '到会后请点此签到' }}</div>
@@ -2799,8 +2796,9 @@ async function onNavBack() {
 /* 签到 → 录音 跳转动画 */
 /* 签到页：大签到按钮 + 下方签到情况名单 */
 /* ===== 步骤1 签到页：会议卡 + 名单(默认收起) + 底部大钮(拇指区) ===== */
-.live-page.lp-signin { min-height:100vh; }   /* 签到步按整屏排布，不要录音步那额外 320rpx */
-.signin-page { flex:1 1 auto; display:flex; flex-direction:column; gap:20rpx; padding:8rpx 0; }
+/* 签到步固定为一屏高、不整页滚：名单 flex 占据剩余空间内部滚动、签到按钮吸底，两者都不超视口（覆盖 live-page 的 inline overflow-y:auto） */
+.live-page.lp-signin { height:100vh; height:100dvh; min-height:0; overflow:hidden !important; }
+.signin-page { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:20rpx; padding:8rpx 0; }
 /* 顶部精简会议卡 */
 .si-meet-card { display:flex; align-items:center; gap:18rpx; background:#fff; border-radius:26rpx; padding:38rpx 34rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .si-meet-main { flex:1; min-width:0; }
@@ -2816,15 +2814,16 @@ async function onNavBack() {
 .si-topic-empty { display:block; text-align:center; color:#9AA0A6; font-size:28rpx; padding:16rpx 0; }
 /* 参会名单：收起态一条，展开显示逐人 */
 .si-roster { background:#fff; border-radius:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); padding:0 28rpx; }
-.si-roster-bar { display:flex; align-items:center; gap:14rpx; padding:26rpx 0; }
+.si-roster-bar { display:flex; align-items:center; gap:14rpx; padding:26rpx 0; flex-shrink:0; }
 .si-roster-title { font-size:30rpx; font-weight:700; color:#1f2329; }
 .si-roster-count { flex:1; font-size:26rpx; color:#8A8F98; }
 .si-roster-count b { font-size:30rpx; color:#27AE60; font-weight:800; }
 .si-roster-caret { flex-shrink:0; font-size:26rpx; color:#8A8F98; }
-.si-roster-body { padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
-/* 底部拇指区 */
-.si-spacer { flex:1 1 auto; min-height:24rpx; }
-.si-bottom { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding-top:8rpx; }
+/* 名单展开=下拉框：占据"会议卡→签到按钮"之间的剩余空间并内部滚动；按钮靠 si-bottom 的 margin-top:auto 吸底，人再多也不被挤走 */
+.si-roster.open { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.si-roster-body { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
+/* 底部拇指区：margin-top:auto 把签到按钮吸到底；名单展开时占满剩余空间，按钮仍固定在底 */
+.si-bottom { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding-top:8rpx; margin-top:auto; }
 .signin-big-btn { width:72% !important; max-width:500rpx; margin:0 auto !important; font-size:46rpx !important; font-weight:700; letter-spacing:4rpx; padding:30rpx 0 !important; border-radius:56rpx; box-shadow:0 8rpx 22rpx rgba(232,137,12,0.24); }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
 /* 参会名单 */

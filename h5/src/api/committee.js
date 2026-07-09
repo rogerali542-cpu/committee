@@ -161,9 +161,13 @@ export default {
   committeeMinutes: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/minutes');
   },
-  // AI 生成党建新闻：拿会议纪要喂大模型生成新闻通稿（较慢，放开超时到 170s）
+  // AI 生成党建新闻：发起即返回（后端 @Async 后台跑）。返回 {status,taskId,title,content}，随后轮询 committeeNewsStatus。
   committeeGenerateNews: function (id) {
-    return core.realRequest('POST', '/api/committees/' + id + '/news', null, { timeout: 170000 });
+    return core.realRequest('POST', '/api/committees/' + id + '/news');
+  },
+  // 党建新闻生成状态 + 结果（none/running/success/failed）；success 直接带回标题+正文，供切回页面查看。
+  committeeNewsStatus: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/news-status');
   },
   committeeMinutesRevisions: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/minutes/revisions');
