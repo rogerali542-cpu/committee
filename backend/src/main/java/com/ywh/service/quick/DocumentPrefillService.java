@@ -51,6 +51,13 @@ public class DocumentPrefillService {
     @Value("${demo.prefill.enabled:false}")
     private boolean demoPrefill;
 
+    /**
+     * 【仅演示】假识别的模拟耗时（毫秒）。默认 0 = 立即返回（本地自测省时间，不再干等）。
+     * 演示走查想要「像真的在识别」的节奏时，在 application.yml 设 demo.prefill.simulate-delay-ms: 12000。
+     */
+    @Value("${demo.prefill.simulate-delay-ms:0}")
+    private long demoDelayMs;
+
     // —— 演示预置：材料1_会议通知 抽取出的会议信息（真实大模型也会抽成这些字段）——
     private static final String DEMO_TITLE = "2026年第3次业主委员会例会";
     private static final String DEMO_DATE = "2026-06-29";
@@ -203,11 +210,13 @@ public class DocumentPrefillService {
         vo.setAvailable(true);
         vo.setCategory(noticeFilled ? "notice" : "material");
         vo.setMessage(noticeFilled ? "已识别并预填，请核对" : "已识别为会议材料");
-        // 模拟真实 OCR + 大模型耗时：10~15 秒（前端据此显示进度与用时）
-        try {
-            Thread.sleep(10000 + (long) (Math.random() * 5000));
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
+        // 模拟耗时：默认 0=秒回（本地自测省时间）；演示要拟真节奏时用 demo.prefill.simulate-delay-ms 配置
+        if (demoDelayMs > 0) {
+            try {
+                Thread.sleep(demoDelayMs);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
         }
         return vo;
     }
@@ -309,6 +318,10 @@ public class DocumentPrefillService {
     public MeetingPrefillVO parse(String filename, String fileType, byte[] data) {
         if (data == null || data.length == 0) {
             return MeetingPrefillVO.unavailable("文件为空");
+        }
+        // 【仅演示】假识别：与多文件入口一致，走固定素材、不调 OCR/大模型（默认秒回）。
+        if (demoPrefill) {
+            return demoParseMulti(List.of(new Doc(filename, fileType, data.length, data)));
         }
         DoubaoOcrService ocr = props.getOcr().isEnabled() ? ocrProvider.getIfAvailable() : null;
         if (ocr == null) {

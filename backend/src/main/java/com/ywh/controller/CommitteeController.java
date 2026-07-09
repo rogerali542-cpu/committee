@@ -5,7 +5,7 @@ import com.ywh.dto.CreateMeetingRequest;
 import com.ywh.dto.DeliverySendRequest;
 import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.MeetingPrefillVO;
-import com.ywh.dto.NewsVO;
+import com.ywh.dto.quick.NewsTaskStatusVO;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
 import com.ywh.entity.CommitteeMeeting;
@@ -13,7 +13,8 @@ import com.ywh.entity.RecordTopic;
 import com.ywh.service.CommitteeService;
 import com.ywh.service.quick.AudioStorageService;
 import com.ywh.service.quick.DocumentPrefillService;
-import com.ywh.service.quick.NewsGenService;
+import com.ywh.service.quick.NewsAsyncWorker;
+import com.ywh.service.quick.NewsTaskService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -30,7 +31,8 @@ public class CommitteeController {
 
     private final CommitteeService service;
     private final DocumentPrefillService prefillService;
-    private final NewsGenService newsGenService;
+    private final NewsTaskService newsTaskService;
+    private final NewsAsyncWorker newsAsyncWorker;
     private final AudioStorageService audioStorage;
 
     @GetMapping
@@ -413,13 +415,23 @@ public class CommitteeController {
         return Result.ok(service.generateMinutes(id));
     }
 
-    /** AI 生成党建新闻：拿会议纪要喂大模型，返回一篇党建主题新闻通稿（标题 + 正文）。 */
+    /**
+     * AI 生成党建新闻：改为「发起即返回」——后台 @Async 线程拿纪要喂大模型跑到底并落库，
+     * 请求线程不再阻塞等大模型。前端拿到 running 后轮询 /news-status；退微信/锁屏都不影响后台跑完。
+     * 30s 内已有 running 任务则不重复起（去重），直接回当前状态。
+     */
     @PostMapping("/{id}/news")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
-    public Result<NewsVO> generateNews(@PathVariable Long id) {
-        MeetingDetailVO detail = service.getDetail(id);
-        String minutes = service.generateMinutes(id);
-        return Result.ok(newsGenService.generate(detail == null ? null : detail.getTitle(), minutes));
+    public Result<NewsTaskStatusVO> generateNews(@PathVariable Long id) {
+        if (newsTaskService.markRunningIfNeeded(id)) newsAsyncWorker.generate(id);
+        return Result.ok(newsTaskService.getStatus(id));
+    }
+
+    /** 党建新闻生成状态 + 结果：none/running/success/failed；success 直接带回标题+正文，供切回页面查看。 */
+    @GetMapping("/{id}/news-status")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<NewsTaskStatusVO> newsStatus(@PathVariable Long id) {
+        return Result.ok(newsTaskService.getStatus(id));
     }
 
     @GetMapping("/{id}/minutes/revisions")
