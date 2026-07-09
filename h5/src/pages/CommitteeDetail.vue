@@ -202,15 +202,17 @@
           </div>
         </template>
 
-        <!-- 主任：完整归档 -->
+        <!-- 主任：简洁会议卡（名称/时间/地点），点击展开完整详情（议题、纪要、材料、记录） -->
         <template v-if="userView === 'chair'">
           <div class="ar-card" :class="[detail.compliance, cardSizeClass]">
-            <div class="arc-head">
-              <div class="arch-info">
-                <span class="arch-title">{{ detail.title }}</span>
-              </div>
+            <div class="arc-summary" @click="endedDetailOpen = !endedDetailOpen">
+              <span class="arch-title">{{ detail.title }}</span>
+              <span class="arcs-meta">{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }}<template v-if="detail.location"> · {{ detail.location }}</template></span>
+              <span class="arcs-caret">{{ endedDetailOpen ? '收起详情 ▲' : '查看详情 ▾' }}</span>
             </div>
+            <template v-if="endedDetailOpen">
             <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
+            <button class="ended-minutes-btn in-card" @click="viewMinutes">查看会议纪要</button>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
                 <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openMaterialViewer(ae)" />
@@ -230,6 +232,7 @@
               </div>
               </template>
             </div>
+            </template>
           </div>
           <!-- 底部操作栏（固定在页面底部）。无效会议也照常显示公示按钮；「会议无效」提示改到点击公示后再弹 -->
           <div class="arc-bottom-action">
@@ -237,8 +240,7 @@
             <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">公示会议</button>
             <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示内容</button>
             <div class="ended-btn-row">
-              <!-- 公示后隐藏「查看会议纪要」：顶部已替换为「查看公示内容」，避免重复入口 -->
-              <button v-if="!(detail.publish && detail.publish.published)" class="ended-minutes-btn" @click="viewMinutes">查看会议纪要</button>
+              <!-- 「查看会议纪要」不再单列大按钮：入口收进上方会议卡的「查看详情」里 -->
               <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
               <button class="ended-home-btn" @click="goHome">返回首页</button>
             </div>
@@ -907,6 +909,11 @@ const cardSizeClass = computed(() => {
   if (n >= 4) return 'card-sz-sm'
   return 'card-sz-md'
 })
+
+// 结束页会议卡：默认收起只显示名称/时间/地点，点卡片展开完整详情（议题、纪要、材料、记录）
+const endedDetailOpen = ref(false)
+// "10:00:00" → "10:00"
+function shortTime(t) { return (t || '').slice(0, 5) }
 
 // 「未公示」态（既未公示、未撤回、未归档）→ 顶部显示「公示会议」主操作。无效会议也显示，点击后再提示。
 const isFreshEnded = computed(() => {
@@ -2619,7 +2626,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .arch-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
 
 /* 主任归档卡片 */
-.ar-card { background:#fff; border-radius:0; margin-bottom:0; box-shadow:0 1px 3px rgba(0,0,0,0.04); overflow:hidden; }
+.ar-card { background:#fff; border-radius:16px; margin:12px 12px 0; box-shadow:0 2px 10px rgba(0,0,0,0.06); overflow:hidden; }
 .arc-minutes-link { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-top:1px solid #f0f0f0; cursor:pointer; }
 .arc-minutes-link span:first-child { font-size:18px; font-weight:700; color:var(--c-primary-dark); }
 .arc-minutes-arrow { font-size:22px; color:var(--c-primary-dark); }
@@ -2637,6 +2644,14 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ar-card.card-sz-sm .arch-title { font-size:22px; }
 .arch-info { flex:1; }
 .arch-title { display:block; margin-top:10px; font-size:26px; font-weight:700; color:#333; line-height:1.35; text-align:center; }
+/* 简洁会议卡（结束页默认态）：名称+时间地点+「查看详情」，整卡可点展开 */
+.arc-summary { display:flex; flex-direction:column; align-items:center; gap:8px; padding:22px 16px 18px; text-align:center; cursor:pointer; }
+.arc-summary .arch-title { margin-top:0; }
+.arcs-meta { font-size:15px; color:#8A8F98; line-height:1.5; }
+.arcs-caret { font-size:15px; color:var(--c-primary-dark); font-weight:600; margin-top:4px; }
+.arc-summary:active { background:#FCF8F3; }
+/* 展开区里的「查看会议纪要」按钮（从底部操作栏挪进详情） */
+.ended-minutes-btn.in-card { margin:8px auto 16px; }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
 
 
