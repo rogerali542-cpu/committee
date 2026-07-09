@@ -2404,8 +2404,8 @@ onActivated(show)
 .idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 /* 「更多功能」三格已删（0709）：接待/培训入口移入计划卡横栏 */
 
-/* 综合评分小字（占位分数） */
-.score-line { display: flex; align-items: center; gap: 10rpx; margin: 24rpx 28rpx 0; font-size: 32rpx; color: var(--c-text-mid); }
+/* 综合评分小字（占位分数）：贴近顶栏、紧凑 */
+.score-line { display: flex; align-items: center; gap: 10rpx; margin: 8rpx 28rpx 0; font-size: 32rpx; color: var(--c-text-mid); }
 .score-ico { font-size: 38rpx; }
 .score-num { font-size: 46rpx; font-weight: 800; margin-left: 6rpx; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .score-unit { font-size: 30rpx; color: var(--c-text-weak); }
