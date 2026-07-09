@@ -2425,10 +2425,10 @@ onActivated(show)
 /* 接待待跟进：橙色警示（不如"逾期"严重） */
 .yc-alert.warn { background: var(--c-primary-soft); border-color: #F2CFA0; }
 .yc-alert.warn .yc-alert-txt, .yc-alert.warn .yc-alert-go { color: var(--c-primary-dark); }
-.yc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; padding: 16rpx 20rpx 8rpx; }
-.yc-cell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4rpx; padding: 18rpx 0 16rpx; border-radius: 16rpx; background: #F6F7F9; border: 3rpx solid transparent; cursor: pointer; }
+.yc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10rpx; padding: 12rpx 20rpx 6rpx; }
+.yc-cell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2rpx; padding: 10rpx 0 9rpx; border-radius: 14rpx; background: #F6F7F9; border: 3rpx solid transparent; cursor: pointer; }
 .yc-cell:active { opacity: 0.75; }
-.yc-m { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.1; }
+.yc-m { font-size: 28rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.1; }
 .yc-s { font-size: 22rpx; color: var(--c-text-weak); line-height: 1.2; }
 .yc-cell.done { background: var(--c-success-soft); }
 .yc-cell.done .yc-m, .yc-cell.done .yc-s { color: var(--c-success); }
