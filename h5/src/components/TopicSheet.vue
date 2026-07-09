@@ -479,13 +479,18 @@ async function loadOpinions() {
 
 function fmtTime(iso) { return iso && iso.length >= 16 ? iso.slice(11, 16) : '' }
 function lockedOther(choice) { return !!props.topic.myVote && props.topic.myVote !== choice }
-// 该委员对本议题的表决结果标签（仅实名表决议题有 voterChoices，按姓名匹配；匿名/未投票则不显示）
+// 该委员对本议题的表决结果标签。首选意见自带的 voteChoice/voteLabel（后端按作者查票，
+// 所有表决议题都有）；旧后端没这俩字段时退回 voterChoices（仅实名表决）按姓名匹配。
 function opVote(op) {
+  if (op && op.voteLabel) return { text: op.voteLabel, cls: 'opt' } // 多选项表决：显示所选选项
+  if (op && op.voteChoice === 'for_vote') return { text: '同意', cls: 'agree' }
+  if (op && op.voteChoice === 'against') return { text: '不同意', cls: 'against' }
+  if (op && op.voteChoice === 'abstain') return { text: '弃权', cls: 'abstain' }
   const vc = props.topic && props.topic.voterChoices
   if (!Array.isArray(vc) || !vc.length || !op || !op.name) return null
   const hit = vc.find(v => v && v.name === op.name)
   if (!hit) return null
-  if (hit.label) return { text: hit.label, cls: 'opt' } // 多选项表决：显示所选选项
+  if (hit.label) return { text: hit.label, cls: 'opt' }
   if (hit.choice === 'for_vote') return { text: '同意', cls: 'agree' }
   if (hit.choice === 'against') return { text: '不同意', cls: 'against' }
   if (hit.choice === 'abstain') return { text: '弃权', cls: 'abstain' }
@@ -517,6 +522,7 @@ async function castVote(choice, option) {
     await api.committeeVote(props.meetingId, t.id, option ? null : choice, option ? option.id : null)
     toast({ title: '已表决', icon: 'success' })
     emit('changed')
+    loadOpinions() // 刷新意见列表：自己此前发的意见旁立刻带上刚投的表决标签
     // 若此前点了「AI 帮写」(小助手还开着)，投票后按投票态度提供"生成对应意见"的选择。
     // 用刚投的 choice/option 直接生成，不必等 topic.myVote 回刷。
     if (helperOn.value && !aiBusy.value) {

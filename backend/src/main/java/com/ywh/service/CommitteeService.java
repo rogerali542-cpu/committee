@@ -870,6 +870,19 @@ public class CommitteeService {
         vo.put("canDelete", own || chair);
         vo.put("claimable", aiUnclaimed); // AI 提炼且未归属 → 可"是我说的"认领
         vo.put("createdAt", op.getCreatedAt() != null ? op.getCreatedAt().toString() : null);
+        // 作者对本议题的表决结果：意见姓名旁带「同意/不同意/弃权/所选选项」标签。
+        // 不区分实名/匿名表决——意见本就署名发表，且业委会表决记录归档要记名；实名开关(规则5)
+        // 仍只控制 voterChoices 全员名单是否下发，这里只带"这条意见作者自己"的一票。
+        if (op.getUserRole() != null && isVoteTopic(op.getTopic())) {
+            voteRepo.findByTopicIdAndUserRoleId(op.getTopic().getId(), op.getUserRole().getId()).ifPresent(v -> {
+                if (v.getSelectedId() != null) {
+                    Map<String, Object> opt = findOption(parseTopicOptions(op.getTopic()), v.getSelectedId());
+                    if (opt != null) vo.put("voteLabel", opt.get("label"));
+                } else if (v.getChoice() != null) {
+                    vo.put("voteChoice", v.getChoice().name());
+                }
+            });
+        }
         return vo;
     }
 
