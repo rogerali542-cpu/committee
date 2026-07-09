@@ -28,9 +28,8 @@
          仅「无进行中会议」时显示（有会议时聚焦会议进度卡）。 -->
     <div v-if="!(currents && currents.length)" class="plan-card">
         <div class="plan-head">
-          <span class="plan-title">📅 {{ curYear }}年 · 履职日历</span>
-          <span v-if="planTab === 'meeting'" class="plan-tip">点月份看当月安排</span>
-          <span v-else class="plan-tip link" @click="planTab === 'reception' ? goReception() : goLearning()">查看全部 ›</span>
+          <span class="plan-title">{{ curYear }}年</span>
+          <span v-if="planTab !== 'meeting'" class="plan-tip link" @click="planTab === 'reception' ? goReception() : goLearning()">查看全部 ›</span>
         </div>
         <!-- 分类横栏：开会为主（默认），培训/接待切换后宫格+清单整体切到该类 -->
         <div class="plan-tabs">
