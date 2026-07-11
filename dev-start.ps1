@@ -24,6 +24,22 @@ if (Test-Port 8003) {
   Write-Host '[ok] OCR-ASR started on :8003'
 }
 
+# 1.5) 从 backend/.env 注入真实密钥到环境变量（该文件已 gitignore，密钥永不入库）。
+#      application.yml 已去掉明文默认值，缺 DB_PASSWORD/JWT_SECRET 会导致后端起不来。
+$envFile = Join-Path $root 'backend\.env'
+if (Test-Path $envFile) {
+  Get-Content $envFile -Encoding UTF8 | ForEach-Object {
+    $line = $_.Trim()
+    if ($line -and -not $line.StartsWith('#') -and $line.Contains('=')) {
+      $pair = $line -split '=', 2
+      Set-Item -Path ("Env:" + $pair[0].Trim()) -Value $pair[1].Trim()
+    }
+  }
+  Write-Host '[ok] secrets loaded from backend/.env'
+} else {
+  Write-Host '[WARN] backend/.env not found - backend will fail to start. Copy backend/.env.example to backend/.env and fill in.'
+}
+
 # 2) Spring Boot :8080  (inherits JAVA_HOME set above).
 if (Test-Port 8080) {
   Write-Host '[skip] backend already on :8080'
