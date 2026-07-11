@@ -173,6 +173,21 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @PostMapping("/{id}/delivery/wechat-mark")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> markWechatNotified(@PathVariable Long id) {
+        service.markWechatNotified(id);
+        return Result.ok();
+    }
+
+    // 清空通知记录（测试用）：删通知历史+送达记录、重置为未通知。通知留痕正式环境一般应保留，见 service 注释。
+    @PostMapping("/{id}/delivery/clear")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> clearNotifications(@PathVariable Long id) {
+        service.clearNotifications(id);
+        return Result.ok();
+    }
+
     @PutMapping("/{id}/attendance/{userRoleId}")
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> toggleAttendance(@PathVariable Long id, @PathVariable Long userRoleId,
@@ -253,6 +268,14 @@ public class CommitteeController {
                               @RequestParam(required = false) String choice,
                               @RequestParam(required = false) Long selectedId) {
         service.vote(id, topicId, choice, selectedId);
+        return Result.ok();
+    }
+
+    /** 结束表决（主任/副主任）：揭晓票数并公布结果。 */
+    @PostMapping("/{id}/topics/{topicId}/close-vote")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> closeVote(@PathVariable Long id, @PathVariable Long topicId) {
+        service.closeVote(id, topicId);
         return Result.ok();
     }
 

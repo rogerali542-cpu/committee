@@ -45,6 +45,7 @@ public class MeetingDetailVO {
     public static class NotificationLogVO {
         private String sentAt;
         private String sentByName;
+        private String channel;
     }
 
     // Delivery info
@@ -58,6 +59,9 @@ public class MeetingDetailVO {
 
     // Record info
     private RecordInfoVO record;
+
+    // 会议纪要是否已生成（record.minutesText 非空）→ 详情页据此显示「生成会议纪要」还是「查看会议纪要」
+    private Boolean minutesReady;
 
     // Publish info (ended stage)
     private PublishInfoVO publish;
@@ -150,13 +154,16 @@ public class MeetingDetailVO {
             private Integer total;
             private Integer need;
             private Boolean passed;
+            private Boolean voteClosed;   // 表决是否已结束揭晓（主任点「结束表决」后为 true）
             private String status;     // passed, pending, failed
             private String text;
             private String decisionType;
-            // 通报类：正文 + 已通报状态 + 本人是否看过
+            // 通报类：正文 + 已通报状态 + 本人是否看过 + 已读进度（已确认「我已读」人数 / 已签到人数）
             private String content;
             private Boolean notified;
             private Boolean viewedByMe;
+            private Integer viewedCount;    // 已确认「我已读」的已签到委员数
+            private Integer signedInCount;  // 已签到委员数（"全体已通报"的分母）
             private List<Map<String, Object>> options;
             private String myVote;
             private Long mySelectedId;

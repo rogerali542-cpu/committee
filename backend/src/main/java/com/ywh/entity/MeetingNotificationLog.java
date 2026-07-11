@@ -24,4 +24,7 @@ public class MeetingNotificationLog {
 
     @Column(name = "sent_by_name", length = 60)
     private String sentByName;
+
+    @Column(name = "channel", length = 20)
+    private String channel;
 }

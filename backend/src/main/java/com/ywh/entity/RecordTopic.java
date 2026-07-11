@@ -43,6 +43,11 @@ public class RecordTopic {
     @Column(name = "viewed_by_json", columnDefinition = "TEXT")
     private String viewedByJson;             // 看过本议题的 userRoleId 集合（JSON 数组）
 
+    // ===== 表决类议题：结束表决揭晓 =====
+    // 主任点「结束表决」后置真 → 揭晓各项票数、公布结果；此前对委员隐藏票数明细（防从众）
+    @Column(name = "vote_closed")
+    private Boolean voteClosed = false;
+
     @Column(name = "sort_order")
     private Integer sortOrder;
 

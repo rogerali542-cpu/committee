@@ -190,6 +190,9 @@ public class CommitteeService {
                 .archiveExtras(buildArchiveExtras(m.getId()))
                 .myDelivery(hideInternalRecord ? null : getMyDelivery(m, ur))
                 .record(hideInternalRecord ? null : getRecordInfo(m))
+                .minutesReady(!hideInternalRecord && recordRepo.findByMeetingId(meetingId)
+                        .map(rec -> rec.getMinutesText() != null && !rec.getMinutesText().isBlank())
+                        .orElse(false))
                 .publish(publishInfo)
                 .members(hideInternalRecord ? null : getMemberSummaries(m))
                 .build();
@@ -211,7 +214,6 @@ public class CommitteeService {
                 .description(req.getDescription())
                 .createdBy(userId)
                 .build();
-        applyGeneratedNoticeDraft(m);
         m = meetingRepo.save(m);
 
         MeetingRecord record = MeetingRecord.builder()
@@ -223,6 +225,11 @@ public class CommitteeService {
                 .build();
         record = recordRepo.save(record);
         savePresetTopics(record, meetingTopics);
+
+        // 通知草稿放在议题入库之后再生成，正文才能带上"会议议题"逐条；
+        // （原来在建 record 之前生成 → buildNoticeTopicsText 取不到议题，恒为"待补充"。updateMeeting 一直是这个顺序）
+        applyGeneratedNoticeDraft(m);
+        m = meetingRepo.save(m);
 
         return m;
     }
@@ -482,6 +489,7 @@ public class CommitteeService {
                 .meeting(meeting)
                 .sentAt(now)
                 .sentByName(initiator != null ? initiator.getRealName() + "·" + initiator.getRole() : null)
+                .channel("app")
                 .build());
 
         // 发起人（当前主任/副主任）发送会议通知时即自动"确认参会"，计入确认参会人数（自动为 1），无需再手动确认。
@@ -500,12 +508,42 @@ public class CommitteeService {
         }
     }
 
+    @Transactional
+    public void markWechatNotified(Long meetingId) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (meeting.getStage() != MeetingStage.preparing) {
+            throw new IllegalArgumentException("仅准备阶段可以记录微信通知");
+        }
+        UserRoleEntity initiator = SecurityUtils.getCurrentUserRole();
+        notificationLogRepo.save(MeetingNotificationLog.builder()
+                .meeting(meeting)
+                .sentAt(LocalDateTime.now())
+                .sentByName(initiator != null ? initiator.getRealName() + "·" + initiator.getRole() : null)
+                .channel("wechat")
+                .build());
+    }
+
+    /** 清空会议通知记录（测试用）：删通知历史 + 送达记录，重置 notifiedAt/notifiedByName，回到"未通知"状态。
+     *  说明：通知记录是"谁何时通知了委员"的留痕，正式环境一般应保留（问责/审计），此方法主要供测试重置。 */
+    @Transactional
+    public void clearNotifications(Long meetingId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        notificationLogRepo.deleteAll(notificationLogRepo.findByMeetingIdOrderBySentAtAsc(meetingId));
+        deliveryRepo.deleteByMeetingId(meetingId);
+        m.setNotifiedAt(null);
+        m.setNotifiedByName(null);
+        meetingRepo.save(m);
+    }
+
     private List<MeetingDetailVO.NotificationLogVO> buildNotificationLogs(Long meetingId) {
         return notificationLogRepo.findByMeetingIdOrderBySentAtAsc(meetingId).stream()
                 .map(l -> {
                     MeetingDetailVO.NotificationLogVO vo = new MeetingDetailVO.NotificationLogVO();
                     vo.setSentAt(l.getSentAt().toString());
                     vo.setSentByName(l.getSentByName());
+                    vo.setChannel(l.getChannel() == null ? "app" : l.getChannel());
                     return vo;
                 })
                 .collect(Collectors.toList());
@@ -728,6 +766,17 @@ public class CommitteeService {
         topicRepo.save(topic);
     }
 
+    /** 结束表决（主任/副主任）：该表决议题票数揭晓、公布结果。此前对委员隐藏票数明细（防从众）。 */
+    @Transactional
+    public void closeVote(Long meetingId, Long topicId) {
+        RecordTopic topic = requireTopic(meetingId, topicId);
+        if (!isVoteTopic(topic)) {
+            throw new IllegalArgumentException("该议题无需表决");
+        }
+        topic.setVoteClosed(true);
+        topicRepo.save(topic);
+    }
+
     @Transactional
     public void vote(Long meetingId, Long topicId, String choice, Long selectedId) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
@@ -737,6 +786,9 @@ public class CommitteeService {
         }
         RecordTopic topic = topicRepo.findById(topicId)
                 .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        if (Boolean.TRUE.equals(topic.getVoteClosed())) {
+            throw new IllegalArgumentException("该议题表决已结束，无法再投票");
+        }
         Long urId = SecurityUtils.getCurrentUserId();
         MeetingRecord record = topic.getRecord();
         RecordAttendance attendance = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), urId)
@@ -1338,6 +1390,7 @@ public class CommitteeService {
 
     private List<Map<String, Object>> buildMaterials(Long meetingId) {
         return materialRepo.findByMeetingId(meetingId).stream().map(mat -> {
+            retryMaterialOcrIfNeeded(mat);
             Map<String, Object> m = new HashMap<>();
             m.put("id", mat.getId());
             m.put("name", mat.getFileName());
@@ -1347,6 +1400,34 @@ public class CommitteeService {
             m.put("ocrStatus", mat.getOcrStatus());   // null/processing/done/failed，供前端显示识别状态
             return m;
         }).collect(Collectors.toList());
+    }
+
+    private void retryMaterialOcrIfNeeded(MeetingMaterial mat) {
+        if (mat == null || mat.getId() == null) return;
+        String status = mat.getOcrStatus();
+        if ("processing".equals(status) || "done".equals(status)) return;
+        if (!isOcrMaterial(mat)) return;
+        triggerMaterialOcr(mat.getId());
+    }
+
+    private boolean isOcrMaterial(MeetingMaterial mat) {
+        String type = safeLower(mat.getFileType());
+        String name = safeLower(mat.getFileName());
+        String url = safeLower(mat.getFileUrl());
+        return hasOcrExt(type) || hasOcrExt(name) || hasOcrExt(url);
+    }
+
+    private boolean hasOcrExt(String s) {
+        if (s == null || s.isBlank()) return false;
+        return s.endsWith(".png") || s.endsWith(".jpg") || s.endsWith(".jpeg")
+                || s.endsWith(".webp") || s.endsWith(".bmp") || s.endsWith(".pdf")
+                || s.equals("png") || s.equals("jpg") || s.equals("jpeg")
+                || s.equals("webp") || s.equals("bmp") || s.equals("pdf")
+                || s.contains("image/") || s.contains("application/pdf");
+    }
+
+    private String safeLower(String s) {
+        return s == null ? "" : s.toLowerCase(Locale.ROOT);
     }
 
     // ===== Archive Extras（补充归档）=====
@@ -1527,6 +1608,11 @@ public class CommitteeService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("【会议基本信息】\n");
+        String communityName = (m.getCommunity() != null && m.getCommunity().getName() != null && !m.getCommunity().getName().isBlank())
+                ? m.getCommunity().getName().trim() : "";
+        String orgFullName = communityName.isEmpty() ? "业主委员会" : communityName + "业主委员会";
+        sb.append("小区名称：").append(communityName.isEmpty() ? "未明确说明" : communityName).append('\n');
+        sb.append("业委会全称（纪要抬头与落款统一使用此名称）：").append(orgFullName).append('\n');
         sb.append("会议名称：").append(nullToUnknown(m.getTitle())).append('\n');
         sb.append("会议时间：").append(nullToUnknown(m.getMeetingDate())).append(" ").append(nullToUnknown(m.getMeetingTime())).append('\n');
         sb.append("会议地点：").append(nullToUnknown(m.getLocation())).append('\n');
@@ -1978,22 +2064,26 @@ public class CommitteeService {
 
     private NoticeDraftVO generateNoticeDraft(CommitteeMeeting m) {
         NoticeDraftVO vo = new NoticeDraftVO();
-        String title = "关于召开" + (m.getTitle() != null ? m.getTitle() : "业主委员会会议") + "的通知";
+        // 正文语气与前端一致：以「新会议通知：{会议名}」开头（原「关于召开…的通知」偏弱，已统一）
+        String meetingName = (m.getTitle() != null && !m.getTitle().isBlank()) ? m.getTitle() : "业主委员会会议";
+        String title = "新会议通知：" + meetingName;
         List<String> lines = new ArrayList<>();
         lines.add(title);
+        lines.add("");
         lines.add("会议时间：" + (m.getMeetingDate() != null ? m.getMeetingDate() : "待定")
                 + " " + (m.getMeetingTime() != null ? m.getMeetingTime() : ""));
         lines.add("会议地点：" + (m.getLocation() != null ? m.getLocation() : "待定"));
-        // 主要议题：按准备会议时添加的议题标题，逐条编号列出（1.xxx 换行 2.xxx）
+        // 会议议题：按准备会议时添加的议题标题，逐条编号列出（1.xxx 换行 2.xxx）
         String topicsText = buildNoticeTopicsText(m);
         if (!topicsText.isBlank()) {
-            lines.add("主要议题：");
+            lines.add("会议议题：");
             lines.add(topicsText);
         } else if (m.getDescription() != null && !m.getDescription().isBlank()) {
-            lines.add("主要议题：" + m.getDescription());
+            lines.add("会议议题：" + m.getDescription());
         } else {
-            lines.add("主要议题：待补充");
+            lines.add("会议议题：待补充");
         }
+        lines.add("");
         lines.add("请各位委员按时参加，并提前查阅会议材料。");
         vo.setTitle(title);
         vo.setContent(String.join("\n", lines));
@@ -2407,6 +2497,12 @@ public class CommitteeService {
 
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         int total = attendances.size();
+        // 通报类「已读进度」用：已签到委员 id 集合 + 人数（作为"全体已通报"的分母）
+        Set<Long> signedInIds = attendances.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getSignedIn()))
+                .map(a -> a.getUserRole().getId())
+                .collect(Collectors.toSet());
+        int signedInCount = signedInIds.size();
 
         List<RecordInfoVO.AttendanceVO> attendanceVOs = attendances.stream().map(a -> {
             RecordInfoVO.AttendanceVO av = new RecordInfoVO.AttendanceVO();
@@ -2490,12 +2586,16 @@ public class CommitteeService {
             tv.setTotal(total);
             tv.setNeed(need);
             tv.setPassed(passed);
+            tv.setVoteClosed(Boolean.TRUE.equals(tp.getVoteClosed()));
             tv.setStatus(!voteRequired ? "recorded" : (passed ? "passed" : (countedVotes < total ? "pending" : "failed")));
             tv.setText(statusText);
-            // 通报类：正文 + 已通报 + 本人是否看过
+            // 通报类：正文 + 已通报 + 本人是否看过 + 已读进度（已确认「我已读」的已签到委员数 / 已签到数）
             tv.setContent(tp.getContent());
             tv.setNotified(Boolean.TRUE.equals(tp.getNotified()));
-            tv.setViewedByMe(parseViewedBy(tp.getViewedByJson()).contains(ur.getId()));
+            Set<Long> viewedIds = parseViewedBy(tp.getViewedByJson());
+            tv.setViewedByMe(viewedIds.contains(ur.getId()));
+            tv.setViewedCount((int) viewedIds.stream().filter(signedInIds::contains).count());
+            tv.setSignedInCount(signedInCount);
 
             TopicVote myVote = votes.stream()
                     .filter(v -> v.getUserRole().getId().equals(ur.getId()))
