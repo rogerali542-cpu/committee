@@ -27,8 +27,8 @@ public class User {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
-    @Column(length = 20)
-    private String phone;
+    // 注：原 phone 字段前后端零使用（不收集/不展示/不查询/不用于登录），按数据最小化原则已移除。
+    //     数据库 users.phone 列因 ddl-auto:update 不自动删列会残留，可手动 ALTER TABLE users DROP COLUMN phone;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
