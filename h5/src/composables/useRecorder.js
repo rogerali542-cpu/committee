@@ -59,13 +59,41 @@ export function useRecorder() {
     if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null }
   }
 
+  // getUserMedia 在个别 webview（尤其微信/企业微信）里可能既不 resolve 也不 reject → 表现为"点了没反应"。
+  // 加超时兜底：ms 内没结果就以 TimeoutError 抛出，让上层给"用浏览器打开/查权限"的明确提示；
+  // 若流在超时后才姗姗来迟，及时 stop 掉，避免白占用麦克风。
+  function gumWithTimeout(constraints, ms) {
+    return new Promise((resolve, reject) => {
+      let settled = false
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        const e = new Error('调起麦克风超时未响应'); e.name = 'TimeoutError'; reject(e)
+      }, ms)
+      navigator.mediaDevices.getUserMedia(constraints).then(
+        (s) => {
+          if (settled) { try { s.getTracks().forEach((t) => t.stop()) } catch (_) {} return }
+          settled = true; clearTimeout(timer); resolve(s)
+        },
+        (err) => { if (settled) return; settled = true; clearTimeout(timer); reject(err) }
+      )
+    })
+  }
+
   // 开始一次新录音（会清掉上一次结果）
   async function start() {
     if (recording.value) return
     if (!supported.value) throw new Error('当前浏览器不支持录音（需 HTTPS 且允许麦克风）')
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
-    })
+    try {
+      stream = await gumWithTimeout({ audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true } }, 12000)
+    } catch (e) {
+      // 约束过严（个别机型不认 sampleRate/channelCount）→ 放宽为最简约束再试一次；权限/超时类不重试，直接抛给上层
+      if (e && (e.name === 'OverconstrainedError' || e.name === 'ConstraintNotSatisfiedError')) {
+        stream = await gumWithTimeout({ audio: true }, 12000)
+      } else {
+        throw e
+      }
+    }
     chosenMime = pickMime()
     chunks = []
     resultBlob = null
