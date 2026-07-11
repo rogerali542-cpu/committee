@@ -25,3 +25,15 @@ deploy/**/*.sql
 deploy/**/db-seed/
 # 内联了真实密钥、供平台上传的 compose（由 make-deploy-compose.sh 生成，切勿提交）
 deploy/**/docker-compose.deploy.yml
+
+# IDE
+.vscode/
+# 本地设计稿/临时产物
+tmp/
+ocr-test.png
+# 小程序原版（迁移到 H5 前的备份，仅本地参考）
+miniapp-original-wx/
+miniapp-original-wx.zip
+# Office 临时锁文件
+~$*.docx
+~$*.xlsx
