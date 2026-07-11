@@ -32,7 +32,7 @@
       <span class="lp-flow-line" :class="{ done: flowStep > 1 }"></span>
       <div class="lp-flow-step" :class="flowStep > 2 ? 'done' : (flowStep === 2 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 2">✓</template><template v-else>2</template></span>
-        <span class="lp-flow-label">议题表决</span>
+        <span class="lp-flow-label">议题讨论与表决</span>
       </div>
       <span class="lp-flow-line" :class="{ done: flowStep > 2 }"></span>
       <div class="lp-flow-step" :class="flowStep >= 3 ? 'on' : ''">
@@ -93,7 +93,7 @@
       <!-- 会议主流程：按议题类型判断是否需要宣读通知、表决环节 -->
       <div class="core-card">
         <div class="core-head">
-          <span class="core-title">会议进行</span>
+          <span class="core-title">讨论与表决</span>
         </div>
 
         <div v-if="meetingTopics.length" class="core-list">
@@ -2516,8 +2516,8 @@ async function onNavBack() {
 .top-rec-status.paused { background:#F7F8FA; border-bottom-color:#E2E6EA; color:#1F2937; }
 .top-rec-dot { flex-shrink:0; width:18rpx; height:18rpx; border-radius:50%; background:#E23B3B; box-shadow:0 0 0 8rpx rgba(226,59,59,0.12); animation:recFlPulse 1.3s ease-out infinite; }
 .top-rec-status.paused .top-rec-dot { background:#94A3B8; box-shadow:none; animation:none; }
-.top-rec-main { flex-shrink:0; display:flex; align-items:center; height:100%; font-size:30rpx; font-weight:800; line-height:1; }
-.top-rec-time { flex:1; min-width:0; display:flex; align-items:center; height:100%; font-size:30rpx; font-weight:800; line-height:1; color:inherit; font-variant-numeric:tabular-nums; }
+.top-rec-main { flex-shrink:0; font-size:30rpx; font-weight:800; line-height:1.2; }
+.top-rec-time { flex:1; min-width:0; font-size:30rpx; font-weight:800; line-height:1.2; color:inherit; font-variant-numeric:tabular-nums; }
 .top-rec-btn { flex-shrink:0; border:2rpx solid #FECACA; background:#fff; color:#B42318; font-size:26rpx; font-weight:800; border-radius:999rpx; padding:10rpx 22rpx; font-family:inherit; }
 .top-rec-status.paused .top-rec-btn { border-color:#CBD5E1; color:#334155; }
 .top-rec-status.paused .top-rec-btn.primary { border-color:#126A72; background:#126A72; color:#fff; }
@@ -2533,7 +2533,7 @@ async function onNavBack() {
 .supp-btn.rec { border-color:#FED7D7; background:#FFF5F5; color:#B42318; }
 .supp-btn.upload-rec { border-color:#F4C88E; background:#FFF6E8; color:#A85800; }
 .supp-btn.ai { border-color:#BFD7D9; background:#EAF6F6; color:#126A72; }
-.supp-material-btn { grid-column:1 / -1; }
+.supp-actions.paused .supp-material-btn { grid-column:1 / -1; } /* 仅暂停时「上传材料」铺满整行；非暂停(开始录音前)与「开始录音」左右并排 */
 .supp-btn:active { background:#EEF3F7; }
 .supp-btn[disabled] { opacity:0.55; box-shadow:none; }
 .supp-files { border-top:2rpx solid #F0F2F4; margin-top:12rpx; padding-top:10rpx; }
