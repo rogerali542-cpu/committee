@@ -47,6 +47,13 @@ export default {
   committeeSendAll: function (id, memberIds) {
     return core.request('POST', '/api/committees/' + id + '/delivery/send-all', { memberIds: memberIds || [] });
   },
+  committeeMarkWechatNotified: function (id) {
+    return core.request('POST', '/api/committees/' + id + '/delivery/wechat-mark');
+  },
+  // 清空通知记录（测试用）：删本会议全部通知历史+送达、重置为未通知
+  committeeClearNotifications: function (id) {
+    return core.request('POST', '/api/committees/' + id + '/delivery/clear');
+  },
   // 委员打开详情时回写"已读"（仅对已送达内容生效）
   committeeMarkDeliveryRead: function (id) {
     return core.request('POST', '/api/committees/' + id + '/delivery/read');
@@ -107,6 +114,10 @@ export default {
     var params = choice ? '?choice=' + choice : '';
     if (selectedId) params += (params ? '&' : '?') + 'selectedId=' + selectedId;
     return core.request('PUT', '/api/committees/' + id + '/topics/' + topicId + '/vote' + params);
+  },
+  // 结束表决（主任/副主任）：揭晓票数并公布结果
+  committeeCloseVote: function (id, topicId) {
+    return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/close-vote');
   },
   // ===== 议题意见 =====
   committeeOpinions: function (id) {
