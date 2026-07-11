@@ -28,15 +28,55 @@
 
         <!-- 通知卡片：发给委员的核心内容，也是生成转发图片的源 -->
         <div class="notice-card">
-          <div class="nc-title">{{ detail.title }}</div>
-          <!-- 正文与 noticeText 同款措辞；地点做成蓝色可点超链接，点了打开高德地图 -->
-          <div class="nc-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
-          <div class="nc-sign">业主委员会</div>
+          <div class="nc-copy">
+            <div class="nc-copy-title">新会议通知：{{ detail.title || '业委会会议' }}</div>
+            <div class="nc-copy-row">会议时间：{{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }}</div>
+            <div class="nc-copy-row">会议地点：<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span><span v-else class="nc-muted">待定</span></div>
+            <div v-if="detail.location" class="nc-copy-row">地点导航：<span class="loc-inline" @click="openMap(detail.location)">打开地图导航</span></div>
+            <div class="nc-copy-row">会议议题：{{ noticeTopicsText }}</div>
+            <div class="nc-copy-note">请各位委员准时参加。</div>
+            <div class="nc-copy-sign">业主委员会</div>
+          </div>
+        </div>
+
+        <!-- 取消会议（弱化，避免误删） -->
+        <div class="prep-cancel"><span @click="removeMeeting">取消会议</span></div>
+
+        <!-- 通知人员：默认展开并全选，可直接调整名单 -->
+        <div class="recipient-card">
+          <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
+            <span class="recipient-card-title">通知人员</span>
+            <div class="recipient-card-right">
+              <span class="recipient-summary">{{ recipientSummary }}</span>
+              <span class="recipient-card-arrow" :class="{ open: recipientOpen }">›</span>
+            </div>
+          </div>
+          <template v-if="recipientOpen">
+            <div class="rcp-list page-rcp-list">
+              <!-- 全选行：挪进列表顶部（收起头只留摘要） -->
+              <div class="rcp-item page-rcp-item rcp-all-row" @click="toggleRecipientAll">
+                <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
+                <div class="rcp-person"><span class="rcp-name">全选</span></div>
+                <span class="rcp-all-count">已选 {{ recipientSelectedCount }} / {{ recipientList.length }} 人</span>
+              </div>
+              <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
+                <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
+                <div class="rcp-person">
+                  <span class="rcp-name">{{ m.name }}</span>
+                  <span v-if="m.role" class="rcp-role">{{ m.role }}</span>
+                </div>
+              </div>
+              <div v-if="!recipientList.length" class="rcp-empty">暂无可通知的委员</div>
+            </div>
+          </template>
         </div>
 
         <!-- 通知记录：标题 + 历史列表（最新在前） -->
         <div class="sr-section" v-if="noticeSent">
-          <div class="sr-heading">通知记录</div>
+          <div class="sr-heading-row">
+            <span class="sr-heading">通知记录</span>
+            <span class="sr-clear-btn" @click="clearNotices">清空</span>
+          </div>
           <template v-if="detail.notificationLogs && detail.notificationLogs.length">
             <div class="send-record" v-for="(log, idx) in [...detail.notificationLogs].reverse()" :key="idx">
               <span class="sr-ic">✓</span>
@@ -48,9 +88,6 @@
             <span class="sr-text">{{ sendRecordText }}</span>
           </div>
         </div>
-
-        <!-- 取消会议（弱化，避免误删） -->
-        <div class="prep-cancel"><span @click="removeMeeting">取消会议</span></div>
 
       </template>
 
@@ -212,7 +249,11 @@
             </div>
             <template v-if="endedDetailOpen">
             <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
-            <button class="ended-minutes-btn in-card" @click="viewMinutes">查看会议纪要</button>
+            <!-- 纪要会后在此生成：未生成→「生成会议纪要」(跳纪要页看进度)；已生成→「查看会议纪要」。公示后隐藏（纪要已定稿，改看下方「查看公示内容」） -->
+            <template v-if="!(detail.publish && detail.publish.published)">
+              <button v-if="detail.minutesReady" class="ended-minutes-btn in-card" @click="viewMinutes">查看会议纪要</button>
+              <button v-else class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
+            </template>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
                 <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openMaterialViewer(ae)" />
@@ -252,7 +293,6 @@
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
-                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
                 <span class="ar-skip danger" @click="withdrawPublish">撤回公示</span>
               </div>
             </div>
@@ -262,14 +302,14 @@
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
-                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
               </div>
             </div>
             <div v-else-if="detail._archived">
               <span class="arp-check">✓</span><span style="font-size:13px;color:#27AE60;">已归档（未公示）</span>
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
-                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
                 <span class="ar-skip danger" @click="revokeArchive">撤销归档</span>
               </div>
             </div>
@@ -278,7 +318,7 @@
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="archiveDirect">直接归档</span>
-                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
               </div>
             </template>
           </div>
@@ -309,40 +349,13 @@
     </div>
 
     <!-- 准备阶段（主任）：底部固定主操作 -->
-    <div class="prep-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
-      <button v-if="prepareMode === 'send'" class="pf-btn pf-btn-single" @click="openRecipients">发送通知</button>
-      <div v-else class="pf-btn-row">
-        <button class="pf-btn" @click="openRecipients">再次通知</button>
-        <button class="pf-btn" @click="startMeeting">开始会议</button>
-      </div>
-      <span class="pf-hint" v-if="prepareHint">{{ prepareHint }}</span>
-    </div>
-
-    <!-- 发送通知：选择接收对象弹窗（全体业委会委员，默认全选，可取消个别人） -->
-    <div v-if="recipientVisible" class="modal-mask" @click="recipientVisible = false">
-      <div class="rcp-sheet" @click.stop>
-        <div class="rcp-title">发送会议通知</div>
-        <div class="rcp-hint">勾选的委员会在 <b>App 内</b> 立即收到本次会议通知；<br>发送后还可把通知文本 <b>复制转发到微信</b>。</div>
-        <div class="rcp-allrow" @click="toggleRecipientAll">
-          <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
-          <span class="rcp-all-label">全体业委会委员</span>
-          <span class="rcp-count">已选 {{ recipientSelectedCount }}/{{ recipientList.length }}</span>
-        </div>
-        <div class="rcp-list" style="overflow-y:auto;">
-          <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item" @click="toggleRecipient(m.userRoleId)">
-            <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
-            <div class="rcp-person">
-              <span class="rcp-name">{{ m.name }}</span>
-              <span v-if="m.role" class="rcp-role">{{ m.role }}</span>
-            </div>
-          </div>
-          <div v-if="!recipientList.length" class="rcp-empty">暂无可通知的委员</div>
-        </div>
-        <div class="rcp-actions">
-          <button class="rcp-btn ghost" @click="recipientVisible = false">取消</button>
-          <button class="rcp-btn primary" :disabled="!recipientSelectedCount || sendSubmitting" @click="confirmSendRecipients">
-            发送（{{ recipientSelectedCount }}）
-          </button>
+    <div class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
+      <div class="pf-after-send">
+        <!-- 通知已送达全体后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
+        <button v-if="prepareMode !== 'send'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
+        <div class="pf-btn-row">
+          <button class="pf-btn" @click="sendAppNoticeOnly">App内通知</button>
+          <button class="pf-btn" @click="openWechat">去微信通知</button>
         </div>
       </div>
     </div>
@@ -650,7 +663,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, h, onMounted, onActivated, onUnmounted, onDeactivated, nextTick } from 'vue'
+import { ref, reactive, computed, h, onMounted, onActivated, onUnmounted, onDeactivated, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
@@ -910,8 +923,8 @@ const cardSizeClass = computed(() => {
   return 'card-sz-md'
 })
 
-// 结束页会议卡：默认收起只显示名称/时间/地点，点卡片展开完整详情（议题、纪要、材料、记录）
-const endedDetailOpen = ref(false)
+// 结束页会议卡：默认【展开】完整详情（议题、纪要、材料、记录），点卡片可收起（用户要求默认展开）
+const endedDetailOpen = ref(true)
 // "10:00:00" → "10:00"
 function shortTime(t) { return (t || '').slice(0, 5) }
 
@@ -1125,25 +1138,35 @@ const sendSubmitting = ref(false)
 // onLoad 上下文（this.meetingId / this.fromNotice）
 let meetingId = null
 let fromNotice = false
-let stay = false   // stay=1：从会议进行页返回时带上，让进行中会议别再被弹回录音页（可停留看详情）
 // 录音上下文（this._recAudio）
 let _recAudio = null
 
 // ═══════════════════════════════════════════════
 // 生命周期
 // ═══════════════════════════════════════════════
+function syncMeetingIdFromRoute() {
+  const id = parseInt(route.query.id)
+  if (Number.isFinite(id) && id > 0) meetingId = id
+}
+function currentMeetingId() {
+  const id = Number((detail.value && detail.value.id) || route.query.id || meetingId)
+  return Number.isFinite(id) && id > 0 ? id : null
+}
 // 注意：本页用 options.id（不是 meetingId），即 route.query.id
 onMounted(() => {
-  meetingId = parseInt(route.query.id)
+  syncMeetingIdFromRoute()
   fromNotice = route.query.fromNotice === '1'
-  stay = route.query.stay === '1'
   activeRole.value = getStorage('activeRole', null) || {}
   loadDetail()
   reconcileNews() // 进入即对账新闻状态，露出「查看新闻稿/生成中」入口
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onNewsVisibility)
 })
 // onShow → onMounted + onActivated（本页 onShow 会重载 detail，务必保留刷新）
-onActivated(() => { loadDetail(); reconcileNews() })
+onActivated(() => { syncMeetingIdFromRoute(); loadDetail(); reconcileNews() })
+watch(() => route.query.id, () => {
+  syncMeetingIdFromRoute()
+  if (meetingId) loadDetail()
+})
 // onUnload → onUnmounted
 onUnmounted(() => {
   destroyRecAudio()
@@ -1211,7 +1234,7 @@ async function loadDetail() {
     // 委员：进行中与主任统一走「会议进行」页（表决/意见/看录音，主任专属操作按权限隐藏）；
     // 其余阶段仍走专属极简会议页，不进操作者用的详情页（覆盖通知、待办等入口）
     if (uv === 'member') {
-      if (d.stage === 'ongoing' && d.record && !stay) {
+      if (d.stage === 'ongoing' && d.record) {
         redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
         return
       }
@@ -1219,8 +1242,7 @@ async function loadDetail() {
       return
     }
     // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）
-    if (d.stage === 'ongoing' && d.record && !fromNotice && !stay &&
-        uv === 'chair') {
+    if (d.stage === 'ongoing' && d.record && uv === 'chair') {
       redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
       return
     }
@@ -1339,6 +1361,11 @@ async function loadDetail() {
     prepareMode.value = pMode
     noticePackageVisible.value = npVisible
     deliveryExpanded.value = false
+    if (uv === 'chair' && d.stage === 'preparing') {
+      loadRecipients(false)
+      // 通知人员：还没产生通知记录→默认展开；已发过通知(有通知记录)→默认收起
+      recipientOpen.value = !((d.notificationLogs && d.notificationLogs.length) || d.notifiedAt)
+    }
   } catch (e) {
     toast({ title: '加载失败', icon: 'none' })
   }
@@ -1684,25 +1711,53 @@ function backToEditInfo() {
 }
 function goHome() { redirectTo('/main') }
 
-// ——— 发送通知：先弹「接收对象」名单（全体委员默认全选），确认后再发 ———
-const recipientVisible = ref(false)
+// ——— 发送通知：接收对象前置到会议通知页（默认收起、全体委员默认全选） ———
+const recipientOpen = ref(false)
 const recipientList = ref([])   // [{ userRoleId, name, role, checked }]
 const recipientSelectedCount = computed(() => recipientList.value.filter((x) => x.checked).length)
 const recipientAllChecked = computed(() => recipientList.value.length > 0 && recipientList.value.every((x) => x.checked))
+// 折叠头右侧摘要：全选→「全体委员 · N人」；部分→「已选 M/N人」；一个没选→「未选择」
+const recipientSummary = computed(() => {
+  const total = recipientList.value.length
+  const sel = recipientSelectedCount.value
+  if (!total) return '暂无委员'
+  if (sel >= total) return '全体委员 · ' + total + '人'
+  if (sel === 0) return '未选择'
+  return '已选 ' + sel + '/' + total + '人'
+})
+
+async function loadRecipients(force) {
+  if (!force && recipientList.value.length) return true
+  try {
+    const members = await api.committeeMembers()
+    const checkedMap = new Map(recipientList.value.map((x) => [x.userRoleId, x.checked]))
+    const list = (members || [])
+      .map((m) => {
+        const id = Number(m.userRoleId)
+        return { userRoleId: id, name: m.name || '委员', role: m.role || '', checked: checkedMap.has(id) ? checkedMap.get(id) : true }
+      })
+      .filter((x) => x.userRoleId)
+    if (!list.length) { recipientList.value = []; return false }
+    recipientList.value = list
+    return true
+  } catch (e) {
+    toast({ title: (e && e.message) || '加载委员名单失败', icon: 'none' })
+    return false
+  }
+}
 
 async function openRecipients() {
   if (sendSubmitting.value) return
-  try {
-    const members = await api.committeeMembers()
-    const list = (members || [])
-      .map((m) => ({ userRoleId: Number(m.userRoleId), name: m.name || '委员', role: m.role || '', checked: true }))
-      .filter((x) => x.userRoleId)
-    if (!list.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
-    recipientList.value = list
-    recipientVisible.value = true
-  } catch (e) {
-    toast({ title: (e && e.message) || '加载委员名单失败', icon: 'none' })
-  }
+  const ok = await loadRecipients(false)
+  if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
+  confirmSendRecipients()
+}
+async function sendAppNoticeOnly() {
+  if (sendSubmitting.value) return
+  const ok = await loadRecipients(false)
+  if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
+  const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
+  doSend(ids, { quietForward: true })
 }
 function toggleRecipient(id) {
   const it = recipientList.value.find((x) => x.userRoleId === id)
@@ -1718,16 +1773,20 @@ function confirmSendRecipients() {
 }
 
 // 真正发送：把选中的委员 id 发给后端
-async function doSend(ids) {
+async function doSend(ids, options) {
   if (sendSubmitting.value) return
   if (!ids || !ids.length) { toast({ title: '请至少选择一位委员', icon: 'none' }); return }
+  const id = currentMeetingId()
+  if (!id) { toast({ title: '当前会议信息异常，请返回首页重新进入', icon: 'none' }); return }
   sendSubmitting.value = true
   try {
-    await api.committeeSendAll(meetingId, ids)
-    toast({ title: '通知已发送', icon: 'success' })
-    recipientVisible.value = false
+    await api.committeeSendAll(id, ids)
+    if (!(options && options.silent)) {
+      toast({ title: options && options.quietForward ? 'App内已通知' : '通知已发送', icon: 'success' })
+    }
+    recipientOpen.value = false
     await loadDetail()
-    openForward()
+    if (!(options && options.quietForward)) openForward()
   } catch (e) {
     toast({ title: (e && e.message) || '发送失败', icon: 'none' })
   } finally {
@@ -1745,7 +1804,7 @@ const noticeTopicsText = computed(() => {
 })
 const noticeSent = computed(() => {
   const d = detail.value || {}
-  return !!(d.notifiedAt || (d.delivery && d.delivery.total > 0))
+  return !!(d.notifiedAt || (d.notificationLogs && d.notificationLogs.length) || (d.delivery && d.delivery.total > 0))
 })
 const noticeSentTime = computed(() => fmtSendTime(detail.value && detail.value.notifiedAt))
 const sendRecordText = computed(() => {
@@ -1756,7 +1815,8 @@ const sendRecordText = computed(() => {
 function fmtHm(t) { return String(t || '').slice(0, 5) }
 function fmtSendTime(s) { return s ? String(s).replace('T', ' ').slice(0, 16) : '' }
 function logText(log) {
-  const prefix = log.sentByName ? ('已由 ' + log.sentByName + ' 发送') : '通知已发送'
+  const action = log && log.channel === 'wechat' ? '通过微信通知' : 'App内通知'
+  const prefix = log.sentByName ? ('已由 ' + log.sentByName + ' ' + action) : (log && log.channel === 'wechat' ? '已通过微信通知' : '已发送App内通知')
   return prefix + (log.sentAt ? ' · ' + fmtSendTime(log.sentAt) : '')
 }
 function fmtCnDate(s) {
@@ -1789,15 +1849,21 @@ function openMap(loc) {
   try { window.open(url, '_blank') } catch (e) { window.location.href = url }
 }
 // 进会/地点导航链接（转发文本 + 弹窗预览复用）。进会为普通链接：委员本机登录过会自动带身份直达，否则先登录再落到该会议
-const joinUrl = computed(() => (typeof location !== 'undefined' ? location.origin : '') + '/committee-detail?id=' + meetingId)
+const joinUrl = computed(() => (typeof location !== 'undefined' ? location.origin : '') + '/committee-detail?id=' + (currentMeetingId() || ''))
 const mapNavUrl = computed(() => (detail.value && detail.value.location) ? mapSearchUrl(detail.value.location) : '')
-// 转发到微信的纯文本：首行缩进(全角空格) + 正文 + 落款 + 进会链接 + 地点导航链接。
-// 注：微信聊天是纯文本，只有完整网址能自动变蓝可点，无法把"地名"做成链接——故这里保留网址供群里点开
+// 转发到微信的纯文本：学腾讯会议邀请——「会议主题/时间/地点/议题」字段各占一行、链接单独成行，清晰。
+// 注：微信聊天是纯文本，只有完整网址能自动变蓝可点，无法把"地名"做成链接——故保留网址供群里点开
 const shareText = computed(() => {
-  let s = '　　' + noticeText.value + '\n——业主委员会'
-  s += '\n\n👉 进入会议：' + joinUrl.value          // 标签+网址同一行，精简；微信仍能识别网址可点
-  if (mapNavUrl.value) s += '\n📍 地图导航：' + mapNavUrl.value
-  return s
+  const d = detail.value || {}
+  const time = (fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime)).trim()
+  const lines = ['新会议通知：' + (d.title || '业委会会议'), '']
+  if (time) lines.push('会议时间：' + time)
+  if (d.location) lines.push('会议地点：' + d.location)
+  lines.push('会议议题：' + noticeTopicsText.value)
+  lines.push('', '点击链接入会：', joinUrl.value)
+  if (mapNavUrl.value) lines.push('', '地点导航：', mapNavUrl.value)
+  lines.push('', '请各位委员准时参加，点击上方会议链接即可进入')
+  return lines.join('\n')
 })
 // 弹窗预览里点"进入会议"
 function openJoin() {
@@ -1826,19 +1892,31 @@ function copyShareText() {
 // 转发到微信：先复制通知内容，再"尽力"唤起微信（安卓多能跳转；iOS 常无效但不影响使用），到群里直接粘贴即可。
 // ⚠ 严禁用 window.location.href='weixin://' 顶层跳转——那会把当前 H5 页面 unload（真机表现为"网页被自动关闭"）。
 // 改用隐藏 iframe 唤起 scheme：唤得起就跳微信，唤不起也只是无效，当前页始终不被关闭/重置。
-function openWechat() {
-  writeShareToClipboard()
-    .then(() => toast({ title: '已复制通知，请到微信粘贴到业主群', icon: 'none' }))
-    .catch(() => toast({ title: '请长按下方文本手动复制后到微信粘贴', icon: 'none' }))
-    .finally(() => {
-      try {
-        const ifr = document.createElement('iframe')
-        ifr.style.cssText = 'display:none;width:0;height:0;border:0'
-        ifr.src = 'weixin://'
-        document.body.appendChild(ifr)
-        setTimeout(() => { try { document.body.removeChild(ifr) } catch (e) {} }, 1500)
-      } catch (e) {}
-    })
+async function openWechat() {
+  // ① 复制通知文本到剪贴板（粘贴到业主群）
+  try {
+    await writeShareToClipboard()
+    toast({ title: '已复制通知，请到微信粘贴到业主群', icon: 'none' })
+  } catch (e) {
+    toast({ title: '请长按下方文本手动复制后到微信粘贴', icon: 'none' })
+  }
+  // ② 尝试拉起微信
+  try {
+    const ifr = document.createElement('iframe')
+    ifr.style.cssText = 'display:none;width:0;height:0;border:0'
+    ifr.src = 'weixin://'
+    document.body.appendChild(ifr)
+    setTimeout(() => { try { document.body.removeChild(ifr) } catch (e) {} }, 1500)
+  } catch (e) {}
+  // ③ 微信通知只做留痕，不改 App 内送达状态；App 内通知仍由「App内通知」按钮单独完成。
+  if (prepareMode.value === 'send') {
+    try {
+      await api.committeeMarkWechatNotified(currentMeetingId())
+      await loadDetail()
+    } catch (e) {
+      toast({ title: (e && e.message) || '微信通知记录失败', icon: 'none' })
+    }
+  }
 }
 
 // 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
@@ -1981,6 +2059,20 @@ async function removeMeeting() {
   }
 }
 
+// 清空通知记录（测试用）：确认后删本会议全部通知历史+送达、重置为「未通知」，再刷新详情
+async function clearNotices() {
+  const res = await showModal({
+    title: '清空通知记录',
+    content: '仅供测试：将删除本会议的全部通知记录，并重置为「未通知」。确定清空？'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeClearNotifications(currentMeetingId())
+    toast({ title: '已清空通知记录', icon: 'success' })
+    await loadDetail()
+  } catch (e) { toast({ title: (e && e.message) || '清空失败', icon: 'none' }) }
+}
+
 function openAddTopic() {
   addTopicVisible.value = true
   newTopicForm.title = ''
@@ -2060,6 +2152,16 @@ function viewMinutes() {
   navigateTo('/pages/minutes-view/minutes-view?' + q)
   setTimeout(() => {
     if (document.querySelector('.detail-page')) window.location.href = '/minutes-view?' + q
+  }, 300)
+}
+
+// 会后生成会议纪要：跳到纪要页 gen 模式（由纪要页统一调大模型生成并显示"生成中/结果"）。会中已不生成，纪要一律在此补生成。
+function generateMinutes() {
+  // 按钮本就只在主任视图(userView==='chair')出现，无需再守卫
+  const q = 'meetingId=' + meetingId + '&from=committee-detail&gen=1'
+  navigateTo('/pages/minutes/minutes?' + q)
+  setTimeout(() => {
+    if (document.querySelector('.detail-page')) window.location.href = '/minutes?' + q
   }, 300)
 }
 
@@ -2714,6 +2816,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 查看会议纪要：描边橙（辅助） */
 .ended-minutes-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
 .ended-minutes-btn:active { background:#FDF3E7; }
+/* 未生成纪要时的「生成会议纪要」：实心橙主行动，比「查看」更醒目（会后在此补生成） */
+.ended-minutes-btn.gen { background:var(--c-primary-dark); color:#fff; border-color:var(--c-primary-dark); box-shadow:0 3px 12px rgba(199,106,0,0.22); }
+.ended-minutes-btn.gen:active { background:#A85800; }
 /* AI生成新闻稿：描边红（辅助） */
 .ended-news-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
@@ -2823,21 +2928,40 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* 准备阶段底部固定主操作 */
 .prep-footer { position:fixed; bottom:0; left:0; right:0; z-index:100; box-sizing:border-box; background:#fff; border-top:1px solid #ECECEF; border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.10); padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.prep-footer.after-send-footer { background:transparent; border-top:none; border-radius:0; box-shadow:none; padding:0 16px calc(12px + env(safe-area-inset-bottom)); pointer-events:none; }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
 .pf-btn { display:flex; align-items:center; justify-content:center; height:88rpx; border:0; border-radius:44rpx; background: var(--c-primary-dark); color:#fff; font-size:32rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 20rpx; }
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
-.pf-btn-row .pf-btn { flex:1; min-width:0; height:80rpx; font-size:30rpx; background: var(--c-primary); }
-.pf-btn-row .pf-btn:active { background: var(--c-primary-dark); }
+.pf-btn-row .pf-btn { flex:1; min-width:0; height:80rpx; font-size:30rpx; background: var(--c-primary-dark); }
+.pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
+.pf-after-send { display:flex; flex-direction:column; gap:14rpx; pointer-events:auto; }
+.after-send-footer .pf-btn-row { padding:0 20rpx; }
+.pf-btn-start-top { align-self:center; width:60%; height:86rpx; background:#0F766E; color:#fff; font-size:32rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
+.pf-btn-start-top:active { background:#0B5F59; animation:none; }
+.pf-start-ico { font-size:24rpx; margin-right:10rpx; line-height:1; }
+@keyframes startPulse { 0%, 100% { box-shadow:0 6rpx 16rpx rgba(15,118,110,0.22); } 50% { box-shadow:0 8rpx 24rpx rgba(15,118,110,0.44), 0 0 0 5rpx rgba(15,118,110,0.12); } }
+@media (prefers-reduced-motion: reduce) { .pf-btn-start-top { animation:none; } }
 .pf-hint { display:block; text-align:center; font-size: 24rpx; color:#666; margin-top:7px; }
 
 /* ——— 通知页（精简版）：通知卡片 / 发送记录 / 取消会议 / 转发微信弹层 ——— */
 .notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:32rpx; margin-bottom:20rpx; }
+.nc-copy { padding:32rpx 34rpx; display:flex; flex-direction:column; gap:14rpx; font-size:30rpx; line-height:1.7; color:#1a1a1a; }
+.nc-copy-title { font-size:34rpx; font-weight:700; line-height:1.55; word-break:break-all; }
+.nc-copy-row { font-size:30rpx; color:#333; line-height:1.65; word-break:break-all; }
+.nc-copy-note { margin-top:4rpx; font-size:29rpx; color:#555; line-height:1.65; }
+.nc-copy-sign { margin-top:8rpx; text-align:right; font-size:30rpx; font-weight:700; color:#1a1a1a; line-height:1.7; }
 .nc-banner { background:#C76A00; color:#fff; text-align:center; font-size:34rpx; font-weight:700; letter-spacing:6rpx; padding:24rpx 0; }
-.nc-title { font-size:42rpx; font-weight:700; color:#1a1a1a; text-align:center; padding:44rpx 40rpx 10rpx; line-height:1.4; }
-.nc-para { padding:8rpx 44rpx 4rpx; font-size:34rpx; color:#000; line-height:1.8; text-align:left; text-indent:2em; }
+/* 强化语气：卡片以「新会议通知」橙色标签开头，替代原来偏弱的邀请口吻 */
+.nc-kicker { text-align:center; padding:34rpx 40rpx 0; color:#C76A00; font-size:26rpx; font-weight:700; letter-spacing:8rpx; }
+.nc-title { font-size:42rpx; font-weight:700; color:#1a1a1a; text-align:center; padding:10rpx 40rpx 10rpx; line-height:1.4; }
+.nc-fields { padding:16rpx 44rpx 8rpx; display:flex; flex-direction:column; gap:20rpx; }
+.nc-field { display:flex; align-items:flex-start; gap:20rpx; font-size:34rpx; line-height:1.5; }
+.nc-label { flex-shrink:0; width:140rpx; color:#8A8F98; font-weight:600; }
+.nc-value { flex:1; min-width:0; color:#1a1a1a; font-weight:600; word-break:break-all; }
+.nc-muted { color:#9aa0a6; font-weight:400; }
 /* 正文里的会议地点：蓝色可点超链接，点开高德地图导航 */
 .loc-inline { color:#1A73E8; text-decoration:underline; cursor:pointer; }
 .loc-inline:active { opacity:0.6; }
@@ -2847,15 +2971,31 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .nc-v { flex:1; color:#333; word-break:break-all; }
 .nc-body { padding:18rpx 44rpx 6rpx; font-size:30rpx; color:#333; line-height:1.7; }
 .nc-sign { padding:6rpx 44rpx 34rpx; text-align:right; font-size:34rpx; font-weight:700; color:#1a1a1a; }
+/* 通知人员：前置到通知页，默认收起，避免长通知正文后再弹二次确认 */
+.recipient-card { background:#fff; border:2rpx solid #EEF0F3; border-radius:18px; box-shadow:0 4rpx 16rpx rgba(0,0,0,0.05); margin:0 0 16rpx; overflow:hidden; }
+.recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:18rpx 24rpx; }
+.recipient-card-head:active { background:#FAFAFA; }
+.recipient-card-title { display:block; font-size:28rpx; color:#1f2329; font-weight:700; line-height:1.35; }
+.recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
+.recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:10rpx; }
+.recipient-summary { font-size:24rpx; color:#4A5560; white-space:nowrap; }
+.recipient-card-arrow { color:#A4A9B0; font-size:32rpx; line-height:1; transform:rotate(90deg); transition:transform .18s ease; }
+.recipient-card-arrow.open { transform:rotate(-90deg); }
+.page-rcp-list { margin:0; max-height:420rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
+.page-rcp-item { padding:20rpx 28rpx; }
 /* 通知记录：标题 + 记录 */
 .sr-section { margin:8rpx 6rpx 0; }
-.sr-heading { font-size:32rpx; font-weight:700; color:#1f2329; padding:2rpx 2rpx 12rpx; }
+.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:2rpx 2rpx 12rpx; }
+.sr-heading { font-size:32rpx; font-weight:700; color:#1f2329; }
+/* 清空通知记录：测试用弱化小按钮（灰描边胶囊） */
+.sr-clear-btn { flex-shrink:0; font-size:25rpx; color:#8A9099; padding:5rpx 18rpx; border:2rpx solid #E3E5E9; border-radius:999rpx; line-height:1.3; }
+.sr-clear-btn:active { background:#F2F3F5; color:#6A7480; }
 /* 通知记录：去底色，纯绿色文字、加大一号并加粗 */
 .send-record { display:flex; align-items:center; gap:12rpx; margin:0; padding:8rpx 2rpx; }
 .send-record + .send-record { margin-top:20rpx; }   /* 多条记录之间间隔加大约 10px */
 .sr-ic { color:#2E9E5B; font-weight:700; font-size:32rpx; }
 .sr-text { font-size:32rpx; color:#2E7D46; font-weight:700; }
-.prep-cancel { text-align:center; margin:44rpx 0 10rpx; }
+.prep-cancel { text-align:center; margin:-4rpx 0 16rpx; }
 .prep-cancel span { font-size:26rpx; color:#bbb; padding:10rpx 18rpx; }
 .forward-sheet { position:relative; width:100%; max-width:480px; margin:0 auto; background:#fff; border-radius:24rpx 24rpx 0 0; padding:30rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-sizing:border-box; }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
@@ -3117,14 +3257,19 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .rcp-allrow { display:flex; align-items:center; gap:16rpx; margin-top:20rpx; padding:20rpx 22rpx; background:var(--c-primary-soft, #fdf0e0); border-radius:18rpx; }
 .rcp-all-label { font-size:32rpx; font-weight:700; color:#1f2329; }
 .rcp-count { margin-left:auto; font-size:26rpx; color:var(--c-primary-strong, #c96a12); font-weight:600; }
-.rcp-list { margin-top:12rpx; flex:1; min-height:120rpx; }
-.rcp-item { display:flex; align-items:center; gap:16rpx; padding:22rpx 22rpx; border-bottom:1px solid #f0f0f2; }
+.rcp-list { margin-top:8rpx; flex:1; min-height:100rpx; }
+.rcp-item { display:flex; align-items:center; gap:14rpx; padding:15rpx 22rpx; border-bottom:1px solid #f0f0f2; }
 .rcp-item:active { background:#fafafa; }
+/* 全选行：挪到展开列表顶部，浅橙底 + 橙字，与成员行区分 */
+.rcp-all-row { background:#FFFCF7; }
+.rcp-all-row .rcp-name { color:#A85800; }
+.rcp-all-count { margin-left:auto; flex-shrink:0; font-size:21rpx; color:#8A9099; white-space:nowrap; }
 .rcp-person { display:flex; flex-direction:column; gap:2rpx; }
-.rcp-name { font-size:32rpx; color:#1f2329; font-weight:600; }
-.rcp-role { font-size:24rpx; color:#9aa0a6; }
-.rcp-empty { text-align:center; color:#9aa0a6; font-size:28rpx; padding:40rpx 0; }
-.rcp-check { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; border:3rpx solid #cfd4da; display:flex; align-items:center; justify-content:center; color:#fff; font-size:28rpx; font-weight:700; box-sizing:border-box; }
+.rcp-name { font-size:28rpx; color:#1f2329; font-weight:600; }
+.rcp-role { font-size:20rpx; color:#9aa0a6; }
+.rcp-empty { text-align:center; color:#9aa0a6; font-size:24rpx; padding:32rpx 0; }
+.rcp-check { flex-shrink:0; width:38rpx; height:38rpx; border-radius:50%; border:3rpx solid #cfd4da; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24rpx; font-weight:700; box-sizing:border-box; }
+.rcp-check.mini { width:28rpx; height:28rpx; border-width:2rpx; font-size:18rpx; }
 .rcp-check.on { background:var(--c-primary); border-color:var(--c-primary); }
 .rcp-actions { display:flex; gap:20rpx; margin-top:20rpx; }
 .rcp-btn { flex:1; height:92rpx; border:none; border-radius:20rpx; font-size:34rpx; font-weight:700; }
