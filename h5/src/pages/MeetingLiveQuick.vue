@@ -160,9 +160,6 @@
         <div class="supp-head supp-head-2">
           <span class="supp-title">补充材料</span>
         </div>
-        <div class="supp-actions single">
-          <button class="supp-btn ghost supp-material-btn" @click="uploadMaterial">上传材料</button>
-        </div>
         <div v-if="materials.length" class="supp-files">
           <div class="rec-list-head" @click="matListOpen = !matListOpen">
             <span>会议材料 {{ materials.length }} 份</span>
@@ -174,6 +171,9 @@
               <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
             </div>
           </div>
+        </div>
+        <div class="supp-actions single">
+          <button class="supp-btn ghost supp-material-btn" @click="uploadMaterial">上传材料</button>
         </div>
       </div>
 
@@ -2543,7 +2543,8 @@ async function onNavBack() {
 .supp-title { font-size:28rpx; font-weight:700; color:#6B7280; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
 .supp-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18rpx; margin-bottom:18rpx; }
-.supp-actions.single { grid-template-columns:1fr; } /* 会中已无 AI纪要按钮，只剩「上传材料」→ 铺满整行 */
+.supp-actions.single { grid-template-columns:1fr; }
+.supp-actions.single .supp-btn { width:80%; justify-self:center; } /* 单按钮(开始/暂停录音、上传材料)缩到80%宽、居中，不铺满整行 */
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 .supp-btn { height:76rpx; border-radius:18rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:700; font-family:inherit; }
 .supp-btn.rec { border-color:#FED7D7; background:#FFF5F5; color:#B42318; }
