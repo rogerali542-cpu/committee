@@ -117,12 +117,13 @@
         </div>
       </div>
 
-      <!-- 补充材料：录音入口、AI纪要、材料上传归到一张卡里 -->
+      <!-- 会中辅助区：拆「会议录音」+「补充材料」两个子标题区 -->
       <div class="supp-card" v-if="isChair">
+        <!-- ① 会议录音 -->
         <div class="supp-head">
-          <span class="supp-title">补充材料</span>
+          <span class="supp-title">会议录音</span>
         </div>
-        <div class="supp-actions" :class="{ paused: isPaused }">
+        <div class="supp-actions single" :class="{ paused: isPaused }">
           <button v-if="!isPaused" class="supp-btn rec" @click="onCircleTap" :disabled="uploading || polling || extracting || generatingMinutes">
             {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
           </button>
@@ -130,7 +131,6 @@
             <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || polling || extracting || generatingMinutes">继续录音</button>
             <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
           </template>
-          <button class="supp-btn ghost supp-material-btn" @click="uploadMaterial">上传材料</button>
         </div>
         <!-- 录音上传/后台转写状态：上传后自动转写 -->
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0"> {{ uploadPct }}%</span></div>
@@ -155,10 +155,24 @@
             </div>
           </div>
         </div>
+
+        <!-- ② 补充材料 -->
+        <div class="supp-head supp-head-2">
+          <span class="supp-title">补充材料</span>
+        </div>
+        <div class="supp-actions single">
+          <button class="supp-btn ghost supp-material-btn" @click="uploadMaterial">上传材料</button>
+        </div>
         <div v-if="materials.length" class="supp-files">
-          <div class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
-            <span class="supp-file-name">{{ m.name }}</span>
-            <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
+          <div class="rec-list-head" @click="matListOpen = !matListOpen">
+            <span>会议材料 {{ materials.length }} 份</span>
+            <span class="rec-list-toggle">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
+          </div>
+          <div v-if="matListOpen" class="rec-list-body">
+            <div class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
+              <span class="supp-file-name">{{ m.name }}</span>
+              <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -764,6 +778,7 @@ const bgMinutesGenerating = computed(() => aiTask.active && !!aiTask.targetPath 
 // 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
 const flowStep = computed(() => minutesGenerated.value ? 3 : (currentStep.value === 1 ? 1 : 2))
 const recListOpen = ref(false)   // 录音卡内「已录N段」列表是否展开
+const matListOpen = ref(false)   // 补充材料卡内「会议材料N份」列表是否展开（默认收起，会中不常看）
 const siMeetOpen = ref(false)    // 签到页：会议卡是否展开(看议题)
 const siRosterOpen = ref(false)  // 签到页：参会名单是否展开
 const signinFx = ref(false)      // 签到→录音 跳转动画遮罩
@@ -2522,9 +2537,10 @@ async function onNavBack() {
 .top-rec-status.paused .top-rec-btn { border-color:#CBD5E1; color:#334155; }
 .top-rec-status.paused .top-rec-btn.primary { border-color:#126A72; background:#126A72; color:#fff; }
 .top-rec-btn[disabled] { opacity:0.45; }
-.supp-card { background:#fff; border-radius:24rpx; padding:28rpx; margin-top:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.supp-card { background:#F7F8FA; border:2rpx solid #EEF1F3; border-radius:20rpx; padding:20rpx 22rpx; margin-top:20rpx; } /* 弱化：会中辅助区，视觉重量明显低于议题卡(白底+阴影) */
 .supp-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18rpx; margin-bottom:20rpx; }
-.supp-title { font-size:34rpx; font-weight:800; color:#1F2024; }
+.supp-head.supp-head-2 { margin-top:22rpx; padding-top:18rpx; border-top:2rpx solid #EAEDF0; } /* 「补充材料」子标题：与上方「会议录音」区分隔 */
+.supp-title { font-size:28rpx; font-weight:700; color:#6B7280; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
 .supp-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18rpx; margin-bottom:18rpx; }
 .supp-actions.single { grid-template-columns:1fr; } /* 会中已无 AI纪要按钮，只剩「上传材料」→ 铺满整行 */
