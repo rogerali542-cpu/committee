@@ -11,6 +11,8 @@
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up
 # 然后浏览器打开 http://localhost:8088
 services:
+  mysql:
+    pull_policy: never
   ocr-asr-service:
     pull_policy: never
     env_file:

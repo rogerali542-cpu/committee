@@ -1,0 +1,14 @@
+沙箱上传文件说明
+
+1. 上传 images.tar 作为 Docker 镜像包。
+2. 上传 docker-compose.yml 作为编排文件。
+3. 数据库已内置：ywh-mysql 镜像烘入种子数据，首次启动自动导入，无需外部云 MySQL。
+4. 在沙箱环境变量页面填写 env.example 中列出的全部变量；请勿直接上传本地 .env。
+5. 至少需要正确配置 JWT_SECRET 和 OCR_SERVICE_TOKEN；数据库已内置（ywh-mysql 镜像），平台页不要填 DB_*/MYSQL_*。
+6. （已无外部数据库依赖，无需配置白名单。）
+
+镜像：
+- ywh-frontend:latest
+- ywh-backend:latest
+- ywh-ocr-asr:latest
+- ywh-mysql:latest
