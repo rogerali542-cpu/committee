@@ -76,12 +76,12 @@ public class DocumentPrefillService {
             - 拿不准时：有明确的开会时间+地点安排就算 notice，否则算 material。
             二、若是 notice，从原文提取“新建会议”所需信息，仅依据原文、不得编造；material 各字段留空即可。
             只输出一个 JSON 对象，不要任何解释、不要 Markdown 代码块：
-            {"category":"notice或material","title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["议题标题1","议题标题2"]}
+            {"category":"notice或material","title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["notice|通知议题标题","discussion|讨论议题标题","decision|表决议题标题"]}
             要求：
             1. 只从给定文字提取；缺失的字段用空字符串 ""，topics 缺失用空数组 []，不要编造。
             2. 日期归一化为 YYYY-MM-DD；若原文只有“X月X日”没有年份，用我给你的“当前年份”。
             3. 时间归一化为 24 小时制 HH:mm（如“下午两点半”→“14:30”）。
-            4. topics 只取会议要讨论/审议/表决的议题标题，简洁，一条一个，不要把整段说明塞进去。
+            4. topics 每项必须以类型前缀开头：通知/通报/知悉用 notice|，仅讨论不表决用 discussion|，需要投票表决用 decision|；前缀后只写简洁标题。
             """;
 
     private static final String EXTRACT_MULTI_SYSTEM = """
@@ -94,12 +94,12 @@ public class DocumentPrefillService {
             三、顶层 title/meetingDate/meetingTime/location/topics 填最主要的一份（通常取 notices 的第一份）。
             四、若 notices 有两份及以上（识别到多份不同的通知），conflict 用一句话说明（如“识别到多份不同的会议通知”）；只有一份或没有通知则 conflict 为空字符串 ""。
             只输出一个 JSON 对象，不要任何解释、不要 Markdown 代码块：
-            {"fileCategories":["notice或material", ...],"notices":[{"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["议题标题1"]}],"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["议题标题1","议题标题2"],"conflict":"冲突说明或空串"}
+            {"fileCategories":["notice或material", ...],"notices":[{"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["notice|通知议题标题"]}],"title":"会议名称","meetingDate":"YYYY-MM-DD","meetingTime":"HH:mm","location":"会议地点","topics":["notice|通知议题标题","discussion|讨论议题标题","decision|表决议题标题"],"conflict":"冲突说明或空串"}
             要求：
             1. 只从给定文字提取；缺失的字段用空字符串 ""，topics 缺失用空数组 []，不要编造。
             2. 日期归一化为 YYYY-MM-DD；只有“X月X日”没有年份时用我给的“当前年份”。
             3. 时间归一化为 24 小时制 HH:mm（如“下午两点半”→“14:30”）。
-            4. topics 只取会议要讨论/审议/表决的议题标题，简洁，一条一个。
+            4. topics 每项必须以类型前缀开头：通知/通报/知悉用 notice|，仅讨论不表决用 discussion|，需要投票表决用 decision|；前缀后只写简洁标题。
             5. 若没有任何 notice 文件，notices 为空数组 []、title/meetingDate/meetingTime/location 留空、topics 留空数组，fileCategories 照常逐个给出，conflict 为空串。
             """;
 

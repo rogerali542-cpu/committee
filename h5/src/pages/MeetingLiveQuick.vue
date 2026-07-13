@@ -1,8 +1,8 @@
 <template>
-  <div class="live-page" :class="{ 'lp-signin': currentStep === 1 }" style="overflow-y:auto;" v-if="detail">
+  <div v-if="detail" class="live-page" :class="{ 'lp-signin': currentStep === 1 }" style="overflow-y:auto;">
 
     <!-- 页面对所有身份统一：主任/副主任可操作录音等，其余身份只读+表决/意见 -->
-    <PageNav :title="currentStep === 1 ? '会议签到' : '会议进行'" style="margin:-3.2vw -3.2vw 0;">
+    <PageNav :title="currentStep === 1 ? '会议签到' : (meetingPhase === 'voting' ? '议题表决' : '会议进行')" style="margin:-3.2vw -3.2vw 0;">
       <template #left>
         <div class="mlq-back" @click="onNavBack">‹</div>
       </template>
@@ -22,8 +22,44 @@
     <!-- 遮罩只在「生成会议纪要」阶段弹；上传/转写在后台静默进行，靠录音卡下方行内提示 -->
     <AiWorkingOverlay :active="generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
 
+    <!-- 结束会议后的会后整理决策页：把“生成纪要/直接结束”从弹窗提升为明确页面 -->
+    <div v-if="endReviewVisible" class="end-review-page">
+      <div class="end-review-head">
+        <span class="end-review-back" @click="endReviewVisible = false">‹</span>
+        <span class="end-review-title">会后整理</span>
+        <span class="end-review-spacer"></span>
+      </div>
+      <div class="end-review-body">
+        <div class="end-review-card">
+          <div class="end-review-sub">{{ endReviewHint }}</div>
+          <div class="end-review-guide">
+            <div class="erg-step done"><span>✓</span><div><b>会议内容已保存</b></div></div>
+            <div class="erg-line"></div>
+            <div class="erg-step current"><span>2</span><div><b>生成会议纪要</b></div></div>
+            <div class="erg-line"></div>
+            <div class="erg-step"><span>3</span><div><b>确认并公示</b></div></div>
+          </div>
+          <div class="end-review-source-title">会议记录状态</div>
+          <div class="end-review-source">
+            <div class="ers-row" :class="{ ok: hasSavedRecordings || hasTranscript || generated, warn: canUpload }">
+              <span class="ers-dot"></span>
+              <span>{{ endReviewRecordText }}</span>
+            </div>
+            <div class="ers-row" :class="{ ok: generated, busy: polling || extracting }">
+              <span class="ers-dot"></span>
+              <span>{{ endReviewAsrText }}</span>
+            </div>
+          </div>
+          <button class="end-review-primary" :disabled="endReviewPrimaryDisabled" @click="handleEndReviewPrimary">
+            {{ endReviewPrimaryText }}
+          </button>
+          <button class="end-review-secondary" :disabled="ending" @click="endWithoutMinutes">暂不生成，直接结束</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
-    <!-- 阶段条：签到 → 议题表决 → 补充材料；录音作为会议记录辅助工具常驻 -->
+    <!-- 阶段条：签到 → 议题表决 → 会议材料；录音作为会议记录辅助工具常驻 -->
     <div class="lp-flow">
       <div class="lp-flow-step" :class="flowStep > 1 ? 'done' : (flowStep === 1 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 1">✓</template><template v-else>1</template></span>
@@ -32,12 +68,17 @@
       <span class="lp-flow-line" :class="{ done: flowStep > 1 }"></span>
       <div class="lp-flow-step" :class="flowStep > 2 ? 'done' : (flowStep === 2 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 2">✓</template><template v-else>2</template></span>
-        <span class="lp-flow-label">议题讨论与表决</span>
+        <span class="lp-flow-label">现场会议</span>
       </div>
       <span class="lp-flow-line" :class="{ done: flowStep > 2 }"></span>
-      <div class="lp-flow-step" :class="flowStep >= 3 ? 'on' : ''">
+      <div class="lp-flow-step" :class="flowStep > 3 ? 'done' : (flowStep === 3 ? 'on' : '')">
         <span class="lp-flow-dot">3</span>
-        <span class="lp-flow-label">补充材料</span>
+        <span class="lp-flow-label">议题表决</span>
+      </div>
+      <span class="lp-flow-line" :class="{ done: flowStep > 3 }"></span>
+      <div class="lp-flow-step" :class="flowStep >= 4 ? 'on' : ''">
+        <span class="lp-flow-dot">4</span>
+        <span class="lp-flow-label">会后整理</span>
       </div>
     </div>
 
@@ -83,17 +124,25 @@
 
         <!-- 底部大签到按钮（si-bottom 用 margin-top:auto 吸底；名单展开占满剩余空间内部滚动，按钮不被挤走） -->
         <div class="si-bottom">
-          <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? (isChair ? '进入录音' : '进入会议') : '点击签到' }}</button>
+          <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? '进入会议' : '点击签到' }}</button>
         </div>
       </div>
     </template>
 
     <!-- ========== 步骤2：录音 ========== -->
     <template v-else>
-      <!-- 会议主流程：按议题类型判断是否需要宣读通知、表决环节 -->
-      <div class="core-card">
+      <div v-if="meetingPhase === 'recording'" class="meeting-stage-card">
+        <div class="meeting-stage-title">正在进行现场讨论</div>
+        <div class="meeting-stage-text">会议正在录音，结束后再逐项处理议题。</div>
+        <button class="meeting-stage-next" :disabled="phaseChanging" @click="enterVotingPhase">
+          {{ phaseChanging ? '正在结束录音并保存…' : '进入议题讨论/表决' }}
+        </button>
+      </div>
+
+      <!-- 现场会议结束后，委员集中拿出手机完成议题表决和意见确认 -->
+      <div v-if="meetingPhase === 'voting'" class="core-card">
         <div class="core-head">
-          <span class="core-title">讨论与表决</span>
+          <span class="core-title">议题表决与意见确认</span>
         </div>
 
         <div v-if="meetingTopics.length" class="core-list">
@@ -117,54 +166,48 @@
         </div>
       </div>
 
-      <!-- 会中辅助区：拆「会议录音」+「补充材料」两个子标题区 -->
-      <div class="supp-card" v-if="isChair">
+      <!-- 会中辅助区：拆「会议录音」+「会议材料」两个子标题区 -->
+      <div class="supp-card" v-if="isChair && meetingPhase === 'recording'">
         <!-- ① 会议录音 -->
         <div class="supp-head">
           <span class="supp-title">会议录音</span>
         </div>
-        <div class="supp-actions single" :class="{ paused: isPaused }">
-          <button v-if="!isPaused" class="supp-btn rec" @click="onCircleTap" :disabled="uploading || polling || extracting || generatingMinutes">
-            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
-          </button>
-          <template v-if="isPaused">
-            <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || polling || extracting || generatingMinutes">继续录音</button>
-            <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
-          </template>
-        </div>
-        <!-- 录音上传/后台转写状态：上传后自动转写 -->
-        <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传录音…<span v-if="uploadPct > 0"> {{ uploadPct }}%</span></div>
-        <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
-        <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续开会</div>
-        <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
-        <div v-if="recordings.length" class="rec-list">
+        <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
+        <div v-if="recordings.length" class="rec-list rec-list-before-action">
           <div class="rec-list-head" @click="recListOpen = !recListOpen">
             <span>已录 {{ recordings.length }} 段</span>
             <span class="rec-list-toggle">{{ recListOpen ? '收起 ▲' : '展开 ▾' }}</span>
           </div>
           <div v-if="recListOpen" class="rec-list-body">
-            <div class="qk-rec-list-item" v-for="(item, idx) in recordings" :key="item.id">
+            <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordings" :key="item.id" @click="openRecordingDetail(item, idx)">
               <span class="qrl-idx">{{ idx + 1 }}</span>
-              <div class="qrl-info">
-                <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
-                <span class="qrl-meta">{{ fmtTimeRange(item) }}</span>
-                <span v-if="hasTranscript" class="qrl-view" @click="openTranscript('short')">查看内容 ›</span>
-              </div>
-              <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
-              <span v-if="!polling && !extracting" class="qrl-del" @click="deleteRecording(item, idx)">删除</span>
+              <span class="qrl-name rec-summary-name">第 {{ idx + 1 }} 段</span>
+              <span class="rec-summary-duration">{{ fmtDur(item.durationSec) }}</span>
+              <span class="qrl-play" :class="{ on: playingId === item.id }" @click.stop="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
+              <span class="rec-summary-more">详情 ›</span>
             </div>
           </div>
         </div>
-
-        <!-- ② 补充材料 -->
-        <div class="supp-head supp-head-2">
-          <span class="supp-title">补充材料</span>
+        <div class="supp-actions single" :class="{ paused: isPaused }">
+          <button v-if="!isPaused" class="supp-btn rec" @click="onCircleTap" :disabled="uploading || generatingMinutes">
+            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
+          </button>
+          <template v-if="isPaused">
+            <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
+            <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
+          </template>
+        </div>
+        <!-- 录音上传/后台转写状态：上传后自动转写 -->
+        <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
+        <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
+        <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
+        <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
+        <!-- ② 会议材料：份数紧跟标题展示；文件名蓝字下划线示可点 -->
+        <div class="supp-head supp-head-2" :class="{ 'supp-head-click': materials.length }" @click="materials.length && (matListOpen = !matListOpen)">
+          <span class="supp-title">会议材料<span v-if="materials.length">（共{{ materials.length }}份）</span></span>
+          <span v-if="materials.length" class="rec-list-toggle">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
         </div>
         <div v-if="materials.length" class="supp-files">
-          <div class="rec-list-head" @click="matListOpen = !matListOpen">
-            <span>会议材料 {{ materials.length }} 份</span>
-            <span class="rec-list-toggle">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
-          </div>
           <div v-if="matListOpen" class="rec-list-body">
             <div class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
               <span class="supp-file-name">{{ m.name }}</span>
@@ -178,8 +221,9 @@
       </div>
 
       <!-- 结束会议：始终可用的出口。会议纪要是可选项——不生成也能在此结束（结束后到会议详情页发起公示或补纪要） -->
-      <div v-if="isChair" class="end-meeting-row">
-        <button class="end-meeting-btn" @click="confirmEndMeeting">结束会议</button>
+      <div v-if="meetingPhase === 'voting' || (meetingPhase === 'recording' && allTopicsCompleted)" class="end-meeting-row">
+        <button v-if="meetingPhase === 'voting'" class="back-recording-btn" @click="returnToRecordingPage">‹ 返回录音页面</button>
+        <button v-if="isChair" class="end-meeting-btn" @click="confirmEndMeeting">结束会议</button>
       </div>
 
     </template>
@@ -227,6 +271,25 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="recordingDetail" class="qk-modal-mask" @click="closeRecordingDetail">
+      <div class="recording-detail-card" @click.stop="noop">
+        <div class="qk-sheet-head">
+          <span class="qk-modal-title">第 {{ recordingDetail.index + 1 }} 段录音</span>
+          <span class="qk-sheet-close" @click="closeRecordingDetail">×</span>
+        </div>
+        <div class="recording-detail-grid">
+          <div><span>录音时长</span><b>{{ fmtDur(recordingDetail.item.durationSec) }}</b></div>
+          <div><span>录制时间</span><b>{{ fmtTimeRange(recordingDetail.item) }}</b></div>
+          <div><span>识别状态</span><b>{{ recordingStatusText(recordingDetail.item) }}</b></div>
+        </div>
+        <div class="recording-detail-actions">
+          <button class="supp-btn rec" @click="togglePlay(recordingDetail.item)">{{ playingId === recordingDetail.item.id ? '暂停播放' : '播放录音' }}</button>
+          <button v-if="hasTranscript" class="supp-btn detail-secondary" @click="openTranscriptFromDetail">查看转写</button>
+          <button v-if="!polling && !extracting" class="recording-detail-delete" @click="deleteRecordingFromDetail">删除这段录音</button>
         </div>
       </div>
     </div>
@@ -300,10 +363,27 @@
     </div>
 
   </div>
+  <div v-else class="live-page live-error-page">
+    <PageNav title="会议进行" style="margin:-3.2vw -3.2vw 0;">
+      <template #left>
+        <div class="mlq-back" @click="goHome">‹</div>
+      </template>
+      <template #right>
+        <button class="nav-home" @click="goHome">首页</button>
+      </template>
+    </PageNav>
+    <div class="live-error-card">
+      <div class="live-error-title">会议无法打开</div>
+      <div class="live-error-text">{{ loadError || '会议信息加载失败，请返回首页重新进入。' }}</div>
+      <button class="live-error-primary" @click="goHome">回到首页</button>
+      <button class="live-error-secondary" @click="loadDetail">重新加载</button>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onMounted, onActivated, onUnmounted, onDeactivated } from 'vue'
+defineOptions({ name: 'MeetingLiveQuick' })
+import { ref, reactive, computed, watch, nextTick, onMounted, onActivated, onUnmounted, onDeactivated, onErrorCaptured } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
@@ -312,6 +392,8 @@ import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/co
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { useRecorder } from '@/composables/useRecorder'
 import { applyHotwords } from '@/utils/helpers'
+import { openMaterialViewer } from '@/composables/materialViewer'
+import { meetingRecordingSession } from '@/composables/meetingRecordingSession'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import TopicSheet from '@/components/TopicSheet.vue'
@@ -514,6 +596,27 @@ function mapTopic(hit, fallback, voteTotalArg) {
 const type = ref('committee')
 const meetingId = ref(null)
 const detail = ref(null)
+const loadError = ref('')
+
+// These immediate recorder refs may run their watcher during setup, so register
+// the session bridge only after meetingId/detail have been initialized.
+watch([rec.recording, rec.paused, rec.timeText], ([recording, paused, time]) => {
+  meetingRecordingSession.active = !!recording
+  meetingRecordingSession.paused = !!paused
+  meetingRecordingSession.timeText = time || '00:00'
+  if (recording) meetingRecordingSession.meetingId = String(meetingId.value || route.query.meetingId || '')
+})
+watch(() => detail.value && detail.value.title, (title) => {
+  if (title) meetingRecordingSession.meetingTitle = title
+})
+
+onErrorCaptured((err) => {
+  const msg = err && err.message ? err.message : '页面渲染失败'
+  console.error('[会议进行页] 渲染失败：', err)
+  detail.value = null
+  loadError.value = '会议页面加载异常：' + msg
+  return false
+})
 // 议题弹层：存 id、从最新 detail 里取对象（轮询/刷新后计票等自动更新）
 const sheetTopicId = ref(null)
 const sheetTopic = computed(() => {
@@ -548,6 +651,7 @@ function topicBadgeDone(item) {
   if (item.type === 'notice') return !!item.notified || (item.opinionCount || 0) > 0 // 通报：已宣读/全体已看，或录音里被提到
   return (item.opinionCount || 0) > 0 // 讨论：录音里被提到/有意见 = 已处理
 }
+const allTopicsCompleted = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(topicBadgeDone))
 function topicBadgeText(item) {
   const done = topicBadgeDone(item)
   if (item.voteRequired) return done ? '已表决' : '待表决'
@@ -584,6 +688,9 @@ function topicActionButton(item) {
 
 // 步骤条 UI 已删（steps 数组随之移除）；currentStep 仍驱动 签到卡(1)/录音卡(2) 的切换
 const currentStep = ref(1)
+const meetingPhase = ref('recording') // recording=现场会议并录音；voting=会后集中表决与确认意见
+const phaseChanging = ref(false)
+const pageActive = ref(false)
 const signedIn = ref(false)        // 后端持久态：会议开始时已清空，ongoing 阶段即"本人会上是否已签到"（按用户区分、服务器持久）
 const selfAttendance = ref(null)
 
@@ -602,6 +709,9 @@ const recorderName = computed(() => {
   const role = getStorage('activeRole', null) || {}
   return (selfAttendance.value && selfAttendance.value.name) || role.realName || '本人'
 })
+watch(recorderName, (name) => {
+  meetingRecordingSession.recorderName = name || '本人'
+}, { immediate: true })
 // ── 悬浮录音标签：可拖动（手机触摸 + 桌面鼠标）──
 // 默认走 CSS 的 top/right 定位；拖过一次后切成 left/top 像素定位并记住位置（限制在屏内）。
 const recFloatEl = ref(null)
@@ -707,7 +817,26 @@ function onCircleTap() {
 }
 
 const uploading = ref(false)
-const uploadPct = ref(0)   // 上传录音的实时进度百分比（0=未知/刚开始，靠 axios onUploadProgress 更新）
+const uploadPct = ref(0)   // 上传+服务端保存/转码的预计综合进度；完成响应前最多显示 94%
+let _uploadProgressTimer = null
+function startUploadEstimatedProgress() {
+  if (_uploadProgressTimer) clearInterval(_uploadProgressTimer)
+  const startedAt = Date.now()
+  uploadPct.value = 2
+  _uploadProgressTimer = setInterval(() => {
+    const seconds = (Date.now() - startedAt) / 1000
+    // 前 10 秒到约 42%，10~30 秒到约 78%，之后缓慢逼近 94%，避免文件传完就误显 100%。
+    const target = seconds <= 10
+      ? 2 + seconds * 4
+      : (seconds <= 30 ? 42 + (seconds - 10) * 1.8 : 78 + (seconds - 30) * 0.45)
+    uploadPct.value = Math.min(94, Math.max(uploadPct.value, Math.floor(target)))
+  }, 500)
+}
+function stopUploadEstimatedProgress(completed) {
+  if (_uploadProgressTimer) clearInterval(_uploadProgressTimer)
+  _uploadProgressTimer = null
+  if (completed) uploadPct.value = 100
+}
 const polling = ref(false)
 const extracting = ref(false)
 const overlayPhase = ref('asr') // AI 工作遮罩阶段：转写=asr / 生成纪要=gen（一键流程内切换）
@@ -737,6 +866,7 @@ const hasTranscript = computed(() => !!(transcriptFullText.value || '').trim() |
 const transcriptVisible = ref(false)
 const transcriptMode = ref('short')
 const ending = ref(false)
+const endReviewVisible = ref(false)
 // 重做后的「最后一步」：AI 纪要审核
 const minutesGenerated = ref(false)   // 是否已生成 AI 纪要草稿
 const generatingMinutes = ref(false)  // 生成中（按钮 loading 态）
@@ -774,17 +904,65 @@ watch(generatingMinutes, (v) => { aiTask.overlayShown = v }, { immediate: true }
 // 全局后台纪要任务是否属于本会议（与首页悬浮条同源）——内存任务还在时用它兜底显示「生成中」入口
 const bgMinutesGenerating = computed(() => aiTask.active && !!aiTask.targetPath && aiTask.targetPath.indexOf('meetingId=' + meetingId.value) >= 0)
 // 会中已不生成纪要：原「AI生成纪要」主按钮及 suppMinutes* 计算属性已移除，纪要一律会后在会议详情页生成
+const endReviewHint = computed(() => {
+  if (canUpload.value) return '本次未上传的录音不会用于自动生成会议纪要。'
+  if (uploading.value) return '录音正在上传，完成后会自动识别。'
+  if (polling.value || extracting.value) return '录音正在后台识别，你可以停留在本页等待完成。'
+  if (generated.value) return '已整理好会议记录，可以生成会议纪要。'
+  if (hasSavedRecordings.value || hasTranscript.value) return '已有会议记录，但还没有完成识别整理。'
+  return '没有可用于自动生成纪要的录音记录。'
+})
+const endReviewRecordText = computed(() => {
+  if (canUpload.value) return '有未上传录音'
+  if (hasSavedRecordings.value) return '录音已保存'
+  return '暂无录音'
+})
+const endReviewAsrText = computed(() => {
+  if (uploading.value) return '上传中'
+  if (polling.value || extracting.value) return '识别中'
+  if (generated.value) return '识别完成'
+  return '未完成识别'
+})
+const endReviewPrimaryText = computed(() => {
+  if (uploading.value) return '上传中…'
+  if (polling.value || extracting.value) return '识别中…'
+  if (generated.value) return '生成会议纪要'
+  return '暂不能生成纪要'
+})
+const endReviewPrimaryDisabled = computed(() => {
+  if (ending.value || generatingMinutes.value) return true
+  if (uploading.value || polling.value || extracting.value) return true
+  return !generated.value
+})
 // —— 重做：阶段条 + 折叠态 + 签到跳转动画 ——
 // 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
-const flowStep = computed(() => minutesGenerated.value ? 3 : (currentStep.value === 1 ? 1 : 2))
+const flowStep = computed(() => endReviewVisible.value || minutesGenerated.value
+  ? 4
+  : (currentStep.value === 1 ? 1 : (meetingPhase.value === 'voting' ? 3 : 2)))
+
+function syncRecordingPageVisibility() {
+  meetingRecordingSession.pageVisible = pageActive.value
+    && currentStep.value === 2
+    && meetingPhase.value === 'recording'
+    && !endReviewVisible.value
+}
+watch([currentStep, meetingPhase, endReviewVisible], syncRecordingPageVisibility)
+watch(() => meetingRecordingSession.openRequest, () => {
+  if (!meetingRecordingSession.active) return
+  currentStep.value = 2
+  meetingPhase.value = 'recording'
+  endReviewVisible.value = false
+  syncRecordingPageVisibility()
+  persistQuickState()
+})
 const recListOpen = ref(false)   // 录音卡内「已录N段」列表是否展开
-const matListOpen = ref(false)   // 补充材料卡内「会议材料N份」列表是否展开（默认收起，会中不常看）
+const matListOpen = ref(true)    // 会议材料默认展开，便于会中直接查看材料清单
 const siMeetOpen = ref(false)    // 签到页：会议卡是否展开(看议题)
 const siRosterOpen = ref(false)  // 签到页：参会名单是否展开
 const signinFx = ref(false)      // 签到→录音 跳转动画遮罩
 function playSigninFx() {
   signinFx.value = true
-  setTimeout(() => { currentStep.value = 2; persistQuickState() }, 220) // 遮罩下快速切到录音步
+  setTimeout(() => { currentStep.value = 2; meetingPhase.value = 'recording'; persistQuickState() }, 220)
   setTimeout(() => { signinFx.value = false }, 520)                     // 一闪而过，别停留
 }
 const extraOpen = ref(false)          // 「AI 额外发现」是否展开
@@ -793,6 +971,23 @@ const extraOpen = ref(false)          // 「AI 额外发现」是否展开
 const isChair = ref(false)
 const myRoleId = ref(null)
 const recordings = ref([])
+const recordingDetail = ref(null)
+
+function openRecordingDetail(item, index) { recordingDetail.value = { item, index } }
+function closeRecordingDetail() { recordingDetail.value = null }
+function recordingStatusText(item) {
+  if (item && item.asrStatus === 'done') return '已识别'
+  if (item && (item.asrStatus === 'failed' || item.asrStatus === 'empty')) return '识别异常'
+  if (polling.value || extracting.value) return '识别中'
+  return '待识别'
+}
+function openTranscriptFromDetail() { closeRecordingDetail(); openTranscript('short') }
+async function deleteRecordingFromDetail() {
+  const detail = recordingDetail.value
+  if (!detail) return
+  closeRecordingDetail()
+  await deleteRecording(detail.item, detail.index)
+}
 // 转写页录音回放：当前正在播放的录音 id（null=未播放）
 const playingId = ref(null)
 const materials = ref([])
@@ -843,47 +1038,73 @@ let _playAudio = null       // 转写页录音回放用的 HTMLAudioElement
 // ═══════════════════════════════════════════════
 // 生命周期
 // ═══════════════════════════════════════════════
-onMounted(() => {
-  // onLoad(options)
+function initFromRoute() {
   type.value = route.query.type === 'owner' ? 'owner' : 'committee'
   meetingId.value = route.query.meetingId
+  detail.value = null
+  loadError.value = ''
   if (type.value === 'owner') {
     toast({ title: '业主大会模块已停用', icon: 'none' })
     setTimeout(function () { navigateBack() }, 500)
-    return
+    return false
   }
+  if (!meetingId.value) {
+    loadError.value = '缺少会议编号，请返回首页重新进入。'
+    return false
+  }
+  loadDetail()
+  return true
+}
+
+onMounted(() => {
+  pageActive.value = true
+  syncRecordingPageVisibility()
+  // onLoad(options)
+  initFromRoute()
   _pollCount = 0
   _booted = true
   if (typeof window !== 'undefined') window.addEventListener('beforeunload', _beforeUnloadGuard)
   // useRecorder 内部已管理录音生命周期与计时，无需 initRecorder
-  loadDetail()
   // 主任端每 12s 轻量刷新签到进度（委员陆续签到时进度自动增加）
   _attendanceTimer = setInterval(refreshAttendance, 12000)
 })
 
+watch(() => route.query.meetingId, (val, oldVal) => {
+  if (!_booted || String(val || '') === String(oldVal || '')) return
+  initFromRoute()
+})
+
 // onShow → onMounted 首跑 + onActivated（保持热切回页刷新；但避免与 onMounted 重复首跑）
 onActivated(() => {
+  pageActive.value = true
+  syncRecordingPageVisibility()
   if (!_booted) return
 })
 
 // onUnload → onUnmounted
 onUnmounted(() => {
+  pageActive.value = false
   if (generatingMinutes.value) _leftWhileGenerating = true // 生成中切走 → 完成走全局悬浮条兜底
   aiTask.overlayShown = false // 本页遮罩随本页销毁 → 交还给全局悬浮胶囊兜底（保证切走后有入口）
   persistQuickState()
   clearPoll()
   clearMinutesPoll()
+  stopUploadEstimatedProgress(false)
   if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
   if (_playAudio) { try { _playAudio.pause() } catch (e) {} _playAudio = null }
   if (typeof window !== 'undefined') {
     window.removeEventListener('beforeunload', _beforeUnloadGuard)
   }
   rec.reset() // 释放麦克风
+  meetingRecordingSession.active = false
+  meetingRecordingSession.pageVisible = false
 })
 
 // onHide → onDeactivated
 onDeactivated(() => {
+  pageActive.value = false
   persistQuickState()
+  syncRecordingPageVisibility()
 })
 
 // ═══════════════════════════════════════════════
@@ -899,6 +1120,7 @@ function persistQuickState(extra) {
     meetingId: meetingId.value,
     savedAt: Date.now(),
     currentStep: currentStep.value,
+    meetingPhase: meetingPhase.value,
     generated: generated.value,
     minutesGenerated: minutesGenerated.value, // 纪要已生成标志：持久化，避免回首页再进来退回「生成会议纪要」单键
     minutesGenAt: minutesGenAt.value,         // 生成发起时刻：整页刷新丢了内存任务后，据此判断"生成在途"并轮询服务端恢复入口
@@ -928,6 +1150,7 @@ function restoreQuickState(signedInArg) {
   const step = signedInArg ? 2 : 1
 
   currentStep.value = step
+  meetingPhase.value = saved.meetingPhase === 'voting' ? 'voting' : 'recording'
   generated.value = !!saved.generated
   minutesGenerated.value = !!saved.minutesGenerated // 恢复「纪要已生成」→ 显示 查看纪要/重新生成 两键，而非「生成会议纪要」
   minutesGenAt.value = saved.minutesGenAt || 0      // 恢复「生成发起时刻」→ reconcileMinutesState 据此兜底恢复"生成中"入口
@@ -967,6 +1190,7 @@ function clearQuickState() {
 
 async function loadDetail() {
   try {
+    loadError.value = ''
     const d = await api.committeeDetail(meetingId.value)
     const raw = (d.record && d.record.topics) || []
     const presets = raw.map(t => mapTopic(null, t))
@@ -992,8 +1216,8 @@ async function loadDetail() {
     attendanceList.value = recObj.attendances || []
     voteTotal.value = total
     voteNeed.value = Math.floor(total / 2) + 1
-    // 本人已签到（后端 signedIn，会议开始时已清空、按用户区分）→ 自动进入录音步，无需重复签到
-    currentStep.value = isSigned && currentStep.value === 1 ? 2 : currentStep.value
+    // 已签到但尚未进入本次前端会话时仍停在入口页，由用户点击进入；
+    // 主任的这次点击同时用于申请麦克风权限并自动开始录音。
 
     if (d.stage === 'ongoing') {
       const restored = restoreQuickState(isSigned)
@@ -1004,7 +1228,11 @@ async function loadDetail() {
       clearQuickState()
     }
   } catch (e) {
-    toast({ title: '加载失败', icon: 'none' })
+    const msg = (e && e.message) || '会议信息加载失败'
+    loadError.value = msg === '会议不存在'
+      ? '这场会议已不存在或已被重新创建，请返回首页重新进入。'
+      : msg
+    toast({ title: msg === '会议不存在' ? '会议不存在，请返回首页' : '加载失败', icon: 'none' })
   }
 }
 
@@ -1104,8 +1332,7 @@ function getSelfAttendance(d) {
 async function confirmSignIn() {
   // 已签到（后端 signedIn=true）→ 直接进入录音步
   if (signedIn.value) {
-    currentStep.value = 2
-    persistQuickState()
+    await enterLiveMeeting()
     return
   }
   const res = await showModal({
@@ -1123,8 +1350,31 @@ async function confirmSignIn() {
     signedIn.value = true
     loadDetail()
     playSigninFx()   // 播放「签到成功 → 进入录音」跳转动画，动画中途切到录音步
+    if (isChair.value) await startRecord()
   } catch (e) {
     toast({ title: e.message || '确认失败', icon: 'none' })
+  }
+}
+
+async function enterLiveMeeting() {
+  currentStep.value = 2
+  if (meetingPhase.value !== 'voting') meetingPhase.value = 'recording'
+  persistQuickState()
+  if (isChair.value && meetingPhase.value === 'recording' && !rec.recording.value && !rec.hasRecording.value) {
+    await startRecord()
+  }
+}
+
+async function enterVotingPhase() {
+  if (phaseChanging.value) return
+  phaseChanging.value = true
+  try {
+    // 只切换议题处理页面，录音继续进行；最终结束会议时再统一停止并保存。
+    meetingPhase.value = 'voting'
+    persistQuickState()
+    toast({ title: '已进入议题表决', icon: 'success' })
+  } finally {
+    phaseChanging.value = false
   }
 }
 
@@ -1370,7 +1620,7 @@ async function uploadRecordingFile(file, durationSec) {
   _asrDoneHandled = false
   // 上传期间留在录音页(step 2)，显示"正在上传录音…"，不再自动跳转写页
   uploading.value = true
-  uploadPct.value = 0
+  startUploadEstimatedProgress()
   asrStatus.value = ''
   polling.value = false
   extracting.value = false
@@ -1386,11 +1636,12 @@ async function uploadRecordingFile(file, durationSec) {
 
   try {
     // 上传后返回录音记录信息（带上时长），随后自动触发后台转写
-    // 第4参：axios 上传进度回调，实时更新百分比（到 100% 后仍在等服务器保存/转码，转圈继续）
-    await api.committeeUploadRecording(meetingId.value, file, durationSec, (e) => {
-      if (e && e.total) uploadPct.value = Math.min(100, Math.round((e.loaded / e.total) * 100))
+    // 网络上传完成后服务器仍需保存和转码，因此不直接采用 axios 很快到 100% 的发送进度。
+    await api.committeeUploadRecording(meetingId.value, file, durationSec, () => {
+      // 网络发送进度通常一秒内就会到 100%，显示层仍使用上面的综合预计进度。
     })
-    uploadPct.value = 100
+    stopUploadEstimatedProgress(true)
+    await new Promise(resolve => setTimeout(resolve, 300))
     toast({ title: '录音已上传', icon: 'success' })
     uploading.value = false
     rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
@@ -1400,6 +1651,7 @@ async function uploadRecordingFile(file, durationSec) {
     _recognizeAfterUpload = false
     uploadAndRecognize()
   } catch (e) {
+    stopUploadEstimatedProgress(false)
     _recognizeAfterUpload = false
     uploading.value = false
     currentStep.value = 2 // 退回录音步，可复用已录音频重试
@@ -2228,36 +2480,66 @@ async function _doEndAndGo(navUrl) {
       }
     }
     clearQuickState()
-    redirectTo(navUrl)
+    goAfterEnd(navUrl)
   } catch (err) {
     ending.value = false
     showModal({ title: '结束会议失败', content: (err && err.message) || '请稍后重试', showCancel: false })
   }
 }
 
+function goAfterEnd(navUrl) {
+  redirectTo(navUrl)
+  setTimeout(() => {
+    if (!document.querySelector('.live-page')) return
+    if (String(navUrl).indexOf('/pages/committee-detail/committee-detail') === 0) {
+      window.location.href = '/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick'
+      return
+    }
+    window.location.href = navUrl.replace(/^\/pages\/([^/]+)\/[^?]+/, '/$1')
+  }, 500)
+}
+
 // 结束会议出口：纪要是可选项 → 已生成/未生成给不同确认文案，不强制先生成纪要才能结束
 async function confirmEndMeeting() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可结束会议', icon: 'none' }); return }
-  // 安全兜底：有还没上传的录音 → 先问是否上传，避免结束后丢失（上传后自动后台转写；纪要会后在详情页生成）
   if (canUpload.value) {
-    const up = await showModal({
-      title: '还有未上传的录音',
-      content: '刚录的这段还没上传，结束会议后会丢失。要先上传吗？上传后系统会自动转写，纪要可稍后在会议详情页生成。',
-      confirmText: '先上传录音',
-      cancelText: '不用，直接结束'
+    const choice = await showActionSheet({
+      title: '有录音尚未上传',
+      variant: 'opinion-change',
+      itemList: [
+        { icon: '↑', label: '上传录音', tone: 'ai' },
+        { icon: '略', label: '不上传，继续结束', tone: 'danger' }
+      ]
     })
-    if (up.confirm) { uploadRecordingStep(); return }
+    if (choice.tapIndex === 0) {
+      await uploadRecordingStep()
+      // 上传失败时仍保留当前录音，不进入会后整理，方便用户重试或重新选择。
+      if (canUpload.value) return
+      endReviewVisible.value = true
+      return
+    }
+    if (choice.tapIndex !== 1) return
   }
-  const res = await showModal({
-    title: '结束会议',
-    content: minutesGenerated.value
-      ? '确认结束本次会议？结束后可在会议详情页发起公示。'
-      : '本次会议还没有生成会议纪要。确定直接结束吗？纪要可稍后在会议详情页补充生成。',
-    confirmText: '结束会议',
-    cancelText: '再想想'
-  })
-  // 结束后跳到会议详情页（公示页面），主任可在此「发起公示」或补生成纪要
-  if (res.confirm) _doEndAndGo('/pages/committee-detail/committee-detail?id=' + meetingId.value)
+  endReviewVisible.value = true
+}
+
+async function handleEndReviewPrimary() {
+  if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
+  if (uploading.value || polling.value || extracting.value) return
+  if (!generated.value) { toast({ title: '录音识别完成后可生成纪要', icon: 'none' }); return }
+  await endAndGenerateMinutes()
+}
+
+async function endAndGenerateMinutes() {
+  if (!generated.value) { toast({ title: '请先完成录音识别', icon: 'none' }); return }
+  minutesGenerated.value = true
+  persistQuickState()
+  await _doEndAndGo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&gen=1')
+}
+
+async function endWithoutMinutes() {
+  if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
+  await _doEndAndGo('/pages/committee-detail/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick')
 }
 
 // 手写会议纪要（不显眼入口）：不结束会议，直接进纪要页手写/编辑。
@@ -2286,6 +2568,20 @@ function formatSize(bytes) {
   return (bytes / 1024 / 1024).toFixed(1) + 'MB'
 }
 
+function materialKey(name, sizeText) {
+  return ((name || '').trim().toLowerCase()) + '::' + ((sizeText || '').trim().toLowerCase())
+}
+
+function isImageFile(file) {
+  const type = (file && file.type) || ''
+  const name = ((file && file.name) || '').toLowerCase()
+  return type.indexOf('image/') === 0 || /\.(png|jpe?g|webp|bmp|gif|heic|heif)$/.test(name)
+}
+
+function duplicateMaterialText(file) {
+  return isImageFile(file) ? '这张照片已经上传过了' : '这份文件已经上传过了'
+}
+
 // 资料上传：H5 用隐藏 input[type=file] 选文件，登记元数据（与小程序契约一致，仅存 name/sizeText）
 const materialFileInput = ref(null)
 function uploadMaterial() {
@@ -2308,14 +2604,32 @@ function uploadMaterial() {
 async function onMaterialFileChange(e) {
   const picked = Array.from(e.target.files || []).slice(0, 3)
   if (!picked.length) return
-  const files = picked.map(function (f) {
-    return { name: f.name || ('资料_' + Date.now()), sizeText: formatSize(f.size) }
+  const existing = new Set((materials.value || []).map(function (m) {
+    return materialKey(m.name || m.fileName, m.sizeText)
+  }))
+  const seen = new Set()
+  const files = []
+  const duplicateTips = []
+  picked.forEach(function (f) {
+    const item = { name: f.name || ('资料_' + Date.now()), sizeText: formatSize(f.size), raw: f }
+    const key = materialKey(item.name, item.sizeText)
+    if (existing.has(key) || seen.has(key)) {
+      duplicateTips.push(duplicateMaterialText(f))
+      return
+    }
+    seen.add(key)
+    files.push(item)
   })
+  if (!files.length) {
+    toast({ title: duplicateTips[0] || '该材料已经上传过了', icon: 'none' })
+    return
+  }
   try {
     await Promise.all(files.map(function (f) {
       return api.committeeAddMaterial(meetingId.value, f.name, f.sizeText)
     }))
-    toast({ title: '已上传 ' + files.length + ' 份', icon: 'success' })
+    const skipped = duplicateTips.length
+    toast({ title: skipped ? ('已上传 ' + files.length + ' 份，跳过重复 ' + skipped + ' 份') : ('已上传 ' + files.length + ' 份'), icon: 'success' })
     loadDetail()
   } catch (err) {
     toast({ title: err.message || '上传失败', icon: 'none' })
@@ -2326,6 +2640,7 @@ function previewMaterial(idx) {
   const list = materials.value || []
   const m = list[idx]
   if (!m) return
+  if (m.url) { openMaterialViewer(m); return }
   showModal({ title: m.name, content: m.content || '（暂无预览内容）', showCancel: false, confirmText: '关闭' })
 }
 
@@ -2474,10 +2789,14 @@ function goHome() {
 
 // 顶栏左上返回：录音步(step2)回签到页；签到页不再回到「会议进行中」中间页，直接回首页。
 async function onNavBack() {
+  // 议题处理页的返回键只退回录音页，不离开会议，也不改变正在进行的录音。
+  if (currentStep.value === 2 && meetingPhase.value === 'voting') {
+    returnToRecordingPage()
+    return
+  }
   if (currentStep.value === 2) {
-    try { if (signedIn.value) await api.committeeSelfToggle(meetingId.value, 'signedIn') } catch (e) { /* 回退失败不阻断 */ }
-    // 本地驱动切回签到页；不调 loadDetail（其自动进步逻辑会因刚 un-sign 的读取竞态把我们弹回录音步）。
-    signedIn.value = false
+    // 只返回签到页面查看会议信息，不撤销已经完成的签到。
+    // 因此底部按钮会显示“进入会议”，再次进入也不会重复签到。
     signinFx.value = false
     currentStep.value = 1
     persistQuickState()
@@ -2488,10 +2807,24 @@ async function onNavBack() {
     setTimeout(() => { if (document.querySelector('.live-page')) window.location.replace(url) }, 500)
   }
 }
+
+function returnToRecordingPage() {
+  sheetTopicId.value = null
+  meetingPhase.value = 'recording'
+  persistQuickState()
+}
 </script>
 
 <style scoped>
 .live-page { min-height:100vh; background:#f4f5f7; padding:24rpx; padding-bottom:48rpx; box-sizing:border-box; display:flex; flex-direction:column; }
+.live-error-page { min-height:100vh; }
+.live-error-card { margin-top:160rpx; background:#fff; border-radius:28rpx; padding:44rpx 36rpx; box-shadow:0 12rpx 36rpx rgba(31,35,41,0.08); display:flex; flex-direction:column; align-items:stretch; gap:24rpx; }
+.live-error-title { font-size:38rpx; font-weight:800; color:#1F2329; text-align:center; }
+.live-error-text { font-size:30rpx; line-height:1.6; color:#6B7280; text-align:center; }
+.live-error-primary,
+.live-error-secondary { height:88rpx; border-radius:18rpx; font-size:32rpx; font-weight:700; }
+.live-error-primary { margin-top:8rpx; background:#0F766E; color:#fff; }
+.live-error-secondary { background:#F3F4F6; color:#374151; }
 /* 仅本页：顶栏矮 24rpx(12px)，124→100rpx（PageNav 是共享组件，其他页不动） */
 .live-page :deep(.page-nav) { height:calc(100rpx + env(safe-area-inset-top)); }
 .live-page :deep(.page-nav .nav-back) { height:100rpx; }
@@ -2503,6 +2836,11 @@ async function onNavBack() {
 .lp-fold { display:flex; flex-direction:column; min-height:calc(100vh - 96rpx); }
 
 .core-card { background:#fff; border-radius:24rpx; padding:30rpx 28rpx 28rpx; margin-top:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.meeting-stage-card { margin-top:18rpx; padding:30rpx 28rpx 28rpx; border-radius:18rpx; background:#FFFDF9; border:2rpx solid #EEE6D9; box-shadow:0 3rpx 12rpx rgba(48,42,32,.04); }
+.meeting-stage-title { font-size:35rpx; line-height:1.4; font-weight:700; color:#34363A; }
+.meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#747980; }
+.meeting-stage-next { display:block; width:auto; min-width:310rpx; margin:24rpx auto 0; padding:17rpx 30rpx; border:2rpx solid #E3C796; border-radius:999rpx; background:#FFF8EC; color:#A25F08; font-size:28rpx; font-weight:700; box-shadow:none; }
+.meeting-stage-next[disabled] { opacity:.6; box-shadow:none; }
 .core-head { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-bottom:22rpx; }
 .core-title { font-size:38rpx; font-weight:800; color:#1F2024; line-height:1.35; }
 .core-sub { flex-shrink:0; font-size:26rpx; color:#0F766E; background:#E7F6F3; border:2rpx solid #B9E4DC; border-radius:999rpx; padding:8rpx 16rpx; font-weight:700; }
@@ -2531,8 +2869,8 @@ async function onNavBack() {
 .top-rec-status.paused { background:#F7F8FA; border-bottom-color:#E2E6EA; color:#1F2937; }
 .top-rec-dot { flex-shrink:0; width:18rpx; height:18rpx; border-radius:50%; background:#E23B3B; box-shadow:0 0 0 8rpx rgba(226,59,59,0.12); animation:recFlPulse 1.3s ease-out infinite; }
 .top-rec-status.paused .top-rec-dot { background:#94A3B8; box-shadow:none; animation:none; }
-.top-rec-main { flex-shrink:0; font-size:30rpx; font-weight:800; line-height:1.2; }
-.top-rec-time { flex:1; min-width:0; font-size:30rpx; font-weight:800; line-height:1.2; color:inherit; font-variant-numeric:tabular-nums; }
+.top-rec-main { flex-shrink:0; display:inline-flex; align-items:center; font-size:30rpx; font-weight:800; line-height:1; }
+.top-rec-time { flex:1; min-width:0; display:inline-flex; align-items:center; font-size:30rpx; font-weight:800; line-height:1; color:inherit; font-variant-numeric:tabular-nums; }
 .top-rec-btn { flex-shrink:0; border:2rpx solid #FECACA; background:#fff; color:#B42318; font-size:26rpx; font-weight:800; border-radius:999rpx; padding:10rpx 22rpx; font-family:inherit; }
 .top-rec-status.paused .top-rec-btn { border-color:#CBD5E1; color:#334155; }
 .top-rec-status.paused .top-rec-btn.primary { border-color:#126A72; background:#126A72; color:#fff; }
@@ -2544,24 +2882,68 @@ async function onNavBack() {
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
 .supp-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18rpx; margin-bottom:18rpx; }
 .supp-actions.single { grid-template-columns:1fr; }
-.supp-actions.single .supp-btn { width:80%; justify-self:center; } /* 单按钮(开始/暂停录音、上传材料)缩到80%宽、居中，不铺满整行 */
+.supp-actions.single .supp-btn { width:56%; min-width:250rpx; justify-self:center; } /* 会中操作统一胶囊宽度 */
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-.supp-btn { height:76rpx; border-radius:18rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:700; font-family:inherit; }
-.supp-btn.rec { border-color:#FED7D7; background:#FFF5F5; color:#B42318; }
-.supp-btn.upload-rec { border-color:#F4C88E; background:#FFF6E8; color:#A85800; }
+.supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
+.supp-actions.single.paused .supp-btn { width:56%; min-width:250rpx; justify-self:center; }
+.rec-list-before-action { margin:8rpx 0 20rpx; padding:12rpx 16rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
+.supp-btn { height:64rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:26rpx; font-weight:600; font-family:inherit; }
+.supp-btn.rec { border-color:#A65343; background:#A65343; color:#FFF; box-shadow:0 4rpx 12rpx rgba(166,83,67,0.16); }
+.supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:70rpx; font-size:28rpx; }
+.supp-btn.rec:active { background:#8F4638; border-color:#8F4638; }
+.supp-btn.upload-rec { border-color:#D6A75F; background:#FFF9EF; color:#91611C; }
 .supp-btn.ai { border-color:#BFD7D9; background:#EAF6F6; color:#126A72; }
+.supp-actions.single .supp-material-btn { width:310rpx; min-width:310rpx; height:70rpx; border-radius:999rpx; border-color:#BFC9D3; background:#FFFFFF; color:#52606D; font-size:28rpx; font-weight:600; box-shadow:none; }
+.supp-actions.single .supp-material-btn:active { background:#F2F5F7; border-color:#AEBAC6; }
 .supp-actions.paused .supp-material-btn { grid-column:1 / -1; } /* 仅暂停时「上传材料」铺满整行；非暂停(开始录音前)与「开始录音」左右并排 */
 .supp-btn:active { background:#EEF3F7; }
 .supp-btn[disabled] { opacity:0.55; box-shadow:none; }
 .supp-files { border-top:2rpx solid #F0F2F4; margin-top:12rpx; padding-top:10rpx; }
 .supp-file { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:16rpx 0; border-bottom:2rpx solid #F5F6F8; }
 .supp-file:last-child { border-bottom:0; }
-.supp-file-name { flex:1; min-width:0; font-size:28rpx; color:#1F2024; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.supp-file-name { flex:1; min-width:0; font-size:28rpx; color:#2563EB; text-decoration:underline; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .supp-file-size { flex-shrink:0; font-size:24rpx; color:#8A8F98; }
+.supp-files-foot { font-size:24rpx; color:#8A8F98; text-align:right; padding-top:14rpx; margin-top:4rpx; border-top:2rpx solid #F5F6F8; }
+.supp-head-click { cursor:pointer; }
 /* 结束会议：会议进行页底部的固定出口（纪要可选，不生成也能结束）。白底描边 full-width，清晰但不抢 AI纪要 主按钮的焦点 */
-.end-meeting-row { margin-top:26rpx; }
-.end-meeting-btn { display:block; width:100%; box-sizing:border-box; background:#fff; border:2rpx solid #CDD3DA; color:#4A515A; font-size:31rpx; font-weight:700; padding:26rpx 0; border-radius:20rpx; font-family:inherit; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.05); }
-.end-meeting-btn:active { background:#F3F5F7; }
+.end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; gap:22rpx; border-top:2rpx solid #ECE8E1; }
+.back-recording-btn { display:block; width:310rpx; height:70rpx; border:2rpx solid #D9C49F; border-radius:999rpx; background:#FFF9EF; color:#95600D; font-size:28rpx; font-weight:700; }
+.back-recording-btn:active { background:#F9EEDB; }
+.end-meeting-btn { display:block; width:100%; height:92rpx; box-sizing:border-box; background:#8E554B; border:0; color:#fff; font-size:32rpx; font-weight:700; border-radius:20rpx; font-family:inherit; box-shadow:0 8rpx 18rpx rgba(142,85,75,.18); }
+.end-meeting-btn:active { background:#78463D; }
+.end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
+.end-review-head { flex-shrink:0; height:96rpx; padding:0 28rpx; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:2rpx solid #ECEFF3; box-sizing:border-box; }
+.end-review-back { width:72rpx; font-size:58rpx; line-height:1; color:#30343A; }
+.end-review-title { flex:1; text-align:center; font-size:38rpx; font-weight:800; color:#1F2329; }
+.end-review-spacer { width:72rpx; }
+.end-review-body { flex:1; min-height:0; overflow:auto; padding:34rpx 30rpx calc(42rpx + env(safe-area-inset-bottom)); box-sizing:border-box; display:flex; align-items:flex-start; }
+.end-review-card { width:100%; min-height:860rpx; background:#fff; border:2rpx solid #E8EEF0; border-radius:30rpx; padding:50rpx 38rpx 44rpx; box-sizing:border-box; box-shadow:0 18rpx 46rpx rgba(25,40,55,0.10); }
+.end-review-kicker { display:inline-flex; padding:8rpx 18rpx; border-radius:999rpx; background:#EAF6F6; color:#0F766E; font-size:25rpx; font-weight:800; }
+.end-review-sub { margin-top:0; font-size:34rpx; line-height:1.6; color:#252A30; font-weight:600; }
+.end-review-guide { margin-top:38rpx; padding:30rpx; border-radius:20rpx; background:#F5FAF9; }
+.erg-step { display:flex; align-items:flex-start; gap:22rpx; color:#87919C; }
+.erg-step > span { flex-shrink:0; width:48rpx; height:48rpx; border-radius:50%; background:#E6EAEE; color:#7C8792; display:flex; align-items:center; justify-content:center; font-size:26rpx; font-weight:800; }
+.erg-step > div { display:flex; flex-direction:column; gap:5rpx; padding-top:2rpx; }
+.erg-step b { font-size:32rpx; line-height:1.5; }
+.erg-step small { font-size:24rpx; line-height:1.45; color:#89939E; }
+.erg-step.done > span { background:#DDF3E6; color:#198754; }
+.erg-step.done b { color:#26764E; }
+.erg-step.current > span { background:#0F766E; color:#fff; box-shadow:0 0 0 7rpx rgba(15,118,110,0.10); }
+.erg-step.current b { color:#0F665F; }
+.erg-line { width:2rpx; height:28rpx; background:#D9E3E3; margin:8rpx 0 8rpx 23rpx; }
+.end-review-source-title { margin-top:36rpx; font-size:29rpx; font-weight:800; color:#69737D; }
+.end-review-source { margin-top:16rpx; border-radius:18rpx; background:#F8FAFB; padding:24rpx 26rpx; display:flex; flex-direction:column; gap:20rpx; }
+.ers-row { display:flex; align-items:center; gap:16rpx; font-size:31rpx; color:#7A828C; font-weight:650; }
+.ers-dot { width:14rpx; height:14rpx; border-radius:50%; background:#B7BEC8; flex-shrink:0; }
+.ers-row.ok { color:#1B7F48; }
+.ers-row.ok .ers-dot { background:#2E9E4B; }
+.ers-row.warn { color:#B45309; }
+.ers-row.warn .ers-dot { background:#D97706; }
+.ers-row.busy { color:#0F766E; }
+.ers-row.busy .ers-dot { background:#0F766E; box-shadow:0 0 0 8rpx rgba(15,118,110,0.10); }
+.end-review-primary { width:100%; height:104rpx; margin-top:38rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:38rpx; font-weight:900; line-height:104rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
+.end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
+.end-review-secondary { width:100%; height:78rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:30rpx; font-weight:650; }
 /* 临时添加议题：会议进行卡底部，一条分隔线上方居中的蓝字按钮（主任/副主任现场加议题） */
 .lp-add-topic-row { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:16rpx 0 20rpx; display:flex; justify-content:center; }
 .lp-add-topic { font-size:28rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:12rpx 32rpx; line-height:1.3; font-family:inherit; }
@@ -2748,18 +3130,18 @@ async function onNavBack() {
 .nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:30rpx; font-weight:600; line-height:1; }
 .nav-home:active { background:rgba(255,255,255,0.28); }
 /* 流程条：下移 10px；左右留白让首尾圆点不贴边；底部留白容纳绝对定位的文字 */
-.lp-flow { display:flex; align-items:center; padding:24rpx 40rpx 58rpx; margin-top:20rpx; }
+.lp-flow { display:flex; align-items:center; padding:14rpx 48rpx 42rpx; margin-top:20rpx; }
 /* 步骤只由圆点决定宽度(文字绝对定位不撑宽)，三个步骤等宽 → 圆点等距对称 */
 .lp-flow-step { position:relative; flex-shrink:0; }
-.lp-flow-dot { width:76rpx; height:76rpx; border-radius:50%; background:#E4E6EA; color:#9AA0A6; font-size:40rpx; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.lp-flow-dot { width:58rpx; height:58rpx; border-radius:50%; background:#E4E6EA; color:#9AA0A6; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all .2s; }
 /* 文字绝对定位在圆点正下方居中，不影响圆点水平位置 */
-.lp-flow-label { position:absolute; top:calc(100% + 10rpx); left:50%; transform:translateX(-50%); font-size:28rpx; color:#9AA0A6; white-space:nowrap; }
-.lp-flow-step.on .lp-flow-dot { background:var(--c-primary-dark, #E8890C); color:#fff; box-shadow:0 0 0 7rpx rgba(232,137,12,0.18); }
+.lp-flow-label { position:absolute; top:calc(100% + 7rpx); left:50%; transform:translateX(-50%); font-size:23rpx; color:#9AA0A6; white-space:nowrap; }
+.lp-flow-step.on .lp-flow-dot { background:var(--c-primary-dark, #E8890C); color:#fff; box-shadow:0 0 0 5rpx rgba(232,137,12,0.18); }
 .lp-flow-step.on .lp-flow-label { color:var(--c-primary-dark, #E8890C); font-weight:600; }
 .lp-flow-step.done .lp-flow-dot { background:#3E9B34; color:#fff; }
 .lp-flow-step.done .lp-flow-label { color:#3E9B34; }
 /* 连线与圆点同在 align-items:center 下自然居中(步骤已只有圆点高，无需再补 margin) */
-.lp-flow-line { flex:1; height:6rpx; background:#E4E6EA; margin:0 12rpx; border-radius:3rpx; }
+.lp-flow-line { flex:1; height:4rpx; background:#E4E6EA; margin:0 10rpx; border-radius:2rpx; }
 .lp-flow-line.done { background:#3E9B34; }
 
 /* 录音主卡 */
@@ -2806,8 +3188,8 @@ async function onNavBack() {
 /* 签到页：大签到按钮 + 下方签到情况名单 */
 /* ===== 步骤1 签到页：会议卡 + 名单(默认收起) + 底部大钮(拇指区) ===== */
 /* 签到步固定为一屏高、不整页滚：名单 flex 占据剩余空间内部滚动、签到按钮吸底，两者都不超视口（覆盖 live-page 的 inline overflow-y:auto） */
-.live-page.lp-signin { height:100vh; height:100dvh; min-height:0; overflow:hidden !important; }
-.signin-page { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; gap:20rpx; padding:8rpx 0; }
+.live-page.lp-signin { min-height:100vh; overflow-y:auto !important; }
+.signin-page { flex:0 0 auto; min-height:0; display:flex; flex-direction:column; gap:24rpx; padding:8rpx 0 32rpx; }
 /* 顶部精简会议卡 */
 .si-meet-card { display:flex; align-items:center; gap:18rpx; background:#fff; border-radius:26rpx; padding:44rpx 40rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .si-meet-main { flex:1; min-width:0; }
@@ -2829,10 +3211,10 @@ async function onNavBack() {
 .si-roster-count b { font-size:30rpx; color:#27AE60; font-weight:800; }
 .si-roster-caret { flex-shrink:0; font-size:26rpx; color:#8A8F98; }
 /* 名单展开=下拉框：占据"会议卡→签到按钮"之间的剩余空间并内部滚动；按钮靠 si-bottom 的 margin-top:auto 吸底，人再多也不被挤走 */
-.si-roster.open { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
-.si-roster-body { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
-/* 底部拇指区：margin-top:auto 把签到按钮吸到底；名单展开时占满剩余空间，按钮仍固定在底 */
-.si-bottom { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding-top:8rpx; margin-top:auto; margin-bottom:5vh; }
+.si-roster.open { display:flex; flex-direction:column; }
+.si-roster-body { max-height:420rpx; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
+/* 底部拇指区：跟随名单下方，避免首屏中段出现大片空白 */
+.si-bottom { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding-top:24rpx; margin-top:4rpx; margin-bottom:0; }
 .signin-big-btn { width:64% !important; max-width:460rpx; margin:0 auto !important; background:linear-gradient(135deg, #FFA53D 0%, #F08308 100%) !important; color:#fff !important; font-size:46rpx !important; font-weight:700; letter-spacing:6rpx; padding:28rpx 0 !important; border-radius:48rpx; box-shadow:0 8rpx 22rpx rgba(232,137,12,0.26); animation:signinPulse 1.8s ease-in-out infinite; }
 /* 签到按钮发光脉动：突出这是本页唯一要点的交互 */
 @keyframes signinPulse { 0%, 100% { box-shadow:0 8rpx 22rpx rgba(232,137,12,0.26); } 50% { box-shadow:0 8rpx 34rpx rgba(232,137,12,0.5), 0 0 0 8rpx rgba(232,137,12,0.13); } }
@@ -2981,6 +3363,21 @@ async function onNavBack() {
 .qk-rec-list-item:last-child { border-bottom:0; }
 .qrl-idx { width:44rpx; height:44rpx; flex-shrink:0; border-radius:50%; background:#FFF1E0; color:var(--c-primary-dark); font-size:28rpx; font-weight:700; text-align:center; line-height:44rpx; }
 .qrl-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4rpx; }
+.rec-summary-row { cursor:pointer; padding:14rpx 0; }
+.rec-summary-name { flex:1; min-width:0; }
+.rec-summary-duration { color:#667085; font-size:26rpx; font-variant-numeric:tabular-nums; }
+.rec-summary-more { flex-shrink:0; color:#8A8F98; font-size:23rpx; }
+.recording-detail-card { width:88%; max-height:82vh; overflow-y:auto; box-sizing:border-box; background:#fff; border-radius:24rpx; padding:30rpx; }
+.recording-detail-card .qk-modal-title { margin-bottom:0; }
+.recording-detail-grid { display:flex; flex-direction:column; gap:0; border:2rpx solid #ECEFF3; border-radius:16rpx; overflow:hidden; }
+.recording-detail-grid > div { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; padding:22rpx; border-bottom:2rpx solid #ECEFF3; }
+.recording-detail-grid > div:last-child { border-bottom:0; }
+.recording-detail-grid span { flex-shrink:0; color:#8A8F98; font-size:25rpx; }
+.recording-detail-grid b { color:#1F2024; font-size:26rpx; text-align:right; line-height:1.45; }
+.recording-detail-actions { display:flex; flex-direction:column; align-items:center; gap:18rpx; margin-top:28rpx; }
+.recording-detail-actions .supp-btn { width:82%; }
+.detail-secondary { background:#F1F4F7 !important; color:#344054 !important; }
+.recording-detail-delete { border:0; background:transparent; color:#C0392B; font-size:25rpx; padding:12rpx 24rpx; }
 .qrl-name { font-size:32rpx; color:#1F2024; font-weight:600; }
 .qrl-meta { font-size:26rpx; color:#999; }
 /* 查看内容：左对齐到正文左缘，主色链接样式，点击打开整场转写弹窗 */

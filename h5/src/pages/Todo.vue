@@ -150,7 +150,7 @@ function openItem(item) {
   } else if (kind === 'property') {
     navigateTo('/pages/property-tasks/property-tasks')
   } else {
-    navigateTo('/pages/committee-detail/committee-detail?id=' + id)
+    navigateTo('/pages/committee-detail/committee-detail?id=' + id + '&from=todo')
   }
 }
 

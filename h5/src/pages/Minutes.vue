@@ -1,6 +1,7 @@
 <template>
   <div class="page minutes-page">
     <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;">
+      <template #left><div class="minutes-nav-back" @click="backFromMinutes">‹</div></template>
       <template #right>
         <button class="nav-home" @click="goHome">首页</button>
       </template>
@@ -13,14 +14,17 @@
     <div v-if="editMode && (hasServerMinutes || isOwner)" class="edit-modal-mask">
       <div class="edit-modal">
         <div class="edit-modal-head">
+          <button v-if="!reviseMode" class="edit-modal-back" @click="exitEditor">‹ 返回</button>
           <span class="edit-modal-title">{{ reviseMode ? '修订纪要' : '编辑纪要' }}</span>
-          <span class="edit-modal-close" @click="cancelEdit">×</span>
+          <span v-if="reviseMode" class="edit-modal-close" @click="cancelEdit">×</span>
+          <span v-else class="edit-modal-head-space"></span>
         </div>
         <span v-if="reviseMode" class="revise-hint" style="margin-bottom:16rpx;display:block;">修订模式：原归档版本将保留，本次修改作为新版本生效，提交时需填写修订原因。</span>
         <textarea class="edit-modal-textarea" v-model="editText" placeholder="编辑纪要全文..."></textarea>
         <div class="edit-modal-actions weighted-actions">
-          <button class="btn btn-ghost" @click="cancelEdit">取消</button>
-          <button class="btn btn-primary" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存并确认' }}<span class="btn-arrow">›</span></button>
+          <button class="btn btn-ghost" @click="reviseMode ? cancelEdit() : exitEditor()">{{ reviseMode ? '取消' : '返回' }}</button>
+          <button class="btn btn-save" @click="saveEdit">{{ reviseMode ? '提交修订' : '保存' }}</button>
+          <button v-if="!reviseMode" class="btn btn-primary confirm-minutes-btn" @click="confirmMinutes">确认无误<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -62,19 +66,22 @@
       <span class="doc-body">{{ prettyText }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
         <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
-        <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn" :class="{ ghost: minutes && minutes.draft }" @click="startEdit">编辑纪要</button>
         <button class="copy-btn" @click="copyText">复制全文</button>
       </div>
     </div>
 
     <!-- 业委会纪要：优先展示后端保存的大模型/人工编辑正文 -->
     <div v-else-if="!isOwner && hasServerMinutes && plainText" class="doc">
-      <span class="doc-body-title">{{ prettyTitle }}</span>
-      <span class="doc-body">{{ prettyBody }}</span>
+      <div class="minutes-letterhead">
+        <span class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
+        <span class="minutes-main-title">会议纪要</span>
+        <span v-if="documentParts.issue" class="minutes-issue">{{ documentParts.issue }}</span>
+      </div>
+      <div class="minutes-rule"></div>
+      <span class="doc-body">{{ documentParts.body }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
         <!-- 两个主操作：编辑(左·浅色) / 确认无误(右·深色更醒目) -->
         <div class="action-row">
-          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn ghost" @click="startEdit">编辑纪要</button>
           <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
         </div>
         <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
@@ -158,7 +165,6 @@
       <div class="minutes-actions" v-if="!aiGenerating">
         <!-- 两个主操作：编辑(左·浅色) / 确认无误(右·深色更醒目) -->
         <div class="action-row">
-          <button v-if="canEditMinutes && !editMode" class="edit-minutes-btn ghost" @click="startEdit">编辑纪要</button>
           <button v-if="canEditMinutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
         </div>
         <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
@@ -181,9 +187,10 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, hideToast, showModal, showLoading, hideLoading } from '@/utils/ui'
-import { navigateTo, redirectTo } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import PageNav from '@/components/PageNav.vue'
+import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 
 const route = useRoute()
 
@@ -191,10 +198,23 @@ const route = useRoute()
 const minutes = ref(null)
 const plainText = ref('')
 // 正文展示：去掉 AI 纪要里的 Markdown 标题标记（行首的 # / ##），纯文本更干净
-const prettyText = computed(() => String(plainText.value || '').replace(/^[ \t]*#{1,6}[ \t]*/gm, ''))
+const prettyText = computed(() => normalizeLegacyBasicSection(String(plainText.value || '')
+  .replace(/^[ \t]*#{1,6}[ \t]*/gm, '')
+  .replace(/^[^\r\n]*[（(]草稿[）)][ \t]*\r?\n+/, '')
+  .replace(/^[^\r\n]*业主委员会[ \t]*\r?\n+/, '')))
 // 第一行（xxx会议纪要）作标题，大字加粗；其余作正文
-const prettyTitle = computed(() => (String(prettyText.value || '').split('\n')[0] || '').trim())
-const prettyBody = computed(() => String(prettyText.value || '').split('\n').slice(1).join('\n').replace(/^\s*\n/, ''))
+const documentParts = computed(() => {
+  const lines = String(prettyText.value || '').split('\n')
+  const marker = lines.findIndex(line => line.trim() === '会议纪要')
+  if (marker >= 0) {
+    const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
+    let bodyStart = marker + 1
+    let issue = ''
+    if (/^第.+期$/.test((lines[bodyStart] || '').trim())) issue = lines[bodyStart++].trim()
+    return { meetingName: meetingName || '会议', issue, body: lines.slice(bodyStart).join('\n').replace(/^\s*\n/, '') }
+  }
+  return { meetingName: (lines[0] || '').trim(), issue: '', body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
+})
 const editMode = ref(false)
 const editText = ref('')
 const isChair = ref(false)
@@ -214,7 +234,9 @@ const accessText = ref('')
 
 // 非响应式实例状态
 let meetingId = null
+let entryFrom = ''
 let genAi = false
+let resumeAi = false
 let viewFirst = false
 let _destroyed = false
 let _aiTimer = null
@@ -226,6 +248,7 @@ onMounted(() => {
   console.log('[minutes] onLoad 构建标记=BUILD-B（结束按钮已修），options=', options)
   const id = parseInt(options.meetingId)
   const from = options.from || ''
+  entryFrom = from
   const owner = from === 'owner' || from === 'owner-detail'
   const external = perm.isExternal()
   isChair.value = perm.isChair() || perm.can('committee.publish')
@@ -243,8 +266,12 @@ onMounted(() => {
   meetingId = id
   // gen=1：进入纪要页时直接调大模型生成纪要（整屏显示"生成中"，出文后展示）
   genAi = options.gen === '1'
+  resumeAi = options.resume === '1' || (aiTask.active && String(aiTask.targetPath || '').includes('meetingId=' + id))
   // 进入即先把界面切成"生成中"，避免 loadMinutes 期间闪现结构化/旧内容
-  if (genAi) aiGenerating.value = true
+  if (genAi || resumeAi) {
+    aiGenerating.value = true
+    aiTask.overlayShown = true
+  }
   // view=1（AI 生成跳转 / 「查看」链接）进入时先看正文；其它渠道进入则直接编辑
   viewFirst = options.view === '1'
   if (id) owner ? loadOwnerMinutes(id) : loadMinutes(id)
@@ -252,8 +279,22 @@ onMounted(() => {
 
 onUnmounted(() => {
   _destroyed = true
+  aiTask.overlayShown = false
   if (_aiTimer) { clearTimeout(_aiTimer); _aiTimer = null }
 })
+
+function backFromMinutes() {
+  aiTask.overlayShown = false
+  if (entryFrom === 'committee-detail') {
+    redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId + '&from=minutes')
+  } else if (entryFrom === 'meeting-live-quick') {
+    redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+  } else if (entryFrom === 'committee') {
+    redirectTo('/pages/committee/committee')
+  } else {
+    navigateBack()
+  }
+}
 
 // 轮询后端 AI 纪要：结束/一键生成后大模型在后台跑，跑完自动把正文换成 AI 版本
 function startAwaitAiMinutes() {
@@ -449,8 +490,11 @@ async function loadMinutes(id) {
     if (genAi) {
       genAi = false
       regenerateAiMinutes()
-    } else if (canEditMinutes.value && !viewFirst) {
-      // 编辑/核对/确认为主：可编辑且非"先看正文"入口时，进入即直接打开编辑器
+    } else if (resumeAi) {
+      resumeAi = false
+      resumeBackgroundMinutes()
+    } else if (canEditMinutes.value) {
+      // 未公示、未归档的纪要进入即直接编辑，不再要求先点“编辑纪要”
       startEdit()
     }
   } catch (e) {
@@ -479,27 +523,72 @@ async function regenerateAiMinutes() {
   if (_genRunning) return
   _genRunning = true
   aiGenerating.value = true
+  const taskPath = '/pages/minutes/minutes?meetingId=' + meetingId + '&from=' + encodeURIComponent(entryFrom || 'committee-detail') + '&resume=1'
+  startAiTask({ label: '会议纪要生成中…', originPath: window.location.pathname, targetPath: taskPath })
+  aiTask.overlayShown = true
   let txt = ''
+  let requestError = null
   try {
     if (typeof api.committeeQuickPolish === 'function') {
       const r = await api.committeeQuickPolish(meetingId)
       txt = (r && (r.minutesMarkdown || r.minutes)) || ''
     }
-  } catch (e) { /* 失败，下面再尝试取已存正文 */ }
+  } catch (e) { requestError = e }
   if (!txt) {
     try { txt = await api.committeeMinutes(meetingId) } catch (e) {}
   }
   _genRunning = false
-  if (_destroyed) return
+  if (_destroyed) {
+    if (txt && String(txt).trim()) finishAiTask({ doneLabel: '会议纪要已生成', targetPath: taskPath })
+    else failAiTask({ failLabel: (requestError && requestError.message) || '会议纪要生成失败' })
+    aiTask.overlayShown = false
+    return
+  }
   if (txt && String(txt).trim()) {
-    plainText.value = txt
+    clearAiTask()
+    plainText.value = stripDraftHeading(txt)
     hasServerMinutes.value = true
     aiGenerating.value = false
     toast({ title: '会议纪要已生成', icon: 'none' })
+    if (canEditMinutes.value) startEdit()
   } else {
+    failAiTask({ failLabel: (requestError && requestError.message) || '会议纪要生成失败' })
+    aiTask.overlayShown = false
     aiGenerating.value = false
     showModal({ title: '生成未完成', content: '大模型生成较慢或暂不可用，可稍后再点「重新生成」重试。', showCancel: false })
   }
+}
+
+function resumeBackgroundMinutes() {
+  aiGenerating.value = true
+  aiTask.overlayShown = true
+  const tick = async () => {
+    _aiTimer = null
+    if (_destroyed) return
+    try {
+      const status = typeof api.committeeMinutesStatus === 'function'
+        ? await api.committeeMinutesStatus(meetingId) : null
+      if (status && status.status === 'failed') {
+        aiGenerating.value = false
+        failAiTask({ failLabel: '会议纪要生成失败' })
+        aiTask.overlayShown = false
+        return
+      }
+      if (!status || status.status === 'success') {
+        const txt = await api.committeeMinutes(meetingId)
+        if (txt && String(txt).trim()) {
+          plainText.value = stripDraftHeading(txt)
+          hasServerMinutes.value = true
+          aiGenerating.value = false
+          clearAiTask()
+          if (canEditMinutes.value) startEdit()
+          return
+        }
+      }
+    } catch (e) { /* 后台任务仍可能运行，继续轮询 */ }
+    _aiTimer = setTimeout(tick, 3000)
+  }
+  tick()
 }
 
 // 会议进行中：在纪要页确认纪要无误并结束会议
@@ -508,10 +597,10 @@ async function endMeetingFromMinutes() {
   // 真正执行结束：确认框正常弹出后走这里
   // 结束后跳到会议详情页（公示页面）：主任可在此「发起公示」
   const goPublish = function () {
-    redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId)
+    redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId + '&from=minutes')
     // 软路由偶发不切换（URL 变了却停在纪要页）→ 500ms 后仍在本页则硬导航兜底
     setTimeout(() => {
-      if (document.querySelector('.minutes-page')) window.location.replace('/committee-detail?id=' + meetingId)
+      if (document.querySelector('.minutes-page')) window.location.replace('/committee-detail?id=' + meetingId + '&from=minutes')
     }, 500)
   }
   const doEnd = async function () {
@@ -552,10 +641,21 @@ function startEdit() {
     return
   }
   // 已有正式纪要（AI 生成 / 人工保存）→ 预填正文继续编辑；尚无正式纪要（首次手写）→ 空白
-  const seed = hasServerMinutes.value ? plainText.value : ''
+  const seed = hasServerMinutes.value ? stripDraftHeading(plainText.value) : ''
   editMode.value = true
   reviseMode.value = false
   editText.value = seed
+}
+
+function stripDraftHeading(value) {
+  return normalizeLegacyBasicSection(String(value || '').replace(/^[^\r\n]*[（(]草稿[）)][ \t]*\r?\n+/, ''))
+}
+
+function normalizeLegacyBasicSection(value) {
+  return String(value || '')
+    .replace(/(^|\n)一、会议基本情况[ \t]*\r?\n/, '$1')
+    .replace(/(^|\n)二、议题审议情况/g, '$1一、议题审议情况')
+    .replace(/(^|\n)三、会议结论与后续安排/g, '$1二、会议结论与后续安排')
 }
 
 // 发起修订：归档/公示后正式内容不可直接改，生成新版本（必填修订原因）
@@ -570,6 +670,55 @@ function cancelEdit() {
   editMode.value = false
   reviseMode.value = false
   editText.value = ''
+}
+
+async function exitEditor() {
+  if (reviseMode.value) {
+    cancelEdit()
+    return
+  }
+  const changed = editText.value.trim() !== stripDraftHeading(plainText.value).trim()
+  if (!changed) {
+    editMode.value = false
+    navigateBack()
+    return
+  }
+  const res = await showModal({
+    title: '返回上一页',
+    content: '纪要内容有修改，是否保存后返回？',
+    confirmText: '保存并返回',
+    cancelText: '继续编辑'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeUpdateMinutes(meetingId, editText.value)
+    plainText.value = editText.value
+    hasServerMinutes.value = true
+    editMode.value = false
+    toast({ title: '纪要已保存', icon: 'success' })
+    setTimeout(() => navigateBack(), 300)
+  } catch (e) {
+    toast({ title: e.message || '保存失败', icon: 'none' })
+  }
+}
+
+async function confirmMinutes() {
+  if (!editText.value.trim()) {
+    toast({ title: '纪要内容不能为空', icon: 'none' })
+    return
+  }
+  try {
+    if (editText.value.trim() !== stripDraftHeading(plainText.value).trim()) {
+      await api.committeeUpdateMinutes(meetingId, editText.value)
+      plainText.value = editText.value
+      hasServerMinutes.value = true
+    }
+    editMode.value = false
+    toast({ title: '纪要已确认', icon: 'success' })
+    setTimeout(() => redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId + '&from=minutes'), 300)
+  } catch (e) {
+    toast({ title: e.message || '保存失败', icon: 'none' })
+  }
 }
 
 async function saveEdit() {
@@ -651,6 +800,7 @@ function viewTodoList() {
 </script>
 
 <style scoped>
+.minutes-nav-back { width:96rpx; height:124rpx; display:flex; align-items:center; justify-content:center; color:#fff; font-size:66rpx; font-weight:700; }
 /* 顶栏统一为纯深橙（与其他页一致，覆盖 PageNav 默认黄橙渐变） */
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .page { min-height:100vh; background:#f4f5f7; padding:24rpx 24rpx 100rpx; box-sizing:border-box; }
@@ -676,7 +826,11 @@ function viewTodoList() {
 
 /* 文档正文（阅读友好） */
 /* 正文第一行作标题：字号加大三号、黑体加粗、居中 */
-.doc-body-title { display:block; font-size:46rpx; font-weight:700; color:#1a1a1a; text-align:center; line-height:1.4; padding:8rpx 0 4rpx; }
+.minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:12rpx 10rpx 22rpx; }
+.minutes-meeting-name { font-size:34rpx; color:#202124; line-height:1.45; white-space:pre-wrap; }
+.minutes-main-title { margin-top:12rpx; font-size:58rpx; font-weight:700; letter-spacing:14rpx; color:#d71920; line-height:1.25; }
+.minutes-issue { margin-top:6rpx; font-size:32rpx; color:#202124; }
+.minutes-rule { height:2rpx; background:#b65d5d; margin:4rpx 0 18rpx; }
 .doc-body { display:block; font-size:34rpx; color:#33373d; line-height:1.9; white-space:pre-wrap; padding:24rpx 0; }
 
 .doc-head { margin-bottom:28rpx; }
@@ -745,20 +899,24 @@ function viewTodoList() {
 .edit-minutes-btn:active { background:var(--c-primary-strong); }
 .edit-minutes-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); padding:22rpx 0; font-size:32rpx; font-weight:600; }
 .copy-btn { width:100%; padding:22rpx 0; text-align:center; background:#fff; color:#C77800; border:2rpx solid #FFA800; border-radius:44rpx; font-size:30rpx; font-weight:600; }
-.more-links { display:flex; flex-wrap:wrap; justify-content:center; gap:16rpx 28rpx; margin-top:12rpx; }
-.more-link { font-size:28rpx; color:#666; padding:10rpx 8rpx; }
-.more-link.primary-link { color:#C77800; font-weight:600; }
+.more-links { display:flex; flex-wrap:wrap; justify-content:center; gap:10rpx 24rpx; margin-top:8rpx; }
+.more-link { font-size:25rpx; color:#92979e; padding:8rpx 6rpx; font-weight:400; }
+.more-link.primary-link { color:#7f858c; font-weight:400; }
 
 /* 编辑纪要弹窗 —— 全屏模式，方便老年人操作 */
 .edit-modal-mask { position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; background:#fff; }
 .edit-modal { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 /* 编辑态顶栏用深蓝色（区别于查看页的深橙 PageNav）：布局与查看页几乎一致，靠顶栏换色让用户明确感知"已进入编辑模式" */
 .edit-modal-head { display:flex; align-items:center; justify-content:space-between; padding:calc(24rpx + env(safe-area-inset-top)) 32rpx 24rpx; background:#1A6296; flex-shrink:0; }
+.edit-modal-back { width:150rpx; padding:8rpx 0; border:none; background:transparent; color:#fff; text-align:left; font-size:34rpx; font-weight:600; }
+.edit-modal-head-space { width:150rpx; }
 .edit-modal-title { font-size:44rpx; font-weight:700; color:#fff; }
 .edit-modal-close { font-size:68rpx; color:rgba(255,255,255,0.88); padding:0 8rpx; line-height:1; }
 .edit-modal-textarea { flex:1; width:100%; background:#fff; border:none; resize:none; font-family:inherit; box-sizing:border-box; overflow-y:auto; padding:36rpx 32rpx; font-size:38rpx; color:#1a1a1a; line-height:2; }
 .edit-modal-actions { display:flex; gap:24rpx; flex-shrink:0; padding:24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom)); background:#f6f6f8; border-top:2rpx solid #ebebeb; }
 .edit-modal-actions .btn { flex:1; line-height:3; font-size:38rpx; border-radius:44rpx; border:none; font-weight:700; }
 .edit-modal-actions .btn-ghost { background:#fff; color:#666; border:2rpx solid #ddd; }
+.edit-modal-actions .btn-save { background:#eef1f4; color:#4f5964; }
 .edit-modal-actions .btn-primary { background:var(--c-primary-dark); color:#fff; }
+.edit-modal-actions .confirm-minutes-btn { flex:1.35; }
 </style>

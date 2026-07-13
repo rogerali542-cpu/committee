@@ -6,8 +6,13 @@
 
     <!-- 正文格式与老纪要页一致：只显示已生成的纪要，不再现拼结构化兜底 -->
     <div v-else-if="text" class="doc">
-      <span class="doc-body-title">{{ title }}</span>
-      <span class="doc-body">{{ body }}</span>
+      <div class="minutes-letterhead">
+        <span class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
+        <span class="minutes-main-title">会议纪要</span>
+        <span v-if="documentParts.issue" class="minutes-issue">{{ documentParts.issue }}</span>
+      </div>
+      <div class="minutes-rule"></div>
+      <span class="doc-body">{{ documentParts.body }}</span>
       <!-- 底部只保留 复制全文 / 待办事项，去掉编辑纪要、结束会议等操作；两项稍微加大 -->
       <div class="mv-links">
         <span class="mv-link" @click="copyAll">复制全文</span>
@@ -39,9 +44,26 @@ const text = ref('')
 let meetingId = null
 
 // 去掉 AI 纪要里的 Markdown 标题标记（行首 #），纯文本更干净；首行作标题，其余作正文
-const pretty = computed(() => String(text.value || '').replace(/^[ \t]*#{1,6}[ \t]*/gm, ''))
-const title = computed(() => (pretty.value.split('\n')[0] || '').trim())
-const body = computed(() => pretty.value.split('\n').slice(1).join('\n').replace(/^\s*\n/, ''))
+const pretty = computed(() => String(text.value || '')
+  .replace(/^[ \t]*#{1,6}[ \t]*/gm, '')
+  .replace(/^[^\r\n]*[（(]草稿[）)][ \t]*\r?\n+/, '')
+  // AI 偶尔把“某某业主委员会”单独作为首行署名；展示时去掉，下一行纪要标题自动顶上。
+  .replace(/^[^\r\n]*业主委员会[ \t]*\r?\n+/, '')
+  .replace(/(^|\n)一、会议基本情况[ \t]*\r?\n/, '$1')
+  .replace(/(^|\n)二、议题审议情况/g, '$1一、议题审议情况')
+  .replace(/(^|\n)三、会议结论与后续安排/g, '$1二、会议结论与后续安排'))
+const documentParts = computed(() => {
+  const lines = pretty.value.split('\n')
+  const marker = lines.findIndex(line => line.trim() === '会议纪要')
+  if (marker >= 0) {
+    const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
+    let bodyStart = marker + 1
+    let issue = ''
+    if (/^第.+期$/.test((lines[bodyStart] || '').trim())) issue = lines[bodyStart++].trim()
+    return { meetingName: meetingName || '会议', issue, body: lines.slice(bodyStart).join('\n').replace(/^\s*\n/, '') }
+  }
+  return { meetingName: (lines[0] || '').trim(), issue: '', body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
+})
 
 async function load() {
   loading.value = true
@@ -87,11 +109,15 @@ onMounted(() => {
 /* 正文格式与老纪要页保持一致 */
 .doc { background: #fff; border-radius: 24rpx; padding: 36rpx 32rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .mv-loading { color: #888; text-align: center; font-size: 30rpx; }
-.doc-body-title { display: block; font-size: 46rpx; font-weight: 700; color: #1a1a1a; text-align: center; line-height: 1.4; padding: 8rpx 0 4rpx; }
+.minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:12rpx 10rpx 22rpx; }
+.minutes-meeting-name { font-size:34rpx; color:#202124; line-height:1.45; white-space:pre-wrap; }
+.minutes-main-title { margin-top:12rpx; font-size:58rpx; font-weight:700; letter-spacing:14rpx; color:#d71920; line-height:1.25; }
+.minutes-issue { margin-top:6rpx; font-size:32rpx; color:#202124; }
+.minutes-rule { height:2rpx; background:#b65d5d; margin:4rpx 0 18rpx; }
 .doc-body { display: block; font-size: 34rpx; color: #33373d; line-height: 1.9; white-space: pre-wrap; padding: 24rpx 0; }
 /* 复制/待办：在老页小链接基础上加大，方便点（老页 28rpx → 34rpx，加内边距 + 分隔线） */
-.mv-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 20rpx 48rpx; margin-top: 16rpx; padding-top: 24rpx; border-top: 2rpx solid #f0f0f0; }
-.mv-link { font-size: 34rpx; font-weight: 700; color: #C77800; padding: 16rpx 26rpx; }
+.mv-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12rpx 34rpx; margin-top: 12rpx; padding-top: 18rpx; border-top: 2rpx solid #f0f0f0; }
+.mv-link { font-size: 26rpx; font-weight: 400; color: #858b92; padding: 10rpx 16rpx; }
 .mv-link:active { opacity: 0.6; }
 /* 无纪要时的空状态 */
 .mv-empty { background: #fff; border-radius: 24rpx; padding: 80rpx 40rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }

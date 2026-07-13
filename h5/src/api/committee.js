@@ -78,7 +78,11 @@ export default {
   // 上传录音（纯存，不自动转写）；durationSec 为录音时长（秒），用于转写页展示
   committeeUploadRecording: function (id, filePath, durationSec, onProgress) {
     var q = (durationSec != null && durationSec > 0) ? ('?durationSec=' + Math.round(durationSec)) : '';
-    return core.uploadFile('/api/committees/' + id + '/quick/recording/upload' + q, filePath, 'file', {}, { onUploadProgress: onProgress });
+    // 服务端还会保存并转码长录音，可能明显超过默认 30 秒；这里单独放宽到 3 分钟。
+    return core.uploadFile('/api/committees/' + id + '/quick/recording/upload' + q, filePath, 'file', {}, {
+      timeout: 180000,
+      onUploadProgress: onProgress
+    });
   },
   // 删除一条录音（转写页删废录/多余段）
   committeeDeleteRecording: function (id, recordingId) {

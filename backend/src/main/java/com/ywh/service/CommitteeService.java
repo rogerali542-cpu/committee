@@ -796,18 +796,18 @@ public class CommitteeService {
         if (!Boolean.TRUE.equals(attendance.getSignedIn())) {
             throw new IllegalArgumentException("请先确认参会后再投票");
         }
-        // 已投过票则不可更改
+        // 已投过则覆盖更新：表决未结束前允许改票（voteClosed 已在上方拦截，主任结束表决后走不到这里）
         TopicVote existing = voteRepo.findByTopicIdAndUserRoleId(topicId, urId).orElse(null);
-        if (existing != null) {
-            throw new IllegalArgumentException("已对该议题投票，不可更改");
-        }
-        TopicVote vote = TopicVote.builder()
+        TopicVote vote = (existing != null) ? existing : TopicVote.builder()
                 .topic(topic)
                 .userRole(SecurityUtils.getCurrentUserRole())
-                .operator(SecurityUtils.getCurrentUserRole())
                 .isProxy(false)
-                .operatedAt(LocalDateTime.now())
                 .build();
+        vote.setOperator(SecurityUtils.getCurrentUserRole());
+        vote.setOperatedAt(LocalDateTime.now());
+        // 改票时先清掉另一种存储，避免 simple/multi 切换后残留旧值
+        vote.setChoice(null);
+        vote.setSelectedId(null);
         // simple: 存 choice（for_vote/against/abstain）; multi_choice: 存 selectedId
         if (selectedId != null) {
             vote.setSelectedId(selectedId);
@@ -1357,6 +1357,12 @@ public class CommitteeService {
     // ===== Materials（会议材料）=====
     @Transactional
     public void addMaterial(Long meetingId, String fileName, String fileType, String sizeText, String fileUrl) {
+        String newKey = materialDuplicateKey(fileName, sizeText);
+        boolean exists = materialRepo.findByMeetingId(meetingId).stream()
+                .anyMatch(mat -> Objects.equals(newKey, materialDuplicateKey(mat.getFileName(), mat.getSizeText())));
+        if (exists) {
+            throw new IllegalArgumentException(isImageMaterial(fileName, fileType) ? "这张照片已经上传过了" : "这份文件已经上传过了");
+        }
         MeetingMaterial saved = materialRepo.save(MeetingMaterial.builder()
                 .meetingId(meetingId)
                 .fileName(fileName)
@@ -1365,6 +1371,18 @@ public class CommitteeService {
                 .fileUrl(fileUrl)
                 .build());
         triggerMaterialOcr(saved.getId());
+    }
+
+    private String materialDuplicateKey(String fileName, String sizeText) {
+        return safeLower(fileName == null ? "" : fileName.trim()) + "::" + safeLower(sizeText == null ? "" : sizeText.trim());
+    }
+
+    private boolean isImageMaterial(String fileName, String fileType) {
+        String name = safeLower(fileName);
+        String type = safeLower(fileType);
+        return type.startsWith("image/") || name.endsWith(".png") || name.endsWith(".jpg")
+                || name.endsWith(".jpeg") || name.endsWith(".webp") || name.endsWith(".bmp")
+                || name.endsWith(".gif") || name.endsWith(".heic") || name.endsWith(".heif");
     }
 
     /**

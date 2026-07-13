@@ -10,43 +10,75 @@
       <!-- 指令条：一句话说清此刻该做什么，按类型变色（研究快赢①：命中"进来不知道干嘛"） -->
       <div v-if="guideText" class="ts-guide" :class="guideType">{{ guideText }}</div>
 
+      <!-- 表决页顶部意见摘要：放在标题下方，详情仍从"补充意见"进入 -->
+      <div v-if="opinionSummaryMode" class="ts-ops summary ts-top-summary">
+        <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
+        <div v-if="loading" class="ts-empty">加载中…</div>
+        <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
+        <div v-else class="ts-op" v-for="op in visibleOpinions" :key="op.id">
+          <div class="ts-op-l1">
+            <span class="ts-op-name">{{ op.name }}</span>
+            <span v-if="opVote(op)" class="ts-op-vote" :class="opVote(op).cls">{{ opVote(op).text }}</span>
+            <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
+            <button v-if="op.isSelf && op.canDelete" class="ts-op-del-inline" @click.stop="removeOpinion(op)">删除</button>
+          </div>
+          <div class="ts-op-l2">
+            <span class="ts-op-sum">{{ op.content }}</span>
+          </div>
+        </div>
+        <div v-if="opinions.length > visibleOpinions.length" class="ts-op-more">还有 {{ opinions.length - visibleOpinions.length }} 条，点击“补充意见”查看</div>
+      </div>
+
       <!-- 可滚动区：表决 + 意见汇总（输入框固定在底部，这里滚动看更多意见） -->
       <div class="ts-scroll">
       <!-- 表决区（仅表决类议题）：分「我的表决」和「全体表决情况」两块，避免个人/全体状态挤在一起 -->
-      <div v-if="topic.voteRequired" class="ts-vote">
-        <div class="ts-vote-question">请表决</div>
+      <div v-if="topic.voteRequired" class="ts-vote" :class="{ 'opinion-mode': opinionOpen }">
         <!-- ① 我的表决：投票按钮（按钮含义自明，不加标签）+ 我的状态 -->
-        <div class="ts-vote-mine">
-          <!-- 研究P1「先选后交」：未表决且未结束时点选=高亮预览(可反复改)，点「确认提交」才二次确认落库 -->
-          <template v-if="!topic.myVote && !topic.voteClosed">
+        <div v-show="!opinionOpen" class="ts-vote-mine">
+          <!-- 未结束前选项常驻：已投项高亮，点其他选项后轻确认改票 -->
+          <template v-if="!topic.voteClosed">
             <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
               <div class="ts-vote-btns">
-                <button class="ts-vote-btn agree" :class="{ on: pendingVote === 'for_vote' }" @click="pickVote('for_vote')"><span class="ts-radio"></span><span>同意</span></button>
-                <button class="ts-vote-btn against" :class="{ on: pendingVote === 'against' }" @click="pickVote('against')"><span class="ts-radio"></span><span>不同意</span></button>
-                <button class="ts-vote-btn abstain" :class="{ on: pendingVote === 'abstain' }" @click="pickVote('abstain')"><span class="ts-radio"></span><span>弃权</span></button>
+                <button class="ts-vote-btn agree" :class="{ on: displayVote === 'for_vote' }" :disabled="voteSubmitting" @click="pickVote('for_vote')">
+                  <span class="ts-radio"></span><span>同意</span>
+                </button>
+                <button class="ts-vote-btn against" :class="{ on: displayVote === 'against' }" :disabled="voteSubmitting" @click="pickVote('against')">
+                  <span class="ts-radio"></span><span>不同意</span>
+                </button>
+                <button class="ts-vote-btn abstain" :class="{ on: displayVote === 'abstain' }" :disabled="voteSubmitting" @click="pickVote('abstain')">
+                  <span class="ts-radio"></span><span>弃权</span>
+                </button>
               </div>
             </template>
             <template v-else>
               <div class="ts-opt" v-for="o in (topic.options || [])" :key="o.id"
-                   :class="{ on: pendingVote != null && String(pendingVote) === String(o.id) }"
+                   :class="{ on: displayVote != null && String(displayVote) === String(o.id) }"
                    @click="pickVote(o.id, o)">
                 <span class="ts-opt-label">{{ o.label }}</span>
               </div>
             </template>
-            <!-- 确认提交：选好才可点；"提交后不可改"静态可见（研究快赢③+P1） -->
-            <button v-if="interactive && signedIn" class="ts-vote-submit" :disabled="pendingVote == null" @click="submitVote">
-              {{ pendingVote == null ? '请选择一项' : '确认表决' }}
+            <button v-if="pendingVote != null" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
+              {{ voteSubmitting ? '提交中...' : '确认提交' }}
             </button>
-            <div class="ts-vote-locktip">提交后不可修改</div>
+            <div v-if="voteFeedbackText || (showVoteSummary && !voteRevealed && !opinionOpen)" class="ts-vote-status-row">
+              <div v-if="voteFeedbackText" class="ts-vote-feedback" :class="voteFeedbackClass">
+                <span class="ts-vote-feedback-mark">✓</span>
+                <span>{{ voteFeedbackText }}</span>
+              </div>
+              <div v-if="showVoteSummary && !voteRevealed && !opinionOpen" class="ts-vote-progress">
+                <span>表决进度</span>
+                <span>{{ topic.voted != null ? topic.voted : 0 }}/{{ topic.total || 0 }} 人已投</span>
+              </div>
+            </div>
           </template>
           <!-- 已表决：结果卡整块替换选择区（研究P1：占屏结果态明确"做完了"，不靠按钮变淡） -->
-          <div v-else-if="topic.myVote" class="ts-vote-done"><span class="ts-vote-done-mark">✓</span>您已投「{{ myVoteLabel }}」<span class="ts-vote-done-lock">已提交 · 不可修改</span></div>
+          <div v-else-if="topic.myVote" class="ts-vote-done"><span class="ts-vote-done-mark">✓</span>您已投「{{ myVoteLabel }}」</div>
           <!-- 表决已结束但本人未投：明确告知（此后不再显示投票按钮） -->
           <div v-else class="ts-vote-missed">本议题表决已结束，您未参与投票</div>
         </div>
 
         <!-- ② 全体表决情况：进行中只给参与进度(防从众)；主任「结束表决」或会议结束后才揭晓票数明细+白话结论 -->
-        <div v-if="showVoteSummary" class="ts-vote-all">
+        <div v-if="showVoteSummary && voteRevealed" class="ts-vote-all">
           <div class="ts-tally-top">
             <span class="ts-tally-scope">表决进度</span>
             <span class="ts-tally-total">{{ topic.voted != null ? topic.voted : 0 }}/{{ topic.total || 0 }} 人已投</span>
@@ -80,16 +112,9 @@
             </div>
           </template>
 
-          <!-- 表决进行中：主任确认完成后，系统统计并显示结果 -->
-          <template v-else>
-            <div class="ts-tally-veilbox">表决完成后显示统计结果</div>
-            <button v-if="isChair && interactive && !topic.voteClosed" class="ts-close-vote" :disabled="closingVote" @click="closeVote">
-              {{ closingVote ? '统计中...' : '完成本项表决' }}
-            </button>
-          </template>
         </div>
-        <button v-if="canDiscuss" class="ts-op-entry" :class="{ open: opinionOpen }" @click="opinionOpen = !opinionOpen">
-          {{ opinionOpen ? '收起补充意见' : '补充意见（可选）' }}
+        <button v-if="canDiscuss && !opinionOpen" class="ts-op-entry" @click="opinionOpen = true">
+          补充意见
         </button>
       </div>
 
@@ -112,31 +137,33 @@
       </div>
 
       <!-- 意见区 -->
-      <div v-if="showOpinionSection" class="ts-ops">
-        <div class="ts-ops-head">{{ topic.voteRequired ? '补充意见' : '意见汇总' }}<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
+      <div v-if="showOpinionSection && !opinionSummaryMode" class="ts-ops" :class="{ summary: opinionSummaryMode }">
+        <div class="ts-ops-head">{{ opinionSummaryMode ? '意见汇总' : (topic.voteRequired ? '补充意见' : '意见汇总') }}<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
-        <div v-else class="ts-op" :class="{ open: openOpIds.has(op.id) }" v-for="op in opinions" :key="op.id" @click="toggleOp(op)">
+        <div v-else class="ts-op" :class="{ open: !opinionSummaryMode && openOpIds.has(op.id) }" v-for="op in visibleOpinions" :key="op.id" @click="toggleOp(op)">
           <div class="ts-op-l1">
             <span class="ts-op-name">{{ op.name }}</span>
             <span v-if="opVote(op)" class="ts-op-vote" :class="opVote(op).cls">{{ opVote(op).text }}</span>
             <span v-if="op.claimable" class="ts-op-claim-tag" :class="{ on: claimShowId === op.id }"
                   @click.stop="toggleClaimRow(op)">未认领</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
+            <button v-if="op.isSelf && op.canDelete" class="ts-op-del-inline" @click.stop="removeOpinion(op)">删除</button>
           </div>
           <div class="ts-op-l2">
             <span class="ts-op-sum">{{ op.content }}</span>
-            <span class="ts-op-toggle">{{ openOpIds.has(op.id) ? '收起' : '查看' }}</span>
+            <span v-if="!opinionSummaryMode" class="ts-op-toggle">{{ openOpIds.has(op.id) ? '收起' : '查看' }}</span>
           </div>
           <!-- 展开后才显示删除，避免和"查看"挤在一排 -->
-          <div v-if="openOpIds.has(op.id) && op.canDelete" class="ts-op-actions" @click.stop>
+          <div v-if="!opinionSummaryMode && openOpIds.has(op.id) && op.canDelete && !op.isSelf" class="ts-op-actions" @click.stop>
             <button class="ts-op-del" @click="removeOpinion(op)">删除</button>
           </div>
           <!-- AI 从现场发言提炼、还没归属到人：认领按钮默认藏着，点"未认领"标签才展开 -->
-          <div v-if="op.claimable && claimShowId === op.id" class="ts-op-claimrow" @click.stop>
+          <div v-if="!opinionSummaryMode && op.claimable && claimShowId === op.id" class="ts-op-claimrow" @click.stop>
             <button class="ts-op-claim-btn" @click="claimOpinion(op)">🙋 是我说的</button>
           </div>
         </div>
+        <div v-if="opinionSummaryMode && opinions.length > visibleOpinions.length" class="ts-op-more">还有 {{ opinions.length - visibleOpinions.length }} 条，点击“补充意见”查看</div>
       </div>
       </div><!-- /ts-scroll -->
 
@@ -160,9 +187,9 @@
           <template v-else-if="voiceStage === 'finishing'">
             <span class="ts-voice-txt busy"><span class="ts-voice-spin"></span>正在整理文字…</span>
           </template>
-          <!-- 完成：确认 / 取消 -->
+          <!-- 完成：识别文字可直接修改，再确认使用 -->
           <template v-else>
-            <div class="ts-voice-result">{{ voiceResult }}</div>
+            <textarea v-model="voiceResult" class="ts-voice-result ts-voice-result-edit" rows="4" placeholder="识别文字可在这里修改"></textarea>
             <div class="ts-voice-foot">
               <button class="ts-voice-cancel" @click="cancelVoice">取消</button>
               <button class="ts-voice-done" @click="confirmVoice">确认使用</button>
@@ -175,7 +202,7 @@
           <div class="ts-helper-q">想对这个议题说点什么？不用讲究措辞，随便说说，我来帮你整理成正式发言。</div>
           <textarea v-model="helperDraft" class="ts-ta ts-helper-ta" rows="2" placeholder="比如：我觉得方案挺好，就是钱有点多…"></textarea>
           <div class="ts-helper-btns">
-            <button class="ts-helper-voice" :disabled="aiBusy" @click="startVoice('helper')">🎤 用说的</button>
+            <button class="ts-helper-voice" :disabled="aiBusy" @click="startVoice('helper')">🎤 语音描述想法</button>
             <button class="ts-helper-go" :disabled="!helperDraft.trim() || aiBusy" @click="draftByAi">{{ aiBusy ? 'AI 正在写…' : '帮我写好' }}</button>
             <span v-if="aiBusy" class="ts-ai-prog"><span class="ts-ai-spin"></span></span>
           </div>
@@ -190,7 +217,7 @@
             <div class="ts-ai-row">
               <button v-if="draft.trim()" class="ts-ai-btn ai" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中…' : 'AI 润色' }}</button>
               <button v-else class="ts-ai-btn ai" :disabled="aiBusy" @click="onHelpWrite"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 写作中…' : 'AI 帮写' }}</button>
-              <button class="ts-ai-btn voice" :disabled="aiBusy" @click="startVoice('draft')">语音输入</button>
+              <button class="ts-ai-btn voice" :disabled="aiBusy" @click="startVoice('draft')">语音转文字</button>
             </div>
           </div>
         </template>
@@ -198,9 +225,12 @@
       <div v-else-if="canDiscuss && interactive && !signedIn && (!topic.voteRequired || opinionOpen)" class="ts-input-hint">签到后可发表意见</div>
 
       <!-- 上一个 / 下一个议题：处理完当前议题直接切换，不用先关弹层 -->
-      <div v-if="hasPrev || hasNext" class="ts-nav-row">
-        <button v-if="hasPrev" class="ts-nav-btn prev" @click="$emit('prev')">‹ 上一个议题</button>
-        <button v-if="hasNext" class="ts-nav-btn next" @click="$emit('next')">下一个议题 ›</button>
+      <div v-if="opinionOpen || hasPrev || hasNext" class="ts-nav-row">
+        <button v-if="opinionOpen" class="ts-op-collapse" :class="{ warm: opinions.length }" @click="opinionOpen = false">收起</button>
+        <button v-if="hasPrev && !opinionOpen" class="ts-nav-btn prev" @click="$emit('prev')">‹ 上一个议题</button>
+        <div v-if="hasNext" class="ts-next-action" :class="{ disabled: !canGoNext }" @click="onNextTap">
+          <button class="ts-nav-btn next" :disabled="!canGoNext">下一个议题 <span class="ts-next-arrow">›</span></button>
+        </div>
         <!-- 最后一个议题：右侧改为「完成」，点了收起弹层 -->
         <button v-else class="ts-nav-btn done" @click="$emit('close')">完成</button>
       </div>
@@ -211,7 +241,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import api from '@/api'
-import { toast, showModal } from '@/utils/ui'
+import { toast, showModal, showActionSheet, showLoading, hideLoading } from '@/utils/ui'
 import { useRecorder } from '@/composables/useRecorder'
 import { useAsrStream } from '@/composables/useAsrStream'
 import { applyHotwords } from '@/utils/helpers'
@@ -245,8 +275,14 @@ const tagLabel = computed(() => {
 const canDiscuss = computed(() => props.topic && props.topic.type !== 'notice')
 const showOpinionSection = computed(() => {
   if (!canDiscuss.value) return false
-  if (!props.topic || !props.topic.voteRequired) return true
-  return opinionOpen.value
+  return true
+})
+const opinionSummaryMode = computed(() => {
+  return !!(props.topic && props.topic.voteRequired && !opinionOpen.value)
+})
+const visibleOpinions = computed(() => {
+  if (!opinionSummaryMode.value) return opinions.value
+  return opinions.value.slice(0, 3)
 })
 const showComposer = computed(() => {
   if (!canDiscuss.value || !props.interactive || !props.signedIn) return false
@@ -280,7 +316,7 @@ const guideText = computed(() => {
       return '本次会议未在进行中，暂不可表决'
     }
     // 表决进行中
-    if (t.myVote) return props.isChair ? '已完成表决，可结束本项' : '您已完成表决'
+    if (t.myVote) return '已投票'
     if (!props.signedIn) return '签到后即可对本议题表决'
     return '请选择表决意见'
   }
@@ -290,7 +326,19 @@ const guideText = computed(() => {
 // 研究P1「先选后交」：本地暂存"选中但未提交"的表决，可反复改；点「确认提交」才落库
 const pendingVote = ref(null)      // 简单表决=choice字符串 / 多选=选项id
 const pendingOption = ref(null)    // 多选时记住选项对象
+const voteSubmitting = ref(false)
+const localVoteValue = ref(null)
+const localVoteLabel = ref('')
 const VOTE_LABELS = { for_vote: '同意', against: '不同意', abstain: '弃权' }
+const committedVote = computed(() => {
+  const t = props.topic
+  if (localVoteValue.value != null) return localVoteValue.value
+  return t && t.myVote != null ? t.myVote : null
+})
+const displayVote = computed(() => {
+  if (pendingVote.value != null) return pendingVote.value
+  return committedVote.value
+})
 const pendingLabel = computed(() => {
   if (pendingVote.value == null) return ''
   if (pendingOption.value) return pendingOption.value.label
@@ -298,16 +346,46 @@ const pendingLabel = computed(() => {
 })
 const myVoteLabel = computed(() => {
   const t = props.topic
-  if (!t || !t.myVote) return ''
+  const v = committedVote.value
+  if (!t || v == null) return ''
   if ((t.decisionType || 'simple') === 'multi_choice') {
-    const opt = (t.options || []).find(o => String(o.id) === String(t.myVote))
+    const opt = (t.options || []).find(o => String(o.id) === String(v))
     return opt ? opt.label : '已投票'
   }
-  return VOTE_LABELS[t.myVote] || ''
+  return VOTE_LABELS[v] || ''
 })
+const displayVoteLabel = computed(() => {
+  const t = props.topic
+  const v = displayVote.value
+  if (!t || v == null) return ''
+  if ((t.decisionType || 'simple') === 'multi_choice') {
+    const opt = (t.options || []).find(o => String(o.id) === String(v))
+    return opt ? opt.label : ''
+  }
+  return VOTE_LABELS[v] || ''
+})
+const voteFeedbackClass = computed(() => {
+  const v = displayVote.value
+  if (v === 'for_vote') return 'agree'
+  if (v === 'against') return 'against'
+  if (v === 'abstain') return 'abstain'
+  return ''
+})
+const voteCompleted = computed(() => {
+  const t = props.topic
+  if (!t || !t.voteRequired) return true
+  if (pendingVote.value != null) return false
+  return !!t.voteClosed || committedVote.value != null || !!localVoteLabel.value
+})
+const voteFeedbackText = computed(() => {
+  const t = props.topic
+  if (!t || !t.voteRequired) return ''
+  const label = displayVoteLabel.value || localVoteLabel.value || myVoteLabel.value
+  return label ? ('已投：' + label) : ''
+})
+const canGoNext = computed(() => !props.topic || !props.topic.voteRequired || voteCompleted.value)
 
-// ── 研究P1「结束表决揭晓」：表决进行中对委员隐藏票数明细(防从众)；主任点「结束表决」(voteClosed) 或会议已结束(!interactive) 后才揭晓 ──
-const closingVote = ref(false)
+// ── 表决进行中对委员隐藏票数明细(防从众)；会议结束后才揭晓 ──
 const voteRevealed = computed(() => {
   const t = props.topic
   if (!t) return false
@@ -380,6 +458,7 @@ const polishUndo = ref(null)    // 润色前的原文（可还原）；null=没�
 const claimShowId = ref(null)   // 认领按钮默认藏着：点"未认领"标签展开的那条意见 id（声明须在下方 immediate watch 之前）
 const openOpIds = ref(new Set())  // 意见正文默认折叠，点"查看"展开的意见 id 集合
 function toggleOp(op) {
+  if (opinionSummaryMode.value) return
   const s = new Set(openOpIds.value)
   s.has(op.id) ? s.delete(op.id) : s.add(op.id)
   openOpIds.value = s
@@ -391,7 +470,7 @@ watch(() => props.topic && props.topic.id, (id) => {
   helperOn.value = false; helperDraft.value = ''; aiBusy.value = false
   aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null; openOpIds.value = new Set()
   opinionOpen.value = false
-  pendingVote.value = null; pendingOption.value = null  // 切议题清掉未提交的选择
+  pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
 onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
@@ -487,10 +566,9 @@ async function finishVoice() {
   voiceStage.value = 'finishing'
   let text = ''
   if (!voiceFallback.value) {
-    const r = await asr.stop()
-    if (r.noSound) { noSoundPrompt(); return }
-    if (r.serviceError) { toast({ title: '语音识别失败：' + r.serviceError, icon: 'none' }); cancelVoice(); return }
-    text = (r.text || '').trim()
+    // 点击“说完了”即刻停止麦克风与 WebSocket，不再等待服务端继续追加识别文字。
+    text = String(asrLive.value || '').trim()
+    asr.cancel()
   } else {
     try {
       const out = await rec.stop()
@@ -522,25 +600,22 @@ function confirmVoice() {
 // ── AI 润色 / 代拟 ──
 // AI 完成后弹卡片：告知已生成、耗时、消耗 token
 function showAiDoneCard(mode) {
-  // 研究快赢②：删掉"耗时/token"这类噪音，只给老人一句"办好了"
   if (mode === 'polish') {
     showModal({
       title: '',
-      content: '已经帮你润色好啦，满意吗？',
+      content: '已润色，可继续修改',
       size: 'aicard',
       showCancel: false,
-      confirmText: '好的'
+      confirmText: '查看'
     })
     return
   }
-  // 代拟/帮写：只告知已写好、提示去查看内容。此刻用户还没看到正文，不追问是否润色；
-  // 想润色让用户看完后自己点下方「AI 润色」（帮写后该按钮本就从「AI 帮写」变成「AI 润色」）。
   showModal({
     title: '',
-    content: '已经帮你写好啦，请查看内容',
+    content: '草稿已生成',
     size: 'aicard',
     showCancel: false,
-    confirmText: '好的'
+    confirmText: '查看'
   })
 }
 async function polishByAi() {
@@ -661,63 +736,128 @@ function autoGrow() {
   el.style.height = Math.min(el.scrollHeight, 160) + 'px'
 }
 
-// 研究P1「先选后交」①点选：只本地暂存(可反复改)，不落库、不弹窗
-function pickVote(choice, option) {
+// 先点选项高亮，再点小确认提交；已投后点其他选项先确认改票意图。
+async function pickVote(choice, option) {
   const t = props.topic
-  if (!t || t.myVote) return
+  if (!t || t.voteClosed) return
+  if (voteSubmitting.value) return
   if (!props.interactive) { toast({ title: '会议进行中才可表决', icon: 'none' }); return }
   if (!props.signedIn) { toast({ title: '请先完成签到', icon: 'none' }); return }
+  const nextVote = option ? option.id : choice
+  const currentVote = committedVote.value
+  if (currentVote != null) {
+    if (String(currentVote) === String(nextVote)) {
+      pendingVote.value = null; pendingOption.value = null
+      return
+    }
+    const nextLabel = option ? option.label : (VOTE_LABELS[choice] || '该选项')
+    const res = await showModal({
+      title: '',
+      content: '改为「' + nextLabel + '」吗？',
+      confirmText: '确认',
+      cancelText: '取消',
+      size: 'vote'
+    })
+    if (!res.confirm) return
+  }
   pendingVote.value = option ? option.id : choice
   pendingOption.value = option || null
 }
-// ②确认提交：二次确认后才真正投票落库。研究P1：砍掉投票后"要不要AI帮写意见"的追问弹窗
 async function submitVote() {
   const t = props.topic
-  if (!t || t.myVote || pendingVote.value == null) return
+  if (!t || t.voteClosed || pendingVote.value == null) return
   if (!props.interactive) { toast({ title: '会议进行中才可表决', icon: 'none' }); return }
   if (!props.signedIn) { toast({ title: '请先完成签到', icon: 'none' }); return }
   const opt = pendingOption.value
-  const res = await showModal({
-    title: '',
-    content: '您投的是「' + pendingLabel.value + '」，提交后不能修改。确认提交？',
-    confirmText: '确认提交',
-    cancelText: '再想想',
-    size: 'vote'
-  })
-  if (!res.confirm) return
+  const label = pendingLabel.value
+  voteSubmitting.value = true
   try {
+    const nextValue = opt ? opt.id : pendingVote.value
     await api.committeeVote(props.meetingId, t.id, opt ? null : pendingVote.value, opt ? opt.id : null)
     toast({ title: '已提交', icon: 'success' })
+    localVoteValue.value = nextValue
+    localVoteLabel.value = label
     pendingVote.value = null; pendingOption.value = null
+    // 改票后立即同步本人已发表意见旁的标签，避免父组件刷新与意见请求竞态时仍显示第一次投票。
+    opinions.value = opinions.value.map((opinion) => {
+      if (!opinion || !opinion.isSelf) return opinion
+      if (opt) return Object.assign({}, opinion, { voteLabel: label, voteChoice: null })
+      return Object.assign({}, opinion, { voteLabel: null, voteChoice: pendingVoteValueForLabel(nextValue) })
+    })
+    await loadOpinions() // 再以后端当前票为准校准一次
     emit('changed')
-    loadOpinions() // 刷新意见列表：自己此前发的意见旁立刻带上刚投的表决标签
+    await handleOpinionAfterVoteChange(nextValue, opt)
   } catch (e) { /* 已 toast */ }
+  finally { voteSubmitting.value = false }
 }
 
-// 主任确认本项表决完成后，后端关闭本议题投票并展示票数。
-async function closeVote() {
-  const t = props.topic
-  if (!t || closingVote.value) return
-  const notYet = notVoted.value
-  const res = await showModal({
-    title: '完成本项表决',
-    content: notYet > 0
-      ? '还有 ' + notYet + ' 人未投票。完成后将统计票数，且不能再补投或修改。确定完成吗？'
-      : '完成后将统计票数，且不能再补投或修改。确定完成吗？',
-    confirmText: '确认完成',
-    cancelText: '再等等'
+function pendingVoteValueForLabel(value) {
+  return value === 'for_vote' || value === 'against' || value === 'abstain' ? value : null
+}
+
+// 改票后，已有意见可能与新立场冲突：让委员明确选择如何处理最近一条本人意见。
+async function handleOpinionAfterVoteChange(voteValue, option) {
+  const own = opinions.value.filter(op => op && op.isSelf && op.canEdit)
+  if (!own.length) return
+  const target = own[own.length - 1]
+  const sheet = await showActionSheet({
+    title: '表决已修改，原意见怎么处理？',
+    variant: 'opinion-change',
+    itemList: [
+      { icon: '✎', label: '自己修改', tone: 'edit' },
+      { icon: 'AI', label: 'AI 按新表决重写', tone: 'ai' },
+      { icon: '删', label: '删除原意见', tone: 'danger' }
+    ]
   })
-  if (!res.confirm) return
-  closingVote.value = true
-  try {
-    await api.committeeCloseVote(props.meetingId, t.id)
-    toast({ title: '表决已完成', icon: 'success' })
+  if (sheet.tapIndex === 0) {
+    const edited = await showModal({
+      title: '修改原意见', content: target.content || '', editable: true,
+      placeholderText: '请输入修改后的意见', confirmText: '保存', cancelText: '取消', size: 'large'
+    })
+    const content = edited.confirm ? String(edited.content || '').trim() : ''
+    if (!content) return
+    const updated = await api.committeeUpdateOpinion(props.meetingId, target.id, content)
+    opinions.value = opinions.value.map(op => op.id === target.id ? updated : op)
+    toast({ title: '意见已修改', icon: 'success' })
     emit('changed')
-  } catch (e) {
-    toast({ title: (e && e.message) || '操作失败', icon: 'none' })
-  } finally {
-    closingVote.value = false
+    return
   }
+  if (sheet.tapIndex === 1) {
+    const seed = voteStanceSeed(voteValue, option)
+    if (!seed) return
+    try {
+      showLoading({ title: 'AI 正在按新表决重写，请稍等…' })
+      const generated = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'draft', seed)
+      hideLoading()
+      if (!generated || !generated.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
+      const review = await showModal({
+        title: '确认重写意见', content: generated.text, editable: true,
+        placeholderText: '可修改 AI 生成的意见', confirmText: '保存替换', cancelText: '取消', size: 'large'
+      })
+      const content = review.confirm ? String(review.content || '').trim() : ''
+      if (!content) return
+      const updated = await api.committeeUpdateOpinion(props.meetingId, target.id, content)
+      opinions.value = opinions.value.map(op => op.id === target.id ? updated : op)
+      toast({ title: '意见已按新投票重写', icon: 'success' })
+      emit('changed')
+    } catch (e) {
+      toast({ title: (e && e.message) || 'AI 重写失败，请稍后重试', icon: 'none' })
+    } finally {
+      hideLoading()
+    }
+    return
+  }
+  if (sheet.tapIndex === 2) {
+    await removeOpinion(target)
+  }
+}
+
+function onNextTap() {
+  if (!canGoNext.value) {
+    toast({ title: '请先完成本项表决', icon: 'none' })
+    return
+  }
+  emit('next')
 }
 
 async function submitOpinion() {
@@ -776,7 +916,7 @@ async function removeOpinion(op) {
 .ts-sheet { background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 30rpx calc(24rpx + env(safe-area-inset-bottom)); height: 88vh; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; }
 .ts-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #E4E6EA; margin: 0 auto 16rpx; }
 .ts-head { flex-shrink: 0; display: flex; align-items: flex-start; gap: 12rpx; margin-bottom: 20rpx; }
-.ts-titlewrap { flex: 1; min-width: 0; display: flex; align-items: flex-start; flex-wrap: wrap; column-gap: 12rpx; row-gap: 4rpx; max-height: 108rpx; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4rpx; }
+.ts-titlewrap { flex: 1; min-width: 0; display: flex; align-items: flex-start; flex-wrap: wrap; column-gap: 12rpx; row-gap: 4rpx; max-height: 108rpx; overflow: hidden; padding-right: 4rpx; }
 /* 中间可滚动区：意见多了在这里滚，输入框始终露在底部 */
 .ts-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ts-title { min-width: 0; font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; word-break: break-all; }
@@ -793,28 +933,33 @@ async function removeOpinion(op) {
 .ts-tag.notice { background: #F1EBFB; color: #6D3FC4; }
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
-.ts-sheet.is-vote { height: auto; max-height: 82vh; padding: 18rpx 34rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; }
+.ts-sheet.is-vote { width: 100%; height: 100vh; max-height: 100vh; box-sizing: border-box; border-radius: 0; padding: calc(18rpx + env(safe-area-inset-top)) 34rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; }
+.ts-sheet.is-vote .ts-handle { display: none; }
 .ts-sheet.is-vote .ts-head { margin-bottom: 12rpx; align-items: flex-start; }
-.ts-sheet.is-vote .ts-titlewrap { display: block; max-height: 168rpx; padding-right: 8rpx; }
+.ts-sheet.is-vote .ts-titlewrap { display: block; max-height: 168rpx; overflow:hidden; padding-right: 8rpx; }
 .ts-sheet.is-vote .ts-title { display: block; font-size: 38rpx; line-height: 1.35; font-weight: 800; text-align: left; }
 .ts-sheet.is-vote .ts-tag { display: none; }
 .ts-sheet.is-vote .ts-guide { display: none; }
+.ts-sheet.is-vote .ts-scroll { display: flex; flex-direction: column; }
 .ts-sheet.is-vote .ts-vote { margin: 0; }
-.ts-vote-question { margin: 4rpx 0 18rpx; font-size: 30rpx; font-weight: 700; color: #6B7078; }
+.ts-sheet.is-vote .ts-vote:not(.opinion-mode) { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.ts-sheet.is-vote .ts-vote:not(.opinion-mode) .ts-vote-mine { margin-top: auto; }
+.ts-sheet.is-vote .ts-vote.opinion-mode { min-height: 0; }
 .ts-sheet.is-vote .ts-vote-btns { display: flex; flex-direction: column; gap: 16rpx; }
 .ts-sheet.is-vote .ts-vote-btn { display: flex; align-items: center; justify-content: flex-start; gap: 18rpx; border-radius: 16rpx; border: 2rpx solid #E1E4E8; background: #fff; color: #1f2329; font-size: 34rpx; font-weight: 700; padding: 26rpx 24rpx; text-align: left; box-shadow: none; }
 .ts-sheet.is-vote .ts-vote-btn.agree,
 .ts-sheet.is-vote .ts-vote-btn.against,
 .ts-sheet.is-vote .ts-vote-btn.abstain { background: #fff; border-color: #E1E4E8; color: #1f2329; }
 .ts-radio { flex-shrink: 0; width: 34rpx; height: 34rpx; border-radius: 50%; border: 3rpx solid #C5CBD3; box-sizing: border-box; background: #fff; }
-.ts-sheet.is-vote .ts-vote-btn.on { border-color: #1F6FB2; background: #F1F7FD; color: #1f2329; box-shadow: 0 0 0 4rpx rgba(31,111,178,0.08); }
-.ts-sheet.is-vote .ts-vote-btn.on .ts-radio { border-color: #1F6FB2; box-shadow: inset 0 0 0 8rpx #fff; background: #1F6FB2; }
-.ts-sheet.is-vote .ts-vote-btn.agree.on,
-.ts-sheet.is-vote .ts-vote-btn.against.on,
-.ts-sheet.is-vote .ts-vote-btn.abstain.on { border-color: #1F6FB2; background: #F1F7FD; color: #1f2329; }
-.ts-sheet.is-vote .ts-vote-submit { border-radius: 16rpx; margin-top: 24rpx; padding: 28rpx 0; font-size: 34rpx; background: #1F6FB2; }
-.ts-sheet.is-vote .ts-vote-submit:active { background: #185A91; }
-.ts-sheet.is-vote .ts-vote-submit[disabled] { background: #E5E7EB; color: #9AA0A6; }
+.ts-sheet.is-vote .ts-vote-btn.agree.on { border-color: #69B95B; background: #F0FAED; color: #2E7D32; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.10); }
+.ts-sheet.is-vote .ts-vote-btn.against.on { border-color: #ED7B70; background: #FFF3F1; color: #C0392B; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.10); }
+.ts-sheet.is-vote .ts-vote-btn.abstain.on { border-color: #8D949D; background: #F4F5F7; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
+.ts-sheet.is-vote .ts-vote-btn.agree.on .ts-radio { border-color: #3E9B34; box-shadow: inset 0 0 0 8rpx #fff; background: #3E9B34; }
+.ts-sheet.is-vote .ts-vote-btn.against.on .ts-radio { border-color: #E24B3A; box-shadow: inset 0 0 0 8rpx #fff; background: #E24B3A; }
+.ts-sheet.is-vote .ts-vote-btn.abstain.on .ts-radio { border-color: #4D5158; box-shadow: inset 0 0 0 8rpx #fff; background: #4D5158; }
+.ts-sheet.is-vote .ts-vote-submit { width: 100%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: #0F766E; }
+.ts-sheet.is-vote .ts-vote-submit:active { background: #0B5F59; }
+.ts-sheet.is-vote .ts-vote-submit[disabled] { background: #C8D7D5; color: #fff; }
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
@@ -822,10 +967,14 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-tally-scope { background: transparent; color: #8A8F98; padding: 0; font-weight: 600; }
 .ts-sheet.is-vote .ts-tally-total { color: #6B7078; font-size: 25rpx; font-weight: 600; }
 .ts-sheet.is-vote .ts-tally-veilbox { margin-top: 10rpx; padding: 12rpx 0 0; border: 0; background: transparent; color: #A0A5AD; font-size: 24rpx; }
-.ts-op-entry { display: block; width: 100%; box-sizing: border-box; margin-top: 22rpx; border: 2rpx solid #E5E7EB; border-radius: 18rpx; background: #fff; color: #5F6570; font-size: 28rpx; font-weight: 700; padding: 18rpx 0; font-family: inherit; }
-.ts-op-entry.open { background: #F8FAFC; color: #1F6FB2; border-color: #D7E6F6; }
+.ts-op-entry { display: block; width: auto; box-sizing: border-box; margin: 20rpx 0 0 auto; border: 2rpx solid #C8D7E5; border-radius: 14rpx; background: #F7FAFC; color: #4D6F8C; font-size: 26rpx; font-weight: 600; padding: 13rpx 26rpx; font-family: inherit; box-shadow: none; }
+.ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
+.ts-vote-status-row { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
+.ts-vote-progress { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; margin: 0 0 0 auto; color: #A0A5AD; font-size: 23rpx; font-weight: 500; white-space: nowrap; }
+.ts-vote-progress .ts-tally-scope,
+.ts-vote-progress .ts-tally-total { background: transparent; padding: 0; color: inherit; font-size: inherit; font-weight: inherit; }
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
 .ts-vote-btn { border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; font-weight: 700; padding: 22rpx 0; }
 /* 方案B：默认就带语义色(浅底+彩边+彩字)，同意绿/不同意红/弃权灰，一眼分清 */
@@ -833,9 +982,9 @@ async function removeOpinion(op) {
 .ts-vote-btn.against { background: #FDECEA; border-color: #E74C3C; color: #C0392B; }
 .ts-vote-btn.abstain { background: #F2F2F4; border-color: #9AA0A6; color: #5F6570; }
 /* 选中态：加深为实心白字 + 色环，与默认浅底拉开层次 */
-.ts-vote-btn.agree.on { background: #3E9B34; border-color: #3E9B34; color: #fff; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.22); }
-.ts-vote-btn.against.on { background: #E24B3A; border-color: #E24B3A; color: #fff; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.22); }
-.ts-vote-btn.abstain.on { background: #4D5158; border-color: #4D5158; color: #fff; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.28); }
+.ts-vote-btn.agree.on { background: #F0FAED; border-color: #69B95B; color: #2E7D32; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.10); }
+.ts-vote-btn.against.on { background: #FFF3F1; border-color: #ED7B70; color: #C0392B; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.10); }
+.ts-vote-btn.abstain.on { background: #F4F5F7; border-color: #8D949D; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
 .ts-vote-btn.off { opacity: 0.35; }
 .ts-vote-btn:active { transform: scale(0.97); }
 .ts-opt { display: flex; align-items: center; justify-content: space-between; border: 2rpx solid #D8DBE0; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; font-size: 32rpx; color: #333; }
@@ -878,22 +1027,24 @@ async function removeOpinion(op) {
 .ts-dot.none { background: #D6DAE0; }
 .ts-row-label { color: #444; font-weight: 600; }
 .ts-row-num { margin-left: auto; font-weight: 800; color: #1f2329; font-variant-numeric: tabular-nums; }
-/* 未揭晓：遮罩 + 主任「结束表决」按钮 */
+/* 未揭晓：只提示结果稍后统计 */
 .ts-tally-veilbox { background: #F6F7F9; border: 2rpx dashed #D8DBE0; border-radius: 14rpx; padding: 22rpx; text-align: center; font-size: 26rpx; color: #8A8F98; }
-.ts-close-vote { display: block; width: 100%; box-sizing: border-box; margin-top: 16rpx; border: 0; border-radius: 16rpx; background: #C76A00; color: #fff; font-size: 31rpx; font-weight: 700; padding: 22rpx 0; font-family: inherit; }
-.ts-close-vote:active { background: #A85800; }
-.ts-close-vote[disabled] { background: #E7D8C6; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
-.ts-vote-submit { display: block; width: 100%; box-sizing: border-box; margin-top: 22rpx; border: 0; border-radius: 16rpx; background: #C76A00; color: #fff; font-size: 31rpx; font-weight: 700; padding: 22rpx 0; font-family: inherit; }
-.ts-vote-submit:active { background: #A85800; }
-.ts-vote-submit[disabled] { background: #E7D8C6; color: #fff; }
+.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: #0F766E; color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(15,118,110,0.22); white-space: nowrap; }
+.ts-vote-submit:active { background: #0B5F59; }
+.ts-vote-submit[disabled] { background: #C8D7D5; color: #fff; box-shadow: none; }
 .ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
+.ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:25rpx; font-weight:800; }
+.ts-vote-feedback-mark { width:28rpx; height:28rpx; border-radius:50%; background:#2E9E4B; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:18rpx; flex-shrink:0; }
+.ts-vote-feedback.against { background:#FFF3F1; border-color:#F1B4AD; color:#C0392B; }
+.ts-vote-feedback.against .ts-vote-feedback-mark { background:#E24B3A; }
+.ts-vote-feedback.abstain { background:#F4F5F7; border-color:#D4D8DE; color:#4D5158; }
+.ts-vote-feedback.abstain .ts-vote-feedback-mark { background:#6B7078; }
 /* 已表决：结果卡整块替换选择区（占屏结果态，明确"做完了·不可改"） */
 .ts-vote-done { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; background: #EAF6E5; border: 2rpx solid #9FD290; border-radius: 16rpx; padding: 24rpx; font-size: 31rpx; font-weight: 800; color: #2E7D32; }
 .ts-vote-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; border-radius: 50%; background: #2E9E4B; color: #fff; font-size: 26rpx; margin-right: 4rpx; }
-.ts-vote-done-lock { font-size: 24rpx; font-weight: 600; color: #5E8F55; margin-left: auto; }
 /* 表决已结束但本人未投 */
 .ts-vote-missed { background: #F6F7F9; border: 2rpx solid #E4E6EA; border-radius: 16rpx; padding: 22rpx; font-size: 28rpx; font-weight: 600; color: #8A8F98; text-align: center; }
 /* 防从众（研究P1）：表决进行中票数处的占位文案 */
@@ -916,10 +1067,14 @@ async function removeOpinion(op) {
 .ts-notice-forceall:active { background: #FBEAD6; }
 .ts-notice-chair-tip { font-size: 22rpx; color: #B79A6A; line-height: 1.4; }
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
+.ts-ops.summary { margin-top: 18rpx; padding-top: 14rpx; }
+.ts-top-summary { flex-shrink: 0; margin-top: 0; margin-bottom: 12rpx; }
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
+.ts-ops.summary .ts-ops-head { font-size: 26rpx; margin-bottom: 8rpx; color: #5F6570; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
 /* 意见条（方案C 极简两行式）：第一行 姓名+表决标签+时间，第二行 意见摘要+查看；点击整条展开全文 */
 .ts-op { padding: 16rpx 0; border-bottom: 2rpx solid #F2F0EC; cursor: pointer; }
+.ts-ops.summary .ts-op { padding: 10rpx 0; cursor: default; }
 .ts-op:last-child { border-bottom: 0; }
 .ts-op-l1 { display: flex; align-items: center; gap: 12rpx; margin-bottom: 8rpx; }
 .ts-op-name { font-size: 28rpx; font-weight: 600; color: #333; }
@@ -930,13 +1085,17 @@ async function removeOpinion(op) {
 .ts-op-vote.abstain { background: #F2F2F4; color: #5F6570; }
 .ts-op-vote.opt { background: #EAF2FD; color: #1F6FB2; }
 .ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
+.ts-op-del-inline { flex-shrink:0; margin-left:10rpx; border:0; background:transparent; color:#C9483D; font-size:23rpx; padding:6rpx 8rpx; font-family:inherit; }
+.ts-op-del-inline:active { background:#FDEDEC; border-radius:8rpx; }
 .ts-op-l2 { display: flex; align-items: baseline; gap: 12rpx; }
 .ts-op-sum { flex: 1; min-width: 0; font-size: 26rpx; color: #7A756E; line-height: 1.5; word-break: break-all;
   overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.ts-ops.summary .ts-op-sum { font-size: 24rpx; color: #8A8F98; line-height: 1.45; }
 .ts-op.open .ts-op-sum { -webkit-line-clamp: unset; color: #1f2329; font-size: 30rpx; }
 .ts-op-toggle { flex-shrink: 0; font-size: 24rpx; color: #C76A00; font-weight: 600; }
 .ts-op-actions { margin-top: 10rpx; text-align: right; }
 .ts-op-actions .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 6rpx 10rpx; background: none; border: none; }
+.ts-op-more { padding: 8rpx 0 0; font-size: 23rpx; color: #A0A6AE; text-align: center; }
 
 /* 通报类议题：标题/正文加大两号、间距拉大，只保留宣读确认 */
 .ts-sheet.is-notice .ts-titlewrap { max-height: 126rpx; }
@@ -968,6 +1127,8 @@ async function removeOpinion(op) {
 .ts-voice-time { flex: 1; font-size: 26rpx; color: #999; }
 /* 完成待确认：结果预览 */
 .ts-voice-result { font-size: 34rpx; line-height: 1.5; color: #1a1a1a; max-height: 220rpx; overflow-y: auto; word-break: break-word; padding: 2rpx; }
+.ts-voice-result-edit { width:100%; min-height:180rpx; max-height:280rpx; box-sizing:border-box; resize:none; border:2rpx solid #D7DEE6; border-radius:16rpx; background:#fff; padding:18rpx 20rpx; font-family:inherit; outline:none; }
+.ts-voice-result-edit:focus { border-color:#4B8FD8; box-shadow:0 0 0 5rpx rgba(75,143,216,0.10); }
 .ts-voice-txt { font-size: 30rpx; color: #333; }
 .ts-voice-txt.busy { display: flex; align-items: center; justify-content: center; gap: 14rpx; color: #E8890C; font-weight: 600; padding: 16rpx 0; }
 .ts-voice-spin { width: 28rpx; height: 28rpx; border: 4rpx solid #F0D9BC; border-top-color: #E8890C; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
@@ -979,19 +1140,24 @@ async function removeOpinion(op) {
 .ts-send[disabled] { background: #E3D5C3; }
 .ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
 /* 导航：在输入卡片之外、弹层最底部。上一个=白底描边次要按钮靠左，下一个/完成=实心主按钮+呼吸发光靠右，两端隔开（方案B） */
-.ts-nav-row { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; margin-top: 18rpx; }
-.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 18rpx; background: #F7F8FA; color: #444; font-size: 30rpx; font-weight: 600; padding: 20rpx 44rpx; }
+.ts-nav-row { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; margin-top: 20rpx; padding-top:18rpx; border-top:2rpx solid #EEF1F4; }
+.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #F7F8FA; color: #444; font-size: 29rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-nav-btn:active { background: #ECEEF1; }
+.ts-op-collapse { flex-shrink: 0; border: 2rpx solid #C7D4E2; background: #F4F8FC; color: #3F566E; font-size: 28rpx; font-weight: 800; padding: 16rpx 28rpx; border-radius: 999rpx; font-family: inherit; box-shadow: 0 4rpx 10rpx rgba(63,86,110,0.08); }
+.ts-op-collapse:active { background: #E8F0F8; border-color: #9FB4C9; color: #26394D; }
+.ts-op-collapse.warm { border-color: #E7B36A; background: #FFF4E6; color: #A85800; box-shadow: 0 5rpx 14rpx rgba(168,88,0,0.12); }
+.ts-op-collapse.warm:active { background: #FBE7CC; border-color: #D88900; color: #874600; }
 /* 上一个议题：规整的白底描边次要按钮，靠左；把右侧主按钮顶到最右 */
-.ts-nav-btn.prev { margin-right: auto; background: #fff; border-color: #D8DBE0; color: #55585E; padding: 20rpx 34rpx; }
+.ts-nav-btn.prev { margin-right: auto; background: #fff; border-color: #D8DBE0; color: #55585E; padding: 18rpx 30rpx; }
 .ts-nav-btn.prev:active { background: #EEF0F3; color: #3A3F47; }
-/* 下一个议题 / 完成：内容宽度(不占满)、靠右 */
-.ts-nav-btn.next, .ts-nav-btn.done { margin-left: auto; }
-/* 下一个议题：深橙实心，靠填充/颜色对比突出"主推进"，不再呼吸发光（研究快赢②：发光像"提交/结束"会误导老人，它只是切换页） */
-.ts-nav-btn.next { background: #C76A00; border-color: #C76A00; color: #fff; box-shadow: 0 4rpx 12rpx rgba(199,106,0,0.22); }
-.ts-nav-btn.next:active { background: #A85800; border-color: #A85800; }
+.ts-next-action { margin-left:auto; display:flex; align-items:center; padding:10rpx; border:2rpx solid #B9D8D5; background:#F0FAF8; border-radius:22rpx; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.10); }
+.ts-next-action.disabled { border-color:#E1E5EA; background:#F6F7F9; box-shadow:none; }
+.ts-nav-btn.next { min-width:0; padding:18rpx 28rpx 18rpx 32rpx; border-radius:16rpx; background:#0F766E; border-color:#0F766E; color:#fff; font-size:30rpx; box-shadow:none; }
+.ts-nav-btn.next:active { background:#0B5F59; border-color:#0B5F59; }
+.ts-nav-btn.next[disabled] { background:#D8DDE3; border-color:#D8DDE3; color:#8B949E; }
+.ts-next-arrow { font-size:34rpx; line-height:1; margin-left:4rpx; }
 /* 最后一个议题的「完成」：绿色实心(收尾/成功语义)，同样去掉发光 */
-.ts-nav-btn.done { background: #1F9D57; border-color: #1F9D57; color: #fff; box-shadow: 0 4rpx 12rpx rgba(31,157,87,0.22); }
+.ts-nav-btn.done { margin-left:auto; background: #1F9D57; border-color: #1F9D57; color: #fff; box-shadow: 0 4rpx 12rpx rgba(31,157,87,0.22); }
 .ts-nav-btn.done:active { background: #1A8449; border-color: #1A8449; }
 
 /* AI 助手行：AI 帮写(橙) / 语音输入(蓝) 两个等宽按钮并排，卡片内文本框下方，双色区分 */

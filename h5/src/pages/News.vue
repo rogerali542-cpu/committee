@@ -3,30 +3,42 @@
     <PageNav :title="pageTitle" style="margin:0 0 0;" />
 
     <div class="news-scroll" style="overflow-y:auto;">
-      <div class="news-paper" v-if="news">
-        <div class="news-flag">
-          <span class="nf-badge">{{ isPartyNews ? '党建融媒 · AI 生成' : 'AI 生成' }}</span>
-          <span class="nf-date">{{ today }}</span>
+      <div v-if="news" class="news-workbench">
+        <div class="news-meta">
+          <div>
+            <div class="news-kicker">{{ isPartyNews ? '党建新闻稿' : '会议新闻稿' }}</div>
+            <div class="news-source">依据本次会议纪要生成</div>
+          </div>
+          <span class="news-status">AI生成 · 待审核</span>
         </div>
-        <h1 class="news-title">{{ news.title }}</h1>
-        <div class="news-rule"><span class="nr-star">★</span></div>
-        <p class="news-para" v-for="(p, i) in paras" :key="i">{{ p }}</p>
-        <div class="news-sign">
-          <span class="ns-org">{{ isPartyNews ? '中共社区党支部委员会' : '社区业主委员会' }}</span>
-          <span class="ns-date">{{ today }}</span>
+
+        <div class="news-review-tip">发布前请核对事实、时间、人员和表述口径。</div>
+
+        <div class="news-paper">
+          <div class="news-flag">
+            <span>{{ today }}</span>
+          </div>
+          <h1 class="news-title">{{ news.title }}</h1>
+          <p class="news-para" v-for="(p, i) in paras" :key="i">{{ p }}</p>
+          <div class="news-sign">
+            <span class="ns-org">{{ isPartyNews ? '中共社区党支部委员会' : '社区业主委员会' }}</span>
+            <span class="ns-date">{{ today }}</span>
+          </div>
         </div>
-        <div class="news-note">本篇由豆包大模型依据会议纪要自动生成，仅供参考，发布前请人工审核。</div>
+
         <div class="news-actions">
+          <button class="news-btn primary" @click="copyAll">复制全文</button>
           <button class="news-btn ghost" @click="regen" :disabled="loading">{{ loading ? '生成中…' : '重新生成' }}</button>
-          <button class="news-btn" @click="goHome">回到首页</button>
         </div>
-        <div class="news-copy-link" @click="copyAll">复制全文</div>
+        <button class="news-home" @click="goHome">回到首页</button>
       </div>
 
       <div v-else class="news-empty">
-        <div class="ne-flag">党建融媒</div>
-        <div class="ne-text">{{ loadingText }}</div>
-        <button v-if="!loading && !checking" class="news-btn" @click="regen">生成党建新闻</button>
+        <div class="ne-card">
+          <div class="ne-flag">党建新闻稿</div>
+          <div class="ne-text">{{ loadingText }}</div>
+          <button v-if="!loading && !checking" class="news-btn primary" @click="regen">生成党建新闻</button>
+        </div>
       </div>
     </div>
 
@@ -161,40 +173,40 @@ function copyAll() {
 .news-page { min-height: 100vh; background: #F4ECE3; display: flex; flex-direction: column; }
 /* 顶栏红色党建风 */
 :deep(.page-nav) { background: linear-gradient(90deg, #B3121A, #8E0E14); }
-.news-scroll { flex: 1; padding: 28rpx 28rpx 60rpx; box-sizing: border-box; }
+.news-scroll { flex: 1; padding: 24rpx 28rpx 54rpx; box-sizing: border-box; }
+
+.news-workbench { display: flex; flex-direction: column; gap: 18rpx; }
+.news-meta { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
+.news-kicker { font-size: 38rpx; line-height: 1.25; font-weight: 800; color: #8E0E14; }
+.news-source { margin-top: 8rpx; font-size: 24rpx; color: #9A7458; }
+.news-status { flex-shrink: 0; margin-top: 4rpx; padding: 8rpx 16rpx; border-radius: 999rpx; background: #FFF7EF; border: 1rpx solid #E7B9A2; color: #A8432E; font-size: 23rpx; font-weight: 700; }
+.news-review-tip { border-radius: 14rpx; background: #FFF8EE; border: 1rpx solid #EAD0B8; color: #8D6240; font-size: 25rpx; line-height: 1.45; padding: 16rpx 20rpx; }
 
 .news-paper {
   background: #FFFDFB;
-  border-radius: 20rpx;
-  border-top: 10rpx solid #C0141B;
-  box-shadow: 0 6rpx 24rpx rgba(140, 20, 20, 0.12);
-  padding: 34rpx 34rpx 40rpx;
+  border-radius: 18rpx;
+  border: 1rpx solid #E9D9C9;
+  box-shadow: 0 6rpx 22rpx rgba(105, 57, 28, 0.08);
+  padding: 34rpx 34rpx 38rpx;
 }
-.news-flag { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26rpx; }
-.nf-badge { font-size: 24rpx; font-weight: 700; color: #fff; background: linear-gradient(90deg, #C0141B, #E23A2E); padding: 8rpx 18rpx; border-radius: 999rpx; letter-spacing: 1rpx; }
-.nf-date { font-size: 24rpx; color: #B08968; }
+.news-flag { display: flex; justify-content: flex-end; margin-bottom: 18rpx; font-size: 24rpx; color: #A98A70; }
 
-.news-title { font-size: 46rpx; line-height: 1.4; font-weight: 800; color: #A80F16; text-align: center; margin: 8rpx 0 0; letter-spacing: 1rpx; }
-.news-rule { display: flex; align-items: center; justify-content: center; margin: 20rpx 0 26rpx; position: relative; }
-.news-rule::before, .news-rule::after { content: ""; height: 3rpx; width: 34%; background: linear-gradient(90deg, transparent, #C0141B); }
-.news-rule::after { background: linear-gradient(90deg, #C0141B, transparent); }
-.nr-star { color: #C0141B; font-size: 30rpx; margin: 0 16rpx; }
-
-.news-para { font-size: 34rpx; line-height: 1.9; color: #2B2B2B; text-indent: 2em; margin: 0 0 22rpx; text-align: justify; }
+.news-title { font-size: 40rpx; line-height: 1.45; font-weight: 800; color: #8E0E14; text-align: left; margin: 0 0 28rpx; letter-spacing: 0; }
+.news-para { font-size: 31rpx; line-height: 1.86; color: #292724; text-indent: 2em; margin: 0 0 24rpx; text-align: justify; }
 .news-sign { display: flex; flex-direction: column; align-items: flex-end; gap: 6rpx; margin-top: 34rpx; }
-.ns-org { font-size: 32rpx; font-weight: 700; color: #333; }
-.ns-date { font-size: 30rpx; color: #555; }
-.news-note { margin-top: 30rpx; padding-top: 20rpx; border-top: 1rpx dashed #E4CFC0; font-size: 24rpx; color: #B08968; line-height: 1.6; }
+.ns-org { font-size: 29rpx; font-weight: 700; color: #333; }
+.ns-date { font-size: 27rpx; color: #666; }
 
-.news-actions { display: flex; gap: 20rpx; margin-top: 30rpx; }
-.news-btn { flex: 1; height: 88rpx; border: none; border-radius: 16rpx; background: linear-gradient(90deg, #C0141B, #E23A2E); color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 6rpx 18rpx rgba(200, 30, 30, 0.28); }
+.news-actions { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18rpx; margin-top: 4rpx; }
+.news-btn { width: 100%; height: 88rpx; border: none; border-radius: 14rpx; color: #fff; font-size: 31rpx; font-weight: 800; }
+.news-btn.primary { background: #B3121A; box-shadow: 0 6rpx 16rpx rgba(179, 18, 26, 0.22); }
 .news-btn:active { opacity: .9; }
-.news-btn.ghost { background: #fff; color: #C0141B; border: 2rpx solid #C0141B; box-shadow: none; }
+.news-btn.ghost { background: #FFFDFB; color: #B3121A; border: 2rpx solid #D9AAA0; box-shadow: none; }
 .news-btn:disabled { opacity: .6; }
-/* 复制全文：降级为文字链接（不再占按钮位） */
-.news-copy-link { text-align: center; margin-top: 20rpx; font-size: 28rpx; color: #C0141B; font-weight: 600; padding: 8rpx; }
+.news-home { height: 64rpx; border: none; background: transparent; color: #9A7458; font-size: 27rpx; font-weight: 600; }
 
-.news-empty { display: flex; flex-direction: column; align-items: center; gap: 24rpx; padding: 120rpx 40rpx; }
-.ne-flag { font-size: 40rpx; font-weight: 800; color: #C0141B; letter-spacing: 4rpx; }
-.ne-text { font-size: 30rpx; color: #8a6b52; }
+.news-empty { display: flex; flex-direction: column; align-items: stretch; padding: 96rpx 18rpx; }
+.ne-card { background: #FFFDFB; border: 1rpx solid #E9D9C9; border-radius: 18rpx; padding: 54rpx 34rpx; box-shadow: 0 6rpx 22rpx rgba(105, 57, 28, 0.08); text-align: center; }
+.ne-flag { font-size: 38rpx; font-weight: 800; color: #8E0E14; }
+.ne-text { margin: 18rpx 0 34rpx; font-size: 29rpx; color: #8a6b52; }
 </style>

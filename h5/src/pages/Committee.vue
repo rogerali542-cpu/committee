@@ -666,13 +666,18 @@ const curPeriod = Math.ceil(curMonth / 2)   // 双月一期：1-2/3-4/5-6/7-8…
 const allMeetings = ref([])                 // 全部业委会会议（loadAll 填充），按期真实统计
 // 例会规则：每个双月期应召开 1 次（下面 yearPlan 每期一行即体现；接后端可调规则）
 function periodLabel(p) { return ((p - 1) * 2 + 1) + '-' + (p * 2) + '月' }
-// 「完整走完流程」= 已结束(ended) 且 非无效
-function isHeldMeeting(m) { return !!m && m.stage === 'ended' && m.compliance !== 'invalid' }
+// 首页履职待办：会议只要已结束，就不再作为“待开/逾期”催办项展示。
+// compliance 是否有效留给详情/公示判断；首页待办避免同一场已结束会议继续催办。
+function isHeldMeeting(m) { return !!m && m.stage === 'ended' }
 // 会议属于本年第几期（非本年→0）
 function meetingPeriod(m) {
   if (!m) return 0
-  const titleMatch = String(m.title || '').match(/2026年第([1-6])次业委会例会/)
-  if (titleMatch) return Number(titleMatch[1])
+  const titleText = String(m.title || '')
+  const titleMatch = titleText.match(/2026年第([1-6一二三四五六])次/)
+  if (titleMatch) {
+    const cn = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 }
+    return cn[titleMatch[1]] || Number(titleMatch[1])
+  }
   if (!m.meetingDate) return 0
   const p = String(m.meetingDate).split('-')
   if (Number(p[0]) !== curYear) return 0
@@ -1277,6 +1282,13 @@ function formatMeetingTime(m) {
 const hasOngoingMeeting = computed(() => currents.value.some((c) => c.stage === 'ongoing'))
 
 async function goCurrent(cur) {
+  try {
+    await api.committeeDetail(cur.id)
+  } catch (e) {
+    toast({ title: '会议已更新，正在刷新', icon: 'none' })
+    await loadAll()
+    return
+  }
   const chair = perm.isChair() || perm.isRecorder()
   const target = chair
     ? '/pages/committee-detail/committee-detail?id=' + cur.id
@@ -1353,7 +1365,14 @@ function switchStage(stage) {
   loadAll()
 }
 
-function openDetail(id) {
+async function openDetail(id) {
+  try {
+    await api.committeeDetail(id)
+  } catch (e) {
+    toast({ title: '会议已更新，正在刷新', icon: 'none' })
+    await loadAll()
+    return
+  }
   navigateTo('/pages/committee-detail/committee-detail?id=' + id)
 }
 
@@ -2123,11 +2142,31 @@ function applyNoticeFields(res, overwrite) {
   if (res.meetingTime && (!isFieldUserSet('meetingTime') || overwrite)) { createForm.meetingTime = res.meetingTime; changed = true }
   if (res.location && (!isFieldUserSet('location') || overwrite)) { createForm.location = res.location; syncLocationPreset(res.location); changed = true }
   if (Array.isArray(res.topics) && res.topics.length && (!(createForm.topics && createForm.topics.length) || overwrite)) {
-    createForm.topics = res.topics.map((t) => ({ title: String(t), type: 'decision', decisionType: 'simple', options: [] }))
+    createForm.topics = res.topics.map(normalizeRecognizedTopic)
     changed = true
   }
   if (changed) docPrefilled.value = true
   return changed
+}
+
+function normalizeRecognizedTopic(raw) {
+  let title = String(raw || '').trim()
+  let type = 'decision'
+  const typed = title.match(/^\s*(notice|discussion|decision)\s*[|｜:]\s*(.+)$/i)
+  if (typed) {
+    type = typed[1].toLowerCase()
+    title = typed[2].trim()
+  } else if (/通知|通报|知悉|传达/.test(title)) {
+    type = 'notice'
+  } else if (/讨论|研讨|征求意见|意见汇总/.test(title) && !/表决|审议通过|投票/.test(title)) {
+    type = 'discussion'
+  }
+  return {
+    title,
+    type,
+    decisionType: type === 'decision' ? 'simple' : 'none',
+    options: []
+  }
 }
 
 // 多文件识别结果 → 组装结果卡：识别为通知/材料、已识别/待补填字段、耗时+token
