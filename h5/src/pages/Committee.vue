@@ -2840,10 +2840,10 @@ onActivated(show)
   display: flex; flex-direction: column; box-sizing: border-box;
 }
 /* 顶栏 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: env(safe-area-inset-top) 32rpx 8rpx; background: var(--c-primary-dark); }
-.hd-left { display: flex; flex-direction: column; padding-top: 2rpx; }
-.hd-title { font-size: 44rpx; font-weight: 700; color: #fff; }
-.hd-sub { font-size: 29rpx; color: #fff; margin-top: 4rpx; }
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: env(safe-area-inset-top) 32rpx 6rpx; background: var(--c-primary-dark); }
+.hd-left { display: flex; flex-direction: column; padding-top: 0; }
+.hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.15; }
+.hd-sub { font-size: 28rpx; color: #fff; margin-top: 0; line-height: 1.3; }
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
