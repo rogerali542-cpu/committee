@@ -1451,7 +1451,10 @@ async function openDetail(id) {
     await loadAll()
     return
   }
-  navigateTo('/pages/committee-detail/committee-detail?id=' + id)
+  // 硬导航兜底：软路由偶发"URL变了却不切换视图"，500ms 后目标页未挂载则 location 硬跳（对齐其它关键跳转做法）
+  const browserUrl = '/committee-detail?id=' + id
+  try { await navigateTo('/pages/committee-detail/committee-detail?id=' + id) } catch (navErr) { console.error('[进详情] 软跳 reject：', navErr) }
+  setTimeout(() => { if (!document.querySelector('.detail-page')) window.location.href = browserUrl }, 500)
 }
 
 function openMeetingTap(item) {
