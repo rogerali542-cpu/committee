@@ -1711,10 +1711,12 @@ async function uploadAndRecognize() {
 async function uploadRecordingStep() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
-  if (recActive.value) { toast({ title: '请先暂停录音，再上传', icon: 'none' }); return }
+  // 录音进行中也直接处理：走到这里都是用户明确要上传（结束会议选"上传"/生成纪要确认/点上传按钮），
+  // finishRecord 会自动停止录音再上传，无需让用户回录音区手动暂停。
+  if (recActive.value) toast({ title: '已自动停止录音，正在上传', icon: 'none' })
   if (rec.recording.value || rec.hasRecording.value) {
     _recognizeAfterUpload = true
-    await finishRecord() // 上传成功后 → uploadRecordingFile 里触发 uploadAndRecognize
+    await finishRecord() // 内部：录音中→自动 stop 拿产出→上传；上传成功后触发 uploadAndRecognize
     return
   }
   if (!hasSavedRecordings.value) { toast({ title: '请先开始录音', icon: 'none' }); return }
