@@ -2919,16 +2919,16 @@ onActivated(show)
 
 /* 今年会议计划：首页前置总览，竖向时间轴——一条主线贯全年，节点亮灭即进度 */
 .plan-card { margin: 0 24rpx 22rpx; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); overflow: hidden; }
-.plan-stack { display: flex; flex-direction: column; gap: 20rpx; margin: 0 24rpx 20rpx; }
-.plan-stack.compact { gap: 18rpx; }
+.plan-stack { display: flex; flex-direction: column; gap: 14rpx; margin: 0 24rpx 20rpx; }
+.plan-stack.compact { gap: 12rpx; }
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
-.plan-stack.has-meeting { gap: 12rpx; }
+.plan-stack.has-meeting { gap: 8rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
 .plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 6rpx 0; }
-.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 14rpx 22rpx 16rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 2rpx; }
+.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 8rpx 22rpx 12rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 0; }
 .plan-stack.has-meeting .yc-list-count { font-size: 24rpx; padding: 4rpx 13rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 5rpx 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-title { font-size: 31rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 24rpx; margin-top: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
@@ -3063,9 +3063,9 @@ onActivated(show)
 .period-cell.overdue { background: #FDECEA; }
 .period-cell.overdue .period-month, .period-cell.overdue .period-status { color: #B02A1E; }
 .yc-list { margin: 0 20rpx 18rpx; padding: 14rpx 16rpx 12rpx; background: #F8FAFB; border-radius: 18rpx; border: 2rpx solid #EEF1F3; }
-.yc-list.plan-todo-card { margin: 0; padding: 20rpx 26rpx 22rpx; background: #FFFCF6; border-color: #FBE7CC; border-radius: 22rpx; box-shadow: 0 12rpx 30rpx rgba(199,106,0,0.12); }
+.yc-list.plan-todo-card { margin: 0; padding: 12rpx 26rpx 18rpx; background: #FFFCF6; border-color: #FBE7CC; border-radius: 22rpx; box-shadow: 0 12rpx 30rpx rgba(199,106,0,0.12); }
 .yc-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 28rpx; font-weight: 800; color: var(--c-text-strong); padding: 0 2rpx 8rpx; }
-.plan-todo-card .yc-list-head { font-size: 33rpx; font-weight: 700; padding-bottom: 4rpx; }
+.plan-todo-card .yc-list-head { font-size: 33rpx; font-weight: 700; padding-bottom: 0; }
 .yc-list-count { flex-shrink: 0; padding: 5rpx 15rpx; border-radius: 999rpx; background: #EAF6FF; color: #0284C7; font-size: 27rpx; font-weight: 800; }
 /* 待办标题吸睛：图标 + 有待办时徽章实心暖色并缓慢脉动光环 */
 .yc-head-title { display: inline-flex; align-items: center; min-width: 0; }
@@ -3077,7 +3077,7 @@ onActivated(show)
 }
 @media (prefers-reduced-motion: reduce) { .plan-todo-card .yc-list-count.active { animation: none; } }
 .yc-item { display: flex; align-items: center; gap: 14rpx; padding: 13rpx 4rpx; border-top: 2rpx solid #EEF1F3; cursor: pointer; }
-.plan-todo-card .yc-item { gap: 16rpx; padding: 10rpx 4rpx; }
+.plan-todo-card .yc-item { gap: 16rpx; padding: 6rpx 4rpx; }
 .plan-todo-card .yc-item.current,
 .plan-todo-card .yc-item.overdue { border-top: none; border-radius: 18rpx; padding: 34rpx 22rpx; margin-top: 18rpx; border: 2rpx solid transparent; border-left-width: 10rpx; }
 .plan-todo-card .yc-item.current { background: #FFF7ED; border-color: #FED7AA; border-left-color: #D97706; }
