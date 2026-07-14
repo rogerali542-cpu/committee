@@ -49,7 +49,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
 import { toast } from '@/utils/ui'
-import { navigateTo, redirectTo } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 
 const route = useRoute()
@@ -173,7 +173,10 @@ async function saveEdit() {
   try {
     await api.committeeUpdateMinutes(meetingId, value)
     text.value = value
+    editing.value = false
     toast({ title: '纪要已保存', icon: 'success' })
+    // 保存成功即完成本页任务：稍候半拍让提示可见，随后返回上一页
+    setTimeout(() => navigateBack(), 500)
   } catch (e) {
     toast({ title: (e && e.message) || '保存失败', icon: 'none' })
   } finally {
