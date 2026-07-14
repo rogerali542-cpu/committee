@@ -11,14 +11,14 @@ OUT="docker-compose.deploy.yml"
 [ -f "$ENV_FILE" ] || { echo "缺少 $ENV_FILE（先按 .env.example 复制并填真实值）"; exit 1; }
 
 # 把 .env 一行 KEY=VALUE 输出成缩进 6 空格的  KEY: "VALUE"（转义 \ 和 "，去掉 \r）
-# 数据库已改编排内置 mysql 服务：.env 里遗留的云库 DB_*/MYSQL_* 一律跳过，避免覆盖静态配置。
+# 沙箱用【云数据库】：DB_* 直接取自 .env 内联进 environment（编排不含 mysql 服务）。
+# 内置 MySQL 的编排（docker-compose.yml + mysql.Dockerfile）仅用于本地验证。
 emit_env() {                        # $1 可选：只输出这一个 KEY；缺省=全部
   local want="${1:-}"
   grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$ENV_FILE" | while IFS= read -r line; do
     key="${line%%=*}"; val="${line#*=}"
     key="$(echo "$key" | tr -d '[:space:]')"
     [ -n "$want" ] && [ "$key" != "$want" ] && continue
-    case "$key" in DB_HOST|DB_PORT|DB_NAME|DB_USER|DB_PASSWORD|MYSQL_*) continue;; esac
     val="${val%$'\r'}"
     val="${val//\\/\\\\}"; val="${val//\"/\\\"}"
     printf '      %s: "%s"\n' "$key" "$val"
@@ -43,26 +43,6 @@ cat <<'MID1'
     expose:
       - "8003"
 
-  mysql:
-    image: ywh-mysql:latest
-    command:
-      - "mysqld"
-      - "--character-set-server=utf8mb4"
-      - "--collation-server=utf8mb4_unicode_ci"
-      - "--default-time-zone=+08:00"
-      - "--performance-schema=OFF"
-      - "--innodb-buffer-pool-size=64M"
-      - "--max-connections=50"
-      - "--skip-name-resolve"
-    environment:
-      MYSQL_ROOT_PASSWORD: "T3eZh8r4SHGtqkhzaHyp"
-      MYSQL_DATABASE: "ywh_db"
-      TZ: Asia/Shanghai
-    volumes:
-      - mysql-data:/var/lib/mysql
-    expose:
-      - "3306"
-
   backend:
     image: ywh-backend:latest
     environment:
@@ -70,11 +50,6 @@ cat <<'MID1'
       OCR_SERVICE_BASE_URL: "http://ocr-asr-service:8003"
       STORAGE_AUDIO_DIR: "/app/data/audio"
       TZ: Asia/Shanghai
-      DB_HOST: "mysql"
-      DB_PORT: "3306"
-      DB_NAME: "ywh_db"
-      DB_USER: "root"
-      DB_PASSWORD: "T3eZh8r4SHGtqkhzaHyp"
 MID1
 emit_env
 cat <<'MID2'
@@ -83,7 +58,6 @@ cat <<'MID2'
     expose:
       - "8080"
     depends_on:
-      - mysql
       - ocr-asr-service
 
   web:
@@ -102,7 +76,6 @@ cat <<'TAIL'
 
 volumes:
   backend-audio:
-  mysql-data:
 TAIL
 } > "$OUT"
 
