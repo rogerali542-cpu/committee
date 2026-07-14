@@ -659,6 +659,7 @@ import { pickFiles, humanSize } from '@/utils/upload'
 import { isWecom, chooseWecomImages, isWecomCancel } from '@/utils/wecom'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
+import { aiTask } from '@/composables/aiTask'
 
 const isChair = ref(false)
 const isRecorder = ref(false)
@@ -1304,6 +1305,7 @@ async function loadAll() {
       actives = [...actives, ...pend]
     }
     currents.value = actives.map((m) => decorateCurrent(m, chair))
+    refreshMinutesGenStates() // 异步补查：纪要任务生成中 → 卡片按钮切「继续生成会议纪要」
   } catch (e) {
     stats.value = {}
     currents.value = []
@@ -1327,6 +1329,7 @@ function decorateCurrent(m, chair) {
     state: no < step ? 'done' : (no === step ? 'active' : 'todo')
   }))
   let ctaLabel, ctaIcon, tag
+  let minutesGen = false
   if (m.stage === 'preparing') {
     if (chair) {
       // 准备阶段(会议通知阶段)：卡片按钮统一「继续通知」——点回会议通知页继续发送/开始会议
@@ -1342,16 +1345,38 @@ function decorateCurrent(m, chair) {
     ctaIcon = chair ? '🎙️' : '👀'
     tag = '正在开的会'
   } else {
-    // ended：纪要已生成 → 查看会议(无图标)；未生成 → 整理会议记录
-    ctaLabel = m.minutesGenerated ? '查看会议' : '整理会议记录'
-    ctaIcon = m.minutesGenerated ? '' : '📝'
+    // ended：纪要生成中 → 继续生成会议纪要(点回纪要页)；已生成 → 查看会议；未生成 → 整理会议记录
+    minutesGen = !m.minutesGenerated && aiTask.active && !!aiTask.targetPath && aiTask.targetPath.indexOf('meetingId=' + m.id) >= 0
+    if (minutesGen) {
+      ctaLabel = '继续生成会议纪要'
+      ctaIcon = '🤖'
+    } else {
+      ctaLabel = m.minutesGenerated ? '查看会议' : '整理会议记录'
+      ctaIcon = m.minutesGenerated ? '' : '📝'
+    }
     tag = '会后总结'
   }
   return {
     id: m.id, title: m.title, meetingDate: m.meetingDate, meetingTime: (m.meetingTime || '').slice(0, 5),
     location: m.location, timeText: formatMeetingTime(m), locationText: m.location || '地点待定',
     step: step, steps: steps, stage: m.stage, stageText: MEETING_STAGE_TEXT[m.stage] || '未开始',
-    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag
+    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen
+  }
+}
+
+// 已结束未生成纪要的会议：问服务端纪要任务状态（跨刷新/换设备可靠），生成中 → 卡片按钮切「继续生成会议纪要」。
+// 用户预期：生成完成前卡片都保持"回纪要页"的入口，完成后才变回"查看会议"。
+async function refreshMinutesGenStates() {
+  for (const c of (currents.value || [])) {
+    if (c.stage !== 'ended' || c.minutesGen || c.ctaLabel !== '整理会议记录') continue
+    try {
+      const st = await api.committeeMinutesStatus(c.id)
+      if (st && st.status === 'running') {
+        c.minutesGen = true
+        c.ctaLabel = '继续生成会议纪要'
+        c.ctaIcon = '🤖'
+      }
+    } catch (e) { /* 旧后端无此接口/离线：保持默认入口 */ }
   }
 }
 
@@ -1364,6 +1389,14 @@ function formatMeetingTime(m) {
 const hasOngoingMeeting = computed(() => currents.value.some((c) => c.stage === 'ongoing'))
 
 async function goCurrent(cur) {
+  // 纪要生成中：点卡片回纪要页看进度/结果，而不是会议详情页（带硬导航兜底）
+  if (cur.minutesGen) {
+    const target = '/pages/minutes-view/minutes-view?meetingId=' + cur.id + '&from=committee'
+    const browserUrl = '/minutes-view?meetingId=' + cur.id + '&from=committee'
+    try { await navigateTo(target) } catch (navErr) { console.error('[继续生成纪要] 软跳 reject：', navErr) }
+    setTimeout(() => { if (!document.querySelector('.mv-page')) window.location.href = browserUrl }, 500)
+    return
+  }
   try {
     await api.committeeDetail(cur.id)
   } catch (e) {
