@@ -12,7 +12,10 @@
 
       <!-- 表决页顶部意见摘要：放在标题下方，详情仍从"补充意见"进入 -->
       <div v-if="opinionSummaryMode" class="ts-ops summary ts-top-summary">
-        <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
+        <div class="ts-ops-title-row">
+          <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
+          <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">展开</button>
+        </div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
         <div v-else class="ts-op" v-for="op in visibleOpinions" :key="op.id">
@@ -235,6 +238,27 @@
         <button v-else class="ts-nav-btn done" @click="$emit('close')">完成</button>
       </div>
     </div>
+
+    <!-- 全部意见：叠加在当前议题弹层之上的大窗口，列表区域可独立下拉 -->
+    <div v-if="opinionListOpen" class="ts-all-mask" @click.stop="opinionListOpen = false">
+      <div class="ts-all-sheet" @click.stop>
+        <div class="ts-all-handle"></div>
+        <div class="ts-all-head">
+          <span>全部意见（{{ opinions.length }}）</span>
+          <button class="ts-all-close" @click="opinionListOpen = false">×</button>
+        </div>
+        <div class="ts-all-list">
+          <div v-for="op in opinions" :key="op.id" class="ts-all-op">
+            <div class="ts-op-l1">
+              <span class="ts-op-name">{{ op.name }}</span>
+              <span v-if="opVote(op)" class="ts-op-vote" :class="opVote(op).cls">{{ opVote(op).text }}</span>
+              <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
+            </div>
+            <div class="ts-all-content">{{ op.content }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -263,6 +287,7 @@ const draft = ref('')
 const sending = ref(false)
 const taEl = ref(null)
 const opinionOpen = ref(false)
+const opinionListOpen = ref(false)
 
 const tagClass = computed(() => {
   const t = props.topic && props.topic.type
@@ -470,6 +495,7 @@ watch(() => props.topic && props.topic.id, (id) => {
   helperOn.value = false; helperDraft.value = ''; aiBusy.value = false
   aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null; openOpIds.value = new Set()
   opinionOpen.value = false
+  opinionListOpen.value = false
   pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
@@ -933,6 +959,17 @@ async function removeOpinion(op) {
 .ts-tag.notice { background: #F1EBFB; color: #6D3FC4; }
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
+/* 全部意见大窗口：覆盖在原议题弹层之上，正文列表独立滚动 */
+.ts-all-mask { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0,0,0,.38); }
+.ts-all-sheet { height: 76vh; max-height: 88vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 32rpx calc(28rpx + env(safe-area-inset-bottom)); box-shadow: 0 -10rpx 40rpx rgba(0,0,0,.16); }
+.ts-all-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #D9DDE3; margin: 0 auto 16rpx; }
+.ts-all-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding-bottom: 18rpx; border-bottom: 2rpx solid #EEF0F3; font-size: 34rpx; font-weight: 800; color: #1f2329; }
+.ts-all-close { width: 56rpx; height: 56rpx; border: 0; background: transparent; color: #8A8F98; font-size: 44rpx; line-height: 1; }
+.ts-all-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6rpx 0 24rpx; }
+.ts-all-op { padding: 24rpx 4rpx; border-bottom: 2rpx solid #F0F1F3; }
+.ts-all-op:last-child { border-bottom: 0; }
+.ts-all-content { margin-top: 10rpx; color: #33373D; font-size: 29rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+
 .ts-sheet.is-vote { width: 100%; height: 100vh; max-height: 100vh; box-sizing: border-box; border-radius: 0; padding: calc(18rpx + env(safe-area-inset-top)) 34rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; }
 .ts-sheet.is-vote .ts-handle { display: none; }
 .ts-sheet.is-vote .ts-head { margin-bottom: 12rpx; align-items: flex-start; }
@@ -957,7 +994,7 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-vote-btn.agree.on .ts-radio { border-color: #3E9B34; box-shadow: inset 0 0 0 8rpx #fff; background: #3E9B34; }
 .ts-sheet.is-vote .ts-vote-btn.against.on .ts-radio { border-color: #E24B3A; box-shadow: inset 0 0 0 8rpx #fff; background: #E24B3A; }
 .ts-sheet.is-vote .ts-vote-btn.abstain.on .ts-radio { border-color: #4D5158; box-shadow: inset 0 0 0 8rpx #fff; background: #4D5158; }
-.ts-sheet.is-vote .ts-vote-submit { width: 100%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: #0F766E; }
+.ts-sheet.is-vote .ts-vote-submit { width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: #0F766E; }
 .ts-sheet.is-vote .ts-vote-submit:active { background: #0B5F59; }
 .ts-sheet.is-vote .ts-vote-submit[disabled] { background: #C8D7D5; color: #fff; }
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
@@ -967,7 +1004,7 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-tally-scope { background: transparent; color: #8A8F98; padding: 0; font-weight: 600; }
 .ts-sheet.is-vote .ts-tally-total { color: #6B7078; font-size: 25rpx; font-weight: 600; }
 .ts-sheet.is-vote .ts-tally-veilbox { margin-top: 10rpx; padding: 12rpx 0 0; border: 0; background: transparent; color: #A0A5AD; font-size: 24rpx; }
-.ts-op-entry { display: block; width: auto; box-sizing: border-box; margin: 20rpx 0 0 auto; border: 2rpx solid #C8D7E5; border-radius: 14rpx; background: #F7FAFC; color: #4D6F8C; font-size: 26rpx; font-weight: 600; padding: 13rpx 26rpx; font-family: inherit; box-shadow: none; }
+.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 60%; min-height: 88rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #C8D7E5; border-radius: 16rpx; background: #F7FAFC; color: #4D6F8C; font-size: 30rpx; font-weight: 600; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: none; }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
@@ -1032,7 +1069,7 @@ async function removeOpinion(op) {
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
-.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: #0F766E; color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(15,118,110,0.22); white-space: nowrap; }
+.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: #0F766E; color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(15,118,110,0.22); white-space: nowrap; }
 .ts-vote-submit:active { background: #0B5F59; }
 .ts-vote-submit[disabled] { background: #C8D7D5; color: #fff; box-shadow: none; }
 .ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
@@ -1069,8 +1106,13 @@ async function removeOpinion(op) {
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops.summary { margin-top: 18rpx; padding-top: 14rpx; }
 .ts-top-summary { flex-shrink: 0; margin-top: 0; margin-bottom: 12rpx; }
+.ts-ops-title-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 14rpx; }
+.ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
+.ts-ops-expand { flex-shrink: 0; border: 0; background: transparent; color: #1F6FB2; font-size: 25rpx; font-weight: 600; padding: 8rpx 4rpx 8rpx 18rpx; }
+.ts-ops-expand:active { opacity: .6; }
 .ts-ops.summary .ts-ops-head { font-size: 26rpx; margin-bottom: 8rpx; color: #5F6570; }
+.ts-ops.summary .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
 /* 意见条（方案C 极简两行式）：第一行 姓名+表决标签+时间，第二行 意见摘要+查看；点击整条展开全文 */
 .ts-op { padding: 16rpx 0; border-bottom: 2rpx solid #F2F0EC; cursor: pointer; }

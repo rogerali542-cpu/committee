@@ -124,7 +124,8 @@
 
         <!-- 底部大签到按钮（si-bottom 用 margin-top:auto 吸底；名单展开占满剩余空间内部滚动，按钮不被挤走） -->
         <div class="si-bottom">
-          <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? '进入会议' : '点击签到' }}</button>
+          <div class="si-status" :class="{ on: signedIn }">{{ signedIn ? '✓ 您已签到' : '您尚未签到' }}</div>
+          <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? '进入会议' : '到会签到' }}</button>
         </div>
       </div>
     </template>
@@ -905,6 +906,7 @@ watch(generatingMinutes, (v) => { aiTask.overlayShown = v }, { immediate: true }
 const bgMinutesGenerating = computed(() => aiTask.active && !!aiTask.targetPath && aiTask.targetPath.indexOf('meetingId=' + meetingId.value) >= 0)
 // 会中已不生成纪要：原「AI生成纪要」主按钮及 suppMinutes* 计算属性已移除，纪要一律会后在会议详情页生成
 const endReviewHint = computed(() => {
+  if (minutesGenerated.value) return '会议纪要已经生成，可直接查看并继续编辑。'
   if (canUpload.value) return '本次未上传的录音不会用于自动生成会议纪要。'
   if (uploading.value) return '录音正在上传，完成后会自动识别。'
   if (polling.value || extracting.value) return '录音正在后台识别，你可以停留在本页等待完成。'
@@ -924,12 +926,14 @@ const endReviewAsrText = computed(() => {
   return '未完成识别'
 })
 const endReviewPrimaryText = computed(() => {
+  if (minutesGenerated.value) return '已生成，查看纪要'
   if (uploading.value) return '上传中…'
   if (polling.value || extracting.value) return '识别中…'
   if (generated.value) return '生成会议纪要'
   return '暂不能生成纪要'
 })
 const endReviewPrimaryDisabled = computed(() => {
+  if (minutesGenerated.value) return false
   if (ending.value || generatingMinutes.value) return true
   if (uploading.value || polling.value || extracting.value) return true
   return !generated.value
@@ -1838,7 +1842,7 @@ async function continueGenerateMinutes(skipGuard) {
   const mid = meetingId.value
   minutesGenAt.value = Date.now() // durable「生成中」时刻：整页刷新/硬跳丢了内存 aiTask 后，切回本页据此从服务端恢复入口
   // 全局后台任务：切到别的页面时顶部悬浮「会议纪要生成中…」，完成后可点直达纪要页
-  const minutesPath = '/pages/minutes/minutes?meetingId=' + mid + '&from=meeting-live-quick&view=1'
+  const minutesPath = '/pages/minutes-view/minutes-view?meetingId=' + mid + '&from=meeting-live-quick'
   startAiTask({ label: '会议纪要生成中…', originPath: window.location.pathname, targetPath: minutesPath })
   persistQuickState() // 立刻落盘生成标记（原先要等生成成功才 persist，中途刷新就丢了 → 重进无入口）
   try {
@@ -1871,12 +1875,11 @@ function backgroundDone() {
 // gen 阶段（「查看会议纪要」）→ 进纪要页。软路由偶发不切换——加硬导航兜底。
 function onAiWorkDone() {
   if (overlayPhase.value === 'recognize') return // 识别完成：遮罩自行收起，页面回到两键状态
-  // view=1：进纪要页先看正文（不直接进编辑模式）
-  const q = 'meetingId=' + meetingId.value + '&from=meeting-live-quick&view=1'
-  navigateTo('/pages/minutes/minutes?' + q)
+  const q = 'meetingId=' + meetingId.value + '&from=meeting-live-quick'
+  navigateTo('/pages/minutes-view/minutes-view?' + q)
   setTimeout(() => {
     if (document.querySelector('.live-page')) {
-      window.location.href = '/minutes?' + q
+      window.location.href = '/minutes-view?' + q
     }
   }, 500)
 }
@@ -2403,11 +2406,11 @@ function buildConfirmPayload() {
 
 // 仅查看已保存的纪要草稿，不触发重新生成
 function viewMinutes() {
-  const q = 'meetingId=' + meetingId.value + '&from=meeting-live-quick&view=1'
-  navigateTo('/pages/minutes/minutes?' + q)
+  const q = 'meetingId=' + meetingId.value + '&from=meeting-live-quick'
+  navigateTo('/pages/minutes-view/minutes-view?' + q)
   // 软路由偶发不切换（URL 变了却停在录音页）→ 500ms 后仍在本页则硬导航兜底
   setTimeout(() => {
-    if (document.querySelector('.live-page')) window.location.href = '/minutes?' + q
+    if (document.querySelector('.live-page')) window.location.href = '/minutes-view?' + q
   }, 500)
 }
 
@@ -2525,6 +2528,7 @@ async function confirmEndMeeting() {
 
 async function handleEndReviewPrimary() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
+  if (minutesGenerated.value) { viewMinutes(); return }
   if (uploading.value || polling.value || extracting.value) return
   if (!generated.value) { toast({ title: '录音识别完成后可生成纪要', icon: 'none' }); return }
   await endAndGenerateMinutes()
@@ -2557,7 +2561,7 @@ async function endThenSupplement() {
     confirmText: '结束会议',
     cancelText: '再想想'
   })
-  if (res.confirm) _doEndAndGo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&view=1')
+  if (res.confirm) _doEndAndGo('/pages/minutes-view/minutes-view?meetingId=' + meetingId.value)
 }
 
 // ── 会议资料：任意已签到参会人可上传/查看 ──
@@ -3215,10 +3219,11 @@ function returnToRecordingPage() {
 .si-roster-body { max-height:420rpx; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
 /* 底部拇指区：跟随名单下方，避免首屏中段出现大片空白 */
 .si-bottom { display:flex; flex-direction:column; align-items:center; gap:16rpx; padding-top:24rpx; margin-top:4rpx; margin-bottom:0; }
-.signin-big-btn { width:64% !important; max-width:460rpx; margin:0 auto !important; background:linear-gradient(135deg, #FFA53D 0%, #F08308 100%) !important; color:#fff !important; font-size:46rpx !important; font-weight:700; letter-spacing:6rpx; padding:28rpx 0 !important; border-radius:48rpx; box-shadow:0 8rpx 22rpx rgba(232,137,12,0.26); animation:signinPulse 1.8s ease-in-out infinite; }
-/* 签到按钮发光脉动：突出这是本页唯一要点的交互 */
-@keyframes signinPulse { 0%, 100% { box-shadow:0 8rpx 22rpx rgba(232,137,12,0.26); } 50% { box-shadow:0 8rpx 34rpx rgba(232,137,12,0.5), 0 0 0 8rpx rgba(232,137,12,0.13); } }
-@media (prefers-reduced-motion: reduce) { .signin-big-btn { animation:none; } }
+/* 方案B「通栏沉稳大按钮」：深橙实色通栏，无渐变/脉动/投影；上方 si-status 说明当前状态 */
+.signin-big-btn { width:80% !important; max-width:none; margin:0 auto !important; background:var(--c-primary-dark) !important; color:#fff !important; font-size:40rpx !important; font-weight:700; letter-spacing:4rpx; padding:24rpx 0 !important; border-radius:22rpx; }
+.signin-big-btn:active { filter:brightness(0.92); }
+.si-status { font-size:28rpx; color:#8A8F98; }
+.si-status.on { color:#27AE60; font-weight:600; }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
 /* 参会名单 */
 .signin-roster { width:88%; max-width:640rpx; margin-top:14rpx; background:#fff; border-radius:20rpx; padding:20rpx 26rpx 8rpx; box-shadow:0 6rpx 20rpx rgba(0,0,0,0.05); box-sizing:border-box; }

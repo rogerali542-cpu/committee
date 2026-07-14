@@ -1785,7 +1785,7 @@ const showNoticeNav = computed(() => !!detail.value && userView.value === 'chair
 function handleDetailBack() {
   const source = String(route.query.from || '')
   if (source === 'minutes') {
-    redirectTo('/pages/minutes/minutes?meetingId=' + meetingId + '&from=committee-detail&view=1')
+    redirectTo('/pages/minutes-view/minutes-view?meetingId=' + meetingId)
     return
   }
   if (source === 'meeting-live-quick') {
@@ -3062,16 +3062,17 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .prep-footer { position:fixed; bottom:0; left:0; right:0; z-index:100; box-sizing:border-box; background:#fff; border-top:1px solid #ECECEF; border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.10); padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
 .prep-footer.after-send-footer { background:transparent; border-top:none; border-radius:0; box-shadow:none; padding:0 16px calc(12px + env(safe-area-inset-bottom)); pointer-events:none; }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
-.pf-btn { display:flex; align-items:center; justify-content:center; height:88rpx; border:0; border-radius:44rpx; background: var(--c-primary-dark); color:#fff; font-size:32rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 20rpx; }
+/* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
+.pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; }
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
-.pf-btn-row .pf-btn { flex:1; min-width:0; height:80rpx; font-size:30rpx; background: var(--c-primary-dark); }
+.pf-btn-row .pf-btn { flex:1; min-width:0; height:72rpx; font-size:27rpx; background: var(--c-primary-dark); }
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
 .pf-after-send { display:flex; flex-direction:column; gap:14rpx; pointer-events:auto; }
 .after-send-footer .pf-btn-row { padding:0 20rpx; }
-.pf-btn-start-top { align-self:center; width:60%; height:86rpx; background:#0F766E; color:#fff; font-size:32rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
+.pf-btn-start-top { align-self:center; width:60%; height:78rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
 .pf-btn-start-top:active { background:#0B5F59; animation:none; }
 .pf-start-ico { font-size:24rpx; margin-right:10rpx; line-height:1; }
 @keyframes startPulse { 0%, 100% { box-shadow:0 6rpx 16rpx rgba(15,118,110,0.22); } 50% { box-shadow:0 8rpx 24rpx rgba(15,118,110,0.44), 0 0 0 5rpx rgba(15,118,110,0.12); } }
@@ -3079,12 +3080,13 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .pf-hint { display:block; text-align:center; font-size: 24rpx; color:#666; margin-top:7px; }
 
 /* ——— 通知页（精简版）：通知卡片 / 发送记录 / 取消会议 / 转发微信弹层 ——— */
-.notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:32rpx; margin-bottom:20rpx; }
-.nc-copy { padding:32rpx 34rpx; display:flex; flex-direction:column; gap:14rpx; font-size:30rpx; line-height:1.7; color:#1a1a1a; }
-.nc-copy-title { font-size:34rpx; font-weight:700; line-height:1.55; word-break:break-all; }
-.nc-copy-row { font-size:30rpx; color:#333; line-height:1.65; word-break:break-all; }
-.nc-copy-note { margin-top:4rpx; font-size:29rpx; color:#555; line-height:1.65; }
-.nc-copy-sign { margin-top:8rpx; text-align:right; font-size:30rpx; font-weight:700; color:#1a1a1a; line-height:1.7; }
+/* 通知卡片整体收紧一档：有通知后页面内容多，卡片小一点不拥挤 */
+.notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:24rpx; margin-bottom:16rpx; }
+.nc-copy { padding:26rpx 28rpx; display:flex; flex-direction:column; gap:10rpx; font-size:28rpx; line-height:1.65; color:#1a1a1a; }
+.nc-copy-title { font-size:31rpx; font-weight:700; line-height:1.5; word-break:break-all; }
+.nc-copy-row { font-size:28rpx; color:#333; line-height:1.6; word-break:break-all; }
+.nc-copy-note { margin-top:4rpx; font-size:27rpx; color:#555; line-height:1.6; }
+.nc-copy-sign { margin-top:6rpx; text-align:right; font-size:28rpx; font-weight:700; color:#1a1a1a; line-height:1.65; }
 .nc-banner { background:#C76A00; color:#fff; text-align:center; font-size:34rpx; font-weight:700; letter-spacing:6rpx; padding:24rpx 0; }
 /* 强化语气：卡片以「新会议通知」橙色标签开头，替代原来偏弱的邀请口吻 */
 .nc-kicker { text-align:center; padding:34rpx 40rpx 0; color:#C76A00; font-size:26rpx; font-weight:700; letter-spacing:8rpx; }

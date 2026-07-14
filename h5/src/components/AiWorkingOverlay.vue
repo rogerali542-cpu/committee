@@ -1,6 +1,6 @@
 <template>
   <div class="aio-mask" :class="{ 'theme-party': theme === 'party' }" v-if="shown && !minimized">
-    <div class="aio-card" :class="{ 'theme-party': theme === 'party' }">
+    <div class="aio-card" :class="{ 'theme-party': theme === 'party', 'is-done': done }">
       <button class="aio-min" @click="minimize" aria-label="最小化">–</button>
       <button class="aio-close" @click="onClose" aria-label="关闭">×</button>
       <span class="aio-pt" style="top:8%;left:10%;width:8rpx;height:8rpx"></span>
@@ -40,14 +40,17 @@
       <!-- 完成 -->
       <template v-else>
         <div class="aio-done-core">
-          <div class="aio-check">✓</div>
+          <div v-if="theme === 'party'" class="aio-doc-icon" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div v-else class="aio-check">✓</div>
         </div>
         <span class="aio-say done">{{ doneSay }}</span>
         <div class="aio-done-sub">用时 {{ elapsed }} · 共消耗 {{ tokens }} token</div>
       </template>
 
       <div class="aio-steps">
-        <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
+        <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' && theme !== 'party' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
       </div>
 
       <div class="aio-prog">
@@ -300,6 +303,77 @@ onUnmounted(stop)
 .theme-party .aio-check { background: radial-gradient(circle at 50% 38%, #FFD98A 0%, #F5B301 55%, #C67A00 100%); color: #5C1B00; box-shadow: 0 0 40rpx rgba(245,179,1,.55); }
 .theme-party .aio-btn { background: linear-gradient(90deg, #FF6B4D, #D5262B); box-shadow: 0 8rpx 28rpx rgba(200,40,30,.5); }
 .theme-party .aio-btn:active { background: linear-gradient(90deg, #E85A3C, #B81E23); }
+
+/* 党建新闻适老版：暖白公文卡片、低刺激动效、单一完成标识 */
+.aio-mask.theme-party { background: rgba(37, 24, 24, .48); }
+.aio-card.theme-party {
+  background: #FFFDF9;
+  border: 2rpx solid #E2C9BD;
+  border-top: 12rpx solid #A81E24;
+  box-shadow: 0 22rpx 64rpx rgba(55, 25, 25, .28);
+  color: #332727;
+}
+.theme-party .aio-pt { display: none; }
+.theme-party .aio-title { color: #72171C; text-shadow: none; font-size: 38rpx; line-height: 1.4; }
+.theme-party .aio-close,
+.theme-party .aio-min { color: #7C5555; background: #F8EEEA; border-color: #E2C9BD; }
+.theme-party .aio-badge { background: #F8ECE7; color: #8B292D; border-color: #E7C7BA; font-size: 26rpx; }
+.theme-party .aio-bdot { background: #A81E24; box-shadow: none; animation: none; }
+.theme-party .aio-halo,
+.theme-party .aio-ring,
+.theme-party .aio-ring2,
+.theme-party .aio-orb { animation: none; }
+.theme-party .aio-halo { opacity: .14; }
+.theme-party .aio-say { color: #3C3030; font-size: 36rpx; line-height: 1.5; }
+.theme-party .aio-say i { color: #A81E24; animation: none; opacity: .7; }
+.theme-party .aio-say.done { color: #72171C; font-size: 42rpx; font-weight: 800; margin: 12rpx 0 8rpx; }
+.theme-party .aio-done-sub { color: #765F5F; font-size: 28rpx; margin-bottom: 34rpx; }
+.theme-party .aio-m { background: #FAF5F1; border-color: #E8D9D1; }
+.theme-party .aio-ml { color: #765F5F; font-size: 25rpx; }
+.theme-party .aio-mv,
+.theme-party .aio-mv.eta { color: #72171C; text-shadow: none; }
+.theme-party .aio-steps::before { background: #E5D5CD; }
+.theme-party .aio-sdot { background: #FFF; border-color: #D8C4BB; color: #765F5F; }
+.theme-party .aio-step.done .aio-sdot {
+  background: #A81E24; border-color: #A81E24; color: #FFF;
+  box-shadow: none;
+}
+.theme-party .aio-step.active .aio-sdot { background: #A81E24; border-color: #A81E24; animation: none; }
+.theme-party .aio-slabel { color: #765F5F; font-size: 25rpx; line-height: 1.35; }
+.theme-party .aio-step.done .aio-slabel,
+.theme-party .aio-step.active .aio-slabel { color: #72171C; font-weight: 700; }
+.theme-party .aio-track { background: #E9DDD7; height: 18rpx; }
+.theme-party .aio-fill { background: #A81E24; box-shadow: none; transition: width 1.2s linear; }
+.theme-party .aio-pct { color: #72171C; }
+.theme-party .aio-by { color: #806A6A; font-size: 25rpx; }
+.theme-party .aio-by b { color: #72171C; }
+.theme-party .aio-doc-icon {
+  position: relative; width: 104rpx; height: 126rpx; box-sizing: border-box;
+  margin: 10rpx 0 8rpx; border: 4rpx solid #A81E24; border-radius: 10rpx;
+  background: #FFF; box-shadow: 8rpx 8rpx 0 #F1E2DC;
+  display: flex; flex-direction: column; justify-content: center; gap: 14rpx; padding: 0 20rpx;
+}
+.theme-party .aio-doc-icon::after {
+  content: ""; position: absolute; right: -4rpx; top: -4rpx;
+  width: 28rpx; height: 28rpx; background: #FFFDF9;
+  border-left: 4rpx solid #A81E24; border-bottom: 4rpx solid #A81E24;
+}
+.theme-party .aio-doc-icon span { display: block; height: 4rpx; border-radius: 2rpx; background: #A81E24; opacity: .72; }
+.theme-party .aio-doc-icon span:last-child { width: 68%; }
+.theme-party.is-done .aio-hdr { padding-bottom: 12rpx; border-bottom: 2rpx solid #EEE0D9; }
+.theme-party.is-done .aio-badge { background: #F3E4DE; }
+.theme-party.is-done .aio-steps,
+.theme-party.is-done .aio-prog { display: none; }
+.theme-party.is-done .aio-done-core { padding: 34rpx 0 8rpx; }
+.theme-party.is-done .aio-done-sub { margin-bottom: 38rpx; }
+.theme-party .aio-btn {
+  height: 100rpx; border-radius: 18rpx;
+  background: #A81E24; box-shadow: none;
+  font-size: 36rpx; font-weight: 800;
+}
+.theme-party .aio-btn:active { background: #85171C; }
+.aio-fab.theme-party { background: #A81E24; border-color: #DDB7A6; color: #FFF; box-shadow: 0 8rpx 24rpx rgba(82,22,25,.28); }
+.aio-fab.theme-party .aio-fab-ico { animation-duration: 1.6s; }
 @keyframes aioBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 @keyframes aioHalo { 0%,100% { opacity: .32; transform: scale(.92); } 50% { opacity: .68; transform: scale(1.05); } }
 @keyframes aioSpin { to { transform: rotate(360deg); } }

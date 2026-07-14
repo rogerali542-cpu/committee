@@ -8,7 +8,7 @@
     </PageNav>
 
     <!-- AI 工作中：纪要页 gen=1 大模型生成等待时显"生成纪要"态；完成后出确认按钮（覆盖原"生成中"提示） -->
-    <AiWorkingOverlay :active="aiGenerating" phase="gen" />
+    <AiWorkingOverlay :active="aiGenerating" phase="gen" @confirm="openGeneratedMinutes" />
 
     <!-- 编辑纪要弹窗（有已有内容时；首次手写走下方整屏编辑器） -->
     <div v-if="editMode && (hasServerMinutes || isOwner)" class="edit-modal-mask">
@@ -523,7 +523,7 @@ async function regenerateAiMinutes() {
   if (_genRunning) return
   _genRunning = true
   aiGenerating.value = true
-  const taskPath = '/pages/minutes/minutes?meetingId=' + meetingId + '&from=' + encodeURIComponent(entryFrom || 'committee-detail') + '&resume=1'
+  const taskPath = '/pages/minutes-view/minutes-view?meetingId=' + meetingId
   startAiTask({ label: '会议纪要生成中…', originPath: window.location.pathname, targetPath: taskPath })
   aiTask.overlayShown = true
   let txt = ''
@@ -550,7 +550,6 @@ async function regenerateAiMinutes() {
     hasServerMinutes.value = true
     aiGenerating.value = false
     toast({ title: '会议纪要已生成', icon: 'none' })
-    if (canEditMinutes.value) startEdit()
   } else {
     failAiTask({ failLabel: (requestError && requestError.message) || '会议纪要生成失败' })
     aiTask.overlayShown = false
@@ -581,7 +580,6 @@ function resumeBackgroundMinutes() {
           hasServerMinutes.value = true
           aiGenerating.value = false
           clearAiTask()
-          if (canEditMinutes.value) startEdit()
           return
         }
       }
@@ -589,6 +587,17 @@ function resumeBackgroundMinutes() {
     _aiTimer = setTimeout(tick, 3000)
   }
   tick()
+}
+
+// 蓝色 AI 完成页统一进入新的「查看会议纪要」页；旧 Minutes 页只保留生成过程兼容，不再作为生成后的落点。
+function openGeneratedMinutes() {
+  aiTask.overlayShown = false
+  clearAiTask()
+  const q = 'meetingId=' + meetingId
+  redirectTo('/pages/minutes-view/minutes-view?' + q)
+  setTimeout(() => {
+    if (document.querySelector('.minutes-page')) window.location.replace('/minutes-view?' + q)
+  }, 300)
 }
 
 // 会议进行中：在纪要页确认纪要无误并结束会议
