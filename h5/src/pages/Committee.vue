@@ -3079,7 +3079,7 @@ onActivated(show)
 .yc-item { display: flex; align-items: center; gap: 14rpx; padding: 13rpx 4rpx; border-top: 2rpx solid #EEF1F3; cursor: pointer; }
 .plan-todo-card .yc-item { gap: 16rpx; padding: 6rpx 4rpx; }
 .plan-todo-card .yc-item.current,
-.plan-todo-card .yc-item.overdue { border-top: none; border-radius: 18rpx; padding: 34rpx 22rpx; margin-top: 18rpx; border: 2rpx solid transparent; border-left-width: 10rpx; }
+.plan-todo-card .yc-item.overdue { border-top: none; border-radius: 18rpx; padding: 14rpx 20rpx 16rpx; margin-top: 10rpx; border: 2rpx solid transparent; border-left-width: 10rpx; }
 .plan-todo-card .yc-item.current { background: #FFF7ED; border-color: #FED7AA; border-left-color: #D97706; }
 .plan-todo-card .yc-item.overdue { background: #FFF4F2; border-color: #F3C6C0; border-left-color: #D83A2E; }
 /* 接待/培训待办：条数多，用轻列表（细分隔线，不套会议那种强调橙块），标题弱化、副标题单行省略、按钮收小，避免堆叠拥挤 */
@@ -3180,7 +3180,7 @@ onActivated(show)
 .plan-badge.overdue  { color: #fff; background: #D83A2E; box-shadow: 0 10rpx 22rpx rgba(216,58,46,0.30); }
 .plan-badge.upcoming { color: var(--c-text-weak); background: #EEF0F3; }
 /* 方案B：待办卡里「去通知/去补开」从小胶囊升级为整行大按钮 + 缓慢呼吸光晕（核心履职动作要一眼看到） */
-.plan-todo-card .yc-item.current, .plan-todo-card .yc-item.overdue { flex-direction: column; align-items: stretch; gap: 16rpx; }
+.plan-todo-card .yc-item.current, .plan-todo-card .yc-item.overdue { flex-direction: column; align-items: stretch; gap: 12rpx; }
 .plan-todo-card .yc-item.current .yc-item-title, .plan-todo-card .yc-item.overdue .yc-item-title { font-size: 32rpx; }
 .plan-todo-card .yc-item.current .plan-badge, .plan-todo-card .yc-item.overdue .plan-badge {
   width: 70%; margin: 0 auto; box-sizing: border-box;
