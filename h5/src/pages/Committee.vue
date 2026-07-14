@@ -114,8 +114,8 @@
                 <div class="yc-item-title">{{ r.title }}</div>
                 <div v-if="r.sub" class="yc-item-sub">{{ r.sub }}</div>
               </div>
-              <!-- 已开的会议：右侧改「查看公示」小按钮直达公示页；未结束的仍显示状态徽标 -->
-              <span v-if="r.publicTap" class="plan-badge view ypf-view" @click.stop="r.publicTap()">查看公示</span>
+              <!-- 已开的会议：右侧「查看详情」小按钮进会议详情页；未结束的仍显示状态徽标 -->
+              <span v-if="r.detailTap" class="plan-badge view ypf-view" @click.stop="r.detailTap()">查看详情</span>
               <span v-else class="plan-badge" :class="r.status">{{ r.badge }}</span>
             </div>
           </template>
@@ -882,8 +882,8 @@ const selPeriodFeedback = computed(() => {
         status: mt.stage === 'ended' ? 'done' : 'current',
         badge: mt.stage === 'ended' ? '已开 ✓' : (mt.stage === 'ongoing' ? '进行中' : '待开'),
         onTap: () => openMeetingTap(mt),
-        // 已开的会议给「查看公示」直达入口（行点击仍进详情页）
-        publicTap: mt.stage === 'ended' ? () => openPublicMinutes(mt.id) : null
+        // 已开的会议给「查看详情」明确按钮（与行点击同去详情页，给老人一个显眼的可点标识）
+        detailTap: mt.stage === 'ended' ? () => openMeetingTap(mt) : null
       }))
     return { kind: 'records', title: label + '开会记录', records }
   }
@@ -1471,13 +1471,6 @@ function openMeetingTap(item) {
 
 function openMinutes(id) {
   navigateTo('/pages/minutes-view/minutes-view?meetingId=' + id)
-}
-
-// 公示页（面向民众的公开纪要）：年历开会记录「查看公示」直达；软路由偶发不切换 → 硬导航兜底
-function openPublicMinutes(id) {
-  const target = '/minutes-public?meetingId=' + id
-  navigateTo('/pages/minutes-public/minutes-public?meetingId=' + id)
-  setTimeout(() => { if (!document.querySelector('.pub-wrap')) window.location.href = target }, 400)
 }
 
 async function openNewMeeting(period) {
