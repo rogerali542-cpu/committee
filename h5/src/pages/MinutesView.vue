@@ -4,6 +4,13 @@
 
     <div v-if="loading" class="doc mv-loading">正在加载会议纪要…</div>
 
+    <!-- 服务端任务生成中：不显示"暂无"误导，轮询到正文出现自动切换 -->
+    <div v-else-if="generating" class="mv-empty">
+      <div class="mv-empty-ico">🤖</div>
+      <div class="mv-empty-title">会议纪要生成中</div>
+      <div class="mv-empty-sub">AI 正在整理会议内容，完成后将自动显示，请稍候…</div>
+    </div>
+
     <!-- 正文格式与老纪要页一致；未公示、未归档时可在当前页直接编辑 -->
     <div v-else-if="text" class="doc">
       <div class="minutes-letterhead">
@@ -37,7 +44,7 @@
 
 <script setup>
 // 会议详情专用的会议纪要页：查看与编辑合并，避免再跳回旧纪要编辑页。
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
@@ -110,7 +117,36 @@ async function load() {
   } finally {
     loading.value = false
   }
+  // 正文还没有（包括 /minutes 因无纪要而报错的情况）：可能服务端任务正在生成 → 显示"生成中"并轮询接续
+  if (!text.value) checkGenerating()
 }
+
+// ── 服务端纪要任务生成中：显示"生成中"占位并轮询，正文落库后自动切换成正式纪要 ──
+const generating = ref(false)
+let _genPollTimer = null
+async function checkGenerating() {
+  if (typeof api.committeeMinutesStatus !== 'function') return
+  let st = null
+  try { st = await api.committeeMinutesStatus(meetingId) } catch (e) { return }
+  const s = st && st.status
+  if (s !== 'running' && s !== 'success') return
+  generating.value = true
+  const deadline = Date.now() + 5 * 60 * 1000
+  clearInterval(_genPollTimer)
+  _genPollTimer = setInterval(async () => {
+    try {
+      const t = await api.committeeMinutes(meetingId)
+      if (t && String(t).trim()) {
+        clearInterval(_genPollTimer)
+        generating.value = false
+        await load() // 复用正常加载：正文/编辑态一次到位
+        return
+      }
+    } catch (e) { /* 单次失败继续轮询 */ }
+    if (Date.now() > deadline) { clearInterval(_genPollTimer); generating.value = false } // 超时回落"暂无"，用户可回录音页重试
+  }, 4000)
+}
+onUnmounted(() => clearInterval(_genPollTimer))
 
 function cancelEdit() {
   // 编辑值尚未写入 text，退出编辑态即可恢复到上一次“确定”保存的内容。

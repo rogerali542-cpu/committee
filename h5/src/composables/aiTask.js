@@ -2,7 +2,28 @@
 // 状态挂模块单例，由 App 根部的 <AiTaskHost> 消费渲染悬浮指示——切到任何页面都在、
 // 都能收到完成提示。发起页仍可用自己的全屏遮罩（在发起页时悬浮"生成中"条自动隐藏，避免重复）。
 import { reactive } from 'vue'
-import { navigateTo } from '@/utils/navigate'
+import { navigateTo, toRoute } from '@/utils/navigate'
+
+// 悬浮条点击直达目标页：软路由偶发「URL 变了视图不切」→ 软跳后校验目标页根节点，未挂载则 location 硬跳兜底
+const TARGET_ROOT_SEL = {
+  '/minutes-view': '.mv-page',
+  '/news': '.news-page',
+  '/meeting-live-quick': '.live-page'
+}
+function openTaskTarget(url) {
+  const r = toRoute(url)
+  const qs = Object.keys(r.query).map((k) => k + '=' + encodeURIComponent(r.query[k])).join('&')
+  const browserUrl = r.path + (qs ? '?' + qs : '')
+  try { navigateTo(url) } catch (e) { console.error('[AI悬浮条] 软跳 reject：', e) }
+  const sel = TARGET_ROOT_SEL[r.path]
+  setTimeout(() => {
+    const arrived = sel ? !!document.querySelector(sel) : (window.location.pathname === r.path)
+    if (!arrived) {
+      console.warn('[AI悬浮条] 软跳未挂载目标页，硬导航兜底 →', browserUrl)
+      window.location.href = browserUrl
+    }
+  }, 500)
+}
 
 export const aiTask = reactive({
   active: false,     // 有任务在后台跑（生成中）
@@ -48,12 +69,12 @@ export function clearAiTask() {
 
 // 点「生成中」悬浮条 → 直达目标页（任务仍在跑，不清空；到了目标页看进度/结果）
 export function peekAiTask() {
-  if (aiTask.targetPath) navigateTo(aiTask.targetPath)
+  if (aiTask.targetPath) openTaskTarget(aiTask.targetPath)
 }
 
 // 点击"已完成"条 → 直达目标页并清空
 export function openAiTaskTarget() {
   const t = aiTask.targetPath
   clearAiTask()
-  if (t) navigateTo(t)
+  if (t) openTaskTarget(t)
 }
