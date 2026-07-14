@@ -224,7 +224,8 @@
       <!-- 结束会议：始终可用的出口。会议纪要是可选项——不生成也能在此结束（结束后到会议详情页发起公示或补纪要） -->
       <div v-if="meetingPhase === 'voting' || (meetingPhase === 'recording' && allTopicsCompleted)" class="end-meeting-row">
         <button v-if="meetingPhase === 'voting'" class="back-recording-btn" @click="returnToRecordingPage">‹ 返回录音页面</button>
-        <button v-if="isChair" class="end-meeting-btn" @click="confirmEndMeeting">结束会议</button>
+        <!-- 点击进「会后整理」决策页（不会立刻结束）；箭头表明是去下一步而非直接结束 -->
+        <button v-if="isChair" class="end-meeting-btn" @click="confirmEndMeeting">结束会议<span class="emb-arrow">→</span></button>
       </div>
 
     </template>
@@ -2916,6 +2917,7 @@ function returnToRecordingPage() {
 /* 方案C 石墨深灰：中性收敛的收尾操作；宽度缩20%居中 */
 .end-meeting-btn { display:block; width:80%; margin:0 auto; height:92rpx; box-sizing:border-box; background:#444441; border:0; color:#F1EFE8; font-size:32rpx; font-weight:700; border-radius:20rpx; font-family:inherit; box-shadow:0 8rpx 18rpx rgba(44,44,42,.18); }
 .end-meeting-btn:active { background:#2C2C2A; }
+.emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
 .end-review-head { flex-shrink:0; height:96rpx; padding:0 28rpx; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:2rpx solid #ECEFF3; box-sizing:border-box; }
 .end-review-back { width:72rpx; font-size:58rpx; line-height:1; color:#30343A; }
