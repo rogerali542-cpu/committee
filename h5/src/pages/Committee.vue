@@ -114,7 +114,9 @@
                 <div class="yc-item-title">{{ r.title }}</div>
                 <div v-if="r.sub" class="yc-item-sub">{{ r.sub }}</div>
               </div>
-              <span class="plan-badge" :class="r.status">{{ r.badge }}</span>
+              <!-- 已开的会议：右侧改「查看公示」小按钮直达公示页；未结束的仍显示状态徽标 -->
+              <span v-if="r.publicTap" class="plan-badge view ypf-view" @click.stop="r.publicTap()">查看公示</span>
+              <span v-else class="plan-badge" :class="r.status">{{ r.badge }}</span>
             </div>
           </template>
           <template v-else-if="selPeriodFeedback.kind === 'upcoming'">
@@ -879,7 +881,9 @@ const selPeriodFeedback = computed(() => {
         sub: fmtPlanDate(mt.meetingDate) + (mt.location ? ' · ' + mt.location : ''),
         status: mt.stage === 'ended' ? 'done' : 'current',
         badge: mt.stage === 'ended' ? '已开 ✓' : (mt.stage === 'ongoing' ? '进行中' : '待开'),
-        onTap: () => openMeetingTap(mt)
+        onTap: () => openMeetingTap(mt),
+        // 已开的会议给「查看公示」直达入口（行点击仍进详情页）
+        publicTap: mt.stage === 'ended' ? () => openPublicMinutes(mt.id) : null
       }))
     return { kind: 'records', title: label + '开会记录', records }
   }
@@ -1467,6 +1471,13 @@ function openMeetingTap(item) {
 
 function openMinutes(id) {
   navigateTo('/pages/minutes-view/minutes-view?meetingId=' + id)
+}
+
+// 公示页（面向民众的公开纪要）：年历开会记录「查看公示」直达；软路由偶发不切换 → 硬导航兜底
+function openPublicMinutes(id) {
+  const target = '/minutes-public?meetingId=' + id
+  navigateTo('/pages/minutes-public/minutes-public?meetingId=' + id)
+  setTimeout(() => { if (!document.querySelector('.pub-wrap')) window.location.href = target }, 400)
 }
 
 async function openNewMeeting(period) {
@@ -3134,6 +3145,9 @@ onActivated(show)
 .yc-period-feedback .yc-item-title { font-size: 31rpx; line-height: 1.45; }
 .yc-period-feedback .yc-item-sub { font-size: 26rpx; margin-top: 8rpx; line-height: 1.4; }
 .yc-period-feedback .plan-badge { font-size: 26rpx; padding: 10rpx 20rpx; }
+/* 「查看公示」小按钮：白底橙描边，带 › 引导 */
+.yc-period-feedback .plan-badge.ypf-view { background: #fff; color: #C2410C; border: 2rpx solid #FED7AA; font-weight: 700; box-shadow: none; }
+.yc-period-feedback .plan-badge.ypf-view::after { content: '›'; margin-left: 6rpx; }
 /* 待办卡定位高亮：滚动到位后闪两下橙色提示 */
 .plan-todo-card.flash { animation: todoFlash 0.9s ease 2; }
 @keyframes todoFlash { 50% { background: #FFF1DC; box-shadow: 0 0 0 4rpx rgba(217,119,6,0.35); } }
