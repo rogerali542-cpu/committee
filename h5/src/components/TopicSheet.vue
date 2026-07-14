@@ -785,6 +785,11 @@ async function pickVote(choice, option) {
       size: 'vote'
     })
     if (!res.confirm) return
+    // 改票弹窗的「确认」已是明确意图，直接提交，不再要求二次点「确认提交」
+    pendingVote.value = option ? option.id : choice
+    pendingOption.value = option || null
+    await submitVote()
+    return
   }
   pendingVote.value = option ? option.id : choice
   pendingOption.value = option || null
