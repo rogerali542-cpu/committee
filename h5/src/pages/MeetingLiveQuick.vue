@@ -2526,6 +2526,27 @@ async function confirmEndMeeting() {
     }
     if (choice.tapIndex !== 1) return
   }
+  // 录音已上传但还没有转写结果（识别失败/被中断/从未识别）→ 直接结束的话，会后生成纪要必失败。
+  // 识别在途(uploading/polling/extracting)不拦：会后整理页会显示「上传中/识别中」并在完成后放行生成。
+  if (hasSavedRecordings.value && !generated.value
+      && !uploading.value && !polling.value && !extracting.value) {
+    const choice = await showActionSheet({
+      title: '录音还没完成识别，直接结束将无法自动生成纪要',
+      variant: 'opinion-change',
+      itemList: [
+        { icon: 'AI', label: '先识别录音', tone: 'ai' },
+        { icon: '略', label: '不识别，继续结束', tone: 'danger' }
+      ]
+    })
+    if (choice.tapIndex === 0) {
+      await uploadAndRecognize()
+      // 识别失败/没识别出内容：留在本页，由录音卡下方的行内提示引导重试
+      if (!generated.value) return
+      endReviewVisible.value = true
+      return
+    }
+    if (choice.tapIndex !== 1) return
+  }
   endReviewVisible.value = true
 }
 
