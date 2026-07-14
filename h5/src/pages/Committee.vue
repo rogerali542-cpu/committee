@@ -2848,24 +2848,24 @@ onActivated(show)
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
 /* 当前会议主卡片 */
-.meet-card { margin: 20rpx 24rpx 24rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 24rpx 28rpx 24rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
+.meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 18rpx 26rpx 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
 .meet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
-.meet-title { flex: 1; min-width: 0; display: block; font-size: 36rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 0; line-height: 1.35; word-break: break-word; }
-.meet-status { flex-shrink: 0; margin-top: 4rpx; padding: 8rpx 18rpx; border-radius: 999rpx; font-size: 26rpx; font-weight: 700; line-height: 1.25; }
+.meet-title { flex: 1; min-width: 0; display: block; font-size: 33rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 0; line-height: 1.35; word-break: break-word; }
+.meet-status { flex-shrink: 0; margin-top: 4rpx; padding: 6rpx 14rpx; border-radius: 999rpx; font-size: 24rpx; font-weight: 700; line-height: 1.25; }
 .meet-status.preparing { color: #9A5A00; background: #FFF4E5; border: 2rpx solid #F2C786; }
 .meet-status.ongoing { color: #0F766E; background: #E7F6F3; border: 2rpx solid #B9E4DC; }
 .meet-status.ended { color: #5F6B7A; background: #EEF1F4; border: 2rpx solid #D9DEE5; }
-.meet-info { display: flex; align-items: center; gap: 14rpx; margin-top: 10rpx; padding: 14rpx 18rpx; border-radius: 16rpx; background: #F7F9FA; border: 2rpx solid #EEF1F3; }
-.meet-info-item { min-width: 0; font-size: 29rpx; color: var(--c-text-mid); line-height: 1.35; }
+.meet-info { display: flex; align-items: center; gap: 14rpx; margin-top: 8rpx; padding: 10rpx 16rpx; border-radius: 16rpx; background: #F7F9FA; border: 2rpx solid #EEF1F3; }
+.meet-info-item { min-width: 0; font-size: 27rpx; color: var(--c-text-mid); line-height: 1.35; }
 .meet-info-item.location { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meet-info-sep { flex-shrink: 0; width: 2rpx; height: 28rpx; background: #DDE2E6; }
 .meet-meta { display: block; font-size: 30rpx; color: var(--c-text-mid); margin-top: 16rpx; }
 /* 三步进度 */
-.steps { display: flex; align-items: flex-start; justify-content: space-between; margin: 20rpx 8rpx 16rpx; }
+.steps { display: flex; align-items: flex-start; justify-content: space-between; margin: 14rpx 8rpx 10rpx; }
 .step { display: flex; flex-direction: column; align-items: center; width: 120rpx; }
-.step-dot { width: 48rpx; height: 48rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 700; background: #E3E5E9; color: var(--c-text-weak); }
-.step-label { font-size: 24rpx; color: var(--c-text-weak); margin-top: 8rpx; }
+.step-dot { width: 42rpx; height: 42rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; background: #E3E5E9; color: var(--c-text-weak); }
+.step-label { font-size: 22rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 .step.done .step-dot { background: var(--c-primary-soft); color: var(--c-primary-dark); }
 .step.done .step-label { color: var(--c-text-mid); }
 .step.active .step-dot { background: var(--c-primary-dark); color: #fff; }
@@ -2874,11 +2874,11 @@ onActivated(show)
 .step-line.done { background: var(--c-primary); }
 .step-line.todo { background: #E3E5E9; }
 /* 大按钮（方案④ 浅橙卡包实心钮：外层浅橙框 + 内层深橙实心白字）*/
-.big-btn { padding: 14rpx; border-radius: 26rpx; background: var(--c-primary-soft); margin-top: 4rpx; box-sizing: border-box; box-shadow: 0 12rpx 84rpx 12rpx rgba(232, 140, 20, 0.26); }
+.big-btn { padding: 10rpx; border-radius: 26rpx; background: var(--c-primary-soft); margin-top: 4rpx; box-sizing: border-box; box-shadow: 0 12rpx 84rpx 12rpx rgba(232, 140, 20, 0.26); }
 .big-btn-inner { display: flex; align-items: center; justify-content: center; height: 88rpx; border-radius: 16rpx; background: var(--c-primary); }
 .big-btn:active .big-btn-inner { background: var(--c-primary-strong); }
 .big-btn-ico { font-size: 36rpx; margin-right: 12rpx; }
-.big-btn-text { font-size: 36rpx; font-weight: 700; color: #fff; }
+.big-btn-text { font-size: 33rpx; font-weight: 700; color: #fff; }
 /* 去开会主按钮：缩窄并居中（比卡片按钮收得更多，两者看起来差不多宽） */
 .go-meeting { margin: auto auto 16rpx; width: 84%; }
 /* 有草稿时本按钮退为次要：整体缩小、收窄、弱化光晕，把视觉重心让给草稿卡的「继续通知」 */
@@ -2889,7 +2889,7 @@ onActivated(show)
 /* 卡片内"去开会"：略收窄并居中；光晕收敛（大弥散光晕留给底部灰底上的独立按钮，白卡里会外溢显脏） */
 .meet-card .big-btn { width: 71%; margin-left: auto; margin-right: auto; box-shadow: 0 6rpx 22rpx rgba(232, 140, 20, 0.18); }
 /* 删除会议（测试用，弱化） */
-.meet-del { text-align: center; color: var(--c-danger); font-size: 30rpx; margin-top: 18rpx; padding: 8rpx; }
+.meet-del { text-align: center; color: var(--c-danger); font-size: 27rpx; margin-top: 10rpx; padding: 4rpx; }
 .meet-del:active { opacity: 0.6; }
 
 /* 待发送草稿卡：放大成首页主角，橙调、看得见的"没写完的会议"，底部整行大按钮=继续通知 */
@@ -2922,18 +2922,18 @@ onActivated(show)
 .plan-stack { display: flex; flex-direction: column; gap: 20rpx; margin: 0 24rpx 20rpx; }
 .plan-stack.compact { gap: 18rpx; }
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
-.plan-stack.has-meeting { gap: 16rpx; }
+.plan-stack.has-meeting { gap: 12rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
 .plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 6rpx 0; }
-.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 22rpx 22rpx 20rpx; }
+.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 14rpx 22rpx 16rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 2rpx; }
 .plan-stack.has-meeting .yc-list-count { font-size: 24rpx; padding: 4rpx 13rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 13rpx 4rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-title { font-size: 31rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 24rpx; margin-top: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 104rpx; font-size: 25rpx; padding: 12rpx 16rpx; }
-.plan-stack.has-meeting .cal-fold { padding: 18rpx 24rpx; }
+.plan-stack.has-meeting .cal-fold { padding: 12rpx 24rpx; }
 .plan-stack.has-meeting .cal-fold-title { font-size: 29rpx; }
 .plan-stack.has-meeting .cal-fold-act { font-size: 26rpx; }
 .plan-stack.has-meeting .plan-title { font-size: 30rpx; }
@@ -3063,7 +3063,7 @@ onActivated(show)
 .period-cell.overdue { background: #FDECEA; }
 .period-cell.overdue .period-month, .period-cell.overdue .period-status { color: #B02A1E; }
 .yc-list { margin: 0 20rpx 18rpx; padding: 14rpx 16rpx 12rpx; background: #F8FAFB; border-radius: 18rpx; border: 2rpx solid #EEF1F3; }
-.yc-list.plan-todo-card { margin: 0; padding: 30rpx 26rpx 28rpx; background: #FFFCF6; border-color: #FBE7CC; border-radius: 22rpx; box-shadow: 0 12rpx 30rpx rgba(199,106,0,0.12); }
+.yc-list.plan-todo-card { margin: 0; padding: 20rpx 26rpx 22rpx; background: #FFFCF6; border-color: #FBE7CC; border-radius: 22rpx; box-shadow: 0 12rpx 30rpx rgba(199,106,0,0.12); }
 .yc-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 28rpx; font-weight: 800; color: var(--c-text-strong); padding: 0 2rpx 8rpx; }
 .plan-todo-card .yc-list-head { font-size: 33rpx; font-weight: 700; padding-bottom: 4rpx; }
 .yc-list-count { flex-shrink: 0; padding: 5rpx 15rpx; border-radius: 999rpx; background: #EAF6FF; color: #0284C7; font-size: 27rpx; font-weight: 800; }
@@ -3077,7 +3077,7 @@ onActivated(show)
 }
 @media (prefers-reduced-motion: reduce) { .plan-todo-card .yc-list-count.active { animation: none; } }
 .yc-item { display: flex; align-items: center; gap: 14rpx; padding: 13rpx 4rpx; border-top: 2rpx solid #EEF1F3; cursor: pointer; }
-.plan-todo-card .yc-item { gap: 16rpx; padding: 18rpx 4rpx; }
+.plan-todo-card .yc-item { gap: 16rpx; padding: 10rpx 4rpx; }
 .plan-todo-card .yc-item.current,
 .plan-todo-card .yc-item.overdue { border-top: none; border-radius: 18rpx; padding: 34rpx 22rpx; margin-top: 18rpx; border: 2rpx solid transparent; border-left-width: 10rpx; }
 .plan-todo-card .yc-item.current { background: #FFF7ED; border-color: #FED7AA; border-left-color: #D97706; }
