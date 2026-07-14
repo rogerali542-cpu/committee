@@ -994,9 +994,9 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-vote-btn.agree.on .ts-radio { border-color: #3E9B34; box-shadow: inset 0 0 0 8rpx #fff; background: #3E9B34; }
 .ts-sheet.is-vote .ts-vote-btn.against.on .ts-radio { border-color: #E24B3A; box-shadow: inset 0 0 0 8rpx #fff; background: #E24B3A; }
 .ts-sheet.is-vote .ts-vote-btn.abstain.on .ts-radio { border-color: #4D5158; box-shadow: inset 0 0 0 8rpx #fff; background: #4D5158; }
-.ts-sheet.is-vote .ts-vote-submit { width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: #0F766E; }
-.ts-sheet.is-vote .ts-vote-submit:active { background: #0B5F59; }
-.ts-sheet.is-vote .ts-vote-submit[disabled] { background: #C8D7D5; color: #fff; }
+.ts-sheet.is-vote .ts-vote-submit { width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: var(--c-primary-dark, #A85800); }
+.ts-sheet.is-vote .ts-vote-submit:active { background: var(--c-primary-strong, #8A4A00); }
+.ts-sheet.is-vote .ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; }
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
@@ -1069,9 +1069,9 @@ async function removeOpinion(op) {
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
-.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: #0F766E; color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(15,118,110,0.22); white-space: nowrap; }
-.ts-vote-submit:active { background: #0B5F59; }
-.ts-vote-submit[disabled] { background: #C8D7D5; color: #fff; box-shadow: none; }
+.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #A85800); color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); white-space: nowrap; }
+.ts-vote-submit:active { background: var(--c-primary-strong, #8A4A00); }
+.ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; box-shadow: none; }
 .ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
 .ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:25rpx; font-weight:800; }
 .ts-vote-feedback-mark { width:28rpx; height:28rpx; border-radius:50%; background:#2E9E4B; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:18rpx; flex-shrink:0; }
