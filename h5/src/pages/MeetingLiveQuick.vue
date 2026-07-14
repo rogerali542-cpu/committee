@@ -2914,9 +2914,9 @@ function returnToRecordingPage() {
 .end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; gap:22rpx; border-top:2rpx solid #ECE8E1; }
 .back-recording-btn { display:block; width:310rpx; height:70rpx; border:2rpx solid #D9C49F; border-radius:999rpx; background:#FFF9EF; color:#95600D; font-size:28rpx; font-weight:700; }
 .back-recording-btn:active { background:#F9EEDB; }
-/* 焦糖深棕（品牌橙最深档）：同族收尾色，和暖色页面和谐又比主按钮沉；宽度缩20%居中 */
-.end-meeting-btn { display:block; width:80%; margin:0 auto; height:92rpx; box-sizing:border-box; background:#6E3B05; border:0; color:#FAEEDA; font-size:32rpx; font-weight:700; border-radius:20rpx; font-family:inherit; box-shadow:0 8rpx 18rpx rgba(110,59,5,.20); }
-.end-meeting-btn:active { background:#59300A; }
+/* 收尾按钮用全局「关键确认」档（--c-primary-strong）：比主橙沉一档、比深棕浅两档，与上方浅色返回按钮过渡柔和 */
+.end-meeting-btn { display:block; width:80%; margin:0 auto; height:92rpx; box-sizing:border-box; background:var(--c-primary-strong, #8F4A06); border:0; color:#FFF6E8; font-size:32rpx; font-weight:700; border-radius:20rpx; font-family:inherit; box-shadow:0 8rpx 18rpx rgba(143,74,6,.20); }
+.end-meeting-btn:active { background:#6E3B05; }
 .emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
 .end-review-head { flex-shrink:0; height:96rpx; padding:0 28rpx; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:2rpx solid #ECEFF3; box-sizing:border-box; }
