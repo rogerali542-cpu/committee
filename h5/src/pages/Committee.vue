@@ -670,7 +670,7 @@ const canCreate = ref(false)
 const canViewInternal = ref(false)
 const unread = ref(0)
 const currents = ref([])            // 进行中/准备中的会议卡片
-const calFold = ref(true)           // 有会议时履职年历默认折叠（收到底部，点开才展开）
+const calFold = ref(false)          // 履职年历默认展开（0714 用户定）；折叠头仍可手动收起
 const STEP_BY_STAGE = { preparing: 1, ongoing: 2, ended: 3 }
 const STEP_LABELS = ['', '准备开会', '正式开会', '会后总结']
 const MEETING_STAGE_TEXT = { preparing: '未开始', ongoing: '进行中', ended: '已结束' }
@@ -2962,10 +2962,10 @@ onActivated(show)
 .plan-stack { display: flex; flex-direction: column; gap: 14rpx; margin: 0 24rpx 20rpx; }
 .plan-stack.compact { gap: 12rpx; }
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
-.plan-stack.has-meeting { gap: 8rpx; }
+.plan-stack.has-meeting { gap: 14rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
 .plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 6rpx 0; }
-.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 8rpx 22rpx 12rpx; }
+.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 12rpx 22rpx 14rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 0; }
 .plan-stack.has-meeting .yc-list-count { font-size: 24rpx; padding: 4rpx 13rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 5rpx 4rpx; }
@@ -2973,7 +2973,7 @@ onActivated(show)
 .plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 24rpx; margin-top: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 104rpx; font-size: 25rpx; padding: 12rpx 16rpx; }
-.plan-stack.has-meeting .cal-fold { padding: 12rpx 24rpx; }
+.plan-stack.has-meeting .cal-fold { padding: 14rpx 24rpx; }
 .plan-stack.has-meeting .cal-fold-title { font-size: 29rpx; }
 .plan-stack.has-meeting .cal-fold-act { font-size: 26rpx; }
 .plan-stack.has-meeting .plan-title { font-size: 30rpx; }
