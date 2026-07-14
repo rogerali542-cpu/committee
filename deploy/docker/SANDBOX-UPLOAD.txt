@@ -1,13 +1,15 @@
-沙箱上传文件说明（云数据库版）
+沙箱上传文件说明（云数据库 + 平台注入 .env 版）
 
-1. 上传 images.tar 作为 Docker 镜像包（三镜像，不含数据库）。
-2. 编排文件上传 deploy/docker/docker-compose.deploy.yml（由 make-deploy-compose.sh 从 .env 生成，
-   真实密钥与云数据库连接已内联，平台无需环境变量页）。⚠ 该文件含密钥，只上传平台，勿提交勿外传。
-3. 数据库使用外部云 MySQL（火山 RDS），不包含数据库镜像。
-4. ⚠ 关键前提：云数据库白名单必须放行【沙箱出口 IP】的 3306 端口，否则后端报
-   Communications link failure（TCP 通、协议层无响应，即白名单拦截的典型症状）。
-5. 本目录的 docker-compose.yml / env.example 是「平台有环境变量页 + 内置 MySQL」的备用方案，
-   当前沙箱不用；内置 MySQL 编排另用于本地验证（deploy/docker/ 的 local overlay）。
+上传三件（都在本目录 deploy/sandbox-upload-package/）：
+1. images.tar          —— Docker 镜像包（ywh-frontend / ywh-backend / ywh-ocr-asr 三镜像，不含数据库）。
+2. docker-compose.yml  —— 编排文件（无密钥、无 mysql 服务；所有变量靠平台把 .env 注入各容器）。
+3. .env                —— 环境变量（32 项真实值已填好，含云数据库 DB_*）。⚠ 含密钥，只上传平台，勿提交勿外传。
+
+注意事项：
+- 数据库为外部云 MySQL（火山 RDS）。⚠ 上线前必须在火山 RDS 控制台把【沙箱出口 IP】加入白名单
+  （3306），否则后端报 Communications link failure / Connection refused 并崩溃循环。
+- deploy/docker/docker-compose.deploy.yml 是「平台不支持上传 .env」时的备用方案（密钥内联同一编排）。
+- 内置 MySQL 的编排（deploy/docker/docker-compose.yml + ywh-mysql 镜像）仅用于本地验证，勿上传。
 
 镜像：
 - ywh-frontend:latest

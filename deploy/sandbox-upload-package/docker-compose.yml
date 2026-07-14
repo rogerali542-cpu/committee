@@ -11,12 +11,12 @@
 #   若这里写 DB_HOST: "${DB_HOST}"，容器里拿到的就是字面量 "${DB_HOST}" → 后端/nginx 直接崩。
 #   因此本文件的 environment: 只写「平台不会注入、且永不需要改」的静态值；
 #   其余全部到平台「环境变量」页填，平台直接注入容器，应用侧读取（默认值见各应用配置）：
+#     DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD   （外部云 MySQL）
 #     JWT_SECRET                                            （后端签发 token）
 #     OCR_SERVICE_TOKEN                                     （后端↔语音↔nginx 三方共享内网令牌）
 #     DOUBAO_LLM_* / DOUBAO_ASR_* / DOUBAO_OCR_ENABLED      （豆包；开关默认 true）
 #     ARK_* / VOLC_ASR_*                                    （语音/OCR 服务用）
 #     STORAGE_* / DEMO_PREFILL_ENABLED                      （音频存储 / 演示假识别，默认开）
-#   数据库：编排自带 mysql 服务（镜像烘入种子数据），连接参数全静态，平台页【不要】填 DB_*/MYSQL_*。
 #   本地验证见 docker-compose.local.yml：用 env_file 从 .env 直接注入，行为与平台一致。
 # ============================================================
 services:
@@ -30,29 +30,6 @@ services:
     expose:
       - "8003"
 
-  # 自带 MySQL（镜像已烘入种子数据；数据卷首次为空时自动导入）
-  # ⚠ 凭证为沙箱内网 demo 库专用：3306 仅编排网络内可达、不对外暴露，请勿复用于任何真实环境。
-  # 平台「环境变量」页【不要】再填 DB_* / MYSQL_*，避免注入值覆盖这里的静态配置。
-  mysql:
-    image: ywh-mysql:latest
-    command:
-      - "mysqld"
-      - "--character-set-server=utf8mb4"
-      - "--collation-server=utf8mb4_unicode_ci"
-      - "--default-time-zone=+08:00"
-      - "--performance-schema=OFF"
-      - "--innodb-buffer-pool-size=64M"
-      - "--max-connections=50"
-      - "--skip-name-resolve"
-    environment:
-      MYSQL_ROOT_PASSWORD: "T3eZh8r4SHGtqkhzaHyp"
-      MYSQL_DATABASE: "ywh_db"
-      TZ: Asia/Shanghai
-    volumes:
-      - mysql-data:/var/lib/mysql
-    expose:
-      - "3306"
-
   # 后端（Spring Boot / Java 17）
   backend:
     image: ywh-backend:latest
@@ -63,19 +40,12 @@ services:
       OCR_SERVICE_BASE_URL: "http://ocr-asr-service:8003"
       STORAGE_AUDIO_DIR: "/app/data/audio"
       TZ: Asia/Shanghai
-      # 数据库改用编排自带 mysql 服务，连接参数全静态（与上方 mysql 服务保持一致）。
-      DB_HOST: "mysql"
-      DB_PORT: "3306"
-      DB_NAME: "ywh_db"
-      DB_USER: "root"
-      DB_PASSWORD: "T3eZh8r4SHGtqkhzaHyp"
-      # 其余（JWT/豆包/存储等密钥）全部平台注入（见文件头说明）。
+      # 其余全部平台注入（见文件头说明）；数据库 URL 由后端用 DB_HOST/DB_PORT/DB_NAME 自行拼装。
     volumes:
       - backend-audio:/app/data/audio
     expose:
       - "8080"
     depends_on:
-      - mysql
       - ocr-asr-service
 
   # 前端 + 入口反代（沙箱入口，平台把分配的域名指向它）
@@ -93,4 +63,3 @@ services:
 
 volumes:
   backend-audio:
-  mysql-data:
