@@ -3122,11 +3122,15 @@ onActivated(show)
 .yc-links { display: flex; justify-content: center; gap: 48rpx; padding: 18rpx 0 4rpx; font-size: 26rpx; font-weight: 600; color: var(--c-primary-dark); }
 .yc-links span:active { opacity: 0.6; }
 .plan-empty { text-align: center; color: var(--c-text-weak); font-size: 26rpx; padding: 24rpx 0 24rpx; }
-/* 日历下方反馈区：点选期次后就地展示（已开期记录 / 未到期提前准备） */
-.yc-period-feedback { margin-top: 18rpx; border-top: 2rpx dashed #EFE7DA; padding-top: 12rpx; }
-.ypf-head { font-size: 28rpx; font-weight: 700; color: var(--c-text-strong); padding: 4rpx 4rpx 8rpx; }
-.ypf-tip { text-align: center; font-size: 26rpx; color: var(--c-text-weak); padding: 16rpx 0 4rpx; }
+/* 日历下方反馈区：点选期次后就地展示（已开期记录 / 未到期提前准备）。记录行放宽有呼吸感 */
+.yc-period-feedback { margin-top: 20rpx; border-top: 2rpx dashed #EFE7DA; padding-top: 16rpx; }
+.ypf-head { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); padding: 4rpx 6rpx 12rpx; }
+.ypf-tip { text-align: center; font-size: 27rpx; color: var(--c-text-weak); padding: 18rpx 0 6rpx; }
 .yc-period-feedback .yc-item:first-of-type { border-top: 0; }
+.yc-period-feedback .yc-item { padding: 22rpx 6rpx; gap: 18rpx; }
+.yc-period-feedback .yc-item-title { font-size: 31rpx; line-height: 1.45; }
+.yc-period-feedback .yc-item-sub { font-size: 26rpx; margin-top: 8rpx; line-height: 1.4; }
+.yc-period-feedback .plan-badge { font-size: 26rpx; padding: 10rpx 20rpx; }
 /* 待办卡定位高亮：滚动到位后闪两下橙色提示 */
 .plan-todo-card.flash { animation: todoFlash 0.9s ease 2; }
 @keyframes todoFlash { 50% { background: #FFF1DC; box-shadow: 0 0 0 4rpx rgba(217,119,6,0.35); } }
