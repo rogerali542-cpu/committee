@@ -2962,13 +2962,15 @@ onActivated(show)
 .plan-stack { display: flex; flex-direction: column; gap: 14rpx; margin: 0 24rpx 20rpx; }
 .plan-stack.compact { gap: 12rpx; }
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
-.plan-stack.has-meeting { gap: 14rpx; }
+.plan-stack.has-meeting { gap: 18rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
 .plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 6rpx 0; }
-.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 12rpx 22rpx 14rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 0; }
+.plan-stack.has-meeting .yc-list.plan-todo-card { padding: 16rpx 24rpx 18rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 4rpx; }
 .plan-stack.has-meeting .yc-list-count { font-size: 24rpx; padding: 4rpx 13rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 5rpx 4rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
+/* 接待/培训列表行：不吃开会档的极限压缩，保留舒适行高 */
+.plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain { padding: 20rpx 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-title { font-size: 31rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 24rpx; margin-top: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
@@ -3001,8 +3003,8 @@ onActivated(show)
 .plan-tab.active { background: #D97706; color: #fff; font-weight: 800; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
 .plan-tab:active { opacity: 0.75; }
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
-.ov-metrics { display: flex; gap: 14rpx; padding: 21rpx 20rpx 22rpx; }
-.ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6rpx; padding: 18rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
+.ov-metrics { display: flex; gap: 18rpx; padding: 26rpx 22rpx 28rpx; }
+.ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; padding: 24rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
 .ov-metric:active { opacity: 0.8; }
 .ov-metric.on { box-shadow: inset 0 0 0 4rpx #D97706; }
 .ov-num { font-size: 50rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1; }
@@ -3183,7 +3185,7 @@ onActivated(show)
 .advance-meeting-btn { width: 100%; height: 88rpx; margin-top: 16rpx; border: 0; border-radius: 44rpx; background: #0F766E; color: #fff; font-size: 32rpx; font-weight: 800; line-height: 88rpx; box-shadow: 0 12rpx 24rpx rgba(15,118,110,0.24); }
 .advance-meeting-btn::after { border: 0; }
 .advance-meeting-btn:active { background: #0B5F59; }
-.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 12rpx 20rpx 2rpx; }
+.plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 16rpx 20rpx 2rpx; }
 /* 概览（接待/培训）标题与卡片顶部再留出一点距离；仅 compact 态生效，不动开会年历 */
 .plan-stack.compact .plan-head { padding-top: 26rpx; }
 /* 概览卡与上方待办卡、下方各再拉开一点间距（仅 compact 态）*/
