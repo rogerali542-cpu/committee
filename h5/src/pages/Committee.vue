@@ -3093,7 +3093,10 @@ onActivated(show)
 .yc-item { display: flex; align-items: center; gap: 14rpx; padding: 13rpx 4rpx; border-top: 2rpx solid #EEF1F3; cursor: pointer; }
 .plan-todo-card .yc-item { gap: 16rpx; padding: 6rpx 4rpx; }
 .plan-todo-card .yc-item.current,
-.plan-todo-card .yc-item.overdue { border-top: none; border-radius: 18rpx; padding: 14rpx 20rpx 16rpx; margin-top: 10rpx; border: 2rpx solid transparent; border-left-width: 10rpx; }
+.plan-todo-card .yc-item.overdue { border-top: none; border-radius: 18rpx; padding: 14rpx 20rpx 16rpx; margin-top: 8rpx; border: 2rpx solid transparent; border-left-width: 10rpx; }
+/* 卡片与卡片之间拉开（首卡贴标题保持紧凑）；:first-of-type 会被前面的标题 div 干扰，用相邻兄弟选择器 */
+.plan-todo-card .yc-item + .yc-item.current,
+.plan-todo-card .yc-item + .yc-item.overdue { margin-top: 20rpx; }
 .plan-todo-card .yc-item.current { background: #FFF7ED; border-color: #FED7AA; border-left-color: #D97706; }
 .plan-todo-card .yc-item.overdue { background: #FFF4F2; border-color: #F3C6C0; border-left-color: #D83A2E; }
 /* 接待/培训待办：条数多，用轻列表（细分隔线，不套会议那种强调橙块），标题弱化、副标题单行省略、按钮收小，避免堆叠拥挤 */
