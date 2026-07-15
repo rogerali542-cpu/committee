@@ -2643,6 +2643,11 @@ async function submitNewMeeting() {
   var form = createForm
   // OCR 还在识别时先别提交：此刻 createForm 可能是中间态，等识别完再去通知
   if (scanBusy.value) { toast({ title: '正在识别中，请稍候…', icon: 'none' }); return }
+  // 自动收编：输入框里还有一条没点「确定」的议题（真机上用户常打完直接点「生成通知」）→ 先帮加进列表，
+  // 不让它凭空丢掉；若这条本身不合规（如多选一选项不足）则中止提交，addTopicFromInput 已 toast 原因。
+  if (createTab.value === 'manual' && topicInput.value.trim()) {
+    if (!addTopicFromInput()) return
+  }
   // 议题：逐条添加在 createForm.topics（过滤空标题）
   var topics = (form.topics || []).filter(function (t) { return t.title && t.title.trim() })
   // 必填校验：会议名称 / 会议地点 / 会议议题。缺失 → 弹卡片列出，确认后亮红框
@@ -2767,9 +2772,10 @@ function _buildRec(continuous, interimResults) {
 }
 
 // 流式模式：标题 / 议题（连续识别，显示弹窗，点确认后应用）
+// 返回是否成功加入（供提交时"自动收编未点确定的议题"判断，失败即已 toast 原因）
 function addTopicFromInput() {
   const t = topicInput.value.trim()
-  if (!t) { toast({ title: '请输入议题内容', icon: 'none' }); return }
+  if (!t) { toast({ title: '请输入议题内容', icon: 'none' }); return false }
   const type = topicInputType.value
   const decisionType = type === 'decision' ? topicInputDecisionType.value : 'none'
   const options = decisionType === 'multi_choice'
@@ -2777,7 +2783,7 @@ function addTopicFromInput() {
     : []
   if (decisionType === 'multi_choice' && options.length < 2) {
     toast({ title: '多选一表决至少需要两个选项', icon: 'none' })
-    return
+    return false
   }
   createForm.topics = createForm.topics.concat([{
     title: t,
@@ -2788,6 +2794,7 @@ function addTopicFromInput() {
   }])
   topicInput.value = ''
   if (decisionType === 'multi_choice') topicInputOptions.value = newTopicInputOptions()
+  return true
 }
 
 function newTopicInputOptions() {
