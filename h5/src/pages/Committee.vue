@@ -172,6 +172,9 @@
 
     <!-- 「更多功能」三格已删：接待/培训入口收进顶部计划卡横栏；历史记录走计划卡已开期或资料库 -->
 
+    <!-- 发起非例会会议：低频功能收在页面底部的低调入口（例会走年历的「去通知/去补开」） -->
+    <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
+
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
       <div class="create-panel" @click.stop>
         <div class="create-head">
@@ -282,7 +285,29 @@
             <div v-if="createForm.topics.length" class="topic-list">
               <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line">
                 <span class="topic-line-text"><b>{{ idx + 1 }}.</b> {{ topic.title }}</span>
+                <span class="ts-badge topic-line-badge" :class="topicTypeClass(topic)">{{ topicTypeLabel(topic) }}</span>
                 <span class="topic-line-del" @click="removeCreateTopic(idx)">×</span>
+              </div>
+            </div>
+            <div v-show="createTab === 'manual'" class="topic-kind-picker" aria-label="选择议题类型">
+              <span class="topic-kind-label">本条类型</span>
+              <button type="button" class="topic-kind-option notice" :class="{ on: topicInputType === 'notice' }" @click="topicInputType = 'notice'">通知</button>
+              <button type="button" class="topic-kind-option discussion" :class="{ on: topicInputType === 'discussion' }" @click="topicInputType = 'discussion'">讨论</button>
+              <button type="button" class="topic-kind-option decision" :class="{ on: topicInputType === 'decision' }" @click="topicInputType = 'decision'">表决</button>
+            </div>
+            <div v-if="createTab === 'manual' && topicInputType === 'decision'" class="topic-vote-settings">
+              <div class="topic-kind-picker vote-method" aria-label="选择表决方式">
+                <span class="topic-kind-label">表决方式</span>
+                <button type="button" class="topic-kind-option decision" :class="{ on: topicInputDecisionType === 'simple' }" @click="pickTopicInputDecision('simple')">是 / 否</button>
+                <button type="button" class="topic-kind-option decision" :class="{ on: topicInputDecisionType === 'multi_choice' }" @click="pickTopicInputDecision('multi_choice')">多选一</button>
+              </div>
+              <div v-if="topicInputDecisionType === 'multi_choice'" class="topic-quick-options">
+                <div v-for="(opt, oi) in topicInputOptions" :key="opt.id" class="topic-quick-option-row">
+                  <span class="topic-quick-option-num">{{ oi + 1 }}</span>
+                  <input class="form-input topic-quick-option-input" v-model="opt.label" :placeholder="'选项 ' + (oi + 1)" />
+                  <button v-if="topicInputOptions.length > 2" type="button" class="topic-quick-option-del" @click="removeTopicInputOption(oi)">×</button>
+                </div>
+                <button type="button" class="topic-quick-option-add" @click="addTopicInputOption">＋ 添加选项</button>
               </div>
             </div>
             <div v-show="createTab === 'manual'" class="vi-row topic-input-row">
@@ -649,6 +674,7 @@
 import { ref, reactive, computed, nextTick, watch } from 'vue'
 import { onMounted, onActivated, onUnmounted } from 'vue'
 import api from '@/api'
+import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 import perm from '@/utils/perm'
 import { showModal, showActionSheet, toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
@@ -1211,6 +1237,9 @@ const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 const topicInput = ref('') // 议题输入框当前内容（打字/语音），点"确定"加入 topics 列表
+const topicInputType = ref('discussion') // 快捷新增议题的类型；每加一条后保留，便于连续录入同类议题
+const topicInputDecisionType = ref('simple')
+const topicInputOptions = ref([])
 
 // 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
 // 用户点进对应输入框（focus）即清除红框。
@@ -1422,15 +1451,20 @@ async function goCurrent(cur) {
 }
 
 async function removeCurrent(cur) {
+  const isRecordingThisMeeting = meetingRecordingSession.active
+    && String(meetingRecordingSession.meetingId || '') === String(cur.id)
   const res = await showModal({
     title: '删除会议',
-    content: '确定删除「' + cur.title + '」？删除后无法恢复。',
+    content: '确定删除「' + cur.title + '」？'
+      + (isRecordingThisMeeting ? '\n\n该会议正在录音，删除后录音将立即停止并丢弃。' : '')
+      + '\n\n删除后无法恢复。',
     confirmText: '删除',
     confirmColor: '#E74C3C'
   })
   if (!res.confirm) return
   try {
     await api.committeeRemove(cur.id)
+    await discardMeetingRecording(cur.id)
     toast({ title: '已删除', icon: 'success' })
     loadAll()
   } catch (e) {
@@ -2736,8 +2770,44 @@ function _buildRec(continuous, interimResults) {
 function addTopicFromInput() {
   const t = topicInput.value.trim()
   if (!t) { toast({ title: '请输入议题内容', icon: 'none' }); return }
-  createForm.topics = createForm.topics.concat([{ title: t, type: 'decision', decisionType: 'simple', options: [] }])
+  const type = topicInputType.value
+  const decisionType = type === 'decision' ? topicInputDecisionType.value : 'none'
+  const options = decisionType === 'multi_choice'
+    ? topicInputOptions.value.map(function (o) { return { id: o.id, label: o.label.trim() } }).filter(function (o) { return o.label })
+    : []
+  if (decisionType === 'multi_choice' && options.length < 2) {
+    toast({ title: '多选一表决至少需要两个选项', icon: 'none' })
+    return
+  }
+  createForm.topics = createForm.topics.concat([{
+    title: t,
+    type,
+    decisionType,
+    options,
+    content: ''
+  }])
   topicInput.value = ''
+  if (decisionType === 'multi_choice') topicInputOptions.value = newTopicInputOptions()
+}
+
+function newTopicInputOptions() {
+  return [{ id: 1, label: '' }, { id: 2, label: '' }]
+}
+
+function pickTopicInputDecision(type) {
+  topicInputDecisionType.value = type
+  if (type === 'multi_choice' && topicInputOptions.value.length < 2) topicInputOptions.value = newTopicInputOptions()
+}
+
+function addTopicInputOption() {
+  const list = topicInputOptions.value
+  const id = list.length ? Math.max.apply(null, list.map(function (o) { return o.id })) + 1 : 1
+  topicInputOptions.value = list.concat([{ id, label: '' }])
+}
+
+function removeTopicInputOption(index) {
+  if (topicInputOptions.value.length <= 2) return
+  topicInputOptions.value = topicInputOptions.value.filter(function (_, i) { return i !== index })
 }
 
 function startStreamingVoice(target) {
@@ -2942,6 +3012,9 @@ onActivated(show)
 .draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-continue { width: 80%; margin: 26rpx auto 0; height: 104rpx; border: none; border-radius: 24rpx; background: var(--c-primary); color: #fff; font-size: 42rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 26rpx rgba(232,140,20,0.28); }
+/* 页面底部「发起其他会议」：低频入口，虚线灰低调样式，与主流程按钮拉开视觉层级 */
+.create-misc-entry { width: 70%; margin: 30rpx auto 8rpx; padding: 22rpx 0; text-align: center; color: #8A8F98; font-size: 30rpx; border: 2rpx dashed #D4D8DE; border-radius: 16rpx; background: #FBFBFC; cursor: pointer; }
+.create-misc-entry:active { background: #F2F3F5; color: #666; }
 .draft-continue:active { background: var(--c-primary-strong); transform: scale(0.99); }
 .draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
 /* 空闲态 */
@@ -3632,7 +3705,23 @@ onActivated(show)
 .topic-list { max-height: 200rpx; overflow-y: auto; margin: 2rpx 0 6rpx; }
 .topic-line { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 4rpx; }
 .topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
+.topic-line-badge { flex-shrink: 0; margin: 0; }
 .topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
+.topic-kind-picker { display: flex; align-items: center; gap: 10rpx; margin: 12rpx 0 14rpx; }
+.topic-kind-label { flex-shrink: 0; margin-right: 4rpx; font-size: 26rpx; color: #6b7280; }
+.topic-kind-option { min-width: 108rpx; height: 56rpx; box-sizing: border-box; border: 2rpx solid #e1e4e8; border-radius: 28rpx; background: #f7f8fa; color: #4b5563; font-size: 26rpx; line-height: 1; }
+.topic-kind-option.on { font-weight: 650; }
+.topic-kind-option.notice.on { border-color: #78B9DC; background: #E6F4FB; color: #1677B8; }
+.topic-kind-option.discussion.on { border-color: #82BE97; background: #EAF6EE; color: #2E8B57; }
+.topic-kind-option.decision.on { border-color: #E6A370; background: #FFF0E5; color: #D56A16; }
+.topic-vote-settings { margin: -2rpx 0 14rpx; padding: 14rpx 16rpx; border-radius: 14rpx; background: #FFF8F2; border: 2rpx solid #FFE0C7; }
+.topic-kind-picker.vote-method { margin: 0; }
+.topic-quick-options { display: flex; flex-direction: column; gap: 10rpx; margin-top: 14rpx; }
+.topic-quick-option-row { display: flex; align-items: center; gap: 10rpx; }
+.topic-quick-option-num { width: 38rpx; height: 38rpx; flex-shrink: 0; border-radius: 50%; background: #FFF0E5; color: #D56A16; font-size: 24rpx; line-height: 38rpx; text-align: center; }
+.topic-quick-option-input { flex: 1; min-width: 0; height: 60rpx; font-size: 26rpx; }
+.topic-quick-option-del { width: 48rpx; height: 48rpx; flex-shrink: 0; border: 0; background: transparent; color: #7b8190; font-size: 36rpx; line-height: 1; }
+.topic-quick-option-add { align-self: flex-start; padding: 6rpx 4rpx; border: 0; background: transparent; color: #D56A16; font-size: 26rpx; }
 .vi-row.topic-input-row { margin-top: 0; align-items: center; }
 /* 会议议题：标题与输入框贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
@@ -3741,9 +3830,9 @@ onActivated(show)
 .ts-num { font-size: 26rpx; color: #8a9099; font-weight: 600; }
 .ts-title { font-size: 32rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
 .ts-badge { font-size: 25rpx; padding: 6rpx 18rpx; border-radius: 20rpx; white-space: nowrap; line-height: 1.5; }
-.ts-badge.badge-notice { color: #0C447C; background: #E6F1FB; }
-.ts-badge.badge-discussion { color: #085041; background: #E1F5EE; }
-.ts-badge.badge-decision { color: #3C3489; background: #EEEDFE; }
+.ts-badge.badge-notice { color: #1677B8; background: #E6F4FB; }
+.ts-badge.badge-discussion { color: #2E8B57; background: #EAF6EE; }
+.ts-badge.badge-decision { color: #D56A16; background: #FFF0E5; }
 .ts-actions { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx solid #f0f0f0; }
 .ts-edit-btn { font-size: 27rpx; color: #C77800; background: #fff; border: 2rpx solid #F0A020; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
 .ts-edit-btn:active { background: #FFF6E5; }
