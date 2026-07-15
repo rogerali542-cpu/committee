@@ -1435,10 +1435,12 @@ async function toggleRecord() {
 async function startRecord() {
   // 后台正在转写上一段 → 只启动新录音，绝不 clearPoll / 重置转写状态，避免打断后台转写
   const bgTranscribing = polling.value || extracting.value
-  if (!bgTranscribing) {
+  // 已有已上传的段或已有转写成果 → 这是「续录下一段」，不是「推倒重来」：
+  // 历史段的转写/议题成果必须保留（否则第一段的「查看内容」会凭空消失——真机实测踩过）
+  const continuing = hasSavedRecordings.value || generated.value
+  if (!bgTranscribing && !continuing) {
     clearPoll()
     clearQuickState()
-    _recognizeAfterUpload = false // 重新开录，清掉可能残留的"上传后自动识别"标记
     generated.value = false
     extraction.value = null
     aiTopics.value = []
@@ -1449,7 +1451,10 @@ async function startRecord() {
     transcriptVisible.value = false
     uploading.value = false
     taskId.value = ''
-    asrStatus.value = ''
+  }
+  if (!bgTranscribing) {
+    _recognizeAfterUpload = false // 重新开录，清掉可能残留的"上传后自动识别"标记
+    asrStatus.value = '' // 新一段开录，清上一段的错误横幅
   }
   processText.value = '正在录音...'
   try {
@@ -2203,6 +2208,14 @@ async function finalizeTranscription() {
   extracting.value = true
   processText.value = '转写完成，正在抽取议题与表决提示...'
   persistQuickState()
+
+  // 刷新录音列表：转写状态(asrStatus)已在服务端落库，但列表里还是上传时的旧快照——
+  // 不刷新的话行上会一直显示「待识别」（临时内存态一清就露馅，真机实测踩过）
+  try {
+    const d = await api.committeeDetail(meetingId.value)
+    const recs = (d.record && d.record.recordings) || []
+    if (recs.length) { recordings.value = recs; reconcilePickedIds(recs) }
+  } catch (e) { /* 刷新失败不影响主流程，下次 loadDetail 会补上 */ }
 
   // 先取转写原文(已含多条录音合并)，判断是否「空转写」（录音里没有可识别的说话声）。
   // 豆包对静音/无效音频也会返回 done，但识别结果为空——此时必须提示用户，而不是继续抽取出空议题。
