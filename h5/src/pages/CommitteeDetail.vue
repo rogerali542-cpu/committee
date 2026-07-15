@@ -2957,9 +2957,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 返回首页：描边灰（中性辅助），与上面三个同尺寸同风格 */
 .ended-home-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#555; font-size:17px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
 .ended-home-btn:active { background:#F2F2F2; }
-/* 公示会议：实心政务蓝（官方公告动作专属色，与生成纪要的橙区分开），与上面两个同尺寸 */
-.arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 8px; width:73.1%; height:44px; border-radius:12px; background:#2464B4; border:none; color:#fff; font-size:18px; font-weight:700; cursor:pointer; box-shadow:0 3px 12px rgba(36,100,180,0.24); }
-.arc-publish-main-btn:active { background:#1B4F8F; }
+/* 公示会议：描边政务蓝（官方公告动作专属色，白底与生成新闻稿同风格），与上面两个同尺寸 */
+.arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 8px; width:73.1%; height:44px; border-radius:12px; background:#fff; border:1.5px solid #8FB3DC; color:#2464B4; font-size:18px; font-weight:700; cursor:pointer; }
+.arc-publish-main-btn:active { background:#EAF2FB; }
 .arc-invalid-note { padding:12px 0; color:#888; font-size:13px; text-align:center; border-bottom:1px solid #f0f0f0; margin-bottom:4px; }
 /* 三个横排快捷入口 */
 .arc-quick-links { display:flex; padding:16px 0 14px; border-top:1px solid #f0f0f0; margin-top:4px; }
