@@ -22,6 +22,28 @@ function save(stats) {
   try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)) } catch (e) { /* 存储满则放弃 */ }
 }
 
+// 本次整页加载是怎么来的：navigate=地址跳转(硬跳兜底都是这种) / reload=手动刷新 / back_forward=前进后退。
+// 手动刷新和外链回退不是救援，靠它排除；API 不可用的老 WebView 退回旧接口，再不行按 navigate 保守计入。
+function navType() {
+  try {
+    const e = performance.getEntriesByType('navigation')
+    if (e && e[0] && e[0].type) return e[0].type
+  } catch (err) {}
+  try {
+    const t = performance.navigation && performance.navigation.type
+    if (t === 1) return 'reload'
+    if (t === 2) return 'back_forward'
+    if (t === 0) return 'navigate'
+  } catch (err) {}
+  return 'navigate'
+}
+
+// 将来若新增「主动整页跳转」（非兜底救援），跳转前调它抹掉凭证，避免被误计一次救援。
+// 目前全代码的 App 内硬跳均为兜底救援（都在"目标页未挂上"的条件分支里），暂无调用点。
+export function markIntentionalHardNav() {
+  try { localStorage.removeItem(LAST_KEY) } catch (e) {}
+}
+
 // 软跳发起：计数 + 留下"最近一次尝试"凭证供启动侧核对
 export function recordAttempt(to) {
   const route = String(to || '').split('?')[0]
@@ -40,6 +62,7 @@ export function checkRescueOnBoot() {
   if (!last || !last.t) return
   const gap = Date.now() - last.t
   if (gap < 0 || gap > RESCUE_WINDOW_MS) return
+  if (navType() !== 'navigate') return // 手动刷新(reload)/前进后退(back_forward)不是救援
   const stats = load()
   stats.rescues.push({ to: last.to, t: last.t, gapMs: gap, env: import.meta.env.PROD ? 'prod' : 'dev' })
   if (stats.rescues.length > MAX_RESCUES) stats.rescues = stats.rescues.slice(-MAX_RESCUES)
@@ -65,4 +88,4 @@ export function resetStats() {
   try { localStorage.removeItem(STATS_KEY); localStorage.removeItem(LAST_KEY) } catch (e) {}
 }
 
-export default { recordAttempt, checkRescueOnBoot, summary, resetStats }
+export default { recordAttempt, checkRescueOnBoot, summary, resetStats, markIntentionalHardNav }
