@@ -386,8 +386,6 @@
       <div class="forward-sheet" @click.stop>
         <div class="fw-title">通知已发送</div>
         <div class="fw-hint">下面是通知内容，点「复制通知」粘贴到业主委员群即可</div>
-        <!-- 企业微信内提示：切到微信是跨 App，粘贴完通知就发好了，不必再切回本页（回来会落到企业微信聊天页，属正常） -->
-        <div v-if="inWecom" class="fw-wecom-tip">💡 在企业微信里：复制后切到微信、粘贴到业主群发出即可。粘贴完通知就发好了，不必再切回本页。</div>
         <div class="fw-preview">
           <!-- 正文与通知页同款：首行缩进，地点蓝色可点开地图，落款靠右 -->
           <div class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
@@ -697,13 +695,11 @@ import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/co
 import { getStorage, setStorage } from '@/utils/storage'
 import { pickAndUpload, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
-import { isWecom } from '@/utils/wecom'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import TopicSheet from '@/components/TopicSheet.vue'
 
 const route = useRoute()
-const inWecom = isWecom() // 企业微信内置浏览器：转发到微信是跨 App，回来会落到聊天页（企业微信行为，非本页 bug）
 
 // ── 同文件内子组件：会议议题卡（替代 wxml <template name="meetingTopicsCard">）──
 // topics 显式作为 prop 传入；3 处引用（进行中 / 委员结束页 / 主任归档卡）均用该组件。
@@ -2034,9 +2030,8 @@ function writeShareToClipboard() {
   })
 }
 function copyShareText() {
-  const okText = inWecom ? '已复制。切到微信粘贴发出即可，不必返回本页' : '已复制，去微信粘贴'
   writeShareToClipboard()
-    .then(() => toast({ title: okText, icon: inWecom ? 'none' : 'success' }))
+    .then(() => toast({ title: '已复制，去微信粘贴', icon: 'success' }))
     .catch(() => toast({ title: '复制失败，请长按文本手动复制', icon: 'none' }))
 }
 // 转发到微信：先复制通知内容，再"尽力"唤起微信（安卓多能跳转；iOS 常无效但不影响使用），到群里直接粘贴即可。
@@ -3189,8 +3184,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .forward-sheet { position:relative; width:100%; max-width:480px; margin:0 auto; background:#fff; border-radius:24rpx 24rpx 0 0; padding:30rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-sizing:border-box; }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
 .fw-hint { font-size:26rpx; color:#888; text-align:center; margin:10rpx 0 20rpx; line-height:1.5; }
-/* 企业微信专属引导：常驻一条（比转瞬即逝的 toast 更易被看到），暖底柔和不打扰 */
-.fw-wecom-tip { font-size:26rpx; color:#8A5A1E; background:#FFF7E8; border:2rpx solid #F5DDB0; border-radius:14rpx; padding:16rpx 20rpx; margin:0 0 18rpx; line-height:1.6; }
 /* 转发预览：与通知页一致的格式化通知（首行缩进/地点蓝链/落款靠右）+ 附带链接行 */
 .fw-preview { box-sizing:border-box; margin:0 0 24rpx; border:2rpx solid #eee; border-radius:16rpx; padding:24rpx 26rpx; background:#FAFAFA; }
 .fw-para { font-size:30rpx; color:#1a1a1a; line-height:1.8; text-align:left; text-indent:2em; }
