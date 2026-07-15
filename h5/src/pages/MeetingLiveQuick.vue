@@ -1481,6 +1481,26 @@ function fmt(s) {
   return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0')
 }
 
+// 录音异常中断（来电抢占麦克风/切后台被挂起）：立即收段保住已录内容并明确告知，
+// 杜绝"界面还在计时、实际早没在录"的假录音——那比丢录音更坑（发现时后半场已空）。
+watch(() => rec.interrupted.value, async (v) => {
+  if (!v) return
+  const recordedText = rec.timeText.value
+  let saved = null
+  try { saved = await rec.stop() } catch (e) { /* 收段失败下面按未保住提示 */ }
+  const kept = !!(saved && saved.blob && saved.blob.size > 0)
+  const r = await showModal({
+    title: '录音被打断',
+    content: kept
+      ? '可能因来电或切出微信，录音被系统打断。已录的 ' + recordedText + ' 已保住。建议先上传这一段，再点录音圆圈继续录。'
+      : '可能因来电或切出微信，录音被系统打断，这段录音没能保住。请点录音圆圈重新开始录音。',
+    confirmText: kept ? '上传这段录音' : '知道了',
+    showCancel: kept,
+    cancelText: '稍后处理'
+  })
+  if (kept && r.confirm) uploadRecordingStep()
+})
+
 async function finishRecord() {
   if (type.value !== 'committee') {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })

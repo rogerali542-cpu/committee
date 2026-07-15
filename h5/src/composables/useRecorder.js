@@ -3,12 +3,16 @@
 // 暂停/继续（iOS 兼容降级）、自管计时（暂停时不计、累计）。产出 Blob（webm/mp4），
 // 由后端统一转码成 16k 单声道 mp3 供豆包 ASR——前端不强求采样率/声道。
 import { ref, computed } from 'vue'
+import recStore from '@/utils/recStore'
 
 export function useRecorder() {
   const recording = ref(false)   // 正在录（含暂停时仍为 true，表示一次录音会话进行中）
   const paused = ref(false)
   const seconds = ref(0)
   const hasRecording = ref(false) // 已产出可上传的录音
+  // 录音异常中断（来电抢占麦克风/切后台被挂起）：轨死亡事件秒级感知 + 数据流看门狗兜底。
+  // 页面层 watch 它弹提示，避免"界面还在计时、实际早没在录"的假录音。
+  const interrupted = ref(false)
   const supported = ref(
     typeof navigator !== 'undefined' &&
     !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) &&
@@ -21,6 +25,56 @@ export function useRecorder() {
   let timer = null
   let chosenMime = ''
   let resultBlob = null
+  // 录音切片落地：传了 persistKey 的录音（会议主录音）每片顺手写 IndexedDB，
+  // 页面被杀后可恢复；上传成功(reset)或主动重录(start)时清盘。存储失败静默——不影响录音本身。
+  let persistSessionKey = ''
+  // 屏幕常亮 + 中断检测的内部状态
+  let wakeLock = null
+  let healthTimer = null
+  let lastChunkAt = 0
+  let gotFirstChunk = false // 只有确认本机会按秒吐片(安卓)才启用数据流看门狗，iOS不吐片时靠轨事件
+
+  // 录音中保持屏幕常亮：息屏是后台挂起的主要诱因之一。不支持的环境静默跳过。
+  // 注意锁在页面切后台时会被系统自动释放，回前台需重新申请（visibilitychange 里补）。
+  async function acquireWakeLock() {
+    try {
+      if (navigator.wakeLock && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen')
+        wakeLock.addEventListener('release', () => { wakeLock = null })
+      }
+    } catch (e) { /* 微信内可能不支持，忽略 */ }
+  }
+  function releaseWakeLock() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null } } catch (e) {}
+  }
+  function onVisibilityChange() {
+    if (document.visibilityState !== 'visible') return
+    if (recording.value) {
+      acquireWakeLock()
+      healthCheck() // 回前台立即体检一次，别等下个周期
+    }
+  }
+  function markInterrupted() {
+    if (interrupted.value || !recording.value) return
+    interrupted.value = true
+    stopTimer() // 停计时，避免"没在录还在走秒"的假象
+  }
+  // 周期体检（3秒一次）：①麦克风轨全死 → 中断；②曾按秒吐片但已 >6 秒没新片 → 数据流停了，中断
+  function healthCheck() {
+    if (!recording.value || paused.value || interrupted.value) return
+    const tracks = (stream && stream.getAudioTracks()) || []
+    if (tracks.length && tracks.every((t) => t.readyState === 'ended')) { markInterrupted(); return }
+    if (gotFirstChunk && Date.now() - lastChunkAt > 6000) markInterrupted()
+  }
+  function startHealthWatch() {
+    stopHealthWatch()
+    healthTimer = setInterval(healthCheck, 3000)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+  }
+  function stopHealthWatch() {
+    if (healthTimer) { clearInterval(healthTimer); healthTimer = null }
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+  }
 
   const timeText = computed(() => {
     const s = seconds.value
@@ -80,10 +134,12 @@ export function useRecorder() {
     })
   }
 
-  // 开始一次新录音（会清掉上一次结果）
-  async function start() {
+  // 开始一次新录音（会清掉上一次结果）。opts.persistKey：切片落地的会议标识（如 'committee-282'）
+  async function start(opts) {
     if (recording.value) return
     if (!supported.value) throw new Error('当前浏览器不支持录音（需 HTTPS 且允许麦克风）')
+    // 主动开新录 = 放弃上一段未清盘的落地数据（与内存 chunks 清空的语义一致）
+    if (persistSessionKey) { recStore.clearSession(persistSessionKey); persistSessionKey = '' }
     try {
       stream = await gumWithTimeout({ audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true } }, 12000)
     } catch (e) {
@@ -97,13 +153,32 @@ export function useRecorder() {
     chosenMime = pickMime()
     chunks = []
     resultBlob = null
+    const persistKey = opts && opts.persistKey
+    if (persistKey) {
+      persistSessionKey = persistKey + ':' + Date.now()
+      recStore.beginSession(persistSessionKey, { meetingKey: persistKey, mimeType: chosenMime || 'audio/webm' })
+    }
     mediaRecorder = chosenMime ? new MediaRecorder(stream, { mimeType: chosenMime }) : new MediaRecorder(stream)
-    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data) }
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) {
+        chunks.push(e.data)
+        lastChunkAt = Date.now()
+        gotFirstChunk = true
+        if (persistSessionKey) recStore.appendChunk(persistSessionKey, e.data)
+      }
+    }
     mediaRecorder.start(1000) // 每秒切片，长录音持续累积，避免一次性占内存
     recording.value = true
     paused.value = false
     hasRecording.value = false
+    interrupted.value = false
     seconds.value = 0
+    gotFirstChunk = false
+    lastChunkAt = Date.now()
+    // 麦克风轨死亡（来电抢占等）系统会发 ended 事件——比看门狗更快感知
+    stream.getAudioTracks().forEach((t) => { t.addEventListener('ended', markInterrupted) })
+    acquireWakeLock()
+    startHealthWatch()
     startTimer()
   }
 
@@ -114,7 +189,12 @@ export function useRecorder() {
 
   function resume() {
     if (!recording.value || !paused.value || !mediaRecorder) return
-    try { mediaRecorder.resume(); paused.value = false; startTimer() } catch (e) { /* 忽略 */ }
+    try {
+      mediaRecorder.resume()
+      paused.value = false
+      lastChunkAt = Date.now() // 暂停期间不吐片，重置基准防看门狗误报
+      startTimer()
+    } catch (e) { /* 忽略 */ }
   }
 
   // 结束录音，resolve { blob, ext, durationSec, mimeType }；无内容 resolve null
@@ -123,6 +203,8 @@ export function useRecorder() {
       if (!mediaRecorder) { resolve(null); return }
       mediaRecorder.onstop = () => {
         stopTimer()
+        stopHealthWatch()
+        releaseWakeLock()
         const type = mediaRecorder.mimeType || chosenMime || 'audio/webm'
         resultBlob = new Blob(chunks, { type })
         recording.value = false
@@ -133,12 +215,15 @@ export function useRecorder() {
           ? { blob: resultBlob, ext: extFromMime(type), durationSec: seconds.value, mimeType: type }
           : null)
       }
-      try { mediaRecorder.stop() } catch (e) { stopTimer(); resolve(null) }
+      try { mediaRecorder.stop() } catch (e) { stopTimer(); stopHealthWatch(); releaseWakeLock(); resolve(null) }
     })
   }
 
   function reset() {
     stopTimer()
+    stopHealthWatch()
+    releaseWakeLock()
+    interrupted.value = false
     chunks = []
     resultBlob = null
     seconds.value = 0
@@ -147,12 +232,14 @@ export function useRecorder() {
     hasRecording.value = false
     releaseStream()
     mediaRecorder = null
+    // reset 的两个调用场景（上传成功 / 主动放弃）都意味着落地数据不再需要
+    if (persistSessionKey) { recStore.clearSession(persistSessionKey); persistSessionKey = '' }
   }
 
   function getBlob() { return resultBlob }
 
   return {
-    recording, paused, seconds, timeText, hasRecording, supported,
+    recording, paused, seconds, timeText, hasRecording, supported, interrupted,
     start, pause, resume, stop, reset, getBlob
   }
 }
