@@ -1,6 +1,7 @@
 // 导航工具：替代 wx.navigateTo/redirectTo/switchTab/navigateBack。
 // 迁移时小程序里的路径字符串 '/pages/xxx/xxx?a=1' 可原样传入，这里解析成路由。
 import router from '@/router'
+import { recordAttempt } from '@/utils/navstats'
 
 export function toRoute(url) {
   const [pathPart, queryPart] = String(url).split('?')
@@ -18,9 +19,9 @@ export function toRoute(url) {
   return { path, query }
 }
 
-export function navigateTo(url) { return router.push(toRoute(url)) }
-export function redirectTo(url) { return router.replace(toRoute(url)) }
-export function switchTab(url) { return router.push(toRoute(url)) }
+export function navigateTo(url) { recordAttempt(toRoute(url).path); return router.push(toRoute(url)) }
+export function redirectTo(url) { recordAttempt(toRoute(url).path); return router.replace(toRoute(url)) }
+export function switchTab(url) { recordAttempt(toRoute(url).path); return router.push(toRoute(url)) }
 export function navigateBack() {
   if (window.history.length > 1) router.back()
   else router.replace('/main') // 无上一页兜底回业委会主页（对齐 page-nav 兜底）

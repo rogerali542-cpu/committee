@@ -32,6 +32,7 @@ const routes = [
   { path: '/property-tasks', component: () => import('@/pages/PropertyTasks.vue'), meta: { title: '物业任务' } },
   { path: '/archive-detail', component: () => import('@/pages/ArchiveDetail.vue'), meta: { title: '归档详情' } },
   { path: '/admin', component: () => import('@/pages/Admin.vue'), meta: { title: '管理后台' } },
+  { path: '/nav-stats', component: () => import('@/pages/NavStats.vue'), meta: { title: '软路由诊断' } },
 
   { path: '/:pathMatch(.*)*', redirect: '/main' }
 ]
