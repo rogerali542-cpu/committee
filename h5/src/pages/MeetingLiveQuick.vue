@@ -2635,7 +2635,14 @@ async function confirmEndMeeting() {
       endReviewVisible.value = true
       return
     }
-    if (choice.tapIndex !== 1) return
+    // 选「不上传，继续结束」：把正在进行/未上传的这段录音停掉并扔掉（含落盘切片，避免下次进来又弹恢复提示），
+    // 不要再继续录下去；watch 会把 recording=false 同步给全局悬浮条并隐藏。
+    if (choice.tapIndex === 1) {
+      rec.reset()
+      toast({ title: '已停止并丢弃本次录音', icon: 'none' })
+    } else {
+      return // 用户取消了选择
+    }
   }
   // 录音已上传但还没有转写结果（识别失败/被中断/从未识别）→ 直接结束的话，会后生成纪要必失败。
   // 识别在途(uploading/polling/extracting)不拦：会后整理页会显示「上传中/识别中」并在完成后放行生成。
