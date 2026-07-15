@@ -256,16 +256,16 @@
               <template v-else>
               <div class="minutes-basis">
                 <div class="mb-head">
-                  <span class="mb-title">生成会议纪要</span>
                   <span class="mb-sub">将综合以下会议记录自动整理</span>
                 </div>
-                <div class="mb-row" v-if="hasRecordings" @click="toggleRecPlayback">
-                  <span class="mb-copy"><b>会议录音</b><small>{{ recTotalDurText || '已保存' }}</small></span>
-                  <span class="mb-act">{{ recAudioPlaying ? '播放中…' : '试听' }} ›</span>
-                </div>
-                <div class="mb-row" @click="toggleBasis">
-                  <span class="mb-copy"><b>会议录音</b><small>录音转写内容</small></span>
-                  <span class="mb-act">{{ basisLoading ? '加载中…' : (basisOpen ? '收起' : '查看') }} ›</span>
+                <!-- 录音的「试听」和「看转写」合成一行两个动作，不再出现两行同名「会议录音」 -->
+                <div class="mb-row mb-row-static">
+                  <span class="mb-copy"><b>会议录音</b><small>{{ hasRecordings ? (recTotalDurText || '已保存') : '暂无录音' }}</small></span>
+                  <span class="mb-acts">
+                    <span v-if="hasRecordings" class="mb-act mb-act-tap" @click="toggleRecPlayback">{{ recAudioPlaying ? '播放中…' : '试听' }}</span>
+                    <span v-if="hasRecordings" class="mb-act-sep">·</span>
+                    <span class="mb-act mb-act-tap" @click="toggleBasis">{{ basisLoading ? '加载中…' : (basisOpen ? '收起转写' : '看转写') }} ›</span>
+                  </span>
                 </div>
                 <div class="mb-transcript" v-if="basisOpen">{{ basisTranscript || '暂无转写内容' }}</div>
                 <div class="mb-row" @click="endedDetailOpen = true">
@@ -1238,6 +1238,41 @@ function destroyRecAudio() {
 }
 function pauseRecAudio() {
   if (_recAudio && recAudioPlaying.value) { try { _recAudio.pause() } catch (e) {} }
+}
+// 纪要卡「会议录音」行的数据源：快速会议的多段录音列表（record.recordings），
+// 旧字段 record.recordingUrl 是老单文件流程的，快速流程下为空。
+const quickRecordings = computed(() => (detail.value && detail.value.record && detail.value.record.recordings) || [])
+const hasRecordings = computed(() => quickRecordings.value.length > 0)
+const recTotalDurText = computed(() => {
+  const list = quickRecordings.value
+  if (!list.length) return ''
+  const total = list.reduce((s, r) => s + (r.durationSec || 0), 0)
+  if (!total) return list.length + ' 段'
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return list.length + ' 段 · ' + (m ? m + '分' : '') + (s || !m ? s + '秒' : '')
+})
+let _recPlayIdx = 0
+// 试听：多段录音按顺序连播；再点=暂停，播完自动复位
+function toggleRecPlayback() {
+  const list = quickRecordings.value
+  if (!list.length) { toast({ title: '暂无录音', icon: 'none' }); return }
+  if (_recAudio && recAudioPlaying.value) { _recAudio.pause(); return }
+  if (!_recAudio) {
+    _recPlayIdx = 0
+    _recAudio = new Audio(list[0].recordingUrl)
+    _recAudio.onplay = () => { recAudioPlaying.value = true }
+    _recAudio.onpause = () => { recAudioPlaying.value = false }
+    _recAudio.onended = () => {
+      _recPlayIdx++
+      const rest = quickRecordings.value
+      if (_recPlayIdx < rest.length) { _recAudio.src = rest[_recPlayIdx].recordingUrl; _recAudio.play() }
+      else destroyRecAudio()
+    }
+    _recAudio.onerror = () => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) }
+  }
+  const p = _recAudio.play()
+  if (p && p.catch) p.catch(() => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) })
 }
 function toggleRecording() {
   const url = detail.value && detail.value.record ? detail.value.record.recordingUrl : ''
@@ -3704,10 +3739,16 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ar-card.card-sz-sm .mtc-head { margin-bottom:10px; }
 .minutes-basis { margin:10px 16px 18px; background:#FFF9F1; border:1px solid #F4D9B5; border-radius:16px; padding:16px; }
 .mb-head { display:flex; flex-direction:column; gap:3px; margin-bottom:13px; }
-.mb-title { font-size:18px; color:#5B3A13; font-weight:700; line-height:1.4; }
 .mb-sub { font-size:14px; color:#8A7258; line-height:1.45; }
 .mb-row { display:flex; align-items:center; gap:11px; min-height:54px; padding:8px 10px; margin-top:8px; border:1px solid #F1E2CE; border-radius:12px; background:#fff; cursor:pointer; }
 .mb-row:active { background:#FFF4E5; }
+/* 录音行：整行不再是单一动作，点击落在右侧「试听/看转写」两个动作上 */
+.mb-row-static { cursor:default; }
+.mb-row-static:active { background:#fff; }
+.mb-acts { flex-shrink:0; display:flex; align-items:center; gap:2px; }
+.mb-act-sep { color:#D8C3AB; font-size:14px; }
+.mb-act-tap { padding:10px 8px; margin:-10px 0; cursor:pointer; }
+.mb-act-tap:active { opacity:0.6; }
 .mb-ico { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; flex-shrink:0; font-size:16px; font-weight:700; }
 .mb-ico.audio { color:#C76A00; background:#FFF0D9; }
 .mb-ico.transcript { color:#3976B9; background:#EAF3FD; }
