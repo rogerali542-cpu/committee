@@ -276,6 +276,15 @@
               <button class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
             </template>
             </template>
+            <div class="attendance-sheet-entry">
+              <div class="ase-copy">
+                <b>会议签到表</b>
+                <small>打印后由参会委员签名，用于评分与归档</small>
+              </div>
+              <button class="ase-btn" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
+                {{ exportingAttendanceSheet ? '生成中…' : '导出 PDF' }}
+              </button>
+            </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
                 <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openMaterialViewer(ae)" />
@@ -302,6 +311,10 @@
             <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">公示会议</button>
             <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示内容</button>
             <div class="ended-btn-row">
+              <!-- 会议结束仪式：委员合影，点开直接拍照存进会议材料（会后留档） -->
+              <button class="ended-photo-btn" :disabled="photoUploading" @click="takeGroupPhoto">
+                <span class="epb-ico">📷</span>{{ photoUploading ? '合影上传中…' : '委员合影' }}
+              </button>
               <!-- 「查看会议纪要」不再单列大按钮：入口收进上方会议卡的「查看详情」里 -->
               <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
               <button class="ended-home-btn" @click="goHome">返回首页</button>
@@ -693,7 +706,7 @@ import { toast, showModal } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
-import { pickAndUpload, humanSize } from '@/utils/upload'
+import { pickAndUpload, pickFile, uploadAttachment, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
@@ -1004,6 +1017,7 @@ const noticePackageVisible = ref(false)
 const recAudioPlaying = ref(false)
 const generatingNews = ref(false)   // AI 生成党建新闻中（驱动红色党建工作遮罩）
 const generatingMinutes = ref(false)
+const exportingAttendanceSheet = ref(false)
 const minutesOverlayShown = ref(false)
 const quickMode = ref(false)
 const step3Ready = ref(false)
@@ -2303,6 +2317,27 @@ function viewMinutes() {
   }, 300)
 }
 
+async function exportAttendanceSheet() {
+  if (exportingAttendanceSheet.value) return
+  exportingAttendanceSheet.value = true
+  try {
+    const blob = await api.committeeExportAttendanceSheet(meetingId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${detail.value.title || '会议'}-会议签到表.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    toast({ title: '签到表已导出', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '签到表导出失败', icon: 'none' })
+  } finally {
+    exportingAttendanceSheet.value = false
+  }
+}
+
 // 会后生成会议纪要：任务直接在会议详情页发起，最小化弹窗后也不提前跳转纪要页。
 async function generateMinutes() {
   if (generatingMinutes.value) return
@@ -2506,6 +2541,31 @@ async function previewMaterial(idx) {
     showCancel: false,
     confirmText: '关闭'
   })
+}
+
+// 委员合影：结束页点相机 → 直接调起手机后置相机拍照 → 上传 → 存进会议材料（会后仪式留档）。
+// 用原生 capture 相机（一拍即回、老人熟悉、微信/企业微信内最稳），照片进 materials，与其它会议材料一处查看。
+const photoUploading = ref(false)
+async function takeGroupPhoto() {
+  if (photoUploading.value) return
+  let file
+  try {
+    file = await pickFile('image/*', 'environment') // 手机上直接开后置相机；桌面退化为选图
+  } catch (e) { return }
+  if (!file) return // 用户取消
+  photoUploading.value = true
+  try {
+    const already = (detail.value && detail.value.materials || []).filter(m => (m.name || '').indexOf('委员合影') >= 0).length
+    const fname = '委员合影' + (already ? '（' + (already + 1) + '）' : '') + '.jpg'
+    const r = await uploadAttachment(file)
+    await api.committeeAddMaterial(meetingId, fname, humanSize(r.fileSize), r.fileType, r.url)
+    toast({ title: '合影已存入会议材料', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '合影上传失败，请重试', icon: 'none' })
+  } finally {
+    photoUploading.value = false
+  }
 }
 
 // (3) 会议材料：选任意文件上传 → committeeAddMaterial → 刷新
@@ -2936,6 +2996,13 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .arc-summary:active { background:#FCF8F3; }
 /* 展开区里的「查看会议纪要」按钮（从底部操作栏挪进详情） */
 .ended-minutes-btn.in-card { margin:8px auto 16px; }
+.attendance-sheet-entry { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 16px 16px; padding:14px; border:1px solid #E7E9ED; border-radius:14px; background:#FAFBFC; }
+.ase-copy { display:flex; flex-direction:column; min-width:0; gap:4px; }
+.ase-copy b { color:#30343B; font-size:16px; line-height:1.35; }
+.ase-copy small { color:#7B818B; font-size:12px; line-height:1.45; }
+.ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:14px; font-weight:700; cursor:pointer; }
+.ase-btn:active { background:#EAF2FB; }
+.ase-btn:disabled { opacity:.55; cursor:default; }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
 
 
@@ -3004,6 +3071,11 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* AI生成新闻稿：描边红（辅助） */
 .ended-news-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
+/* 委员合影：描边橙（会后仪式操作），与上面几个同尺寸同风格；相机图标在字前 */
+.ended-photo-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark, #A85800); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
+.ended-photo-btn:active { background:#FDF3E7; }
+.ended-photo-btn:disabled { color:#B7A793; border-color:#EAD9C2; background:#FAF6F0; }
+.epb-ico { font-size:19px; line-height:1; }
 /* 返回首页：描边灰（中性辅助），与上面三个同尺寸同风格 */
 .ended-home-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#555; font-size:17px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
 .ended-home-btn:active { background:#F2F2F2; }
