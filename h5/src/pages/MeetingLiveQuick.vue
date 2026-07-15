@@ -393,6 +393,7 @@ import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { useRecorder } from '@/composables/useRecorder'
+import recStore from '@/utils/recStore'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import { meetingRecordingSession } from '@/composables/meetingRecordingSession'
@@ -1453,7 +1454,7 @@ async function startRecord() {
   processText.value = '正在录音...'
   try {
     rec.reset()
-    await rec.start()
+    await rec.start({ persistKey: 'committee-' + meetingId.value }) // 切片落盘：页面被杀后可恢复
   } catch (e) {
     console.error('[startRecord] 录音启动失败:', e && e.name, e && e.message, e)
     showModal({ title: '无法开始录音', content: micErrorText(e), showCancel: false, confirmText: '知道了' })
@@ -1480,6 +1481,41 @@ function fmt(s) {
   const m = Math.floor(s / 60)
   return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0')
 }
+
+// 落盘切片恢复：上次录音时页面被杀（微信杀后台/手滑刷新），切片还躺在本机 IndexedDB 里 →
+// 详情加载后查一次孤儿会话，提示主任恢复上传（走正常上传转写链路），成功即清盘。
+async function checkOrphanRecordings() {
+  if (!isChair.value) return
+  if (!detail.value || detail.value.stage !== 'ongoing') return
+  if (rec.recording.value) return
+  const sessions = await recStore.listSessions('committee-' + meetingId.value)
+  if (!sessions.length) return
+  const totalSec = sessions.reduce((s, x) => s + x.chunkCount, 0)
+  if (totalSec < 5) { sessions.forEach(s => recStore.clearSession(s.key)); return } // 几秒的碎片没有恢复价值
+  const durText = totalSec >= 60 ? '约 ' + Math.floor(totalSec / 60) + ' 分钟' : '约 ' + totalSec + ' 秒'
+  const r = await showModal({
+    title: '发现未上传的录音',
+    content: '上次录音中断时，已自动保住' + durText + '的内容在本手机上。要恢复上传、用于生成会议纪要吗？',
+    confirmText: '恢复上传',
+    cancelText: '暂不'
+  })
+  if (!r.confirm) return // 保留切片：下次进来再问，7 天后自动清理
+  for (const s of sessions) {
+    const asm = await recStore.assembleSession(s.key)
+    if (!asm) { recStore.clearSession(s.key); continue }
+    const file = new File([asm.blob], 'recovered.' + extFromBlob(asm.blob), { type: asm.mimeType })
+    try {
+      await uploadRecordingFile(file, asm.durationSec) // 上传成功自动触发后台转写
+      recStore.clearSession(s.key)
+    } catch (e) { /* 上传失败保留切片，用户可稍后重进再试 */ }
+  }
+}
+// 详情首次加载完成后跑一次恢复检查（isChair/stage 此时才可判）
+const _stopOrphanWatch = watch(() => (detail.value && detail.value.stage) || '', (st) => {
+  if (!st) return
+  _stopOrphanWatch()
+  checkOrphanRecordings()
+})
 
 // 录音异常中断（来电抢占麦克风/切后台被挂起）：立即收段保住已录内容并明确告知，
 // 杜绝"界面还在计时、实际早没在录"的假录音——那比丢录音更坑（发现时后半场已空）。
