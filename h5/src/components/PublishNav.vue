@@ -8,9 +8,13 @@
 
 <script setup>
 // 公示/通知页专用蓝色顶栏（区别于内部业委工作页的橙色 PageNav）。
+// onBack：页面可指定明确的返回目标（历史回退在硬跳兜底后不可靠——栈里是什么全凭运气）
 import { navigateBack } from '@/utils/navigate'
-defineProps({ title: { type: String, default: '' } })
-function back() { navigateBack() }
+const props = defineProps({ title: { type: String, default: '' }, onBack: { type: Function, default: null } })
+function back() {
+  if (props.onBack) { props.onBack(); return }
+  navigateBack()
+}
 </script>
 
 <style scoped>
