@@ -14,6 +14,21 @@
     <AiWorkingOverlay :active="generatingNews" phase="news" theme="party" @confirm="onNewsDone" @close="onNewsClose" />
     <!-- 会议纪要在详情页后台生成；最小化后悬浮入口仍留在当前详情页 -->
     <AiWorkingOverlay v-if="minutesOverlayShown" :active="generatingMinutes" phase="gen" @confirm="onMinutesDone" @close="onMinutesClose" />
+    <div v-if="photoCameraVisible" class="photo-camera-overlay">
+      <div class="photo-camera-panel">
+        <div class="photo-camera-title">委员合影</div>
+        <div class="photo-camera-view">
+          <video ref="cameraVideo" autoplay playsinline muted></video>
+          <span v-if="cameraStarting" class="photo-camera-loading">正在打开相机…</span>
+        </div>
+        <div class="photo-camera-actions">
+          <button class="photo-camera-cancel" @click="closeGroupCamera">取消</button>
+          <button class="photo-camera-shoot" :disabled="cameraStarting || photoUploading" @click="captureGroupPhoto">
+            {{ photoUploading ? '保存中…' : '拍照' }}
+          </button>
+        </div>
+      </div>
+    </div>
     <div v-if="detail" class="detail-body">
       <!-- 简化阶段：进行中/已结束会议也允许主任删除（清理测试数据用；准备阶段用会议头部的取消按钮） -->
 
@@ -49,18 +64,17 @@
           <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
             <span class="recipient-card-title">通知人员</span>
             <div class="recipient-card-right">
-              <span class="recipient-summary">{{ recipientSummary }}</span>
+              <!-- 全选控件挪到头部（替代原「全体委员·N人」摘要，两者信息重复）：点它=全选/全不选，@click.stop 不触发展开 -->
+              <div class="rcp-head-all" @click.stop="toggleRecipientAll">
+                <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
+                <span class="rcp-head-all-label">全选</span>
+                <span class="rcp-head-count">已选 {{ recipientSelectedCount }}/{{ recipientList.length }} 人</span>
+              </div>
               <span class="recipient-card-arrow" :class="{ open: recipientOpen }">›</span>
             </div>
           </div>
           <template v-if="recipientOpen">
             <div class="rcp-list page-rcp-list">
-              <!-- 全选行：挪进列表顶部（收起头只留摘要） -->
-              <div class="rcp-item page-rcp-item rcp-all-row" @click="toggleRecipientAll">
-                <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
-                <div class="rcp-person"><span class="rcp-name">全选</span></div>
-                <span class="rcp-all-count">已选 {{ recipientSelectedCount }} / {{ recipientList.length }} 人</span>
-              </div>
               <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
                 <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
                 <div class="rcp-person">
@@ -268,10 +282,6 @@
                   </span>
                 </div>
                 <div class="mb-transcript" v-if="basisOpen">{{ basisTranscript || '暂无转写内容' }}</div>
-                <div class="mb-row" @click="endedDetailOpen = true">
-                  <span class="mb-copy"><b>议题结果</b><small>讨论、投票与意见</small></span>
-                  <span class="mb-act">查看 ›</span>
-                </div>
               </div>
               <button class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
             </template>
@@ -313,7 +323,7 @@
             <div class="ended-btn-row">
               <!-- 会议结束仪式：委员合影，点开直接拍照存进会议材料（会后留档） -->
               <button class="ended-photo-btn" :disabled="photoUploading" @click="takeGroupPhoto">
-                <span class="epb-ico">📷</span>{{ photoUploading ? '合影上传中…' : '委员合影' }}
+                {{ photoUploading ? '合影保存中…' : '委员合影' }}
               </button>
               <!-- 「查看会议纪要」不再单列大按钮：入口收进上方会议卡的「查看详情」里 -->
               <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
@@ -336,14 +346,14 @@
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
-                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
               </div>
             </div>
             <div v-else-if="detail._archived">
               <span class="arp-check">✓</span><span style="font-size:13px;color:#27AE60;">已归档（未公示）</span>
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
-                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
                 <span class="ar-skip danger" @click="revokeArchive">撤销归档</span>
               </div>
             </div>
@@ -352,7 +362,7 @@
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="archiveDirect">直接归档</span>
-                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
               </div>
             </template>
           </div>
@@ -706,7 +716,7 @@ import { toast, showModal } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
-import { pickAndUpload, pickFile, uploadAttachment, humanSize } from '@/utils/upload'
+import { pickAndUpload, uploadAttachment, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
@@ -1233,6 +1243,7 @@ watch(() => route.query.id, () => {
 // onUnload → onUnmounted
 onUnmounted(() => {
   destroyRecAudio()
+  closeGroupCamera()
   stopNewsPoll() // 本页轮询随页销毁；服务端 @Async 继续跑，切回时 reconcileNews 再接上
   if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onNewsVisibility)
   // 本页遮罩随本页销毁 → 交还全局悬浮胶囊（新闻生成中/已生成切走后仍有入口，不被隐藏）
@@ -1861,8 +1872,8 @@ function handleDetailBack() {
     backWithFallback('/pages/notifications/notifications', '/notifications')
     return
   }
-  // 会议列表是详情页最常见来源，也是无来源/刷新/from=minutes 后的安全落点。
-  backWithFallback('/main', '/main')
+  // 普通详情优先回到用户刚才所在的会议列表位置；只有没有历史记录时才由 navigateBack 兜底首页。
+  navigateBack()
 }
 function backToEditInfo() {
   setStorage('editMeetingId', meetingId)   // 交给 /main 的发起会议表单以「编辑模式」打开
@@ -1875,15 +1886,6 @@ const recipientOpen = ref(false)
 const recipientList = ref([])   // [{ userRoleId, name, role, checked }]
 const recipientSelectedCount = computed(() => recipientList.value.filter((x) => x.checked).length)
 const recipientAllChecked = computed(() => recipientList.value.length > 0 && recipientList.value.every((x) => x.checked))
-// 折叠头右侧摘要：全选→「全体委员 · N人」；部分→「已选 M/N人」；一个没选→「未选择」
-const recipientSummary = computed(() => {
-  const total = recipientList.value.length
-  const sel = recipientSelectedCount.value
-  if (!total) return '暂无委员'
-  if (sel >= total) return '全体委员 · ' + total + '人'
-  if (sel === 0) return '未选择'
-  return '已选 ' + sel + '/' + total + '人'
-})
 
 async function loadRecipients(force) {
   if (!force && recipientList.value.length) return true
@@ -2394,7 +2396,7 @@ async function generateNews() {
   generatingNews.value = true
   // overlayShown=true → 本页全屏遮罩盖着任务时隐藏全局悬浮胶囊（免重复）；关遮罩/切走时再交还胶囊。
   aiTask.overlayShown = true
-  startAiTask({ label: '党建新闻生成中…', originPath: window.location.pathname, targetPath: '/pages/news/news?meetingId=' + meetingId })
+  startAiTask({ label: '党建新闻生成中…', originPath: window.location.pathname, targetPath: '/pages/news/news?meetingId=' + meetingId + '&resume=1' })
   try {
     const st = await api.committeeGenerateNews(meetingId) // 发起（30s 内已有 running 则去重）
     if (st && st.status === 'success' && st.content) { onNewsSuccess(st); return }
@@ -2427,7 +2429,7 @@ function onNewsSuccess(st) {
   stopNewsPoll()
   newsState.value = 'success'
   try { sessionStorage.setItem('committee_news_' + meetingId, JSON.stringify({ title: st.title, content: st.content })) } catch (e) {}
-  finishAiTask({ doneLabel: '党建新闻已生成' })
+  finishAiTask({ doneLabel: '党建新闻已生成', targetPath: '/pages/news/news?meetingId=' + meetingId })
   generatingNews.value = false // 遮罩转「完成」态，等用户点「查看新闻稿」
 }
 function onNewsFailed(e) {
@@ -2452,7 +2454,7 @@ async function reconcileNews() {
     } else if (st && st.status === 'running') {
       // 服务端仍在后台生成 → 全局悬浮胶囊兜底「生成中」入口，并接着轮询到完成
       if (!aiTask.active && !aiTask.done && !aiTask.failed) {
-        startAiTask({ label: '党建新闻生成中…', originPath: '/pages/committee-detail/committee-detail?id=' + meetingId, targetPath: '/pages/news/news?meetingId=' + meetingId })
+        startAiTask({ label: '党建新闻生成中…', originPath: '/pages/committee-detail/committee-detail?id=' + meetingId, targetPath: '/pages/news/news?meetingId=' + meetingId + '&resume=1' })
       }
       watchNews()
     }
@@ -2464,8 +2466,17 @@ function onNewsVisibility() { if (typeof document !== 'undefined' && document.vi
 // 新闻按钮文案随状态：已生成→查看；生成中→去新闻页看进度；否则→生成
 const newsBtnLabel = computed(() => newsState.value === 'success' ? '查看新闻稿' : (newsState.value === 'running' ? '新闻生成中·查看' : 'AI生成新闻稿'))
 function onNewsBtn() {
-  if (newsState.value === 'success' || newsState.value === 'running') return onNewsDone()
+  if (newsState.value === 'running') return openNewsProgress()
+  if (newsState.value === 'success') return onNewsDone()
   generateNews()
+}
+
+// 生成中进入专门的进度态：保留全局任务，新闻页忽略旧缓存并读取服务端 running 状态。
+function openNewsProgress() {
+  aiTask.overlayShown = false
+  const q = 'meetingId=' + meetingId + '&resume=1'
+  navigateTo('/pages/news/news?' + q)
+  setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = '/news?' + q }, 500)
 }
 
 // 遮罩「查看新闻稿」/按钮查看：进入独立党建新闻页（带软路由不切换的硬导航兜底）。已查看→清掉全局任务。
@@ -2543,22 +2554,57 @@ async function previewMaterial(idx) {
   })
 }
 
-// 委员合影：结束页点相机 → 直接调起手机后置相机拍照 → 上传 → 存进会议材料（会后仪式留档）。
-// 用原生 capture 相机（一拍即回、老人熟悉、微信/企业微信内最稳），照片进 materials，与其它会议材料一处查看。
+// 委员合影：直接打开实时摄像头取景，拍照后上传并存进会议材料。
 const photoUploading = ref(false)
+const photoCameraVisible = ref(false)
+const cameraStarting = ref(false)
+const cameraVideo = ref(null)
+let cameraStream = null
 async function takeGroupPhoto() {
-  if (photoUploading.value) return
-  let file
+  if (photoUploading.value || photoCameraVisible.value) return
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast({ title: '当前浏览器无法调用相机，请使用手机浏览器打开', icon: 'none' })
+    return
+  }
+  photoCameraVisible.value = true
+  cameraStarting.value = true
   try {
-    file = await pickFile('image/*', 'environment') // 手机上直接开后置相机；桌面退化为选图
-  } catch (e) { return }
-  if (!file) return // 用户取消
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+    await nextTick()
+    if (cameraVideo.value) {
+      cameraVideo.value.srcObject = cameraStream
+      await cameraVideo.value.play()
+    }
+  } catch (e) {
+    closeGroupCamera()
+    toast({ title: '相机打开失败，请检查相机权限', icon: 'none' })
+  } finally {
+    cameraStarting.value = false
+  }
+}
+function closeGroupCamera() {
+  if (cameraStream) cameraStream.getTracks().forEach(track => track.stop())
+  cameraStream = null
+  photoCameraVisible.value = false
+  cameraStarting.value = false
+}
+async function captureGroupPhoto() {
+  const video = cameraVideo.value
+  if (!video || !video.videoWidth || photoUploading.value) return
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+  if (!blob) return
+  const file = new File([blob], '委员合影.jpg', { type: 'image/jpeg' })
   photoUploading.value = true
   try {
     const already = (detail.value && detail.value.materials || []).filter(m => (m.name || '').indexOf('委员合影') >= 0).length
     const fname = '委员合影' + (already ? '（' + (already + 1) + '）' : '') + '.jpg'
     const r = await uploadAttachment(file)
     await api.committeeAddMaterial(meetingId, fname, humanSize(r.fileSize), r.fileType, r.url)
+    closeGroupCamera()
     toast({ title: '合影已存入会议材料', icon: 'success' })
     loadDetail()
   } catch (e) {
@@ -3071,10 +3117,21 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* AI生成新闻稿：描边红（辅助） */
 .ended-news-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
-/* 委员合影：描边橙（会后仪式操作），与上面几个同尺寸同风格；相机图标在字前 */
-.ended-photo-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark, #A85800); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
+/* 委员合影：描边橙（会后仪式操作），点击后直接进入实时相机。 */
+.ended-photo-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark, #A85800); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
 .ended-photo-btn:active { background:#FDF3E7; }
 .ended-photo-btn:disabled { color:#B7A793; border-color:#EAD9C2; background:#FAF6F0; }
+.photo-camera-overlay { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.88); }
+.photo-camera-panel { width:min(100%, 560px); }
+.photo-camera-title { color:#fff; text-align:center; font-size:20px; font-weight:700; margin-bottom:14px; }
+.photo-camera-view { position:relative; overflow:hidden; width:100%; aspect-ratio:3/4; border-radius:18px; background:#151515; }
+.photo-camera-view video { width:100%; height:100%; object-fit:cover; }
+.photo-camera-loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px; }
+.photo-camera-actions { display:flex; gap:14px; margin-top:18px; }
+.photo-camera-actions button { flex:1; height:48px; border:0; border-radius:24px; font-size:17px; font-weight:700; }
+.photo-camera-cancel { background:#3A3A3A; color:#fff; }
+.photo-camera-shoot { background:#fff; color:#222; }
+.photo-camera-shoot:disabled { opacity:.5; }
 .epb-ico { font-size:19px; line-height:1; }
 /* 返回首页：描边灰（中性辅助），与上面三个同尺寸同风格 */
 .ended-home-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#555; font-size:17px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
@@ -3233,8 +3290,12 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .recipient-card-head:active { background:#FAFAFA; }
 .recipient-card-title { display:block; font-size:28rpx; color:#1f2329; font-weight:700; line-height:1.35; }
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
-.recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:10rpx; }
-.recipient-summary { font-size:24rpx; color:#4A5560; white-space:nowrap; }
+.recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:14rpx; }
+/* 全选控件挪进头部（替代原摘要）：小圆勾 + 「全选」 + 已选计数，点它切换全选/全不选 */
+.rcp-head-all { display:flex; align-items:center; gap:10rpx; padding:4rpx 0; }
+.rcp-head-all .rcp-check { width:32rpx; height:32rpx; border-width:2rpx; font-size:20rpx; }
+.rcp-head-all-label { font-size:24rpx; color:#A85800; font-weight:600; white-space:nowrap; }
+.rcp-head-count { font-size:22rpx; color:#8A9099; white-space:nowrap; }
 .recipient-card-arrow { color:#A4A9B0; font-size:32rpx; line-height:1; transform:rotate(90deg); transition:transform .18s ease; }
 .recipient-card-arrow.open { transform:rotate(-90deg); }
 .page-rcp-list { margin:0; max-height:420rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
@@ -3516,10 +3577,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .rcp-list { margin-top:8rpx; flex:1; min-height:100rpx; }
 .rcp-item { display:flex; align-items:center; gap:14rpx; padding:15rpx 22rpx; border-bottom:1px solid #f0f0f2; }
 .rcp-item:active { background:#fafafa; }
-/* 全选行：挪到展开列表顶部，浅橙底 + 橙字，与成员行区分 */
-.rcp-all-row { background:#FFFCF7; }
-.rcp-all-row .rcp-name { color:#A85800; }
-.rcp-all-count { margin-left:auto; flex-shrink:0; font-size:21rpx; color:#8A9099; white-space:nowrap; }
 .rcp-person { display:flex; flex-direction:column; gap:2rpx; }
 .rcp-name { font-size:28rpx; color:#1f2329; font-weight:600; }
 .rcp-role { font-size:20rpx; color:#9aa0a6; }
