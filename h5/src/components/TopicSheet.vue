@@ -126,7 +126,7 @@
         <div class="ts-notice-label">通知内容</div>
         <div class="ts-notice-body">{{ topic.content || '（暂无通知正文）' }}</div>
         <div class="ts-notice-foot">
-          <!-- 研究P1#8：状态改"已读 X/Y 人"进度；凑齐全体自动「已通报」 -->
+          <!-- 状态显示"已读 X/Y 人"；Y 为会议参会名单人数，凑齐全体自动「已通报」 -->
           <span class="ts-notice-status" :class="{ done: topic.notified }">{{ topic.notified ? '✓ 全体已通报' : ('已读 ' + (topic.viewedCount || 0) + '/' + (topic.signedInCount || 0) + ' 人') }}</span>
           <!-- 委员/主任本人：只确认自己「我已读」，不再一人点就全体已通报 -->
           <button v-if="interactive && signedIn && !topic.viewedByMe && !topic.notified" class="ts-notice-read" @click="markMyRead">我已读</button>
@@ -502,7 +502,7 @@ watch(() => props.topic && props.topic.id, (id) => {
 onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
 
 // 研究P1「已宣读降级」#8：委员本人显式确认「我已读」（只记自己，不再一人点就全体已通报）。
-// 全体已签到委员都确认后，后端自动把该通报标记「全体已通报」。
+// 会议参会名单中的全体委员都确认后，后端自动把该通报标记「全体已通报」。
 async function markMyRead() {
   const t = props.topic
   if (!t || t.type !== 'notice') return
@@ -638,7 +638,7 @@ function showAiDoneCard(mode) {
   }
   showModal({
     title: '',
-    content: '草稿已生成',
+    content: '已按你的想法拟好，可修改',
     size: 'aicard',
     showCancel: false,
     confirmText: '查看'
@@ -801,6 +801,7 @@ async function submitVote() {
   if (!props.signedIn) { toast({ title: '请先完成签到', icon: 'none' }); return }
   const opt = pendingOption.value
   const label = pendingLabel.value
+  const isChangingVote = committedVote.value != null
   voteSubmitting.value = true
   try {
     const nextValue = opt ? opt.id : pendingVote.value
@@ -815,10 +816,16 @@ async function submitVote() {
       if (opt) return Object.assign({}, opinion, { voteLabel: label, voteChoice: null })
       return Object.assign({}, opinion, { voteLabel: null, voteChoice: pendingVoteValueForLabel(nextValue) })
     })
-    await loadOpinions() // 再以后端当前票为准校准一次
     emit('changed')
-    await handleOpinionAfterVoteChange(nextValue, opt)
-  } catch (e) { /* 已 toast */ }
+    // 提交后清空 pendingVote，确认提交按钮随即收起；保留在当前议题页，
+    // 方便用户继续补充意见或前往下一个议题。
+    if (isChangingVote) {
+      await loadOpinions() // 再以后端当前票为准校准一次
+      await handleOpinionAfterVoteChange(nextValue, opt)
+    }
+  } catch (e) {
+    toast({ title: (e && e.message) || '提交失败，请稍后重试', icon: 'none' })
+  }
   finally { voteSubmitting.value = false }
 }
 
@@ -959,9 +966,9 @@ async function removeOpinion(op) {
 .ts-guide.notice { border-left-color: #7C5CC4; background: #F4F0FC; color: #5B3FA8; }
 .ts-guide.discuss { border-left-color: #1F6FB2; background: #EFF6FC; color: #1A5C93; }
 /* 三类议题各一专属色（浅底彩字，方案A）——讨论蓝 / 表决橙 / 通报紫，刻意避开绿(=同意票色) */
-.ts-tag.discuss { background: #E9F2FB; color: #1F6FB2; }
-.ts-tag.vote { background: #FFF1E2; color: #C76A00; }
-.ts-tag.notice { background: #F1EBFB; color: #6D3FC4; }
+.ts-tag.discuss { background: #EAF6EE; color: #2E8B57; }
+.ts-tag.vote { background: #FFF0E5; color: #D56A16; }
+.ts-tag.notice { background: #E6F4FB; color: #1677B8; }
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
 /* 全部意见大窗口：覆盖在原议题弹层之上，正文列表独立滚动 */
