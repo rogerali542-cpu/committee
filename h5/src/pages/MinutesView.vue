@@ -16,7 +16,6 @@
       <div class="minutes-letterhead">
         <span class="minutes-meeting-name" :class="{ editable: editing }" :contenteditable="editing" @input="editableMeetingName = $event.currentTarget.innerText">{{ editing ? editableMeetingName : documentParts.meetingName }}</span>
         <span class="minutes-main-title">会议纪要</span>
-        <span v-if="editing || documentParts.issue" class="minutes-issue" :class="{ editable: editing }" :contenteditable="editing" data-placeholder="可填写期数" @input="editableIssue = $event.currentTarget.innerText">{{ editing ? editableIssue : documentParts.issue }}</span>
       </div>
       <div class="minutes-rule"></div>
       <div class="doc-body" :class="{ editable: editing }" :contenteditable="editing" @input="editableBody = $event.currentTarget.innerText">{{ editing ? editableBody : documentParts.body }}</div>
@@ -58,7 +57,6 @@ const text = ref('')
 const canEdit = ref(false)
 const editing = ref(false)
 const editableMeetingName = ref('')
-const editableIssue = ref('')
 const editableBody = ref('')
 const saving = ref(false)
 let meetingId = null
@@ -77,12 +75,10 @@ const documentParts = computed(() => {
   const marker = lines.findIndex(line => line.trim() === '会议纪要')
   if (marker >= 0) {
     const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
-    let bodyStart = marker + 1
-    let issue = ''
-    if (/^第.+期$/.test((lines[bodyStart] || '').trim())) issue = lines[bodyStart++].trim()
-    return { meetingName: meetingName || '会议', issue, body: lines.slice(bodyStart).join('\n').replace(/^\s*\n/, '') }
+    // 期号行（第N期）已从公文格式中移除：老纪要里若存有该行，按普通正文首行显示，编辑时可自行删除
+    return { meetingName: meetingName || '会议', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
   }
-  return { meetingName: (lines[0] || '').trim(), issue: '', body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
+  return { meetingName: (lines[0] || '').trim(), body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
 })
 const SIGNATURE = '阳光花园业主委员会'
 const showSignature = computed(() => !String(text.value || '').trimEnd().endsWith(SIGNATURE))
@@ -94,7 +90,6 @@ function withSignature(value) {
 
 function beginInlineEdit() {
   editableMeetingName.value = documentParts.value.meetingName
-  editableIssue.value = documentParts.value.issue
   editableBody.value = String(documentParts.value.body || '').replace(/\s*阳光花园业主委员会\s*$/, '').trimEnd()
   editing.value = true
 }
@@ -151,7 +146,6 @@ onUnmounted(() => clearInterval(_genPollTimer))
 function cancelEdit() {
   // 编辑值尚未写入 text，退出编辑态即可恢复到上一次“确定”保存的内容。
   editableMeetingName.value = documentParts.value.meetingName
-  editableIssue.value = documentParts.value.issue
   editableBody.value = String(documentParts.value.body || '').replace(/\s*阳光花园业主委员会\s*$/, '').trimEnd()
   editing.value = false
 }
@@ -167,8 +161,7 @@ function backToDetail() {
 async function saveEdit() {
   if (!editableBody.value.trim()) { toast({ title: '纪要内容不能为空', icon: 'none' }); return }
   const header = (editableMeetingName.value.trim() || '会议') + '\n会议纪要'
-  const issue = editableIssue.value.trim() ? '\n' + editableIssue.value.trim() : ''
-  const value = withSignature(header + issue + '\n\n' + editableBody.value.trim())
+  const value = withSignature(header + '\n\n' + editableBody.value.trim())
   saving.value = true
   try {
     await api.committeeUpdateMinutes(meetingId, value)
@@ -219,14 +212,11 @@ onMounted(() => {
 .minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:12rpx 10rpx 22rpx; }
 .minutes-meeting-name { font-size:34rpx; color:#202124; line-height:1.45; white-space:pre-wrap; }
 .minutes-main-title { margin-top:12rpx; font-size:58rpx; font-weight:700; letter-spacing:14rpx; color:#d71920; line-height:1.25; }
-.minutes-issue { margin-top:6rpx; font-size:32rpx; color:#202124; }
 .minutes-rule { height:2rpx; background:#b65d5d; margin:4rpx 0 18rpx; }
 .doc-body { display: block; font-size: 34rpx; color: #33373d; line-height: 1.9; white-space: pre-wrap; padding: 24rpx 0; }
 .editable { outline: none; border-radius: 8rpx; transition: background .15s; }
 .editable:focus { background: #fffaf2; box-shadow: 0 0 0 2rpx rgba(198,106,0,.18); }
 .minutes-meeting-name.editable { min-width: 60%; }
-.minutes-issue.editable { min-width: 32%; min-height: 1.45em; }
-.minutes-issue.editable:empty::before { content: attr(data-placeholder); color: #b4b7bc; font-weight: 400; }
 .doc-body.editable { min-height: 52vh; }
 /* 复制/待办：在老页小链接基础上加大，方便点（老页 28rpx → 34rpx，加内边距 + 分隔线） */
 .mv-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12rpx 34rpx; margin-top: 12rpx; padding-top: 18rpx; border-top: 2rpx solid #f0f0f0; }

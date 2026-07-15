@@ -75,7 +75,6 @@
       <div class="minutes-letterhead">
         <span class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
         <span class="minutes-main-title">会议纪要</span>
-        <span v-if="documentParts.issue" class="minutes-issue">{{ documentParts.issue }}</span>
       </div>
       <div class="minutes-rule"></div>
       <span class="doc-body">{{ documentParts.body }}</span>
@@ -208,12 +207,10 @@ const documentParts = computed(() => {
   const marker = lines.findIndex(line => line.trim() === '会议纪要')
   if (marker >= 0) {
     const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
-    let bodyStart = marker + 1
-    let issue = ''
-    if (/^第.+期$/.test((lines[bodyStart] || '').trim())) issue = lines[bodyStart++].trim()
-    return { meetingName: meetingName || '会议', issue, body: lines.slice(bodyStart).join('\n').replace(/^\s*\n/, '') }
+    // 期号行（第N期）已从公文格式中移除：老纪要里若存有该行，按普通正文首行显示
+    return { meetingName: meetingName || '会议', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
   }
-  return { meetingName: (lines[0] || '').trim(), issue: '', body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
+  return { meetingName: (lines[0] || '').trim(), body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
 })
 const editMode = ref(false)
 const editText = ref('')
@@ -838,7 +835,6 @@ function viewTodoList() {
 .minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:12rpx 10rpx 22rpx; }
 .minutes-meeting-name { font-size:34rpx; color:#202124; line-height:1.45; white-space:pre-wrap; }
 .minutes-main-title { margin-top:12rpx; font-size:58rpx; font-weight:700; letter-spacing:14rpx; color:#d71920; line-height:1.25; }
-.minutes-issue { margin-top:6rpx; font-size:32rpx; color:#202124; }
 .minutes-rule { height:2rpx; background:#b65d5d; margin:4rpx 0 18rpx; }
 .doc-body { display:block; font-size:34rpx; color:#33373d; line-height:1.9; white-space:pre-wrap; padding:24rpx 0; }
 
