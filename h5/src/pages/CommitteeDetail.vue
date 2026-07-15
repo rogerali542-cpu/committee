@@ -687,6 +687,7 @@
 import { ref, reactive, computed, h, onMounted, onActivated, onUnmounted, onDeactivated, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
+import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
@@ -1817,26 +1818,37 @@ function toggleArchiveLog() {
 
 // 顶栏左箭头按明确来源返回，避免 replace/硬跳后历史栈只剩首页。
 const showNoticeNav = computed(() => !!detail.value && userView.value === 'chair' && detail.value.stage === 'preparing')
+// 软路由偶发不切换 → 统一硬导航兜底（真机曾表现为"返回点了没反应"）
+function backWithFallback(target, browserUrl) {
+  redirectTo(target)
+  setTimeout(() => {
+    if (document.querySelector('.detail-page')) window.location.replace(browserUrl)
+  }, 400)
+}
 function handleDetailBack() {
   const source = String(route.query.from || '')
-  if (source === 'minutes') {
-    redirectTo('/pages/minutes-view/minutes-view?meetingId=' + meetingId)
-    return
-  }
+  // from=minutes 是「纪要页保存/返回后落到详情」的标记——纪要那边已经办完事了，
+  // 再跳回纪要页会形成 详情↔纪要 互踢死循环（真机踩过），返回一律出到首页。
   if (source === 'meeting-live-quick') {
-    redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
+    // 会议已结束时进行页只会渲染成无意义的签到步，回首页；进行中才回进行页
+    if (detail.value && detail.value.stage === 'ongoing') {
+      backWithFallback('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId,
+        '/meeting-live-quick?type=committee&meetingId=' + meetingId)
+      return
+    }
+    backWithFallback('/main', '/main')
     return
   }
   if (source === 'todo') {
-    redirectTo('/pages/todo/todo')
+    backWithFallback('/pages/todo/todo', '/todo')
     return
   }
   if (route.query.fromNotice === '1' || source === 'notifications') {
-    redirectTo('/pages/notifications/notifications')
+    backWithFallback('/pages/notifications/notifications', '/notifications')
     return
   }
-  // 会议列表是详情页最常见来源，也是无来源/刷新后的安全落点。
-  redirectTo('/main')
+  // 会议列表是详情页最常见来源，也是无来源/刷新/from=minutes 后的安全落点。
+  backWithFallback('/main', '/main')
 }
 function backToEditInfo() {
   setStorage('editMeetingId', meetingId)   // 交给 /main 的发起会议表单以「编辑模式」打开
@@ -2182,12 +2194,15 @@ async function viewMinutesRevisions() {
 }
 
 async function removeMeeting() {
+  const isRecordingThisMeeting = meetingRecordingSession.active
+    && String(meetingRecordingSession.meetingId || '') === String(meetingId)
   const res = await showModal({
     title: '确认取消',
     content: '确定取消该会议？'
+      + (isRecordingThisMeeting ? '\n\n该会议正在录音，取消后录音将立即停止并丢弃。' : '')
   })
   if (res.confirm) {
-    try { await api.committeeRemove(meetingId); navigateBack() }
+    try { await api.committeeRemove(meetingId); await discardMeetingRecording(meetingId); navigateBack() }
     catch (e) { toast({ title: e.message, icon: 'none' }) }
   }
 }
