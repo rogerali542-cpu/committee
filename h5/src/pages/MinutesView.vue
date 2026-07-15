@@ -14,11 +14,13 @@
     <!-- 正文格式与老纪要页一致；未公示、未归档时可在当前页直接编辑 -->
     <div v-else-if="text" class="doc">
       <div class="minutes-letterhead">
-        <span class="minutes-meeting-name" :class="{ editable: editing }" :contenteditable="editing" @input="editableMeetingName = $event.currentTarget.innerText">{{ editing ? editableMeetingName : documentParts.meetingName }}</span>
+        <span v-if="editing" :ref="bindMeetingNameEditor" class="minutes-meeting-name editable" contenteditable="true" @input="onMeetingNameInput"></span>
+        <span v-else class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
         <span class="minutes-main-title">会议纪要</span>
       </div>
       <div class="minutes-rule"></div>
-      <div class="doc-body" :class="{ editable: editing }" :contenteditable="editing" @input="editableBody = $event.currentTarget.innerText">{{ editing ? editableBody : documentParts.body }}</div>
+      <div v-if="editing" :ref="bindBodyEditor" class="doc-body editable" contenteditable="true" @input="onBodyInput"></div>
+      <div v-else class="doc-body">{{ documentParts.body }}</div>
       <div v-if="editing || showSignature" class="mv-signature">阳光花园业主委员会</div>
       <div v-if="editing" class="mv-editor-actions">
         <button class="mv-cancel" :disabled="saving" @click="cancelEdit">取消</button>
@@ -58,12 +60,16 @@ const canEdit = ref(false)
 const editing = ref(false)
 const editableMeetingName = ref('')
 const editableBody = ref('')
+const meetingNameEditor = ref(null)
+const bodyEditor = ref(null)
 const saving = ref(false)
 let meetingId = null
 
 // 去掉 AI 纪要里的 Markdown 标题标记（行首 #），纯文本更干净；首行作标题，其余作正文
 const pretty = computed(() => String(text.value || '')
   .replace(/^[ \t]*#{1,6}[ \t]*/gm, '')
+  // 纯文本展示：去掉偶尔漏进来的 HTML 标签（如旧纪要里的 <center>），否则会当字面量显示出来
+  .replace(/<\/?center>/gi, '')
   .replace(/^[^\r\n]*[（(]草稿[）)][ \t]*\r?\n+/, '')
   // AI 偶尔把“某某业主委员会”单独作为首行署名；展示时去掉，下一行纪要标题自动顶上。
   .replace(/^[^\r\n]*业主委员会[ \t]*\r?\n+/, '')
@@ -92,6 +98,28 @@ function beginInlineEdit() {
   editableMeetingName.value = documentParts.value.meetingName
   editableBody.value = String(documentParts.value.body || '').replace(/\s*阳光花园业主委员会\s*$/, '').trimEnd()
   editing.value = true
+  // innerText 由下面两个函数式 ref 在元素挂载瞬间写入——不依赖 nextTick 时序，避开
+  // 「editing 与 loading 同批次刷新时 ref 还没挂上、赋值被静默跳过」这类竞态。
+}
+
+// 函数式 ref：元素插入时 Vue 用真实 DOM 回调，此刻一次性灌入初始正文；
+// dataset.inited 保证只灌一次，后续重渲染不会覆盖用户已输入的内容。
+function bindMeetingNameEditor(el) {
+  meetingNameEditor.value = el
+  if (el && !el.dataset.inited) { el.innerText = editableMeetingName.value; el.dataset.inited = '1' }
+}
+
+function bindBodyEditor(el) {
+  bodyEditor.value = el
+  if (el && !el.dataset.inited) { el.innerText = editableBody.value; el.dataset.inited = '1' }
+}
+
+function onMeetingNameInput(event) {
+  editableMeetingName.value = event.currentTarget.innerText
+}
+
+function onBodyInput(event) {
+  editableBody.value = event.currentTarget.innerText
 }
 
 async function load() {
