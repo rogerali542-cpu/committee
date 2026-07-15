@@ -198,6 +198,8 @@
             <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
           </template>
         </div>
+        <!-- 中断预警前置：切出瞬间 JS 已被冻结、无法当场提示，只能事先讲清楚 -->
+        <div v-if="recActive" class="rec-bg-warn">⚠ 录音中请不要切出微信或锁屏，否则录音会中断</div>
         <!-- 录音上传/后台转写状态：上传后自动转写 -->
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
@@ -306,9 +308,9 @@
         </div>
         <div class="qk-modal-label">议题类型</div>
         <div class="qk-modal-types">
-          <span class="qk-type" :class="newTopicForm.type === 'notice' ? 'on' : ''" @click="pickTopicType('notice')">通报事项</span>
-          <span class="qk-type" :class="newTopicForm.type === 'discussion' ? 'on' : ''" @click="pickTopicType('discussion')">讨论事项</span>
-          <span class="qk-type" :class="newTopicForm.type === 'decision' ? 'on' : ''" @click="pickTopicType('decision')">表决事项</span>
+          <span class="qk-type notice" :class="newTopicForm.type === 'notice' ? 'on' : ''" @click="pickTopicType('notice')">通报事项</span>
+          <span class="qk-type discussion" :class="newTopicForm.type === 'discussion' ? 'on' : ''" @click="pickTopicType('discussion')">讨论事项</span>
+          <span class="qk-type decision" :class="newTopicForm.type === 'decision' ? 'on' : ''" @click="pickTopicType('decision')">表决事项</span>
         </div>
         <template v-if="newTopicForm.type === 'notice'">
           <div class="qk-modal-label">通知正文</div>
@@ -396,13 +398,17 @@ import { useRecorder } from '@/composables/useRecorder'
 import recStore from '@/utils/recStore'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
-import { meetingRecordingSession } from '@/composables/meetingRecordingSession'
+import { meetingRecordingSession, registerMeetingRecordingDiscard } from '@/composables/meetingRecordingSession'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import TopicSheet from '@/components/TopicSheet.vue'
 
 const route = useRoute()
 const rec = useRecorder()
+const unregisterRecordingDiscard = registerMeetingRecordingDiscard(async (targetMeetingId) => {
+  if (String(meetingId.value || route.query.meetingId || '') !== String(targetMeetingId)) return
+  rec.reset()
+})
 
 const POLL_INTERVAL = 1500
 const MAX_POLL_COUNT = 120        // 兜底：时长未知时至少轮询这么多次(≈3 分钟)
@@ -1102,6 +1108,7 @@ onUnmounted(() => {
     window.removeEventListener('beforeunload', _beforeUnloadGuard)
   }
   rec.reset() // 释放麦克风
+  unregisterRecordingDiscard()
   meetingRecordingSession.active = false
   meetingRecordingSession.pageVisible = false
 })
@@ -1413,26 +1420,23 @@ async function toggleRecord() {
     return
   }
   // 暂停态的「继续录音/重新录音」由模板里并排按钮独立处理，本函数只在非暂停态被调用
-  // 已上传过录音 → 本次是“新增录音”，旧录音已存服务器、不会丢，直接开录、无需覆盖确认
-  if (hasSavedRecordings.value) {
-    await startRecord()
-    return
-  }
-  // 仅本地有未上传录音（极少见）→ 重录会丢失，需确认
+  // ⚠ 本地有未上传的录音（如中断后选了「稍后处理」）→ 必须先确认，开新录会把它丢掉。
+  //   这条检查必须放在 hasSavedRecordings 捷径之前——否则已传过段的会议里会不加确认直接丢（真机踩过）
   if (rec.hasRecording.value) {
     const res = await showModal({
-      title: '重新录音',
-      content: '已有一段录音，重新开始会覆盖当前录音。是否继续？',
-      confirmText: '重新录音',
-      cancelText: '取消'
+      title: '有一段录音还没上传',
+      content: '手里这段录音还没有上传。直接开始新录音会丢掉它。建议先点「上传录音」保存这段，再录新的。',
+      confirmText: '丢弃并重新录',
+      cancelText: '先不录'
     })
     if (res.confirm) await startRecord()
     return
   }
+  // 已上传过录音 → 本次是“新增录音”，旧录音已存服务器、不会丢，直接开录、无需覆盖确认
   await startRecord()
 }
 
-async function startRecord() {
+async function startRecord(opts) {
   // 后台正在转写上一段 → 只启动新录音，绝不 clearPoll / 重置转写状态，避免打断后台转写
   const bgTranscribing = polling.value || extracting.value
   // 已有已上传的段或已有转写成果 → 这是「续录下一段」，不是「推倒重来」：
@@ -1458,8 +1462,9 @@ async function startRecord() {
   }
   processText.value = '正在录音...'
   try {
-    rec.reset()
-    await rec.start({ persistKey: 'committee-' + meetingId.value }) // 切片落盘：页面被杀后可恢复
+    // 中断续录(resume)：不 reset——旧段落地会话要留给后台上传成功后再清；start 自会重置录音内部状态
+    if (!(opts && opts.resume)) rec.reset()
+    await rec.start({ persistKey: 'committee-' + meetingId.value, keepPrevPersist: !!(opts && opts.resume) }) // 切片落盘：页面被杀后可恢复
   } catch (e) {
     console.error('[startRecord] 录音启动失败:', e && e.name, e && e.message, e)
     showModal({ title: '无法开始录音', content: micErrorText(e), showCancel: false, confirmText: '知道了' })
@@ -1538,26 +1543,46 @@ function waitPageVisible() {
 }
 watch(() => rec.interrupted.value, async (v) => {
   if (!v) return
-  const recordedText = rec.timeText.value
   let saved = null
   try { saved = await rec.stop() } catch (e) { /* 收段失败下面按未保住提示 */ }
+  const recordedText = rec.timeText.value
   const kept = !!(saved && saved.blob && saved.blob.size > 0)
   await waitPageVisible() // 人还在接电话/在别的App时不弹，回到页面第一眼看到
   const r = await showModal({
     title: '录音已中断',
     content: kept
-      ? '可能因来电或切出微信，录音被打断。已录的 ' + recordedText + ' 已自动保存。要恢复继续录音吗？'
-      : '可能因来电或切出微信，录音被打断，这段没有录到内容。要重新开始录音吗？',
-    confirmText: kept ? '恢复录音' : '重新开始录音',
+      ? '切出微信或来电会中断录音。已录的 ' + recordedText + ' 已保存好，不会丢。\n\n点「继续录音」：立即接着录，刚才这段自动上传，最后合并成一份完整记录。\n点「稍后处理」：先不录，这段仍保留，可稍后点「上传录音」保存。'
+      : '切出微信或来电会中断录音，这段没有录到内容。要重新开始录音吗？',
+    confirmText: kept ? '继续录音' : '重新开始录音',
     cancelText: '稍后处理'
   })
   if (!r.confirm) return
-  if (kept) {
-    await uploadRecordingStep() // 先上传已保住的段（有进度提示），成功后才清内存与落盘
-    if (rec.hasRecording.value || uploading.value) return // 上传没走完（失败/上一段还在识别）：留在原地可重试，不自动开录
-  }
-  await startRecord() // 自动开新一段接着录
+  if (!kept) { await startRecord(); return }
+  // 「继续录音」：立即开新段（不让会议内容在等待上传时漏录），中断段转后台静默上传。
+  // 上传失败不丢：落地切片保留（会话键未清），下次进本页由孤儿恢复弹窗兜底。
+  const oldFile = new File([saved.blob], 'recording.' + saved.ext, { type: saved.mimeType })
+  const oldDur = saved.durationSec
+  const oldSessionKey = rec.getPersistSessionKey()
+  await startRecord({ resume: true })
+  uploadInterruptedSegment(oldFile, oldDur, oldSessionKey)
 })
+
+// 后台静默上传中断段：不动 rec/转写等页面状态（正在录新段），成功后清落盘并刷新录音列表
+async function uploadInterruptedSegment(file, durationSec, sessionKey) {
+  try {
+    await api.committeeUploadRecording(meetingId.value, file, durationSec, () => {})
+    if (sessionKey) recStore.clearSession(sessionKey)
+    try {
+      const d = await api.committeeDetail(meetingId.value)
+      const recs = (d.record && d.record.recordings) || []
+      if (recs.length) { recordings.value = recs; reconcilePickedIds(recs) }
+    } catch (e) { /* 列表刷新失败无妨，下次 loadDetail 补 */ }
+    toast({ title: '中断前的录音已上传', icon: 'success' })
+  } catch (e) {
+    // 内存里的旧段已被新录音顶掉，但落地切片还在——提示用户，重进本页可恢复上传
+    toast({ title: '中断前那段上传失败，重新进入本页可恢复', icon: 'none' })
+  }
+}
 
 async function finishRecord() {
   if (type.value !== 'committee') {
@@ -2966,13 +2991,13 @@ function returnToRecordingPage() {
 .core-topic-title { flex:1; min-width:0; color:#1F2024; font-size:31rpx; line-height:1.45; word-break:break-all; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .core-topic-meta { font-size:25rpx; color:#8A8F98; }
 .core-topic-type { align-self:flex-start; font-size:23rpx; font-weight:700; border-radius:8rpx; padding:3rpx 12rpx; line-height:1.4; }
-.core-topic-type.notice { background:#F1EBFB; color:#6D3FC4; }
-.core-topic-type.vote { background:#FFF1E2; color:#C76A00; }
-.core-topic-type.discuss { background:#E9F2FB; color:#1F6FB2; }
+.core-topic-type.notice { background:#E6F4FB; color:#1677B8; }
+.core-topic-type.vote { background:#FFF0E5; color:#D56A16; }
+.core-topic-type.discuss { background:#EAF6EE; color:#2E8B57; }
 .core-topic-btn { flex-shrink:0; min-width:128rpx; border-radius:999rpx; padding:14rpx 20rpx; font-size:27rpx; font-weight:800; border:0; color:#fff; font-family:inherit; }
-.core-topic-btn.notice { background:#7C5CC4; }
-.core-topic-btn.vote { background:#D97706; }
-.core-topic-btn.discuss { background:#1F6FB2; }
+.core-topic-btn.notice { background:#1677B8; }
+.core-topic-btn.vote { background:#D56A16; }
+.core-topic-btn.discuss { background:#2E8B57; }
 .core-topic-btn.done { background:#E8F6EC; color:#2E7D32; border:2rpx solid #BFE0B2; }
 .core-empty { text-align:center; color:#8A8F98; font-size:30rpx; padding:36rpx 0; }
 .record-helper-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; margin-bottom:20rpx; }
@@ -3278,6 +3303,8 @@ function returnToRecordingPage() {
 /* 下一步：单一主按钮区 */
 .rec-action { margin-bottom:24rpx; display:flex; flex-direction:column; align-items:center; gap:14rpx; }
 .rec-status { display:flex; align-items:center; justify-content:center; gap:12rpx; width:100%; font-size:28rpx; color:#E8890C; font-weight:600; padding:6rpx 0; }
+/* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
+.rec-bg-warn { width:100%; text-align:center; font-size:27rpx; color:#B45309; background:#FFF7E8; border:1px solid #F5DDB0; border-radius:12rpx; padding:10rpx 16rpx; box-sizing:border-box; margin-top:4rpx; }
 .rec-status.err { color:#C0392B; }
 .rec-main { width:52% !important; max-width:360rpx; margin:0 auto !important; font-size:26rpx !important; font-weight:700; padding:16rpx 0 !important; box-shadow:0 6rpx 16rpx rgba(232,137,12,0.22); } /* 缩小约40% */
 .rec-sub { background:none; border:0; color:#8A8F98; font-size:28rpx; padding:6rpx 20rpx; }
@@ -3528,7 +3555,9 @@ function returnToRecordingPage() {
 .qk-modal-textarea { height:auto; min-height:150rpx; line-height:1.6; padding:16rpx 20rpx; resize:none; font-family:inherit; }
 .qk-modal-types { display:flex; gap:18rpx; margin-bottom:46rpx; }
 .qk-type { font-size:28rpx; padding:12rpx 26rpx; border-radius:24rpx; background:#F6F6F8; color:#6B6E76; border:2rpx solid #ECECEF; }
-.qk-type.on { background:#FFF3E0; color:#E67E22; border-color:#F4D08A; }
+.qk-type.notice.on { background:#E6F4FB; color:#1677B8; border-color:#78B9DC; }
+.qk-type.discussion.on { background:#EAF6EE; color:#2E8B57; border-color:#82BE97; }
+.qk-type.decision.on, .qk-type.on:not(.notice):not(.discussion) { background:#FFF0E5; color:#D56A16; border-color:#E6A370; }
 .qk-modal-label { display:block; font-size:26rpx; color:#777; font-weight:600; margin-bottom:26rpx; }
 .qk-opt-row { display:flex; align-items:center; gap:14rpx; margin-bottom:12rpx; }
 .qk-opt-num { font-size:28rpx; color:#666; width:40rpx; text-align:right; flex-shrink:0; }

@@ -149,12 +149,14 @@ export function useRecorder() {
     })
   }
 
-  // 开始一次新录音（会清掉上一次结果）。opts.persistKey：切片落地的会议标识（如 'committee-282'）
+  // 开始一次新录音（会清掉上一次结果）。opts.persistKey：切片落地的会议标识（如 'committee-282'）；
+  // opts.keepPrevPersist：不清上一段的落地会话（中断续录场景——旧段正在后台上传，成功后由页面层清）
   async function start(opts) {
     if (recording.value) return
     if (!supported.value) throw new Error('当前浏览器不支持录音（需 HTTPS 且允许麦克风）')
     // 主动开新录 = 放弃上一段未清盘的落地数据（与内存 chunks 清空的语义一致）
-    if (persistSessionKey) { recStore.clearSession(persistSessionKey); persistSessionKey = '' }
+    if (persistSessionKey && !(opts && opts.keepPrevPersist)) recStore.clearSession(persistSessionKey)
+    persistSessionKey = ''
     try {
       stream = await gumWithTimeout({ audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true } }, 12000)
     } catch (e) {
@@ -267,9 +269,11 @@ export function useRecorder() {
   }
 
   function getBlob() { return resultBlob }
+  // 当前（或刚停止的）录音的落地会话键：中断续录时页面层用它在旧段上传成功后清盘
+  function getPersistSessionKey() { return persistSessionKey }
 
   return {
     recording, paused, seconds, timeText, hasRecording, supported, interrupted,
-    start, pause, resume, stop, reset, getBlob
+    start, pause, resume, stop, reset, getBlob, getPersistSessionKey
   }
 }
