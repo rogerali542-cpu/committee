@@ -2515,21 +2515,12 @@ function viewTodos() {
   }, 300)
 }
 
-// (4) 补充归档材料：先填补充原因，再选文件上传 → committeeAddArchiveExtra → 刷新
+// (4) 补充归档材料：点击直接选文件上传（不再要求填原因）→ committeeAddArchiveExtra → 刷新
 async function addArchiveExtra() {
-  const res = await showModal({
-    title: '补充归档材料',
-    content: '请先填写补充原因，再选择文件上传。',
-    editable: true,
-    placeholderText: '请填写补充原因（必填）'
-  })
-  if (!res.confirm) return
-  const reason = (res.content || '').trim()
-  if (!reason) { toast({ title: '请填写补充原因', icon: 'none' }); return }
   try {
     const r = await pickAndUpload('*/*')
     if (!r) return // 用户取消
-    await api.committeeAddArchiveExtra(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, reason, r.url)
+    await api.committeeAddArchiveExtra(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, '', r.url)
     toast({ title: '已上传', icon: 'success' })
     loadDetail()
   } catch (e) {
