@@ -1517,24 +1517,41 @@ const _stopOrphanWatch = watch(() => (detail.value && detail.value.stage) || '',
   checkOrphanRecordings()
 })
 
-// 录音异常中断（来电抢占麦克风/切后台被挂起）：立即收段保住已录内容并明确告知，
-// 杜绝"界面还在计时、实际早没在录"的假录音——那比丢录音更坑（发现时后半场已空）。
+// 录音异常中断（来电抢占麦克风/切后台被挂起）：立即收段保住已录内容（切片本就实时落盘），
+// 等用户回到页面弹显眼确认框——「恢复录音」一键完成：上传已保住的段 → 自动开新段接着录。
+// 不做无确认的自动续录（用户明确要求由人拍板），杜绝"界面还在计时、实际早没在录"的假录音。
+function waitPageVisible() {
+  if (typeof document === 'undefined' || document.visibilityState === 'visible') return Promise.resolve()
+  return new Promise((resolve) => {
+    const on = () => {
+      if (document.visibilityState !== 'visible') return
+      document.removeEventListener('visibilitychange', on)
+      resolve()
+    }
+    document.addEventListener('visibilitychange', on)
+  })
+}
 watch(() => rec.interrupted.value, async (v) => {
   if (!v) return
   const recordedText = rec.timeText.value
   let saved = null
   try { saved = await rec.stop() } catch (e) { /* 收段失败下面按未保住提示 */ }
   const kept = !!(saved && saved.blob && saved.blob.size > 0)
+  await waitPageVisible() // 人还在接电话/在别的App时不弹，回到页面第一眼看到
   const r = await showModal({
-    title: '录音被打断',
+    title: '录音已中断',
     content: kept
-      ? '可能因来电或切出微信，录音被系统打断。已录的 ' + recordedText + ' 已保住。建议先上传这一段，再点录音圆圈继续录。'
-      : '可能因来电或切出微信，录音被系统打断，这段录音没能保住。请点录音圆圈重新开始录音。',
-    confirmText: kept ? '上传这段录音' : '知道了',
-    showCancel: kept,
+      ? '可能因来电或切出微信，录音被打断。已录的 ' + recordedText + ' 已自动保存。要恢复继续录音吗？'
+      : '可能因来电或切出微信，录音被打断，这段没有录到内容。要重新开始录音吗？',
+    confirmText: kept ? '恢复录音' : '重新开始录音',
     cancelText: '稍后处理'
   })
-  if (kept && r.confirm) uploadRecordingStep()
+  if (!r.confirm) return
+  if (kept) {
+    await uploadRecordingStep() // 先上传已保住的段（有进度提示），成功后才清内存与落盘
+    if (rec.hasRecording.value || uploading.value) return // 上传没走完（失败/上一段还在识别）：留在原地可重试，不自动开录
+  }
+  await startRecord() // 自动开新一段接着录
 })
 
 async function finishRecord() {
