@@ -283,41 +283,16 @@
               <span class="section-title">会议议题 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
             </div>
             <div v-if="createForm.topics.length" class="topic-list">
-              <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line">
+              <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line" @click="openEditTopic(idx)">
                 <span class="topic-line-text"><b>{{ idx + 1 }}.</b> {{ topic.title }}</span>
                 <span class="ts-badge topic-line-badge" :class="topicTypeClass(topic)">{{ topicTypeLabel(topic) }}</span>
-                <span class="topic-line-del" @click="removeCreateTopic(idx)">×</span>
+                <span class="topic-line-del" @click.stop="removeCreateTopic(idx)">×</span>
               </div>
             </div>
-            <div v-show="createTab === 'manual'" class="topic-kind-picker" aria-label="选择议题类型">
-              <span class="topic-kind-label">本条类型</span>
-              <button type="button" class="topic-kind-option notice" :class="{ on: topicInputType === 'notice' }" @click="topicInputType = 'notice'">通知</button>
-              <button type="button" class="topic-kind-option discussion" :class="{ on: topicInputType === 'discussion' }" @click="topicInputType = 'discussion'">讨论</button>
-              <button type="button" class="topic-kind-option decision" :class="{ on: topicInputType === 'decision' }" @click="topicInputType = 'decision'">表决</button>
-            </div>
-            <div v-if="createTab === 'manual' && topicInputType === 'decision'" class="topic-vote-settings">
-              <div class="topic-kind-picker vote-method" aria-label="选择表决方式">
-                <span class="topic-kind-label">表决方式</span>
-                <button type="button" class="topic-kind-option decision" :class="{ on: topicInputDecisionType === 'simple' }" @click="pickTopicInputDecision('simple')">是 / 否</button>
-                <button type="button" class="topic-kind-option decision" :class="{ on: topicInputDecisionType === 'multi_choice' }" @click="pickTopicInputDecision('multi_choice')">多选一</button>
-              </div>
-              <div v-if="topicInputDecisionType === 'multi_choice'" class="topic-quick-options">
-                <div v-for="(opt, oi) in topicInputOptions" :key="opt.id" class="topic-quick-option-row">
-                  <span class="topic-quick-option-num">{{ oi + 1 }}</span>
-                  <input class="form-input topic-quick-option-input" v-model="opt.label" :placeholder="'选项 ' + (oi + 1)" />
-                  <button v-if="topicInputOptions.length > 2" type="button" class="topic-quick-option-del" @click="removeTopicInputOption(oi)">×</button>
-                </div>
-                <button type="button" class="topic-quick-option-add" @click="addTopicInputOption">＋ 添加选项</button>
-              </div>
-            </div>
-            <div v-show="createTab === 'manual'" class="vi-row topic-input-row">
-              <input class="form-input topic-input" :class="{ 'field-error': fieldErrors.topics }" v-model="topicInput" placeholder="输入一条议题" @focus="clearFieldError('topics')" @keyup.enter="addTopicFromInput" />
-              <div class="topic-actions-col">
-                <button v-show="createTab === 'manual'" class="voice-mic-btn" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')" aria-label="语音输入">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
-                </button>
-                <button class="topic-confirm-btn" @click="addTopicFromInput">确定</button>
-              </div>
+            <!-- 添加议题：点触发条弹出议题弹窗（输入/类型/确定都在弹窗内，确定在底部），
+                 与右下角「生成通知」拉开距离，避免"打完议题顺手点生成通知"的误触 -->
+            <div v-show="createTab === 'manual'" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
+              <span class="tat-ico">＋</span><span class="tat-text">点此添加议题</span>
             </div>
           </div>
 
@@ -612,7 +587,12 @@
         <div class="td-body">
           <div class="form-group">
             <span class="form-label">议题内容 *</span>
-            <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
+            <div class="td-title-row">
+              <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
+              <button type="button" class="voice-mic-btn td-mic" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')" aria-label="语音输入">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
+              </button>
+            </div>
           </div>
           <div class="form-group">
             <span class="form-label">议题类型 *</span>
@@ -1236,10 +1216,6 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
-const topicInput = ref('') // 议题输入框当前内容（打字/语音），点"确定"加入 topics 列表
-const topicInputType = ref('discussion') // 快捷新增议题的类型；每加一条后保留，便于连续录入同类议题
-const topicInputDecisionType = ref('simple')
-const topicInputOptions = ref([])
 
 // 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
 // 用户点进对应输入框（focus）即清除红框。
@@ -1562,7 +1538,6 @@ async function openNewMeeting(period) {
   createForm.juweiWitness = false
   // 快照默认占位值：日期/时间/地点等于这些默认时视为"未填"，不参与冲突判定，可被识别值直接填入
   createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
-  topicInput.value = ''
   suggestedTitle.value = ''
   pendingMaterials.value = []
   scanBusy.value = ''
@@ -1695,7 +1670,6 @@ async function continueDraft() {
   pendingMaterials.value = JSON.parse(JSON.stringify(d.pendingMaterials || []))
   materialFiles.value = JSON.parse(JSON.stringify(d.materialFiles || []))
   createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
-  topicInput.value = ''
   scanBusy.value = ''
   lastScanTokens.value = 0
   // 标题推荐：还是给个下一次序号推荐（草稿已填标题时不显示 ghost）
@@ -1748,7 +1722,7 @@ async function openMeetingForEdit(id) {
     locationPreset.value = commonLocations.indexOf(createForm.location) >= 0
       ? createForm.location : (createForm.location ? '__other__' : '社区活动室')
     createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
-    topicInput.value = ''; suggestedTitle.value = ''
+    suggestedTitle.value = ''
     pendingMaterials.value = []; scanBusy.value = ''; lastScanTokens.value = 0
   } catch (e) {
     toast({ title: (e && e.message) || '会议信息加载失败', icon: 'none' })
@@ -2575,6 +2549,7 @@ function topicTypeClass(t) {
 }
 
 function openAddTopic() {
+  clearFieldError('topics')
   topicEditIdx.value = -1
   topicDraft.title = ''
   topicDraft.type = 'discussion'
@@ -2643,12 +2618,7 @@ async function submitNewMeeting() {
   var form = createForm
   // OCR 还在识别时先别提交：此刻 createForm 可能是中间态，等识别完再去通知
   if (scanBusy.value) { toast({ title: '正在识别中，请稍候…', icon: 'none' }); return }
-  // 自动收编：输入框里还有一条没点「确定」的议题（真机上用户常打完直接点「生成通知」）→ 先帮加进列表，
-  // 不让它凭空丢掉；若这条本身不合规（如多选一选项不足）则中止提交，addTopicFromInput 已 toast 原因。
-  if (createTab.value === 'manual' && topicInput.value.trim()) {
-    if (!addTopicFromInput()) return
-  }
-  // 议题：逐条添加在 createForm.topics（过滤空标题）
+  // 议题：逐条添加在 createForm.topics（过滤空标题）。议题现全部经弹窗添加，提交时列表已是最终态
   var topics = (form.topics || []).filter(function (t) { return t.title && t.title.trim() })
   // 必填校验：会议名称 / 会议地点 / 会议议题。缺失 → 弹卡片列出，确认后亮红框
   fieldErrors.title = false; fieldErrors.location = false; fieldErrors.topics = false; fieldErrors.meetingDate = false; fieldErrors.meetingTime = false
@@ -2772,51 +2742,6 @@ function _buildRec(continuous, interimResults) {
 }
 
 // 流式模式：标题 / 议题（连续识别，显示弹窗，点确认后应用）
-// 返回是否成功加入（供提交时"自动收编未点确定的议题"判断，失败即已 toast 原因）
-function addTopicFromInput() {
-  const t = topicInput.value.trim()
-  if (!t) { toast({ title: '请输入议题内容', icon: 'none' }); return false }
-  const type = topicInputType.value
-  const decisionType = type === 'decision' ? topicInputDecisionType.value : 'none'
-  const options = decisionType === 'multi_choice'
-    ? topicInputOptions.value.map(function (o) { return { id: o.id, label: o.label.trim() } }).filter(function (o) { return o.label })
-    : []
-  if (decisionType === 'multi_choice' && options.length < 2) {
-    toast({ title: '多选一表决至少需要两个选项', icon: 'none' })
-    return false
-  }
-  createForm.topics = createForm.topics.concat([{
-    title: t,
-    type,
-    decisionType,
-    options,
-    content: ''
-  }])
-  topicInput.value = ''
-  if (decisionType === 'multi_choice') topicInputOptions.value = newTopicInputOptions()
-  return true
-}
-
-function newTopicInputOptions() {
-  return [{ id: 1, label: '' }, { id: 2, label: '' }]
-}
-
-function pickTopicInputDecision(type) {
-  topicInputDecisionType.value = type
-  if (type === 'multi_choice' && topicInputOptions.value.length < 2) topicInputOptions.value = newTopicInputOptions()
-}
-
-function addTopicInputOption() {
-  const list = topicInputOptions.value
-  const id = list.length ? Math.max.apply(null, list.map(function (o) { return o.id })) + 1 : 1
-  topicInputOptions.value = list.concat([{ id, label: '' }])
-}
-
-function removeTopicInputOption(index) {
-  if (topicInputOptions.value.length <= 2) return
-  topicInputOptions.value = topicInputOptions.value.filter(function (_, i) { return i !== index })
-}
-
 function startStreamingVoice(target) {
   _stopVoice()
   voiceFinal.value = ''
@@ -2873,7 +2798,8 @@ function confirmVoice() {
   if (target === 'title') {
     createForm.title = text
   } else if (target === 'topic') {
-    topicInput.value = text
+    // 议题语音输入现落在议题弹窗内 → 写入弹窗草稿标题（追加，便于分句续说）
+    topicDraft.title = (topicDraft.title ? topicDraft.title + ' ' : '') + text
   }
 }
 
@@ -3714,30 +3640,18 @@ onActivated(show)
 .topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
 .topic-line-badge { flex-shrink: 0; margin: 0; }
 .topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
-.topic-kind-picker { display: flex; align-items: center; gap: 10rpx; margin: 12rpx 0 14rpx; }
-.topic-kind-label { flex-shrink: 0; margin-right: 4rpx; font-size: 26rpx; color: #6b7280; }
-.topic-kind-option { min-width: 108rpx; height: 56rpx; box-sizing: border-box; border: 2rpx solid #e1e4e8; border-radius: 28rpx; background: #f7f8fa; color: #4b5563; font-size: 26rpx; line-height: 1; }
-.topic-kind-option.on { font-weight: 650; }
-.topic-kind-option.notice.on { border-color: #78B9DC; background: #E6F4FB; color: #1677B8; }
-.topic-kind-option.discussion.on { border-color: #82BE97; background: #EAF6EE; color: #2E8B57; }
-.topic-kind-option.decision.on { border-color: #E6A370; background: #FFF0E5; color: #D56A16; }
-.topic-vote-settings { margin: -2rpx 0 14rpx; padding: 14rpx 16rpx; border-radius: 14rpx; background: #FFF8F2; border: 2rpx solid #FFE0C7; }
-.topic-kind-picker.vote-method { margin: 0; }
-.topic-quick-options { display: flex; flex-direction: column; gap: 10rpx; margin-top: 14rpx; }
-.topic-quick-option-row { display: flex; align-items: center; gap: 10rpx; }
-.topic-quick-option-num { width: 38rpx; height: 38rpx; flex-shrink: 0; border-radius: 50%; background: #FFF0E5; color: #D56A16; font-size: 24rpx; line-height: 38rpx; text-align: center; }
-.topic-quick-option-input { flex: 1; min-width: 0; height: 60rpx; font-size: 26rpx; }
-.topic-quick-option-del { width: 48rpx; height: 48rpx; flex-shrink: 0; border: 0; background: transparent; color: #7b8190; font-size: 36rpx; line-height: 1; }
-.topic-quick-option-add { align-self: flex-start; padding: 6rpx 4rpx; border: 0; background: transparent; color: #D56A16; font-size: 26rpx; }
-.vi-row.topic-input-row { margin-top: 0; align-items: center; }
-/* 会议议题：标题与输入框贴近一些 */
+/* 会议议题：标题与添加条贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
-.topic-input { flex: 1; min-width: 0; height: 68rpx; min-height: 68rpx; font-size: 28rpx; }
-/* 麦克风与确定竖排：确定落在麦克风下方 */
-.topic-actions-col { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 10rpx; }
-.topic-actions-col .voice-mic-btn { align-self: center; }
-.topic-confirm-btn { flex-shrink: 0; height: 68rpx; padding: 0 20rpx; border: none; border-radius: 12rpx; background: #1A5F9E; color: #fff; font-size: 26rpx; font-weight: 600; }
-.topic-confirm-btn:active { background: #124B85; }
+/* 添加议题触发条：点它弹出议题弹窗（输入/类型/确定都在弹窗内），单独一条大按钮，远离右下角「生成通知」防误触 */
+.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
+.topic-add-trigger:active { background: #F1F3F5; }
+.topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
+.tat-ico { font-size: 34rpx; font-weight: 700; line-height: 1; }
+.tat-text { font-weight: 600; }
+/* 议题弹窗标题行：输入框 + 语音麦克风并排（语音从这里输入，落进弹窗草稿标题） */
+.td-title-row { display: flex; align-items: center; gap: 14rpx; }
+.td-title-row .form-input { flex: 1; min-width: 0; }
+.td-mic { width: 72rpx; height: 72rpx; }
 .ct-option-row { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
 .ct-opt-num { font-size: 28rpx; color: #666; width: 40rpx; text-align: right; flex-shrink: 0; }
 .ct-opt-input { flex: 1; min-width: 0; height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 28rpx; }
@@ -3776,8 +3690,6 @@ onActivated(show)
 .voice-mic-btn svg { width: 34rpx; height: 34rpx; display: block; }
 .voice-mic-btn:active { background: #124B85; }
 .voice-mic-btn.on { background: #2E7BC4; animation: vi-pulse 1.2s ease-in-out infinite; }
-/* 议题行的麦克风钮略小一号 */
-.topic-input-row .voice-mic-btn { width: 68rpx; height: 68rpx; }
 
 /* 会议地点下拉 */
 .loc-select { width: 100%; margin-top: 16rpx; appearance: none; -webkit-appearance: none; padding-right: 60rpx; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M5 7l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 20rpx center; }
