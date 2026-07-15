@@ -51,6 +51,7 @@ export function useRecorder() {
     if (document.visibilityState !== 'visible') return
     if (recording.value) {
       acquireWakeLock()
+      if (!paused.value) tickSeconds() // 回前台先把冻结的显示时长补到真实值
       healthCheck() // 回前台立即体检一次，别等下个周期
     }
   }
@@ -58,6 +59,11 @@ export function useRecorder() {
     if (interrupted.value || !recording.value) return
     interrupted.value = true
     stopTimer() // 停计时，避免"没在录还在走秒"的假象
+    // 中断时把时长校正为「实际采集到的」：墙钟会把后台没录上的死区也算进去，
+    // 以最后一片数据的到达时刻为准（按秒吐片时误差≤1秒）。iOS 不吐片则保持原值。
+    if (gotFirstChunk && startedWallMs && lastChunkAt > startedWallMs) {
+      seconds.value = Math.max(0, Math.floor((lastChunkAt - startedWallMs - pausedAccumMs) / 1000))
+    }
   }
   // 周期体检（3秒一次）：①麦克风轨全死 → 中断；②曾按秒吐片但已 >6 秒没新片 → 数据流停了，中断
   function healthCheck() {
@@ -106,7 +112,16 @@ export function useRecorder() {
     return 'webm'
   }
 
-  function startTimer() { stopTimer(); timer = setInterval(() => { seconds.value += 1 }, 1000) }
+  // 计时改「看墙钟」而非「每秒+1」：切后台 JS 被冻结时累加器会停走（真机实测卡在切出时刻），
+  // 墙钟算法回前台一刷新就是真实经过时长。暂停时长单独累计扣除。
+  let startedWallMs = 0
+  let pausedAccumMs = 0
+  let pauseStartedMs = 0
+  function tickSeconds() {
+    if (!startedWallMs) return
+    seconds.value = Math.max(0, Math.floor((Date.now() - startedWallMs - pausedAccumMs) / 1000))
+  }
+  function startTimer() { stopTimer(); timer = setInterval(tickSeconds, 1000) }
   function stopTimer() { if (timer) { clearInterval(timer); timer = null } }
 
   function releaseStream() {
@@ -175,6 +190,9 @@ export function useRecorder() {
     seconds.value = 0
     gotFirstChunk = false
     lastChunkAt = Date.now()
+    startedWallMs = Date.now()
+    pausedAccumMs = 0
+    pauseStartedMs = 0
     // 麦克风轨死亡（来电抢占等）系统会发 ended 事件——比看门狗更快感知
     stream.getAudioTracks().forEach((t) => { t.addEventListener('ended', markInterrupted) })
     acquireWakeLock()
@@ -184,7 +202,7 @@ export function useRecorder() {
 
   function pause() {
     if (!recording.value || paused.value || !mediaRecorder) return
-    try { mediaRecorder.pause(); paused.value = true; stopTimer() } catch (e) { /* iOS 可能不支持，忽略 */ }
+    try { mediaRecorder.pause(); paused.value = true; pauseStartedMs = Date.now(); stopTimer() } catch (e) { /* iOS 可能不支持，忽略 */ }
   }
 
   function resume() {
@@ -192,20 +210,26 @@ export function useRecorder() {
     try {
       mediaRecorder.resume()
       paused.value = false
+      if (pauseStartedMs) { pausedAccumMs += Date.now() - pauseStartedMs; pauseStartedMs = 0 } // 暂停时长计入扣除项
       lastChunkAt = Date.now() // 暂停期间不吐片，重置基准防看门狗误报
       startTimer()
     } catch (e) { /* 忽略 */ }
   }
 
-  // 结束录音，resolve { blob, ext, durationSec, mimeType }；无内容 resolve null
+  // 结束录音，resolve { blob, ext, durationSec, mimeType }；无内容 resolve null。
+  // ⚠ 麦克风轨死亡（来电抢占）后 Chrome 可能永不回调 onstop → 必须带超时兜底，
+  //   否则中断处理里的 await stop() 会永远挂起、恢复弹窗弹不出来。切片全在内存里，自行定稿即可。
   function stop() {
     return new Promise((resolve) => {
       if (!mediaRecorder) { resolve(null); return }
-      mediaRecorder.onstop = () => {
+      let settled = false
+      const finalize = () => {
+        if (settled) return
+        settled = true
         stopTimer()
         stopHealthWatch()
         releaseWakeLock()
-        const type = mediaRecorder.mimeType || chosenMime || 'audio/webm'
+        const type = (mediaRecorder && (mediaRecorder.mimeType || chosenMime)) || 'audio/webm'
         resultBlob = new Blob(chunks, { type })
         recording.value = false
         paused.value = false
@@ -215,7 +239,10 @@ export function useRecorder() {
           ? { blob: resultBlob, ext: extFromMime(type), durationSec: seconds.value, mimeType: type }
           : null)
       }
-      try { mediaRecorder.stop() } catch (e) { stopTimer(); stopHealthWatch(); releaseWakeLock(); resolve(null) }
+      mediaRecorder.onstop = finalize
+      try { if (mediaRecorder.requestData) mediaRecorder.requestData() } catch (e) { /* 冲刷不足1秒的尾巴，失败无妨 */ }
+      try { mediaRecorder.stop() } catch (e) { finalize(); return }
+      setTimeout(finalize, 2000)
     })
   }
 
@@ -224,6 +251,9 @@ export function useRecorder() {
     stopHealthWatch()
     releaseWakeLock()
     interrupted.value = false
+    startedWallMs = 0
+    pausedAccumMs = 0
+    pauseStartedMs = 0
     chunks = []
     resultBlob = null
     seconds.value = 0
