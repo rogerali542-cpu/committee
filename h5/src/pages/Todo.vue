@@ -123,9 +123,9 @@ async function loadTodos() {
 function openItem(item) {
   const { id, kind } = item
   if (kind === 'reception') {
-    // 0716：接待列表页已删，直接进这一条的处理页
+    // 0716：接待列表页已删，直接进这一条的处理页；哨兵 .recep-detail 在目标页根上
     navigateTo('/pages/reception-detail/reception-detail?id=' + id)
-    setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/reception-detail?id=' + id }, 300)
+    setTimeout(() => { if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + id }, 300)
   } else {
     navigateTo('/pages/committee-detail/committee-detail?id=' + id + '&from=todo')
   }

@@ -1210,8 +1210,9 @@ async function submitReceptionCreate() {
 // 而首页本来就有清单、落地页又是清单，纯属重复。现在一步到位。
 function goReceptionDetail(r) {
   navigateTo('/pages/reception-detail/reception-detail?id=' + r.id)
-  // 软路由偶发不切换页面（memory: soft-router-push-intermittent-no-switch），关键跳转加硬导航兜底
-  setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/reception-detail?id=' + r.id }, 300)
+  // 软路由偶发不切换页面（memory: soft-router-push-intermittent-no-switch），关键跳转加硬导航兜底。
+  // 哨兵 .recep-detail 挂在目标页根上（0716 页头删除后从 .dh-title 迁来，进页即有、不等接口）
+  setTimeout(() => { if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + r.id }, 300)
 }
 
 function openTodoDetail(type, data) {

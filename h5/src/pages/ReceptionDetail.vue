@@ -1,17 +1,15 @@
 <template>
-  <div class="page" style="overflow-y:auto;">
+  <!-- 根类 .recep-detail 是软路由硬跳兜底的落地哨兵（0716 页头删除后从 .dh-title 迁来，
+       Committee.vue / Todo.vue 的跳转检查同步改了）。挂在根上比原来更稳：进页即有，不等接口返回 -->
+  <div class="page recep-detail" style="overflow-y:auto;">
     <PageNav title="接待处理" />
     <div v-if="rec">
-      <!-- 页头：谁来反映的什么事。.dh-title 是全站详情页的落地哨兵，软路由兜底靠它判断有没有真的到位 -->
-      <div class="detail-head">
-        <span class="dh-title">{{ rec.visitorName || '居民' }}来访</span>
-        <span class="stage-pill" :class="rec.done ? 'done' : 'todo'">{{ rec.done ? '已办结' : '待跟进' }}</span>
-      </div>
-
+      <!-- 自有页头已删（0716 用户定：与 PageNav 两条顶栏重复）。状态胶囊挪进信息卡首行右侧 -->
       <div class="info-card">
         <div class="field-row">
           <span class="field-label">来访人</span>
           <span class="field-val">{{ rec.visitorName || '未填写' }}<span v-if="rec.room" class="room">{{ rec.room }}</span></span>
+          <span class="stage-pill" :class="rec.done ? 'done' : 'todo'">{{ rec.done ? '已办结' : '待跟进' }}</span>
         </div>
         <div class="field-row">
           <span class="field-label">时间</span>
@@ -243,9 +241,7 @@ function goBack() {
 .page { background: var(--c-bg-page); min-height: 100vh; }
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
 
-.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx;
-  padding: calc(env(safe-area-inset-top) + 24rpx) 32rpx 22rpx; background: var(--c-primary-dark); }
-.dh-title { font-size: 40rpx; font-weight: 700; color: #fff; }
+/* .detail-head/.dh-title 已删（0716 用户定：与 PageNav 重复）。状态胶囊挪进信息卡首行。 */
 /* 本页字号一律 ≥28rpx(14px)：首页三个 tab 刚清到零小字，这页别又造一批 */
 .stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; }
 .stage-pill.todo { background: #FFEDD5; color: #9A3412; }
