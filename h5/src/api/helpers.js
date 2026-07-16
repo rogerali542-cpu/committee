@@ -50,11 +50,11 @@ function buildCommitteeNoticeDraft(m) {
 
 // ── 统计函数 ──
 
+// 0716 接待重做：办结 = 填了处理结果。原口径依赖的 fedOwner / propertyStatus / fedProperty
+// 三个字段已随内部派单流下线，列也已从库里 DROP。
+// 与 ReceptionService.isDone（后端）、utils/helpers.js 的 receptionDone 是同一口径，改一处要改三处。
 function receptionDone(r) {
-  if (!r.fedOwner) return false;
-  // 物业类：物业已回复(propertyStatus==='replied')才算物业侧完成；兼容旧数据的 fedProperty
-  return r.category !== C.RECEPTION_CATEGORY.PROPERTY
-    || r.propertyStatus === 'replied' || !!r.fedProperty;
+  return !!(r.resolution && String(r.resolution).trim());
 }
 
 function calcReceptionStats() {

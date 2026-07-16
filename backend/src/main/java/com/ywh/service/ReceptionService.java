@@ -110,8 +110,6 @@ public class ReceptionService {
                 .category(ReceptionCategory.valueOf((String) req.get("category")))
                 .content((String) req.get("content"))
                 .resolution("")
-                .fedProperty(false)   // 废弃字段，仅为满足库里 NOT NULL 约束
-                .fedOwner(false)      // 同上
                 .build());
     }
 
