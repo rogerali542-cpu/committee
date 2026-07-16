@@ -38,28 +38,26 @@
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
       <div class="plan-calendar-card">
         <div class="plan-head">
-          <!-- 开会 tab 标题「全年会议」（0716 定，多轮收敛：履职年历→全年开会情况→全年会议，去📅图标）；右侧年份箭头切换 -->
+          <!-- 开会 tab 标题「全年会议」（0716 定，多轮收敛：履职年历→全年开会情况→全年会议，去📅图标） -->
           <div class="plan-title-wrap">
             <span v-if="planTab === 'meeting'" class="plan-title">全年会议</span>
             <span v-else class="plan-title ov-title">{{ planTab === 'reception' ? '接待概览' : '培训概览' }}</span>
           </div>
           <div class="plan-actions">
+            <!-- 年份只读显示。切换箭头已摘（0716 用户定：先堵上这条路，以后有需要再做）——
+                 摘的只是入口，底下按年计算的能力（buildYearPlan / meetingPeriod(m, year) / inMonth(d, m, year)）
+                 全部保留，要恢复只需把箭头和 stepYear 加回来。原实现见 commit 0e0d15f。 -->
             <span v-if="planTab === 'meeting'" class="yc-year-nav">
-              <span class="yc-year-arw" :class="{ disabled: !canPrevYear }" @click="stepYear(-1)">‹</span>
               <span class="yc-year-label">{{ viewYear }}年</span>
-              <span class="yc-year-arw" :class="{ disabled: !canNextYear }" @click="stepYear(1)">›</span>
             </span>
             <span v-if="planTab === 'learning'" class="plan-tip link" @click="goLearning()">查看全部 ›</span>
           </div>
         </div>
 
-        <!-- 四色状态图例：老人靠它对上格子颜色的含义（0716 补回，此前被「精简」删掉正是这次看不懂的一环） -->
-        <div v-if="planTab === 'meeting'" class="status-legend">
-          <span><i class="lg-dot done"></i>已完成</span>
-          <span><i class="lg-dot current"></i>待推进</span>
-          <span><i class="lg-dot overdue"></i>已逾期</span>
-          <span><i class="lg-dot upcoming"></i>待安排</span>
-        </div>
+        <!-- 四色图例已删（0716 用户定）。我先前补回过它，理由是「老人靠它对上颜色的含义」——站不住：
+             ①它是 10px/6px 圆点，老人本就看不清；②颜色根本不是唯一载体，每期格子里明写着
+             「已开 ✓ / 待开 / 逾期 ! / 待排」，图例等于用更小的字重复一遍旁边已有的中文。
+             腾出的高度还给日历格子。 -->
 
         <!-- 月份日历：首页主视觉。按双月期成组，保留月份，同时让一期两个月有整体感。 -->
         <div v-if="planTab === 'meeting'" class="yc-period-grid">
@@ -727,31 +725,11 @@ const curMonth = new Date().getMonth() + 1
 const curYear = new Date().getFullYear()
 const curPeriod = Math.ceil(curMonth / 2)   // 双月一期：1-2/3-4/5-6/7-8…；7月→第4期(7-8月)
 const allMeetings = ref([])                 // 全部业委会会议（loadAll 填充），按期真实统计
-// 履职年历「查看中」的年份（默认今年，可用箭头切换）；curYear 恒为今年，两者分开。
+// 日历「查看中」的年份。切换入口已摘（0716 用户定：先堵上这条路，以后有需要再做），
+// 所以它现在恒等于 curYear。两者仍分开、不合并成一个：底下全部按年参数化（buildYearPlan(year)、
+// meetingPeriod(m, year)、inMonth(d, m, year)），合并会把 curYear 重新焊死进这些逻辑里，
+// 以后想恢复切换就得再拆一遍。恢复方式：加回箭头 + stepYear，范围规则见 commit 0e0d15f。
 const viewYear = ref(curYear)
-// 可切换范围（0716 修）：原先只放开「有会议记录的年份」，而记录全在今年 → 上下界都等于今年，
-// 两个箭头一起变死，年份根本换不动。改为：
-//   下界 = 最早有记录的年份 与 去年 取更早（保证 ‹ 至少能回看一年）
-//   上界 = 最晚有记录的年份 与 今年 取更晚（有人排了明年的会 › 才放开，否则今年即末页）
-const yearBounds = computed(() => {
-  let lo = curYear - 1, hi = curYear
-  for (const m of (allMeetings.value || [])) {
-    const y = Number(String(m.meetingDate || '').slice(0, 4))
-    if (!(y >= 2000)) continue
-    if (y < lo) lo = y
-    if (y > hi) hi = y
-  }
-  return { lo, hi }
-})
-const canPrevYear = computed(() => viewYear.value > yearBounds.value.lo)
-const canNextYear = computed(() => viewYear.value < yearBounds.value.hi)
-function stepYear(d) {
-  const { lo, hi } = yearBounds.value
-  const next = viewYear.value + d
-  if (next < lo || next > hi) return
-  viewYear.value = next
-  calMonth.value = next === curYear ? curMonth : 1
-}
 // 例会规则：每个双月期应召开 1 次（下面 yearPlan 每期一行即体现；接后端可调规则）
 function periodLabel(p) { return ((p - 1) * 2 + 1) + '-' + (p * 2) + '月' }
 // 首页履职待办：会议只要已结束，就不再作为“待开/逾期”催办项展示。
@@ -2992,10 +2970,12 @@ onActivated(show)
 /* 顶栏右上角综合评分：无胶囊白色加粗字直排顶栏上（0716 用户定，胶囊突兀已撤）；
    align-items:center（非 baseline）大数字上下均匀凸出；渐变色阶已换亮色版适配深橙底 */
 .hd-score { display: inline-flex; align-items: center; gap: 4rpx; align-self: center; }
-.hd-score-label { font-size: 28rpx; font-weight: 700; color: #fff; margin-right: 4rpx; }
+/* 标签和单位退到 500（0716）：它俩是陪衬，该粗的是分数本身（800）。
+   没照提案里的 400 走——白字压在深橙上，400 太细会发虚（老人尤其），500 是安全下限。 */
+.hd-score-label { font-size: 28rpx; font-weight: 500; color: #fff; margin-right: 4rpx; }
 /* 数字随分数高低红绿灯渐变（backgroundImage 由 scoreGradient 注入，background-clip:text 上色） */
 .hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-.hd-score-unit { font-size: 24rpx; font-weight: 700; color: rgba(255,255,255,0.95); }
+.hd-score-unit { font-size: 24rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* 接待/培训 tab 下会议卡的收起态小按钮 */
@@ -3095,11 +3075,10 @@ onActivated(show)
 .plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 104rpx; font-size: 25rpx; padding: 12rpx 16rpx; }
 .plan-stack.has-meeting .plan-title { font-size: 36rpx; }
-.plan-stack.has-meeting .status-legend { font-size: 19rpx; }
-.plan-stack.has-meeting .yc-period-grid { gap: 9rpx; padding: 14rpx 14rpx 12rpx; }
+.plan-stack.has-meeting .yc-period-grid { gap: 20rpx; padding: 14rpx 14rpx 12rpx; }
 .plan-stack.has-meeting .yc-cell { padding: 8rpx 0 7rpx; }
 .plan-stack.has-meeting .yc-cell.pair-cell .yc-m { font-size: 27rpx; }
-.plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 20rpx; }
+.plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 28rpx; }
 .plan-switch-card, .plan-calendar-card, .plan-todo-card { background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; overflow: hidden; }
 .plan-switch-card { padding: 10rpx; order: 0; }
 /* 首页重排：待办事项（主操作）紧跟分段栏，年历（总览）下沉 */
@@ -3117,7 +3096,8 @@ onActivated(show)
 /* 履职年历：分类横栏 + 12月宫格 + 警示条 + 当月清单。
    前缀 yc-（year calendar）：cal- 已被下方日期选择弹窗的小日历占用，同名会被其 7 列网格覆盖 */
 .plan-tabs { display: flex; gap: 8rpx; margin: 0; background: #F2F6F7; border-radius: 16rpx; padding: 5rpx; }
-.plan-tab { flex: 1; text-align: center; padding: 8rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 700; color: #52646B; border-radius: 12rpx; cursor: pointer; }
+/* 未选中 500 / 选中 800（0716）：原先未选中也是 700，跟选中的 800 只差一档，等于没差。 */
+.plan-tab { flex: 1; text-align: center; padding: 8rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
 .plan-tab.active { background: #D97706; color: #fff; font-weight: 800; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
 .plan-tab:active { opacity: 0.75; }
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
@@ -3173,7 +3153,9 @@ onActivated(show)
 .yc-year-toggle { display: flex; align-items: center; justify-content: center; gap: 8rpx; margin: 8rpx 20rpx 0; height: 50rpx; border-radius: 12rpx; background: #F6F7F9; color: #176B87; font-size: 24rpx; font-weight: 700; cursor: pointer; }
 .yc-year-toggle:active { opacity: 0.75; }
 .yc-year-panel { padding-top: 4rpx; }
-.yc-period-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10rpx; padding: 16rpx 17rpx 14rpx; }
+/* gap 10rpx → 24rpx（0716 A 案）：期次卡的边框撤掉后，「一期」全靠这道间距分组。
+   要害是它与 .yc-pair-months 的 gap(7rpx) 拉开倍数——原先 10 vs 7 差 1.5px，邻近原则等于没用上。 */
+.yc-period-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24rpx; padding: 16rpx 17rpx 14rpx; }
 /* 接待/培训：平铺 12 月宫格（4 列 3 行） */
 .yc-month-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10rpx; padding: 4rpx 17rpx 14rpx; }
 .yc-month-grid .yc-cell { min-height: 100rpx; }
@@ -3186,29 +3168,48 @@ onActivated(show)
 .yc-action-title { font-size: 33rpx; color: var(--c-text-strong); font-weight: 900; line-height: 1.18; word-break: break-all; }
 .yc-action-btn { flex-shrink: 0; min-width: 128rpx; height: 62rpx; padding: 0 20rpx; border-radius: 999rpx; display: flex; align-items: center; justify-content: center; background: #D97706; color: #fff; font-size: 28rpx; font-weight: 900; box-shadow: 0 8rpx 16rpx rgba(217,119,6,0.22); box-sizing: border-box; }
 .yc-action-card.overdue .yc-action-btn { background: #D83A2E; box-shadow: 0 8rpx 16rpx rgba(216,58,46,0.22); }
-.yc-period-card { position: relative; min-width: 0; padding: 7rpx; border-radius: 17rpx; border: 2rpx solid #EEF1F3; background: #F8FAFB; box-sizing: border-box; }
-.yc-period-card.done { background: #F6FCF8; border-color: #D7EFDE; }
+/* 期次卡的边框已撤（0716 用户定 A 案）。原先它和内部月格用的是同一个色（如 current 两边都是
+   #FED7AA），隔 7rpx 画两遍，纯属重复；而本该扛分组的底色（期次卡底 vs 白卡底仅 1.03:1）和
+   间距（期次间距 4.5px vs 同期两月 3.5px，差 1px）全是废的，结构 100% 压在这堆同色框上。
+   现改为：「一期」靠 yc-period-grid 拉开的间距分组，「一个月」靠月格自己的边框+底色。3 层框 → 2 层框。
+   底色保留：它虽扛不起分组，但和月格叠在一起能让整期透出淡淡的状态色。 */
+.yc-period-card { position: relative; min-width: 0; padding: 7rpx; border-radius: 17rpx; background: #F8FAFB; box-sizing: border-box; }
+.yc-period-card.done { background: #F6FCF8; }
 /* 0716 色彩收敛：「待推进」蓝系→与待办事项同族的淡黄系，不再平白引入新颜色 */
-.yc-period-card.current { background: #FFFBF3; border-color: #FED7AA; }
-.yc-period-card.overdue { background: #FFF4F2; border-color: #F3C6C0; }
-.yc-period-card.active { box-shadow: 0 8rpx 18rpx rgba(20,42,58,0.08); }
+.yc-period-card.current { background: #FFFBF3; }
+.yc-period-card.overdue { background: #FFF4F2; }
+/* .active 的阴影已撤（0716 A 案收尾）：边框拿掉后，就剩这层阴影还让选中的期次卡算「一层卡」，
+   嵌套卡在 3 层下不来。而选中本来就有三重标记了——月格的 ::after 橙环 + ::before 圆点 + 自身阴影，
+   期次卡这层纯属第四遍重复。撤掉后日历才真的是 白卡 > 月格 两层。 */
 .yc-pair-months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7rpx; }
 .yc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10rpx; padding: 12rpx 20rpx 6rpx; }
 .yc-grid.compact { grid-template-columns: repeat(3, 1fr); gap: 12rpx; padding: 12rpx 20rpx 14rpx; }
 .yc-cell { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; padding: 10rpx 0 9rpx; border-radius: 14rpx; background: #F8FAFB; border: 2rpx solid #EEF1F3; box-sizing: border-box; cursor: pointer; }
 .yc-grid.compact .yc-cell { min-height: 94rpx; gap: 4rpx; padding: 15rpx 0 13rpx; border-radius: 16rpx; }
-.yc-cell.pair-cell { min-height: 86rpx; gap: 2rpx; padding: 12rpx 0 10rpx; border-radius: 14rpx; background: rgba(255,255,255,0.66); }
+/* 图例删掉后腾出的高度还给格子（0716 用户定）：日历是首页第一重点，格子该撑起来。 */
+.yc-cell.pair-cell { min-height: 104rpx; gap: 4rpx; padding: 12rpx 0 10rpx; border-radius: 14rpx; background: rgba(255,255,255,0.66); }
+/* 选中月保留状态底色、压到 60%（0716 用户定）。原先这里强推 rgba(255,255,255,0.66)，
+   而 .pair-cell.sel 比 .yc-cell.current 多一个类、specificity 反超状态色 → 一选中就变全白，
+   同一期里两个月一白一黄。选中本来就靠 ::after 橙环 + ::before 圆点标记，不必再拿底色去抢。
+   下面这条是 .upcoming（没有状态色）的白底兜底，状态色三档各自覆盖。 */
 .yc-cell.pair-cell.sel { background: rgba(255,255,255,0.66); }
+.yc-cell.pair-cell.sel.done    { background: rgba(240, 250, 244, 0.6); }
+.yc-cell.pair-cell.sel.current { background: rgba(255, 248, 236, 0.6); }
+.yc-cell.pair-cell.sel.overdue { background: rgba(253, 236, 234, 0.6); }
 /* 0716 选中框：游离紫 #8B5CF6 → 主题深橙（--c-primary-dark，描边专用档）；全页去紫，只留品牌橙 */
 .yc-cell.sel::after { content: ''; position: absolute; inset: -4rpx; border: 3rpx solid var(--c-primary-dark); border-radius: 18rpx; pointer-events: none; }
 .yc-cell.sel::before { content: ''; position: absolute; top: 8rpx; right: 8rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: var(--c-primary-dark); box-shadow: 0 0 0 4rpx rgba(168,88,0,0.15); pointer-events: none; }
 .yc-cell:active { opacity: 0.75; }
-.yc-m { font-size: 28rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.1; }
-.yc-s { font-size: 22rpx; color: var(--c-text-weak); line-height: 1.2; }
+/* 加粗从坐标挪到信息上（0716 用户定）：月份只是坐标（1-12 顺序排，本来就好找），状态才是要看的东西。
+   原先 12 个月份全 700、状态却是 400 —— 加粗加反了，且这 12 个占了全页加粗元素的 40%。 */
+.yc-m { font-size: 28rpx; font-weight: 500; color: var(--c-text-strong); line-height: 1.1; }
+.yc-s { font-size: 22rpx; font-weight: 600; color: var(--c-text-weak); line-height: 1.2; }
 .yc-grid.compact .yc-m { font-size: 32rpx; }
 .yc-grid.compact .yc-s { font-size: 22rpx; }
 .yc-cell.pair-cell .yc-m { font-size: 31rpx; }
-.yc-cell.pair-cell .yc-s { font-size: 22rpx; }
+/* 状态字 24rpx → 30rpx（12px → 15px，0716 用户定）：它是格子里真正要看的东西，
+   图例删了之后更不能小——「已开 ✓ / 待开 / 逾期 ! / 待排」现在是颜色含义的唯一说明。 */
+.yc-cell.pair-cell .yc-s { font-size: 30rpx; }
 .yc-cell.done { background: #F0FAF4; border-color: #D7EFDE; }
 .yc-cell.done .yc-m, .yc-cell.done .yc-s { color: var(--c-success); }
 .yc-cell.current { background: #FFF8EC; border-color: #FED7AA; }
@@ -3293,7 +3294,9 @@ onActivated(show)
 .yc-item-info { flex: 1; min-width: 0; }
 .yc-item-title { font-size: 28rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1.25; }
 .yc-item-sub { font-size: 22rpx; color: var(--c-text-weak); margin-top: 3rpx; line-height: 1.25; }
-.plan-todo-card .yc-item-title { font-size: 38rpx; font-weight: 600; }
+/* 600 → 500（0716 用户定）：「第N期例会」是待办行的名字，不是要喊的东西——
+   要看的是右边「去通知/去补开」那颗按钮。与 todo-plain 行的 500 也就此对齐。 */
+.plan-todo-card .yc-item-title { font-size: 38rpx; font-weight: 500; }
 .plan-todo-card .yc-item-sub { font-size: 28rpx; margin-top: 6rpx; }
 .yc-links { display: flex; justify-content: center; gap: 48rpx; padding: 18rpx 0 4rpx; font-size: 26rpx; font-weight: 600; color: var(--c-primary-dark); }
 .yc-links span:active { opacity: 0.6; }
@@ -3324,9 +3327,6 @@ onActivated(show)
 /* 履职年历年份切换箭头（0716 用户定） */
 .yc-year-nav { display: inline-flex; align-items: center; gap: 16rpx; }
 /* 裸箭头无方框（0716 用户定）；宽高保留=点击热区不缩水 */
-.yc-year-arw { display: inline-flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx; color: var(--c-primary); font-size: 46rpx; font-weight: 600; line-height: 1; }
-.yc-year-arw.disabled { color: #C6CDD1; }
-.yc-year-arw:active { opacity: 0.55; }
 /* 年份与标题同字号；行高收 1 让盒子贴字形，flex 居中即视觉垂直居中（0716 用户定：要居中不要基线齐） */
 .yc-year-label { min-width: 120rpx; text-align: center; font-size: 40rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1; }
 /* 0716：标题/图例/宫格三段间距放宽，呼吸感 */
@@ -3341,15 +3341,6 @@ onActivated(show)
 .plan-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; flex-shrink: 0; }
 .plan-tip { font-size: 24rpx; color: var(--c-text-weak); }
 .plan-tip.link { color: #0284C7; font-weight: 800; font-size: 25rpx; padding: 4rpx 6rpx; }
-.status-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6rpx 16rpx; padding: 0 20rpx 6rpx; color: #6B7B82; font-size: 20rpx; font-weight: 600; }
-.status-legend span { display: inline-flex; align-items: center; gap: 6rpx; line-height: 1.2; }
-.lg-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #C6CDD1; }
-.lg-dot.done { background: var(--c-success); }
-.lg-dot.current { background: #D97706; }
-.lg-dot.overdue { background: #D83A2E; }
-.lg-dot.upcoming { background: #AAB4BA; }
-.lg-dot.warn { background: #F0A81E; }
-.lg-dot.future { background: #94A4B8; }
 /* 时间轴：左侧 52rpx 轨道列（贯穿细线+节点圆点），右侧内容行。紧凑以免顶下方主按钮 */
 .plan-timeline { padding: 2rpx 26rpx 10rpx; }
 .tl-i { display: grid; grid-template-columns: 52rpx 1fr; gap: 18rpx; cursor: pointer; }
