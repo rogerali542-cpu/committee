@@ -47,22 +47,28 @@
           </div>
           <div class="sec-hint">物业在工单系统里处理。等你知道结果了，在下面填处理结果即可办结。</div>
         </template>
-        <template v-else>
+        <!-- 派单/填结果/删除都要 reception.manage：这些是履职动作，不能谁点开谁都能改 -->
+        <template v-else-if="canManage">
           <button class="big-action ticket" :disabled="pushing" @click="pushTicket">
             {{ pushing ? '正在派发…' : '派发工单给物业' }}
           </button>
           <div class="sec-hint">派给物业的工单系统去处理。派单不等于办结——等有结果了再回来填处理结果。</div>
         </template>
+        <div v-else class="sec-hint">还没有派发工单。你没有接待管理权限，如需派单请联系主任。</div>
       </div>
 
       <!-- 处理结果 = 办结动作 -->
       <div class="sec-card">
-        <div class="sec-title">处理结果<span class="sec-tip">填写并保存即算办结</span></div>
-        <textarea v-model="resolution" class="res-input" rows="4"
-                  placeholder="这件事最后怎么处理的？例如：已派工单给物业，6月28日已完成维修并回访。"></textarea>
-        <button class="big-action save" :disabled="saving || !resolution.trim()" @click="saveResolution">
-          {{ saving ? '保存中…' : (rec.done ? '保存修改' : '保存并办结') }}
-        </button>
+        <div class="sec-title">处理结果<span v-if="canManage" class="sec-tip">填写并保存即算办结</span></div>
+        <template v-if="canManage">
+          <textarea v-model="resolution" class="res-input" rows="4"
+                    placeholder="这件事最后怎么处理的？例如：已派工单给物业，6月28日已完成维修并回访。"></textarea>
+          <button class="big-action save" :disabled="saving || !resolution.trim()" @click="saveResolution">
+            {{ saving ? '保存中…' : (rec.done ? '保存修改' : '保存并办结') }}
+          </button>
+        </template>
+        <div v-else-if="rec.resolution" class="appeal">{{ rec.resolution }}</div>
+        <div v-else class="sec-hint">还没有填写处理结果。</div>
       </div>
 
       <!-- 佐证：原先接待页这块是坏的——listRecords 从不返回 evidences 键，
@@ -70,7 +76,7 @@
       <div class="sec-card">
         <div class="sec-title">
           佐证照片<span class="sec-count">{{ (rec.evidences || []).length }} 张</span>
-          <span class="sec-add" @click="pickEvidence">+ 上传</span>
+          <span v-if="canManage" class="sec-add" @click="pickEvidence">+ 上传</span>
         </div>
         <div v-if="!(rec.evidences || []).length" class="ev-empty">还没有上传佐证</div>
         <div v-else class="ev-list">
@@ -78,7 +84,7 @@
             <img v-if="ev.fileUrl" :src="ev.fileUrl" class="ev-thumb" />
             <span v-else class="ev-thumb ev-noimg">📄</span>
             <span class="ev-name">{{ ev.fileName }}</span>
-            <span class="ev-del" @click="delEvidence(ev)">删除</span>
+            <span v-if="canManage" class="ev-del" @click="delEvidence(ev)">删除</span>
           </div>
         </div>
       </div>
@@ -240,7 +246,8 @@ function goBack() {
 .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx;
   padding: calc(env(safe-area-inset-top) + 24rpx) 32rpx 22rpx; background: var(--c-primary-dark); }
 .dh-title { font-size: 40rpx; font-weight: 700; color: #fff; }
-.stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 26rpx; font-weight: 700; }
+/* 本页字号一律 ≥28rpx(14px)：首页三个 tab 刚清到零小字，这页别又造一批 */
+.stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; }
 .stage-pill.todo { background: #FFEDD5; color: #9A3412; }
 .stage-pill.done { background: #E7F6EC; color: #1E7E4E; }
 
@@ -249,46 +256,52 @@ function goBack() {
 .field-row { display: flex; align-items: flex-start; gap: 20rpx; padding: 12rpx 0; }
 .field-label { flex-shrink: 0; width: 130rpx; font-size: 28rpx; color: var(--c-text-weak); }
 .field-val { flex: 1; min-width: 0; font-size: 30rpx; color: var(--c-text-strong); }
-.room { margin-left: 14rpx; color: var(--c-text-mid); font-size: 27rpx; }
+.room { margin-left: 14rpx; color: var(--c-text-mid); font-size: 28rpx; }
 
 .sec-title { display: flex; align-items: center; gap: 12rpx; font-size: 32rpx; font-weight: 700;
   color: var(--c-text-strong); margin-bottom: 16rpx; }
-.sec-tip { font-size: 25rpx; font-weight: 400; color: var(--c-text-weak); }
-.sec-count { font-size: 26rpx; font-weight: 500; color: var(--c-text-weak); }
-.sec-add { margin-left: auto; font-size: 28rpx; font-weight: 700; color: var(--c-primary); }
-.sec-hint { margin-top: 14rpx; font-size: 26rpx; line-height: 1.5; color: var(--c-text-weak); }
+.sec-tip { font-size: 28rpx; font-weight: 400; color: var(--c-text-weak); }
+.sec-count { font-size: 28rpx; font-weight: 500; color: var(--c-text-weak); }
+.sec-add { margin-left: auto; font-size: 28rpx; font-weight: 700; color: var(--c-primary-dark); }
+.sec-hint { margin-top: 14rpx; font-size: 28rpx; line-height: 1.5; color: var(--c-text-weak); }
 /* 诉求正文：这页的主角，字号最大 */
 .appeal { font-size: 32rpx; line-height: 1.6; color: var(--c-text-strong); white-space: pre-wrap; }
 
-.big-action { width: 100%; height: 96rpx; border: none; border-radius: 20rpx; font-size: 32rpx; font-weight: 700; color: #fff; }
+/* 两颗都用 --c-primary-dark(#A85800)：白字 16px/700 门槛 4.5:1，#A85800 是 5.17 ✓，
+   而 --c-primary(#C76A00) 只有 3.83 ✗。两颗同色不分主次是有意的——它俩分属不同卡片、
+   标题各说各的（派发工单 / 处理结果），不靠颜色区分，靠位置和文案。 */
+.big-action { width: 100%; height: 96rpx; border: none; border-radius: 20rpx; font-size: 32rpx; font-weight: 700; color: #fff;
+  background: var(--c-primary-dark); }
 .big-action:disabled { opacity: 0.5; }
-.big-action.ticket { background: var(--c-primary); box-shadow: 0 8rpx 22rpx rgba(199,106,0,0.26); }
-.big-action.save { margin-top: 18rpx; background: var(--c-primary-dark); }
+.big-action.ticket { box-shadow: 0 8rpx 22rpx rgba(168,88,0,0.26); }
+.big-action.save { margin-top: 18rpx; }
 
 .ticket-done { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
   background: #F2FBF6; border: 2rpx solid #CDE9D8; border-radius: 16rpx; }
 .tk-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--c-success);
   color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
 .tk-no { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
-.tk-at { margin-top: 4rpx; font-size: 25rpx; color: var(--c-text-weak); }
+.tk-at { margin-top: 4rpx; font-size: 28rpx; color: var(--c-text-weak); }
 
 .res-input { width: 100%; box-sizing: border-box; padding: 18rpx 20rpx; border: 2rpx solid #E3E8EB;
   border-radius: 16rpx; background: #FCFDFD; font-size: 30rpx; line-height: 1.5; color: var(--c-text-strong); outline: none; }
 
-.ev-empty { padding: 20rpx 0; text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
+.ev-empty { padding: 20rpx 0; text-align: center; font-size: 28rpx; color: var(--c-text-weak); }
 .ev-list { display: flex; flex-direction: column; gap: 12rpx; }
 .ev-item { display: flex; align-items: center; gap: 16rpx; padding: 12rpx; background: #F8FAFB; border-radius: 14rpx; }
 .ev-thumb { width: 88rpx; height: 88rpx; border-radius: 10rpx; object-fit: cover; background: #EEF1F3; }
 .ev-noimg { display: flex; align-items: center; justify-content: center; font-size: 40rpx; }
-.ev-name { flex: 1; min-width: 0; font-size: 27rpx; color: var(--c-text-mid);
+.ev-name { flex: 1; min-width: 0; font-size: 28rpx; color: var(--c-text-mid);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ev-del { flex-shrink: 0; font-size: 27rpx; color: #B02A1E; padding: 8rpx 12rpx; }
+.ev-del { flex-shrink: 0; font-size: 28rpx; color: #B02A1E; padding: 8rpx 12rpx; }
 
 .danger-zone { padding: 10rpx 24rpx 0; text-align: center; }
 .del-record { display: inline-block; padding: 18rpx 40rpx; font-size: 28rpx; color: var(--c-text-mid);
   border: 2rpx dashed #C9D0D6; border-radius: 18rpx; background: #F5F6F8; }
 
-.back-bar-space { height: 180rpx; }
+/* 占位高必须 ≥ 固定返回栏的实际高度（96rpx 按钮 + 上下 16rpx padding + 安全区），
+   180rpx 不够，会把「删除这条记录」压在栏底下点不着 */
+.back-bar-space { height: 260rpx; }
 .back-bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 16rpx 24rpx calc(env(safe-area-inset-bottom) + 16rpx);
   background: rgba(255,255,255,0.96); border-top: 2rpx solid #EEF2F4; }
 .back-btn { width: 100%; height: 96rpx; border: 2rpx solid var(--c-primary); border-radius: 20rpx;
