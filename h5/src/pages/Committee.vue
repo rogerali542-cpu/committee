@@ -2975,7 +2975,7 @@ onActivated(show)
 .hd-score-label { font-size: 28rpx; font-weight: 500; color: #fff; margin-right: 4rpx; }
 /* 数字随分数高低红绿灯渐变（backgroundImage 由 scoreGradient 注入，background-clip:text 上色） */
 .hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-.hd-score-unit { font-size: 24rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
+.hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* 接待/培训 tab 下会议卡的收起态小按钮 */
@@ -3328,7 +3328,9 @@ onActivated(show)
 .yc-year-nav { display: inline-flex; align-items: center; gap: 16rpx; }
 /* 裸箭头无方框（0716 用户定）；宽高保留=点击热区不缩水 */
 /* 年份与标题同字号；行高收 1 让盒子贴字形，flex 居中即视觉垂直居中（0716 用户定：要居中不要基线齐） */
-.yc-year-label { min-width: 120rpx; text-align: center; font-size: 40rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1; }
+/* 800 → 600（0716）：箭头摘掉后它就是个只读标签了，不该再和卡标题「全年会议」一样重。
+   原先的 800 是给可点控件当锚点用的，入口没了，重量也该跟着退。 */
+.yc-year-label { min-width: 120rpx; text-align: center; font-size: 40rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1; }
 /* 0716：标题/图例/宫格三段间距放宽，呼吸感 */
 .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 18rpx 20rpx 12rpx; }
 /* 概览（接待/培训）标题与卡片顶部再留出一点距离；仅 compact 态生效，不动开会年历 */
