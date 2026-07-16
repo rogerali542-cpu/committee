@@ -3087,8 +3087,9 @@ onActivated(show)
 /* 当前会议主卡片 */
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* 接待/培训 tab 下会议卡的收起态小按钮 */
-/* 纵向 padding 16→10rpx（0716 用户定：这条要矮一点——它只是个入口提示，不该和内容卡一样占高） */
-.meet-collapsed { display: flex; align-items: center; gap: 12rpx; margin: 14rpx 24rpx; padding: 10rpx 24rpx; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); cursor: pointer; }
+/* 定高 64rpx=32px（0716 用户两轮压缩：45→40 再 -20%）——它只是个入口提示，不该和内容卡一样占高。
+   改定高不改 padding：高度实际被「查看 ▾」胶囊撑着，定高 + flex 居中最稳。整条全宽可点，矮但好点。 */
+.meet-collapsed { display: flex; align-items: center; gap: 12rpx; margin: 14rpx 24rpx; height: 64rpx; padding: 0 24rpx; box-sizing: border-box; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); cursor: pointer; }
 .meet-collapsed:active { background: #fafbfc; }
 .meet-collapsed .mc-ico { font-size: 30rpx; flex-shrink: 0; }
 .meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
@@ -3968,7 +3969,7 @@ onActivated(show)
 /* 登记按钮（0716 用户选方案 A：浅橙填充 tinted，中强调）。演进：实心深橙大卡 → 压七成删副标题 →
    浅橙底 #FFF3E5 + 深橙字 #A85800、内容居中、去箭头、平底无阴影。与待办按钮的 tinted 降级态同族。
    高度 92rpx=46px，仍在 44px 适老热区之上。 */
-.rec-add-card { order: 2; display: flex; align-items: center; justify-content: center; gap: 12rpx;
+.rec-add-card { order: 2; width: 60%; align-self: center; display: flex; align-items: center; justify-content: center; gap: 12rpx;
   box-sizing: border-box; height: 92rpx; border-radius: 22rpx; background: #FFF3E5; cursor: pointer; }
 .rec-add-card:active { background: #FFE9CE; }
 .rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; line-height: 1; }
