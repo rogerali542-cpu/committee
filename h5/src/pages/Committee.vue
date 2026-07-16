@@ -37,11 +37,15 @@
 
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
       <div class="plan-calendar-card">
-        <div class="plan-head">
+        <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
+             「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
+             这两个字，他问起来一眼能指到这行。 -->
+        <div class="plan-head" :class="{ foldable: planTab !== 'meeting' }"
+             @click="planTab !== 'meeting' ? (ovGridFold = !ovGridFold) : null">
           <!-- 开会 tab 标题「全年会议」（0716 定，多轮收敛：履职年历→全年开会情况→全年会议，去📅图标） -->
           <div class="plan-title-wrap">
             <span v-if="planTab === 'meeting'" class="plan-title">全年会议</span>
-            <span v-else class="plan-title ov-title">{{ planTab === 'reception' ? '接待概览' : '培训概览' }}</span>
+            <span v-else class="plan-title ov-title">{{ planTab === 'reception' ? '全年接待日历' : '全年培训日历' }}</span>
           </div>
           <div class="plan-actions">
             <!-- 年份只读显示。切换箭头已摘（0716 用户定：先堵上这条路，以后有需要再做）——
@@ -50,7 +54,8 @@
             <span v-if="planTab === 'meeting'" class="yc-year-nav">
               <span class="yc-year-label">{{ viewYear }}年</span>
             </span>
-            <span v-if="planTab === 'learning'" class="plan-tip link" @click="goLearning()">查看全部 ›</span>
+            <span v-if="planTab === 'learning' && !ovGridFold" class="plan-tip link" @click.stop="goLearning()">查看全部 ›</span>
+            <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
 
@@ -94,13 +99,17 @@
         </div>
 
         <!-- 接待/培训 12 月履职宫格：一眼看每月该类状态；点月下钻看当月清单（数据同源 monthCells） -->
-        <div v-if="planTab !== 'meeting'" class="yc-month-grid">
+        <!-- 图例：只给接待/培训。展开态才出，收起时整张卡只剩一行标题。 -->
+        <div v-if="planTab !== 'meeting' && !ovGridFold" class="ov-legend">
+          <span v-for="lg in ovLegend" :key="lg.k"><i class="ov-lg-dot" :class="lg.k"></i>{{ lg.t }}</span>
+        </div>
+        <div v-if="planTab !== 'meeting' && !ovGridFold" class="yc-month-grid">
           <div v-for="mc in monthCells" :key="mc.m" class="yc-cell" :class="[mc.status, { sel: calMonthTapped && calMonth === mc.m }]" @click="onOvMonthTap(mc.m)">
             <span class="yc-m">{{ mc.m }}月</span>
             <span class="yc-s">{{ mc.label }}</span>
           </div>
         </div>
-        <div v-if="planTab !== 'meeting' && calMonthDrill" class="yc-period-feedback">
+        <div v-if="planTab !== 'meeting' && !ovGridFold && calMonthDrill" class="yc-period-feedback">
           <div class="ypf-head">{{ calMonthDrill.title }}</div>
           <div v-if="!calMonthDrill.items.length" class="plan-empty">该月无记录</div>
           <div v-else v-for="it in calMonthDrill.items" :key="it.key" class="yc-item" @click="it.onTap()">
@@ -1146,6 +1155,21 @@ function openTodoDetail(type, data) {
   }
 }
 // 接待/培训 12 月宫格：点月下钻看当月清单（数据与 monthCells 同源的 calRecs/calLearns）
+// 接待/培训的 12 月宫格默认收起（0716 用户定）。理由：宫格是为「有制度节奏」的事设计的——
+// 例会双月一期、每期该开一次，格子空着就是欠账，那 12 格是张达标图。而接待是来一个办一个、
+// 培训也没有「这月该开 N 场」的硬标准，格子里的数字既不是达标也不是欠账，只是流水，
+// 老人看了得不出任何结论。真正要回答的「还有几件没办、是哪几件」由上方三数字+清单负责。
+// 不删是因为日历是老板提的：留在底部，他问起来展开给他看，顺带讲清适配性问题。
+const ovGridFold = ref(true)
+// 接待/培训宫格的图例（0716 用户定加回）。开会 tab 不要，是因为那边每期都写着「已开✓/待开/逾期!/待排」，
+// 颜色不是唯一载体；这两个 tab 十二格里大半是空标签、只剩颜色，没图例就是死题（WCAG 1.4.1）。
+// 措辞与排序 0716 用户定，按紧急度：逾期 → 待办 → 已完成 → 未到。
+// ⚠ 留个底：绿档同时覆盖「有记录且都办完」和「那月压根没记录」（monthCells 里 rs.length 为 0 时
+// 走同一档），所以「已完成」对空月份略微 overclaim。用户已知情并选了它——「无待办」是双重否定，
+// 老人读着费劲，而两种情况对他的实际含义都是「这儿没你的事」。真要较真得改 monthCells 让空月份走中性档。
+const ovLegend = computed(() => planTab.value === 'reception'
+  ? [{ k: 'warn', t: '待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '未到' }]
+  : [{ k: 'overdue', t: '逾期' }, { k: 'warn', t: '待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '未到' }])
 const calMonthTapped = ref(false)
 function onOvMonthTap(m) { calMonth.value = m; calMonthTapped.value = true }
 // 有进行中会议时，接待/培训 tab 默认把顶部会议卡收成小按钮；每次切 tab 都回到收起态
@@ -2983,7 +3007,7 @@ onActivated(show)
 .meet-collapsed:active { background: #fafbfc; }
 .meet-collapsed .mc-ico { font-size: 34rpx; flex-shrink: 0; }
 .meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
-.meet-collapsed .mc-act { font-size: 27rpx; color: var(--c-primary-dark); font-weight: 600; flex-shrink: 0; }
+.meet-collapsed .mc-act { font-size: 28rpx; color: var(--c-primary-dark); font-weight: 600; flex-shrink: 0; }
 /* 展开态收起 chip：放卡片右下角（右上角与状态徽标太挤） */
 .meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
 .meet-collapse-chip { display: inline-flex; align-items: center; gap: 4rpx; padding: 6rpx 22rpx; background: #EDF0F3; border: 2rpx solid #DFE3E8; border-radius: 999rpx; font-size: 25rpx; color: #565C64; font-weight: 600; cursor: pointer; white-space: nowrap; }
@@ -3066,14 +3090,16 @@ onActivated(show)
 .plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 6rpx 0; }
 .plan-stack.has-meeting .yc-list.plan-todo-card { padding: 16rpx 24rpx 18rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 4rpx; }
-.plan-stack.has-meeting .yc-list-count { font-size: 24rpx; padding: 4rpx 13rpx; }
+.plan-stack.has-meeting .yc-list-count { font-size: 28rpx; padding: 4rpx 14rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
 /* 接待/培训列表行：不吃开会档的极限压缩，保留舒适行高 */
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain { padding: 20rpx 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item-title { font-size: 31rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 24rpx; margin-top: 4rpx; }
+/* 24rpx→28rpx（12px→14px，0716）：接待清单的日期（6月24日…）老人要核对，不能比正文还小 */
+.plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 28rpx; margin-top: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 104rpx; font-size: 25rpx; padding: 12rpx 16rpx; }
+/* 25rpx→28rpx（12.5px→14px，0716）：「查看」是个要用手指点的按钮，字比正文还小最说不过去 */
+.plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 116rpx; font-size: 28rpx; padding: 12rpx 18rpx; }
 .plan-stack.has-meeting .plan-title { font-size: 36rpx; }
 .plan-stack.has-meeting .yc-period-grid { gap: 20rpx; padding: 14rpx 14rpx 12rpx; }
 .plan-stack.has-meeting .yc-cell { padding: 8rpx 0 7rpx; }
@@ -3081,8 +3107,10 @@ onActivated(show)
 .plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 28rpx; }
 .plan-switch-card, .plan-calendar-card, .plan-todo-card { background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; overflow: hidden; }
 .plan-switch-card { padding: 10rpx; order: 0; }
-/* 首页重排：待办事项（主操作）紧跟分段栏，年历（总览）下沉 */
-.plan-todo-card { margin: 0; order: 1; }
+/* 首页重排：待办事项（主操作）紧跟分段栏，年历（总览）下沉。
+   order 1→2（0716）：接待/培训的三数字兼作本卡的筛选器，必须排在被筛的列表之前，
+   否则点数字后变化发生在 350px 开外的上方，老人只会觉得「点了没反应」。 */
+.plan-todo-card { margin: 0; order: 2; }
 .plan-calendar-card { padding-top: 0; order: 3; }
 /* 开会 tab 且无进行中会议：日历上移当第一重点、待办下沉（0716 用户定）。
    仅此态对调；接待/培训(.compact)与有会议(.has-meeting)保持原顺序。 */
@@ -3102,13 +3130,15 @@ onActivated(show)
 .plan-tab:active { opacity: 0.75; }
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
 .ov-metrics { display: flex; gap: 18rpx; padding: 26rpx 22rpx 28rpx; }
-/* 独立成行版：移出日历卡，置于日历上方（order 介于待办1与日历3之间） */
-.ov-metrics-standalone { order: 2; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
+/* 独立成行版：移出日历卡。order 2→1（0716）：它是下方待办清单的筛选器（ovFilter），
+   必须在清单之前。原先只顾着「排在日历上方」，没注意同时也掉到了待办清单的下方。 */
+.ov-metrics-standalone { order: 1; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
 .ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; padding: 24rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
 .ov-metric:active { opacity: 0.8; }
 .ov-metric.on { box-shadow: inset 0 0 0 4rpx #D97706; }
 .ov-num { font-size: 50rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1; }
-.ov-label { font-size: 24rpx; color: var(--c-text-weak); font-weight: 600; }
+/* 24rpx→28rpx（12px→14px，0716）：开会 tab 已无一个低于 14px 的字，这两个 tab 原有 6~10 个 */
+.ov-label { font-size: 28rpx; color: var(--c-text-weak); font-weight: 600; }
 .plan-title.ov-title { font-size: 36rpx; font-weight: 500; }
 .ov-metric.warn { background: #FFF7ED; }
 .ov-metric.warn .ov-num { color: #D97706; }
@@ -3157,8 +3187,23 @@ onActivated(show)
    要害是它与 .yc-pair-months 的 gap(7rpx) 拉开倍数——原先 10 vs 7 差 1.5px，邻近原则等于没用上。 */
 .yc-period-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24rpx; padding: 16rpx 17rpx 14rpx; }
 /* 接待/培训：平铺 12 月宫格（4 列 3 行） */
-.yc-month-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10rpx; padding: 4rpx 17rpx 14rpx; }
-.yc-month-grid .yc-cell { min-height: 100rpx; }
+/* 图例（0716 用户定加回，且做大）。它在接待/培训是必需品而非装饰：宫格十二格里大半只有颜色、
+   没有文字，颜色成了唯一载体。做到 32rpx(16px) 字 + 20rpx(10px) 圆点——先前开会 tab 那版是
+   10px 字 + 6px 圆点，老人根本看不清，那正是它该被删的理由之一，不能在这儿重犯。
+   圆点取格子的「文字色」而非「底色」：底色是 #F0FAF4 这类近白的淡色，做成 10px 圆点等于隐形。 */
+.ov-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12rpx 30rpx; padding: 6rpx 20rpx 18rpx; color: var(--c-text-mid); font-size: 32rpx; font-weight: 500; }
+.ov-legend span { display: inline-flex; align-items: center; gap: 10rpx; line-height: 1.2; }
+.ov-lg-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; border-radius: 50%; }
+.ov-lg-dot.done { background: var(--c-success); }
+.ov-lg-dot.warn { background: #B27407; }
+.ov-lg-dot.overdue { background: #B02A1E; }
+.ov-lg-dot.future { background: #71829A; }
+/* 宫格做大（0716 用户定）：它默认收起、平时不占空间，展开就是给人细看的，没必要委屈 */
+.yc-month-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14rpx; padding: 4rpx 17rpx 20rpx; }
+.yc-month-grid .yc-cell { min-height: 136rpx; gap: 6rpx; }
+/* 状态字是格子里唯一的信息（22rpx→30rpx = 15px），月份只是坐标 —— 与开会 tab 同一取向 */
+.yc-month-grid .yc-m { font-size: 32rpx; }
+.yc-month-grid .yc-s { font-size: 30rpx; }
 .yc-action-card { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin: 12rpx 20rpx 2rpx; padding: 18rpx 18rpx 18rpx 20rpx; border-radius: 18rpx; background: #FFF7ED; border: 2rpx solid #FED7AA; box-shadow: 0 8rpx 20rpx rgba(217,119,6,0.1); cursor: pointer; }
 .yc-action-card:active { opacity: 0.82; }
 .yc-action-card.overdue { background: #FFF4F2; border-color: #F3C6C0; box-shadow: 0 8rpx 20rpx rgba(216,58,46,0.11); }
@@ -3240,7 +3285,9 @@ onActivated(show)
 .yc-list.plan-todo-card { margin: 0; padding: 12rpx 26rpx 18rpx; background: var(--c-bg-card); }
 .yc-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 28rpx; font-weight: 800; color: var(--c-text-strong); padding: 0 2rpx 8rpx; }
 .plan-todo-card .yc-list-head { font-size: 33rpx; font-weight: 700; padding-bottom: 0; }
-.yc-list-count { flex-shrink: 0; padding: 5rpx 15rpx; border-radius: 999rpx; background: #EAF6FF; color: #0284C7; font-size: 27rpx; font-weight: 800; }
+/* 蓝胶囊 #EAF6FF/#0284C7 → 中性灰（0716 色彩收敛）：这是页面上最后一块孤立蓝。
+   不用橙是因为它只是个计数，不该跟同卡里的橙色按钮抢注意力。 */
+.yc-list-count { flex-shrink: 0; padding: 5rpx 15rpx; border-radius: 999rpx; background: #EEF1F3; color: #52646B; font-size: 28rpx; font-weight: 700; }
 /* 待办标题吸睛：图标 + 有待办时徽章实心暖色并缓慢脉动光环 */
 .yc-head-title { display: inline-flex; align-items: center; min-width: 0; }
 .plan-todo-card .yc-list-count.active { background: var(--c-primary); color: #fff; animation: todoPulse 2.2s ease-in-out infinite; }
@@ -3300,7 +3347,7 @@ onActivated(show)
 .plan-todo-card .yc-item-sub { font-size: 28rpx; margin-top: 6rpx; }
 .yc-links { display: flex; justify-content: center; gap: 48rpx; padding: 18rpx 0 4rpx; font-size: 26rpx; font-weight: 600; color: var(--c-primary-dark); }
 .yc-links span:active { opacity: 0.6; }
-.plan-empty { text-align: center; color: var(--c-text-weak); font-size: 26rpx; padding: 24rpx 0 24rpx; }
+.plan-empty { text-align: center; color: var(--c-text-weak); font-size: 28rpx; padding: 24rpx 0 24rpx; }
 /* 日历下方反馈区：点选期次后就地展示（已开期记录 / 未到期提前准备）。记录行放宽有呼吸感 */
 /* 0716：下钻区内容（提示语/会议记录）两侧统一缩进1.5字符（45rpx@30rpx），不顶卡片边；虚线分隔仍全宽 */
 .yc-period-feedback { margin-top: 10rpx; border-top: 2rpx dashed #EFE7DA; padding: 8rpx 45rpx 8rpx; }
@@ -3333,6 +3380,11 @@ onActivated(show)
 .yc-year-label { min-width: 120rpx; text-align: center; font-size: 40rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1; }
 /* 0716：标题/图例/宫格三段间距放宽，呼吸感 */
 .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 18rpx 20rpx 12rpx; }
+/* 接待/培训：整条卡头即折叠开关（0716）。收起态下这张卡就只剩这一行，正是「放在底部不起眼处」的形态。 */
+.plan-head.foldable { cursor: pointer; padding: 22rpx 20rpx; }
+.plan-head.foldable:active { opacity: 0.7; }
+.ov-fold-chev { display: inline-flex; align-items: center; justify-content: center; width: 52rpx; height: 52rpx; color: var(--c-text-mid); font-size: 30rpx; line-height: 1; transition: transform 0.2s ease; }
+.ov-fold-chev.open { transform: rotate(180deg); }
 /* 概览（接待/培训）标题与卡片顶部再留出一点距离；仅 compact 态生效，不动开会年历 */
 .plan-stack.compact .plan-head { padding-top: 26rpx; }
 /* 概览卡与上方待办卡、下方各再拉开一点间距（仅 compact 态）*/
@@ -3342,7 +3394,8 @@ onActivated(show)
 .plan-year { padding: 4rpx 12rpx; border-radius: 999rpx; background: #EAF6FF; color: #0284C7; font-size: 22rpx; font-weight: 800; line-height: 1.2; }
 .plan-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; flex-shrink: 0; }
 .plan-tip { font-size: 24rpx; color: var(--c-text-weak); }
-.plan-tip.link { color: #0284C7; font-weight: 800; font-size: 25rpx; padding: 4rpx 6rpx; }
+/* 蓝 #0284C7 → 主色橙（0716 色彩收敛）：开会 tab 已零蓝，这里是橙色应用里最后的孤立蓝之一 */
+.plan-tip.link { color: var(--c-primary); font-weight: 700; font-size: 28rpx; padding: 4rpx 6rpx; }
 /* 时间轴：左侧 52rpx 轨道列（贯穿细线+节点圆点），右侧内容行。紧凑以免顶下方主按钮 */
 .plan-timeline { padding: 2rpx 26rpx 10rpx; }
 .tl-i { display: grid; grid-template-columns: 52rpx 1fr; gap: 18rpx; cursor: pointer; }
