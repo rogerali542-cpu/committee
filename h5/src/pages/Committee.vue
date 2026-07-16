@@ -210,33 +210,37 @@
               <span class="type-chip" :class="recForm.category === 'public_affairs' ? 'on' : ''" @click="recForm.category = 'public_affairs'">公共事务</span>
               <span class="type-chip" :class="recForm.category === 'neighbor' ? 'on' : ''" @click="recForm.category = 'neighbor'">邻里纠纷</span>
             </div>
+            <!-- 日期/时间改用发起会议同款选择器（0716 用户定）：原生 input 在微信里长相不一、
+                 老人也不会用系统滚轮；小日历+时分大按钮是已验证过的交互 -->
             <div class="form-row">
               <div class="form-group half">
                 <span class="form-label">接待日期 *</span>
-                <input type="date" class="picker-field" :value="recForm.date" @change="recForm.date = $event.target.value" />
+                <div class="picker-field" @click="openDatePicker('reception')">{{ recForm.date ? fmtPlanDate(recForm.date) : '选择日期' }}</div>
               </div>
               <div class="form-group half">
                 <span class="form-label">时间</span>
-                <input type="time" class="picker-field" :value="recForm.time" @change="recForm.time = $event.target.value" />
+                <div class="picker-field" @click="openTimePicker('reception')">{{ recForm.time || '选择时间' }}</div>
               </div>
             </div>
+            <!-- 占位灰字全部去除（0716 用户定）：老人会把幽灵字当成已经填好的内容 -->
             <div class="form-row">
               <div class="form-group half">
                 <span class="form-label">来访业主 *</span>
-                <input class="form-input" v-model="recForm.visitorName" placeholder="姓名" />
+                <input class="form-input" v-model="recForm.visitorName" />
               </div>
               <div class="form-group half">
                 <span class="form-label">房号</span>
-                <input class="form-input" v-model="recForm.room" placeholder="如 5号楼302" />
+                <input class="form-input" v-model="recForm.room" />
               </div>
             </div>
             <div class="form-group">
               <span class="form-label">接待人</span>
-              <input class="form-input" v-model="recForm.receiver" placeholder="如 张建国（主任）" />
+              <!-- 多选一（0716 用户定）：点开从委员名单里挑，不再手填 -->
+              <div class="picker-field" @click="pickReceiver">{{ recForm.receiver || '点击选择' }}</div>
             </div>
             <div class="form-group">
               <span class="form-label">诉求内容 *</span>
-              <textarea class="form-textarea" v-model="recForm.content" placeholder="简述业主反映的问题或建议"></textarea>
+              <textarea class="form-textarea" v-model="recForm.content"></textarea>
             </div>
             <div class="sheet-actions">
               <button class="btn btn-ghost" @click="recCreateOpen = false">取消</button>
@@ -638,7 +642,7 @@
     <div v-if="timePickerOpen" class="picker-pop-mask" @click="timePickerOpen = false">
       <div class="picker-pop" @click.stop>
         <div class="pop-close"><span class="close-btn" @click="timePickerOpen = false">×</span></div>
-        <div class="pp-head">会议时间</div>
+        <div class="pp-head">{{ pickerTarget === 'reception' ? '接待时间' : '会议时间' }}</div>
         <div class="tg-cur">{{ String(tpHour).padStart(2, '0') }}:{{ String(tpMinute).padStart(2, '0') }}</div>
         <div class="tg-label">时</div>
         <div class="tg-grid">
@@ -1168,10 +1172,13 @@ const planOverview = computed(() => {
   }
   if (planTab.value === 'learning') {
     const ls = calLearns.value || []
+    // 口径改嵌套（0716 用户指出）：待开 = 所有未开展（含逾期），逾期是它的子集单独再报——
+    // 原三桶互斥，把最该动手的逾期从「待开」里挖走，默认视图显示「待开 0 · 暂无需要处理」，
+    // 可实际欠着 3 场，报喜不报忧。逾期与待开动作相同（去开展），只是更急。
     return [
       { key: 'done', num: ls.filter(l => l.stage === 'ended').length, label: '已开展', tone: '' },
-      { key: 'todo', num: ls.filter(l => l.stage !== 'ended' && !isLearnOverdue(l)).length, label: '待开', tone: '' },
-      { key: 'overdue', num: ls.filter(isLearnOverdue).length, label: '过期未开', tone: 'danger' }
+      { key: 'todo', num: ls.filter(l => l.stage !== 'ended').length, label: '待开', tone: 'warn' },
+      { key: 'overdue', num: ls.filter(isLearnOverdue).length, label: '其中逾期', tone: 'danger' }
     ]
   }
   return []
@@ -1182,6 +1189,18 @@ const todoDetail = ref(null)
 // ⚠ 命名避开 createVisible/createForm —— 那俩是「发起会议」在用的，同名会串
 const recCreateOpen = ref(false)
 const canManageReception = ref(false)
+// 接待人多选一（0716 用户定：点开从委员名单里选，不再手填）。名单进弹窗后首次点击拉一次并缓存
+const committeeRoster = ref([])
+async function pickReceiver() {
+  if (!committeeRoster.value.length) {
+    try { committeeRoster.value = (await api.committeeMembers()) || [] } catch (e) { /* 下面按空处理 */ }
+  }
+  const items = committeeRoster.value.map(m => m.name + (m.role ? '（' + m.role + '）' : ''))
+  if (!items.length) { toast({ title: '没拿到委员名单，请稍后再试', icon: 'none' }); return }
+  const res = await showActionSheet({ title: '选择接待人', itemList: items })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  recForm.receiver = items[res.tapIndex]
+}
 const recForm = reactive({ date: '', time: '', visitorName: '', room: '', receiver: '', category: 'property', content: '' })
 
 function openReceptionCreate() {
@@ -1277,7 +1296,7 @@ const ovFilter = ref('pending')
 watch(planTab, (t) => { ovFilter.value = t === 'learning' ? 'todo' : 'pending' })
 const planListTitle = computed(() => {
   if (planTab.value === 'reception') return ovFilter.value === 'month' ? '本月接待' : (ovFilter.value === 'year' ? '年度接待' : '待跟进')
-  if (planTab.value === 'learning') return ovFilter.value === 'done' ? '已开展' : (ovFilter.value === 'overdue' ? '过期未开' : '待开')
+  if (planTab.value === 'learning') return ovFilter.value === 'done' ? '已开展' : (ovFilter.value === 'overdue' ? '逾期未开' : '待开')
   return '待办事项'
 })
 // 接待/培训列表：受概览筛选（ovFilter），按日期升序；每项点「查看」弹该条详情
@@ -1306,8 +1325,14 @@ const allPendingList = computed(() => {
     let ls
     if (ovFilter.value === 'done') ls = all.filter(l => l.stage === 'ended')
     else if (ovFilter.value === 'overdue') ls = all.filter(isLearnOverdue)
-    else ls = all.filter(l => l.stage !== 'ended' && !isLearnOverdue(l))
-    return ls.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))).map(l => {
+    // 「待开」= 所有未开展，含逾期（0716 口径改嵌套，与概览卡同步——原先这里也排除逾期，
+    // 默认视图会把最该动手的 3 场藏起来说「暂无需要处理」）
+    else ls = all.filter(l => l.stage !== 'ended')
+    // 排序与接待同规矩：急的在上——逾期置顶，组内按日期从早到晚
+    return ls.slice().sort((a, b) => {
+      const ao = isLearnOverdue(a), bo = isLearnOverdue(b)
+      return ao !== bo ? (ao ? -1 : 1) : String(a.date || '').localeCompare(String(b.date || ''))
+    }).map(l => {
       const late = isLearnOverdue(l)
       return {
         key: 'l' + l.id,
@@ -2636,9 +2661,15 @@ async function pickLocationOnMap() {
 }
 
 // 从"其他/地图选点"切回常用地点下拉
-// 日期选择器：点击字段任意位置弹出，年/月/日三列
-function openDatePicker() {
-  const parts = (createForm.meetingDate || todayStr()).split('-')
+// 日期/时间选择器由发起会议与接待登记共用（0716）：pickerTarget 决定读写哪个表单。
+// ⚠ 发起会议模板是裸调用 @click="openDatePicker"，Vue 会把 MouseEvent 当第一参传进来——
+// 所以判定只认字符串 'reception'，其余（含 Event 对象）一律当 meeting。
+const pickerTarget = ref('meeting')
+function _pickerDate() { return pickerTarget.value === 'reception' ? recForm.date : createForm.meetingDate }
+// 日期选择器：点击字段任意位置弹出，小日历点日即选
+function openDatePicker(target) {
+  pickerTarget.value = target === 'reception' ? 'reception' : 'meeting'
+  const parts = (_pickerDate() || todayStr()).split('-')
   dpYear.value = Number(parts[0]) || _nowYear
   dpMonth.value = Number(parts[1]) || 1
   dpDay.value = Number(parts[2]) || 1
@@ -2653,7 +2684,9 @@ function clampDpDay() {
   if (dpDay.value > n) dpDay.value = n
 }
 function confirmDate() {
-  createForm.meetingDate = dpYear.value + '-' + String(dpMonth.value).padStart(2, '0') + '-' + String(dpDay.value).padStart(2, '0')
+  const v = dpYear.value + '-' + String(dpMonth.value).padStart(2, '0') + '-' + String(dpDay.value).padStart(2, '0')
+  if (pickerTarget.value === 'reception') recForm.date = v
+  else createForm.meetingDate = v
   datePickerOpen.value = false
 }
 
@@ -2675,28 +2708,33 @@ function calNextMonth() {
 function calDateStr(day) {
   return dpYear.value + '-' + String(dpMonth.value).padStart(2, '0') + '-' + String(day).padStart(2, '0')
 }
-function isSelectedDay(day) { return createForm.meetingDate === calDateStr(day) }
+function isSelectedDay(day) { return _pickerDate() === calDateStr(day) }
 function isToday(day) { return todayStr() === calDateStr(day) }
 function pickCalDay(day) {
-  createForm.meetingDate = calDateStr(day)
+  if (pickerTarget.value === 'reception') recForm.date = calDateStr(day)
+  else createForm.meetingDate = calDateStr(day)
   datePickerOpen.value = false
 }
 
-// 时间选择器：常规小时（左）+ 分钟（右，每5分钟），点确定回填
-function openTimePicker() {
-  const parts = (createForm.meetingTime || '09:00').split(':')
+// 时间选择器：常规小时（左）+ 分钟（右），点选即生效；与日期选择器同走 pickerTarget
+function openTimePicker(target) {
+  pickerTarget.value = target === 'reception' ? 'reception' : 'meeting'
+  const cur = pickerTarget.value === 'reception' ? recForm.time : createForm.meetingTime
+  const parts = (cur || '09:00').split(':')
   tpHour.value = Math.min(20, Math.max(9, Number(parts[0]) || 9)) // 夹到 9—20 点
   tpMinute.value = (Math.round((Number(parts[1]) || 0) / 15) * 15) % 60
   timePickerOpen.value = true
   scrollPickerToSelected()
 }
 function confirmTime() {
-  createForm.meetingTime = String(tpHour.value).padStart(2, '0') + ':' + String(tpMinute.value).padStart(2, '0')
+  applyTime()
   timePickerOpen.value = false
 }
-// 大按钮点选：点即更新并实时写入会议时间（免"确定"那一步）
+// 大按钮点选：点即更新并实时写入（免"确定"那一步）
 function applyTime() {
-  createForm.meetingTime = String(tpHour.value).padStart(2, '0') + ':' + String(tpMinute.value).padStart(2, '0')
+  const v = String(tpHour.value).padStart(2, '0') + ':' + String(tpMinute.value).padStart(2, '0')
+  if (pickerTarget.value === 'reception') recForm.time = v
+  else createForm.meetingTime = v
 }
 function setTpHour(h) { tpHour.value = h; applyTime() }
 function setTpMinute(m) { tpMinute.value = m; applyTime() }
@@ -3093,7 +3131,7 @@ onActivated(show)
 .meet-collapsed { display: flex; align-items: center; gap: 12rpx; margin: 14rpx 24rpx; height: 64rpx; padding: 0 24rpx; box-sizing: border-box; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); cursor: pointer; }
 .meet-collapsed:active { background: #fafbfc; }
 .meet-collapsed .mc-ico { font-size: 30rpx; flex-shrink: 0; }
-.meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
+.meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 28rpx; font-weight: 700; color: var(--c-text-strong); }
 /* 展开/收起这对按钮同款（0716 用户定）：原先「点此查看」是橙裸文字、「收起」是灰胶囊，
    两套样式其实是同一个开关的两态，只该差箭头方向。统一成橙描边胶囊 ▾/▴。
    色用 --c-primary-dark(#A85800=5.17:1)而非 --c-primary(#C76A00=3.83:1)——后者做文字不达标。 */
@@ -3104,8 +3142,10 @@ onActivated(show)
   font-size: 28rpx; font-weight: 700; cursor: pointer;
 }
 .meet-collapsed .mc-act:active, .meet-collapse-chip:active { background: #FFF6EC; }
-/* 收起条要矮（0716 用户定）：条高被这颗胶囊撑着，压条必先压它。必须写在上面统一规则之后才压得住 */
-.meet-collapsed .mc-act { padding: 4rpx 18rpx; }
+/* 收起条要矮（0716 用户定）：条高被这颗胶囊撑着，压条必先压它。必须写在上面统一规则之后才压得住。
+   字 26rpx=13px 是用户点名的缩小（低于 14px 底线的又一处例外）；只缩这颗，
+   展开卡上的「收起 ▴」仍 28rpx——同款不同码，收起条 32px 高装不下大码。 */
+.meet-collapsed .mc-act { padding: 3rpx 14rpx; font-size: 26rpx; line-height: 1.2; }
 /* 收起 chip 放卡片右下角（右上角与状态徽标太挤） */
 .meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
@@ -3975,7 +4015,9 @@ onActivated(show)
 .rec-add-card:active { background: #FFE9CE; }
 .rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; line-height: 1; }
 .rac-title { font-size: 32rpx; font-weight: 700; color: var(--c-primary-dark); line-height: 1.2; }
-.rec-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
+/* z 50→150（0716 修）：底部 TabBar 是 z-index:100，50 会被它骑在头上、盖住「取消/确认登记」；
+   150 压过 TabBar，又低于日期/时间选择弹窗的 210——选择器要能开在本弹窗之上 */
+.rec-mask { position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
 .rec-sheet { width: 100%; max-height: 88vh; overflow: auto; background: #fff; border-radius: 24rpx 24rpx 0 0;
   padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
