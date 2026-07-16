@@ -3195,7 +3195,12 @@ onActivated(show)
 /* 25rpx→28rpx（12.5px→14px，0716）：「查看」是个要用手指点的按钮，字比正文还小最说不过去 */
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 116rpx; font-size: 28rpx; padding: 12rpx 18rpx; }
 .plan-stack.has-meeting .plan-title { font-size: 36rpx; }
-.plan-stack.has-meeting .yc-period-grid { gap: 20rpx; padding: 14rpx 14rpx 12rpx; }
+/* 有会时日历紧凑（0716 用户定：年历收一收、给会议卡让位并加大间距，保证卡完整露出）。
+   只压 has-meeting 态；无会时日历是主角，保持宽松版。 */
+.plan-stack.has-meeting .yc-period-grid { gap: 14rpx; padding: 10rpx 14rpx 8rpx; }
+.plan-stack.has-meeting .yc-cell.pair-cell { min-height: 92rpx; }
+.plan-stack.has-meeting .plan-calendar-card .plan-head { padding: 14rpx 20rpx 8rpx; }
+.plan-stack.has-meeting .yc-period-feedback { margin-top: 4rpx; padding: 4rpx 45rpx 6rpx; }
 .plan-stack.has-meeting .yc-cell { padding: 8rpx 0 7rpx; }
 .plan-stack.has-meeting .yc-cell.pair-cell .yc-m { font-size: 27rpx; }
 .plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 28rpx; }
@@ -3211,7 +3216,9 @@ onActivated(show)
 /* 开会 tab 且无进行中会议：日历上移当第一重点、待办下沉（0716 用户定）。
    仅此态对调；接待/培训(.compact)与有会议(.has-meeting)保持原顺序。 */
 .plan-stack:not(.compact) .plan-calendar-card { order: 2; }
-.plan-stack:not(.compact) .meet-card { order: 3; }
+/* margin-top 22rpx + 栈 gap 18rpx ≈ 20px：日历与会议卡拉开（0716 用户定），只动这一对，
+   不动全局 gap——tab栏↔日历的间距不该跟着变 */
+.plan-stack:not(.compact) .meet-card { order: 3; margin-top: 22rpx; }
 /* 待办卡与上方日历/会议卡拉开呼吸空隙（0716 用户定，间隔约为卡间 gap 的两倍） */
 .plan-stack:not(.compact) .plan-todo-card { order: 4; margin-top: 16rpx; }
 /* 会议卡挪进 plan-stack 后：横向靠容器 24rpx 边距、纵向靠容器 gap，自身边距清零防双重缩进 */
