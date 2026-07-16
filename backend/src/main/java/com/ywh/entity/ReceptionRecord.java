@@ -64,6 +64,16 @@ public class ReceptionRecord {
     @Column(name = "property_replied_at")
     private LocalDateTime propertyRepliedAt;
 
+    // 业委会向业主反馈诉求解决情况：真闭环——留正文+反馈人+时间，替代原 fedOwner 空开关
+    @Column(name = "owner_feedback", columnDefinition = "TEXT")
+    private String ownerFeedback;
+
+    @Column(name = "owner_fed_by", length = 30)
+    private String ownerFedBy;
+
+    @Column(name = "owner_fed_at")
+    private LocalDateTime ownerFedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

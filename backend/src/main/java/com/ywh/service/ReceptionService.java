@@ -85,6 +85,9 @@ public class ReceptionService {
             m.put("propertyReply", r.getPropertyReply());
             m.put("propertyRepliedBy", r.getPropertyRepliedBy());
             m.put("propertyRepliedAt", r.getPropertyRepliedAt() != null ? r.getPropertyRepliedAt().toString() : null);
+            m.put("ownerFeedback", r.getOwnerFeedback());
+            m.put("ownerFedBy", r.getOwnerFedBy());
+            m.put("ownerFedAt", r.getOwnerFedAt() != null ? r.getOwnerFedAt().toString() : null);
             return m;
         }).collect(Collectors.toList());
     }
@@ -244,6 +247,21 @@ public class ReceptionService {
                 .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
         if ("fedProperty".equals(field)) r.setFedProperty(!r.getFedProperty());
         else if ("fedOwner".equals(field)) r.setFedOwner(!r.getFedOwner());
+        recordRepo.save(r);
+    }
+
+    /** 业委会向业主反馈诉求解决情况：真闭环，留正文+反馈人+时间（替代原 fedOwner 空开关）。 */
+    @Transactional
+    public void ownerFeedback(Long id, String feedback) {
+        if (feedback == null || feedback.trim().isEmpty()) {
+            throw new IllegalArgumentException("请填写向业主反馈的内容");
+        }
+        ReceptionRecord r = recordRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
+        r.setOwnerFeedback(feedback.trim());
+        r.setOwnerFedBy(SecurityUtils.getCurrentRealName());
+        r.setOwnerFedAt(java.time.LocalDateTime.now());
+        r.setFedOwner(true); // isDone 仍以此为准
         recordRepo.save(r);
     }
 
