@@ -35,6 +35,15 @@
           </div>
         </div>
 
+        <!-- 登记：接待的入口动作，独立成大按钮（0716 用户定）。委员接待完来访，先用它把事情记进下面的
+             清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
+             原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
+        <div v-if="planTab === 'reception' && canManageReception" class="rec-add-card" @click="openReceptionCreate">
+          <span class="rac-ico">✚</span>
+          <div class="rac-title">登记来访接待</div>
+          <span class="rac-arrow">›</span>
+        </div>
+
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
       <div class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
@@ -42,18 +51,13 @@
              这两个字，他问起来一眼能指到这行。 -->
         <div class="plan-head" :class="{ foldable: planTab !== 'meeting' }"
              @click="planTab !== 'meeting' ? (ovGridFold = !ovGridFold) : null">
-          <!-- 开会 tab 标题「全年会议」（0716 定，多轮收敛：履职年历→全年开会情况→全年会议，去📅图标） -->
+          <!-- 开会 tab 标题＝「2026年」（0716 定，多轮收敛：履职年历→全年会议→年份本身当标题，
+               原右上角的年份标签删了）。年份切换箭头已摘，按年计算的能力全保留，恢复见 0e0d15f。 -->
           <div class="plan-title-wrap">
-            <span v-if="planTab === 'meeting'" class="plan-title">全年会议</span>
+            <span v-if="planTab === 'meeting'" class="plan-title">{{ viewYear }}年</span>
             <span v-else class="plan-title ov-title">{{ planTab === 'reception' ? '全年接待日历' : '全年培训日历' }}</span>
           </div>
           <div class="plan-actions">
-            <!-- 年份只读显示。切换箭头已摘（0716 用户定：先堵上这条路，以后有需要再做）——
-                 摘的只是入口，底下按年计算的能力（buildYearPlan / meetingPeriod(m, year) / inMonth(d, m, year)）
-                 全部保留，要恢复只需把箭头和 stepYear 加回来。原实现见 commit 0e0d15f。 -->
-            <span v-if="planTab === 'meeting'" class="yc-year-nav">
-              <span class="yc-year-label">{{ viewYear }}年</span>
-            </span>
             <span v-if="planTab === 'learning' && !ovGridFold" class="plan-tip link" @click.stop="goLearning()">查看全部 ›</span>
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
@@ -129,15 +133,17 @@
           <div v-if="planTab !== 'meeting' && !meetCardOpen" class="meet-collapsed" @click="meetCardOpen = true">
             <span class="mc-ico">📋</span>
             <span class="mc-text">{{ currents.length > 1 ? currents.length + ' 场会议进行中' : (currents[0].stage === 'ongoing' ? '会议进行中' : '会议待推进') }}</span>
-            <span class="mc-act">点此查看 ›</span>
+            <span class="mc-act">查看 ▾</span>
           </div>
           <!-- 展开态：会议 tab 恒展开；接待/培训点开后展开 -->
           <template v-if="planTab === 'meeting' || meetCardOpen">
             <div v-for="cur in currents" :key="cur.id" class="meet-card">
+              <!-- 卡结构（0716 用户定）：状态从右上角的小胶囊提为左侧标题（进行中的会议/未开始的会议/
+                   已结束的会议），会议名称降为第二行——原先「会议名 + 角落小状态」读不出这张卡是干嘛的 -->
               <div class="meet-head">
-                <span class="meet-title">{{ cur.title }}</span>
-                <span class="meet-status" :class="cur.stage">{{ cur.stageText }}</span>
+                <span class="meet-card-title" :class="cur.stage">{{ cur.stageText }}的会议</span>
               </div>
+              <div class="meet-title">{{ cur.title }}</div>
               <div class="meet-info">
                 <span class="meet-info-item">{{ cur.timeText }}</span>
                 <span class="meet-info-sep"></span>
@@ -166,7 +172,7 @@
 
               <div v-if="isChair" class="meet-del" @click="removeCurrent(cur)">删除会议</div>
               <div v-if="planTab !== 'meeting'" class="meet-collapse-foot">
-                <span class="meet-collapse-chip" @click="meetCardOpen = false">收起</span>
+                <span class="meet-collapse-chip" @click="meetCardOpen = false">收起 ▴</span>
               </div>
             </div>
           </template>
@@ -176,10 +182,10 @@
         <div class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
           <div class="yc-list-head">
             <span class="yc-head-title">{{ planListTitle }}</span>
-            <span v-if="planTab !== 'meeting'" class="yc-list-count" :class="{ active: planTodoList.length }">{{ planTodoList.length ? planTodoList.length + '项' : '无待办' }}</span>
-            <!-- 登记入口（0716）：原先长在已删的接待列表页上，那页一撤它就没家了。
-                 落在这里是因为这张卡就是接待 tab 唯一的清单，登记完的记录直接出现在下面。 -->
-            <span v-if="planTab === 'reception' && canManageReception" class="yc-head-add" @click.stop="openReceptionCreate">+ 登记</span>
+            <!-- 0 时整个不显示（0716）：下面 .plan-empty 已经写着「暂无需要处理的接待事项」，
+                 这里再挂个「无待办」是重复；而且筛到「本月接待」时标题是「本月接待」、计数却说
+                 「无待办」，两句话对不上。.active 绑定随实心橙+脉动一起删了。 -->
+            <span v-if="planTab !== 'meeting' && planTodoList.length" class="yc-list-count">{{ planTodoList.length }} 项</span>
           </div>
           <!-- 本期例会与其他期次同为普通条目（0716 用户定：原实心大按钮太重、与列表风格打架，已拆） -->
           <div v-if="!planTodoList.length" class="plan-empty">暂无需要处理的{{ planTabLabel }}事项</div>
@@ -1239,9 +1245,11 @@ const ovGridFold = ref(true)
 // ⚠ 留个底：绿档同时覆盖「有记录且都办完」和「那月压根没记录」（monthCells 里 rs.length 为 0 时
 // 走同一档），所以「已完成」对空月份略微 overclaim。用户已知情并选了它——「无待办」是双重否定，
 // 老人读着费劲，而两种情况对他的实际含义都是「这儿没你的事」。真要较真得改 monthCells 让空月份走中性档。
+// 措辞统一三个字（0716 用户定）：「还没到」是 future 的字面意思（monthCells 里判定就是 m > curMonth，
+// 单纯指那个月还没来），也是本 App 一贯的大白话口气（首页写的是「本期例会还没开」）。
 const ovLegend = computed(() => planTab.value === 'reception'
-  ? [{ k: 'warn', t: '待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '未到' }]
-  : [{ k: 'overdue', t: '逾期' }, { k: 'warn', t: '待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '未到' }])
+  ? [{ k: 'warn', t: '有待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '还没到' }]
+  : [{ k: 'overdue', t: '已逾期' }, { k: 'warn', t: '有待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '还没到' }])
 const calMonthTapped = ref(false)
 function onOvMonthTap(m) { calMonth.value = m; calMonthTapped.value = true }
 // 有进行中会议时，接待/培训 tab 默认把顶部会议卡收成小按钮；每次切 tab 都回到收起态
@@ -1283,7 +1291,9 @@ const allPendingList = computed(() => {
       key: 'r' + r.id,
       title: (r.visitorName || '来访') + ' 来访接待',
       sub: fmtPlanDate(r.date),
-      date: r.date, status: 'view', badge: '去处理', onTap: () => goReceptionDetail(r)
+      // 徽章必须看 r.done（0716 修）：原先硬编码「去处理」，年度累计里 5 条早已办结的
+      // 也挂着「去处理」——徽章在撒谎。已办结走绿色「已办结」，点进去看详情照旧。
+      date: r.date, status: r.done ? 'done' : 'view', badge: r.done ? '已办结' : '去处理', onTap: () => goReceptionDetail(r)
     }))
   }
   if (planTab.value === 'learning') {
@@ -3077,20 +3087,30 @@ onActivated(show)
 .meet-collapsed:active { background: #fafbfc; }
 .meet-collapsed .mc-ico { font-size: 34rpx; flex-shrink: 0; }
 .meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
-.meet-collapsed .mc-act { font-size: 28rpx; color: var(--c-primary-dark); font-weight: 600; flex-shrink: 0; }
-/* 展开态收起 chip：放卡片右下角（右上角与状态徽标太挤） */
+/* 展开/收起这对按钮同款（0716 用户定）：原先「点此查看」是橙裸文字、「收起」是灰胶囊，
+   两套样式其实是同一个开关的两态，只该差箭头方向。统一成橙描边胶囊 ▾/▴。
+   色用 --c-primary-dark(#A85800=5.17:1)而非 --c-primary(#C76A00=3.83:1)——后者做文字不达标。 */
+.meet-collapsed .mc-act, .meet-collapse-chip {
+  display: inline-flex; align-items: center; gap: 6rpx; flex-shrink: 0; white-space: nowrap;
+  padding: 8rpx 22rpx; border-radius: 999rpx; background: #fff;
+  border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
+  font-size: 28rpx; font-weight: 700; cursor: pointer;
+}
+.meet-collapsed .mc-act:active, .meet-collapse-chip:active { background: #FFF6EC; }
+/* 收起 chip 放卡片右下角（右上角与状态徽标太挤） */
 .meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
-.meet-collapse-chip { display: inline-flex; align-items: center; gap: 4rpx; padding: 6rpx 22rpx; background: #EDF0F3; border: 2rpx solid #DFE3E8; border-radius: 999rpx; font-size: 25rpx; color: #565C64; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.meet-collapse-chip:active { background: #E1E5EA; }
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
 .meet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
-.meet-title { flex: 1; min-width: 0; display: block; font-size: 33rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 0; line-height: 1.35; word-break: break-word; }
-.meet-status { flex-shrink: 0; margin-top: 4rpx; padding: 6rpx 14rpx; border-radius: 999rpx; font-size: 24rpx; font-weight: 700; line-height: 1.25; }
-.meet-status.preparing { color: #9A5A00; background: #FFF4E5; border: 2rpx solid #F2C786; }
-.meet-status.ongoing { color: #0F766E; background: #E7F6F3; border: 2rpx solid #B9E4DC; }
-.meet-status.ended { color: #5F6B7A; background: #EEF1F4; border: 2rpx solid #D9DEE5; }
-.meet-info { display: flex; align-items: center; gap: 14rpx; margin-top: 18rpx; padding: 16rpx 18rpx; border-radius: 16rpx; background: #F7F9FA; border: 2rpx solid #EEF1F3; }
-.meet-info-item { min-width: 0; font-size: 27rpx; color: var(--c-text-mid); line-height: 1.35; }
+/* 卡标题＝状态（0716 用户定，原右上角小胶囊撤销）。字重对齐待办卡头（32rpx/800）；
+   颜色沿用原三档语义色的文字色——teal 那档用户明确保过（「进行中」代表事情已被提醒并推进）。 */
+.meet-card-title { font-size: 32rpx; font-weight: 800; line-height: 1.2; }
+.meet-card-title.preparing { color: #9A5A00; }
+.meet-card-title.ongoing { color: #0F766E; }
+.meet-card-title.ended { color: #5F6B7A; }
+.meet-title { display: block; font-size: 33rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 12rpx; line-height: 1.35; word-break: break-word; }
+/* 灰底/边框撤销（0716 用户定）：时间地点退成素文字行，与全页「只给可点的东西上色块」一致 */
+.meet-info { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; padding: 0; }
+.meet-info-item { min-width: 0; font-size: 28rpx; color: var(--c-text-mid); line-height: 1.35; }
 .meet-info-item.location { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meet-info-sep { flex-shrink: 0; width: 2rpx; height: 28rpx; background: #DDE2E6; }
 .meet-meta { display: block; font-size: 30rpx; color: var(--c-text-mid); margin-top: 16rpx; }
@@ -3157,10 +3177,9 @@ onActivated(show)
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
 .plan-stack.has-meeting { gap: 18rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
-.plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 6rpx 0; }
+.plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 11rpx 0; }
 .plan-stack.has-meeting .yc-list.plan-todo-card { padding: 16rpx 24rpx 18rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 30rpx; padding-bottom: 4rpx; }
-.plan-stack.has-meeting .yc-list-count { font-size: 28rpx; padding: 4rpx 14rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 32rpx; padding-bottom: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
 /* 接待/培训列表行：不吃开会档的极限压缩，保留舒适行高 */
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain { padding: 20rpx 4rpx; }
@@ -3177,11 +3196,13 @@ onActivated(show)
 .plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 28rpx; }
 .plan-switch-card, .plan-calendar-card, .plan-todo-card { background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; overflow: hidden; }
 .plan-switch-card { padding: 10rpx; order: 0; }
-/* 首页重排：待办事项（主操作）紧跟分段栏，年历（总览）下沉。
-   order 1→2（0716）：接待/培训的三数字兼作本卡的筛选器，必须排在被筛的列表之前，
-   否则点数字后变化发生在 350px 开外的上方，老人只会觉得「点了没反应」。 */
-.plan-todo-card { margin: 0; order: 2; }
-.plan-calendar-card { padding-top: 0; order: 3; }
+/* 接待/培训(.compact)的纵向顺序：分段栏0 → 三数字1 → 登记大按钮2 → 待办清单3 → 全年日历4。
+   三数字必须排在清单之前：它兼作清单的筛选器（ovFilter），排在被筛列表下方 350px 处的话，
+   点了数字变化发生在视野之外，老人只会觉得「点了没反应」。
+   登记卡卡在三数字与清单之间 = 工作流顺序（看概览 → 登记新来访 → 处理清单）。
+   开会 tab 走下面的 :not(.compact) 覆盖，不受这里影响。 */
+.plan-todo-card { margin: 0; order: 3; }
+.plan-calendar-card { padding-top: 0; order: 4; }
 /* 开会 tab 且无进行中会议：日历上移当第一重点、待办下沉（0716 用户定）。
    仅此态对调；接待/培训(.compact)与有会议(.has-meeting)保持原顺序。 */
 .plan-stack:not(.compact) .plan-calendar-card { order: 2; }
@@ -3194,8 +3215,9 @@ onActivated(show)
 /* 履职年历：分类横栏 + 12月宫格 + 警示条 + 当月清单。
    前缀 yc-（year calendar）：cal- 已被下方日期选择弹窗的小日历占用，同名会被其 7 列网格覆盖 */
 .plan-tabs { display: flex; gap: 8rpx; margin: 0; background: #F2F6F7; border-radius: 16rpx; padding: 5rpx; }
-/* 未选中 500 / 选中 800（0716）：原先未选中也是 700，跟选中的 800 只差一档，等于没差。 */
-.plan-tab { flex: 1; text-align: center; padding: 8rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
+/* 未选中 500 / 选中 800（0716）：原先未选中也是 700，跟选中的 800 只差一档，等于没差。
+   纵向 padding 8→14rpx（0716 用户定：tab 栏太矮，整体加高约 15%）。 */
+.plan-tab { flex: 1; text-align: center; padding: 14rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
 .plan-tab.active { background: #D97706; color: #fff; font-weight: 800; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
 .plan-tab:active { opacity: 0.75; }
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
@@ -3354,19 +3376,20 @@ onActivated(show)
 /* 0716：整张卡的淡黄底/黄边/橙阴影撤销（满屏淡黄的真正来源），继承基础白卡样式，与日历卡统一 */
 .yc-list.plan-todo-card { margin: 0; padding: 12rpx 26rpx 18rpx; background: var(--c-bg-card); }
 .yc-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 28rpx; font-weight: 800; color: var(--c-text-strong); padding: 0 2rpx 8rpx; }
-.plan-todo-card .yc-list-head { font-size: 33rpx; font-weight: 700; padding-bottom: 0; }
-/* 蓝胶囊 #EAF6FF/#0284C7 → 中性灰（0716 色彩收敛）：这是页面上最后一块孤立蓝。
-   不用橙是因为它只是个计数，不该跟同卡里的橙色按钮抢注意力。 */
-.yc-list-count { flex-shrink: 0; padding: 5rpx 15rpx; border-radius: 999rpx; background: #EEF1F3; color: #52646B; font-size: 28rpx; font-weight: 700; }
-/* 待办标题吸睛：图标 + 有待办时徽章实心暖色并缓慢脉动光环 */
+/* 卡标题加粗显眼（0716 用户定）：行内文本让位后，标题是这张卡唯一该重的东西 */
+.plan-todo-card .yc-list-head { font-size: 36rpx; font-weight: 800; padding-bottom: 0; }
+/* 0716：胶囊撤销，退成一句素文字。
+   调研 Material 的判据：badge 是「叠在父元素上、标注导航项/图标」的通知符号，而这个是跟标题
+   并排的普通计数，结构上就不是 badge；且「只有当精确数量会驱动下一步动作时才用数字」——
+   委员是一条条点着处理的，是 4 是 5 不改变他做什么。卡片标题已写着「待跟进」、下面就摆着 4 行，
+   这个数字不增加信息，却穿着最抢眼的衣服。Material 原话：什么都挂徽章，就没有徽章是重要的。 */
+.yc-list-count { flex-shrink: 0; padding: 0; background: none; color: var(--c-text-weak);
+  font-size: 28rpx; font-weight: 500; }
 .yc-head-title { display: inline-flex; align-items: center; min-width: 0; }
-.plan-todo-card .yc-list-count.active { background: var(--c-primary); color: #fff; animation: todoPulse 2.2s ease-in-out infinite; }
-@keyframes todoPulse {
-  0% { box-shadow: 0 0 0 0 rgba(199,106,0,0.42); }
-  70% { box-shadow: 0 0 0 18rpx rgba(199,106,0,0); }
-  100% { box-shadow: 0 0 0 0 rgba(199,106,0,0); }
-}
-@media (prefers-reduced-motion: reduce) { .plan-todo-card .yc-list-count.active { animation: none; } }
+/* .yc-list-count.active（实心橙 + todoPulse 无限脉动光环）已删（0716）：
+   一个不能点、也不表示「有新东西」的计数，在那儿一直闪——正是 Material 说的通知疲劳。
+   而且今天一整天在做的就是把呼吸动画从待办上摘掉（有会时 plan-badge 已 animation:none），
+   这里却还留着一个。要提醒「有 4 件事」，靠的是卡标题和下面那 4 行，不是让数字发光。 */
 .yc-item { display: flex; align-items: center; gap: 14rpx; padding: 13rpx 4rpx; border-top: 2rpx solid #EEF1F3; cursor: pointer; }
 .plan-todo-card .yc-item { gap: 16rpx; padding: 6rpx 4rpx; }
 .plan-todo-card .yc-item.current,
@@ -3379,11 +3402,18 @@ onActivated(show)
 /* 接待/培训待办：条数多，用轻列表（细分隔线，不套会议那种强调橙块），标题弱化、副标题单行省略、按钮收小，避免堆叠拥挤 */
 .plan-todo-card .yc-item.todo-plain { padding: 30rpx 4rpx; }
 .plan-todo-card .yc-item.todo-plain:first-of-type { border-top: none; }
-.plan-todo-card .yc-item.todo-plain .yc-item-title { font-weight: 500; }
+/* 行文本 500→400、日期 28→26rpx 且再淡一档（0716 用户定）：标题重、行轻、日期最轻的三级层次。
+   只动 todo-plain（接待/培训行），开会 tab 的「第N期例会」仍是 500 不受影响。
+   ⚠ 日期 26rpx=13px，破了今天定的 14px 下限——它是行内第三级的辅助信息、且用户点名要缩，
+   真机测过要是看不清再回 28rpx。 */
+.plan-todo-card .yc-item.todo-plain .yc-item-title { font-weight: 400; }
+.plan-todo-card .yc-item.todo-plain .yc-item-sub { font-size: 26rpx; color: #87929D; }
 .plan-todo-card .yc-item.todo-plain .yc-item-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 124rpx; font-size: 29rpx; padding: 15rpx 20rpx; }
 /* 「查看」入口：不是实心操作按钮，而是浅橙描边+箭头，表示「点进去看详情」（跟进选项在详情页里） */
-.plan-todo-card .yc-item.todo-plain .plan-badge.view { background: #fff; color: #C2410C; border: 2rpx solid #FED7AA; font-weight: 700; box-shadow: none; }
+/* 描边 #FED7AA(1.35:1) → var(--c-primary)(3.63:1)：与「去通知」同一个病同一个方子——
+   描边隐形时按钮只剩一行橙字，尤其现在列表里混着「已办结」灰绿标签，可点的必须一眼是按钮 */
+.plan-todo-card .yc-item.todo-plain .plan-badge.view { background: #fff; color: #C2410C; border: 2rpx solid var(--c-primary); font-weight: 700; box-shadow: none; }
 .plan-todo-card .yc-item.todo-plain .plan-badge.view::after { content: '›'; margin-left: 6rpx; }
 /* 培训过期项：列表里加红左条，一眼看出「过期未开」 */
 .plan-todo-card .yc-item.todo-plain.todo-overdue { border-left: 6rpx solid #D83A2E; padding-left: 16rpx; }
@@ -3436,18 +3466,12 @@ onActivated(show)
 .yc-period-feedback .yc-item-sub { font-size: 26rpx; margin-top: 8rpx; line-height: 1.4; }
 .yc-period-feedback .plan-badge { font-size: 26rpx; padding: 10rpx 20rpx; }
 /* 「查看公示」小按钮：白底橙描边，带 › 引导 */
-.yc-period-feedback .plan-badge.ypf-view { background: #fff; color: #C2410C; border: 2rpx solid #FED7AA; font-weight: 700; box-shadow: none; }
+.yc-period-feedback .plan-badge.ypf-view { background: #fff; color: #C2410C; border: 2rpx solid var(--c-primary); font-weight: 700; box-shadow: none; }
 .yc-period-feedback .plan-badge.ypf-view::after { content: '›'; margin-left: 6rpx; }
 /* 待办卡定位高亮：滚动到位后闪两下橙色提示 */
 .plan-todo-card.flash { animation: todoFlash 0.9s ease 2; }
 @keyframes todoFlash { 50% { background: #FFF1DC; box-shadow: 0 0 0 4rpx rgba(217,119,6,0.35); } }
-/* 履职年历年份切换箭头（0716 用户定） */
-.yc-year-nav { display: inline-flex; align-items: center; gap: 16rpx; }
-/* 裸箭头无方框（0716 用户定）；宽高保留=点击热区不缩水 */
-/* 年份与标题同字号；行高收 1 让盒子贴字形，flex 居中即视觉垂直居中（0716 用户定：要居中不要基线齐） */
-/* 800 → 600（0716）：箭头摘掉后它就是个只读标签了，不该再和卡标题「全年会议」一样重。
-   原先的 800 是给可点控件当锚点用的，入口没了，重量也该跟着退。 */
-.yc-year-label { min-width: 120rpx; text-align: center; font-size: 40rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1; }
+/* .yc-year-nav / .yc-year-label 已删（0716）：「2026年」升为卡标题走 .plan-title，右上角年份标签撤销 */
 /* 0716：标题/图例/宫格三段间距放宽，呼吸感 */
 .plan-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 18rpx 20rpx 12rpx; }
 /* 接待/培训：整条卡头即折叠开关（0716）。收起态下这张卡就只剩这一行，正是「放在底部不起眼处」的形态。 */
@@ -3926,8 +3950,17 @@ onActivated(show)
 /* ── 接待登记（0716 从已删的接待列表页搬来）──
    刻意不叫 .modal-mask/.form-sheet：本页的 .modal-mask 是全屏白底面板（发起会议用），
    跟接待要的「半透明遮罩 + 底部抽屉」是两回事，同名会串。 */
-.yc-head-add { margin-left: auto; flex-shrink: 0; padding: 8rpx 20rpx; border-radius: 999rpx;
-  border: 2rpx solid var(--c-primary); color: var(--c-primary); font-size: 27rpx; font-weight: 700; }
+/* 登记大按钮（0716 用户定：从待办卡头的小 chip 拉出来独立成卡；随后压到约七成高、副标题行删掉）。
+   用实心橙 --c-primary-dark：白字 5.17:1 达标，而 --c-primary(#C76A00) 白字只有 3.83:1。
+   高度底线 44px 点按热区（适老），压到 ~50px 仍留有余量。 */
+.rec-add-card { order: 2; display: flex; align-items: center; gap: 16rpx; box-sizing: border-box;
+  padding: 24rpx 26rpx; border-radius: 22rpx; background: var(--c-primary-dark);
+  box-shadow: 0 10rpx 26rpx rgba(168,88,0,0.26); cursor: pointer; }
+.rec-add-card:active { opacity: 0.85; }
+.rac-ico { flex-shrink: 0; width: 52rpx; height: 52rpx; border-radius: 50%; background: rgba(255,255,255,0.22);
+  color: #fff; font-size: 30rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.rac-title { flex: 1; min-width: 0; font-size: 32rpx; font-weight: 700; color: #fff; line-height: 1.2; }
+.rac-arrow { flex-shrink: 0; font-size: 36rpx; color: rgba(255,255,255,0.75); line-height: 1; }
 .rec-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
 .rec-sheet { width: 100%; max-height: 88vh; overflow: auto; background: #fff; border-radius: 24rpx 24rpx 0 0;
   padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
