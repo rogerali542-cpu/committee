@@ -1260,7 +1260,8 @@ const calMonthDrill = computed(() => {
   const m = calMonth.value
   if (planTab.value === 'reception') {
     const items = (calRecs.value || []).filter(r => inMonth(r.date, m))
-      .slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+      .slice().sort((a, b) =>
+        a.done !== b.done ? (a.done ? 1 : -1) : String(a.date || '').localeCompare(String(b.date || '')))   // 与待办清单同规则：未处理在上
       .map(r => ({ key: 'cr' + r.id, title: (r.visitorName || '来访') + ' 来访接待', sub: fmtPlanDate(r.date) + (r.done ? ' · 已办结' : ' · 待跟进'), onTap: () => goReceptionDetail(r) }))
     return { title: m + '月接待（' + items.length + '）', items }
   }
@@ -1287,7 +1288,11 @@ const allPendingList = computed(() => {
     if (ovFilter.value === 'month') recs = all.filter(r => inMonth(r.date, curMonth))
     else if (ovFilter.value === 'year') recs = all.filter(r => { const p = String(r.date || '').split('-'); return Number(p[0]) === curYear })
     else recs = all.filter(r => !r.done)
-    return recs.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))).map(r => ({
+    // 排序（0716 用户定）：未处理在上、已办结沉底——这是工作清单不是台账，先回答「还有什么没办」。
+    // 组内保留时间序（从早到晚）：挂得最久的未处理排最上。生效于本月/年度两个混合视图。
+    return recs.slice().sort((a, b) =>
+      a.done !== b.done ? (a.done ? 1 : -1) : String(a.date || '').localeCompare(String(b.date || ''))
+    ).map(r => ({
       key: 'r' + r.id,
       title: (r.visitorName || '来访') + ' 来访接待',
       sub: fmtPlanDate(r.date),
@@ -3101,12 +3106,12 @@ onActivated(show)
 .meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
 .meet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
-/* 卡标题＝状态（0716 用户定，原右上角小胶囊撤销）。字重对齐待办卡头（32rpx/800）；
-   颜色沿用原三档语义色的文字色——teal 那档用户明确保过（「进行中」代表事情已被提醒并推进）。 */
-.meet-card-title { font-size: 32rpx; font-weight: 800; line-height: 1.2; }
-.meet-card-title.preparing { color: #9A5A00; }
-.meet-card-title.ongoing { color: #0F766E; }
-.meet-card-title.ended { color: #5F6B7A; }
+/* 卡标题＝状态（0716 用户定）。标题字号（32rpx/800）+ 胶囊底（0716 追加：绿色胶囊背景）——
+   三档同款胶囊、各自语义色，只给「进行中」穿另两档裸着会不一致。teal 档用户明确保过。 */
+.meet-card-title { display: inline-flex; align-items: center; font-size: 32rpx; font-weight: 800; line-height: 1.2; padding: 8rpx 24rpx; border-radius: 999rpx; }
+.meet-card-title.preparing { color: #9A5A00; background: #FFF4E5; border: 2rpx solid #F2C786; }
+.meet-card-title.ongoing { color: #0F766E; background: #E7F6F3; border: 2rpx solid #B9E4DC; }
+.meet-card-title.ended { color: #5F6B7A; background: #EEF1F4; border: 2rpx solid #D9DEE5; }
 .meet-title { display: block; font-size: 33rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 12rpx; line-height: 1.35; word-break: break-word; }
 /* 灰底/边框撤销（0716 用户定）：时间地点退成素文字行，与全页「只给可点的东西上色块」一致 */
 .meet-info { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; padding: 0; }
