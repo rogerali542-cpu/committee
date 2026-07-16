@@ -40,8 +40,7 @@
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
         <div v-if="planTab === 'reception' && canManageReception" class="rec-add-card" @click="openReceptionCreate">
           <span class="rac-ico">✚</span>
-          <div class="rac-title">登记来访接待</div>
-          <span class="rac-arrow">›</span>
+          <span class="rac-title">登记接待</span>
         </div>
 
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
@@ -3088,9 +3087,10 @@ onActivated(show)
 /* 当前会议主卡片 */
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* 接待/培训 tab 下会议卡的收起态小按钮 */
-.meet-collapsed { display: flex; align-items: center; gap: 12rpx; margin: 14rpx 24rpx; padding: 16rpx 24rpx; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); cursor: pointer; }
+/* 纵向 padding 16→10rpx（0716 用户定：这条要矮一点——它只是个入口提示，不该和内容卡一样占高） */
+.meet-collapsed { display: flex; align-items: center; gap: 12rpx; margin: 14rpx 24rpx; padding: 10rpx 24rpx; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); cursor: pointer; }
 .meet-collapsed:active { background: #fafbfc; }
-.meet-collapsed .mc-ico { font-size: 34rpx; flex-shrink: 0; }
+.meet-collapsed .mc-ico { font-size: 30rpx; flex-shrink: 0; }
 .meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
 /* 展开/收起这对按钮同款（0716 用户定）：原先「点此查看」是橙裸文字、「收起」是灰胶囊，
    两套样式其实是同一个开关的两态，只该差箭头方向。统一成橙描边胶囊 ▾/▴。
@@ -3102,6 +3102,8 @@ onActivated(show)
   font-size: 28rpx; font-weight: 700; cursor: pointer;
 }
 .meet-collapsed .mc-act:active, .meet-collapse-chip:active { background: #FFF6EC; }
+/* 收起条要矮（0716 用户定）：条高被这颗胶囊撑着，压条必先压它。必须写在上面统一规则之后才压得住 */
+.meet-collapsed .mc-act { padding: 4rpx 18rpx; }
 /* 收起 chip 放卡片右下角（右上角与状态徽标太挤） */
 .meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
@@ -3182,7 +3184,7 @@ onActivated(show)
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
 .plan-stack.has-meeting { gap: 18rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
-.plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 11rpx 0; }
+.plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 15rpx 0; }
 .plan-stack.has-meeting .yc-list.plan-todo-card { padding: 16rpx 24rpx 18rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 32rpx; padding-bottom: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
@@ -3229,7 +3231,7 @@ onActivated(show)
 .plan-tabs { display: flex; gap: 8rpx; margin: 0; background: #F2F6F7; border-radius: 16rpx; padding: 5rpx; }
 /* 未选中 500 / 选中 800（0716）：原先未选中也是 700，跟选中的 800 只差一档，等于没差。
    纵向 padding 8→14rpx（0716 用户定：tab 栏太矮，整体加高约 15%）。 */
-.plan-tab { flex: 1; text-align: center; padding: 14rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
+.plan-tab { flex: 1; text-align: center; padding: 18rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
 .plan-tab.active { background: #D97706; color: #fff; font-weight: 800; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
 .plan-tab:active { opacity: 0.75; }
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
@@ -3243,7 +3245,8 @@ onActivated(show)
 .ov-num { font-size: 50rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1; }
 /* 24rpx→28rpx（12px→14px，0716）：开会 tab 已无一个低于 14px 的字，这两个 tab 原有 6~10 个 */
 .ov-label { font-size: 28rpx; color: var(--c-text-weak); font-weight: 600; }
-.plan-title.ov-title { font-size: 36rpx; font-weight: 500; }
+/* 36→32rpx（0716 用户定：小一号）。has-meeting 那条 .plan-title 36rpx 特异性更高会反杀，补一条压住 */
+.plan-title.ov-title, .plan-stack.has-meeting .plan-title.ov-title { font-size: 32rpx; font-weight: 500; }
 .ov-metric.warn { background: #FFF7ED; }
 .ov-metric.warn .ov-num { color: #D97706; }
 .ov-metric.warn .ov-label { color: #B45309; }
@@ -3962,17 +3965,14 @@ onActivated(show)
 /* ── 接待登记（0716 从已删的接待列表页搬来）──
    刻意不叫 .modal-mask/.form-sheet：本页的 .modal-mask 是全屏白底面板（发起会议用），
    跟接待要的「半透明遮罩 + 底部抽屉」是两回事，同名会串。 */
-/* 登记大按钮（0716 用户定：从待办卡头的小 chip 拉出来独立成卡；随后压到约七成高、副标题行删掉）。
-   用实心橙 --c-primary-dark：白字 5.17:1 达标，而 --c-primary(#C76A00) 白字只有 3.83:1。
-   高度底线 44px 点按热区（适老），压到 ~50px 仍留有余量。 */
-.rec-add-card { order: 2; display: flex; align-items: center; gap: 16rpx; box-sizing: border-box;
-  padding: 24rpx 26rpx; border-radius: 22rpx; background: var(--c-primary-dark);
-  box-shadow: 0 10rpx 26rpx rgba(168,88,0,0.26); cursor: pointer; }
-.rec-add-card:active { opacity: 0.85; }
-.rac-ico { flex-shrink: 0; width: 52rpx; height: 52rpx; border-radius: 50%; background: rgba(255,255,255,0.22);
-  color: #fff; font-size: 30rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-.rac-title { flex: 1; min-width: 0; font-size: 32rpx; font-weight: 700; color: #fff; line-height: 1.2; }
-.rac-arrow { flex-shrink: 0; font-size: 36rpx; color: rgba(255,255,255,0.75); line-height: 1; }
+/* 登记按钮（0716 用户选方案 A：浅橙填充 tinted，中强调）。演进：实心深橙大卡 → 压七成删副标题 →
+   浅橙底 #FFF3E5 + 深橙字 #A85800、内容居中、去箭头、平底无阴影。与待办按钮的 tinted 降级态同族。
+   高度 92rpx=46px，仍在 44px 适老热区之上。 */
+.rec-add-card { order: 2; display: flex; align-items: center; justify-content: center; gap: 12rpx;
+  box-sizing: border-box; height: 92rpx; border-radius: 22rpx; background: #FFF3E5; cursor: pointer; }
+.rec-add-card:active { background: #FFE9CE; }
+.rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; line-height: 1; }
+.rac-title { font-size: 32rpx; font-weight: 700; color: var(--c-primary-dark); line-height: 1.2; }
 .rec-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
 .rec-sheet { width: 100%; max-height: 88vh; overflow: auto; background: #fff; border-radius: 24rpx 24rpx 0 0;
   padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
