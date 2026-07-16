@@ -46,7 +46,10 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
         if (!receptionRepo.findByCommunityIdOrderByDateDescTimeDesc(c.getId()).isEmpty()) {
             return; // 已有接待记录，跳过
         }
-        // 1) 物业类，待派单（未办结）
+        // 0716：办结 = 填了处理结果（resolution 非空），propertyStatus 状态机已随内部派单流下线。
+        // 下面 3 条依旧是「2 条待跟进 + 1 条已办结」，只是判定换成了 resolution。
+        // fedProperty/fedOwner 是废弃字段，恒 false，仅为满足库里 NOT NULL 约束。
+        // 1) 物业类，待跟进（可在处理页派发外部工单）
         receptionRepo.save(ReceptionRecord.builder()
                 .community(c)
                 .date(LocalDate.parse("2026-06-26")).time(LocalTime.parse("15:30"))
@@ -54,7 +57,6 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
                 .category(ReceptionCategory.property)
                 .content("高层下午用水高峰水压不足，经常断水。")
                 .resolution("")
-                .propertyStatus("pending_dispatch")
                 .fedProperty(false).fedOwner(false)
                 .build());
         // 2) 公共事务，待办结
@@ -74,8 +76,8 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
                 .visitorName("吴强").room("3号楼1602").receiver("陈志远（委员）")
                 .category(ReceptionCategory.neighbor)
                 .content("楼道长期堆放杂物，影响通行和消防安全。")
-                .resolution("已张贴清理告示并清运，提醒业主勿占用公共区域。")
-                .fedProperty(false).fedOwner(true)
+                .resolution("已张贴清理告示并清运，提醒业主勿占用公共区域。")   // ← 有正文即已办结
+                .fedProperty(false).fedOwner(false)
                 .build());
         log.info("[ReceptionLearningSeeder] 已为小区 {} (id={}) 预置 3 条示例接待记录", c.getName(), c.getId());
     }

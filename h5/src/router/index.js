@@ -23,13 +23,16 @@ const routes = [
   // 其余页
   { path: '/my-meeting', component: () => import('@/pages/MyMeeting.vue'), meta: { title: '我的会议' } },
   { path: '/meeting-live-quick', component: () => import('@/pages/MeetingLiveQuick.vue'), meta: { title: '会议进行' } },
-  { path: '/reception', component: () => import('@/pages/Reception.vue'), meta: { title: '接待' } },
+  // 接待 0716 重做（方案 A）：原 /reception 列表页已删——首页接待 tab 本来就有清单，
+  // 点进去又是一个清单纯属重复。现在首页点某件 → 直接进这条的处理页。原页面见 commit 6745a12。
+  { path: '/reception-detail', component: () => import('@/pages/ReceptionDetail.vue'), meta: { title: '接待处理' } },
+  { path: '/reception', redirect: '/main' },
   { path: '/learning', component: () => import('@/pages/Learning.vue'), meta: { title: '学习' } },
   { path: '/learning-detail', component: () => import('@/pages/LearningDetail.vue'), meta: { title: '学习详情' } },
   { path: '/notifications', component: () => import('@/pages/Notifications.vue'), meta: { title: '通知' } },
   { path: '/todo', component: () => import('@/pages/Todo.vue'), meta: { title: '待办' } },
   { path: '/library', component: () => import('@/pages/Library.vue'), meta: { title: '资料库' } },
-  { path: '/property-tasks', component: () => import('@/pages/PropertyTasks.vue'), meta: { title: '物业任务' } },
+  // 物业侧工作台 0716 随内部派单流下线：物业以后只在外部工单系统里干活。见 commit 6745a12。
   { path: '/archive-detail', component: () => import('@/pages/ArchiveDetail.vue'), meta: { title: '归档详情' } },
   { path: '/admin', component: () => import('@/pages/Admin.vue'), meta: { title: '管理后台' } },
   { path: '/nav-stats', component: () => import('@/pages/NavStats.vue'), meta: { title: '软路由诊断' } },

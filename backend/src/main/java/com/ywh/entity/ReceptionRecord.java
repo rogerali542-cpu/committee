@@ -45,34 +45,26 @@ public class ReceptionRecord {
     @Column(columnDefinition = "TEXT")
     private String resolution;
 
+    // ⚠ 废弃字段，恒 false，业务逻辑不再读它俩（0716 内部派单流下线）。
+    // 之所以不删：这两列在库里是 NOT NULL 无默认值，而本项目 Flyway 是关的、靠 ddl-auto:update 维护 schema，
+    // 而 update 只加列不删列。删掉字段 → 列还在且 NOT NULL → 新增接待记录直接 SQL 报错。
+    // 要真正清掉，得手工 ALTER TABLE 后再删这两行。
     @Column(name = "fed_property", nullable = false)
     private Boolean fedProperty;
 
     @Column(name = "fed_owner", nullable = false)
     private Boolean fedOwner;
 
-    // 物业处理工单（仅物业类）：pending_dispatch / dispatched / replied
-    @Column(name = "property_status", length = 20)
-    private String propertyStatus;
+    // ── 外部工单（0716）：派给「社区智能运维协同平台」后回填，照 MeetingTodo 的同名三字段 ──
+    // externalTicketNo 由本系统生成（YWH-RECEPTION-{id}）并用于幂等；ticketNo 是对方系统的单号。
+    @Column(name = "external_ticket_no", length = 128)
+    private String externalTicketNo;
 
-    @Column(name = "property_reply", columnDefinition = "TEXT")
-    private String propertyReply;
+    @Column(name = "ticket_no", length = 128)
+    private String ticketNo;
 
-    @Column(name = "property_replied_by", length = 30)
-    private String propertyRepliedBy;
-
-    @Column(name = "property_replied_at")
-    private LocalDateTime propertyRepliedAt;
-
-    // 业委会向业主反馈诉求解决情况：真闭环——留正文+反馈人+时间，替代原 fedOwner 空开关
-    @Column(name = "owner_feedback", columnDefinition = "TEXT")
-    private String ownerFeedback;
-
-    @Column(name = "owner_fed_by", length = 30)
-    private String ownerFedBy;
-
-    @Column(name = "owner_fed_at")
-    private LocalDateTime ownerFedAt;
+    @Column(name = "ticket_pushed_at")
+    private LocalDateTime ticketPushedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

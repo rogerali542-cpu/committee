@@ -80,14 +80,10 @@ function openMeeting(item) {
     navigateTo('/pages/committee-detail/committee-detail?id=' + meetingId + '&fromNotice=1')
     return
   }
-  // 接待派单/回复类通知：无 meetingId，按角色跳到对应接待入口
-  const activeRole = getStorage('activeRole')
-  const role = activeRole && activeRole.role ? activeRole.role : ''
-  if (role === '物业') {
-    navigateTo('/pages/property-tasks/property-tasks')
-  } else {
-    navigateTo('/pages/reception/reception')
-  }
+  // 兜底：无 meetingId 时回首页。
+  // 原先这里按角色跳接待页/物业工作台，但两页都已随 0716 接待重做删除；
+  // 且这个分支实际不可达——NotificationController.toNotification 恒设 meetingId，上面就 return 了。
+  navigateTo('/pages/main/main')
 }
 
 async function markRead(item) {

@@ -177,6 +177,9 @@
           <div class="yc-list-head">
             <span class="yc-head-title">{{ planListTitle }}</span>
             <span v-if="planTab !== 'meeting'" class="yc-list-count" :class="{ active: planTodoList.length }">{{ planTodoList.length ? planTodoList.length + '项' : '无待办' }}</span>
+            <!-- 登记入口（0716）：原先长在已删的接待列表页上，那页一撤它就没家了。
+                 落在这里是因为这张卡就是接待 tab 唯一的清单，登记完的记录直接出现在下面。 -->
+            <span v-if="planTab === 'reception' && canManageReception" class="yc-head-add" @click.stop="openReceptionCreate">+ 登记</span>
           </div>
           <!-- 本期例会与其他期次同为普通条目（0716 用户定：原实心大按钮太重、与列表风格打架，已拆） -->
           <div v-if="!planTodoList.length" class="plan-empty">暂无需要处理的{{ planTabLabel }}事项</div>
@@ -186,6 +189,54 @@
               <div v-if="it.sub" class="yc-item-sub">{{ it.sub }}</div>
             </div>
             <span class="plan-badge" :class="it.status">{{ it.badge }}</span>
+          </div>
+        </div>
+
+        <!-- 接待登记弹窗（0716 从已删的接待列表页搬来，字段与校验照旧） -->
+        <div v-if="recCreateOpen" class="rec-mask" @click="recCreateOpen = false">
+          <div class="rec-sheet" @click.stop>
+            <div class="sheet-head">
+              <span class="sheet-title">登记接待记录</span>
+              <span class="sheet-close" @click="recCreateOpen = false">×</span>
+            </div>
+            <span class="form-label">诉求分类</span>
+            <div class="type-row">
+              <span class="type-chip" :class="recForm.category === 'property' ? 'on' : ''" @click="recForm.category = 'property'">物业类</span>
+              <span class="type-chip" :class="recForm.category === 'public_affairs' ? 'on' : ''" @click="recForm.category = 'public_affairs'">公共事务</span>
+              <span class="type-chip" :class="recForm.category === 'neighbor' ? 'on' : ''" @click="recForm.category = 'neighbor'">邻里纠纷</span>
+            </div>
+            <div class="form-row">
+              <div class="form-group half">
+                <span class="form-label">接待日期 *</span>
+                <input type="date" class="picker-field" :value="recForm.date" @change="recForm.date = $event.target.value" />
+              </div>
+              <div class="form-group half">
+                <span class="form-label">时间</span>
+                <input type="time" class="picker-field" :value="recForm.time" @change="recForm.time = $event.target.value" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group half">
+                <span class="form-label">来访业主 *</span>
+                <input class="form-input" v-model="recForm.visitorName" placeholder="姓名" />
+              </div>
+              <div class="form-group half">
+                <span class="form-label">房号</span>
+                <input class="form-input" v-model="recForm.room" placeholder="如 5号楼302" />
+              </div>
+            </div>
+            <div class="form-group">
+              <span class="form-label">接待人</span>
+              <input class="form-input" v-model="recForm.receiver" placeholder="如 张建国（主任）" />
+            </div>
+            <div class="form-group">
+              <span class="form-label">诉求内容 *</span>
+              <textarea class="form-textarea" v-model="recForm.content" placeholder="简述业主反映的问题或建议"></textarea>
+            </div>
+            <div class="sheet-actions">
+              <button class="btn btn-ghost" @click="recCreateOpen = false">取消</button>
+              <button class="btn btn-primary" @click="submitReceptionCreate">确认登记</button>
+            </div>
           </div>
         </div>
       </div>
@@ -994,7 +1045,7 @@ const calAlert = computed(() => {
   }
   const n = calRecs.value.filter(r => !r.done).length
   if (!n) return null
-  return { level: 'warn', text: n + '件接待待跟进', sub: '接待事项需要闭环反馈', go: '去处理 ›', onTap: goReception }
+  return { level: 'warn', text: n + '件接待待跟进', sub: '接待事项需要闭环反馈', go: '去处理 ›', onTap: () => {} }
 })
 const planFocusCards = computed(() => {
   if (planTab.value === 'meeting') {
@@ -1089,7 +1140,7 @@ const calList = computed(() => {
         sub: fmtPlanDate(r.date) + ' · ' + String(r.content || '').slice(0, 14),
         status: r.done ? 'done' : 'current',
         badge: r.done ? '已办结' : '待跟进',
-        onTap: goReception
+        onTap: () => goReceptionDetail(r)
       })
     }
   }
@@ -1122,23 +1173,44 @@ const planOverview = computed(() => {
 })
 // 待办「查看」详情弹窗：接待/培训点「查看」当场弹出该条详情，底部按钮再进对应页面做跟进
 const todoDetail = ref(null)
+// ── 接待登记（0716 从已删的接待列表页搬来；字段/校验照搬，那套是验证过的）──
+// ⚠ 命名避开 createVisible/createForm —— 那俩是「发起会议」在用的，同名会串
+const recCreateOpen = ref(false)
+const canManageReception = ref(false)
+const recForm = reactive({ date: '', time: '', visitorName: '', room: '', receiver: '', category: 'property', content: '' })
+
+function openReceptionCreate() {
+  if (!canManageReception.value) return
+  Object.assign(recForm, {
+    date: todayStr(), time: '14:00', visitorName: '', room: '', receiver: '', category: 'property', content: ''
+  })
+  recCreateOpen.value = true
+}
+
+async function submitReceptionCreate() {
+  if (!recForm.date || !recForm.visitorName || !recForm.content) {
+    toast({ title: '请补全日期、来访业主和诉求内容', icon: 'none' })
+    return
+  }
+  try {
+    await api.receptionCreate({ ...recForm })
+    toast({ title: '已登记', icon: 'success' })
+    recCreateOpen.value = false
+    await loadCalExtras()   // 重拉，新记录立刻出现在下面的清单里
+  } catch (e) { toast({ title: (e && e.message) || '登记失败', icon: 'none' }) }
+}
+
+// 接待：点条目直接进这一条的处理页（0716 重做）。
+// 原先是「弹窗看详情 → 再点『去接待页处理』→ 落到另一个清单页」，点两次才够得着，
+// 而首页本来就有清单、落地页又是清单，纯属重复。现在一步到位。
+function goReceptionDetail(r) {
+  navigateTo('/pages/reception-detail/reception-detail?id=' + r.id)
+  // 软路由偶发不切换页面（memory: soft-router-push-intermittent-no-switch），关键跳转加硬导航兜底
+  setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/reception-detail?id=' + r.id }, 300)
+}
+
 function openTodoDetail(type, data) {
-  if (type === 'reception') {
-    const rows = [{ k: '时间', v: fmtPlanDate(data.date) + (data.time ? ' ' + String(data.time).slice(0, 5) : '') }]
-    if (data.receiver) rows.push({ k: '接待人', v: data.receiver })
-    if (data.categoryLabel) rows.push({ k: '分类', v: data.categoryLabel })
-    if (data.content) rows.push({ k: '诉求', v: data.content })
-    if (data.resolution) rows.push({ k: '处理', v: data.resolution })
-    if (data.propertyReply) rows.push({ k: '物业反馈', v: data.propertyReply })
-    todoDetail.value = {
-      title: (data.visitorName || '来访') + (data.room ? ' · ' + data.room : '') + ' 来访接待',
-      statusText: data.done ? '已办结' : '待跟进',
-      statusClass: data.done ? 'done' : 'warn',
-      rows,
-      goLabel: '去接待页处理',
-      onGo: () => { todoDetail.value = null; goReception() }
-    }
-  } else {
+  {
     const late = isLearnOverdue(data)
     const rows = [{ k: '时间', v: fmtPlanDate(data.date) + (data.time ? ' ' + String(data.time).slice(0, 5) : '') }]
     if (data.location) rows.push({ k: '地点', v: data.location })
@@ -1181,7 +1253,7 @@ const calMonthDrill = computed(() => {
   if (planTab.value === 'reception') {
     const items = (calRecs.value || []).filter(r => inMonth(r.date, m))
       .slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
-      .map(r => ({ key: 'cr' + r.id, title: (r.visitorName || '来访') + ' 来访接待', sub: fmtPlanDate(r.date) + (r.done ? ' · 已办结' : ' · 待跟进'), onTap: () => openTodoDetail('reception', r) }))
+      .map(r => ({ key: 'cr' + r.id, title: (r.visitorName || '来访') + ' 来访接待', sub: fmtPlanDate(r.date) + (r.done ? ' · 已办结' : ' · 待跟进'), onTap: () => goReceptionDetail(r) }))
     return { title: m + '月接待（' + items.length + '）', items }
   }
   const items = (calLearns.value || []).filter(l => inMonth(l.date, m))
@@ -1211,7 +1283,7 @@ const allPendingList = computed(() => {
       key: 'r' + r.id,
       title: (r.visitorName || '来访') + ' 来访接待',
       sub: fmtPlanDate(r.date),
-      date: r.date, status: 'view', badge: '查看', onTap: () => openTodoDetail('reception', r)
+      date: r.date, status: 'view', badge: '去处理', onTap: () => goReceptionDetail(r)
     }))
   }
   if (planTab.value === 'learning') {
@@ -1356,6 +1428,7 @@ function show() {
   isExternal.value = perm.isExternal()
   canCreate.value = perm.can('committee.create')
   canViewInternal.value = perm.can('view.internal')
+  canManageReception.value = perm.can('reception.manage')
   setupRoleView()
   loadUnread()
   loadAll()
@@ -1548,11 +1621,8 @@ async function removeCurrent(cur) {
 }
 
 function goNotifications() { navigateTo('/pages/notifications/notifications') }
-// 软路由偶发「URL变了却停旧页」→ 查目标页唯一标记，没切过去就硬导航兜底
-function goReception() {
-  navigateTo('/pages/reception/reception')
-  setTimeout(() => { if (!document.querySelector('.recep-system')) window.location.href = '/reception' }, 300)
-}
+// goReception 已删（0716）：接待列表页随重做下线，点条目现在直接进 goReceptionDetail。
+// 它原有的两个调用方 calAlert / calList 都是模板不引用的死代码。
 function goLearning() {
   navigateTo('/pages/learning/learning')
   setTimeout(() => { if (!document.querySelector('.type-tabs')) window.location.href = '/learning' }, 300)
@@ -3853,6 +3923,18 @@ onActivated(show)
 .ct-option-row { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
 .ct-opt-num { font-size: 28rpx; color: #666; width: 40rpx; text-align: right; flex-shrink: 0; }
 .ct-opt-input { flex: 1; min-width: 0; height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 28rpx; }
+/* ── 接待登记（0716 从已删的接待列表页搬来）──
+   刻意不叫 .modal-mask/.form-sheet：本页的 .modal-mask 是全屏白底面板（发起会议用），
+   跟接待要的「半透明遮罩 + 底部抽屉」是两回事，同名会串。 */
+.yc-head-add { margin-left: auto; flex-shrink: 0; padding: 8rpx 20rpx; border-radius: 999rpx;
+  border: 2rpx solid var(--c-primary); color: var(--c-primary); font-size: 27rpx; font-weight: 700; }
+.rec-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
+.rec-sheet { width: 100%; max-height: 88vh; overflow: auto; background: #fff; border-radius: 24rpx 24rpx 0 0;
+  padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
+.sheet-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
+.sheet-close { width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; border-radius: 28rpx;
+  font-size: 40rpx; color: #666; background: #f5f5f5; flex-shrink: 0; }
 .type-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 18rpx; }
 .type-chip { min-height: 60rpx; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #666; background: #f5f5f5; padding: 10rpx 22rpx; border-radius: 28rpx; }
 .type-chip.on { color: #fff; background: #FFA800; font-weight: 600; }
