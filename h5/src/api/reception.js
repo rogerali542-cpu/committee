@@ -37,6 +37,15 @@ export default {
   receptionSetPropertyTransferred: function (id, transferred) {
     return core.request('PUT', '/api/receptions/records/' + id + '/property-transfer?transferred=' + (transferred ? 'true' : 'false'));
   },
+  // 接待日公告 PDF（打印用）。返回 blob，调用方自己走 <a download>。
+  // 后端在生成成功后同时写一条导出留痕，所以这个请求不是只读的，别拿去做预览轮询
+  receptionExportNotice: function () {
+    return core.download('/api/receptions/notice.pdf?t=' + Date.now());
+  },
+  // 导出留痕：谁、什么时候、导出的是哪个时间安排（快照）
+  receptionNoticeExports: function () {
+    return core.request('GET', '/api/receptions/notice-exports');
+  },
   receptionStats: function () {
     return core.request('GET', '/api/receptions/stats');
   },

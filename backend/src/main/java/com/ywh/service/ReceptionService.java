@@ -30,19 +30,60 @@ public class ReceptionService {
     private final ReceptionSystemRepository sysRepo;
     private final ReceptionRecordRepository recordRepo;
     private final ReceptionEvidenceRepository evRepo;
+    private final ReceptionNoticeExportRepository noticeExportRepo;
+    private final CommunityRepository communityRepo;
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
 
     public Map<String, Object> getSystem() {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         ReceptionSystem sys = sysRepo.findByCommunityId(communityId)
                 .orElse(null);
-        if (sys == null) return Collections.emptyMap();
         Map<String, Object> result = new HashMap<>();
+        // 公告抬头（已算好的整串，不是原始小区名）。给整串而不是让前端自己拼，理由见 noticeOrgName()。
+        result.put("orgName", noticeOrgName());
+        // sys 为空（从没设过接待安排）也要把抬头带回去，否则新社区第一次进页面预览是空的
+        if (sys == null) return result;
         result.put("published", sys.getPublished());
         result.put("timeDesc", sys.getTimeDesc());
         result.put("place", sys.getPlace());
         result.put("person", sys.getPerson());
+        result.put("updatedAt", sys.getUpdatedAt() != null ? sys.getUpdatedAt().toString() : null);
         return result;
+    }
+
+    /**
+     * 接待日公告的抬头，例如「阳光家园业主委员会」。
+     *
+     * 这里是全仓库该规则的唯一实现，页面预览(getSystem)和 PDF(ReceptionNoticePdfService) 都调它。
+     * 各判各的会出事：本地库里 community.name 就是坏的（存着 4 个 '?'，是早年 latin1 连接
+     * 写中文写坏的，MinutesView.vue:70 那条注释说的也是它）。PDF 侧有 isUsableName 挡掉、
+     * 退回「业主委员会」；前端若只判非空，预览就会显示「????业主委员会」——
+     * 预览跟印出来的纸不一样，预览就白做了。所以只留一份判定。
+     *
+     * ⚠ 乱码是数据问题不是代码问题：这里只是兜住不让它印到纸上，
+     * 修好 community.name 之后抬头会自动带上小区名，不用改代码。
+     */
+    public String noticeOrgName() {
+        String name = communityRepo.findById(SecurityUtils.getCurrentCommunityId())
+                .map(Community::getName).orElse(null);
+        boolean usable = name != null && !name.isBlank()
+                && !name.matches("[?？\\s]+") && !name.contains("�");
+        return usable ? name.trim() + "业主委员会" : "业主委员会";
+    }
+
+    /** 接待日公告的导出留痕（快照，不是当前设置——见 ReceptionNoticeExport 的注释）。 */
+    public List<Map<String, Object>> listNoticeExports() {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        return noticeExportRepo.findByCommunityIdOrderByExportedAtDesc(communityId).stream().map(e -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", e.getId());
+            m.put("exportedBy", e.getExportedBy());
+            m.put("exportedAt", e.getExportedAt() != null ? e.getExportedAt().toString() : null);
+            m.put("timeDesc", e.getTimeDesc());
+            m.put("place", e.getPlace());
+            m.put("person", e.getPerson());
+            return m;
+        }).collect(Collectors.toList());
     }
 
     @Transactional
@@ -57,6 +98,7 @@ public class ReceptionService {
         if (req.containsKey("place")) sys.setPlace((String) req.get("place"));
         if (req.containsKey("person")) sys.setPerson((String) req.get("person"));
         if (req.containsKey("published")) sys.setPublished((Boolean) req.get("published"));
+        sys.setUpdatedAt(LocalDateTime.now());
         sysRepo.save(sys);
     }
 

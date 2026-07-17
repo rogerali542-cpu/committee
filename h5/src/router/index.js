@@ -26,6 +26,8 @@ const routes = [
   // 接待 0716 重做（方案 A）：原 /reception 列表页已删——首页接待 tab 本来就有清单，
   // 点进去又是一个清单纯属重复。现在首页点某件 → 直接进这条的处理页。原页面见 commit 6745a12。
   { path: '/reception-detail', component: () => import('@/pages/ReceptionDetail.vue'), meta: { title: '接待处理' } },
+  // 接待日安排：编辑接待时间/地点/接待人 + 导出公告 PDF 去打印（0717）
+  { path: '/reception-notice', component: () => import('@/pages/ReceptionNotice.vue'), meta: { title: '接待日安排' } },
   { path: '/reception', redirect: '/main' },
   { path: '/learning', component: () => import('@/pages/Learning.vue'), meta: { title: '学习' } },
   { path: '/learning-detail', component: () => import('@/pages/LearningDetail.vue'), meta: { title: '学习详情' } },

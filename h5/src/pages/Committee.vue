@@ -43,6 +43,20 @@
           <span class="rac-title">登记接待</span>
         </div>
 
+        <!-- 接待日安排（0717）：按规定每月要设接待时间并公示，主任时间不定所以基本每月都要改。
+             排在待跟进清单之后、日历之前——它是每月一次的事，不该跟「登记接待」（天天用）抢位置；
+             但也不能藏进日历里，因为「我们的接待时间是几点」本身就是这个 tab 该回答的问题。
+             卡上只读，编辑和导出打印都在 /reception-notice。 -->
+        <div v-if="planTab === 'reception'" class="rec-notice-card" @click="goReceptionNotice">
+          <div class="rnc-main">
+            <div class="rnc-title">接待日安排</div>
+            <div class="rnc-val" :class="{ none: !(recSystem && recSystem.timeDesc) }">
+              {{ (recSystem && recSystem.timeDesc) || '还没设置接待时间' }}
+            </div>
+          </div>
+          <span class="rnc-act">{{ (recSystem && recSystem.timeDesc) ? '改/打印' : '去设置' }} ›</span>
+        </div>
+
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
       <div class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
@@ -898,14 +912,25 @@ function goLearningDetail(item) {
   navigateTo('/pages/learning-detail/learning-detail?id=' + item.id)
   setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/learning-detail?id=' + item.id }, 300)
 }
+// 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间。
+// 只读一个 timeDesc，编辑和导出都在 /reception-notice 里
+const recSystem = ref(null)
+function goReceptionNotice() {
+  navigateTo('/pages/reception-notice/reception-notice')
+  // 哨兵 .recep-notice 挂在目标页根上，进页即有、不等接口（同 goReceptionDetail 的兜底）
+  setTimeout(() => { if (!document.querySelector('.recep-notice')) window.location.href = '/reception-notice' }, 300)
+}
+
 async function loadCalExtras() {
-  const [recs, a, b] = await Promise.all([
+  const [recs, a, b, sys] = await Promise.all([
     api.receptionRecords('all').catch(() => []),
     api.learningList('internal', null).catch(() => []),
-    api.learningList('training', null).catch(() => [])
+    api.learningList('training', null).catch(() => []),
+    api.receptionSystem().catch(() => null)
   ])
   calRecs.value = recs || []
   calLearns.value = [...(a || []), ...(b || [])]
+  recSystem.value = sys || null
 }
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
 // 开会=该月所在双月期例会状态（已开绿✓/本期橙/逾期红!/待排灰）
@@ -3264,7 +3289,10 @@ onActivated(show)
    登记卡卡在三数字与清单之间 = 工作流顺序（看概览 → 登记新来访 → 处理清单）。
    开会 tab 走下面的 :not(.compact) 覆盖，不受这里影响。 */
 .plan-todo-card { margin: 0; order: 3; }
-.plan-calendar-card { padding-top: 0; order: 4; }
+/* order 4→5（0717）：接待日安排卡插在 4，日历让到最后。
+   开会 tab 走下面 :not(.compact) 的 order:2 覆盖，不受影响；
+   培训 tab 也是 compact 但没有这张卡，日历排 5 仍然是最后一个，无差别 */
+.plan-calendar-card { padding-top: 0; order: 5; }
 /* 开会 tab 且无进行中会议：日历上移当第一重点、待办下沉（0716 用户定）。
    仅此态对调；接待/培训(.compact)与有会议(.has-meeting)保持原顺序。 */
 .plan-stack:not(.compact) .plan-calendar-card { order: 2; }
@@ -3289,6 +3317,23 @@ onActivated(show)
 /* 独立成行版：移出日历卡。order 2→1（0716）：它是下方待办清单的筛选器（ovFilter），
    必须在清单之前。原先只顾着「排在日历上方」，没注意同时也掉到了待办清单的下方。 */
 .ov-metrics-standalone { order: 1; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
+
+/* 接待日安排入口卡（0717）。order 4 = 待跟进之后、日历之前。
+   刻意做得比「登记接待」轻（不填色、只描边）：登记是天天用的主动作，这个每月一次，
+   两张卡挨着，分量必须拉开，否则又是一轮焦点打架 */
+.rec-notice-card { order: 4; display: flex; align-items: center; gap: 16rpx;
+  padding: 22rpx 24rpx; box-sizing: border-box; background: var(--c-bg-card);
+  border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07);
+  cursor: pointer; }
+.rnc-main { flex: 1; min-width: 0; }
+.rnc-title { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.3; }
+.rnc-val { margin-top: 6rpx; font-size: 30rpx; color: var(--c-text-mid); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 没设过：按规定每月必须设并公示，所以这不是「空状态」而是「欠着的事」，用橙字而非灰字 */
+.rnc-val.none { color: #9A3412; font-weight: 700; }
+.rnc-act { flex-shrink: 0; padding: 8rpx 20rpx; border-radius: 999rpx; background: #fff;
+  border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
+  font-size: 28rpx; font-weight: 700; white-space: nowrap; }
 .ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; padding: 24rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
 .ov-metric:active { opacity: 0.8; }
 .ov-metric.on { box-shadow: inset 0 0 0 4rpx #D97706; }

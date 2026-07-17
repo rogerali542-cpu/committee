@@ -2,12 +2,18 @@ package com.ywh.controller;
 
 import com.ywh.dto.MeetingTodoTicketVO;
 import com.ywh.entity.ReceptionRecord;
+import com.ywh.service.ReceptionNoticePdfService;
 import com.ywh.service.ReceptionService;
 import com.ywh.service.ReceptionTicketService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +31,7 @@ public class ReceptionController {
 
     private final ReceptionService service;
     private final ReceptionTicketService ticketService;
+    private final ReceptionNoticePdfService noticePdfService;
 
     @GetMapping("/system")
     public Result<Map<String, Object>> getSystem() {
@@ -35,6 +42,28 @@ public class ReceptionController {
     public Result<Void> updateSystem(@RequestBody Map<String, Object> req) {
         service.updateSystem(req);
         return Result.ok();
+    }
+
+    /**
+     * 接待日公告 PDF —— 打印出来贴楼道的纸质材料（0717 新增）。
+     * 下载头照 CommitteeController 签到表那套（filename*=UTF-8'' 编码，中文名才不会乱码）。
+     * 生成同时留痕，见 ReceptionNoticePdfService.generateAndRecord。
+     */
+    @GetMapping("/notice.pdf")
+    public ResponseEntity<byte[]> exportNotice() {
+        ReceptionNoticePdfService.PdfFile file = noticePdfService.generateAndRecord();
+        String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(file.bytes());
+    }
+
+    /** 导出留痕：谁、什么时候、导出的是哪个时间安排（快照）。 */
+    @GetMapping("/notice-exports")
+    public Result<List<Map<String, Object>>> noticeExports() {
+        return Result.ok(service.listNoticeExports());
     }
 
     @GetMapping("/records")
