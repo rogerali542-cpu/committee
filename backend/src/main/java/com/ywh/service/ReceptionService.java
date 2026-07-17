@@ -124,6 +124,7 @@ public class ReceptionService {
         m.put("id", r.getId());
         m.put("date", r.getDate());
         m.put("time", r.getTime());
+        m.put("sessionKey", r.getSessionKey());
         m.put("visitorName", r.getVisitorName());
         m.put("room", r.getRoom());
         m.put("receiver", r.getReceiver());
@@ -148,17 +149,55 @@ public class ReceptionService {
     @Transactional
     public ReceptionRecord create(Map<String, Object> req) {
         Long communityId = SecurityUtils.getCurrentCommunityId();
+        boolean noVisit = Boolean.TRUE.equals(req.get("noVisit"));
+        String sessionKey = req.get("sessionKey") instanceof String s && !s.isBlank()
+                ? s : UUID.randomUUID().toString();
         return recordRepo.save(ReceptionRecord.builder()
                 .community(Community.builder().id(communityId).build())
                 .date(parseDate((String) req.get("date")))
                 .time(parseTime((String) req.get("time")))
-                .visitorName((String) req.get("visitorName"))
+                .sessionKey(sessionKey)
+                .visitorName(noVisit ? "无人来访" : (String) req.get("visitorName"))
                 .room((String) req.get("room"))
                 .receiver((String) req.get("receiver"))
                 .category(ReceptionCategory.valueOf((String) req.get("category")))
-                .content((String) req.get("content"))
-                .resolution("")
+                .content(noVisit ? "本次接待无居民来访" : (String) req.get("content"))
+                // 无人来访只需留档，不产生需要后续处理的事项。
+                .resolution(noVisit ? "无需处理" : "")
                 .build());
+    }
+
+    /**
+     * 一次完成整场接待登记。日期、时间、接待人属于场次；每位居民的诉求独立成记录，
+     * 后续仍可分别发工单、填写处理结果和办结。
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public List<ReceptionRecord> createSession(Map<String, Object> req) {
+        boolean noVisit = Boolean.TRUE.equals(req.get("noVisit"));
+        String sessionKey = UUID.randomUUID().toString();
+        if (noVisit) {
+            Map<String, Object> single = new HashMap<>(req);
+            single.put("sessionKey", sessionKey);
+            single.put("category", ReceptionCategory.public_affairs.name());
+            return List.of(create(single));
+        }
+
+        Object raw = req.get("visitors");
+        List<Map<String, Object>> visitors = raw instanceof List<?>
+                ? (List<Map<String, Object>>) raw : Collections.emptyList();
+        if (visitors.isEmpty()) throw new IllegalArgumentException("请至少登记一位来访居民");
+
+        List<ReceptionRecord> saved = new ArrayList<>();
+        for (Map<String, Object> visitor : visitors) {
+            Map<String, Object> item = new HashMap<>(visitor);
+            item.put("date", req.get("date"));
+            item.put("time", req.get("time"));
+            item.put("receiver", req.get("receiver"));
+            item.put("sessionKey", sessionKey);
+            saved.add(create(item));
+        }
+        return saved;
     }
 
     /** 填写处理结果 —— 这就是办结动作（isDone 以它为准）。 */

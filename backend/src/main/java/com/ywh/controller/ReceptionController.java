@@ -82,6 +82,11 @@ public class ReceptionController {
         return Result.ok(service.create(req));
     }
 
+    @PostMapping("/records/sessions")
+    public Result<List<ReceptionRecord>> createSession(@RequestBody Map<String, Object> req) {
+        return Result.ok(service.createSession(req));
+    }
+
     /** 填写处理结果 —— 这就是办结动作（done 以它为准）。 */
     @PutMapping("/records/{id}/resolution")
     public Result<Void> updateResolution(@PathVariable Long id, @RequestParam String resolution) {

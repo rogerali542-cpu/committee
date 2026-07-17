@@ -2,7 +2,9 @@
   <!-- 根类 .recep-detail 是软路由硬跳兜底的落地哨兵（0716 页头删除后从 .dh-title 迁来，
        Committee.vue / Todo.vue 的跳转检查同步改了）。挂在根上比原来更稳：进页即有，不等接口返回 -->
   <div class="page recep-detail" style="overflow-y:auto;">
-    <PageNav title="接待处理" />
+    <PageNav title="接待处理">
+      <template #left><button class="detail-back" type="button" aria-label="返回接待中心" @click="goBack">‹</button></template>
+    </PageNav>
     <div v-if="rec">
       <!-- 自有页头已删（0716 用户定：与 PageNav 两条顶栏重复）。状态胶囊挪进信息卡首行右侧 -->
       <div class="info-card">
@@ -133,7 +135,6 @@ import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { pickAndUpload } from '@/utils/upload'
-import { navigateTo } from '@/utils/navigate'
 
 const canManage = ref(false)
 
@@ -294,18 +295,17 @@ async function removeRecord() {
   }
 }
 
-// 回首页接待 tab。软路由偶发不切换页面（见 memory: soft-router-push-intermittent-no-switch），
-// 关键跳转一律加硬导航兜底
+// 固定回接待中心并替换当前历史项，避免浏览器后退误入接待安排页。
 function goBack() {
-  navigateTo('/pages/main/main?tab=reception')
-  setTimeout(() => {
-    if (!document.querySelector('.plan-switch-card')) window.location.href = '/main?tab=reception'
-  }, 300)
+  const from = new URLSearchParams(window.location.search).get('from')
+  window.location.replace(from === 'records' ? '/reception-records' : '/reception-center')
 }
 </script>
 
 <style scoped>
 .page { background: var(--c-bg-page); min-height: 100vh; }
+.detail-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
 
 /* .detail-head/.dh-title 已删（0716 用户定：与 PageNav 重复）。状态胶囊挪进信息卡首行。 */

@@ -2,7 +2,10 @@
   <!-- 根类 .recep-notice 是软路由硬跳兜底的落地哨兵（同 ReceptionDetail 的 .recep-detail）：
        挂在根上，进页即有、不等接口 -->
   <div class="page recep-notice" style="overflow-y:auto;">
-    <PageNav title="接待安排" back-to="/main?tab=reception" />
+    <PageNav title="接待安排">
+      <!-- replace 不把接待安排页留在历史栈里，之后从处理页返回不会误入这里。 -->
+      <template #left><button class="notice-back" type="button" aria-label="返回接待中心" @click="backToReception">‹</button></template>
+    </PageNav>
 
     <div v-if="loadErr" class="page-empty">{{ loadErr }}</div>
     <template v-else>
@@ -12,16 +15,26 @@
            公告正文改说话口吻（类会议通知），所以多了个「调整原因（选填）」。 -->
       <div class="sec-card">
         <div class="field">
-          <label class="f-label">接待时间（可选多天）</label>
-          <div class="day-chips">
-            <span v-for="d in DAYS" :key="d" class="day-chip"
-                  :class="{ on: form.days.includes(d), dim: !canManage }"
-                  @click="toggleDay(d)">{{ d }}</span>
-          </div>
-          <div class="time-range">
-            <input v-model="form.start" type="time" class="f-input t-input" :disabled="!canManage" />
-            <span class="tr-sep">至</span>
-            <input v-model="form.end" type="time" class="f-input t-input" :disabled="!canManage" />
+          <label class="f-label">接待时间</label>
+          <div class="reception-time-line">
+            <select v-model="form.day" class="f-select day-select" :disabled="!canManage">
+              <option value="">周几</option>
+              <option v-for="d in DAYS" :key="d" :value="d">{{ d }}</option>
+            </select>
+            <!-- 起止时间不用系统时间控件（会冒 AM/PM），使用半小时一档的下拉。 -->
+            <div class="time-range">
+              <select v-model="form.start" class="f-select t-input" :disabled="!canManage">
+                <option value="">开始</option>
+                <option v-if="form.start && !TIME_OPTS.includes(form.start)" :value="form.start">{{ form.start }}</option>
+                <option v-for="t in TIME_OPTS" :key="t" :value="t">{{ t }}</option>
+              </select>
+              <span class="tr-sep">至</span>
+              <select v-model="form.end" class="f-select t-input" :disabled="!canManage">
+                <option value="">结束</option>
+                <option v-if="form.end && !TIME_OPTS.includes(form.end)" :value="form.end">{{ form.end }}</option>
+                <option v-for="t in TIME_OPTS" :key="t" :value="t">{{ t }}</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -31,22 +44,42 @@
         </div>
 
         <div class="field">
+          <label class="f-label">接待人员</label>
+          <select v-model="form.person" class="f-select" :disabled="!canManage">
+            <option value="">请选择委员</option>
+            <option v-if="form.person && !committeeRoster.some(m => m.name === form.person)" :value="form.person">{{ form.person }}</option>
+            <option v-for="m in committeeRoster" :key="m.id || m.name" :value="m.name">
+              {{ m.name }}<template v-if="m.role">（{{ m.role }}）</template>
+            </option>
+          </select>
+        </div>
+
+        <div class="field">
           <label class="f-label">调整原因（选填，写了公告会带上）</label>
           <input v-model="form.reason" class="f-input" maxlength="60" :disabled="!canManage" />
         </div>
         <div v-if="!canManage" class="sec-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
+        <button v-if="canManage" class="confirm-adjust" type="button"
+                :disabled="saving || !dirty || !timeText" @click="confirmAdjustment">
+          {{ saving ? '正在保存…' : '确定' }}
+        </button>
       </div>
 
       <!-- 公告预览：本页的主体。跟着上面的框实时变，所见即所出。
            ⚠ 句子必须跟后端 ReceptionNoticePdfService 逐字一致——预览就是那张纸 -->
       <div class="sec-card">
-        <div class="sec-title">公告预览</div>
-        <div class="preview">
+        <div class="preview-card-head">
+          <div class="sec-title">公告预览</div>
+          <button class="preview-toggle" type="button" @click="previewOpen = !previewOpen">
+            {{ previewOpen ? '收起' : '展开' }}
+          </button>
+        </div>
+        <div v-if="previewOpen" class="preview">
           <div class="pv-title">业主接待日公告</div>
           <div class="pv-org">{{ orgName }}</div>
           <div class="pv-line"></div>
           <div class="pv-greet">敬告各位业主：</div>
-          <div class="pv-para">{{ noticeBody }}</div>
+          <div v-for="(p, i) in noticeParas" :key="i" class="pv-para" :class="{ 'no-indent': p.noIndent }">{{ p.text }}</div>
           <div class="pv-para">欢迎广大业主届时前来反映问题、提出建议。</div>
           <div class="pv-sign">
             <div>{{ orgName }}</div>
@@ -54,8 +87,9 @@
           </div>
         </div>
         <!-- 导出前自动保存改动：填完直接导出是老人最自然的路径，不该被「先保存」拦一道 -->
-        <button v-if="canManage" class="big-action" :disabled="exporting || !timeText" @click="exportPdf">
-          {{ exporting ? '正在生成…' : '导出公告 PDF，去打印' }}
+        <div v-if="exportSuccess" class="export-success">已导出PDF文件，可打印通知</div>
+        <button v-if="canManage" class="big-action" :disabled="exporting || !saved.timeDesc" @click="exportPdf">
+          {{ exporting ? '正在生成…' : '导出为 PDF' }}
         </button>
       </div>
 
@@ -76,38 +110,55 @@ const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周�
 const canManage = ref(false)
 const loadErr = ref('')
 const exporting = ref(false)
+const exportSuccess = ref(false)
+const saving = ref(false)
+const previewOpen = ref(true)
 const orgName = ref('业主委员会')
+const committeeRoster = ref([])
 
-const form = reactive({ days: [], start: '', end: '', place: '', reason: '' })
-// saved 镜像服务端当前值（组合后的 timeDesc + place + reason），导出前判断要不要先落库
-const saved = reactive({ timeDesc: '', place: '', reason: '' })
+const TIME_OPTS = Array.from({ length: 25 }, (_, i) => {
+  const minutes = (8 * 60) + i * 30
+  return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0')
+})
+const form = reactive({ day: '', start: '', end: '', place: '', person: '', reason: '' })
+// saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
+const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 
-function toggleDay(d) {
-  if (!canManage.value) return
-  const i = form.days.indexOf(d)
-  if (i >= 0) form.days.splice(i, 1)
-  else form.days.push(d)
+function backToReception() {
+  window.location.replace('/reception-center')
 }
 
-/** 组合后的时间文案，如「每周二、周四 14:00—15:00」；没填齐返回空 */
+/** 组合后的时间文案，如「每周二 15:00—17:00」；没填齐返回空 */
 const timeText = computed(() => {
-  if (!form.days.length || !form.start || !form.end) return ''
-  const days = DAYS.filter(d => form.days.includes(d)) // 按周一→周日排序，跟点选顺序无关
-  return '每' + days.join('、') + ' ' + form.start + '—' + form.end
+  if (!form.day || !form.start || !form.end) return ''
+  return '每' + form.day + ' ' + form.start + '—' + form.end
 })
 
 const dirty = computed(() =>
-  timeText.value !== saved.timeDesc || form.place !== saved.place || form.reason !== saved.reason)
+  timeText.value !== saved.timeDesc || form.place !== saved.place ||
+  form.person !== saved.person || form.reason !== saved.reason)
 
-/** 公告正文。句式跟后端 PDF 完全一致：有原因走「调整」口吻，没原因走平铺通告 */
-const noticeBody = computed(() => {
-  const time = timeText.value || '未填写'
-  const place = form.place || '未填写'
-  const reason = form.reason.trim()
-  return reason
-    ? orgName.value + '因' + reason + '，需要调整近期的业主接待时间。调整后的接待时间为：'
-      + time + '；接待地点仍为：' + place + '。给您带来不便，敬请谅解。'
-    : orgName.value + '现将业主接待安排公告如下：接待时间为：' + time + '；接待地点为：' + place + '。'
+/** 公告段落。时间、地点、人员分别顶格成行；说明及后续正文保持正文缩进。 */
+const noticeParas = computed(() => {
+  const time = saved.timeDesc || '未填写'
+  const place = saved.place || '未填写'
+  const person = saved.person || '未填写'
+  const reason = saved.reason.trim()
+  if (reason) {
+    return [
+      { text: orgName.value + '因' + reason + '，需要调整近期的业主接待安排。', noIndent: false },
+      { text: '接待时间调整为：' + time, noIndent: false },
+      { text: '接待地点为：' + place, noIndent: false },
+      { text: '接待人员为：' + person, noIndent: false },
+      { text: '给您带来不便，敬请谅解。', noIndent: false }
+    ]
+  }
+  return [
+    { text: orgName.value + '现将业主接待安排公告如下：', noIndent: false },
+    { text: '接待时间为：' + time, noIndent: false },
+    { text: '接待地点为：' + place, noIndent: false },
+    { text: '接待人员为：' + person, noIndent: false }
+  ]
 })
 
 const todayText = computed(() => {
@@ -122,7 +173,7 @@ function parseTimeDesc(s) {
   if (dayPart) {
     for (const m of dayPart[1].match(/周[一二三四五六日天]/g) || []) {
       const d = m === '周天' ? '周日' : m
-      if (DAYS.includes(d) && !form.days.includes(d)) form.days.push(d)
+      if (DAYS.includes(d) && !form.day) form.day = d
     }
   }
   const t = str.match(/(\d{1,2}:\d{2})\s*[—\-~至]+\s*(\d{1,2}:\d{2})/)
@@ -134,9 +185,14 @@ function pad(v) { return v.length === 4 ? '0' + v : v }
 async function load() {
   canManage.value = perm.can('reception.manage')
   try {
-    const sys = await api.receptionSystem()
+    const [sys, members] = await Promise.all([
+      api.receptionSystem(),
+      api.committeeMembers().catch(() => [])
+    ])
+    committeeRoster.value = members || []
     saved.timeDesc = (sys && sys.timeDesc) || ''
     form.place = saved.place = (sys && sys.place) || ''
+    form.person = saved.person = (sys && sys.person) || ''
     form.reason = saved.reason = (sys && sys.adjustReason) || ''
     parseTimeDesc(saved.timeDesc)
     // 抬头直接用后端算好的整串，不在这儿拼。后端 ReceptionService.noticeOrgName() 是唯一实现，
@@ -150,22 +206,42 @@ async function load() {
 }
 onMounted(load)
 
-/** 导出 = （有改动先自动保存）+ 生成下载。保存失败就不导出，防止印出旧内容 */
+/** 点击确定后才保存，并以已保存的数据生成下方的新公告。 */
+async function confirmAdjustment() {
+  if (saving.value) return
+  if (!timeText.value) { toast({ title: '请先选择星期和起止时间', icon: 'none' }); return }
+  saving.value = true
+  try {
+    const place = form.place.trim()
+    const person = form.person.trim()
+    const reason = form.reason.trim()
+    await api.receptionUpdateSystem({
+      timeDesc: timeText.value,
+      place,
+      person,
+      adjustReason: reason,
+      published: true
+    })
+    saved.timeDesc = timeText.value
+    saved.place = form.place = place
+    saved.person = form.person = person
+    saved.reason = form.reason = reason
+    previewOpen.value = true
+    toast({ title: '接待安排已保存', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '保存失败', icon: 'none' })
+  } finally {
+    saving.value = false
+  }
+}
+
+/** PDF 只导出已经点击确定保存的公告，未确认的编辑不会混入。 */
 async function exportPdf() {
   if (exporting.value) return
-  if (!timeText.value) { toast({ title: '请先选周几、填起止时间', icon: 'none' }); return }
+  if (!saved.timeDesc) { toast({ title: '请先确认接待安排', icon: 'none' }); return }
+  exportSuccess.value = false
   exporting.value = true
   try {
-    if (dirty.value) {
-      // 不传 person：后端 updateSystem 按 containsKey 更新，历史存的接待人保持原样
-      await api.receptionUpdateSystem({
-        timeDesc: timeText.value, place: form.place.trim(),
-        adjustReason: form.reason.trim(), published: true
-      })
-      saved.timeDesc = timeText.value
-      saved.place = form.place = form.place.trim()
-      saved.reason = form.reason = form.reason.trim()
-    }
     const blob = await api.receptionExportNotice()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -175,7 +251,7 @@ async function exportPdf() {
     a.click()
     a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast({ title: '已导出，去打印吧', icon: 'success' })
+    exportSuccess.value = true
   } catch (e) {
     toast({ title: (e && e.message) || '导出失败', icon: 'none' })
   } finally {
@@ -186,11 +262,17 @@ async function exportPdf() {
 
 <style scoped>
 .page { background: var(--c-bg-page); min-height: 100vh; }
+.notice-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
 /* 本页字号一律 ≥28rpx(14px)，跟接待处理页同口径 */
 .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);
   border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); }
 .sec-title { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); margin-bottom: 16rpx; }
+.preview-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.preview-card-head .sec-title { margin-bottom: 0; }
+.preview-toggle { display: inline-flex; align-items: center; gap: 6rpx; padding: 8rpx 4rpx 8rpx 18rpx;
+  border: 0; background: transparent; color: var(--c-primary-dark); font-size: 28rpx; font-weight: 600; }
 .sec-hint { margin-top: 4rpx; font-size: 28rpx; line-height: 1.5; color: var(--c-text-weak); }
 
 .field { margin-bottom: 24rpx; }
@@ -201,6 +283,17 @@ async function exportPdf() {
   font-size: 30rpx; color: var(--c-text-strong); outline: none; }
 .f-input:focus { border-color: var(--c-border-focus); }
 .f-input:disabled { background: #F4F5F7; color: var(--c-text-weak); }
+.f-select { width:100%; box-sizing:border-box; height:88rpx; padding:0 20rpx; border:2rpx solid #E3E8EB;
+  border-radius:16rpx; background:#FCFDFD; font-size:30rpx; color:var(--c-text-strong); outline:none; }
+.f-select:disabled { background:#F4F5F7; color:var(--c-text-weak); }
+.reception-time-line { display: flex; align-items: center; gap: 12rpx; }
+.reception-time-line .day-select { flex: 0 0 29%; min-width: 0; }
+.reception-time-line .time-range { flex: 1; min-width: 0; }
+.confirm-adjust { display: block; width: 42%; height: 76rpx; margin: 24rpx 0 2rpx auto; border: 0;
+  border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+.confirm-adjust:disabled { opacity: 0.42; }
+.confirm-adjust:active:not(:disabled) { background: var(--c-primary-strong); }
+
 
 /* 周几多选：胶囊 chips，点了变主色。选中态要够醒目，老人得一眼看出哪几天亮着 */
 .day-chips { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 14rpx; }
@@ -219,8 +312,11 @@ async function exportPdf() {
 /* 0717 用户定：导出按钮缩小 20%（高 96→76）、宽度 60% 居中。
    字号 32→28 没砍满 20%——28rpx 是本页字号下限，破线老人看不清 */
 .big-action { display: block; width: 60%; height: 76rpx; margin: 18rpx auto 0; border: none; border-radius: 18rpx;
-  font-size: 28rpx; font-weight: 700; color: #fff; background: var(--c-primary-dark); }
+  font-size: 30rpx; font-weight: 700; color: #fff; background: #A94832;
+  box-shadow: 0 6rpx 16rpx rgba(114,48,34,0.18); }
+.big-action:active { background: #8F3B2A; }
 .big-action:disabled { opacity: 0.5; }
+.export-success { margin: 18rpx 0 -6rpx; text-align: center; color: #278653; font-size: 26rpx; line-height: 1.5; }
 
 /* 纸样预览：让委员在按下导出前就知道印出来长什么样。
    白底居中排版，刻意跟 App 的卡片风格不一样——它代表"那张纸"。
@@ -233,6 +329,7 @@ async function exportPdf() {
 .pv-greet { font-size: 29rpx; line-height: 1.7; color: var(--c-text-strong); }
 /* 正文首行缩进两字 + 1.7 行距，念出来像一封告示 */
 .pv-para { margin-top: 10rpx; font-size: 29rpx; line-height: 1.7; color: var(--c-text-strong); text-indent: 2em; }
+.pv-para.no-indent { text-indent: 0; }
 .pv-sign { margin-top: auto; padding-top: 40rpx; text-align: right; font-size: 28rpx; line-height: 1.8; color: var(--c-text-mid); }
 
 .bottom-space { height: 60rpx; }

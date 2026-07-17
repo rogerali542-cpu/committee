@@ -26,6 +26,10 @@ public class ReceptionRecord {
 
     private LocalTime time;
 
+    /** 同一次接待可能登记多位居民；同一场次的事项共享此键。 */
+    @Column(name = "session_key", length = 64)
+    private String sessionKey;
+
     @Column(name = "visitor_name", length = 30)
     private String visitorName;
 

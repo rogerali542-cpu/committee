@@ -46,36 +46,62 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
         if (!receptionRepo.findByCommunityIdOrderByDateDescTimeDesc(c.getId()).isEmpty()) {
             return; // 已有接待记录，跳过
         }
-        // 0716：办结 = 填了处理结果（resolution 非空），propertyStatus 状态机与 fedProperty/fedOwner
-        // 已随内部派单流下线（列也已从库里 DROP）。下面 3 条依旧是「2 条待跟进 + 1 条已办结」。
-        // 1) 物业类，待跟进（可在处理页派发外部工单）
+        // 每个非节假日接待周均生成一条台账；无人来访也留档，但不计入接待人次。
+        seedReceptionRow(c, "2026-02-01", "王海", "2号楼602", ReceptionCategory.property,
+                "楼道照明灯损坏，希望安排检修。", "已联系物业更换灯具。");
+        seedReceptionRow(c, "2026-02-08", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-03-01", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-03-08", "刘芳", "6号楼1201", ReceptionCategory.public_affairs,
+                "建议增加非机动车充电区域。", "已提交业委会讨论并纳入改造计划。");
+        seedReceptionRow(c, "2026-03-15", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-03-22", "赵明", "9号楼503", ReceptionCategory.neighbor,
+                "楼上夜间噪音较大，希望协助沟通。", "已组织双方沟通并达成作息约定。");
+        seedReceptionRow(c, "2026-03-29", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-04-12", "陈丽", "3号楼901", ReceptionCategory.property,
+                "单元门禁无法正常闭合。", "已转物业完成门禁维修。");
+        seedReceptionRow(c, "2026-04-19", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-04-26", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-05-10", "周强", "12号楼304", ReceptionCategory.public_affairs,
+                "希望中心花园增加儿童活动设施。", "已纳入公共设施改造议题。");
+        seedReceptionRow(c, "2026-05-17", "孙梅", "5号楼801", ReceptionCategory.property,
+                "高峰时段水压不足。", "物业已完成二次供水设备检查。");
+        seedReceptionRow(c, "2026-05-24", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-05-31", "吴刚", "7号楼1602", ReceptionCategory.neighbor,
+                "楼道堆物影响消防通行。", "已清运杂物并张贴消防提示。");
+        seedReceptionRow(c, "2026-06-07", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-06-14", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        seedReceptionRow(c, "2026-06-28", "李红梅", "15号楼1801", ReceptionCategory.property,
+                "顶楼雨天渗水，希望尽快维修。", "");
+        seedReceptionRow(c, "2026-07-05", "郑海", "11号楼1203", ReceptionCategory.property,
+                "电梯运行时有异响，希望安排检查。", "已联系维保单位完成检查。");
+        seedReceptionRow(c, "2026-07-12", "无人来访", "", ReceptionCategory.public_affairs,
+                "本次接待无居民来访", "无需处理");
+        log.info("[ReceptionLearningSeeder] 已为小区 {} (id={}) 预置 19 条非节假日按周分布的示例接待记录", c.getName(), c.getId());
+    }
+
+    private void seedReceptionRow(Community community, String date, String visitorName, String room,
+                                  ReceptionCategory category, String content, String resolution) {
         receptionRepo.save(ReceptionRecord.builder()
-                .community(c)
-                .date(LocalDate.parse("2026-06-26")).time(LocalTime.parse("15:30"))
-                .visitorName("周建国").room("5号楼801").receiver("王秀兰（副主任）")
-                .category(ReceptionCategory.property)
-                .content("高层下午用水高峰水压不足，经常断水。")
-                .resolution("")
+                .community(community)
+                .date(LocalDate.parse(date))
+                .time(LocalTime.parse("15:00"))
+                .sessionKey("demo-weekly-" + date)
+                .visitorName(visitorName)
+                .room(room)
+                .receiver("李秀英")
+                .category(category)
+                .content(content)
+                .resolution(resolution)
                 .build());
-        // 2) 公共事务，待办结
-        receptionRepo.save(ReceptionRecord.builder()
-                .community(c)
-                .date(LocalDate.parse("2026-06-24")).time(LocalTime.parse("10:30"))
-                .visitorName("李红梅").room("12号楼304").receiver("张伟（委员）")
-                .category(ReceptionCategory.public_affairs)
-                .content("希望在中心花园增设儿童活动区和健身器材。")
-                .resolution("")
-                .build());
-        // 3) 邻里纠纷，已办结
-        receptionRepo.save(ReceptionRecord.builder()
-                .community(c)
-                .date(LocalDate.parse("2026-06-20")).time(LocalTime.parse("16:00"))
-                .visitorName("吴强").room("3号楼1602").receiver("陈志远（委员）")
-                .category(ReceptionCategory.neighbor)
-                .content("楼道长期堆放杂物，影响通行和消防安全。")
-                .resolution("已张贴清理告示并清运，提醒业主勿占用公共区域。")   // ← 有正文即已办结
-                .build());
-        log.info("[ReceptionLearningSeeder] 已为小区 {} (id={}) 预置 3 条示例接待记录", c.getName(), c.getId());
     }
 
     private void seedLearning(Community c) {

@@ -25,6 +25,9 @@ export default {
   receptionCreate: function (data) {
     return core.request('POST', '/api/receptions/records', data);
   },
+  receptionCreateSession: function (data) {
+    return core.request('POST', '/api/receptions/records/sessions', data);
+  },
   // 填写处理结果 —— 这就是办结动作
   receptionUpdateResolution: function (id, resolution) {
     return core.request('PUT', '/api/receptions/records/' + id + '/resolution?resolution=' + encodeURIComponent(resolution));

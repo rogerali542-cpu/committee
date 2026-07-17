@@ -39,6 +39,10 @@ const internalRoles = [
 function doLogin(r) {
   auth.login({ id: r.id, role: r.role, realName: r.realName, communityId: 1, communityName: '阳光家园' })
   redirectTo('/pages/main/main')
+  // 部分手机 WebView / Cloudflare 公网预览中偶发软路由不切页；登录态已写入后用硬跳兜底。
+  setTimeout(() => {
+    if (window.location.pathname === '/login') window.location.replace('/main')
+  }, 300)
 }
 </script>
 

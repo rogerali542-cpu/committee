@@ -8,14 +8,11 @@
         <div class="lib-tab" :class="{ active: tab === 'committee' }" @click="switchTab('committee')">
           业委会会议 <span class="lib-tab-count">{{ counts.committee }}</span>
         </div>
-        <div class="lib-tab" :class="{ active: tab === 'learning' }" @click="switchTab('learning')">
-          学习培训 <span class="lib-tab-count">{{ counts.learning }}</span>
-        </div>
       </div>
 
       <template v-if="items.length">
         <div class="pub-card lib-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
-          <span class="pub-tag">{{ item.kind === 'committee' ? '业委会会议' : '学习培训' }}</span>
+          <span class="pub-tag">业委会会议</span>
           <!-- 状态徽标位：现示归档/公示状态；未来上社区链后此处换「已上链/存证中」 -->
           <span class="pub-badge" :class="badgeClass(item.statusText)">{{ item.statusText }}</span>
 
@@ -31,7 +28,7 @@
       <div v-else-if="!loading" class="pub-card lib-empty">
         <div class="empty-icon">📚</div>
         <span class="empty-title">该分类暂无归档</span>
-        <span class="empty-text">已结束并归档的{{ tab === 'committee' ? '会议' : '学习活动' }}会显示在这里。</span>
+        <span class="empty-text">已结束并归档的会议会显示在这里。</span>
       </div>
     </div>
   </div>
@@ -48,8 +45,8 @@ import { getStorage } from '@/utils/storage'
 function byDateDesc(a, b) { return (b.date || '').localeCompare(a.date || '') }
 
 const tab = ref('committee')
-const counts = ref({ committee: 0, learning: 0 })
-const lists = ref({ committee: [], learning: [] })
+const counts = ref({ committee: 0 })
+const lists = ref({ committee: [] })
 const items = ref([])
 const loading = ref(true)
 
@@ -64,8 +61,6 @@ async function loadArchive() {
   loading.value = true
 
   const committee = await api.committeeArchiveList().catch(() => [])
-  const learning = await api.learningList('', 'ended').catch(() => [])
-
   const committeeItems = (committee || [])
     .filter(m => m.compliance !== 'invalid')
     .map(m => ({
@@ -75,15 +70,9 @@ async function loadArchive() {
     }))
     .sort(byDateDesc)
 
-  const learningItems = (learning || []).map(m => ({
-    id: m.id, kind: 'learning', title: m.title, date: m.date || '',
-    statusText: '已完成',
-    metaText: (m.trainer ? '讲师 ' + m.trainer : '学习活动')
-  })).sort(byDateDesc)
-
-  const ls = { committee: committeeItems, learning: learningItems }
+  const ls = { committee: committeeItems }
   lists.value = ls
-  counts.value = { committee: committeeItems.length, learning: learningItems.length }
+  counts.value = { committee: committeeItems.length }
   items.value = ls[tab.value]
   loading.value = false
 }

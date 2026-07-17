@@ -94,14 +94,24 @@ public class ReceptionNoticePdfService {
                 // 0717 用户定：正文改说话口吻（类会议通知），不再是「一、二、」条款体。
                 // ⚠ 句子必须跟 ReceptionNotice.vue 的 noticeBody 逐字一致——预览就是这张纸
                 String reason = isBlank(sys.getAdjustReason()) ? null : sys.getAdjustReason().trim();
-                String body = reason != null
-                        ? org + "因" + reason + "，需要调整近期的业主接待时间。调整后的接待时间为："
-                            + value(sys.getTimeDesc()) + "；接待地点仍为：" + value(sys.getPlace())
-                            + "。给您带来不便，敬请谅解。"
-                        : org + "现将业主接待安排公告如下：接待时间为：" + value(sys.getTimeDesc())
-                            + "；接待地点为：" + value(sys.getPlace()) + "。";
-                // 首行缩进两字 = 32pt（16pt 字），公文正文规矩
-                y = paragraph(cs, font, 16, left, y, contentW, 28, body, 32);
+                String lead = reason != null
+                        ? org + "因" + reason + "，需要调整近期的业主接待安排。"
+                        : org + "现将业主接待安排公告如下：";
+                String timeLine = (reason != null ? "接待时间调整为：" : "接待时间为：")
+                        + value(sys.getTimeDesc());
+                String placeLine = "接待地点为：" + value(sys.getPlace());
+                String personLine = "接待人员为：" + value(sys.getPerson());
+                // 说明段及时间、地点、人员行均首行缩进两字。
+                y = paragraph(cs, font, 16, left, y, contentW, 28, lead, 32);
+                y -= 4;
+                y = paragraph(cs, font, 16, left, y, contentW, 28, timeLine, 32);
+                y = paragraph(cs, font, 16, left, y, contentW, 28, placeLine, 32);
+                y = paragraph(cs, font, 16, left, y, contentW, 28, personLine, 32);
+                if (reason != null) {
+                    y -= 4;
+                    y = paragraph(cs, font, 16, left, y, contentW, 28,
+                            "给您带来不便，敬请谅解。", 32);
+                }
 
                 y -= 16;
                 y = paragraph(cs, font, 16, left, y, contentW, 28,
@@ -163,6 +173,7 @@ public class ReceptionNoticePdfService {
         // 首行按缩进宽度断，剩下的按整宽重排，否则每行都少两个字的宽度
         String head = first.get(0);
         String rest = s.substring(head.length());
+        if (rest.startsWith("\n")) rest = rest.substring(1);
         List<String> lines = new ArrayList<>();
         lines.add(head);
         lines.addAll(wrap(font, size, rest, contentW));
