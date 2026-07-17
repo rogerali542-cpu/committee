@@ -9,7 +9,7 @@
         <div class="field-row">
           <span class="field-label">来访人</span>
           <span class="field-val">{{ rec.visitorName || '未填写' }}<span v-if="rec.room" class="room">{{ rec.room }}</span></span>
-          <span class="stage-pill" :class="rec.done ? 'done' : 'todo'">{{ rec.done ? '已办结' : '待跟进' }}</span>
+          <span class="stage-pill" :class="stageClass">{{ stageText }}</span>
         </div>
         <div class="field-row">
           <span class="field-label">时间</span>
@@ -38,7 +38,11 @@
            整块隐藏条件：已办结且两条路都没走过——事情都完了不该再给转办入口；
            走过任一条则保留（留痕）。填完处理结果 rec.done 变 true，按钮当场消失、只剩留痕。 -->
       <div class="sec-card" v-if="rec.ticketPushed || rec.propertyTransferred || !rec.done">
-        <div class="sec-title">转给物业</div>
+        <!-- 标题不能叫「转给物业」（0717 用户定要改）：它跟右边那颗按钮「转物业处理」几乎同词，
+             看着像只在给那一颗做标题，另一颗「派发工单」反倒成了编外的。
+             「物业协办」两颗都罩得住、又跟任何一颗都不撞词，字数也跟同页其它标题
+             （居民诉求 / 处理结果 / 佐证照片）对齐 -->
+        <div class="sec-title">物业协办</div>
 
         <!-- 已派单就只留单号，不再给按钮——后端虽是幂等的，
              但给老人一个还能点的按钮，他会以为没成功、反复点 -->
@@ -62,7 +66,8 @@
               {{ rec.propertyTransferred ? '✓ 已转交物业' : '转物业处理' }}
             </button>
           </div>
-          <div class="sec-hint">派工单走物业的工单系统、有单号可查；转物业只在这里记一笔，你自己联系物业。两条都不算办结，等有结果了再填下面的处理结果。</div>
+          <!-- 按钮下方原有一段解释两条路差别的小字，0717 用户定去掉：
+               两颗按钮本身已经写明白了，底下再来三行小字是给自己看的，不是给委员看的 -->
         </template>
 
         <!-- 留痕：已办结 / 没权限时，转物业标记改成只读一行（按钮的「已转交物业」态就是它的可写版） -->
@@ -122,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
@@ -138,6 +143,27 @@ const resolution = ref('')
 const pushing = ref(false)
 const transferring = ref(false)
 const saving = ref(false)
+
+/**
+ * 顶部状态胶囊三态（0717 用户定）：待跟进 → 已办理 → 已办结。
+ * 已办理 = 走了任意一条转给物业的路（派工单 / 转物业）—— 事情有人接手了、但还没闭环。
+ *   两条路都算：派工单本来就是「转交给物业」更正式的那条，只让开关那条改状态、
+ *   派了工单反而还写「待跟进」，说不通。
+ * 已办结 = 填了处理结果。isDone 口径一个字没动，仍然只认它 ——
+ *   胶囊多出来的是中间态，不是把办结的门槛降低了。
+ */
+const stageText = computed(() => {
+  if (!rec.value) return ''
+  if (rec.value.done) return '已办结'
+  if (rec.value.ticketPushed || rec.value.propertyTransferred) return '已办理'
+  return '待跟进'
+})
+const stageClass = computed(() => {
+  if (!rec.value) return ''
+  if (rec.value.done) return 'done'
+  if (rec.value.ticketPushed || rec.value.propertyTransferred) return 'doing'
+  return 'todo'
+})
 
 function recordId() {
   return new URLSearchParams(window.location.search).get('id')
@@ -286,6 +312,14 @@ function goBack() {
 /* 本页字号一律 ≥28rpx(14px)：首页三个 tab 刚清到零小字，这页别又造一批 */
 .stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; }
 .stage-pill.todo { background: #FFEDD5; color: #9A3412; }
+/* 已办理（中间态）：青 #0F766E 配 #E7F6F3 = 4.92:1 ✓。
+   青为什么在这儿又回来了：胶囊是「这条记录现在什么状态」，两条路都能把它推到已办理，
+   所以它既不能是蓝（工单专属）也不能是橙（转物业专属）——必须是中立的第三色。
+   取青不是新造色：会议卡「进行中」胶囊就是这一档(#0F766E/#E7F6F3/#B9E4DC)，
+   同是浅底状态胶囊、同是「有人在办、还没完」，语义和角色都对得上。
+   跟按钮那边退掉青的理由也不冲突：那儿是两颗深色实心按钮并排、青蓝只差 40° 色相分不开；
+   这儿是顶部一枚浅底胶囊，离按钮十万八千里，不存在两色相邻比对的问题。 */
+.stage-pill.doing { background: #E7F6F3; color: #0F766E; }
 .stage-pill.done { background: #E7F6EC; color: #1E7E4E; }
 
 .info-card, .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);
@@ -338,7 +372,8 @@ function goBack() {
 /* 已办结/没权限时，转物业标记的只读版（开关的「已转交物业」态是它的可写版）。
    跟上面的工单留痕(.ticket-done)取同一套绿：它俩是同一类东西——「这一步发生过」的留痕，
    不是可点的路径，所以不跟按钮的蓝/橙走，靠文案区分是哪条路。
-   （原来是青的，青随开关一起退场，全页不再出现第四种颜色） */
+   （原来是青的，青从这块退场了；顶部状态胶囊的「已办理」另有一档青，那是中立的第三态，
+     跟这里的留痕不是一回事，别看见青就往回并） */
 .tf-trace { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
   background: #F2FBF6; border: 2rpx solid #CDE9D8; border-radius: 16rpx;
   font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
