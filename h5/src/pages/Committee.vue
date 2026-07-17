@@ -252,8 +252,11 @@
             </div>
             <div class="form-group">
               <span class="form-label">接待人</span>
-              <!-- 多选一（0716 用户定）：点开从委员名单里挑，不再手填 -->
-              <div class="picker-field" @click="pickReceiver">{{ recForm.receiver || '点击选择' }}</div>
+              <!-- 0717 用户定：原生下拉框替代底部弹单（跟接待安排页同款），未选择不放占位字 -->
+              <select class="picker-select" v-model="recForm.receiver">
+                <option value=""></option>
+                <option v-for="it in receiverItems" :key="it" :value="it">{{ it }}</option>
+              </select>
             </div>
             <div class="form-group">
               <span class="form-label">诉求内容 *</span>
@@ -1221,17 +1224,13 @@ const todoDetail = ref(null)
 // ⚠ 命名避开 createVisible/createForm —— 那俩是「发起会议」在用的，同名会串
 const recCreateOpen = ref(false)
 const canManageReception = ref(false)
-// 接待人多选一（0716 用户定：点开从委员名单里选，不再手填）。名单进弹窗后首次点击拉一次并缓存
+// 接待人下拉框（0717 用户定：原生 select 替代底部弹单）。名单开弹窗时拉一次并缓存
 const committeeRoster = ref([])
-async function pickReceiver() {
-  if (!committeeRoster.value.length) {
-    try { committeeRoster.value = (await api.committeeMembers()) || [] } catch (e) { /* 下面按空处理 */ }
-  }
-  const items = committeeRoster.value.map(m => m.name + (m.role ? '（' + m.role + '）' : ''))
-  if (!items.length) { toast({ title: '没拿到委员名单，请稍后再试', icon: 'none' }); return }
-  const res = await showActionSheet({ title: '选择接待人', itemList: items })
-  if (!res || res.tapIndex == null || res.tapIndex < 0) return
-  recForm.receiver = items[res.tapIndex]
+const receiverItems = computed(() =>
+  committeeRoster.value.map(m => m.name + (m.role ? '（' + m.role + '）' : '')))
+async function loadCommitteeRoster() {
+  if (committeeRoster.value.length) return
+  try { committeeRoster.value = (await api.committeeMembers()) || [] } catch (e) { /* 静默，选项为空 */ }
 }
 const recForm = reactive({ date: '', time: '', visitorName: '', room: '', receiver: '', category: 'property', content: '' })
 
@@ -1240,6 +1239,7 @@ function openReceptionCreate() {
   Object.assign(recForm, {
     date: todayStr(), time: '14:00', visitorName: '', room: '', receiver: '', category: 'property', content: ''
   })
+  loadCommitteeRoster() // 不 await：名单到了选项自然出现，别让弹窗等网络
   recCreateOpen.value = true
 }
 
@@ -4012,6 +4012,8 @@ onActivated(show)
 /* 会议标题输入框：占位用更淡的灰 + 常规字重（"请输入会议名称"作浅提示） */
 .form-input.large::placeholder { color: #9a9a9a; font-weight: 400; }
 .picker-field { width: 100%; min-height: 88rpx; box-sizing: border-box; background: #fff; border: 2rpx solid #eeeeee; border-radius: 14rpx; padding: 0 20rpx; font-size: 32rpx; color: #1f2329; line-height: normal; word-break: break-all; display: flex; align-items: center; }
+/* 接待人原生下拉框（0717）：外观对齐 .picker-field，压掉系统箭头换统一的向下 chevron */
+.picker-select { width: 100%; min-height: 88rpx; box-sizing: border-box; background-color: #fff; border: 2rpx solid #eeeeee; border-radius: 14rpx; padding: 0 68rpx 0 20rpx; font-size: 32rpx; color: #1f2329; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%2362676F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 20rpx center; background-size: 36rpx; }
 .form-textarea { min-height: 200rpx; height: 200rpx; line-height: 1.5; padding: 18rpx 20rpx; }
 
 .sheet-actions { display: flex; gap: 18rpx; justify-content: space-between; padding-top: 12rpx; }
