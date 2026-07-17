@@ -53,15 +53,18 @@
         <!-- 接待日安排（0717）：按规定每月要设接待时间并公示，主任时间不定所以基本每月都要改。
              排在待跟进清单之后、日历之前——它是每月一次的事，不该跟「登记接待」（天天用）抢位置；
              但也不能藏进日历里，因为「我们的接待时间是几点」本身就是这个 tab 该回答的问题。
-             卡上只读，编辑和导出打印都在 /reception-notice。 -->
+             卡上只读，编辑和导出打印都在 /reception-notice。
+             标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
+             月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
         <div v-if="planTab === 'reception'" class="rec-notice-card" @click="goReceptionNotice">
           <div class="rnc-main">
-            <div class="rnc-title">接待日安排</div>
+            <div class="rnc-title">{{ recMonth }}月接待安排</div>
             <div class="rnc-val" :class="{ none: !(recSystem && recSystem.timeDesc) }">
               {{ (recSystem && recSystem.timeDesc) || '还没设置接待时间' }}
             </div>
+            <div v-if="recSystem && recSystem.place" class="rnc-val rnc-place">地点：{{ recSystem.place }}</div>
           </div>
-          <span class="rnc-act">{{ (recSystem && recSystem.timeDesc) ? '改/打印' : '去设置' }} ›</span>
+          <span class="rnc-act">{{ (recSystem && recSystem.timeDesc) ? '编辑' : '去设置' }} ›</span>
         </div>
 
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
@@ -912,9 +915,11 @@ function goLearningDetail(item) {
   navigateTo('/pages/learning-detail/learning-detail?id=' + item.id)
   setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/learning-detail?id=' + item.id }, 300)
 }
-// 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间。
-// 只读一个 timeDesc，编辑和导出都在 /reception-notice 里
+// 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间和地点。
+// 卡上只读，编辑和导出都在 /reception-notice 里
 const recSystem = ref(null)
+// 卡标题「X月接待安排」用的当前月份。取一次就够：跨月那一刻用户不会正开着页面
+const recMonth = new Date().getMonth() + 1
 function goReceptionNotice() {
   navigateTo('/pages/reception-notice/reception-notice')
   // 哨兵 .recep-notice 挂在目标页根上，进页即有、不等接口（同 goReceptionDetail 的兜底）
@@ -3314,6 +3319,8 @@ onActivated(show)
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 没设过：按规定每月必须设并公示，所以这不是「空状态」而是「欠着的事」，用橙字而非灰字 */
 .rnc-val.none { color: #9A3412; font-weight: 700; }
+/* 地点行：比时间行弱一档（时间是主信息），仍守全站 ≥28rpx 底线 */
+.rnc-place { color: var(--c-text-weak); }
 .rnc-act { flex-shrink: 0; padding: 8rpx 20rpx; border-radius: 999rpx; background: #fff;
   border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
   font-size: 28rpx; font-weight: 700; white-space: nowrap; }
