@@ -3309,21 +3309,23 @@ onActivated(show)
    放这儿讲得通：它不是动作而是这个 tab 的前提事实——「我们的接待时间是几点」，
    下面的登记/待跟进全都围着它转，当页头比夹在清单和日历中间合适。
    仍然只描边不填色：位置越靠前越要压分量，否则会盖过「登记接待」那颗主动作。 */
-.rec-notice-card { order: 1; display: flex; align-items: center; gap: 16rpx;
-  padding: 22rpx 24rpx; box-sizing: border-box; background: var(--c-bg-card);
+/* 0717 用户定：整卡加大约 30%（纵向 padding 22→30）、字体各加一号（30→32/28→30）、
+   行距和行间距同步放宽（1.3→1.4、6→12、gap 16→20）——增强呼吸感，老人一眼能看清。 */
+.rec-notice-card { order: 1; display: flex; align-items: center; gap: 20rpx;
+  padding: 30rpx 30rpx; box-sizing: border-box; background: var(--c-bg-card);
   border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07);
   cursor: pointer; }
 .rnc-main { flex: 1; min-width: 0; }
-.rnc-title { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.3; }
-.rnc-val { margin-top: 6rpx; font-size: 30rpx; color: var(--c-text-mid); line-height: 1.3;
+.rnc-title { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.4; }
+.rnc-val { margin-top: 12rpx; font-size: 32rpx; color: var(--c-text-mid); line-height: 1.4;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 没设过：按规定每月必须设并公示，所以这不是「空状态」而是「欠着的事」，用橙字而非灰字 */
 .rnc-val.none { color: #9A3412; font-weight: 700; }
 /* 地点行：比时间行弱一档（时间是主信息），仍守全站 ≥28rpx 底线 */
 .rnc-place { color: var(--c-text-weak); }
-.rnc-act { flex-shrink: 0; padding: 8rpx 20rpx; border-radius: 999rpx; background: #fff;
+.rnc-act { flex-shrink: 0; padding: 12rpx 26rpx; border-radius: 999rpx; background: #fff;
   border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
-  font-size: 28rpx; font-weight: 700; white-space: nowrap; }
+  font-size: 30rpx; font-weight: 700; white-space: nowrap; }
 .ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; padding: 24rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
 .ov-metric:active { opacity: 0.8; }
 .ov-metric.on { box-shadow: inset 0 0 0 4rpx #D97706; }
