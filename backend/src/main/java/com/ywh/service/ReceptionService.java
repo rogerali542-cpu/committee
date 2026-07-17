@@ -47,6 +47,7 @@ public class ReceptionService {
         result.put("timeDesc", sys.getTimeDesc());
         result.put("place", sys.getPlace());
         result.put("person", sys.getPerson());
+        result.put("adjustReason", sys.getAdjustReason());
         result.put("updatedAt", sys.getUpdatedAt() != null ? sys.getUpdatedAt().toString() : null);
         return result;
     }
@@ -97,6 +98,7 @@ public class ReceptionService {
         if (req.containsKey("timeDesc")) sys.setTimeDesc((String) req.get("timeDesc"));
         if (req.containsKey("place")) sys.setPlace((String) req.get("place"));
         if (req.containsKey("person")) sys.setPerson((String) req.get("person"));
+        if (req.containsKey("adjustReason")) sys.setAdjustReason((String) req.get("adjustReason"));
         if (req.containsKey("published")) sys.setPublished((Boolean) req.get("published"));
         sys.setUpdatedAt(LocalDateTime.now());
         sysRepo.save(sys);

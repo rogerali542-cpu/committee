@@ -88,23 +88,24 @@ public class ReceptionNoticePdfService {
                 line(cs, left, y, pageW - right, y);            // 抬头下的分隔线，公文常规
 
                 y -= 46;
-                text(cs, font, 16, "各位业主：", left, y);
+                text(cs, font, 16, "敬告各位业主：", left, y);
 
                 y -= 34;
+                // 0717 用户定：正文改说话口吻（类会议通知），不再是「一、二、」条款体。
+                // ⚠ 句子必须跟 ReceptionNotice.vue 的 noticeBody 逐字一致——预览就是这张纸
+                String reason = isBlank(sys.getAdjustReason()) ? null : sys.getAdjustReason().trim();
+                String body = reason != null
+                        ? org + "因" + reason + "，需要调整近期的业主接待时间。调整后的接待时间为："
+                            + value(sys.getTimeDesc()) + "；接待地点仍为：" + value(sys.getPlace())
+                            + "。给您带来不便，敬请谅解。"
+                        : org + "现将业主接待安排公告如下：接待时间为：" + value(sys.getTimeDesc())
+                            + "；接待地点为：" + value(sys.getPlace()) + "。";
                 // 首行缩进两字 = 32pt（16pt 字），公文正文规矩
-                y = paragraph(cs, font, 16, left, y, contentW, 28,
-                        "为方便业主反映情况、提出意见建议，" + org + "设立业主接待日，"
-                                + "现将接待安排公告如下：", 32);
+                y = paragraph(cs, font, 16, left, y, contentW, 28, body, 32);
 
                 y -= 16;
-                // 0717 用户定：公告只列时间/地点两项。接待人不上公告——制度里写的是
-                // 主任/副主任或委员轮值，具体到人反而每次都要改（页面预览也已同步删掉此行）
-                y = item(cs, font, left, y, contentW, "一、接待时间：", value(sys.getTimeDesc()));
-                y = item(cs, font, left, y, contentW, "二、接待地点：", value(sys.getPlace()));
-
-                y -= 20;
                 y = paragraph(cs, font, 16, left, y, contentW, 28,
-                        "欢迎广大业主在上述时间前来反映问题、提出建议。", 32);
+                        "欢迎广大业主届时前来反映问题、提出建议。", 32);
 
                 // 落款：右下角，公文规矩。位置固定在页面下方，不跟着正文长度飘——
                 // 正文再短也不能让落款吊在半空
@@ -122,19 +123,6 @@ public class ReceptionNoticePdfService {
         } catch (IOException e) {
             throw new IllegalStateException("接待日公告生成失败", e);
         }
-    }
-
-    /** 「一、接待时间：xxx」——标签与内容同排，内容过长时在标签宽度处对齐续行 */
-    private float item(PDPageContentStream cs, PDFont font, float left, float y,
-                       float contentW, String label, String content) throws IOException {
-        float size = 16, indent = 32;
-        float labelW = font.getStringWidth(label) / 1000f * size;
-        text(cs, font, size, label, left + indent, y);
-        List<String> lines = wrap(font, size, content, contentW - indent - labelW);
-        for (int i = 0; i < lines.size(); i++) {
-            text(cs, font, size, lines.get(i), left + indent + labelW, y - i * 26);
-        }
-        return y - lines.size() * 26 - 6;
     }
 
     private float paragraph(PDPageContentStream cs, PDFont font, float size, float left, float y,
