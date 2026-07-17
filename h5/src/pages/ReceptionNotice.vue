@@ -38,10 +38,14 @@
         <div v-else class="sec-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
       </div>
 
-      <!-- 导出打印 -->
+      <!-- 导出打印。0717 用户定：纸样缩略图不再直接铺开，收进「查看样张」折叠——
+           它只在第一次用时有认知价值，之后每次进页都占半屏 -->
       <div class="sec-card">
         <div class="sec-title">打印公告</div>
-        <div class="preview">
+        <div class="pv-toggle" @click="showPreview = !showPreview">
+          {{ showPreview ? '收起样张 ▴' : '看看印出来的样子 ▾' }}
+        </div>
+        <div v-if="showPreview" class="preview">
           <div class="pv-title">业主接待日公告</div>
           <div class="pv-org">{{ orgName }}</div>
           <div class="pv-line"></div>
@@ -87,6 +91,8 @@ const canManage = ref(false)
 const loadErr = ref('')
 const saving = ref(false)
 const exporting = ref(false)
+// 纸样默认收起（0717 用户定）
+const showPreview = ref(false)
 const orgName = ref('业主委员会')
 const exportLogs = ref([])
 const committeeRoster = ref([])
@@ -210,9 +216,14 @@ async function exportPdf() {
 .f-select:focus { border-color: var(--c-border-focus); }
 .f-select:disabled { background-color: #F4F5F7; color: var(--c-text-weak); cursor: default; }
 
-.big-action { width: 100%; height: 96rpx; margin-top: 6rpx; border: none; border-radius: 20rpx;
-  font-size: 32rpx; font-weight: 700; color: #fff; background: var(--c-primary-dark); }
+/* 0717 用户定：保存/导出按钮缩小 20%（高 96→76）、宽度 60% 居中。
+   字号 32→28 没砍满 20%——28rpx 是本页字号下限，破线老人看不清 */
+.big-action { display: block; width: 60%; height: 76rpx; margin: 12rpx auto 0; border: none; border-radius: 18rpx;
+  font-size: 28rpx; font-weight: 700; color: #fff; background: var(--c-primary-dark); }
 .big-action:disabled { opacity: 0.5; }
+
+/* 纸样折叠开关：文字链分量，不跟主按钮抢 */
+.pv-toggle { padding: 8rpx 0 14rpx; font-size: 28rpx; font-weight: 600; color: var(--c-primary-dark); cursor: pointer; }
 
 /* 纸样预览：让委员在按下导出前就知道印出来长什么样。
    白底+衬线感的居中排版，刻意跟 App 的卡片风格不一样——它代表"那张纸" */
