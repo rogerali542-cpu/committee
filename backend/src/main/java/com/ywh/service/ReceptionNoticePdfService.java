@@ -97,9 +97,10 @@ public class ReceptionNoticePdfService {
                                 + "现将接待安排公告如下：", 32);
 
                 y -= 16;
+                // 0717 用户定：公告只列时间/地点两项。接待人不上公告——制度里写的是
+                // 主任/副主任或委员轮值，具体到人反而每次都要改（页面预览也已同步删掉此行）
                 y = item(cs, font, left, y, contentW, "一、接待时间：", value(sys.getTimeDesc()));
                 y = item(cs, font, left, y, contentW, "二、接待地点：", value(sys.getPlace()));
-                y = item(cs, font, left, y, contentW, "三、接　待　人：", value(sys.getPerson()));
 
                 y -= 20;
                 y = paragraph(cs, font, 16, left, y, contentW, 28,
