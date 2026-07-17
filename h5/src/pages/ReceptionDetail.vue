@@ -32,8 +32,10 @@
       </div>
 
       <!-- 派发工单。已派单就只显示单号，不再给按钮——后端虽是幂等的，
-           但给老人一个还能点的按钮，他会以为没成功、反复点 -->
-      <div class="sec-card">
+           但给老人一个还能点的按钮，他会以为没成功、反复点。
+           已办结且没派过单 → 整块不显示（0717 用户定）：事情都完了，不该再给「派发」入口；
+           已办结但派过单仍显示单号（留痕）。填完处理结果 rec.done 变 true，这块当场消失。 -->
+      <div class="sec-card" v-if="rec.ticketPushed || !rec.done">
         <div class="sec-title">派发工单</div>
         <template v-if="rec.ticketPushed">
           <div class="ticket-done">

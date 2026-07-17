@@ -875,6 +875,8 @@ const thisYearPlan = computed(() => buildYearPlan(curYear))      // 待办/逾�
 
 // ── 履职年历：分类横栏（开会默认/培训/接待）+ 12 月宫格 + 警示条 + 点月看当月该类事项 ──
 const planTab = ref('meeting')   // 开会是本软件核心价值 → 默认
+// 会话内记住停留 tab（0717）：去学习/培训/接待的子页再回来，落回原 tab（show() 里读）
+watch(planTab, v => { try { sessionStorage.setItem('homePlanTab', v) } catch (e) {} })
 const calMonth = ref(curMonth)   // 选中月，默认本月
 const calRecs = ref([])          // 全部接待记录（进页拉一次）
 const calLearns = ref([])        // 全部学习培训（internal+training 合并）
@@ -1463,6 +1465,11 @@ function show() {
   const role = getStorage('activeRole', null)
   if (!role) { redirectTo('/pages/login/login'); return }
   activeRole.value = role
+  // 回首页落回来时的 tab（0717 用户定：从学习/培训/接待页回来要回到对应 tab，不是全切回开会）。
+  // 优先 ?tab= 显式指定，其次会话内最后停留的 tab（sessionStorage：微信杀会话即清，
+  // 新打开仍默认开会——开会是核心价值，冷启动不动它）。
+  const qTab = new URLSearchParams(location.search).get('tab') || sessionStorage.getItem('homePlanTab')
+  if (['meeting', 'reception', 'learning'].includes(qTab)) planTab.value = qTab
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
@@ -3143,9 +3150,10 @@ onActivated(show)
 }
 .meet-collapsed .mc-act:active, .meet-collapse-chip:active { background: #FFF6EC; }
 /* 收起条要矮（0716 用户定）：条高被这颗胶囊撑着，压条必先压它。必须写在上面统一规则之后才压得住。
-   字 26rpx=13px 是用户点名的缩小（低于 14px 底线的又一处例外）；只缩这颗，
-   展开卡上的「收起 ▴」仍 28rpx——同款不同码，收起条 32px 高装不下大码。 */
+   字 26rpx=13px 是用户点名的缩小（低于 14px 底线的又一处例外）。 */
 .meet-collapsed .mc-act { padding: 3rpx 14rpx; font-size: 26rpx; line-height: 1.2; }
+/* 展开卡右下角的「收起 ▴」也缩一档（0717 用户定），与收起条上的「查看 ▾」同码 */
+.meet-collapse-chip { padding: 4rpx 16rpx; font-size: 26rpx; line-height: 1.2; }
 /* 收起 chip 放卡片右下角（右上角与状态徽标太挤） */
 .meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
