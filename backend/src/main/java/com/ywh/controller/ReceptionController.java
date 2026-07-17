@@ -66,6 +66,13 @@ public class ReceptionController {
         return Result.ok(ticketService.push(id));
     }
 
+    /** 转物业：只在本系统打标记、不发任何外部请求（与上面的 /ticket 是两条路）。不参与办结判定。 */
+    @PutMapping("/records/{id}/property-transfer")
+    public Result<Void> setPropertyTransferred(@PathVariable Long id, @RequestParam boolean transferred) {
+        service.setPropertyTransferred(id, transferred);
+        return Result.ok();
+    }
+
     @DeleteMapping("/records/{id}")
     public Result<Void> remove(@PathVariable Long id) {
         service.remove(id);

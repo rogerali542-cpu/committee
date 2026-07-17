@@ -31,38 +31,55 @@
         <div class="appeal">{{ rec.content || '未填写' }}</div>
       </div>
 
-      <!-- 派发工单。已派单就只显示单号，不再给按钮——后端虽是幂等的，
-           但给老人一个还能点的按钮，他会以为没成功、反复点。
-           已办结且没派过单 → 整块不显示（0717 用户定）：事情都完了，不该再给「派发」入口；
-           已办结但派过单仍显示单号（留痕）。填完处理结果 rec.done 变 true，这块当场消失。 -->
-      <div class="sec-card" v-if="rec.ticketPushed || !rec.done">
-        <div class="sec-title">派发工单</div>
-        <template v-if="rec.ticketPushed">
-          <div class="ticket-done">
-            <span class="tk-ico">✓</span>
-            <div class="tk-info">
-              <div class="tk-no">工单 {{ rec.ticketNo || rec.externalTicketNo }}</div>
-              <div class="tk-at">{{ fmtPushedAt(rec.ticketPushedAt) }} 已派发给物业</div>
-            </div>
+      <!-- 转给物业：两条不一样的路（0717 用户定），并排两颗不同颜色的按钮，让人自己挑——
+             派发工单（橙实心）= 真的 POST 到外部工单系统，有对方单号，派出去撤不回 → 要确认弹窗
+             转物业处理（青开关）= 不发任何请求，只在本系统记一笔，随手可反悔 → 不弹窗，点了就切
+           两条都不算办结（办结 = 填了处理结果），所以这块和下面的处理结果卡是并列关系、不是前后步骤。
+           整块隐藏条件：已办结且两条路都没走过——事情都完了不该再给转办入口；
+           走过任一条则保留（留痕）。填完处理结果 rec.done 变 true，按钮当场消失、只剩留痕。 -->
+      <div class="sec-card" v-if="rec.ticketPushed || rec.propertyTransferred || !rec.done">
+        <div class="sec-title">转给物业</div>
+
+        <!-- 已派单就只留单号，不再给按钮——后端虽是幂等的，
+             但给老人一个还能点的按钮，他会以为没成功、反复点 -->
+        <div v-if="rec.ticketPushed" class="ticket-done">
+          <span class="tk-ico">✓</span>
+          <div class="tk-info">
+            <div class="tk-no">工单 {{ rec.ticketNo || rec.externalTicketNo }}</div>
+            <div class="tk-at">{{ fmtPushedAt(rec.ticketPushedAt) }} 已派发给物业</div>
           </div>
-          <div class="sec-hint">物业在工单系统里处理。等你知道结果了，在下面填处理结果即可办结。</div>
+        </div>
+
+        <!-- 派单/转物业/填结果/删除都要 reception.manage：这些是履职动作，不能谁点开谁都能改。
+             已办结时也不给按钮，只在下面走留痕分支 -->
+        <template v-if="canManage && !rec.done">
+          <div class="ho-row">
+            <button v-if="!rec.ticketPushed" class="ho-btn ho-ticket" :disabled="pushing" @click="pushTicket">
+              {{ pushing ? '正在派发…' : '派发工单' }}
+            </button>
+            <button class="ho-btn ho-transfer" :class="{ on: rec.propertyTransferred }"
+                    :disabled="transferring" @click="toggleTransfer">
+              {{ rec.propertyTransferred ? '✓ 已转交物业' : '转物业处理' }}
+            </button>
+          </div>
+          <div class="sec-hint">派工单走物业的工单系统、有单号可查；转物业只在这里记一笔，你自己联系物业。两条都不算办结，等有结果了再填下面的处理结果。</div>
         </template>
-        <!-- 派单/填结果/删除都要 reception.manage：这些是履职动作，不能谁点开谁都能改 -->
-        <template v-else-if="canManage">
-          <button class="big-action ticket" :disabled="pushing" @click="pushTicket">
-            {{ pushing ? '正在派发…' : '派发工单给物业' }}
-          </button>
-          <div class="sec-hint">派给物业的工单系统去处理。派单不等于办结——等有结果了再回来填处理结果。</div>
-        </template>
-        <div v-else class="sec-hint">还没有派发工单。你没有接待管理权限，如需派单请联系主任。</div>
+
+        <!-- 留痕：已办结 / 没权限时，转物业标记改成只读一行（按钮的「已转交物业」态就是它的可写版） -->
+        <div v-else-if="rec.propertyTransferred" class="tf-trace">
+          <span class="tf-ico">✓</span>{{ fmtPushedAt(rec.propertyTransferredAt) }} 已转交物业处理
+        </div>
+        <!-- 加 !rec.ticketPushed：否则「已派工单 + 没权限」会在单号下面紧跟一句「还没有转给物业」自打嘴巴 -->
+        <div v-else-if="!canManage && !rec.ticketPushed" class="sec-hint">还没有转给物业。你没有接待管理权限，如需转办请联系主任。</div>
       </div>
 
       <!-- 处理结果 = 办结动作 -->
       <div class="sec-card">
         <div class="sec-title">处理结果<span v-if="canManage" class="sec-tip">填写并保存即算办结</span></div>
         <template v-if="canManage">
-          <textarea v-model="resolution" class="res-input" rows="4"
-                    placeholder="这件事最后怎么处理的？例如：已派工单给物业，6月28日已完成维修并回访。"></textarea>
+          <!-- 不放 placeholder（0717 用户定：默认填入的灰色幽灵字全部去除）。
+               上面的标题「处理结果 · 填写并保存即算办结」已经说清要填什么，不需要框里再来一遍 -->
+          <textarea v-model="resolution" class="res-input" rows="4"></textarea>
           <button class="big-action save" :disabled="saving || !resolution.trim()" @click="saveResolution">
             {{ saving ? '保存中…' : (rec.done ? '保存修改' : '保存并办结') }}
           </button>
@@ -119,6 +136,7 @@ const rec = ref(null)
 const loadErr = ref('')
 const resolution = ref('')
 const pushing = ref(false)
+const transferring = ref(false)
 const saving = ref(false)
 
 function recordId() {
@@ -170,6 +188,27 @@ async function pushTicket() {
     toast({ title: (e && e.message) || '工单派发失败', icon: 'none' })
   } finally {
     pushing.value = false
+  }
+}
+
+/**
+ * 转物业。跟 pushTicket 是两条不同的路，交互也故意不一样：
+ * 派工单要弹确认（真的推到外部系统、撤不回），这个不弹（只在本系统记一笔、随手可切回来）——
+ * 给开关套确认弹窗就不是开关了。点错了再点一下就还原，这才是「开关」该有的样子。
+ */
+async function toggleTransfer() {
+  if (transferring.value) return
+  const next = !rec.value.propertyTransferred
+  transferring.value = true
+  try {
+    await api.receptionSetPropertyTransferred(rec.value.id, next)
+    rec.value.propertyTransferred = next
+    rec.value.propertyTransferredAt = next ? new Date().toISOString() : null
+    toast({ title: next ? '已标记转交物业' : '已取消转交标记', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '操作失败', icon: 'none' })
+  } finally {
+    transferring.value = false
   }
 }
 
@@ -265,14 +304,38 @@ function goBack() {
 /* 诉求正文：这页的主角，字号最大 */
 .appeal { font-size: 32rpx; line-height: 1.6; color: var(--c-text-strong); white-space: pre-wrap; }
 
-/* 两颗都用 --c-primary-dark(#A85800)：白字 16px/700 门槛 4.5:1，#A85800 是 5.17 ✓，
-   而 --c-primary(#C76A00) 只有 3.83 ✗。两颗同色不分主次是有意的——它俩分属不同卡片、
-   标题各说各的（派发工单 / 处理结果），不靠颜色区分，靠位置和文案。 */
+/* 保存并办结。白字 16px/700 门槛 4.5:1：#A85800 是 5.17 ✓，--c-primary(#C76A00) 只有 3.83 ✗ */
 .big-action { width: 100%; height: 96rpx; border: none; border-radius: 20rpx; font-size: 32rpx; font-weight: 700; color: #fff;
   background: var(--c-primary-dark); }
 .big-action:disabled { opacity: 0.5; }
-.big-action.ticket { box-shadow: 0 8rpx 22rpx rgba(168,88,0,0.26); }
 .big-action.save { margin-top: 18rpx; }
+
+/* 转给物业的两条路（0717 用户定）：并排、等宽、两个颜色，让人自己挑一条。
+   等宽是有意的——它俩是并列选项不是主次，谁看起来「更该点」都是误导。
+   高 96rpx=48px ≥ 44dp；两颗最长文案（✓ 已转交物业 ≈114px）在 157px 半栏里放得下，nowrap 兜底 */
+.ho-row { display: flex; gap: 16rpx; }
+/* 已派工单时单号留痕在上、转物业按钮在下，要隔开；单号独占（已办结）时不能凭空多出下边距 */
+.ticket-done + .ho-row { margin-top: 16rpx; }
+.ho-btn { flex: 1; min-width: 0; height: 96rpx; border-radius: 20rpx;
+  font-size: 32rpx; font-weight: 700; white-space: nowrap; }
+.ho-btn:disabled { opacity: 0.5; }
+/* 派发工单 = 橙实心，白字 5.17:1 ✓。它是真动作（推外部工单系统、撤不回），给足视觉重量 */
+.ho-ticket { border: none; background: var(--c-primary-dark); color: #fff;
+  box-shadow: 0 8rpx 22rpx rgba(168,88,0,0.26); }
+/* 转物业 = 青开关。关态：青描边白底青字；开态：青实心白字。#0F766E 白字 5.47:1 ✓、
+   做字 5.47:1 ✓、做描边远超非文字 3:1 ✓。
+   青色沿用「进行中」胶囊那档——语义对得上：事情流转到别处了，
+   既不是完成（绿）也不是主路径（橙），老人不会把它读成「办完了」 */
+.ho-transfer { border: 2rpx solid #0F766E; background: #fff; color: #0F766E; }
+.ho-transfer.on { background: #0F766E; color: #fff; }
+
+/* 已办结/没权限时，转物业标记的只读版（开关的「已转交物业」态是它的可写版）。
+   底色/图标用青、正文用墨色，跟上面的工单留痕同构，靠文案和图标色区分是哪条路 */
+.tf-trace { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
+  background: #E7F6F3; border: 2rpx solid #B9E4DC; border-radius: 16rpx;
+  font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
+.tf-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: #0F766E;
+  color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
 
 .ticket-done { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
   background: #F2FBF6; border: 2rpx solid #CDE9D8; border-radius: 16rpx; }

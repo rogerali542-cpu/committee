@@ -33,6 +33,10 @@ export default {
   receptionPushTicket: function (id) {
     return core.request('POST', '/api/receptions/records/' + id + '/ticket');
   },
+  // 转物业：只在本系统打标记，不发任何外部请求（与 receptionPushTicket 是两条路）。可来回切
+  receptionSetPropertyTransferred: function (id, transferred) {
+    return core.request('PUT', '/api/receptions/records/' + id + '/property-transfer?transferred=' + (transferred ? 'true' : 'false'));
+  },
   receptionStats: function () {
     return core.request('GET', '/api/receptions/stats');
   },

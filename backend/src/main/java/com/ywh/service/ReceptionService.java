@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -91,6 +92,9 @@ public class ReceptionService {
         m.put("ticketNo", r.getTicketNo());
         m.put("ticketPushed", r.getTicketPushedAt() != null);
         m.put("ticketPushedAt", r.getTicketPushedAt() != null ? r.getTicketPushedAt().toString() : null);
+        // 转物业（另一条路，见 setPropertyTransferred）
+        m.put("propertyTransferred", r.getPropertyTransferredAt() != null);
+        m.put("propertyTransferredAt", r.getPropertyTransferredAt() != null ? r.getPropertyTransferredAt().toString() : null);
         // 佐证：原先只有 toTaskCard（物业侧）放了这个键，listRecords 从没放过，
         // 于是接待页佐证数永远显示 0、永远走空状态，哪怕上传成功已落库。0716 修。
         m.put("evidences", getEvidences(r.getId()));
@@ -119,6 +123,20 @@ public class ReceptionService {
         ReceptionRecord r = recordRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
         r.setResolution(resolution != null ? resolution.trim() : "");
+        recordRepo.save(r);
+    }
+
+    /**
+     * 转物业 —— 只在本系统打个标记，不发任何外部请求（0717 用户定：「开关（假按钮）」）。
+     * 跟 ReceptionTicketService.push 是两条不同的路：那条真的 POST 到外部工单系统、
+     * 拿得到对方单号、派出去就撤不回；这条纯粹是委员自己联系了物业、在这记一笔，所以可反悔。
+     * ⚠ 故意不参与 isDone —— 转出去 ≠ 办结，事情仍挂在委员名下，填了处理结果才闭环。
+     */
+    @Transactional
+    public void setPropertyTransferred(Long id, boolean transferred) {
+        ReceptionRecord r = recordRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
+        r.setPropertyTransferredAt(transferred ? LocalDateTime.now() : null);
         recordRepo.save(r);
     }
 

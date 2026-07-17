@@ -56,6 +56,13 @@ public class ReceptionRecord {
     @Column(name = "ticket_pushed_at")
     private LocalDateTime ticketPushedAt;
 
+    // ── 转物业（0717）：跟上面的工单是两条不同的路 ──
+    // 工单那条真的 POST 到外部工单系统、有对方单号、不可撤销；这条不发任何请求，
+    // 只是委员自己联系了物业、在本系统记一笔，所以可以随手反悔（前端是个开关）。
+    // 时间戳兼作布尔：null = 没转过。⚠ 不参与 isDone —— 转出去 ≠ 办结。
+    @Column(name = "property_transferred_at")
+    private LocalDateTime propertyTransferredAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
