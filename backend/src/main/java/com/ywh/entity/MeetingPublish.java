@@ -26,6 +26,12 @@ public class MeetingPublish {
     @Column(name = "publish_date")
     private LocalDate publishDate;
 
+    @Column(name = "public_title", length = 300)
+    private String publicTitle;
+
+    @Column(name = "public_content", columnDefinition = "TEXT")
+    private String publicContent;
+
     // ===== 公示留痕（公示=正式动作，见 产品边界定稿.md §5）=====
     @Column(name = "published_by_id")
     private Long publishedById;

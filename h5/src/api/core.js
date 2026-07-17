@@ -58,7 +58,9 @@ export function uploadFile(path, fileOrBlob, name = 'file', formData = {}, optio
   const fd = new FormData()
   fd.append(name, fileOrBlob, (fileOrBlob && fileOrBlob.name) || 'upload')
   Object.keys(formData || {}).forEach((k) => fd.append(k, formData[k]))
-  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: options.timeout || 30000, onUploadProgress: options.onUploadProgress }).then(
+  // 不手写 Content-Type：浏览器会为 FormData 自动补上 multipart boundary。
+  // 手写 multipart/form-data 在部分 WebView/浏览器中会丢 boundary，后端因收不到文件而识别失败。
+  return instance.post(path, fd, { timeout: options.timeout || 30000, onUploadProgress: options.onUploadProgress }).then(
     unwrap,
     (err) => { toast({ title: '上传失败', icon: 'none' }); return Promise.reject(err) }
   )
@@ -69,10 +71,23 @@ export function uploadFiles(path, files, name = 'files', formData = {}, options 
   const fd = new FormData()
   ;(files || []).forEach((f) => fd.append(name, f, (f && f.name) || 'upload'))
   Object.keys(formData || {}).forEach((k) => fd.append(k, formData[k]))
-  return instance.post(path, fd, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: options.timeout || 30000 }).then(
+  return instance.post(path, fd, { timeout: options.timeout || 30000 }).then(
     unwrap,
     (err) => { toast({ title: '上传失败', icon: 'none' }); return Promise.reject(err) }
   )
+}
+
+// 下载二进制归档材料（PDF 等），仍统一注入当前身份请求头。
+export function download(path, options = {}) {
+  return instance.get(path, { responseType: 'blob', timeout: options.timeout || 30000 }).then(async (res) => {
+    if (res.status >= 200 && res.status < 300 && res.data instanceof Blob) return res.data
+    let message = '下载失败'
+    try {
+      const body = JSON.parse(await res.data.text())
+      message = body.message || message
+    } catch (_) {}
+    return Promise.reject(new Error(message))
+  }, (err) => Promise.reject(err))
 }
 
 export const get = (p, d) => request('GET', p, d)
@@ -80,4 +95,4 @@ export const post = (p, d) => request('POST', p, d)
 export const put = (p, d) => request('PUT', p, d)
 export const del = (p, d) => request('DELETE', p, d)
 
-export default { request, realRequest, uploadFile, uploadFiles, get, post, put, delete: del, BASE }
+export default { request, realRequest, uploadFile, uploadFiles, download, get, post, put, delete: del, BASE }

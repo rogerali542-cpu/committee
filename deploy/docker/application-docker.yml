@@ -93,6 +93,19 @@ demo:
   prefill:
     enabled: ${DEMO_PREFILL_ENABLED:true}
 
+# 会议待办推送到外部工单系统。部署时必须显式注入开关和接入身份，
+# 否则 enabled 默认 false，服务会在发送 HTTP 请求前直接拒绝。
+external:
+  ticket:
+    enabled: ${EXTERNAL_TICKET_ENABLED:false}
+    base-url: ${EXTERNAL_TICKET_BASE_URL:https://communityhub.slaicreativity.com}
+    uid: ${EXTERNAL_TICKET_UID:}
+    community-code: ${EXTERNAL_TICKET_COMMUNITY_CODE:}
+    default-reporter-name: ${EXTERNAL_TICKET_REPORTER_NAME:业委会会议}
+    default-ticket-type: ${EXTERNAL_TICKET_TYPE:会议待办}
+    default-risk-level: ${EXTERNAL_TICKET_RISK_LEVEL:LOW}
+    default-priority: ${EXTERNAL_TICKET_PRIORITY:P2}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

@@ -162,6 +162,7 @@ const dateText = ref('')
 const meetingDate = ref('')
 const meetingTime = ref('')
 const location = ref('')
+const meetingMethod = ref('offline')
 const description = ref('')
 const stage = ref('') // preparing / ongoing / ended
 const signedIn = ref(false) // 后端持久态：会议开始时已清空，ongoing 阶段即"本人会上是否已签到"（按用户区分）
@@ -208,8 +209,11 @@ const noticeTopicsText = computed(() => {
   return titles.slice(0, 2).join('、') + ' 等'
 })
 const noticeText = computed(() => {
+  const place = meetingMethod.value === 'online'
+    ? '以线上方式召开本次会议，线上平台为' + (location.value || '微信工作群')
+    : '在' + (location.value || '') + '召开本次会议'
   return '各位委员：现拟于 ' + fmtCnDate(meetingDate.value) + ' ' + fmtHm(meetingTime.value) +
-    ' 在' + (location.value || '') + '召开本次会议，主要议题：' + noticeTopicsText.value + '，请准时出席。'
+    ' ' + place + '，主要议题：' + noticeTopicsText.value + '，请准时参加。'
 })
 
 const playingIdx = ref(-1)
@@ -291,6 +295,7 @@ async function loadDetail() {
     meetingDate.value = d.meetingDate || ''
     meetingTime.value = d.meetingTime || ''
     location.value = d.location || ''
+    meetingMethod.value = d.meetingMethod || 'offline'
     description.value = d.description || ''
     stage.value = d.stage
     signedIn.value = !!me.signedIn

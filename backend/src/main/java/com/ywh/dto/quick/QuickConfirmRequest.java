@@ -3,6 +3,7 @@ package com.ywh.dto.quick;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 public class QuickConfirmRequest {
@@ -19,6 +20,7 @@ public class QuickConfirmRequest {
         private Integer agVotes;
         private Integer abVotes;
         private Integer totalVotes;
+        private Map<Long, Integer> optionVotes;
     }
 
     private List<Integer> ignoredSegmentIndexes;

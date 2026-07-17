@@ -67,9 +67,22 @@ export default {
   committeeSignAll: function (id) {
     return core.realRequest('POST', '/api/committees/' + id + '/attendance/sign-all');
   },
+  committeeSetOnlineAttendance: function (id, presentMemberIds) {
+    return core.realRequest('PUT', '/api/committees/' + id + '/online-attendance', {
+      presentMemberIds: presentMemberIds || []
+    });
+  },
   // 导出签到名单（返回 { fileName, content(CSV) }）
   committeeExportAttendance: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/attendance/export');
+  },
+  // 会后归档材料：包含全体参会名单及手写签名栏的 PDF 签到表
+  committeeExportAttendanceSheet: function (id) {
+    return core.download('/api/committees/' + id + '/attendance-sheet.pdf?t=' + Date.now());
+  },
+  // 会后原始留档材料：会议过程、意见、表决、待办及统一签字区
+  committeeExportMeetingRecord: function (id) {
+    return core.download('/api/committees/' + id + '/meeting-record.pdf?t=' + Date.now());
   },
   // 录音多条：获取会议全部录音列表
   committeeRecordings: function (id) {
@@ -103,7 +116,7 @@ export default {
   committeeRemoveTopic: function (id, topicId) {
     return core.request('DELETE', '/api/committees/' + id + '/topics/' + topicId);
   },
-  // 通报议题：记录本人已查看（全体已签到委员看完自动已通报）
+  // 通报议题：记录本人已查看（会议参会名单全体看完自动已通报）
   committeeNoticeView: function (id, topicId) {
     return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/notice-view');
   },
@@ -262,6 +275,12 @@ export default {
   },
   committeeTodoStatus: function (id, todoId, status) {
     return core.realRequest('PUT', '/api/committees/' + id + '/quick/todos/' + todoId + '/status?status=' + encodeURIComponent(status));
+  },
+  committeeTodoDelete: function (id, todoId) {
+    return core.realRequest('DELETE', '/api/committees/' + id + '/quick/todos/' + todoId);
+  },
+  committeeTodoPushTicket: function (id, todoId) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/todos/' + todoId + '/ticket');
   },
   committeeQuickTopicSummary: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/topic-summary', data);

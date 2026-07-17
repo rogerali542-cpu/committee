@@ -94,7 +94,7 @@ public class MinutesGenServiceStub implements MinutesGenService {
             sb.append("未明确说明。\n");
         }
         sb.append("\n三、会议结论与后续安排\n");
-        sb.append("会议已按人工确认结果记录相关事项。通报事项按会议记录留存，讨论事项按会议形成的意见继续推进，表决事项按确认票数和表决结果执行。\n");
+        sb.append("会议已按人工确认结果记录相关事项。通知和讨论类事项按会议记录与形成的意见继续推进，表决事项按确认票数和表决结果执行。\n");
         return sb.toString();
     }
 
@@ -188,9 +188,10 @@ public class MinutesGenServiceStub implements MinutesGenService {
     private String renderTopic(ConfirmedTopic t) {
         String summary = concise(t.summary, t.type.contains("表决") || t.type.contains("决定") ? 220 : 300);
         if (t.type.contains("通报")) {
+            // 对外类型名已合并为「通知和讨论」（0717）；contains("通报") 匹配内部标签，与 Doubao 版同款联动
             return "会议听取了关于“" + t.title + "”的通报。" +
                     (summary.isBlank() ? "" : summary) +
-                    "本事项为通报事项，与会委员已知悉相关情况。";
+                    "本事项为通知和讨论类议题，与会委员已知悉相关情况。";
         }
         if (t.type.contains("讨论")) {
             return "会议围绕“" + t.title + "”进行了讨论。" +

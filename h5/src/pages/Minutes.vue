@@ -74,9 +74,7 @@
     <div v-else-if="!isOwner && hasServerMinutes && plainText" class="doc">
       <div class="minutes-letterhead">
         <span class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
-        <span class="minutes-main-title">会议纪要</span>
       </div>
-      <div class="minutes-rule"></div>
       <span class="doc-body">{{ documentParts.body }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
         <!-- 两个主操作：编辑(左·浅色) / 确认无误(右·深色更醒目) -->
@@ -208,7 +206,7 @@ const documentParts = computed(() => {
   if (marker >= 0) {
     const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
     // 期号行（第N期）已从公文格式中移除：老纪要里若存有该行，按普通正文首行显示
-    return { meetingName: meetingName || '会议', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
+    return { meetingName: (meetingName || '业委会') + '会议纪要', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
   }
   return { meetingName: (lines[0] || '').trim(), body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
 })
@@ -832,10 +830,8 @@ function viewTodoList() {
 
 /* 文档正文（阅读友好） */
 /* 正文第一行作标题：字号加大三号、黑体加粗、居中 */
-.minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:12rpx 10rpx 22rpx; }
-.minutes-meeting-name { font-size:34rpx; color:#202124; line-height:1.45; white-space:pre-wrap; }
-.minutes-main-title { margin-top:12rpx; font-size:58rpx; font-weight:700; letter-spacing:14rpx; color:#d71920; line-height:1.25; }
-.minutes-rule { height:2rpx; background:#b65d5d; margin:4rpx 0 18rpx; }
+.minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:18rpx 10rpx 34rpx; }
+.minutes-meeting-name { font-size:42rpx; font-weight:700; color:#161616; line-height:1.45; white-space:pre-wrap; }
 .doc-body { display:block; font-size:34rpx; color:#33373d; line-height:1.9; white-space:pre-wrap; padding:24rpx 0; }
 
 .doc-head { margin-bottom:28rpx; }

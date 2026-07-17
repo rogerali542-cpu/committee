@@ -3,11 +3,11 @@
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
-        <span class="hd-title">业委会</span>
+        <span class="hd-title">{{ planTab === 'reception' ? '接待中心' : '业委会会议' }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 综合评分：右上角「业委会综合评分92分」，顶栏内垂直居中；数字按分数高低走红绿灯渐变（0716 用户定） -->
-      <div v-if="isChair" class="hd-score">
+      <div v-if="isChair && planTab === 'meeting'" class="hd-score">
         <span class="hd-score-label">业委会综合评分</span>
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-unit">分</span>
@@ -24,30 +24,59 @@
          日历卡头 39→52px）。压紧本身是想要的效果，只是理由挂错了；改掉反而把一路收敛来的空间又吐回去。
          正解是把 compact 态的紧凑值直接写死、不再依赖 has-meeting，那是独立的一次重构。
          现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
-    <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'has-meeting': currents && currents.length }">
-        <!-- 分类横栏：放在年份上面；开会为主（默认），培训/接待切换后日历+清单整体切到该类 -->
-        <div class="plan-switch-card">
-          <div class="plan-tabs">
-            <div class="plan-tab" :class="{ active: planTab === 'meeting' }" @click="planTab = 'meeting'">开会</div>
-            <div class="plan-tab" :class="{ active: planTab === 'reception' }" @click="planTab = 'reception'">接待</div>
-            <div class="plan-tab" :class="{ active: planTab === 'learning' }" @click="planTab = 'learning'">培训</div>
-          </div>
-        </div>
-
-        <!-- 接待/培训概览三数字：独立成行，置于日历上方（order:2，不再嵌在日历卡内）；点数字兼作下方清单筛选 -->
-        <div v-if="planTab !== 'meeting'" class="ov-metrics ov-metrics-standalone">
-          <div v-for="mm in planOverview" :key="mm.key" class="ov-metric" :class="[mm.tone, { on: ovFilter === mm.key }]" @click="ovFilter = mm.key">
-            <span class="ov-num">{{ mm.num }}</span>
-            <span class="ov-label">{{ mm.label }}</span>
-          </div>
-        </div>
-
+    <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'reception-mode': planTab === 'reception', 'has-meeting': planTab === 'meeting' && currents && currents.length }">
         <!-- 登记：接待的入口动作，独立成大按钮（0716 用户定）。委员接待完来访，先用它把事情记进下面的
              清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
-        <div v-if="planTab === 'reception' && canManageReception" class="rec-add-card" @click="openReceptionCreate">
-          <span class="rac-ico">✚</span>
-          <span class="rac-title">登记接待</span>
+        <div v-if="planTab === 'reception'" class="rec-notice-hero">
+          <div class="rec-notice-hero-head">
+            <div class="rnh-copy">
+              <div class="rnh-kicker">接待安排</div>
+              <div class="rnh-time" :class="{ none: !(recSystem && recSystem.timeDesc) }">
+                {{ (recSystem && recSystem.timeDesc) || '还没设置接待时间' }}
+              </div>
+              <div v-if="recSystem && recSystem.place" class="rnh-place">接待地点：{{ recSystem.place }}</div>
+            </div>
+          </div>
+          <button v-if="canManageReception" class="rec-notice-primary" type="button" @click="goReceptionNotice">
+            调整接待时间
+          </button>
+        </div>
+
+        <button v-if="planTab === 'reception' && canManageReception" class="rec-register-card" type="button" @click="openReceptionCreate">
+          <span class="rrc-icon">＋</span>
+          <span class="rrc-copy">
+            <strong>登记接待</strong>
+          </span>
+          <span class="rrc-arrow">›</span>
+        </button>
+
+        <div v-if="planTab === 'reception'" class="rec-recent-card">
+          <div class="rec-recent-head">
+            <span>最近接待记录</span>
+            <button type="button" @click="goReceptionRecords">查看全部</button>
+          </div>
+          <div v-if="!recentReceptionRecords.length" class="rec-recent-empty">暂无接待记录</div>
+          <div v-for="session in recentReceptionRecords" :key="session.key" class="rec-recent-session">
+            <div class="rec-recent-row" @click="openRecentSession(session)">
+              <div class="rec-recent-copy">
+                <div class="rec-recent-title">
+                  <strong>{{ session.noVisit ? '本次无人来访' : (session.visitorCount + '人来访') }}</strong>
+                  <i :class="session.status">{{ session.statusText }}</i>
+                </div>
+                <span>{{ fmtPlanDate(session.date) }}<template v-if="session.time"> · {{ String(session.time).slice(0, 5) }}</template><template v-if="session.receiver"> · {{ session.receiver }}</template></span>
+              </div>
+              <span v-if="session.displayRecords.length > 1" class="rec-recent-chevron" :class="{ open: recentOpenKey === session.key }">⌄</span>
+              <button v-if="canManageReception" class="rec-recent-delete" type="button"
+                      aria-label="删除本次接待记录" @click.stop="removeReceptionSession(session)">×</button>
+            </div>
+            <div v-if="recentOpenKey === session.key && session.displayRecords.length > 1" class="rec-recent-items">
+              <div v-for="r in session.displayRecords" :key="r.id" class="rec-recent-item" @click="goReceptionDetail(r)">
+                <div><strong>{{ r.visitorName || '来访居民' }}</strong><span>{{ r.content }}</span></div>
+                <em>{{ r.done ? '已办结' : ((r.propertyTransferred || r.ticketPushed) ? '已办理' : '去处理') }}</em>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 接待日安排（0717）：按规定每月要设接待时间并公示，主任时间不定所以基本每月都要改。
@@ -56,19 +85,8 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-        <div v-if="planTab === 'reception'" class="rec-notice-card" @click="goReceptionNotice">
-          <div class="rnc-main">
-            <div class="rnc-title">{{ recMonth }}月接待安排</div>
-            <div class="rnc-val" :class="{ none: !(recSystem && recSystem.timeDesc) }">
-              {{ (recSystem && recSystem.timeDesc) || '还没设置接待时间' }}
-            </div>
-            <div v-if="recSystem && recSystem.place" class="rnc-val rnc-place">地点：{{ recSystem.place }}</div>
-          </div>
-          <span class="rnc-act">{{ (recSystem && recSystem.timeDesc) ? '编辑' : '去设置' }} ›</span>
-        </div>
-
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
-      <div class="plan-calendar-card">
+      <div v-if="planTab === 'meeting'" class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
@@ -81,7 +99,6 @@
             <span v-else class="plan-title ov-title">{{ planTab === 'reception' ? '全年接待日历' : '全年培训日历' }}</span>
           </div>
           <div class="plan-actions">
-            <span v-if="planTab === 'learning' && !ovGridFold" class="plan-tip link" @click.stop="goLearning()">查看全部 ›</span>
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
@@ -196,22 +213,30 @@
 
         <!-- 待办事项：开会类同时展示本期与逾期期次；其他分类展示当前月份待办 -->
         <div class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
-          <div class="yc-list-head">
+          <div class="yc-list-head" :class="{ foldable: planTab === 'reception' }"
+               @click="planTab === 'reception' ? (receptionTodoOpen = !receptionTodoOpen) : null">
             <span class="yc-head-title">{{ planListTitle }}</span>
             <!-- 0 时整个不显示（0716）：下面 .plan-empty 已经写着「暂无需要处理的接待事项」，
                  这里再挂个「无待办」是重复；而且筛到「本月接待」时标题是「本月接待」、计数却说
                  「无待办」，两句话对不上。.active 绑定随实心橙+脉动一起删了。 -->
-            <span v-if="planTab !== 'meeting' && planTodoList.length" class="yc-list-count">{{ planTodoList.length }} 项</span>
+            <span v-if="planTab !== 'meeting' && planTodoList.length" class="yc-list-count"
+                  :class="{ danger: planTodoList.length > 4, warn: planTodoList.length >= 2 && planTodoList.length <= 4, safe: planTodoList.length <= 1 }">
+              {{ planTodoList.length }}项
+            </span>
+            <span v-if="planTab === 'reception'" class="rec-todo-chevron" :class="{ open: receptionTodoOpen }">▾</span>
           </div>
           <!-- 本期例会与其他期次同为普通条目（0716 用户定：原实心大按钮太重、与列表风格打架，已拆） -->
-          <div v-if="!planTodoList.length" class="plan-empty">暂无需要处理的{{ planTabLabel }}事项</div>
-          <div v-else v-for="it in planTodoList" :key="it.key" class="yc-item" :class="[planTab === 'meeting' ? it.status : 'todo-plain', it.flag]" @click="it.onTap()">
-            <div class="yc-item-info">
-              <div class="yc-item-title">{{ it.title }}</div>
-              <div v-if="it.sub" class="yc-item-sub">{{ it.sub }}</div>
+          <template v-if="planTab !== 'reception' || receptionTodoOpen">
+            <div v-if="!planTodoList.length" class="plan-empty">暂无需要处理的{{ planTabLabel }}事项</div>
+            <div v-else v-for="it in planTodoList" :key="it.key" class="yc-item" :class="[planTab === 'meeting' ? it.status : 'todo-plain', it.flag]"
+                 @click="planTab === 'reception' ? null : it.onTap()">
+              <div class="yc-item-info">
+                <div class="yc-item-title">{{ it.title }}</div>
+                <div v-if="it.sub" class="yc-item-sub">{{ it.sub }}</div>
+              </div>
+              <span class="plan-badge" :class="it.status" @click.stop="it.onTap()">{{ it.badge }}</span>
             </div>
-            <span class="plan-badge" :class="it.status">{{ it.badge }}</span>
-          </div>
+          </template>
         </div>
 
         <!-- 接待登记弹窗（0716 从已删的接待列表页搬来，字段与校验照旧） -->
@@ -221,47 +246,53 @@
               <span class="sheet-title">登记接待记录</span>
               <span class="sheet-close" @click="recCreateOpen = false">×</span>
             </div>
-            <span class="form-label">诉求分类</span>
-            <div class="type-row">
-              <span class="type-chip" :class="recForm.category === 'property' ? 'on' : ''" @click="recForm.category = 'property'">物业类</span>
-              <span class="type-chip" :class="recForm.category === 'public_affairs' ? 'on' : ''" @click="recForm.category = 'public_affairs'">公共事务</span>
-              <span class="type-chip" :class="recForm.category === 'neighbor' ? 'on' : ''" @click="recForm.category = 'neighbor'">邻里纠纷</span>
-            </div>
-            <!-- 日期/时间改用发起会议同款选择器（0716 用户定）：原生 input 在微信里长相不一、
-                 老人也不会用系统滚轮；小日历+时分大按钮是已验证过的交互 -->
             <div class="form-row">
               <div class="form-group half">
                 <span class="form-label">接待日期 *</span>
                 <div class="picker-field" @click="openDatePicker('reception')">{{ recForm.date ? fmtPlanDate(recForm.date) : '选择日期' }}</div>
               </div>
               <div class="form-group half">
-                <span class="form-label">时间</span>
+                <span class="form-label">接待时间 *</span>
                 <div class="picker-field" @click="openTimePicker('reception')">{{ recForm.time || '选择时间' }}</div>
-              </div>
-            </div>
-            <!-- 占位灰字全部去除（0716 用户定）：老人会把幽灵字当成已经填好的内容 -->
-            <div class="form-row">
-              <div class="form-group half">
-                <span class="form-label">来访业主 *</span>
-                <input class="form-input" v-model="recForm.visitorName" />
-              </div>
-              <div class="form-group half">
-                <span class="form-label">房号</span>
-                <input class="form-input" v-model="recForm.room" />
               </div>
             </div>
             <div class="form-group">
               <span class="form-label">接待人</span>
-              <!-- 0717 用户定：原生下拉框替代底部弹单（跟接待安排页同款），未选择不放占位字 -->
               <select class="picker-select" v-model="recForm.receiver">
                 <option value=""></option>
                 <option v-for="it in receiverItems" :key="it" :value="it">{{ it }}</option>
               </select>
             </div>
-            <div class="form-group">
-              <span class="form-label">诉求内容 *</span>
-              <textarea class="form-textarea" v-model="recForm.content"></textarea>
+            <button class="no-visit-quick" type="button" :disabled="noVisitSaving" @click="submitNoVisit">
+              {{ noVisitSaving ? '正在登记…' : '本次无人来访' }}
+            </button>
+            <div v-for="(visitor, index) in recVisitors" :key="visitor.key" class="rec-visitor-card">
+              <div class="rec-visitor-head">
+                <strong>来访居民 {{ index + 1 }}</strong>
+                <button v-if="recVisitors.length > 1" type="button" @click="removeRecVisitor(index)">删除</button>
+              </div>
+              <div class="form-row">
+                <div class="form-group half">
+                  <span class="form-label">姓名 *</span>
+                  <input class="form-input" v-model="visitor.visitorName" />
+                </div>
+                <div class="form-group half">
+                  <span class="form-label">房号</span>
+                  <input class="form-input" v-model="visitor.room" />
+                </div>
+              </div>
+              <span class="form-label">诉求分类</span>
+              <div class="type-row">
+                <span class="type-chip" :class="visitor.category === 'property' ? 'on' : ''" @click="visitor.category = 'property'">物业类</span>
+                <span class="type-chip" :class="visitor.category === 'public_affairs' ? 'on' : ''" @click="visitor.category = 'public_affairs'">公共事务</span>
+                <span class="type-chip" :class="visitor.category === 'neighbor' ? 'on' : ''" @click="visitor.category = 'neighbor'">邻里纠纷</span>
+              </div>
+              <div class="form-group">
+                <span class="form-label">诉求内容 *</span>
+                <textarea class="form-textarea" v-model="visitor.content"></textarea>
+              </div>
             </div>
+            <button class="rec-add-visitor" type="button" @click="addRecVisitor">＋ 继续添加居民</button>
             <div class="sheet-actions">
               <button class="btn btn-ghost" @click="recCreateOpen = false">取消</button>
               <button class="btn btn-primary" @click="submitReceptionCreate">确认登记</button>
@@ -271,7 +302,7 @@
       </div>
 
     <!-- 委员且无相关会议：空闲提示 -->
-    <div v-if="!isChair && (!currents || !currents.length)" class="idle">
+    <div v-if="planTab === 'meeting' && !isChair && (!currents || !currents.length)" class="idle">
       <span class="idle-emoji">☕</span>
       <span class="idle-hint">暂时没有需要您处理的会议</span>
       <span class="idle-sub">有新会议时，会在这里提醒您</span>
@@ -356,9 +387,6 @@
                   <span v-if="createTab === 'manual' && suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle; clearFieldError('title')">{{ suggestedTitle }}</span>
                   <span v-show="createTab === 'manual'" class="title-clear" :class="{ dim: !createForm.title && !suggestedTitle }" @click="clearTitleOrGhost">×</span>
                 </div>
-                <button v-show="createTab === 'manual'" class="voice-mic-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startStreamingVoice('title')" aria-label="语音输入">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
-                </button>
               </div>
             </div>
           </div>
@@ -366,6 +394,13 @@
           <!-- 时间/地点：单独成卡；日期+时间合并为一行，地点保留常用地点选择并单独露出地图入口 -->
           <div class="create-section meeting-info-card">
             <div class="field-list">
+              <div class="field-line meeting-method-line">
+                <span class="fl-label">召开方式</span>
+                <div class="method-switch">
+                  <button type="button" :class="{ active: createForm.meetingMethod === 'offline' }" @click="setMeetingMethod('offline')">线下会议</button>
+                  <button type="button" :class="{ active: createForm.meetingMethod === 'online' }" @click="setMeetingMethod('online')">线上会议</button>
+                </div>
+              </div>
               <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime }">
                 <div class="fl-part" @click="openDatePicker">
                   <span class="fl-label">日期 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
@@ -378,7 +413,7 @@
                   <span class="fl-arrow">›</span>
                 </div>
               </div>
-              <div class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
+              <div v-if="createForm.meetingMethod !== 'online'" class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
                 <!-- 选「其他地点」时：本行直接变输入框（不再另弹文本框）；点「地点」标签可回到常用地点选择 -->
                 <template v-if="locationPreset === '__other__'">
                   <span class="fl-label fl-label-tap" @click="openLocPicker">地点 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
@@ -393,10 +428,17 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
                 </button>
               </div>
+              <div v-else class="field-line field-line-location">
+                <span class="fl-label online-platform-label">线上平台</span>
+                <select class="platform-select" v-model="createForm.location">
+                  <option value="微信工作群">微信工作群</option>
+                  <option value="腾讯会议">腾讯会议</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <!-- 会议议程项（弹窗逐条添加） -->
+          <!-- 会议议程项（在当前卡片内逐条添加和编辑） -->
           <div class="create-section">
             <div class="section-title-row topic-head">
               <span class="section-title">会议议题 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
@@ -408,10 +450,51 @@
                 <span class="topic-line-del" @click.stop="removeCreateTopic(idx)">×</span>
               </div>
             </div>
-            <!-- 添加议题：点触发条弹出议题弹窗（输入/类型/确定都在弹窗内，确定在底部），
-                 与右下角「生成通知」拉开距离，避免"打完议题顺手点生成通知"的误触 -->
-            <div v-show="createTab === 'manual'" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
+            <div v-show="createTab === 'manual' && !topicDialogOpen" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
               <span class="tat-ico">＋</span><span class="tat-text">点此添加议题</span>
+            </div>
+            <div v-if="createTab === 'manual' && topicDialogOpen" class="topic-inline-editor">
+              <div class="tie-head">
+                <span>{{ topicEditIdx >= 0 ? '编辑议题' : '添加议题' }}</span>
+                <button type="button" @click="topicDialogOpen = false">取消</button>
+              </div>
+              <div class="form-group">
+                <span class="form-label">议题内容 *</span>
+                <div class="td-title-row">
+                  <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
+                  <button type="button" class="topic-title-confirm" @click="confirmTopic">确定</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <span class="form-label">议题类型 *</span>
+                <div class="type-row">
+                  <!-- 0717 用户定：「通知」并入「讨论」，对外只剩 通知和讨论/表决 两类。
+                       底层 notice/discussion 两个枚举值都保留：填了通知正文存 notice（通报正文+已读进度机制原样生效），
+                       没填存 discussion（见 confirmTopic 的映射）。旧数据/旧草稿里的 notice 议题落在同一枚 chip 上。 -->
+                  <span class="type-chip" :class="{ on: topicDraft.type !== 'decision' }" @click="draftPickType('discussion')">通知和讨论</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决事项</span>
+                </div>
+              </div>
+              <div class="form-group" v-if="topicDraft.type !== 'decision'">
+                <span class="form-label">通知正文（选填，填了会上出示并跟踪已读）</span>
+                <textarea class="form-input tie-content" v-model="topicDraft.content"></textarea>
+              </div>
+              <div class="form-group" v-if="topicDraft.type === 'decision'">
+                <span class="form-label">表决方式 *</span>
+                <div class="type-row">
+                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
+                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'multi_choice' }" @click="draftPickDecision('multi_choice')">多选一</span>
+                </div>
+              </div>
+              <div class="form-group" v-if="topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice'">
+                <span class="form-label">选项（至少两个）</span>
+                <div v-for="(opt, oi) in topicDraft.options" :key="opt.id" class="ct-option-row">
+                  <span class="ct-opt-num">{{ oi + 1 }}.</span>
+                  <input class="form-input ct-opt-input" v-model="opt.label" />
+                  <span v-if="topicDraft.options.length > 1" class="tp-del" @click="draftRemoveOption(oi)">×</span>
+                </div>
+                <span class="add-link tie-add-option" @click="draftAddOption">+ 添加选项</span>
+              </div>
             </div>
           </div>
 
@@ -696,59 +779,6 @@
       </div>
     </div>
 
-    <!-- 议题编辑弹窗 -->
-    <div v-if="topicDialogOpen" class="topic-dialog-mask" @click="topicDialogOpen = false">
-      <div class="topic-dialog" @click.stop>
-        <div class="td-head">
-          <span class="td-title">{{ topicEditIdx >= 0 ? '编辑议题' : '添加议题' }}</span>
-          <span class="close-btn" @click="topicDialogOpen = false">×</span>
-        </div>
-        <div class="td-body">
-          <div class="form-group">
-            <span class="form-label">议题内容 *</span>
-            <div class="td-title-row">
-              <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
-              <button type="button" class="voice-mic-btn td-mic" :class="{ on: voiceTarget === 'topic' }" @click.stop="startStreamingVoice('topic')" aria-label="语音输入">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 0 1 2 0 7 7 0 0 1-6 6.92V21a1 1 0 1 1-2 0v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0z"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="form-group">
-            <span class="form-label">议题类型 *</span>
-            <div class="type-row" style="margin-bottom:0;">
-              <span class="type-chip" :class="{ on: topicDraft.type === 'notice' }" @click="draftPickType('notice')">通报事项</span>
-              <span class="type-chip" :class="{ on: topicDraft.type === 'discussion' }" @click="draftPickType('discussion')">讨论事项</span>
-              <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决事项</span>
-            </div>
-          </div>
-          <div class="form-group" v-if="topicDraft.type === 'notice'">
-            <span class="form-label">通知正文</span>
-            <textarea class="form-input" v-model="topicDraft.content" placeholder="填写要通报给委员的内容（点开议题时展示）" style="height:auto;min-height:160rpx;line-height:1.6;resize:none;padding:16rpx 20rpx;"></textarea>
-          </div>
-          <div class="form-group" v-if="topicDraft.type === 'decision'">
-            <span class="form-label">表决方式 *</span>
-            <div class="type-row" style="margin-bottom:0;">
-              <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
-              <span class="type-chip" :class="{ on: topicDraft.decisionType === 'multi_choice' }" @click="draftPickDecision('multi_choice')">多选一</span>
-            </div>
-          </div>
-          <div class="form-group" v-if="topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice'">
-            <span class="form-label">选项（至少两个）</span>
-            <div v-for="(opt, oi) in topicDraft.options" :key="opt.id" class="ct-option-row">
-              <span class="ct-opt-num">{{ oi + 1 }}.</span>
-              <input class="form-input ct-opt-input" v-model="opt.label" :placeholder="'选项' + (oi + 1)" />
-              <span v-if="topicDraft.options.length > 1" class="tp-del" @click="draftRemoveOption(oi)">×</span>
-            </div>
-            <span class="add-link" @click="draftAddOption" style="display:block;margin-top:12rpx;">+ 添加选项</span>
-          </div>
-        </div>
-        <div class="td-actions">
-          <button class="btn btn-ghost" @click="topicDialogOpen = false">取消</button>
-          <button class="btn btn-primary" @click="confirmTopic">确定</button>
-        </div>
-      </div>
-    </div>
-
     <!-- 待办「查看」详情弹窗：接待/培训点「查看」当场看该条详情，底部按钮再进对应页面跟进 -->
     <div v-if="todoDetail" class="td-mask" @click.self="todoDetail = null">
       <div class="td-pop" @click.stop>
@@ -785,6 +815,10 @@ import { isWecom, chooseWecomImages, isWecomCancel } from '@/utils/wecom'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import { aiTask } from '@/composables/aiTask'
+
+const props = defineProps({
+  section: { type: String, default: 'meeting' }
+})
 
 const isChair = ref(false)
 const isRecorder = ref(false)
@@ -894,11 +928,48 @@ const yearPlan = computed(() => buildYearPlan(viewYear.value))   // 日历：跟
 const thisYearPlan = computed(() => buildYearPlan(curYear))      // 待办/逾期红条：恒今年，不受翻年影响
 
 // ── 履职年历：分类横栏（开会默认/培训/接待）+ 12 月宫格 + 警示条 + 点月看当月该类事项 ──
-const planTab = ref('meeting')   // 开会是本软件核心价值 → 默认
+const planTab = ref(props.section === 'reception' ? 'reception' : 'meeting')
+watch(() => props.section, (section) => {
+  planTab.value = section === 'reception' ? 'reception' : 'meeting'
+})
 // 会话内记住停留 tab（0717）：去学习/培训/接待的子页再回来，落回原 tab（show() 里读）
 watch(planTab, v => { try { sessionStorage.setItem('homePlanTab', v) } catch (e) {} })
 const calMonth = ref(curMonth)   // 选中月，默认本月
 const calRecs = ref([])          // 全部接待记录（进页拉一次）
+const receptionTodoOpen = ref(true)
+const recentOpenKey = ref('')
+const recentReceptionRecords = computed(() => {
+  const groups = new Map()
+  ;(calRecs.value || []).forEach(r => {
+    // 最近记录按接待日期归档：同一天分多次补录，也只占一条并持续累加来访居民。
+    const key = 'day-' + (r.date || ('legacy-' + r.id))
+    if (!groups.has(key)) groups.set(key, { key, date: r.date, time: r.time, receiver: r.receiver, records: [] })
+    const group = groups.get(key)
+    group.records.push(r)
+    // 后补登记时间更晚时，摘要显示当天最后一次登记的时间和接待人。
+    if (String(r.time || '') > String(group.time || '')) {
+      group.time = r.time
+      group.receiver = r.receiver
+    }
+  })
+  return Array.from(groups.values()).map(session => {
+    const visitorRecords = session.records.filter(r => r.visitorName !== '无人来访')
+    const unresolved = session.records.filter(r => !r.done)
+    const status = unresolved.length === 0
+      ? 'done'
+      : (unresolved.every(r => r.propertyTransferred || r.ticketPushed) ? 'doing' : 'pending')
+    return {
+      ...session,
+      displayRecords: visitorRecords,
+      noVisit: visitorRecords.length === 0,
+      visitorCount: visitorRecords.length,
+      status,
+      statusText: status === 'done' ? '已办结' : (status === 'doing' ? '已办理' : '待处理')
+    }
+  }).sort((a, b) =>
+    (String(b.date || '') + ' ' + String(b.time || '')).localeCompare(String(a.date || '') + ' ' + String(a.time || ''))
+  ).slice(0, 2)
+})
 const calLearns = ref([])        // 全部学习培训（internal+training 合并）
 const planTabLabel = computed(() => planTab.value === 'meeting' ? '会议' : (planTab.value === 'learning' ? '培训' : '接待'))
 // "2026-07-05" → "7月5日"（其他格式原样返回）
@@ -914,6 +985,10 @@ function inMonth(dateStr, m, year) {
 }
 // 培训是否"过期未开展"（计划日期已过还没结束）；todayStr() 用页面下方现成的函数
 function isLearnOverdue(l) { return l.stage !== 'ended' && !!l.date && String(l.date) < todayStr() }
+// 已转物业或已派工单属于「已办理」中间态，不再占用首页待处理清单；填结果后才是已办结。
+function receptionNeedsAction(r) {
+  return !r.done && !r.propertyTransferred && !r.ticketPushed
+}
 function goLearningDetail(item) {
   navigateTo('/pages/learning-detail/learning-detail?id=' + item.id)
   setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/learning-detail?id=' + item.id }, 300)
@@ -929,15 +1004,20 @@ function goReceptionNotice() {
   setTimeout(() => { if (!document.querySelector('.recep-notice')) window.location.href = '/reception-notice' }, 300)
 }
 
+function goReceptionRecords() {
+  navigateTo('/pages/reception-records/reception-records')
+  setTimeout(() => {
+    if (!document.querySelector('.reception-records')) window.location.href = '/reception-records'
+  }, 300)
+}
+
 async function loadCalExtras() {
-  const [recs, a, b, sys] = await Promise.all([
+  const [recs, sys] = await Promise.all([
     api.receptionRecords('all').catch(() => []),
-    api.learningList('internal', null).catch(() => []),
-    api.learningList('training', null).catch(() => []),
     api.receptionSystem().catch(() => null)
   ])
   calRecs.value = recs || []
-  calLearns.value = [...(a || []), ...(b || [])]
+  calLearns.value = []
   recSystem.value = sys || null
 }
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
@@ -968,7 +1048,7 @@ const monthCells = computed(() => {
       else { st = 'done'; label = '' }                                                // 过完·无安排：绿（不显示—）
     } else {
       const rs = calRecs.value.filter(r => inMonth(r.date, m))
-      const todo = rs.filter(r => !r.done).length
+      const todo = rs.filter(receptionNeedsAction).length
       if (todo) { st = 'warn'; label = todo + '件待办' }                               // 有待办：黄
       else if (m > curMonth) { st = 'future'; label = '' }                            // 还没到：蓝灰（不显示—）
       else { st = 'done'; label = rs.length ? '已办结 ✓' : '' }                        // 过完·无待办：绿（不显示—）
@@ -1087,7 +1167,7 @@ const calAlert = computed(() => {
     if (!n) return null
     return { level: '', text: n + '场培训已过期未开展', sub: '请尽快安排培训或补充记录', go: '去查看 ›', onTap: goLearning }
   }
-  const n = calRecs.value.filter(r => !r.done).length
+  const n = calRecs.value.filter(receptionNeedsAction).length
   if (!n) return null
   return { level: 'warn', text: n + '件接待待跟进', sub: '接待事项需要闭环反馈', go: '去处理 ›', onTap: () => {} }
 })
@@ -1200,9 +1280,9 @@ const planOverview = computed(() => {
   if (planTab.value === 'reception') {
     const recs = calRecs.value || []
     return [
-      { key: 'month', num: recs.filter(r => inMonth(r.date, curMonth)).length, label: '本月接待', tone: '' },
-      { key: 'pending', num: recs.filter(r => !r.done).length, label: '待跟进', tone: 'warn' },
-      { key: 'year', num: recs.filter(r => { const p = String(r.date || '').split('-'); return Number(p[0]) === curYear }).length, label: '年度累计', tone: '' }
+      { key: 'pending', num: recs.filter(receptionNeedsAction).length, label: '待处理', tone: 'warn' },
+      { key: 'done', num: recs.filter(r => r.done).length, label: '已完成', tone: '' },
+      { key: 'all', num: recs.length, label: '全部记录', tone: '' }
     ]
   }
   if (planTab.value === 'learning') {
@@ -1223,6 +1303,7 @@ const todoDetail = ref(null)
 // ── 接待登记（0716 从已删的接待列表页搬来；字段/校验照搬，那套是验证过的）──
 // ⚠ 命名避开 createVisible/createForm —— 那俩是「发起会议」在用的，同名会串
 const recCreateOpen = ref(false)
+const noVisitSaving = ref(false)
 const canManageReception = ref(false)
 // 接待人下拉框（0717 用户定：原生 select 替代底部弹单）。名单开弹窗时拉一次并缓存
 const committeeRoster = ref([])
@@ -1232,28 +1313,90 @@ async function loadCommitteeRoster() {
   if (committeeRoster.value.length) return
   try { committeeRoster.value = (await api.committeeMembers()) || [] } catch (e) { /* 静默，选项为空 */ }
 }
-const recForm = reactive({ date: '', time: '', visitorName: '', room: '', receiver: '', category: 'property', content: '' })
+const recForm = reactive({ date: '', time: '', receiver: '' })
+const recVisitors = ref([])
+let recVisitorSeq = 0
+function newRecVisitor() {
+  return { key: ++recVisitorSeq, visitorName: '', room: '', category: 'property', content: '' }
+}
+function addRecVisitor() { recVisitors.value.push(newRecVisitor()) }
+function removeRecVisitor(index) { recVisitors.value.splice(index, 1) }
 
 function openReceptionCreate() {
   if (!canManageReception.value) return
-  Object.assign(recForm, {
-    date: todayStr(), time: '14:00', visitorName: '', room: '', receiver: '', category: 'property', content: ''
-  })
+  Object.assign(recForm, { date: todayStr(), time: '14:00', receiver: '' })
+  recVisitors.value = [newRecVisitor()]
   loadCommitteeRoster() // 不 await：名单到了选项自然出现，别让弹窗等网络
   recCreateOpen.value = true
 }
 
 async function submitReceptionCreate() {
-  if (!recForm.date || !recForm.visitorName || !recForm.content) {
-    toast({ title: '请补全日期、来访业主和诉求内容', icon: 'none' })
+  if (!recForm.date || !recForm.time) {
+    toast({ title: '请先选择接待日期和时间', icon: 'none' })
+    return
+  }
+  const incomplete = recVisitors.value.some(v => !String(v.visitorName || '').trim() || !String(v.content || '').trim())
+  if (!recVisitors.value.length || incomplete) {
+    toast({ title: '请补全每位居民的姓名和诉求内容', icon: 'none' })
     return
   }
   try {
-    await api.receptionCreate({ ...recForm })
-    toast({ title: '已登记', icon: 'success' })
+    await api.receptionCreateSession({ ...recForm, visitors: recVisitors.value })
+    toast({ title: '本次接待已登记', icon: 'success' })
     recCreateOpen.value = false
     await loadCalExtras()   // 重拉，新记录立刻出现在下面的清单里
   } catch (e) { toast({ title: (e && e.message) || '登记失败', icon: 'none' }) }
+}
+
+async function submitNoVisit() {
+  if (noVisitSaving.value) return
+  if (!recForm.date || !recForm.time) {
+    toast({ title: '请先选择接待日期和时间', icon: 'none' })
+    return
+  }
+  noVisitSaving.value = true
+  try {
+    await api.receptionCreateSession({
+      date: recForm.date,
+      time: recForm.time,
+      receiver: recForm.receiver,
+      noVisit: true,
+      visitors: []
+    })
+    toast({ title: '已登记无人来访', icon: 'success' })
+    recCreateOpen.value = false
+    await loadCalExtras()
+  } catch (e) {
+    toast({ title: (e && e.message) || '登记失败', icon: 'none' })
+  } finally {
+    noVisitSaving.value = false
+  }
+}
+
+function openRecentSession(session) {
+  if (session.displayRecords.length === 1) {
+    goReceptionDetail(session.displayRecords[0])
+    return
+  }
+  if (session.displayRecords.length > 1) recentOpenKey.value = recentOpenKey.value === session.key ? '' : session.key
+}
+
+async function removeReceptionSession(session) {
+  const ok = await showModal({
+    title: '删除本次接待',
+    content: '确认删除后无法恢复。',
+    confirmText: '删除',
+    cancelText: '取消',
+    showCancel: true
+  })
+  if (!ok || !ok.confirm) return
+  try {
+    await Promise.all(session.records.map(record => api.receptionRemove(record.id)))
+    toast({ title: '已删除', icon: 'success' })
+    await loadCalExtras()
+  } catch (e) {
+    toast({ title: (e && e.message) || '删除失败', icon: 'none' })
+  }
 }
 
 // 接待：点条目直接进这一条的处理页（0716 重做）。
@@ -1326,7 +1469,7 @@ watch(planTab, () => { calMonthTapped.value = false })
 const ovFilter = ref('pending')
 watch(planTab, (t) => { ovFilter.value = t === 'learning' ? 'todo' : 'pending' })
 const planListTitle = computed(() => {
-  if (planTab.value === 'reception') return ovFilter.value === 'month' ? '本月接待' : (ovFilter.value === 'year' ? '年度接待' : '待跟进')
+  if (planTab.value === 'reception') return ovFilter.value === 'done' ? '已完成事项' : (ovFilter.value === 'all' ? '全部接待记录' : '待处理事项')
   if (planTab.value === 'learning') return ovFilter.value === 'done' ? '已开展' : (ovFilter.value === 'overdue' ? '逾期未开' : '待开')
   return '待办事项'
 })
@@ -1335,9 +1478,9 @@ const allPendingList = computed(() => {
   if (planTab.value === 'reception') {
     const all = calRecs.value || []
     let recs
-    if (ovFilter.value === 'month') recs = all.filter(r => inMonth(r.date, curMonth))
-    else if (ovFilter.value === 'year') recs = all.filter(r => { const p = String(r.date || '').split('-'); return Number(p[0]) === curYear })
-    else recs = all.filter(r => !r.done)
+    if (ovFilter.value === 'done') recs = all.filter(r => r.done)
+    else if (ovFilter.value === 'all') recs = all
+    else recs = all.filter(receptionNeedsAction)
     // 排序（0716 用户定）：未处理在上、已办结沉底——这是工作清单不是台账，先回答「还有什么没办」。
     // 组内保留时间序（从早到晚）：挂得最久的未处理排最上。生效于本月/年度两个混合视图。
     return recs.slice().sort((a, b) =>
@@ -1420,6 +1563,7 @@ const createForm = reactive({
   meetingDate: '',
   meetingTime: '',
   location: '',
+  meetingMethod: 'offline',
   description: '',
   topics: [],
   topicsText: '',
@@ -1436,6 +1580,17 @@ const suggestedTitle = ref('')
 // 会议地点下拉
 const commonLocations = ['社区活动室', '社区会议室']
 const locationPreset = ref('社区活动室')
+function setMeetingMethod(method) {
+  createForm.meetingMethod = method
+  if (method === 'online' && (!createForm.location || commonLocations.includes(createForm.location))) {
+    createForm.location = '微信工作群'
+    locationPreset.value = '__other__'
+  } else if (method === 'offline' && ['微信工作群', '腾讯会议', '微信工作群、腾讯会议', '腾讯会议、微信工作群'].includes(createForm.location)) {
+    createForm.location = '社区活动室'
+    locationPreset.value = '社区活动室'
+  }
+  clearFieldError('location')
+}
 // 自定义日期选择器（年/月/日 三列）
 const datePickerOpen = ref(false)
 const dpYear = ref(2026)
@@ -1497,8 +1652,7 @@ function show() {
   // 回首页落回来时的 tab（0717 用户定：从学习/培训/接待页回来要回到对应 tab，不是全切回开会）。
   // 优先 ?tab= 显式指定，其次会话内最后停留的 tab（sessionStorage：微信杀会话即清，
   // 新打开仍默认开会——开会是核心价值，冷启动不动它）。
-  const qTab = new URLSearchParams(location.search).get('tab') || sessionStorage.getItem('homePlanTab')
-  if (['meeting', 'reception', 'learning'].includes(qTab)) planTab.value = qTab
+  planTab.value = props.section === 'reception' ? 'reception' : 'meeting'
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
@@ -1699,10 +1853,6 @@ async function removeCurrent(cur) {
 function goNotifications() { navigateTo('/pages/notifications/notifications') }
 // goReception 已删（0716）：接待列表页随重做下线，点条目现在直接进 goReceptionDetail。
 // 它原有的两个调用方 calAlert / calList 都是模板不引用的死代码。
-function goLearning() {
-  navigateTo('/pages/learning/learning')
-  setTimeout(() => { if (!document.querySelector('.type-tabs')) window.location.href = '/learning' }, 300)
-}
 function goLibrary() { navigateTo('/pages/library/library') }
 
 // 点计划某一期：已开→看这场会议；未开的（本期/逾期/未到）→主任可发起，未到期提示「提前召开」，委员提示等待
@@ -1778,6 +1928,7 @@ async function openNewMeeting(period) {
   createForm.meetingDate = ''
   createForm.meetingTime = ''
   createForm.location = ''
+  createForm.meetingMethod = 'offline'
   locationPreset.value = ''
   createForm.description = ''
   createForm.topics = []
@@ -2154,7 +2305,24 @@ async function recognizeScanItems() {
   clearInterval(_scanSecTimer)
   _scanSecTimer = setInterval(() => { scanSec.value += 1 }, 1000)
   try {
-    const res = await api.committeeParseDocuments(files)
+    let res
+    try {
+      res = await api.committeeParseDocuments(files)
+    } catch (multiError) {
+      // 一份材料是最常见场景；部分旧 WebView 对 MultipartFile[] 兼容性较差，
+      // 多文件入口失败时改走单文件接口重试一次，避免用户重新选择文件。
+      if (files.length !== 1) throw multiError
+      res = await api.committeeParseDocument(files[0])
+      if (res && !Array.isArray(res.files)) {
+        res.files = [{
+          fileUrl: res.fileUrl || '',
+          fileName: res.fileName || files[0].name || '识别文件',
+          fileType: res.fileType || String((files[0].name || '').split('.').pop() || '').toLowerCase(),
+          fileSize: res.fileSize || files[0].size || 0,
+          category: res.category || ''
+        }]
+      }
+    }
     if (_recognizeCancelled) return // 用户已点 × 取消：丢弃结果，保留暂存文件可重试
     stopDocProgress()
     docProgress.value = 100
@@ -2169,7 +2337,10 @@ async function recognizeScanItems() {
   } catch (e) {
     if (_recognizeCancelled) return
     stopDocProgress()
-    toast({ title: '识别失败，请重试或手动填写', icon: 'none' })
+    const message = e && e.message && !/^HTTP\s/i.test(e.message)
+      ? e.message
+      : '识别失败，请重试或手动填写'
+    toast({ title: message, icon: 'none' })
   } finally {
     clearInterval(_scanSecTimer)
     _scanSecTimer = null
@@ -2794,15 +2965,15 @@ function removeCreateTopic(idx) {
 
 function topicTypeLabel(t) {
   if (!t) return ''
-  if (t.type === 'notice') return '通报'
-  if (t.type === 'discussion') return '讨论'
+  // 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」
+  if (t.type === 'notice' || t.type === 'discussion') return '通知和讨论'
   if (t.type === 'decision') return t.decisionType === 'multi_choice' ? '表决·多选一' : '表决·是否'
   return ''
 }
 
 function topicTypeClass(t) {
   if (!t) return 'badge-discussion'
-  if (t.type === 'notice') return 'badge-notice'
+  // notice 视觉并入 discussion（同名同色，badge-notice 不再产出）
   if (t.type === 'decision') return 'badge-decision'
   return 'badge-discussion'
 }
@@ -2856,12 +3027,15 @@ function confirmTopic() {
     const valid = (topicDraft.options || []).filter(function (o) { return o.label.trim() })
     if (valid.length < 2) { toast({ title: '多选一议题至少需要两个选项', icon: 'none' }); return }
   }
+  // 合并类型的落库映射（0717）：非表决类按「有无通知正文」定 notice/discussion——
+  // 通报正文+已读进度机制只认 notice，这里是唯一分流点，别在别处再判
+  const mergedContent = topicDraft.type !== 'decision' ? (topicDraft.content || '').trim() : ''
   const nt = {
     title: topicDraft.title.trim(),
-    type: topicDraft.type,
+    type: topicDraft.type === 'decision' ? 'decision' : (mergedContent ? 'notice' : 'discussion'),
     decisionType: topicDraft.decisionType,
     options: (topicDraft.options || []).map(function (o) { return { id: o.id, label: o.label } }),
-    content: topicDraft.type === 'notice' ? (topicDraft.content || '').trim() : ''
+    content: mergedContent
   }
   if (topicEditIdx.value >= 0) {
     const arr = createForm.topics.slice()
@@ -3241,6 +3415,8 @@ onActivated(show)
 /* 今年会议计划：首页前置总览，竖向时间轴——一条主线贯全年，节点亮灭即进度 */
 .plan-card { margin: 0 24rpx 22rpx; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); overflow: hidden; }
 .plan-stack { display: flex; flex-direction: column; gap: 14rpx; margin: 0 24rpx 20rpx; }
+.plan-stack:not(.compact) { margin-top: 20rpx; }
+.plan-stack.reception-mode { margin-top: 20rpx; }
 .plan-stack.compact { gap: 12rpx; }
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
 .plan-stack.has-meeting { gap: 18rpx; }
@@ -3303,6 +3479,84 @@ onActivated(show)
    必须在清单之前。原先只顾着「排在日历上方」，没注意同时也掉到了待办清单的下方。
    1→2（0717）：接待日安排插到 1（原会议进行中收起栏的位置）。筛选器仍在被筛清单之前，不违反上面那条。 */
 .ov-metrics-standalone { order: 2; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
+
+/* 接待页按真实使用频率分级：通知维护最醒目，登记来访其次，处理清单随后。 */
+.rec-notice-hero { order: 1; box-sizing: border-box; padding: 34rpx;
+  background: linear-gradient(145deg, #FFFDF9 0%, #FFF7EA 100%);
+  border: 2rpx solid #F1D6AE; border-radius: 26rpx; box-shadow: 0 12rpx 34rpx rgba(153,85,12,0.09); }
+.rec-notice-hero-head { display: flex; align-items: flex-start; gap: 26rpx; }
+.rnh-copy { flex: 1; min-width: 0; }
+.rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 800; color: #9A5A00; }
+.rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 800;
+  color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rnh-time.none { color: #9A3412; }
+.rnh-place { margin-top: 10rpx; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-notice-primary { display: block; width: 60%; height: 96rpx; margin: 29rpx auto 0; border: 0; border-radius: 18rpx;
+  background: var(--c-primary-dark); color: #fff; font-size: 36rpx; font-weight: 600; letter-spacing: normal; }
+.rec-notice-primary:active { opacity: 0.76; }
+.rec-register-card { order: 2; display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
+  margin-top: 30rpx; padding: 22rpx 24rpx; text-align: left; background: var(--c-bg-card); border: 2rpx solid #E5E9EB;
+  border-radius: 20rpx; box-shadow: 0 5rpx 18rpx rgba(20,42,58,0.04); color: inherit; }
+.rrc-icon { display: flex; align-items: center; justify-content: center; width: 62rpx; height: 62rpx;
+  border-radius: 16rpx; background: #F4F6F7; color: var(--c-text-mid); font-size: 34rpx; }
+.rrc-copy { flex: 1; display: flex; flex-direction: column; gap: 3rpx; }
+.rrc-copy strong { font-size: 36rpx; line-height: 1.35; color: var(--c-text-strong); }
+.rrc-arrow { color: var(--c-text-weak); font-size: 38rpx; }
+.rec-register-card:active { opacity: 0.7; }
+.rec-recent-card { order: 3; margin-top: 30rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
+  background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
+  box-shadow: 0 5rpx 18rpx rgba(20,42,58,0.04); }
+.rec-recent-head { display: flex; align-items: center; justify-content: space-between;
+  padding: 22rpx 2rpx 16rpx; font-size: 34rpx; font-weight: 700; color: var(--c-text-strong); }
+.rec-recent-head button { padding: 8rpx 0 8rpx 20rpx; border: 0; background: transparent;
+  color: var(--c-primary-dark); font-size: 27rpx; font-weight: 500; }
+.rec-recent-session { border-top: 2rpx solid #EEF1F3; }
+.rec-recent-row { display: flex; align-items: center; gap: 18rpx; padding: 20rpx 2rpx; border-top: 2rpx solid #EEF1F3; }
+.rec-recent-session .rec-recent-row { border-top: 0; }
+.rec-recent-row:active { opacity: 0.68; }
+.rec-recent-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
+.rec-recent-title { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
+.rec-recent-copy strong { font-size: 30rpx; line-height: 1.35; font-weight: 500; color: var(--c-text-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-recent-title i { flex-shrink: 0; padding: 3rpx 11rpx; border-radius: 999rpx;
+  font-size: 21rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
+.rec-recent-title i.pending { color: #9A5A13; background: #FFF1D8; }
+.rec-recent-title i.doing { color: #0F766E; background: #E7F6F3; }
+.rec-recent-title i.done { color: #287653; background: #E8F5EE; }
+.rec-recent-copy span { font-size: 25rpx; line-height: 1.35; color: var(--c-text-weak); }
+.rec-recent-delete { flex-shrink: 0; width: 46rpx; height: 46rpx; padding: 0; border: 0;
+  border-radius: 50%; background: #F1F3F4; color: #858D92; font-size: 34rpx; font-weight: 400;
+  line-height: 42rpx; text-align: center; transform: translateY(4rpx); }
+.rec-recent-delete:active { background: #E2E6E8; color: #626A6F; }
+.rec-recent-chevron { color: var(--c-text-weak); font-size: 32rpx; transition: transform .2s ease; }
+.rec-recent-chevron.open { transform: rotate(180deg); }
+.rec-recent-items { margin: -2rpx 0 14rpx 20rpx; padding-left: 20rpx; border-left: 4rpx solid #E8ECEE; }
+.rec-recent-item { display: flex; align-items: center; gap: 18rpx; padding: 17rpx 2rpx; border-top: 2rpx solid #F0F2F3; }
+.rec-recent-item > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.rec-recent-item strong { font-size: 28rpx; color: var(--c-text-strong); }
+.rec-recent-item span { font-size: 24rpx; color: var(--c-text-weak); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 25rpx; font-style: normal; }
+.rec-recent-empty { padding: 22rpx 0 26rpx; border-top: 2rpx solid #EEF1F3;
+  text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
+.plan-stack.reception-mode .plan-todo-card { margin-top: 30rpx; }
+.plan-stack.reception-mode .plan-todo-card { padding-bottom: 8rpx; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-head { min-height: 72rpx; padding: 10rpx 2rpx 12rpx; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-head.foldable { cursor: pointer; }
+.rec-todo-chevron { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 48rpx; height: 48rpx; color: var(--c-text-weak); font-size: 30rpx; transition: transform .2s ease; }
+.rec-todo-chevron.open { transform: rotate(180deg); }
+.plan-stack.reception-mode .plan-todo-card .yc-head-title { font-size: 34rpx; font-weight: 400; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-count {
+  margin-right: auto; font-size: 34rpx; font-weight: 600;
+}
+.plan-stack.reception-mode .plan-todo-card .yc-list-count.danger { color: #B42318; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-count.warn { color: #B26A00; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-count.safe { color: #278653; }
+.plan-stack.reception-mode .plan-todo-card .yc-item.todo-plain { padding: 24rpx 4rpx; cursor: default; }
+.plan-stack.reception-mode .plan-todo-card .yc-item-title { font-size: 34rpx; }
+.plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 22rpx; }
+.plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
 
 /* 接待日安排入口卡。order 4→1（0717 用户定）：接下原「会议进行中」收起栏的位置，
    即 tab 栏正下方、三数字概览之上。
@@ -3757,6 +4011,13 @@ onActivated(show)
 .fl-part .fl-label { width: auto; }
 .fl-part .fl-value { text-align: right; }
 .field-line-location { padding: 0 12rpx 0 18rpx; gap: 12rpx; }
+.meeting-method-line { justify-content:space-between; gap:12rpx; }
+.meeting-method-line > .fl-label { width:auto; min-width:132rpx; white-space:nowrap; font-size:30rpx; font-weight:800; color:#2d3137; }
+.online-platform-label { width:auto; min-width:132rpx; white-space:nowrap; font-size:30rpx; font-weight:800; color:#2d3137; }
+.method-switch { display:flex; flex-shrink:0; gap:8rpx; padding:6rpx; background:#f1f2f4; border-radius:14rpx; }
+.method-switch button { border:0; background:transparent; color:#62676f; font-size:27rpx; padding:12rpx 24rpx; border-radius:10rpx; }
+.method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
+.platform-select { margin-left:auto; flex:0 0 250rpx; min-width:0; height:64rpx; padding:0 54rpx 0 20rpx; border:2rpx solid #e0e3e7; border-radius:12rpx; background:#fff; color:#25292f; font-size:28rpx; font-weight:700; outline:none; }
 .fl-loc-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 16rpx; padding: 16rpx 0; }
 /* 「其他地点」内联输入：直接替换本行选项，无边框，视觉贴合原选项栏 */
 .fl-label-tap { color: var(--c-primary-dark); }
@@ -4005,6 +4266,17 @@ onActivated(show)
 .form-group:last-child { margin-bottom: 0; }
 .form-group.half { flex: 1; min-width: 0; }
 .form-label { display: block; font-size: 28rpx; color: #777; margin-bottom: 12rpx; line-height: 1.45; word-break: break-all; }
+.no-visit-quick { width: 100%; height: 84rpx; margin-bottom: 22rpx; border: 2rpx solid #D6DEE1;
+  border-radius: 16rpx; background: #F7F9F9; color: var(--c-text-strong); font-size: 31rpx; font-weight: 700; }
+.no-visit-quick:active { background: #EEF2F3; }
+.no-visit-quick:disabled { opacity: 0.55; }
+.rec-visitor-card { margin: 20rpx 0; padding: 22rpx; border: 2rpx solid #E7EAEC; border-radius: 18rpx; background: #FAFBFB; }
+.rec-visitor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.rec-visitor-head strong { font-size: 31rpx; color: var(--c-text-strong); }
+.rec-visitor-head button { border: 0; background: transparent; color: #B42318; font-size: 27rpx; }
+.rec-add-visitor { width: 100%; height: 78rpx; margin: 4rpx 0 18rpx; border: 2rpx dashed #BAC5C9; border-radius: 16rpx;
+  background: #fff; color: var(--c-primary-dark); font-size: 29rpx; font-weight: 600; }
+.rec-add-visitor:active { background: #F5F8F8; }
 .form-input, .form-textarea { width: 100%; box-sizing: border-box; background: #fff; border-radius: 14rpx; font-size: 32rpx; color: #1f2329; border: 2rpx solid #eeeeee; }
 .form-input { height: 88rpx; min-height: 88rpx; line-height: normal; padding: 0 20rpx; }
 .form-input.large { height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 30rpx; font-weight: 600; }
@@ -4042,6 +4314,20 @@ onActivated(show)
 .topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
 .topic-add-trigger:active { background: #F1F3F5; }
 .topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
+.topic-inline-editor { margin-top: 16rpx; padding: 24rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
+.tie-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22rpx; }
+.tie-head > span { font-size: 30rpx; font-weight: 600; color: #1f2329; }
+.tie-head > button { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 8rpx 0 8rpx 24rpx; }
+.topic-inline-editor .form-group { margin-bottom: 22rpx; }
+.topic-inline-editor .type-row { margin-bottom: 0; }
+.tie-content { box-sizing: border-box; height: auto; min-height: 140rpx; line-height: 1.6; resize: none; padding: 16rpx 20rpx; }
+.tie-add-option { display: block; margin-top: 12rpx; }
+.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #3F6078; font-size: 28rpx; font-weight: 600; }
+.topic-title-confirm:active { opacity: .88; }
+.topic-inline-editor .type-chip.on { background: #DCE8F2; color: #3F6078; box-shadow: inset 0 0 0 2rpx #C7D8E6; }
+.topic-inline-editor .add-link { color: #5B7C96; }
+.tie-confirm { width: 100%; height: 76rpx; margin-top: 2rpx; border: 0; border-radius: 14rpx; background: #B45F18; color: #fff; font-size: 29rpx; font-weight: 600; }
+.tie-confirm:active { opacity: .88; }
 .tat-ico { font-size: 34rpx; font-weight: 700; line-height: 1; }
 .tat-text { font-weight: 600; }
 /* 议题弹窗标题行：输入框 + 语音麦克风并排（语音从这里输入，落进弹窗草稿标题） */

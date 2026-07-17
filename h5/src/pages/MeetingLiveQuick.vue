@@ -2,7 +2,7 @@
   <div v-if="detail" class="live-page" :class="{ 'lp-signin': currentStep === 1 }" style="overflow-y:auto;">
 
     <!-- 页面对所有身份统一：主任/副主任可操作录音等，其余身份只读+表决/意见 -->
-    <PageNav :title="currentStep === 1 ? '会议签到' : (meetingPhase === 'voting' ? '议题表决' : '会议进行')" style="margin:-3.2vw -3.2vw 0;">
+    <PageNav :title="isOnlineMeeting ? '线上会议' : (currentStep === 1 ? '会议签到' : (meetingPhase === 'voting' ? '议题表决' : '会议进行'))" style="margin:-3.2vw -3.2vw 0;">
       <template #left>
         <div class="mlq-back" @click="onNavBack">‹</div>
       </template>
@@ -11,6 +11,10 @@
       </template>
     </PageNav>
 
+    <OnlineMeetingFlow v-if="isOnlineMeeting" :detail="detail" :meeting-id="meetingId"
+                       :is-chair="isChair" @reload="loadDetail" />
+
+    <template v-else>
     <!-- 方案C：录音开始后收成顶部状态条；暂停后在这里露出继续/上传 -->
     <div v-if="isChair && currentStep === 2 && (recActive || isPaused)" class="top-rec-status" :class="{ paused: isPaused }">
       <span class="top-rec-dot"></span>
@@ -224,10 +228,12 @@
       </div>
 
       <!-- 结束会议：始终可用的出口。会议纪要是可选项——不生成也能在此结束（结束后到会议详情页发起公示或补纪要） -->
-      <div v-if="meetingPhase === 'voting' || (meetingPhase === 'recording' && allTopicsCompleted)" class="end-meeting-row">
+      <div v-if="meetingEnded || meetingPhase === 'voting' || canEndFromRecordingPage" class="end-meeting-row">
         <button v-if="meetingPhase === 'voting'" class="back-recording-btn" @click="returnToRecordingPage">‹ 返回录音页面</button>
         <!-- 点击进「会后整理」决策页（不会立刻结束）；箭头表明是去下一步而非直接结束 -->
-        <button v-if="isChair" class="end-meeting-btn" @click="confirmEndMeeting">结束会议<span class="emb-arrow">→</span></button>
+        <button v-if="isChair || meetingEnded" class="end-meeting-btn" @click="handleMeetingBottomAction">
+          {{ meetingEnded ? '查看会议详情' : '结束会议' }}<span class="emb-arrow">→</span>
+        </button>
       </div>
 
     </template>
@@ -249,6 +255,7 @@
     <TopicSheet :meeting-id="meetingId" :topic="sheetTopic" :interactive="detail.stage === 'ongoing'"
                 :signed-in="signedIn" :is-chair="isChair" :has-prev="sheetHasPrev" :has-next="sheetHasNext"
                 @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
+    </template>
 
     <!-- 转录文本查看 -->
     <div v-if="transcriptVisible" class="qk-modal-mask" @click="closeTranscript">
@@ -307,13 +314,13 @@
           <button class="voice-input-btn" :class="{ on: voiceOn }" @click="startTopicVoice">🎤 语音输入</button>
         </div>
         <div class="qk-modal-label">议题类型</div>
+        <!-- 0717 用户定：通知并入讨论，只剩两类；填了通知正文提交时存 notice、没填存 discussion（见 submitAddTopic） -->
         <div class="qk-modal-types">
-          <span class="qk-type notice" :class="newTopicForm.type === 'notice' ? 'on' : ''" @click="pickTopicType('notice')">通报事项</span>
-          <span class="qk-type discussion" :class="newTopicForm.type === 'discussion' ? 'on' : ''" @click="pickTopicType('discussion')">讨论事项</span>
+          <span class="qk-type discussion" :class="newTopicForm.type !== 'decision' ? 'on' : ''" @click="pickTopicType('discussion')">通知和讨论</span>
           <span class="qk-type decision" :class="newTopicForm.type === 'decision' ? 'on' : ''" @click="pickTopicType('decision')">表决事项</span>
         </div>
-        <template v-if="newTopicForm.type === 'notice'">
-          <div class="qk-modal-label">通知正文</div>
+        <template v-if="newTopicForm.type !== 'decision'">
+          <div class="qk-modal-label">通知正文（选填，填了会上出示并跟踪已读）</div>
           <textarea class="qk-modal-input qk-modal-textarea" placeholder="请输入内容" v-model="newTopicForm.content" rows="3"></textarea>
         </template>
         <template v-if="newTopicForm.type === 'decision'">
@@ -402,8 +409,10 @@ import { meetingRecordingSession, registerMeetingRecordingDiscard } from '@/comp
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import TopicSheet from '@/components/TopicSheet.vue'
+import OnlineMeetingFlow from '@/components/OnlineMeetingFlow.vue'
 
 const route = useRoute()
+const isOnlineMeeting = computed(() => detail.value && detail.value.meetingMethod === 'online')
 const rec = useRecorder()
 const unregisterRecordingDiscard = registerMeetingRecordingDiscard(async (targetMeetingId) => {
   if (String(meetingId.value || route.query.meetingId || '') !== String(targetMeetingId)) return
@@ -443,8 +452,8 @@ function resultLabel(result) {
 }
 
 function topicTypeLabel(type) {
-  if (type === 'notice') return '通报事项'
-  if (type === 'discussion') return '讨论事项'
+  // 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」
+  if (type === 'notice' || type === 'discussion') return '通知和讨论'
   if (type === 'major') return '重大表决'
   return '表决事项'
 }
@@ -661,6 +670,11 @@ function topicBadgeDone(item) {
   return (item.opinionCount || 0) > 0 // 讨论：录音里被提到/有意见 = 已处理
 }
 const allTopicsCompleted = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(topicBadgeDone))
+const meetingEnded = computed(() => !!detail.value && detail.value.stage === 'ended')
+// 所有议题处理完后，回到“正在进行现场讨论”的录音页必须保留明确的结束出口。
+// 不再依赖只存在于本机内存的转写正文状态；若上传/识别仍在途，点击后由会后整理流程承接。
+const canEndFromRecordingPage = computed(() => meetingPhase.value === 'recording'
+  && allTopicsCompleted.value)
 function topicBadgeText(item) {
   const done = topicBadgeDone(item)
   if (item.voteRequired) return done ? '已表决' : '待表决'
@@ -1052,7 +1066,7 @@ let _playAudio = null       // 转写页录音回放用的 HTMLAudioElement
 // ═══════════════════════════════════════════════
 function initFromRoute() {
   type.value = route.query.type === 'owner' ? 'owner' : 'committee'
-  meetingId.value = route.query.meetingId
+  meetingId.value = route.query.meetingId || route.query.id
   detail.value = null
   loadError.value = ''
   if (type.value === 'owner') {
@@ -2400,8 +2414,8 @@ async function adoptCandidate(idx) {
   const cand = (aiTopics.value || [])[idx]
   if (!cand) return
   const choices = [
-    { label: '通报事项', type: 'notice', decisionType: 'none', voteRequired: false },
-    { label: '讨论事项', type: 'discussion', decisionType: 'none', voteRequired: false },
+    // 0717 用户定：通知并入讨论。采纳候选没有正文输入，统一落 discussion；要挂正文可事后编辑
+    { label: '通知和讨论', type: 'discussion', decisionType: 'none', voteRequired: false },
     { label: '表决事项', type: 'decision', decisionType: 'simple', voteRequired: true }
   ]
   const sheet = await showActionSheet({ itemList: choices.map(function (c) { return c.label }) })
@@ -2614,6 +2628,18 @@ function goAfterEnd(navUrl) {
     }
     window.location.href = navUrl.replace(/^\/pages\/([^/]+)\/[^?]+/, '/$1')
   }, 500)
+}
+
+function viewMeetingDetail() {
+  goAfterEnd('/pages/committee-detail/committee-detail?id=' + meetingId.value + '&from=meeting-live-history')
+}
+
+function handleMeetingBottomAction() {
+  if (meetingEnded.value) {
+    viewMeetingDetail()
+    return
+  }
+  confirmEndMeeting()
 }
 
 // 结束会议出口：纪要是可选项 → 已生成/未生成给不同确认文案，不强制先生成纪要才能结束
@@ -2848,7 +2874,7 @@ function cancelTopicVoice() {
   voiceFinal.value = ''
   voiceInterim.value = ''
 }
-// 议题类型：通报/讨论/表决（与准备会议时一致）
+// 议题类型：通知和讨论/表决（与准备会议时一致；0717 通知并入讨论）
 function pickTopicType(t) {
   newTopicForm.type = t
   newTopicForm.decisionType = t === 'decision' ? 'simple' : 'none'
@@ -2876,9 +2902,12 @@ async function submitAddTopic() {
     optionsJson = JSON.stringify(valid.map(function (o, i) { return { id: i + 1, label: o.label.trim() } }))
   }
   const dt = f.type === 'decision' ? f.decisionType : 'none'
+  // 合并类型的落库映射（0717，与发起会议弹窗同款）：非表决类有正文存 notice、无正文存 discussion
+  const mergedContent = f.type !== 'decision' ? (f.content || '').trim() : ''
+  const sendType = f.type === 'decision' ? 'decision' : (mergedContent ? 'notice' : 'discussion')
   try {
-    // 现场新增只允许通报/讨论/表决，重大事项后端会拦截；通报类带正文
-    await api.committeeAddTopic(meetingId.value, f.title.trim(), f.type, dt, optionsJson, false, f.type === 'notice' ? (f.content || '').trim() : null)
+    // 现场新增只允许通知和讨论/表决，重大事项后端会拦截；带正文走通报机制
+    await api.committeeAddTopic(meetingId.value, f.title.trim(), sendType, dt, optionsJson, false, sendType === 'notice' ? mergedContent : null)
     toast({ title: '议题已添加', icon: 'success' })
     addTopicVisible.value = false
     loadDetail()
@@ -2954,10 +2983,12 @@ async function onNavBack() {
   }
 }
 
-function returnToRecordingPage() {
+async function returnToRecordingPage() {
   sheetTopicId.value = null
   meetingPhase.value = 'recording'
   persistQuickState()
+  // 离开最后一个议题时重新拉取一次，确保“全部完成”状态和结束会议按钮立即更新。
+  try { await loadDetail() } catch (e) { /* 保留当前页面状态，下次轮询继续刷新 */ }
 }
 </script>
 

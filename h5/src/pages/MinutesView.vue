@@ -16,12 +16,10 @@
       <div class="minutes-letterhead">
         <span v-if="editing" :ref="bindMeetingNameEditor" class="minutes-meeting-name editable" contenteditable="true" @input="onMeetingNameInput"></span>
         <span v-else class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
-        <span class="minutes-main-title">会议纪要</span>
       </div>
-      <div class="minutes-rule"></div>
       <div v-if="editing" :ref="bindBodyEditor" class="doc-body editable" contenteditable="true" @input="onBodyInput"></div>
       <div v-else class="doc-body">{{ documentParts.body }}</div>
-      <div v-if="editing || showSignature" class="mv-signature">阳光花园业主委员会</div>
+      <div class="mv-signature">阳光花园业主委员会</div>
       <div v-if="editing" class="mv-editor-actions">
         <button class="mv-cancel" :disabled="saving" @click="cancelEdit">取消</button>
         <button class="mv-save" :disabled="saving" @click="saveEdit">{{ saving ? '保存中…' : '确定' }}</button>
@@ -64,9 +62,21 @@ const meetingNameEditor = ref(null)
 const bodyEditor = ref(null)
 const saving = ref(false)
 let meetingId = null
+const COMMUNITY_NAME = '阳光花园'
+const SIGNATURE = COMMUNITY_NAME + '业主委员会'
+
+// 旧纪要中的连续问号来自小区名称尚未带入时的占位乱码；本项目小区名称已确定为“阳光花园”。
+// AI 正文若自带独立落款行，也在这里移除，交由页面底部统一展示一次。
+function normalizeMinutesText(value) {
+  return String(value || '')
+    .replace(/[?？]{2,}/g, COMMUNITY_NAME)
+    .replace(/^\s*阳光花园业主委员会\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()
+}
 
 // 去掉 AI 纪要里的 Markdown 标题标记（行首 #），纯文本更干净；首行作标题，其余作正文
-const pretty = computed(() => String(text.value || '')
+const pretty = computed(() => normalizeMinutesText(text.value)
   .replace(/^[ \t]*#{1,6}[ \t]*/gm, '')
   // 纯文本展示：去掉偶尔漏进来的 HTML 标签（如旧纪要里的 <center>），否则会当字面量显示出来
   .replace(/<\/?center>/gi, '')
@@ -82,21 +92,18 @@ const documentParts = computed(() => {
   if (marker >= 0) {
     const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
     // 期号行（第N期）已从公文格式中移除：老纪要里若存有该行，按普通正文首行显示，编辑时可自行删除
-    return { meetingName: meetingName || '会议', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
+    return { meetingName: (meetingName || '业委会') + '会议纪要', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
   }
   return { meetingName: (lines[0] || '').trim(), body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
 })
-const SIGNATURE = '阳光花园业主委员会'
-const showSignature = computed(() => !String(text.value || '').trimEnd().endsWith(SIGNATURE))
-
 function withSignature(value) {
-  const content = String(value || '').trimEnd()
-  return content.endsWith(SIGNATURE) ? content : content + '\n\n' + SIGNATURE
+  const content = normalizeMinutesText(value)
+  return content + '\n\n' + SIGNATURE
 }
 
 function beginInlineEdit() {
   editableMeetingName.value = documentParts.value.meetingName
-  editableBody.value = String(documentParts.value.body || '').replace(/\s*阳光花园业主委员会\s*$/, '').trimEnd()
+  editableBody.value = normalizeMinutesText(documentParts.value.body)
   editing.value = true
   // innerText 由下面两个函数式 ref 在元素挂载瞬间写入——不依赖 nextTick 时序，避开
   // 「editing 与 loading 同批次刷新时 ref 还没挂上、赋值被静默跳过」这类竞态。
@@ -174,7 +181,7 @@ onUnmounted(() => clearInterval(_genPollTimer))
 function cancelEdit() {
   // 编辑值尚未写入 text，退出编辑态即可恢复到上一次“确定”保存的内容。
   editableMeetingName.value = documentParts.value.meetingName
-  editableBody.value = String(documentParts.value.body || '').replace(/\s*阳光花园业主委员会\s*$/, '').trimEnd()
+  editableBody.value = normalizeMinutesText(documentParts.value.body)
   editing.value = false
 }
 
@@ -188,7 +195,8 @@ function backToDetail() {
 
 async function saveEdit() {
   if (!editableBody.value.trim()) { toast({ title: '纪要内容不能为空', icon: 'none' }); return }
-  const header = (editableMeetingName.value.trim() || '会议') + '\n会议纪要'
+  const rawTitle = editableMeetingName.value.trim() || '阳光花园业委会会议纪要'
+  const header = rawTitle.endsWith('会议纪要') ? rawTitle : rawTitle + '会议纪要'
   const value = withSignature(header + '\n\n' + editableBody.value.trim())
   saving.value = true
   try {
@@ -237,10 +245,8 @@ onMounted(() => {
 /* 正文格式与老纪要页保持一致 */
 .doc { background: #fff; border-radius: 24rpx; padding: 36rpx 32rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .mv-loading { color: #888; text-align: center; font-size: 30rpx; }
-.minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:12rpx 10rpx 22rpx; }
-.minutes-meeting-name { font-size:34rpx; color:#202124; line-height:1.45; white-space:pre-wrap; }
-.minutes-main-title { margin-top:12rpx; font-size:58rpx; font-weight:700; letter-spacing:14rpx; color:#d71920; line-height:1.25; }
-.minutes-rule { height:2rpx; background:#b65d5d; margin:4rpx 0 18rpx; }
+.minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:18rpx 10rpx 34rpx; }
+.minutes-meeting-name { font-size:42rpx; font-weight:700; color:#161616; line-height:1.45; white-space:pre-wrap; }
 .doc-body { display: block; font-size: 34rpx; color: #33373d; line-height: 1.9; white-space: pre-wrap; padding: 24rpx 0; }
 .editable { outline: none; border-radius: 8rpx; transition: background .15s; }
 .editable:focus { background: #fffaf2; box-shadow: 0 0 0 2rpx rgba(198,106,0,.18); }

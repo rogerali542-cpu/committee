@@ -57,4 +57,15 @@ public class MeetingTodo {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    /** 推送外部工单系统使用的稳定幂等号。 */
+    @Column(name = "external_ticket_no", length = 128)
+    private String externalTicketNo;
+
+    /** 外部工单系统返回的正式工单号。 */
+    @Column(name = "ticket_no", length = 128)
+    private String ticketNo;
+
+    @Column(name = "ticket_pushed_at")
+    private LocalDateTime ticketPushedAt;
 }

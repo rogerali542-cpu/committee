@@ -5,12 +5,15 @@ import com.ywh.dto.CreateMeetingRequest;
 import com.ywh.dto.DeliverySendRequest;
 import com.ywh.dto.MeetingDetailVO;
 import com.ywh.dto.MeetingPrefillVO;
+import com.ywh.dto.OnlineAttendanceRequest;
 import com.ywh.dto.quick.NewsTaskStatusVO;
 import com.ywh.dto.ProxyActionRequest;
 import com.ywh.dto.ProxyTargetVO;
 import com.ywh.entity.CommitteeMeeting;
 import com.ywh.entity.RecordTopic;
 import com.ywh.service.CommitteeService;
+import com.ywh.service.AttendanceSheetPdfService;
+import com.ywh.service.MeetingRecordPdfService;
 import com.ywh.service.quick.AudioStorageService;
 import com.ywh.service.quick.DocumentPrefillService;
 import com.ywh.service.quick.NewsAsyncWorker;
@@ -18,9 +21,14 @@ import com.ywh.service.quick.NewsTaskService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +38,8 @@ import java.util.Map;
 public class CommitteeController {
 
     private final CommitteeService service;
+    private final AttendanceSheetPdfService attendanceSheetPdfService;
+    private final MeetingRecordPdfService meetingRecordPdfService;
     private final DocumentPrefillService prefillService;
     private final NewsTaskService newsTaskService;
     private final NewsAsyncWorker newsAsyncWorker;
@@ -208,10 +218,43 @@ public class CommitteeController {
         return Result.ok(service.exportAttendanceCsv(id));
     }
 
+    @GetMapping("/{id}/attendance-sheet.pdf")
+    @RequireRole({"主任", "副主任", "记录员"})
+    public ResponseEntity<byte[]> exportAttendanceSheet(@PathVariable Long id) {
+        AttendanceSheetPdfService.PdfFile file = attendanceSheetPdfService.generate(id);
+        String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(file.bytes());
+    }
+
+    @GetMapping("/{id}/meeting-record.pdf")
+    @RequireRole({"主任", "副主任", "委员"})
+    public ResponseEntity<byte[]> exportMeetingRecord(@PathVariable Long id) {
+        MeetingRecordPdfService.PdfFile file = meetingRecordPdfService.generate(id);
+        String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(file.bytes());
+    }
+
     @PostMapping("/{id}/attendance/sign-all")
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> signAll(@PathVariable Long id) {
         service.signAll(id);
+        return Result.ok();
+    }
+
+    /** 线上会议由主任/副主任一次性登记实际参会名单，不触发个人签到流程。 */
+    @PutMapping("/{id}/online-attendance")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> setOnlineAttendance(@PathVariable Long id,
+                                            @RequestBody OnlineAttendanceRequest req) {
+        service.setOnlineAttendance(id, req == null ? List.of() : req.getPresentMemberIds());
         return Result.ok();
     }
 
@@ -239,7 +282,7 @@ public class CommitteeController {
         return Result.ok();
     }
 
-    /** 通报议题：记录当前用户已查看（全体已签到委员看完即自动已通报）。 */
+    /** 通报议题：记录当前用户已查看（会议参会名单全体看完即自动已通报）。 */
     @PostMapping("/{id}/topics/{topicId}/notice-view")
     @RequireRole({"主任", "副主任", "委员"})
     public Result<Void> noticeView(@PathVariable Long id, @PathVariable Long topicId) {

@@ -169,6 +169,7 @@ public class CommitteeService {
                 .meetingDate(m.getMeetingDate())
                 .meetingTime(m.getMeetingTime())
                 .location(m.getLocation())
+                .meetingMethod(m.getMeetingMethod())
                 .description(m.getDescription())
                 .stage(m.getStage())
                 .compliance(m.getCompliance())
@@ -210,6 +211,7 @@ public class CommitteeService {
                 .meetingDate(req.getMeetingDate())
                 .meetingTime(req.getMeetingTime() != null ? req.getMeetingTime() : java.time.LocalTime.of(10, 0))
                 .location(req.getLocation() != null ? req.getLocation() : "待定")
+                .meetingMethod(req.getMeetingMethod() != null ? req.getMeetingMethod() : com.ywh.enums.MeetingMethod.offline)
                 .stage(MeetingStage.preparing)
                 .description(req.getDescription())
                 .createdBy(userId)
@@ -245,6 +247,11 @@ public class CommitteeService {
         if (req.getMeetingDate() != null) m.setMeetingDate(req.getMeetingDate());
         if (req.getMeetingTime() != null) m.setMeetingTime(req.getMeetingTime());
         if (req.getLocation() != null) m.setLocation(req.getLocation());
+        if (req.getMeetingMethod() != null) {
+            m.setMeetingMethod(req.getMeetingMethod());
+            if (req.getMeetingMethod() == com.ywh.enums.MeetingMethod.online
+                    && (req.getLocation() == null || req.getLocation().isBlank())) m.setLocation("微信工作群");
+        }
         if (req.getDescription() != null) m.setDescription(req.getDescription());
         // 带来了议题列表（来自"发起业委会"编辑表单）→ 重建预设议题；
         // 不带 topics 的调用方（通知草稿编辑弹窗只传标题/时间/地点/正文）不进此分支，议题保持不变。
@@ -648,6 +655,33 @@ public class CommitteeService {
         }
     }
 
+    @Transactional
+    public void setOnlineAttendance(Long meetingId, List<Long> presentMemberIds) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (meeting.getMeetingMethod() != com.ywh.enums.MeetingMethod.online) {
+            throw new IllegalArgumentException("仅线上会议可由主持人统一登记参会情况");
+        }
+        if (meeting.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅进行中的会议可以登记参会情况");
+        }
+        MeetingRecord record = getRecord(meetingId);
+        Set<Long> present = new HashSet<>(Optional.ofNullable(presentMemberIds).orElse(Collections.emptyList()));
+        UserRoleEntity operator = SecurityUtils.getCurrentUserRole();
+        LocalDateTime now = LocalDateTime.now();
+        List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
+        for (RecordAttendance attendance : attendances) {
+            boolean isPresent = present.contains(attendance.getUserRole().getId());
+            attendance.setSignedIn(isPresent);
+            attendance.setDeclined(!isPresent);
+            attendance.setSigned(false);
+            attendance.setOperator(operator);
+            attendance.setIsProxy(true);
+            attendance.setOperatedAt(now);
+        }
+        attendanceRepo.saveAll(attendances);
+    }
+
     // ===== Topics & Votes =====
     @Transactional
     public RecordTopic addTopic(Long meetingId, String title, String type,
@@ -709,7 +743,7 @@ public class CommitteeService {
         catch (Exception e) { return null; }
     }
 
-    /** 通报议题：记录当前用户已查看；若全体已签到委员都看过，则自动标记已通报。 */
+    /** 通报议题：记录当前用户已查看；若会议参会名单中的全体委员都看过，则自动标记已通报。 */
     @Transactional
     public void markNoticeViewed(Long meetingId, Long topicId) {
         RecordTopic topic = requireTopic(meetingId, topicId);
@@ -719,10 +753,9 @@ public class CommitteeService {
         Set<Long> viewed = parseViewedBy(topic.getViewedByJson());
         viewed.add(ur.getId());
         topic.setViewedByJson(writeViewedBy(viewed));
-        List<Long> signedIn = attendanceRepo.findByRecordId(topic.getRecord().getId()).stream()
-                .filter(a -> Boolean.TRUE.equals(a.getSignedIn()))
+        List<Long> attendees = attendanceRepo.findByRecordId(topic.getRecord().getId()).stream()
                 .map(a -> a.getUserRole().getId()).collect(Collectors.toList());
-        if (!signedIn.isEmpty() && viewed.containsAll(signedIn)) {
+        if (!attendees.isEmpty() && viewed.containsAll(attendees)) {
             topic.setNotified(true);
         }
         topicRepo.save(topic);
@@ -1496,11 +1529,56 @@ public class CommitteeService {
         pub.setPublishedById(ur.getId());
         pub.setPublishedByName(ur.getRealName());
         pub.setPublishedAt(LocalDateTime.now());
+        pub.setPublicTitle(buildPublicNoticeTitle(m));
+        pub.setPublicContent(buildPublicNoticeContent(m));
         // 重新公示：清除撤回标记
         pub.setWithdrawn(false);
         publishRepo.save(pub);
         // 快照本次公示的纪要版本，使"历史版本"能定位到被公示的内容
         snapshotRevision(meetingId, generateMinutes(meetingId));
+    }
+
+    private String buildPublicNoticeTitle(CommitteeMeeting meeting) {
+        MeetingRecord record = recordRepo.findByMeetingId(meeting.getId()).orElse(null);
+        List<RecordTopic> topics = record == null ? Collections.emptyList()
+                : topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        String subject = topics.size() == 1 ? topics.get(0).getTitle() : meeting.getTitle();
+        if (subject == null || subject.isBlank()) subject = "本次会议有关事项";
+        subject = subject.replaceAll("^(关于|有关)", "").replaceAll("(的)?(会议|议题)$", "").trim();
+        return "关于" + subject + "的公示";
+    }
+
+    private String buildPublicNoticeContent(CommitteeMeeting meeting) {
+        String community = meeting.getCommunity() != null && meeting.getCommunity().getName() != null
+                ? meeting.getCommunity().getName().trim() : "";
+        String org = community.isBlank() ? "业主委员会" : community + "业主委员会";
+        MeetingRecord record = recordRepo.findByMeetingId(meeting.getId()).orElse(null);
+        List<RecordTopic> topics = record == null ? Collections.emptyList()
+                : topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        Map<Long, QuickConfirmRequest.TopicResult> confirmed = record == null
+                ? Collections.emptyMap() : quickConfirmTopicMap(record);
+        StringBuilder text = new StringBuilder();
+        text.append("根据相关规定，经").append(org).append("会议研究，现将有关事项公示如下：\n\n");
+        if (topics.isEmpty()) {
+            text.append("本次会议形成的有关事项及会议纪要现予公示。\n");
+        } else {
+            int index = 1;
+            for (RecordTopic topic : topics) {
+                text.append(index++).append(". ").append(topic.getTitle());
+                QuickConfirmRequest.TopicResult result = confirmed.get(topic.getId());
+                if (result != null && result.getResult() != null && !result.getResult().isBlank()) {
+                    text.append("：").append(isVoteTopic(topic) ? quickResultLabel(result.getResult()) : result.getResult());
+                } else if (topic.getType() == TopicType.notice) {
+                    text.append("：有关情况已在会议中通报");
+                } else if (topic.getType() == TopicType.discussion) {
+                    text.append("：有关意见已在会议中讨论并记录");
+                }
+                text.append("。\n");
+            }
+        }
+        text.append("\n相关会议纪要及附件一并公示。如有意见或建议，请通过业主接待渠道以书面形式反馈。\n\n");
+        text.append(org).append("\n").append(TODAY);
+        return text.toString();
     }
 
     /**
@@ -1550,6 +1628,7 @@ public class CommitteeService {
         sb.append("会议名称：").append(nullToUnknown(m.getTitle())).append('\n');
         sb.append("会议时间：").append(nullToUnknown(m.getMeetingDate())).append(" ").append(nullToUnknown(m.getMeetingTime())).append('\n');
         sb.append("会议地点：").append(nullToUnknown(m.getLocation())).append('\n');
+        sb.append("召开方式：").append(m.getMeetingMethod() == com.ywh.enums.MeetingMethod.online ? "线上会议" : "线下会议").append('\n');
         sb.append("会议说明：").append(nullToUnknown(m.getDescription())).append('\n');
         sb.append("主持人：").append(host).append('\n');
         sb.append("应到委员：").append(attendances.size()).append("人\n");
@@ -1634,6 +1713,7 @@ public class CommitteeService {
         sb.append("会议名称：").append(nullToUnknown(m.getTitle())).append('\n');
         sb.append("会议时间：").append(nullToUnknown(m.getMeetingDate())).append(" ").append(nullToUnknown(m.getMeetingTime())).append('\n');
         sb.append("会议地点：").append(nullToUnknown(m.getLocation())).append('\n');
+        sb.append("召开方式：").append(m.getMeetingMethod() == com.ywh.enums.MeetingMethod.online ? "线上会议" : "线下会议").append('\n');
         sb.append("会议说明：").append(nullToUnknown(m.getDescription())).append('\n');
         sb.append("主持人：").append(host).append('\n');
         sb.append("应到委员：").append(attendances.size()).append("人\n");
@@ -1715,12 +1795,12 @@ public class CommitteeService {
         }
 
         sb.append("\n【生成要求】\n");
-        sb.append("请生成正式《业主委员会会议纪要》，比议题报告更精简。");
-        sb.append("每个议题控制在一小段，通报类只根据人工确认议题报告精简为通报内容、委员知悉/意见和后续安排，严禁写赞成、反对、通过、未通过或表决；");
-        sb.append("讨论类写明主要意见、共识和后续安排；表决/决议类只写方案要点、票数、表决结果、决议和关键执行安排，不展开过多背景细节。");
+        sb.append("请严格仿照真实业委会一页式纪要生成正式《业主委员会会议纪要》：第一行只写“小区名称+业委会会议纪要”，正文不用信息块和分节小标题。");
+        sb.append("第一自然段交代日期、地点或线上方式、参会情况和主持人；第二自然段用“一是、二是、三是”集中概括议程；第三自然段集中写通报知悉、讨论意见或表决结果，以及已明确的紧接办理动作。");
+        sb.append("不逐人展开意见，不写完整投票明细、内部分析、风险、详细待办或没有依据的后续安排；明确出现“原则同意”等保留意见时必须保留原表述。");
         sb.append("优先依据人工确认结果和议题报告摘录，不要逐句复述转写，不要输出冗长背景。");
         sb.append("如有【会议材料摘录】，可据此补充方案要点、数据或条款等事实细节，但人工确认结果与材料冲突时以人工确认结果为准；材料识别可能有误，不确定的不要写入。");
-        sb.append("缺失信息写“未明确说明”，不得编造。");
+        sb.append("纪要缺失信息直接省略，不写“未明确说明”，不得编造；末尾仅写业委会全称和会议日期，全文以一页为目标。");
         return sb.toString();
     }
 
@@ -1887,6 +1967,20 @@ public class CommitteeService {
         return toTodoVO(todoRepo.save(t));
     }
 
+    /** 主任删除 AI 误识别的待办。已推送为外部工单的事项不能只删本地记录，避免产生失联工单。 */
+    @Transactional
+    public void deleteTodo(Long meetingId, Long todoId) {
+        MeetingTodo t = todoRepo.findById(todoId)
+                .orElseThrow(() -> new IllegalArgumentException("待办不存在"));
+        if (!t.getMeetingId().equals(meetingId)) {
+            throw new IllegalArgumentException("待办与会议不匹配");
+        }
+        if (t.getExternalTicketNo() != null || t.getTicketNo() != null) {
+            throw new IllegalArgumentException("该待办已创建工单，不能直接删除");
+        }
+        todoRepo.delete(t);
+    }
+
     private MeetingTodoVO toTodoVO(MeetingTodo t) {
         MeetingTodoVO vo = new MeetingTodoVO();
         vo.setId(t.getId());
@@ -1897,6 +1991,10 @@ public class CommitteeService {
         vo.setLastActorName(t.getLastActorName());
         vo.setUpdatedAt(t.getUpdatedAt() == null ? null
                 : t.getUpdatedAt().format(DateTimeFormatter.ofPattern("MM-dd HH:mm")));
+        vo.setExternalTicketNo(t.getExternalTicketNo());
+        vo.setTicketNo(t.getTicketNo());
+        vo.setTicketPushedAt(t.getTicketPushedAt() == null ? null
+                : t.getTicketPushedAt().format(DateTimeFormatter.ofPattern("MM-dd HH:mm")));
         return vo;
     }
 
@@ -2088,9 +2186,14 @@ public class CommitteeService {
         List<String> lines = new ArrayList<>();
         lines.add(title);
         lines.add("");
+        if (m.getMeetingMethod() == com.ywh.enums.MeetingMethod.online) {
+            lines.add("【线上会议】本次会议以线上方式召开，请留意参会平台。");
+        }
         lines.add("会议时间：" + (m.getMeetingDate() != null ? m.getMeetingDate() : "待定")
                 + " " + (m.getMeetingTime() != null ? m.getMeetingTime() : ""));
-        lines.add("会议地点：" + (m.getLocation() != null ? m.getLocation() : "待定"));
+        lines.add("召开方式：" + (m.getMeetingMethod() == com.ywh.enums.MeetingMethod.online ? "线上会议" : "线下会议"));
+        lines.add((m.getMeetingMethod() == com.ywh.enums.MeetingMethod.online ? "线上平台：" : "会议地点：")
+                + (m.getLocation() != null ? m.getLocation() : "待定"));
         // 会议议题：按准备会议时添加的议题标题，逐条编号列出（1.xxx 换行 2.xxx）
         String topicsText = buildNoticeTopicsText(m);
         if (!topicsText.isBlank()) {
@@ -2278,6 +2381,7 @@ public class CommitteeService {
                 .title(m.getTitle().replaceAll("（重新召开）$", "") + "（重新召开）")
                 .meetingTime(m.getMeetingTime())
                 .location(m.getLocation())
+                .meetingMethod(m.getMeetingMethod())
                 .stage(MeetingStage.preparing)
                 .description(m.getDescription())
                 .createdBy(SecurityUtils.getCurrentUserId())
@@ -2515,12 +2619,12 @@ public class CommitteeService {
 
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         int total = attendances.size();
-        // 通报类「已读进度」用：已签到委员 id 集合 + 人数（作为"全体已通报"的分母）
-        Set<Long> signedInIds = attendances.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getSignedIn()))
+        // 通报类「已读进度」用：会议参会名单 id 集合 + 人数（作为"全体已通报"的分母）。
+        // 请假等例外由主任使用「标记全体已通报」人工收口，不让签到先后顺序提前完成通报。
+        Set<Long> attendeeIds = attendances.stream()
                 .map(a -> a.getUserRole().getId())
                 .collect(Collectors.toSet());
-        int signedInCount = signedInIds.size();
+        int attendeeCount = attendeeIds.size();
 
         List<RecordInfoVO.AttendanceVO> attendanceVOs = attendances.stream().map(a -> {
             RecordInfoVO.AttendanceVO av = new RecordInfoVO.AttendanceVO();
@@ -2569,6 +2673,13 @@ public class CommitteeService {
                 votes.stream()
                         .filter(v -> v.getSelectedId() != null)
                         .forEach(v -> counts.merge(v.getSelectedId(), 1, Integer::sum));
+                if (quickResult != null && quickResult.getOptionVotes() != null) {
+                    quickResult.getOptionVotes().forEach((optionId, count) ->
+                            counts.merge(optionId, Optional.ofNullable(count).orElse(0), Math::max));
+                    countedVotes = Math.max(countedVotes,
+                            quickResult.getOptionVotes().values().stream()
+                                    .filter(Objects::nonNull).mapToInt(Integer::intValue).sum());
+                }
                 int leadingVotes = 0;
                 Map<String, Object> leadingOption = null;
                 for (Map<String, Object> option : options) {
@@ -2607,13 +2718,15 @@ public class CommitteeService {
             tv.setVoteClosed(Boolean.TRUE.equals(tp.getVoteClosed()));
             tv.setStatus(!voteRequired ? "recorded" : (passed ? "passed" : (countedVotes < total ? "pending" : "failed")));
             tv.setText(statusText);
-            // 通报类：正文 + 已通报 + 本人是否看过 + 已读进度（已确认「我已读」的已签到委员数 / 已签到数）
+            tv.setSummaryDraft(quickResult != null ? quickResult.getSummaryDraft() : null);
+            // 通报类：正文 + 已通报 + 本人是否看过 + 已读进度（已确认「我已读」人数 / 参会名单人数）
             tv.setContent(tp.getContent());
             tv.setNotified(Boolean.TRUE.equals(tp.getNotified()));
             Set<Long> viewedIds = parseViewedBy(tp.getViewedByJson());
             tv.setViewedByMe(viewedIds.contains(ur.getId()));
-            tv.setViewedCount((int) viewedIds.stream().filter(signedInIds::contains).count());
-            tv.setSignedInCount(signedInCount);
+            tv.setViewedCount((int) viewedIds.stream().filter(attendeeIds::contains).count());
+            // 暂沿用既有 JSON 字段 signedInCount 以保持前端兼容；其业务含义现为参会名单人数。
+            tv.setSignedInCount(attendeeCount);
 
             TopicVote myVote = votes.stream()
                     .filter(v -> v.getUserRole().getId().equals(ur.getId()))
@@ -2741,6 +2854,8 @@ public class CommitteeService {
         PublishInfoVO vo = new PublishInfoVO();
         vo.setPublished(pub.getPublished());
         vo.setPublishDate(pub.getPublishDate() != null ? pub.getPublishDate().toString() : null);
+        vo.setPublicTitle(pub.getPublicTitle());
+        vo.setPublicContent(pub.getPublicContent());
         vo.setDeadlineStr(deadline.toString());
         vo.setDaysLeft(daysLeft);
         vo.setScoreState(scoreState);

@@ -1,9 +1,9 @@
 <template>
   <div class="pub-page minutes-public-page">
-    <PublishNav title="会议结果公示" :on-back="backToDetail" />
+    <PublishNav title="事项公示材料" :on-back="backToDetail" />
 
     <div class="pub-wrap">
-      <div v-if="loading" class="pub-loading">正在整理会议公示内容…</div>
+      <div v-if="loading" class="pub-loading">正在整理事项公示材料…</div>
 
       <div v-else-if="!detail" class="pub-card pub-empty">
         <div class="empty-icon">!</div>
@@ -12,115 +12,53 @@
       </div>
 
       <template v-else>
-        <section class="pub-card hero-card">
-          <span class="pub-tag">业委会会议</span>
+        <section class="pub-card notice-paper">
+          <span class="pub-tag">事项公示</span>
           <span class="pub-badge" :class="badgeClass">{{ badgeText }}</span>
-          <h1 class="pub-title">{{ detail.title || '业主委员会会议' }}</h1>
-          <div class="pub-meta-grid">
-            <div><span>会议时间</span><b>{{ meetingTimeText }}</b></div>
-            <div><span>会议地点</span><b>{{ detail.location || '未记录' }}</b></div>
-            <div><span>应到委员</span><b>{{ attendance.total }} 人</b></div>
-            <div><span>实到委员</span><b>{{ attendance.present }} 人</b></div>
-          </div>
-          <div class="validity" :class="attendance.valid ? 'ok' : 'warn'">
-            {{ attendance.valid ? '本次会议达到有效出席人数' : '本次会议出席人数未达到过半条件' }}
-          </div>
+          <h1 class="notice-title">{{ publicTitle }}</h1>
+          <div class="notice-content-body">{{ publicContent }}</div>
         </section>
 
         <section class="pub-card">
           <header class="section-head">
-            <span class="section-index">01</span>
-            <div><h2>会议召开流程</h2><p>展示会议程序及记录完整情况</p></div>
-          </header>
-          <div class="process-line">
-            <div v-for="(step, index) in processSteps" :key="step.label" class="process-step" :class="{ done: step.done }">
-              <i>{{ step.done ? '✓' : index + 1 }}</i><span>{{ step.label }}</span>
-            </div>
-          </div>
-          <div v-if="recordChecks.length" class="check-list">
-            <div v-for="check in recordChecks" :key="check.label" class="check-row">
-              <span>{{ check.label }}</span><b :class="check.ok ? 'is-ok' : 'is-warn'">{{ check.detail }}</b>
-            </div>
-          </div>
-        </section>
-
-        <section class="pub-card">
-          <header class="section-head">
-            <span class="section-index">02</span>
-            <div><h2>议题审议结果</h2><p>共 {{ topics.length }} 项议题，按会议顺序公开</p></div>
-          </header>
-
-          <div v-if="!topics.length" class="section-empty">本次会议暂无结构化议题记录</div>
-          <article v-for="(topic, index) in topics" :key="topic.id" class="topic-card" :class="'type-' + topic.type">
-            <div class="topic-top">
-              <span class="topic-no">议题 {{ index + 1 }}</span>
-              <span class="topic-type">{{ topicTypeText(topic.type) }}</span>
-            </div>
-            <h3>{{ topic.title }}</h3>
-
-            <template v-if="topic.type === 'vote'">
-              <div v-if="topic.decisionType === 'multi_choice'" class="option-list">
-                <div v-for="option in topic.options || []" :key="option.id" class="option-row">
-                  <span>{{ option.label }}</span><b>{{ option.votes || 0 }} 票</b>
-                </div>
-              </div>
-              <div v-else class="vote-grid">
-                <div><b>{{ topic.forVotes || 0 }}</b><span>同意</span></div>
-                <div><b>{{ topic.agVotes || 0 }}</b><span>反对</span></div>
-                <div><b>{{ topic.abVotes || 0 }}</b><span>弃权</span></div>
-                <div><b>{{ notVoted(topic) }}</b><span>未表决</span></div>
-              </div>
-              <div class="topic-result" :class="topic.status">{{ topic.text || resultText(topic) }}</div>
-              <p class="basis">通过条件：全体委员 {{ topic.total || 0 }} 人，需至少 {{ topic.need || 0 }} 票同意</p>
-            </template>
-
-            <template v-else-if="topic.type === 'discussion'">
-              <div class="opinion-summary">
-                <strong>主要讨论意见</strong>
-                <ul v-if="opinionsFor(topic.id).length">
-                  <li v-for="op in opinionsFor(topic.id)" :key="op.id">{{ op.content }}</li>
-                </ul>
-                <p v-else>本议题未形成单独的书面讨论意见，具体审议情况见会议纪要。</p>
-              </div>
-              <div class="topic-result recorded">{{ topic.text || '讨论情况已记录' }}</div>
-            </template>
-
-            <template v-else>
-              <p class="notice-content">{{ topic.content || '该事项已在会议中完成通报。' }}</p>
-              <div class="topic-result recorded">{{ topic.notified ? '已完成通报' : '通报事项已记录' }}</div>
-            </template>
-          </article>
-        </section>
-
-        <section class="pub-card">
-          <header class="section-head">
-            <span class="section-index">03</span>
-            <div><h2>正式会议纪要</h2><p>经整理确认的会议内容与决定</p></div>
+            <span class="section-index">附件一</span>
+            <div><h2>会议纪要</h2><p>与本次事项公示相关的会议决定摘要</p></div>
           </header>
           <div v-if="minutesText" class="minutes-body">{{ minutesText }}</div>
           <div v-else class="section-empty">正式会议纪要尚未生成</div>
         </section>
 
-        <section class="pub-card">
+        <section class="pub-card" v-if="relatedMaterials.length">
           <header class="section-head">
-            <span class="section-index">04</span>
-            <div><h2>会后事项跟进</h2><p>会议决定的后续执行情况</p></div>
+            <span class="section-index">附件二</span>
+            <div><h2>相关材料与公示留痕</h2><p>会议附件及公示照片</p></div>
           </header>
-          <div v-if="todos.length" class="todo-list">
-            <div v-for="todo in todos" :key="todo.id || todo.title" class="todo-row">
-              <div class="todo-main"><b>{{ todo.title }}</b><span>{{ todo.owner || '责任主体待明确' }} · {{ todo.dueText || '完成时间待明确' }}</span></div>
-              <em :class="'todo-' + todo.status">{{ todoStatusText(todo.status) }}</em>
-            </div>
+          <div class="material-list">
+            <a v-for="item in relatedMaterials" :key="item.id || item.url || item.fileName" class="material-row" :href="item.url || item.fileUrl" target="_blank">
+              <span class="material-icon">附件</span>
+              <span class="material-name">{{ item.fileName || item.name || '相关材料' }}</span>
+              <span class="material-open">查看 ›</span>
+            </a>
           </div>
-          <div v-else class="section-empty">本次会议暂无需要会后继续办理的事项</div>
+        </section>
+
+        <section class="pub-card feedback-card">
+          <header class="section-head">
+            <span class="section-index">反馈</span>
+            <div><h2>意见反馈</h2><p>对公示事项提出意见或建议</p></div>
+          </header>
+          <div class="feedback-copy">
+            <b>请通过业主接待渠道提交书面意见</b>
+            <span>意见将作为本事项后续处理和归档的组成材料。</span>
+          </div>
         </section>
 
         <div class="public-note">
           <b>公示说明</b>
-          <span>本页根据会议记录、录音转写、委员确认意见及表决数据整理。录音、逐字稿、签名页和个人信息仅作内部归档，不在公示页面公开。</span>
+          <span>本页公开事项公示、会议纪要及相关附件。签到明细、个人意见、完整投票明细、录音转写和内部待办仅作内部归档。</span>
         </div>
-        <button class="pub-btn" @click="copyText">复制公示内容</button>
-        <span class="pub-foot">本页为面向本小区业主的会议结果公示</span>
+        <button class="pub-btn" @click="copyText">复制公示正文</button>
+        <span class="pub-foot">本页为面向本小区业主发布的事项公示材料</span>
       </template>
     </div>
   </div>
@@ -172,6 +110,32 @@ const meetingTimeText = computed(() => {
   if (!detail.value) return '未记录'
   return [detail.value.meetingDate, detail.value.meetingTime].filter(Boolean).join(' ') || '未记录'
 })
+const publicTitle = computed(() => {
+  const saved = detail.value && detail.value.publish && detail.value.publish.publicTitle
+  if (saved) return saved
+  const subject = topics.value.length === 1 ? topics.value[0].title : (detail.value && detail.value.title)
+  const clean = String(subject || '本次会议有关事项').replace(/^关于/, '').replace(/(的)?(会议|议题)$/, '')
+  return '关于' + clean + '的公示'
+})
+const publicContent = computed(() => {
+  const saved = detail.value && detail.value.publish && detail.value.publish.publicContent
+  if (saved) return saved
+  const lines = ['根据相关规定，经阳光花园业主委员会会议研究，现将有关事项公示如下：', '']
+  topics.value.forEach((topic, index) => {
+    const result = topic.type === 'notice' ? '有关情况已在会议中通报'
+      : topic.type === 'discussion' ? '有关意见已在会议中讨论并记录'
+        : (topic.text || resultText(topic))
+    lines.push(`${index + 1}. ${topic.title}：${result}。`)
+  })
+  lines.push('', '相关会议纪要及附件一并公示。如有意见或建议，请通过业主接待渠道以书面形式反馈。', '', '阳光花园业主委员会')
+  if (detail.value && detail.value.publish && detail.value.publish.publishDate) lines.push(detail.value.publish.publishDate)
+  return lines.join('\n')
+})
+const relatedMaterials = computed(() => {
+  if (!detail.value) return []
+  return [...(detail.value.materials || []), ...(detail.value.archiveExtras || [])]
+    .filter(item => item && (item.url || item.fileUrl))
+})
 const processSteps = computed(() => [
   { label: '会议通知', done: !!detail.value.notifiedAt },
   { label: '委员签到', done: attendance.value.present > 0 },
@@ -181,7 +145,8 @@ const processSteps = computed(() => [
 ])
 
 function topicTypeText(type) {
-  return type === 'vote' ? '表决' : type === 'discussion' ? '讨论' : '通知'
+  // 0717 用户定：通知并入讨论，非表决类统一「通知和讨论」
+  return type === 'vote' ? '表决' : '通知和讨论'
 }
 function opinionsFor(topicId) {
   return opinions.value.filter(item => Number(item.topicId) === Number(topicId) && item.content)
@@ -202,33 +167,22 @@ async function load() {
   loading.value = true
   try {
     detail.value = await api.committeeDetail(meetingId)
-    const [minutesResult, opinionResult, todoResult] = await Promise.allSettled([
-      api.committeeMinutes(meetingId),
-      api.committeeOpinions(meetingId),
-      api.committeeTodoList(meetingId)
-    ])
+    const [minutesResult] = await Promise.allSettled([api.committeeMinutes(meetingId)])
     if (minutesResult.status === 'fulfilled') minutesText.value = String(minutesResult.value || '').trim()
-    if (opinionResult.status === 'fulfilled') opinions.value = Array.isArray(opinionResult.value) ? opinionResult.value : []
-    if (todoResult.status === 'fulfilled') {
-      const value = todoResult.value
-      todos.value = Array.isArray(value) ? value : (value && Array.isArray(value.items) ? value.items : [])
-    }
   } catch (e) {
     detail.value = null
-    emptyText.value = (e && e.message) || '会议公示内容暂不可用'
+    emptyText.value = (e && e.message) || '事项公示材料暂不可用'
   } finally {
     loading.value = false
   }
 }
 
 async function copyText() {
-  const lines = [detail.value.title, meetingTimeText.value, '会议地点：' + (detail.value.location || '未记录')]
-  topics.value.forEach((topic, index) => lines.push(`议题${index + 1}：${topic.title}\n${topic.text || resultText(topic)}`))
-  if (minutesText.value) lines.push('正式会议纪要：\n' + minutesText.value)
-  if (todos.value.length) lines.push('会后事项：\n' + todos.value.map(item => `${item.title}（${todoStatusText(item.status)}）`).join('\n'))
+  const lines = [publicTitle.value, publicContent.value]
+  if (minutesText.value) lines.push('附件：会议纪要\n' + minutesText.value)
   try {
     await navigator.clipboard.writeText(lines.filter(Boolean).join('\n\n'))
-    toast({ title: '公示内容已复制' })
+    toast({ title: '公示正文已复制' })
   } catch (e) { toast({ title: '复制失败', icon: 'none' }) }
 }
 
@@ -246,6 +200,17 @@ onMounted(() => {
 .empty-title { display:block; font-size:38rpx; color:var(--pub-ink); font-weight:700; margin-bottom:14rpx; }
 .empty-text { display:block; font-size:30rpx; color:var(--pub-sub); line-height:1.7; }
 .hero-card { overflow:hidden; }
+.notice-paper { position:relative; padding-top:44rpx; }
+.notice-title { margin:44rpx auto 40rpx; max-width:92%; text-align:center; color:#17191d; font-size:42rpx; line-height:1.5; font-weight:800; }
+.notice-content-body { padding:12rpx 8rpx 26rpx; white-space:pre-wrap; color:#30343a; font-size:32rpx; line-height:2; text-align:justify; }
+.material-list { display:flex; flex-direction:column; gap:14rpx; }
+.material-row { display:flex; align-items:center; gap:18rpx; padding:22rpx; border:2rpx solid #e8ebef; border-radius:16rpx; color:inherit; text-decoration:none; background:#fafbfc; }
+.material-icon { flex-shrink:0; padding:7rpx 10rpx; border-radius:8rpx; background:var(--pub-blue-soft); color:var(--pub-blue); font-size:22rpx; font-weight:700; }
+.material-name { flex:1; min-width:0; color:var(--pub-ink); font-size:29rpx; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.material-open { flex-shrink:0; color:var(--pub-blue); font-size:25rpx; }
+.feedback-copy { display:flex; flex-direction:column; gap:10rpx; padding:20rpx 22rpx; border-radius:14rpx; background:#f5f8fc; }
+.feedback-copy b { color:var(--pub-ink); font-size:30rpx; }
+.feedback-copy span { color:var(--pub-sub); font-size:27rpx; line-height:1.65; }
 .pub-title { padding-right:110rpx; }
 .pub-meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:18rpx; margin-top:24rpx; }
 .pub-meta-grid div { background:#f7f9fc; border-radius:14rpx; padding:18rpx; }

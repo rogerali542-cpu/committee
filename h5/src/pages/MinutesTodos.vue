@@ -13,19 +13,36 @@
         <div class="todo-top">
           <span class="todo-idx">{{ index + 1 }}</span>
           <span class="todo-title">{{ item.title }}</span>
+          <div class="todo-head-actions">
+            <span class="status-tag" :class="'tag-' + item.status">{{ statusLabel(item.status) }}</span>
+            <button v-if="canPushTicket && !item.ticketNo" class="delete-btn" :disabled="item.deleting" @click="deleteTodo(item)">删除</button>
+          </div>
         </div>
         <div class="todo-meta" v-if="item.owner || item.dueText">
           <div class="meta-item" v-if="item.owner"><span class="meta-label">负责人</span><span class="meta-val">{{ item.owner }}</span></div>
           <div class="meta-item" v-if="item.dueText"><span class="meta-label">截止</span><span class="meta-val" :class="{ 'due-urgent': item.dueUrgent }">{{ item.dueText }}{{ item.dueUrgent ? ' ⚠' : '' }}</span></div>
         </div>
 
-        <!-- 状态回复：三个大按钮，点一下即更新并留痕 -->
-        <div class="todo-actions" v-if="item.id">
-          <button v-for="opt in STATUS_OPTS" :key="opt.key"
-                  class="status-btn" :class="['sb-' + opt.key, { active: item.status === opt.key }]"
-                  @click="setStatus(item, opt.key)">{{ opt.label }}</button>
-        </div>
         <div class="todo-trace" v-if="item.lastActorName">{{ item.lastActorName }} · {{ item.updatedAt }} 更新</div>
+        <div v-if="item.id" class="todo-footer">
+          <span v-if="item.ticketNo" class="ticket-synced">工单 {{ item.ticketNo }} ›</span>
+          <template v-if="item.status === 'todo'">
+            <button class="self-handle-btn" :disabled="item.statusUpdating" @click="advanceStatus(item)">业委会自行处理</button>
+            <button v-if="canPushTicket && !item.ticketNo" class="primary-btn primary-ticket" :disabled="item.ticketPushing" @click="pushTicket(item)">
+              {{ item.ticketPushing ? '正在创建工单…' : '发工单处理' }}
+            </button>
+          </template>
+          <template v-else-if="item.status === 'doing'">
+            <button class="rollback-btn" :disabled="item.statusUpdating" @click="rollbackStatus(item, 'todo')">退回待处理</button>
+            <button class="primary-btn primary-doing" :disabled="item.statusUpdating" @click="advanceStatus(item)">
+              {{ item.statusUpdating ? '更新中…' : '标记完成' }}
+            </button>
+          </template>
+          <template v-else>
+            <button class="rollback-btn reopen-btn" :disabled="item.statusUpdating" @click="rollbackStatus(item, 'doing')">重新打开</button>
+            <span class="completed-mark">✓ 已完成</span>
+          </template>
+        </div>
       </div>
 
       <!-- 解析失败兜底：整段原文 -->
@@ -40,18 +57,19 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
-import { toast } from '@/utils/ui'
+import { toast, showModal } from '@/utils/ui'
+import * as perm from '@/utils/perm'
 import PageNav from '@/components/PageNav.vue'
 
 // 待办独立页：优先用后端结构化待办（每条带 id、可点按钮改状态、留痕操作人）。
 // 首次未固化时，复用下方解析逻辑把 AI 待办文本拆成卡片、回传后端固化，拿到带 id 的记录。
 // 两者都解析不出时整段原文兜底。
 
-const STATUS_OPTS = [
-  { key: 'todo', label: '没空' },
-  { key: 'doing', label: '我在做' },
-  { key: 'done', label: '已完成' }
-]
+const canPushTicket = perm.isChair()
+
+function statusLabel(status) {
+  return status === 'done' ? '已完成' : status === 'doing' ? '处理中' : '待处理'
+}
 
 function statusType(s) {
   if (!s) return 'pending'
@@ -237,6 +255,65 @@ async function setStatus(item, key) {
   }
 }
 
+async function advanceStatus(item) {
+  if (!item.id || item.statusUpdating || item.status === 'done') return
+  item.statusUpdating = true
+  try {
+    await setStatus(item, item.status === 'doing' ? 'done' : 'doing')
+  } finally {
+    item.statusUpdating = false
+  }
+}
+
+async function rollbackStatus(item, target) {
+  if (!item.id || item.statusUpdating) return
+  item.statusUpdating = true
+  try {
+    await setStatus(item, target)
+  } finally {
+    item.statusUpdating = false
+  }
+}
+
+async function pushTicket(item) {
+  if (!item.id || item.ticketPushing) return
+  item.ticketPushing = true
+  try {
+    const res = await api.committeeTodoPushTicket(meetingId, item.id)
+    item.externalTicketNo = res && res.externalTicketNo
+    item.ticketNo = (res && res.ticketNo) || item.externalTicketNo
+    item.ticketPushedAt = res && res.pushedAt
+    if (item.status === 'todo') await setStatus(item, 'doing')
+    toast({ title: res && res.created === false ? '工单已存在，已完成关联' : '工单创建成功', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '工单创建失败', icon: 'none' })
+  } finally {
+    item.ticketPushing = false
+  }
+}
+
+async function deleteTodo(item) {
+  if (!item.id || item.deleting) return
+  const res = await showModal({
+    title: '删除待办',
+    content: '确认删除“' + item.title + '”？删除后不会进入工单系统。',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  item.deleting = true
+  try {
+    await api.committeeTodoDelete(meetingId, item.id)
+    cards.value = cards.value.filter(c => c.id !== item.id)
+    if (!cards.value.length) emptyText.value = '本次会议无明确待办事项。'
+    toast({ title: '待办已删除', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '删除失败', icon: 'none' })
+  } finally {
+    item.deleting = false
+  }
+}
+
 onMounted(() => {
   meetingId = parseInt(route.query.meetingId)
   if (!meetingId) {
@@ -253,22 +330,45 @@ onMounted(() => {
 .todos-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 100rpx; box-sizing: border-box; }
 
 .todo-card { background: #fff; border-radius: 16px; padding: 22px 20px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.todo-top { display: flex; align-items: flex-start; }
+.todo-top { display: flex; align-items: flex-start; position: relative; }
 .todo-idx { flex: none; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 50%; background: #1A4A8A; color: #fff; font-size: 18px; font-weight: 700; margin-right: 14px; margin-top: 2px; }
 .todo-title { flex: 1; font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1.55; }
+.todo-head-actions { flex:none; display:flex; align-items:center; gap:7px; margin-left:10px; position:relative; }
+.status-tag { height:30px; line-height:30px; padding:0 12px; border-radius:15px; font-size:15px; font-weight:700; white-space:nowrap; }
+.tag-todo { background:#FFF0DC; color:#A65300; }
+.tag-doing { background:#E4EEFF; color:#1857A6; }
+.tag-done { background:#E3F5E9; color:#217246; }
+.delete-btn { height:32px; padding:0 8px; border:0; background:transparent; color:#B42318; font-size:15px; font-weight:700; }
+.delete-btn:disabled { opacity:.5; }
 .todo-meta { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0 48px; }
 .meta-item { display: flex; align-items: center; font-size: 19px; font-weight: 600; }
 .meta-label { color: #555; margin-right: 8px; }
 .meta-val { color: #222; }
 .due-urgent { color: #CC0000; font-weight: 700; }
 
-/* 状态回复按钮：大、间距足、当前态高亮，方便老年人辨认与点击 */
-.todo-actions { display: flex; gap: 10px; margin: 18px 0 0 48px; }
-.status-btn { flex: 1; height: 54px; border-radius: 12px; border: 2px solid #e0e0e0; background: #fff; font-size: 19px; font-weight: 700; color: #999; cursor: pointer; }
-.status-btn.active.sb-todo { background: #FDDCB5; border-color: #E8A04D; color: #B34800; }
-.status-btn.active.sb-doing { background: #C8DEFF; border-color: #5B8DEF; color: #1249A8; }
-.status-btn.active.sb-done { background: #B8EDD0; border-color: #4CB377; color: #146B36; }
 .todo-trace { font-size: 15px; color: #999; margin: 12px 0 0 48px; }
+.todo-footer { display:flex; justify-content:flex-end; align-items:center; gap:12px; margin:18px 0 0 48px; padding-top:16px; border-top:1px solid #EEF0F2; }
+.ticket-synced { margin-right:auto; color:#276A9E; font-size:16px; font-weight:700; }
+.self-handle-btn { min-width:150px; height:48px; padding:0 17px; border:2px solid #C8D0D9; border-radius:12px; background:#fff; color:#4F5B67; font-size:16px; font-weight:700; }
+.self-handle-btn:disabled { opacity:.6; }
+.rollback-btn { height:48px; padding:0 16px; border:0; background:transparent; color:#66717D; font-size:16px; font-weight:700; white-space:nowrap; }
+.rollback-btn:disabled { opacity:.6; }
+.primary-btn { min-width:138px; height:50px; padding:0 22px; border:0; border-radius:13px; color:#fff; font-size:18px; font-weight:700; box-shadow:0 4px 10px rgba(26,74,138,.18); }
+.primary-todo { background:#1A4A8A; }
+.primary-ticket { background:#1A4A8A; min-width:150px; }
+.primary-doing { background:#247A4A; }
+.primary-btn:disabled { opacity:.6; }
+.completed-mark { margin-left:auto; min-width:120px; height:46px; line-height:46px; border-radius:12px; background:#E3F5E9; color:#217246; text-align:center; font-size:18px; font-weight:700; }
+
+@media (max-width: 420px) {
+  .todo-card { padding:18px 16px; }
+  .todo-title { font-size:20px; }
+  .status-tag { padding:0 10px; font-size:14px; }
+  .todo-meta,.todo-trace,.todo-footer { margin-left:0; }
+  .todo-footer { flex-wrap:wrap; }
+  .self-handle-btn,.primary-btn { flex:1; min-width:130px; }
+  .rollback-btn { flex:0 0 auto; }
+}
 
 .access-card { background: #fff; border-radius: 24rpx; padding: 64rpx 36rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .access-icon { width: 96rpx; height: 96rpx; border-radius: 50%; background: #E8F7EC; color: #2B9E55; display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx; font-weight: 700; }

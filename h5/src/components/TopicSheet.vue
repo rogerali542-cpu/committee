@@ -289,13 +289,15 @@ const taEl = ref(null)
 const opinionOpen = ref(false)
 const opinionListOpen = ref(false)
 
+// 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」、同一配色；
+// 底层 type 值不动，通报卡（正文+已读进度）仍按 type==='notice' 生效
 const tagClass = computed(() => {
   const t = props.topic && props.topic.type
-  return t === 'decision' ? 'vote' : (t === 'notice' ? 'notice' : 'discuss')
+  return t === 'decision' ? 'vote' : 'discuss'
 })
 const tagLabel = computed(() => {
   const t = props.topic && props.topic.type
-  return t === 'decision' ? '表决' : (t === 'notice' ? '通报' : '讨论')
+  return t === 'decision' ? '表决' : '通知和讨论'
 })
 const canDiscuss = computed(() => props.topic && props.topic.type !== 'notice')
 const showOpinionSection = computed(() => {
@@ -968,7 +970,7 @@ async function removeOpinion(op) {
 /* 三类议题各一专属色（浅底彩字，方案A）——讨论蓝 / 表决橙 / 通报紫，刻意避开绿(=同意票色) */
 .ts-tag.discuss { background: #EAF6EE; color: #2E8B57; }
 .ts-tag.vote { background: #FFF0E5; color: #D56A16; }
-.ts-tag.notice { background: #E6F4FB; color: #1677B8; }
+/* .ts-tag.notice 已删（0717 通知并入讨论，tagClass 不再产出 notice） */
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
 /* 全部意见大窗口：覆盖在原议题弹层之上，正文列表独立滚动 */
