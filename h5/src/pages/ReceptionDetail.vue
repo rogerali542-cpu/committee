@@ -319,22 +319,30 @@ function goBack() {
 .ho-btn { flex: 1; min-width: 0; height: 96rpx; border-radius: 20rpx;
   font-size: 32rpx; font-weight: 700; white-space: nowrap; }
 .ho-btn:disabled { opacity: 0.5; }
-/* 派发工单 = 橙实心，白字 5.17:1 ✓。它是真动作（推外部工单系统、撤不回），给足视觉重量 */
-.ho-ticket { border: none; background: var(--c-primary-dark); color: #fff;
-  box-shadow: 0 8rpx 22rpx rgba(168,88,0,0.26); }
-/* 转物业 = 青开关。关态：青描边白底青字；开态：青实心白字。#0F766E 白字 5.47:1 ✓、
-   做字 5.47:1 ✓、做描边远超非文字 3:1 ✓。
-   青色沿用「进行中」胶囊那档——语义对得上：事情流转到别处了，
-   既不是完成（绿）也不是主路径（橙），老人不会把它读成「办完了」 */
-.ho-transfer { border: 2rpx solid #0F766E; background: #fff; color: #0F766E; }
-.ho-transfer.on { background: #0F766E; color: #fff; }
+/* 派发工单 = 蓝实心，跟会议待办页「发工单处理」同一颗蓝（MinutesTodos.vue .primary-ticket #1A4A8A）。
+   0717 用户指出原来的深橙太重、且那边不是这么做的——同一个动作（推外部工单系统）
+   在两个页面本来就该长一样，蓝在本 App 里也只用于这一件事。白字 8.79:1 ✓。
+   阴影跟着换成蓝（rgba(26,74,138,.18) 也照抄那边），橙阴影配蓝底会发脏 */
+.ho-ticket { border: none; background: #1A4A8A; color: #fff;
+  box-shadow: 0 8rpx 22rpx rgba(26,74,138,0.18); }
+/* 转物业 = 橙开关。关态：白底橙描边橙字；开态：橙实心白字「✓ 已转交物业」。
+   #A85800 做字/做描边 5.17:1 ✓、做底配白字 5.17:1 ✓。
+   为什么改橙不留青：旁边那颗已经是蓝了，青(#0F766E)跟蓝只差 40° 色相，
+   老人本来就常伴色觉衰退，两颗深色一摆根本分不开；橙蓝近补色，怎么都不会认错。
+   语义也顺：蓝 = 外部工单系统的颜色，橙 = 本系统品牌色 → 转物业只是我们自己记一笔。
+   关态比蓝那颗轻是有意的，跟会议待办页「灰描边·业委会自行处理 vs 蓝实心·发工单处理」
+   的轻重关系一致：工单是正式路径，另一条是自己消化 */
+.ho-transfer { border: 2rpx solid var(--c-primary-dark); background: #fff; color: var(--c-primary-dark); }
+.ho-transfer.on { background: var(--c-primary-dark); color: #fff; }
 
 /* 已办结/没权限时，转物业标记的只读版（开关的「已转交物业」态是它的可写版）。
-   底色/图标用青、正文用墨色，跟上面的工单留痕同构，靠文案和图标色区分是哪条路 */
+   跟上面的工单留痕(.ticket-done)取同一套绿：它俩是同一类东西——「这一步发生过」的留痕，
+   不是可点的路径，所以不跟按钮的蓝/橙走，靠文案区分是哪条路。
+   （原来是青的，青随开关一起退场，全页不再出现第四种颜色） */
 .tf-trace { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
-  background: #E7F6F3; border: 2rpx solid #B9E4DC; border-radius: 16rpx;
+  background: #F2FBF6; border: 2rpx solid #CDE9D8; border-radius: 16rpx;
   font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
-.tf-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: #0F766E;
+.tf-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--c-success);
   color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
 
 .ticket-done { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
