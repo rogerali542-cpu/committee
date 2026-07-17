@@ -17,6 +17,13 @@
     <!-- 履职年历（全员可见）+ 当前会议卡 + 待办：分类横栏 开会（默认）/培训/接待。始终显示；
          日历恒为首屏主角（0716 用户定）：会议卡挪进本容器排日历下方（见下方插入位），待办再往下。
          类名 yc- 前缀（cal- 被小日历占用）。 -->
+    <!-- ⚠ has-meeting 的语义在 0717 之后不准了，留着是权衡不是疏忽：
+         它原意是「这个栈里有会议卡占地方 → 日历/清单压紧点」，但会议卡现已只在开会 tab 出现，
+         而这个类仍按「库里有没有进行中会议」挂，于是接待/培训 tab 也会跟着压 —— 为一张它们并不显示的卡腾地方。
+         没顺手改成 planTab==='meeting'&&… 的原因：实测那样会让接待 tab 高 636→703px（徽标 14→14.5px、
+         日历卡头 39→52px）。压紧本身是想要的效果，只是理由挂错了；改掉反而把一路收敛来的空间又吐回去。
+         正解是把 compact 态的紧凑值直接写死、不再依赖 has-meeting，那是独立的一次重构。
+         现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
     <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'has-meeting': currents && currents.length }">
         <!-- 分类横栏：放在年份上面；开会为主（默认），培训/接待切换后日历+清单整体切到该类 -->
         <div class="plan-switch-card">
@@ -140,16 +147,12 @@
       </div>
 
         <!-- 当前会议卡片（进行中/准备中；主任另含已结束未公示）：排在日历下方（0716 用户定），点继续进入流程。
-             接待/培训 tab 默认收成小按钮（切到这两个模块通常不再进会议），点开才展开完整卡。 -->
+             0717 用户定：会议卡只在开会 tab 出现了。原先接待/培训 tab 顶上有条「会议进行中 · 查看▾」
+             收起栏，点开能就地展开整张会议卡——现在整条链一起撤：
+             收起栏删了，「点开展开」就没了入口，于是 meetCardOpen、「收起▴」也全成死代码，一并清掉。
+             代价说明白：接待/培训 tab 从此不再提示「有会正在进行」，要看会得切回开会 tab。 -->
         <template v-if="currents && currents.length > 0">
-          <!-- 收起态：接待/培训 tab 且未展开 → 一个小按钮 -->
-          <div v-if="planTab !== 'meeting' && !meetCardOpen" class="meet-collapsed" @click="meetCardOpen = true">
-            <span class="mc-ico">📋</span>
-            <span class="mc-text">{{ currents.length > 1 ? currents.length + ' 场会议进行中' : (currents[0].stage === 'ongoing' ? '会议进行中' : '会议待推进') }}</span>
-            <span class="mc-act">查看 ▾</span>
-          </div>
-          <!-- 展开态：会议 tab 恒展开；接待/培训点开后展开 -->
-          <template v-if="planTab === 'meeting' || meetCardOpen">
+          <template v-if="planTab === 'meeting'">
             <div v-for="cur in currents" :key="cur.id" class="meet-card">
               <!-- 卡结构（0716 用户定）：状态从右上角的小胶囊提为左侧标题（进行中的会议/未开始的会议/
                    已结束的会议），会议名称降为第二行——原先「会议名 + 角落小状态」读不出这张卡是干嘛的 -->
@@ -184,9 +187,6 @@
               </div>
 
               <div v-if="isChair" class="meet-del" @click="removeCurrent(cur)">删除会议</div>
-              <div v-if="planTab !== 'meeting'" class="meet-collapse-foot">
-                <span class="meet-collapse-chip" @click="meetCardOpen = false">收起 ▴</span>
-              </div>
             </div>
           </template>
         </template>
@@ -1298,9 +1298,8 @@ const ovLegend = computed(() => planTab.value === 'reception'
   : [{ k: 'overdue', t: '已逾期' }, { k: 'warn', t: '有待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '还没到' }])
 const calMonthTapped = ref(false)
 function onOvMonthTap(m) { calMonth.value = m; calMonthTapped.value = true }
-// 有进行中会议时，接待/培训 tab 默认把顶部会议卡收成小按钮；每次切 tab 都回到收起态
-const meetCardOpen = ref(false)
-watch(planTab, () => { meetCardOpen.value = false })
+// meetCardOpen 已删（0717）：会议卡现在只在开会 tab 出现、恒展开，没有收起态了，
+// 这个开关和它的「切 tab 归位」watch 都没有读者了。
 const calMonthDrill = computed(() => {
   if (planTab.value === 'meeting' || !calMonthTapped.value) return null
   const m = calMonth.value
@@ -3157,30 +3156,12 @@ onActivated(show)
 .hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
-/* 接待/培训 tab 下会议卡的收起态小按钮 */
-/* 定高 64rpx=32px（0716 用户两轮压缩：45→40 再 -20%）——它只是个入口提示，不该和内容卡一样占高。
-   改定高不改 padding：高度实际被「查看 ▾」胶囊撑着，定高 + flex 居中最稳。整条全宽可点，矮但好点。 */
-.meet-collapsed { display: flex; align-items: center; gap: 12rpx; margin: 14rpx 24rpx; height: 64rpx; padding: 0 24rpx; box-sizing: border-box; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 18rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); cursor: pointer; }
-.meet-collapsed:active { background: #fafbfc; }
-.meet-collapsed .mc-ico { font-size: 30rpx; flex-shrink: 0; }
-.meet-collapsed .mc-text { flex: 1; min-width: 0; font-size: 28rpx; font-weight: 700; color: var(--c-text-strong); }
-/* 展开/收起这对按钮同款（0716 用户定）：原先「点此查看」是橙裸文字、「收起」是灰胶囊，
-   两套样式其实是同一个开关的两态，只该差箭头方向。统一成橙描边胶囊 ▾/▴。
-   色用 --c-primary-dark(#A85800=5.17:1)而非 --c-primary(#C76A00=3.83:1)——后者做文字不达标。 */
-.meet-collapsed .mc-act, .meet-collapse-chip {
-  display: inline-flex; align-items: center; gap: 6rpx; flex-shrink: 0; white-space: nowrap;
-  padding: 8rpx 22rpx; border-radius: 999rpx; background: #fff;
-  border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
-  font-size: 28rpx; font-weight: 700; cursor: pointer;
-}
-.meet-collapsed .mc-act:active, .meet-collapse-chip:active { background: #FFF6EC; }
-/* 收起条要矮（0716 用户定）：条高被这颗胶囊撑着，压条必先压它。必须写在上面统一规则之后才压得住。
-   字 26rpx=13px 是用户点名的缩小（低于 14px 底线的又一处例外）。 */
-.meet-collapsed .mc-act { padding: 3rpx 14rpx; font-size: 26rpx; line-height: 1.2; }
-/* 展开卡右下角的「收起 ▴」也缩一档（0717 用户定），与收起条上的「查看 ▾」同码 */
-.meet-collapse-chip { padding: 4rpx 16rpx; font-size: 26rpx; line-height: 1.2; }
-/* 收起 chip 放卡片右下角（右上角与状态徽标太挤） */
-.meet-collapse-foot { display: flex; justify-content: flex-end; margin-top: 8rpx; }
+/* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
+   全删（0717 用户定：会议进行中那一栏撤掉，接待日安排顶上）。
+   它们是「接待/培训 tab 上把会议卡收起/展开」这套交互的全部样式，交互没了样式即死代码。
+   连带作废的还有 13px 字号那两处例外（收起条的「查看▾」和卡内「收起▴」）——
+   全站 <14px 的豁免清单因此少两条，只剩接待/培训清单日期那一处。
+   原实现见 commit 592d7be 及之前。 */
 .meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
 .meet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
 /* 卡标题＝状态（0716 用户定）。标题字号（32rpx/800）+ 胶囊底（0716 追加：绿色胶囊背景）——
@@ -3288,10 +3269,9 @@ onActivated(show)
    点了数字变化发生在视野之外，老人只会觉得「点了没反应」。
    登记卡卡在三数字与清单之间 = 工作流顺序（看概览 → 登记新来访 → 处理清单）。
    开会 tab 走下面的 :not(.compact) 覆盖，不受这里影响。 */
-.plan-todo-card { margin: 0; order: 3; }
-/* order 4→5（0717）：接待日安排卡插在 4，日历让到最后。
-   开会 tab 走下面 :not(.compact) 的 order:2 覆盖，不受影响；
-   培训 tab 也是 compact 但没有这张卡，日历排 5 仍然是最后一个，无差别 */
+.plan-todo-card { margin: 0; order: 4; }
+/* 日历恒在最后（compact 态）。开会 tab 走下面 :not(.compact) 的 order:2 覆盖，不受影响；
+   培训 tab 也是 compact 但没有接待日那张卡，中间空一档不影响顺序 */
 .plan-calendar-card { padding-top: 0; order: 5; }
 /* 开会 tab 且无进行中会议：日历上移当第一重点、待办下沉（0716 用户定）。
    仅此态对调；接待/培训(.compact)与有会议(.has-meeting)保持原顺序。 */
@@ -3302,7 +3282,7 @@ onActivated(show)
 /* 待办卡与上方日历/会议卡拉开呼吸空隙（0716 用户定，间隔约为卡间 gap 的两倍） */
 .plan-stack:not(.compact) .plan-todo-card { order: 4; margin-top: 16rpx; }
 /* 会议卡挪进 plan-stack 后：横向靠容器 24rpx 边距、纵向靠容器 gap，自身边距清零防双重缩进 */
-.plan-stack .meet-card, .plan-stack .meet-collapsed { margin: 0; }
+.plan-stack .meet-card { margin: 0; }
 /* （折叠头已删 0716：日历恒展开） */
 /* 履职年历：分类横栏 + 12月宫格 + 警示条 + 当月清单。
    前缀 yc-（year calendar）：cal- 已被下方日期选择弹窗的小日历占用，同名会被其 7 列网格覆盖 */
@@ -3315,13 +3295,16 @@ onActivated(show)
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
 .ov-metrics { display: flex; gap: 18rpx; padding: 26rpx 22rpx 28rpx; }
 /* 独立成行版：移出日历卡。order 2→1（0716）：它是下方待办清单的筛选器（ovFilter），
-   必须在清单之前。原先只顾着「排在日历上方」，没注意同时也掉到了待办清单的下方。 */
-.ov-metrics-standalone { order: 1; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
+   必须在清单之前。原先只顾着「排在日历上方」，没注意同时也掉到了待办清单的下方。
+   1→2（0717）：接待日安排插到 1（原会议进行中收起栏的位置）。筛选器仍在被筛清单之前，不违反上面那条。 */
+.ov-metrics-standalone { order: 2; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
 
-/* 接待日安排入口卡（0717）。order 4 = 待跟进之后、日历之前。
-   刻意做得比「登记接待」轻（不填色、只描边）：登记是天天用的主动作，这个每月一次，
-   两张卡挨着，分量必须拉开，否则又是一轮焦点打架 */
-.rec-notice-card { order: 4; display: flex; align-items: center; gap: 16rpx;
+/* 接待日安排入口卡。order 4→1（0717 用户定）：接下原「会议进行中」收起栏的位置，
+   即 tab 栏正下方、三数字概览之上。
+   放这儿讲得通：它不是动作而是这个 tab 的前提事实——「我们的接待时间是几点」，
+   下面的登记/待跟进全都围着它转，当页头比夹在清单和日历中间合适。
+   仍然只描边不填色：位置越靠前越要压分量，否则会盖过「登记接待」那颗主动作。 */
+.rec-notice-card { order: 1; display: flex; align-items: center; gap: 16rpx;
   padding: 22rpx 24rpx; box-sizing: border-box; background: var(--c-bg-card);
   border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07);
   cursor: pointer; }
@@ -4063,7 +4046,7 @@ onActivated(show)
 /* 登记按钮（0716 用户选方案 A：浅橙填充 tinted，中强调）。演进：实心深橙大卡 → 压七成删副标题 →
    浅橙底 #FFF3E5 + 深橙字 #A85800、内容居中、去箭头、平底无阴影。与待办按钮的 tinted 降级态同族。
    高度 92rpx=46px，仍在 44px 适老热区之上。 */
-.rec-add-card { order: 2; width: 60%; align-self: center; display: flex; align-items: center; justify-content: center; gap: 12rpx;
+.rec-add-card { order: 3; width: 60%; align-self: center; display: flex; align-items: center; justify-content: center; gap: 12rpx;
   box-sizing: border-box; height: 92rpx; border-radius: 22rpx; background: #FFF3E5; cursor: pointer; }
 .rec-add-card:active { background: #FFE9CE; }
 .rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; line-height: 1; }
