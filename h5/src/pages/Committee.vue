@@ -4557,9 +4557,15 @@ onActivated(show)
 .create-panel .topic-line-text { font-size: 34rpx; }           /* 已加议题行 15→17px */
 .create-panel .tat-text { font-size: 34rpx; }                  /* 点此添加议题 15→17px */
 .create-panel .create-tab { font-size: 38rpx; }               /* 手动填写/拍照 18→19px */
-/* — 行距/呼吸：字变大后同步放宽，避免拥挤 — */
+/* — 行距/呼吸 + 日期/时间/地点三行灰字左对齐 —
+   统一：外层 padding 24×20、拆分行交给内部 fl-part、标签等宽 100rpx、gap 12rpx，
+   使「选择日期 / 选择时间 / 选择地点」三处占位的左缘落在同一竖线上 */
 .create-panel .field-line { padding: 24rpx 20rpx; }
-.create-panel .fl-part { padding: 24rpx 18rpx; }
+.create-panel .field-line-split { padding: 0; }
+.create-panel .meeting-info-card .fl-part { padding: 24rpx 20rpx; gap: 12rpx; }
+.create-panel .meeting-info-card .fl-part .fl-label { width: 100rpx; flex-shrink: 0; }
+.create-panel .fl-loc-main { padding: 0; gap: 12rpx; }
+.create-panel .fl-loc-main .fl-label { width: 100rpx; flex-shrink: 0; }
 /* — 点击区：抬到 ≥44px（88rpx）或更高 — */
 .create-panel .type-chip { min-height: 96rpx; padding: 12rpx 32rpx; color: #5f636b; font-size: 36rpx; } /* 30→48px, 18px字 */
 .create-panel .method-switch button { min-height: 84rpx; padding: 16rpx 28rpx; font-size: 34rpx; }      /* 线下/线上 27→42px */
