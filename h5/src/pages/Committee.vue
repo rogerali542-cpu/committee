@@ -4558,6 +4558,7 @@ onActivated(show)
 .create-panel .topic-line-text { font-size: 32rpx; }           /* 已加议题行 16px */
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
 .create-panel .create-tab { font-size: 32rpx; white-space: nowrap; min-height: 84rpx; }  /* 分段tab 16px+禁换行+点击区抬到≈42px */
+.create-panel .create-tab.active { background: #A85800; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); } /* 选中态白字对比 3.2→5.2:1，与主按钮同色(--c-primary-dark) */
 /* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
 .create-panel .field-line { padding: 14rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
