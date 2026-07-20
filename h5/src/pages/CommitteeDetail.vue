@@ -1969,7 +1969,8 @@ function handleDetailBack() {
 }
 function backToEditInfo() {
   setStorage('editMeetingId', meetingId)   // 交给 /main 的发起会议表单以「编辑模式」打开
-  redirectTo('/main')
+  // 软路由偶发不切换（真机「点了没反应」）→ 硬导航兜底；硬刷后 localStorage 里 editMeetingId 仍在，/main 照样进编辑态
+  backWithFallback('/main', '/main')
 }
 function goHome() { redirectTo('/main') }
 
