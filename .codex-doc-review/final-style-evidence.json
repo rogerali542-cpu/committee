@@ -1,0 +1,156 @@
+{
+  "input": "C:\\Users\\Lequan\\Documents\\WXWork\\1688855966854643\\Cache\\File\\2026-06\\new-app\\new-app\\2027\u5e74\u5ea6\u4e34\u6c7e\u8def\u8857\u9053\u4e1a\u59d4\u4f1a\u667a\u80fd\u5c65\u804c\u8f85\u52a9\u9879\u76ee\u9884\u7b97\u7533\u62a5\u8868.docx",
+  "fonts_by_char_count": {
+    "\u4eff\u5b8b": 8454,
+    "\u9ed1\u4f53": 84
+  },
+  "direct_run_formatting_runs": 477,
+  "direct_paragraph_formatting_paragraphs": 66,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 126,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 127,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 128,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 129,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 130,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 131,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 132,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 133,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 134,
+      "text": "\u9700\u8981\u8d2d\u7f6e\u7684\u4ea7\u54c1\u8f6f\u4ef6(\u9700\u63d0\u4f9b\u8f6f\u4ef6\u4ea7\u54c1\u767b\u8bb0\u8bc1\u4e66)\uff1a",
+      "style": "Normal"
+    },
+    {
+      "para_index": 443,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 444,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 445,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 446,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 447,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 448,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 449,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    },
+    {
+      "para_index": 450,
+      "text": "\u9879\u76ee\u603b\u8d39\u7528",
+      "style": "Normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "2027\u5e74\u5ea6\u9759\u5b89\u533a\u4fe1\u606f\u5316\u5efa\u8bbe\u9879\u76ee\u9884\u7b97\u7533\u62a5\u8868",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "text": "\u4e00\u3001\u57fa\u672c\u60c5\u51b5",
+        "style": "Normal"
+      },
+      {
+        "para_index": 343,
+        "text": "1",
+        "style": "Normal"
+      },
+      {
+        "para_index": 344,
+        "text": "\u672c\u671f\u4e0d\u5355\u5217\u5bc6\u7801\u529f\u80fd\u6a21\u5757",
+        "style": "Normal"
+      },
+      {
+        "para_index": 345,
+        "text": "\u672c\u671f\u4e0d\u5355\u5217\u5bc6\u7801\u529f\u80fd\u6a21\u5757",
+        "style": "Normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 1,
+        "run_text": "2027\u5e74\u5ea6\u9759\u5b89\u533a\u4fe1\u606f\u5316\u5efa\u8bbe\u9879\u76ee\u9884\u7b97\u7533\u62a5\u8868",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "run_text": "\u4e00\u3001\u57fa\u672c\u60c5\u51b5",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "run_text": "\u4e8c\u3001\u73b0\u72b6\uff08\u5347\u7ea7\u6539\u9020\u7c7b\u9879\u76ee\u586b\u5199\uff09",
+        "style": "Normal"
+      },
+      {
+        "para_index": 4,
+        "run_text": "\u4e09\u3001\u9879\u76ee\u5efa\u8bbe\u4f9d\u636e\uff08\u4e66\u9762\u6750\u6599\u9644\u540e\uff09",
+        "style": "Normal"
+      },
+      {
+        "para_index": 5,
+        "run_text": "\u56db\u3001\u9700\u6c42\u5206\u6790",
+        "style": "Normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

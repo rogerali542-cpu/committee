@@ -1,0 +1,22 @@
+# Template execution contract
+
+- Reference: `C:\Users\Lequan\Desktop\20250829_2026年度静安区信息化建设项目预算申报表.docx`
+- SHA-256: `D2EBDA5F86A458DE74DAFDA6F60E78FD156B80A8E47382F8B375668CE1946918`
+- Reference pages: 8 (Microsoft Word pagination)
+- Sections: 1
+- Page system: A4 portrait, 8.27 × 11.69 inches; margins left/right 1.25 inches, top/bottom 1.00 inch; no distinct first-page header/footer.
+- Typography evidence: body content is predominantly 仿宋_GB2312 / 仿宋; section labels use 黑体. Existing run and paragraph formatting is the authority and must be reused in place.
+- Structure: title paragraph followed by seven labeled sections and seven tables. The tables are the document’s form system and must remain in their existing order.
+- Slot map:
+  - Title paragraph: update annual label from 2026 to 2027.
+  - Table 1: replace unit, project identity, contact placeholders, amount, project attributes, and 200-character summary.
+  - Table 2: new-project status; mark the upgrade-only section not applicable without altering geometry.
+  - Table 3: preserve the selected construction-basis category.
+  - Table 4: replace demand gap.
+  - Table 5: replace module narrative and budget line content while retaining the existing row/column grid.
+  - Table 6: replace schedule narrative.
+  - Table 7: preserve signature/date/seal fields.
+- Tables: retain all existing merges, cell widths, borders, fills, row behavior, alignment, and paragraph spacing. Replace text through existing cells; unused budget lines may be marked “—” or left blank, but rows remain.
+- Preserve-only package features: styles, theme, numbering, settings, relationships, headers, footers, section properties, table grids, and all opaque package parts not needed for text replacement.
+- Fidelity gates: one A4 portrait section; same seven-table sequence; no removed signature fields; no text outside table cells; no unexplained page furniture or package relationship changes. Content may increase pagination if required for legibility.
+- Known limitation: the packaged LibreOffice renderer is unavailable in this Windows environment. Microsoft Word is available for page computation and PDF export, but its COM session must be used cautiously because the source file may be open elsewhere.
