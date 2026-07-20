@@ -460,13 +460,13 @@
                 <button type="button" @click="topicDialogOpen = false">取消</button>
               </div>
               <div class="form-group">
-                <span class="form-label">议题内容 *</span>
+                <span class="form-label">议题内容</span>
                 <div class="td-title-row">
                   <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
                 </div>
               </div>
               <div class="form-group">
-                <span class="form-label">议题类型 *</span>
+                <span class="form-label">议题类型</span>
                 <div class="type-row">
                   <!-- 0717 用户定：「通知」并入「讨论」，对外只剩 通知和讨论/表决 两类。
                        底层 notice/discussion 两个枚举值都保留：填了通知正文存 notice（通报正文+已读进度机制原样生效），
@@ -483,7 +483,7 @@
                 <span v-else class="add-link tie-notice-toggle" @click="topicNoticeOpen = true">＋ 补充通知正文（选填）</span>
               </div>
               <div class="form-group" v-if="topicDraft.type === 'decision'">
-                <span class="form-label">表决方式 *</span>
+                <span class="form-label">表决方式</span>
                 <div class="type-row">
                   <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
                   <span class="type-chip" :class="{ on: topicDraft.decisionType === 'multi_choice' }" @click="draftPickDecision('multi_choice')">多选一</span>
@@ -4604,7 +4604,7 @@ onActivated(show)
 /* — 点击区：保持 ≥44px（88rpx） — */
 .create-panel .type-chip { min-height: 88rpx; padding: 10rpx 30rpx; color: #5f636b; font-size: 34rpx; } /* 44px, 17px字 */
 .create-panel .method-switch button { min-height: 76rpx; padding: 14rpx 26rpx; font-size: 32rpx; }      /* 线下/线上 38px */
-.create-panel .platform-select { height: 88rpx; font-size: 32rpx; }  /* 线上平台下拉 44px */
+.create-panel .platform-select { height: 88rpx; font-size: 32rpx; flex-basis: 330rpx; padding: 0 40rpx 0 24rpx; }  /* 线上平台下拉 44px；加宽+减右留白，让「微信工作群」完整显示 */
 .create-panel .field-map-btn { width: 84rpx; height: 76rpx; min-height: 76rpx; } /* 地图键 38px */
 .create-panel .topic-add-trigger { min-height: 92rpx; }        /* 添加议题条 46px */
 /* — bug修复：议题列表去掉内层限高(原200rpx裁掉换行议题)，交给弹层整体滚动 — */
