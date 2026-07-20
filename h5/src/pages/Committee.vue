@@ -4556,7 +4556,7 @@ onActivated(show)
 .create-panel .juwei-title { font-size: 34rpx; }               /* 居委会见证说明 14→17px */
 .create-panel .topic-line-text { font-size: 34rpx; }           /* 已加议题行 15→17px */
 .create-panel .tat-text { font-size: 34rpx; }                  /* 点此添加议题 15→17px */
-.create-panel .create-tab { font-size: 38rpx; }               /* 手动填写/拍照 18→19px */
+.create-panel .create-tab { font-size: 32rpx; white-space: nowrap; }  /* 分段tab压回16px+禁换行，防「拍照/上传」窄屏掉行溢出 */
 /* — 行距/呼吸 + 日期/时间/地点三行灰字左对齐 —
    统一：外层 padding 24×20、拆分行交给内部 fl-part、标签等宽 100rpx、gap 12rpx，
    使「选择日期 / 选择时间 / 选择地点」三处占位的左缘落在同一竖线上 */
