@@ -4578,7 +4578,7 @@ onActivated(show)
 .create-panel .form-label { color: #4a5560; font-weight: 500; }
 .create-panel .fl-value { color: #14181d; font-weight: 700; font-size: 34rpx; }   /* 值：加深加大到17px，成为焦点 */
 .create-panel .form-input.large { color: #14181d; font-weight: 700; }              /* 会议名/议题输入值 加深 */
-.create-panel .topic-line-text { color: #1f2329; font-weight: 600; }
+.create-panel .topic-line-text { color: #3a424b; font-weight: 400; }  /* 议题正文软化：近黑#1f2329→柔和深灰、粗600→常规，降低黑字密度（序号仍<b>加粗保结构） */
 /* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
 .create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }
