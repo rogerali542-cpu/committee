@@ -3460,14 +3460,14 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .recipient-card { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; overflow:hidden; }
 .recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:9rpx 18rpx; min-height:96rpx; box-sizing:border-box; }
 .recipient-card-head:active { background:#FAFAFA; }
-.recipient-card-title { display:block; font-size:24rpx; color:#1f2329; font-weight:600; line-height:1.25; }
+.recipient-card-title { display:block; font-size:34rpx; color:#1f2329; font-weight:700; line-height:1.25; }
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
 .recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:14rpx; }
 /* 全选控件挪进头部（替代原摘要）：小圆勾 + 「全选」 + 已选计数，点它切换全选/全不选 */
 .rcp-head-all { display:flex; align-items:center; gap:8rpx; padding:0 10rpx; min-height:80rpx; box-sizing:border-box; }
-.rcp-head-all .rcp-check { width:26rpx; height:26rpx; border-width:2rpx; font-size:16rpx; }
-.rcp-head-all-label { font-size:21rpx; color:#A85800; font-weight:600; white-space:nowrap; }
-.rcp-head-count { font-size:19rpx; color:#8A9099; white-space:nowrap; }
+.rcp-head-all .rcp-check { width:42rpx; height:42rpx; border-width:3rpx; font-size:26rpx; }
+.rcp-head-all-label { font-size:32rpx; color:#A85800; font-weight:700; white-space:nowrap; }
+.rcp-head-count { font-size:26rpx; color:#8A9099; white-space:nowrap; }
 .recipient-card-arrow { color:#A4A9B0; font-size:32rpx; line-height:1; transform:rotate(90deg); transition:transform .18s ease; }
 .recipient-card-arrow.open { transform:rotate(-90deg); }
 .page-rcp-list { margin:0; max-height:329rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
