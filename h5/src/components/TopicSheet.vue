@@ -1108,8 +1108,8 @@ async function removeOpinion(op) {
 .ts-notice-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
 .ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
 .ts-notice-status.done { color: #2E7D32; }
-.ts-notice-read { border: none; background: #3E9B34; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 14rpx 34rpx; }
-.ts-notice-read:active { background: #34842C; }
+.ts-notice-read { border: none; background: #2E8B57; color: #fff; font-size: 30rpx; font-weight: 700; border-radius: 14rpx; padding: 20rpx 40rpx; }
+.ts-notice-read:active { background: #256F45; }
 /* #8：本人已确认「我已读」的状态标 */
 .ts-notice-mine { flex-shrink: 0; font-size: 26rpx; font-weight: 700; color: #2E7D32; }
 /* #8：主任「标记全体已通报」——单独一行、描边弱化，与委员本人确认区分开 */
@@ -1197,7 +1197,7 @@ async function removeOpinion(op) {
 .ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
 /* 导航：在输入卡片之外、弹层最底部。上一个=白底描边次要按钮靠左，下一个/完成=实心主按钮+呼吸发光靠右，两端隔开（方案B） */
 .ts-nav-row { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; margin-top: 20rpx; padding-top:18rpx; border-top:2rpx solid #EEF1F4; }
-.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #F7F8FA; color: #444; font-size: 29rpx; font-weight: 700; padding: 18rpx 34rpx; }
+.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #F7F8FA; color: #444; font-size: 29rpx; font-weight: 700; padding: 22rpx 34rpx; }
 .ts-nav-btn:active { background: #ECEEF1; }
 .ts-op-collapse { flex-shrink: 0; border: 2rpx solid #C7D4E2; background: #F4F8FC; color: #3F566E; font-size: 28rpx; font-weight: 800; padding: 16rpx 28rpx; border-radius: 999rpx; font-family: inherit; box-shadow: 0 4rpx 10rpx rgba(63,86,110,0.08); }
 .ts-op-collapse:active { background: #E8F0F8; border-color: #9FB4C9; color: #26394D; }

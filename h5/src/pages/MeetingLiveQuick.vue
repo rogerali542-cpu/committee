@@ -72,7 +72,7 @@
       <span class="lp-flow-line" :class="{ done: flowStep > 1 }"></span>
       <div class="lp-flow-step" :class="flowStep > 2 ? 'done' : (flowStep === 2 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 2">✓</template><template v-else>2</template></span>
-        <span class="lp-flow-label">现场会议</span>
+        <span class="lp-flow-label">会议进行</span>
       </div>
       <span class="lp-flow-line" :class="{ done: flowStep > 2 }"></span>
       <div class="lp-flow-step" :class="flowStep > 3 ? 'done' : (flowStep === 3 ? 'on' : '')">
@@ -3015,8 +3015,8 @@ async function returnToRecordingPage() {
 .core-card { background:#fff; border-radius:24rpx; padding:30rpx 28rpx 28rpx; margin-top:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .meeting-stage-card { margin-top:18rpx; padding:30rpx 28rpx 28rpx; border-radius:18rpx; background:#FFFDF9; border:2rpx solid #EEE6D9; box-shadow:0 3rpx 12rpx rgba(48,42,32,.04); }
 .meeting-stage-title { font-size:35rpx; line-height:1.4; font-weight:700; color:#34363A; }
-.meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#747980; }
-.meeting-stage-next { display:block; width:auto; min-width:310rpx; margin:24rpx auto 0; padding:17rpx 30rpx; border:2rpx solid #E3C796; border-radius:999rpx; background:#FFF8EC; color:#A25F08; font-size:28rpx; font-weight:700; box-shadow:none; }
+.meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#5f6570; }
+.meeting-stage-next { display:block; width:auto; min-width:340rpx; margin:24rpx auto 0; padding:22rpx 44rpx; border:0; border-radius:999rpx; background:var(--c-primary-dark,#A85800); color:#fff; font-size:30rpx; font-weight:700; box-shadow:0 6rpx 16rpx rgba(168,88,0,.20); }
 .meeting-stage-next[disabled] { opacity:.6; box-shadow:none; }
 .core-head { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-bottom:22rpx; }
 .core-title { font-size:38rpx; font-weight:800; color:#1F2024; line-height:1.35; }
@@ -3032,7 +3032,7 @@ async function returnToRecordingPage() {
 .core-topic-type.notice { background:#E6F4FB; color:#1677B8; }
 .core-topic-type.vote { background:#FFF0E5; color:#D56A16; }
 .core-topic-type.discuss { background:#EAF6EE; color:#2E8B57; }
-.core-topic-btn { flex-shrink:0; min-width:128rpx; border-radius:999rpx; padding:14rpx 20rpx; font-size:27rpx; font-weight:800; border:0; color:#fff; font-family:inherit; }
+.core-topic-btn { flex-shrink:0; min-width:128rpx; min-height:80rpx; display:inline-flex; align-items:center; justify-content:center; border-radius:999rpx; padding:8rpx 24rpx; font-size:28rpx; font-weight:800; border:0; color:#fff; font-family:inherit; }
 .core-topic-btn.notice { background:#1677B8; }
 .core-topic-btn.vote { background:#D56A16; }
 .core-topic-btn.discuss { background:#2E8B57; }
@@ -3064,13 +3064,13 @@ async function returnToRecordingPage() {
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
 .supp-actions.single.paused .supp-btn { width:56%; min-width:250rpx; justify-self:center; }
 .rec-list-before-action { margin:8rpx 0 20rpx; padding:12rpx 16rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
-.supp-btn { height:64rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:26rpx; font-weight:600; font-family:inherit; }
+.supp-btn { height:80rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:26rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#A65343; background:#A65343; color:#FFF; box-shadow:0 4rpx 12rpx rgba(166,83,67,0.16); }
-.supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:70rpx; font-size:28rpx; }
+.supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:88rpx; font-size:28rpx; }
 .supp-btn.rec:active { background:#8F4638; border-color:#8F4638; }
 .supp-btn.upload-rec { border-color:#D6A75F; background:#FFF9EF; color:#91611C; }
 .supp-btn.ai { border-color:#BFD7D9; background:#EAF6F6; color:#126A72; }
-.supp-actions.single .supp-material-btn { width:310rpx; min-width:310rpx; height:70rpx; border-radius:999rpx; border-color:#BFC9D3; background:#FFFFFF; color:#52606D; font-size:28rpx; font-weight:600; box-shadow:none; }
+.supp-actions.single .supp-material-btn { width:310rpx; min-width:310rpx; height:88rpx; border-radius:999rpx; border-color:#BFC9D3; background:#FFFFFF; color:#52606D; font-size:28rpx; font-weight:600; box-shadow:none; }
 .supp-actions.single .supp-material-btn:active { background:#F2F5F7; border-color:#AEBAC6; }
 .supp-actions.paused .supp-material-btn { grid-column:1 / -1; } /* 仅暂停时「上传材料」铺满整行；非暂停(开始录音前)与「开始录音」左右并排 */
 .supp-btn:active { background:#EEF3F7; }
@@ -3315,13 +3315,13 @@ async function returnToRecordingPage() {
 .lp-flow-dot { width:58rpx; height:58rpx; border-radius:50%; background:#E4E6EA; color:#9AA0A6; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; transition:all .2s; }
 /* 文字绝对定位在圆点正下方居中，不影响圆点水平位置 */
 .lp-flow-label { position:absolute; top:calc(100% + 7rpx); left:50%; transform:translateX(-50%); font-size:23rpx; color:#9AA0A6; white-space:nowrap; }
-.lp-flow-step.on .lp-flow-dot { background:var(--c-primary-dark, #E8890C); color:#fff; box-shadow:0 0 0 5rpx rgba(232,137,12,0.18); }
-.lp-flow-step.on .lp-flow-label { color:var(--c-primary-dark, #E8890C); font-weight:600; }
-.lp-flow-step.done .lp-flow-dot { background:#3E9B34; color:#fff; }
-.lp-flow-step.done .lp-flow-label { color:#3E9B34; }
+.lp-flow-step.on .lp-flow-dot { background:var(--c-primary-dark, #A85800); color:#fff; box-shadow:0 0 0 5rpx rgba(168,88,0,0.18); }
+.lp-flow-step.on .lp-flow-label { color:var(--c-primary-dark, #A85800); font-weight:600; }
+.lp-flow-step.done .lp-flow-dot { background:#2E8B57; color:#fff; }
+.lp-flow-step.done .lp-flow-label { color:#2E8B57; }
 /* 连线与圆点同在 align-items:center 下自然居中(步骤已只有圆点高，无需再补 margin) */
 .lp-flow-line { flex:1; height:4rpx; background:#E4E6EA; margin:0 10rpx; border-radius:2rpx; }
-.lp-flow-line.done { background:#3E9B34; }
+.lp-flow-line.done { background:#2E8B57; }
 
 /* 录音主卡 */
 .rec-hero { position:relative; background:#F6F7F9; border-radius:24rpx; padding:20rpx 22rpx 14rpx; margin-bottom:18rpx; box-shadow:0 3rpx 14rpx rgba(0,0,0,0.045); }
@@ -3377,7 +3377,7 @@ async function returnToRecordingPage() {
 .si-meet-title { font-size:42rpx; font-weight:700; color:#1F2024; line-height:1.45; }
 .si-meet-meta { display:flex; flex-direction:column; gap:18rpx; margin-top:24rpx; }
 .si-meet-row { font-size:31rpx; color:#61656C; line-height:1.55; }
-.si-meet-caret { flex-shrink:0; font-size:26rpx; color:#E8890C; font-weight:600; }
+.si-meet-caret { flex-shrink:0; font-size:28rpx; color:#A85800; font-weight:700; }
 .si-meet-topics { background:#fff; border-radius:26rpx; padding:28rpx 34rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); margin-top:-4rpx; min-height:170rpx; box-sizing:border-box; }
 .si-topic-item { display:flex; align-items:flex-start; gap:18rpx; padding:24rpx 0; border-bottom:2rpx solid #F4F4F6; }
 .si-topic-item:last-child { border-bottom:0; }
@@ -3388,9 +3388,9 @@ async function returnToRecordingPage() {
 .si-roster { background:#fff; border-radius:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); padding:0 28rpx; }
 .si-roster-bar { display:flex; align-items:center; gap:14rpx; padding:26rpx 0; flex-shrink:0; }
 .si-roster-title { font-size:30rpx; font-weight:700; color:#1f2329; }
-.si-roster-count { flex:1; font-size:26rpx; color:#8A8F98; }
-.si-roster-count b { font-size:30rpx; color:#27AE60; font-weight:800; }
-.si-roster-caret { flex-shrink:0; font-size:26rpx; color:#8A8F98; }
+.si-roster-count { flex:1; font-size:26rpx; color:#6b7078; }
+.si-roster-count b { font-size:30rpx; color:#2E8B57; font-weight:800; }
+.si-roster-caret { flex-shrink:0; font-size:26rpx; color:#6b7078; }
 /* 名单展开=下拉框：占据"会议卡→签到按钮"之间的剩余空间并内部滚动；按钮靠 si-bottom 的 margin-top:auto 吸底，人再多也不被挤走 */
 .si-roster.open { display:flex; flex-direction:column; }
 .si-roster-body { max-height:420rpx; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
@@ -3399,8 +3399,8 @@ async function returnToRecordingPage() {
 /* 方案B「通栏沉稳大按钮」：深橙实色通栏，无渐变/脉动/投影；上方 si-status 说明当前状态 */
 .signin-big-btn { width:80% !important; max-width:none; margin:0 auto !important; background:var(--c-primary-dark) !important; color:#fff !important; font-size:40rpx !important; font-weight:700; letter-spacing:4rpx; padding:24rpx 0 !important; border-radius:22rpx; }
 .signin-big-btn:active { filter:brightness(0.92); }
-.si-status { font-size:28rpx; color:#8A8F98; }
-.si-status.on { color:#27AE60; font-weight:600; }
+.si-status { font-size:30rpx; color:#4a5560; font-weight:600; }
+.si-status.on { color:#2E8B57; font-weight:700; }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
 /* 参会名单 */
 .signin-roster { width:88%; max-width:640rpx; margin-top:14rpx; background:#fff; border-radius:20rpx; padding:20rpx 26rpx 8rpx; box-shadow:0 6rpx 20rpx rgba(0,0,0,0.05); box-sizing:border-box; }
@@ -3410,11 +3410,11 @@ async function returnToRecordingPage() {
 .signin-roster-row { display:flex; align-items:center; gap:14rpx; padding:16rpx 0; border-bottom:2rpx solid #F6F6F8; }
 .signin-roster-row:last-child { border-bottom:0; }
 .srr-name { font-size:28rpx; color:#1f2329; font-weight:600; flex-shrink:0; }
-.srr-role { font-size:24rpx; color:#9AA0A6; flex:1; min-width:0; }
+.srr-role { font-size:26rpx; color:#6b7078; flex:1; min-width:0; }
 .srr-state { font-size:24rpx; font-weight:600; padding:4rpx 16rpx; border-radius:12rpx; flex-shrink:0; }
-.srr-state.on { color:#27AE60; background:#E8F7EE; }
-.srr-state.off { color:#E74C3C; background:#FDECEA; }
-.srr-state.wait { color:#999; background:#F2F2F4; }
+.srr-state.on { color:#2E8B57; background:#E8F7EE; }
+.srr-state.off { color:#C0392B; background:#FDECEA; }
+.srr-state.wait { color:#6b7078; background:#EDEEF0; }
 /* 签到成功 → 录音 的一闪而过动画（时长收短，别停留） */
 .signin-fx { position:fixed; inset:0; z-index:1200; background:rgba(255,255,255,0.94); display:flex; align-items:center; justify-content:center; animation:sfxFade .14s ease; }
 .signin-fx-card { display:flex; flex-direction:column; align-items:center; gap:18rpx; animation:sfxRise .24s cubic-bezier(.2,.8,.3,1); }
