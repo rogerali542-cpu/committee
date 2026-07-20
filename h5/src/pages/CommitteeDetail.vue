@@ -1937,6 +1937,12 @@ function backWithFallback(target, browserUrl) {
   }, 400)
 }
 function handleDetailBack() {
+  // 会议通知页（主任·准备阶段主视图）：回退应回到「发起业委会」以编辑模式打开本会议，
+  // 而不是一步跳回首页（发起→生成通知→通知页，返回即回到上一步「发起/编辑会议」）。
+  if (userView.value === 'chair' && detail.value && detail.value.stage === 'preparing' && !noticePackageVisible.value) {
+    backToEditInfo()
+    return
+  }
   const source = String(route.query.from || '')
   // from=minutes 是「纪要页保存/返回后落到详情」的标记——纪要那边已经办完事了，
   // 再跳回纪要页会形成 详情↔纪要 互踢死循环（真机踩过），返回一律出到首页。
