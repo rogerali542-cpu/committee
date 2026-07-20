@@ -2091,7 +2091,7 @@ async function discardDraft() {
     content: '放弃后，' + draftTitle.value + ' 已填写的内容将被清除，且无法找回。',
     confirmText: '放弃草稿',
     cancelText: '再想想',
-    size: 'large'
+    emphasizeCancel: true
   })
   if (r && r.confirm) { clearDraft(); toast({ title: '已放弃草稿', icon: 'none' }) }
 }
@@ -3400,8 +3400,8 @@ onActivated(show)
 .draft-card { width: 94%; margin: 8rpx auto 20rpx; box-sizing: border-box; background: var(--c-bg-card, #fff); border: 2rpx solid rgba(232,140,20,0.4); border-left: 14rpx solid var(--c-primary); border-radius: 28rpx; padding: 30rpx 32rpx 34rpx; box-shadow: 0 10rpx 34rpx rgba(232,140,20,0.18); }
 .draft-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
 .draft-badge { font-size: 30rpx; font-weight: 700; color: var(--c-primary-strong, #c96a12); background: var(--c-primary-soft, #fdf0e0); padding: 8rpx 20rpx; border-radius: 999rpx; }
-.draft-discard { font-size: 28rpx; color: #9aa0a6; padding: 8rpx 10rpx; }
-.draft-discard:active { color: var(--c-danger); }
+.draft-discard { font-size: 26rpx; color: #6b7078; font-weight: 600; padding: 10rpx 22rpx; border: 2rpx solid #DBDFE4; border-radius: 999rpx; background: #fff; }
+.draft-discard:active { color: var(--c-danger); border-color: var(--c-danger); background: var(--c-danger-soft); }
 .draft-title { font-size: 46rpx; font-weight: 700; color: #1f2329; line-height: 1.3; word-break: break-all; }
 .draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
