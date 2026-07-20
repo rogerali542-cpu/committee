@@ -405,12 +405,12 @@
               <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime }">
                 <div class="fl-part" @click="openDatePicker">
                   <span class="fl-label">日期 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
-                  <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtPlanDate(createForm.meetingDate) : '选择日期' }}</span>
+                  <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtPlanDate(createForm.meetingDate) : '' }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
                 <div class="fl-part fl-part-time" @click="openTimePicker">
                   <span class="fl-label">时间 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
-                  <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime || '选择时间' }}</span>
+                  <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
               </div>
@@ -422,7 +422,7 @@
                 </template>
                 <div v-else class="fl-loc-main" @click="openLocPicker">
                   <span class="fl-label">地点 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
-                  <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location || '选择地点' }}</span>
+                  <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
                 <button class="loc-map-btn field-map-btn" @click.stop="pickLocationOnMap" aria-label="从地图选点">
