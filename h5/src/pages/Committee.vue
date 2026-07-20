@@ -4540,36 +4540,35 @@ onActivated(show)
 .create-panel .fl-value.ph,
 .create-panel .meeting-info-card .fl-value.ph { color: #6b7078; font-size: 32rpx; } /* 选择日期/时间/地点 占位 16px */
 .create-panel .title-clear { color: #6b7078; }                 /* 名称清除× 提深 */
-.create-panel .fl-arrow { font-size: 34rpx; color: #8a9099; }  /* 右侧箭头放大 */
-.create-panel .ds-t { font-size: 32rpx; }                      /* 拍照卡标题 14→16px */
-.create-panel .ds-s { color: #6b7078; font-size: 28rpx; }      /* 拍照卡副标题 #999+11px→14px */
-.create-panel .form-label { color: #5f636b; font-size: 32rpx; }/* 议题标签 14→16px */
-/* — 字号：表单主文字放大到 17–18px（明显可感） — */
-.create-panel .caption-as-title { font-size: 36rpx; }          /* 会议名称标题 16→18px */
-.create-panel .section-title { font-size: 36rpx; }             /* 会议议题标题 16→18px */
-.create-panel .fl-label { font-size: 34rpx; }                  /* 日期/时间/地点标签 13→17px */
-.create-panel .meeting-method-line > .fl-label { font-size: 34rpx; } /* 召开方式标签同步 */
-.create-panel .field-caption { font-size: 34rpx; }             /* 字段说明 13→17px */
-.create-panel .fl-value { font-size: 36rpx; }                  /* 选中值 14→18px（核心信息） */
+.create-panel .fl-arrow { font-size: 30rpx; color: #8a9099; }  /* 右侧箭头 15px */
+.create-panel .ds-t { font-size: 32rpx; }                      /* 拍照卡标题 16px */
+.create-panel .ds-s { color: #6b7078; font-size: 28rpx; }      /* 拍照卡副标题 14px */
+.create-panel .form-label { color: #5f636b; font-size: 32rpx; }/* 议题标签 16px */
+/* — 字号：展示型字段(点选/自动填，不必更大)统一 16px；标题类 17px — */
+.create-panel .caption-as-title { font-size: 34rpx; }          /* 会议名称标题 17px */
+.create-panel .section-title { font-size: 34rpx; }             /* 会议议题标题 17px */
+.create-panel .fl-label { font-size: 32rpx; }                  /* 日期/时间/地点标签 16px */
+.create-panel .meeting-method-line > .fl-label { font-size: 32rpx; } /* 召开方式标签 16px */
+.create-panel .field-caption { font-size: 32rpx; }             /* 字段说明 16px */
+.create-panel .fl-value { font-size: 32rpx; }                  /* 选中值 16px（点选，不必18px） */
 .create-panel .form-input.large,
-.create-panel .form-input.large::placeholder { font-size: 34rpx; } /* 名称/议题输入 15→17px */
-.create-panel .juwei-title { font-size: 34rpx; }               /* 居委会见证说明 14→17px */
-.create-panel .topic-line-text { font-size: 34rpx; }           /* 已加议题行 15→17px */
-.create-panel .tat-text { font-size: 34rpx; }                  /* 点此添加议题 15→17px */
-.create-panel .create-tab { font-size: 32rpx; white-space: nowrap; }  /* 分段tab压回16px+禁换行，防「拍照/上传」窄屏掉行溢出 */
-/* — 行距/呼吸 + 日期/时间/地点三行灰字左对齐 —
-   统一：外层 padding 24×20、拆分行交给内部 fl-part、标签等宽 100rpx、gap 12rpx，
-   使「选择日期 / 选择时间 / 选择地点」三处占位的左缘落在同一竖线上 */
-.create-panel .field-line { padding: 24rpx 20rpx; }
+.create-panel .form-input.large::placeholder { font-size: 32rpx; } /* 名称/议题输入 16px */
+.create-panel .juwei-title { font-size: 32rpx; }               /* 居委会见证说明 16px */
+.create-panel .topic-line-text { font-size: 32rpx; }           /* 已加议题行 16px */
+.create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
+.create-panel .create-tab { font-size: 32rpx; white-space: nowrap; }  /* 分段tab 16px+禁换行 */
+/* — 行距收紧(24→18rpx，省出竖向空间让「居委会见证」回到屏内) + 三行灰字左对齐 —
+   拆分行交给内部 fl-part、标签等宽 100rpx、gap 12rpx，三处占位左缘对齐 */
+.create-panel .field-line { padding: 18rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
-.create-panel .meeting-info-card .fl-part { padding: 24rpx 20rpx; gap: 12rpx; }
+.create-panel .meeting-info-card .fl-part { padding: 18rpx 20rpx; gap: 12rpx; }
 .create-panel .meeting-info-card .fl-part .fl-label { width: 100rpx; flex-shrink: 0; }
 .create-panel .fl-loc-main { padding: 0; gap: 12rpx; }
 .create-panel .fl-loc-main .fl-label { width: 100rpx; flex-shrink: 0; }
-/* — 点击区：抬到 ≥44px（88rpx）或更高 — */
-.create-panel .type-chip { min-height: 96rpx; padding: 12rpx 32rpx; color: #5f636b; font-size: 36rpx; } /* 30→48px, 18px字 */
-.create-panel .method-switch button { min-height: 84rpx; padding: 16rpx 28rpx; font-size: 34rpx; }      /* 线下/线上 27→42px */
-.create-panel .platform-select { height: 96rpx; font-size: 34rpx; }  /* 线上平台下拉 32→48px */
-.create-panel .field-map-btn { width: 88rpx; height: 84rpx; min-height: 84rpx; } /* 地图键 30→42px */
-.create-panel .topic-add-trigger { min-height: 100rpx; }       /* 添加议题条 44→50px */
+/* — 点击区：保持 ≥44px（88rpx） — */
+.create-panel .type-chip { min-height: 88rpx; padding: 10rpx 30rpx; color: #5f636b; font-size: 34rpx; } /* 44px, 17px字 */
+.create-panel .method-switch button { min-height: 76rpx; padding: 14rpx 26rpx; font-size: 32rpx; }      /* 线下/线上 38px */
+.create-panel .platform-select { height: 88rpx; font-size: 32rpx; }  /* 线上平台下拉 44px */
+.create-panel .field-map-btn { width: 84rpx; height: 76rpx; min-height: 76rpx; } /* 地图键 38px */
+.create-panel .topic-add-trigger { min-height: 92rpx; }        /* 添加议题条 46px */
 </style>
