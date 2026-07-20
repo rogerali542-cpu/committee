@@ -4578,7 +4578,7 @@ onActivated(show)
 .create-panel .form-label { color: #4a5560; font-weight: 500; }
 .create-panel .fl-value { color: #14181d; font-weight: 700; font-size: 34rpx; }   /* 值：加深加大到17px，成为焦点 */
 .create-panel .form-input.large { color: #14181d; font-weight: 700; }              /* 会议名/议题输入值 加深 */
-.create-panel .topic-line-text { color: #33415c; font-weight: 400; }  /* 议题正文：深墨蓝(dark ink,≈8:1)替代硬黑，柔和不刺眼；序号仍<b>加粗保结构 */
+.create-panel .topic-line-text { color: #2C3E70; font-weight: 400; }  /* 议题正文：深靛蓝(≈9:1)替代硬黑，清爽墨水感；序号仍<b>加粗保结构 */
 /* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
 .create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }
@@ -4623,8 +4623,9 @@ onActivated(show)
 /* 召开方式、地点两行各缩 5px(→55px)，日期/时间保持 60px */
 .create-panel .meeting-info-card .meeting-method-line,
 .create-panel .meeting-info-card .field-line-location { min-height: 110rpx; }
-/* 地点选中值左对齐（贴标签，便于阅读，区别于日期/时间的右对齐） */
-.create-panel .fl-loc-main .fl-value { text-align: left; }
+/* 日期/时间/地点选中值统一左对齐（贴标签，便于阅读） */
+.create-panel .fl-loc-main .fl-value,
+.create-panel .fl-part .fl-value { text-align: left; }
 /* 重大事项(居委会见证)开关：打开后为绿色 */
 .create-panel .juwei-switch.on { background: #2E8B57; }
 </style>
