@@ -1911,6 +1911,11 @@ function openMeetingTap(item) {
     openMinutes(item.id)
     return
   }
+  // 准备阶段：按"上次停留位置"重进——上次在发起/编辑页就回发起页，否则进会议通知页
+  if (item.stage === 'preparing' && getStorage('meetingView:' + item.id, '') === 'edit') {
+    openMeetingForEdit(item.id)
+    return
+  }
   openDetail(item.id)
 }
 
@@ -2105,6 +2110,7 @@ async function openMeetingForEdit(id) {
     if (!d) { toast({ title: '会议信息加载失败', icon: 'none' }); return }
     createVisible.value = true
     editingMeetingId.value = id
+    setStorage('meetingView:' + id, 'edit')  // 记住"上次停在发起/编辑页"，供首页卡片按上次位置重进
     docPrefilled.value = false
     materialPrefillOpen.value = false
     materialText.value = ''; materialFiles.value = []; materialScanResult.value = null

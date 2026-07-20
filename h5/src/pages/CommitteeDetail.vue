@@ -1541,6 +1541,7 @@ async function loadDetail() {
     noticePackageVisible.value = npVisible
     deliveryExpanded.value = false
     if (uv === 'chair' && d.stage === 'preparing') {
+      setStorage('meetingView:' + meetingId, 'notice')  // 记住"上次停在会议通知页"，供首页卡片按上次位置重进
       loadRecipients(false)
       // 通知人员：还没产生通知记录→默认展开；已发过通知(有通知记录)→默认收起
       recipientOpen.value = !((d.notificationLogs && d.notificationLogs.length) || d.notifiedAt)
