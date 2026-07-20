@@ -1944,12 +1944,14 @@ async function openNewMeeting(period) {
   pendingMaterials.value = []
   scanBusy.value = ''
   lastScanTokens.value = 0
-  // 从首页某期例会「去通知」进来时，直接用那一期期数当次数，标题与首页一致（第N期 → 第N次）
+  // 从待办/例会计划某期「去通知/去补开」进来时：直接把「第N次例会」填入名称框
+  // （不是 ghost 推荐——这是排定的例会，名称已确定；用户仍可点×清空改名）
   if (period >= 1) {
-    suggestedTitle.value = curYear + '年第' + period + '次业委会例会'
+    createForm.title = curYear + '年第' + period + '次业委会例会'
+    nextTick(autoGrowTitle)
     return
   }
-  // 否则（顶部新建/继续草稿等）基于历史会议推荐下一次标题（大多数会议为统一格式）
+  // 「发起其他会议」入口（无 period）：名称留空占位，基于历史推荐一个 ghost 供点填
   try {
     const all = await api.committeeList(null)
     const sug = computeSuggestedTitle(all || [])
