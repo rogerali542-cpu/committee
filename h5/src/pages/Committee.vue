@@ -1802,6 +1802,11 @@ function formatMeetingTime(m) {
 const hasOngoingMeeting = computed(() => currents.value.some((c) => c.stage === 'ongoing'))
 
 async function goCurrent(cur) {
+  // 准备阶段：按"上次停留位置"重进——上次在发起/编辑页就回发起页（与点卡片本身 openMeetingTap 一致）
+  if (cur.stage === 'preparing' && getStorage('meetingView:' + cur.id, '') === 'edit') {
+    openMeetingForEdit(cur.id)
+    return
+  }
   // 纪要生成中：点卡片回纪要页看进度/结果，而不是会议详情页（带硬导航兜底）
   if (cur.minutesGen) {
     const target = '/pages/minutes-view/minutes-view?meetingId=' + cur.id + '&from=committee'
