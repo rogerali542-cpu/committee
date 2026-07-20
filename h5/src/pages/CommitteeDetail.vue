@@ -3475,8 +3475,8 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .prep-meeting-actions { width:64%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:28rpx; margin:4rpx auto 22rpx; padding-top:18rpx; border-top:1px solid #EEF0F2; }
 .method-convert-trigger { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #A7C4DD; border-radius:12rpx; background:#EAF3FB; color:#2F5678; font-size:26rpx; font-weight:600; box-shadow:none; }
 .method-convert-trigger:active { background:#DCEBF7; }
-.prep-cancel-light { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #E0E3E6; border-radius:12rpx; background:#FAFAFA; color:#969CA3; font-size:23rpx; font-weight:400; }
-.prep-cancel-light:active { background:#F5F6F7; color:#626A73; }
+.prep-cancel-light { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #CBD0D6; border-radius:12rpx; background:#F1F3F5; color:#5C6672; font-size:26rpx; font-weight:600; }
+.prep-cancel-light:active { background:#E7EAED; color:#3a424b; }
 .method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
 .method-convert-title { margin-bottom:12rpx; color:#4B5563; font-size:24rpx; }
 .method-convert-select, .method-convert-input { width:100%; box-sizing:border-box; height:72rpx; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; padding:0 18rpx; color:#263746; font-size:27rpx; }
