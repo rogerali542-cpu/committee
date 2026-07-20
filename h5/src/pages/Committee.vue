@@ -463,7 +463,6 @@
                 <span class="form-label">议题内容 *</span>
                 <div class="td-title-row">
                   <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
-                  <button type="button" class="topic-title-confirm" @click="confirmTopic">确定</button>
                 </div>
               </div>
               <div class="form-group">
@@ -496,6 +495,7 @@
                 </div>
                 <span class="add-link tie-add-option" @click="draftAddOption">+ 添加选项</span>
               </div>
+              <button type="button" class="tie-confirm-btn" @click="confirmTopic">确定添加议题</button>
             </div>
           </div>
 
@@ -4559,6 +4559,18 @@ onActivated(show)
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
 .create-panel .create-tab { font-size: 32rpx; white-space: nowrap; min-height: 84rpx; }  /* 分段tab 16px+禁换行+点击区抬到≈42px */
 .create-panel .create-tab.active { background: #A85800; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); } /* 选中态白字对比 3.2→5.2:1，与主按钮同色(--c-primary-dark) */
+/* — 视觉层级：字段名(标签)退为浅灰常规，填入的值保持深色醒目，消除「满屏黑字」 — */
+.create-panel .fl-label,
+.create-panel .meeting-method-line > .fl-label { color: #6b7078; font-weight: 500; }
+.create-panel .meeting-info-card .caption-as-title,
+.create-panel .section-title { color: #6b7078; font-weight: 600; }
+.create-panel .juwei-title { color: #4a5560; font-weight: 500; }
+.create-panel .form-label { font-weight: 500; }
+.create-panel .fl-value { color: #1f2329; font-weight: 700; }      /* 值：唯一深黑，突出关键信息 */
+.create-panel .topic-line-text { color: #1f2329; font-weight: 600; }
+/* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
+.create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
+.create-panel .tie-confirm-btn:active { background: #33506A; }
 /* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
 .create-panel .field-line { padding: 14rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
