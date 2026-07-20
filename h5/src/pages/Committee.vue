@@ -361,6 +361,7 @@
                 <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('image')">
                   <span class="ds-ico bl">🖼️</span>
                   <span class="ds-t">图片</span>
+                  <span class="ds-s">手机相册</span>
                 </button>
                 <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
                   <span class="ds-ico bl">📄</span>
@@ -4556,7 +4557,7 @@ onActivated(show)
 .create-panel .juwei-title { font-size: 32rpx; }               /* 居委会见证说明 16px */
 .create-panel .topic-line-text { font-size: 32rpx; }           /* 已加议题行 16px */
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
-.create-panel .create-tab { font-size: 32rpx; white-space: nowrap; }  /* 分段tab 16px+禁换行 */
+.create-panel .create-tab { font-size: 32rpx; white-space: nowrap; min-height: 84rpx; }  /* 分段tab 16px+禁换行+点击区抬到≈42px */
 /* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
 .create-panel .field-line { padding: 14rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
