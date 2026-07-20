@@ -380,7 +380,7 @@
           <!-- 会议信息：会议名称 + 时间地点合并为一个信息卡片 -->
           <div class="create-section meeting-info-card">
             <div class="form-group">
-              <span class="field-caption caption-as-title">会议名称 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
+              <span class="field-caption caption-as-title">会议名称</span>
               <div class="title-row">
                 <div class="title-input-wrap">
                   <textarea ref="titleEl" class="form-input large title-ta" :class="{ 'field-error': fieldErrors.title }" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @focus="clearFieldError('title')" @keydown.enter.prevent></textarea>
@@ -404,12 +404,12 @@
               </div>
               <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime }">
                 <div class="fl-part" @click="openDatePicker">
-                  <span class="fl-label">日期 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
+                  <span class="fl-label">日期</span>
                   <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtPlanDate(createForm.meetingDate) : '' }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
                 <div class="fl-part fl-part-time" @click="openTimePicker">
-                  <span class="fl-label">时间 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
+                  <span class="fl-label">时间</span>
                   <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
@@ -417,17 +417,14 @@
               <div v-if="createForm.meetingMethod !== 'online'" class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
                 <!-- 选「其他地点」时：本行直接变输入框（不再另弹文本框）；点「地点」标签可回到常用地点选择 -->
                 <template v-if="locationPreset === '__other__'">
-                  <span class="fl-label fl-label-tap" @click="openLocPicker">地点 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
+                  <span class="fl-label fl-label-tap" @click="openLocPicker">地点</span>
                   <input class="fl-inline-input" v-model="createForm.location" placeholder="请输入会议地点" @focus="clearFieldError('location')" />
                 </template>
                 <div v-else class="fl-loc-main" @click="openLocPicker">
-                  <span class="fl-label">地点 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
+                  <span class="fl-label">地点</span>
                   <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
-                <button class="loc-map-btn field-map-btn" @click.stop="pickLocationOnMap" aria-label="从地图选点">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-                </button>
               </div>
               <div v-else class="field-line field-line-location">
                 <span class="fl-label online-platform-label">线上平台</span>
@@ -442,7 +439,7 @@
           <!-- 会议议程项（在当前卡片内逐条添加和编辑） -->
           <div class="create-section">
             <div class="section-title-row topic-head">
-              <span class="section-title">会议议题 <span v-if="createTab === 'manual'" class="req-star">*</span></span>
+              <span class="section-title">会议议题</span>
             </div>
             <div v-if="createForm.topics.length" class="topic-list">
               <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line" @click="openEditTopic(idx)">
@@ -4604,4 +4601,14 @@ onActivated(show)
 .create-panel .platform-select { height: 88rpx; font-size: 32rpx; }  /* 线上平台下拉 44px */
 .create-panel .field-map-btn { width: 84rpx; height: 76rpx; min-height: 76rpx; } /* 地图键 38px */
 .create-panel .topic-add-trigger { min-height: 92rpx; }        /* 添加议题条 46px */
+/* — bug修复：议题列表去掉内层限高(原200rpx裁掉换行议题)，交给弹层整体滚动 — */
+.create-panel .topic-list { max-height: none; overflow: visible; }
+/* — 精简·扁平化：浅灰底衬白卡、去边框留微阴影；字段行去内框、改细分隔线，消除「盒套盒」 — */
+.create-panel .create-body { background: #f5f6f8; }
+.create-panel .create-section,
+.create-panel .create-section.meeting-info-card { background: #fff; border: none; box-shadow: 0 2rpx 10rpx rgba(30,40,60,0.05); }
+.create-panel .juwei-card { border: none; box-shadow: 0 2rpx 10rpx rgba(30,40,60,0.05); }
+.create-panel .meeting-info-card .field-list { gap: 0; }
+.create-panel .meeting-info-card .field-line { border: none; border-radius: 0; background: transparent; border-bottom: 2rpx solid #eef0f2; }
+.create-panel .meeting-info-card .field-line:last-child { border-bottom: none; }
 </style>
