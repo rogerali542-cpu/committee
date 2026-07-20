@@ -311,13 +311,13 @@
     <!-- 待发送草稿卡：发起会议填了一半返回，内容自动存草稿，放大成首页主角，突出「继续通知」 -->
     <div v-if="isChair && hasDraft" class="draft-card">
       <div class="draft-card-top">
-        <span class="draft-badge">📝 待发送 · 草稿</span>
-        <span class="draft-discard" @click.stop="discardDraft">放弃草稿</span>
+        <span class="draft-badge">通知编辑中</span>
       </div>
       <div class="draft-title">{{ draftTitle }}</div>
       <div v-if="draftSummary" class="draft-summary">{{ draftSummary }}</div>
       <div v-if="draftMaterialCount" class="draft-mat">📎 已附 {{ draftMaterialCount }} 份材料</div>
       <button class="draft-continue" @click="continueDraft">继续通知<span class="btn-arrow">›</span></button>
+      <span class="draft-discard" @click.stop="discardDraft">放弃草稿</span>
     </div>
 
     <!-- 「更多功能」三格已删：接待/培训入口收进顶部计划卡横栏；历史记录走计划卡已开期或资料库 -->
@@ -3409,10 +3409,10 @@ onActivated(show)
 
 /* 待发送草稿卡：放大成首页主角，橙调、看得见的"没写完的会议"，底部整行大按钮=继续通知 */
 .draft-card { width: 94%; margin: 8rpx auto 20rpx; box-sizing: border-box; background: var(--c-bg-card, #fff); border: 2rpx solid rgba(232,140,20,0.4); border-left: 14rpx solid var(--c-primary); border-radius: 28rpx; padding: 30rpx 32rpx 34rpx; box-shadow: 0 10rpx 34rpx rgba(232,140,20,0.18); }
-.draft-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.draft-card-top { display: flex; align-items: center; margin-bottom: 16rpx; }
 .draft-badge { font-size: 30rpx; font-weight: 700; color: var(--c-primary-strong, #c96a12); background: var(--c-primary-soft, #fdf0e0); padding: 8rpx 20rpx; border-radius: 999rpx; }
-.draft-discard { font-size: 26rpx; color: #6b7078; font-weight: 600; padding: 10rpx 22rpx; border: 2rpx solid #DBDFE4; border-radius: 999rpx; background: #fff; }
-.draft-discard:active { color: var(--c-danger); border-color: var(--c-danger); background: var(--c-danger-soft); }
+.draft-discard { display: block; text-align: center; margin: 16rpx auto 0; padding: 8rpx; font-size: 26rpx; color: var(--c-danger); font-weight: 500; }
+.draft-discard:active { opacity: 0.6; }
 .draft-title { font-size: 46rpx; font-weight: 700; color: #1f2329; line-height: 1.3; word-break: break-all; }
 .draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
