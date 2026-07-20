@@ -200,43 +200,43 @@ onMounted(async () => {
 .summary-card { min-width: 0; padding: 20rpx 8rpx; border: 2rpx solid #E6EAEC; border-radius: 18rpx;
   background: #fff; color: var(--c-text-mid); }
 .summary-card strong { display: block; font-size: 40rpx; line-height: 1.2; color: var(--c-text-strong); }
-.summary-card span { display: block; margin-top: 7rpx; font-size: 25rpx; }
+.summary-card span { display: block; margin-top: 7rpx; font-size: 28rpx; }
 .summary-card.pending strong { color: #B26A00; }
 .summary-card.handled strong { color: #278653; }
 .filter-card { margin-top: 20rpx; padding: 22rpx; border: 2rpx solid #E7EBED; border-radius: 20rpx; background: #fff; }
-.filter-title { margin-bottom: 14rpx; font-size: 28rpx; font-weight: 600; color: var(--c-text-mid); }
+.filter-title { margin-bottom: 14rpx; font-size: 32rpx; font-weight: 600; color: var(--c-text-mid); }
 .select-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14rpx; }
 .select-row select { min-width: 0; height: 68rpx; padding: 0 8rpx; border: 2rpx solid #E2E7E9;
-  border-radius: 12rpx; background: #F8FAFA; color: var(--c-text-strong); font-size: 28rpx; }
+  border-radius: 12rpx; background: #F8FAFA; color: var(--c-text-strong); font-size: 32rpx; }
 .month-section { margin-top: 28rpx; }
 .month-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4rpx 12rpx; }
 .month-head strong { font-size: 34rpx; color: var(--c-text-strong); }
-.month-head span { font-size: 23rpx; color: var(--c-text-weak); }
+.month-head span { font-size: 26rpx; color: var(--c-text-weak); }
 .day-card { margin-bottom: 16rpx; border: 2rpx solid #E5EAEC; border-radius: 20rpx; background: #fff; overflow: hidden; }
 .day-head { display: flex; align-items: center; gap: 16rpx; width: 100%; padding: 22rpx;
   border: 0; background: #fff; text-align: left; color: inherit; }
 .date-block { flex-shrink: 0; display: flex; flex-direction: column; gap: 3rpx; }
-.date-block strong { font-size: 30rpx; color: var(--c-text-strong); }
-.date-block em { font-size: 23rpx; color: var(--c-text-weak); font-style: normal; }
+.date-block strong { font-size: 32rpx; color: var(--c-text-strong); }
+.date-block em { font-size: 26rpx; color: var(--c-text-weak); font-style: normal; }
 .day-summary { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10rpx; }
-.day-summary > strong { font-size: 28rpx; color: var(--c-text-mid); font-weight: 500; }
-.day-summary em, .record-title i { padding: 3rpx 10rpx; border-radius: 999rpx; font-size: 21rpx; font-style: normal; font-weight: 600; }
+.day-summary > strong { font-size: 32rpx; color: var(--c-text-mid); font-weight: 500; }
+.day-summary em, .record-title i { padding: 3rpx 10rpx; border-radius: 999rpx; font-size: 26rpx; font-style: normal; font-weight: 600; }
 .day-summary .pending, .record-title .pending { color: #9A5A13; background: #FFF1D8; }
 .day-summary .doing, .record-title .doing { color: #0F766E; background: #E7F6F3; }
 .day-summary .done, .record-title .done { color: #287653; background: #E8F5EE; }
-.fold-text { flex-shrink: 0; color: var(--c-primary-dark); font-size: 25rpx; }
+.fold-text { flex-shrink: 0; color: var(--c-primary-dark); font-size: 28rpx; }
 .day-items { border-top: 2rpx solid #EDF0F2; padding: 0 22rpx; }
 .record-row { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 0; border-top: 2rpx solid #F0F2F3; }
 .record-row:first-child { border-top: 0; }
 .record-main { flex: 1; min-width: 0; }
 .record-title { display: flex; align-items: center; gap: 9rpx; }
-.record-title strong { font-size: 29rpx; color: var(--c-text-strong); }
-.record-title span { font-size: 23rpx; color: var(--c-text-weak); }
+.record-title strong { font-size: 32rpx; color: var(--c-text-strong); }
+.record-title span { font-size: 26rpx; color: var(--c-text-weak); }
 .record-main p { margin: 8rpx 0 5rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  font-size: 26rpx; line-height: 1.45; color: var(--c-text-mid); }
-.record-main small { font-size: 22rpx; color: var(--c-text-weak); }
-.record-go { flex-shrink: 0; color: var(--c-primary-dark); font-size: 25rpx; }
+  font-size: 28rpx; line-height: 1.45; color: var(--c-text-mid); }
+.record-main small { font-size: 26rpx; color: var(--c-text-weak); }
+.record-go { flex-shrink: 0; color: var(--c-primary-dark); font-size: 28rpx; }
 .empty { margin-top: 32rpx; padding: 80rpx 20rpx; border-radius: 20rpx; background: #fff;
-  text-align: center; color: var(--c-text-weak); font-size: 28rpx; }
+  text-align: center; color: var(--c-text-weak); font-size: 32rpx; }
 .empty.error { color: #A33B31; }
 </style>

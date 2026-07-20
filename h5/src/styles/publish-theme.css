@@ -40,7 +40,7 @@
   display: inline-flex; align-items: center;
   height: 46rpx; padding: 0 18rpx; border-radius: 10rpx;
   background: var(--pub-blue-soft); color: var(--pub-blue);
-  font-size: 28rpx; font-weight: 600;
+  font-size: 32rpx; font-weight: 600;
 }
 
 /* 右上状态徽标（预留上链位） */
@@ -48,7 +48,7 @@
   position: absolute; top: 30rpx; right: 30rpx;
   display: inline-flex; align-items: center;
   height: 48rpx; padding: 0 22rpx; border-radius: 999rpx;
-  font-size: 28rpx; font-weight: 700;
+  font-size: 32rpx; font-weight: 700;
 }
 .pub-badge.is-pub   { background: var(--pub-blue); color: #fff; }
 .pub-badge.is-draft { background: var(--pub-amber-soft); color: var(--pub-amber); }
@@ -60,7 +60,7 @@
 }
 
 .pub-meta { display: flex; flex-wrap: wrap; gap: 6rpx 28rpx; }
-.pub-meta .mi { font-size: 30rpx; color: var(--pub-sub); line-height: 1.7; }
+.pub-meta .mi { font-size: 32rpx; color: var(--pub-sub); line-height: 1.7; }
 .pub-meta .mi b { color: var(--pub-text); font-weight: 600; }
 
 .pub-divider { height: 2rpx; background: var(--pub-blue-line); margin: 26rpx 0; }
@@ -71,7 +71,7 @@
 }
 
 /* 提示条（如草稿提醒） */
-.pub-note { font-size: 28rpx; line-height: 1.7; padding: 18rpx 22rpx; border-radius: 14rpx; margin-top: 18rpx; }
+.pub-note { font-size: 32rpx; line-height: 1.7; padding: 18rpx 22rpx; border-radius: 14rpx; margin-top: 18rpx; }
 .pub-note.warn { background: var(--pub-amber-soft); color: var(--pub-amber); }
 
 /* 主按钮（蓝） */
@@ -83,4 +83,4 @@
 }
 .pub-btn:active { background: var(--pub-blue-deep); }
 
-.pub-foot { display: block; text-align: center; font-size: 28rpx; color: var(--pub-sub); margin-top: 24rpx; }
+.pub-foot { display: block; text-align: center; font-size: 32rpx; color: var(--pub-sub); margin-top: 24rpx; }

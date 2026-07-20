@@ -115,12 +115,12 @@ onActivated(enter)
 /* 分类切换（深橙） */
 .lib-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
 .lib-tab {
-  flex: 1; text-align: center; font-size: 30rpx; color: var(--pub-sub);
+  flex: 1; text-align: center; font-size: 32rpx; color: var(--pub-sub);
   background: #fff; border-radius: 18rpx; padding: 20rpx 0; font-weight: 600;
   box-shadow: 0 6rpx 20rpx rgba(41, 63, 102, 0.06);
 }
 .lib-tab.active { background: var(--pub-blue); color: #fff; }
-.lib-tab-count { font-size: 28rpx; opacity: 0.85; }
+.lib-tab-count { font-size: 32rpx; opacity: 0.85; }
 
 /* 卡片可点击反馈 */
 .lib-card { cursor: pointer; }
@@ -137,5 +137,5 @@ onActivated(enter)
   display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx;
 }
 .empty-title { display: block; font-size: 38rpx; color: var(--pub-ink); font-weight: 700; margin-bottom: 14rpx; }
-.empty-text { display: block; font-size: 30rpx; color: var(--pub-sub); line-height: 1.7; }
+.empty-text { display: block; font-size: 32rpx; color: var(--pub-sub); line-height: 1.7; }
 </style>

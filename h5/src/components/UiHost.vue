@@ -66,7 +66,7 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 
 <style scoped>
 .ui-toast-wrap { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16rpx; pointer-events: none; z-index: 3000; }
-.ui-toast { max-width: 70vw; background: rgba(0,0,0,0.75); color: #fff; padding: 20rpx 32rpx; border-radius: 12rpx; font-size: 28rpx; display: flex; align-items: center; gap: 12rpx; }
+.ui-toast { max-width: 70vw; background: rgba(0,0,0,0.75); color: #fff; padding: 20rpx 32rpx; border-radius: 12rpx; font-size: 32rpx; display: flex; align-items: center; gap: 12rpx; }
 .ui-toast-icon { font-weight: 700; }
 
 .ui-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 3100; }
@@ -74,16 +74,16 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 
 .ui-loading { background: rgba(0,0,0,0.75); color: #fff; padding: 40rpx; border-radius: 16rpx; display: flex; flex-direction: column; align-items: center; gap: 20rpx; }
 .ui-spinner { width: 56rpx; height: 56rpx; border: 6rpx solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: ui-spin .8s linear infinite; }
-.ui-loading-text { font-size: 28rpx; }
+.ui-loading-text { font-size: 32rpx; }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
 
 .ui-modal { position: relative; width: 600rpx; max-width: 84vw; background: #fff; border-radius: 24rpx; padding: 44rpx 40rpx 0; }
-.ui-modal-x { position: absolute; top: 16rpx; right: 20rpx; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; line-height: 1; color: #999; }
+.ui-modal-x { position: absolute; top: 16rpx; right: 20rpx; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; line-height: 1; color: #6b7078; }
 .ui-modal-title { font-size: 34rpx; font-weight: 700; text-align: center; color: #1a1a1a; }
-.ui-modal-content { font-size: 30rpx; color: #555; line-height: 1.7; margin-top: 24rpx; text-align: center; white-space: pre-wrap; }
+.ui-modal-content { font-size: 32rpx; color: #555; line-height: 1.7; margin-top: 24rpx; text-align: center; white-space: pre-wrap; }
 /* 正文加粗加深加大（contentBold）：需强调的确认弹窗用 */
 .ui-modal-content.bold { color: #1a1a1a; font-weight: 700; font-size: 38rpx; }
-.ui-modal-input { width: 100%; min-height: 160rpx; margin-top: 24rpx; background: #f6f6f8; border-radius: 12rpx; padding: 20rpx; font-size: 30rpx; border: none; resize: none; box-sizing: border-box; }
+.ui-modal-input { width: 100%; min-height: 160rpx; margin-top: 24rpx; background: #f6f6f8; border-radius: 12rpx; padding: 20rpx; font-size: 32rpx; border: none; resize: none; box-sizing: border-box; }
 .ui-modal-actions { display: flex; margin-top: 40rpx; border-top: 1rpx solid #eee; }
 .ui-modal-btn { flex: 1; padding: 28rpx 0; font-size: 32rpx; background: none; }
 .ui-modal-btn.cancel { color: #666; border-right: 1rpx solid #eee; }
@@ -95,7 +95,7 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 /* row-reverse：左右互换位置——次要的「确认关闭」在左，主要的「继续等待」在右（语义不变，点遮罩仍=继续等待） */
 .ui-modal-actions.emphasize-cancel { flex-direction: row-reverse; }
 .ui-modal-actions.emphasize-cancel .ui-modal-btn.cancel { flex: 1; color: var(--c-primary-dark); font-weight: 700; border-right: none; border-left: 1rpx solid #eee; }
-.ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { flex: 0 0 34%; color: #999; font-weight: 400; }
+.ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { flex: 0 0 34%; color: #6b7078; font-weight: 400; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
 .ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }
@@ -110,7 +110,7 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.aicard { width: 560rpx; max-width: 82vw; border-radius: 22rpx; padding: 36rpx 36rpx 0; box-shadow: 0 18rpx 54rpx rgba(31,35,41,0.18); }
 .ui-modal.aicard .ui-modal-content { font-size: 32rpx; font-weight: 500; color: #1f2329; line-height: 1.45; margin-top: 0; }
 .ui-modal-meta { text-align: center; white-space: pre-wrap; }
-.ui-modal.aicard .ui-modal-meta { margin-top: 8px; font-size: 26rpx; color: #8A8F98; line-height: 1.45; }
+.ui-modal.aicard .ui-modal-meta { margin-top: 8px; font-size: 28rpx; color: #5f636b; line-height: 1.45; }
 .ui-modal.aicard .ui-modal-actions { margin-top: 30rpx; }
 .ui-modal.aicard .ui-modal-btn { padding: 24rpx 0; font-size: 32rpx; }
 .ui-modal.aicard .ui-modal-btn.confirm { font-weight: 700; color: #4F8B34; }
@@ -121,13 +121,13 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-sheet.opinion-change { padding: 0 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #F5F3EF; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.12); }
 .ui-sheet-head { padding: 34rpx 20rpx 26rpx; text-align: left; }
 .ui-sheet-title { font-size: 36rpx; line-height: 1.35; font-weight: 700; color: #1F2329; }
-.ui-sheet-desc { margin-top: 10rpx; font-size: 27rpx; line-height: 1.55; color: #7A7F87; }
+.ui-sheet-desc { margin-top: 10rpx; font-size: 28rpx; line-height: 1.55; color: #7A7F87; }
 .ui-sheet.opinion-change .ui-sheet-item { min-height: 112rpx; padding: 20rpx 22rpx; margin-bottom: 14rpx; border: 2rpx solid #E9E5DE; border-radius: 18rpx; display: flex; align-items: center; gap: 18rpx; text-align: left; box-shadow: 0 4rpx 14rpx rgba(31,35,41,.04); }
 .ui-sheet.opinion-change .ui-sheet-item:active { transform: scale(.99); background: #FAF9F7; }
 .ui-sheet-icon { flex: 0 0 64rpx; height: 64rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; background: #F1EEE8; font-size: 34rpx; }
 .ui-sheet-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
-.ui-sheet-copy b { font-size: 31rpx; line-height: 1.35; color: #25282D; }
-.ui-sheet-copy small { font-size: 24rpx; line-height: 1.35; color: #8A8F98; }
+.ui-sheet-copy b { font-size: 32rpx; line-height: 1.35; color: #25282D; }
+.ui-sheet-copy small { font-size: 26rpx; line-height: 1.35; color: #5f636b; }
 .ui-sheet-arrow { color: #B0B4BA; font-size: 42rpx; line-height: 1; }
 .ui-sheet.opinion-change .ui-sheet-item.ai { border-color: #D8E6CE; background: #F8FCF5; }
 .ui-sheet.opinion-change .ui-sheet-item.ai .ui-sheet-icon { background: #E7F2DF; }

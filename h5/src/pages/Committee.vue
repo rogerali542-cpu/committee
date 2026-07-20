@@ -3320,19 +3320,19 @@ onActivated(show)
 .hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: var(--c-primary-dark); }
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
-.hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
+.hd-sub { font-size: 32rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
-.hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
+.hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 32rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
 /* 顶栏右上角综合评分：无胶囊白色加粗字直排顶栏上（0716 用户定，胶囊突兀已撤）；
    align-items:center（非 baseline）大数字上下均匀凸出；渐变色阶已换亮色版适配深橙底 */
 .hd-score { display: inline-flex; align-items: center; gap: 4rpx; align-self: center; }
 /* 标签和单位退到 500（0716）：它俩是陪衬，该粗的是分数本身（800）。
    没照提案里的 400 走——白字压在深橙上，400 太细会发虚（老人尤其），500 是安全下限。 */
-.hd-score-label { font-size: 28rpx; font-weight: 500; color: #fff; margin-right: 4rpx; }
+.hd-score-label { font-size: 32rpx; font-weight: 500; color: #fff; margin-right: 4rpx; }
 /* 数字随分数高低红绿灯渐变（backgroundImage 由 scoreGradient 注入，background-clip:text 上色） */
 .hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-.hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
+.hd-score-unit { font-size: 32rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
@@ -3341,7 +3341,7 @@ onActivated(show)
    连带作废的还有 13px 字号那两处例外（收起条的「查看▾」和卡内「收起▴」）——
    全站 <14px 的豁免清单因此少两条，只剩接待/培训清单日期那一处。
    原实现见 commit 592d7be 及之前。 */
-.meet-tag { font-size: 30rpx; color: var(--c-primary-dark); font-weight: 600; }
+.meet-tag { font-size: 32rpx; color: var(--c-primary-dark); font-weight: 600; }
 .meet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
 /* 卡标题＝状态（0716 用户定）。标题字号（32rpx/800）+ 胶囊底（0716 追加：绿色胶囊背景）——
    三档同款胶囊、各自语义色，只给「进行中」穿另两档裸着会不一致。teal 档用户明确保过。 */
@@ -3352,15 +3352,15 @@ onActivated(show)
 .meet-title { display: block; font-size: 33rpx; font-weight: 700; color: var(--c-text-strong); margin-top: 12rpx; line-height: 1.35; word-break: break-word; }
 /* 灰底/边框撤销（0716 用户定）：时间地点退成素文字行，与全页「只给可点的东西上色块」一致 */
 .meet-info { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; padding: 0; }
-.meet-info-item { min-width: 0; font-size: 28rpx; color: var(--c-text-mid); line-height: 1.35; }
+.meet-info-item { min-width: 0; font-size: 32rpx; color: var(--c-text-mid); line-height: 1.35; }
 .meet-info-item.location { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meet-info-sep { flex-shrink: 0; width: 2rpx; height: 28rpx; background: #DDE2E6; }
-.meet-meta { display: block; font-size: 30rpx; color: var(--c-text-mid); margin-top: 16rpx; }
+.meet-meta { display: block; font-size: 32rpx; color: var(--c-text-mid); margin-top: 16rpx; }
 /* 三步进度 */
 .steps { display: flex; align-items: flex-start; justify-content: space-between; margin: 26rpx 8rpx 22rpx; }
 .step { display: flex; flex-direction: column; align-items: center; width: 120rpx; }
-.step-dot { width: 42rpx; height: 42rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; background: #E3E5E9; color: var(--c-text-weak); }
-.step-label { font-size: 22rpx; color: var(--c-text-weak); margin-top: 6rpx; }
+.step-dot { width: 42rpx; height: 42rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 700; background: #E3E5E9; color: var(--c-text-weak); }
+.step-label { font-size: 26rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 .step.done .step-dot { background: var(--c-primary-soft); color: var(--c-primary-dark); }
 .step.done .step-label { color: var(--c-text-mid); }
 .step.active .step-dot { background: var(--c-primary-dark); color: #fff; }
@@ -3383,23 +3383,23 @@ onActivated(show)
 /* 卡片内"去开会"：略收窄并居中；光晕收敛（大弥散光晕留给底部灰底上的独立按钮，白卡里会外溢显脏） */
 .meet-card .big-btn { width: 71%; margin-left: auto; margin-right: auto; box-shadow: 0 6rpx 22rpx rgba(232, 140, 20, 0.18); }
 /* 删除会议（测试用，弱化） */
-.meet-del { text-align: center; color: var(--c-danger); font-size: 27rpx; margin-top: 16rpx; padding: 4rpx; }
+.meet-del { text-align: center; color: var(--c-danger); font-size: 28rpx; margin-top: 16rpx; padding: 4rpx; }
 .meet-del:active { opacity: 0.6; }
 
 /* 待发送草稿卡：放大成首页主角，橙调、看得见的"没写完的会议"，底部整行大按钮=继续通知 */
 .draft-card { width: 94%; margin: 8rpx auto 20rpx; box-sizing: border-box; background: var(--c-bg-card, #fff); border: 2rpx solid rgba(232,140,20,0.4); border-left: 14rpx solid var(--c-primary); border-radius: 28rpx; padding: 30rpx 32rpx 34rpx; box-shadow: 0 10rpx 34rpx rgba(232,140,20,0.18); }
 .draft-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
-.draft-badge { font-size: 30rpx; font-weight: 700; color: var(--c-primary-strong, #c96a12); background: var(--c-primary-soft, #fdf0e0); padding: 8rpx 20rpx; border-radius: 999rpx; }
-.draft-discard { font-size: 28rpx; color: #9aa0a6; padding: 8rpx 10rpx; }
+.draft-badge { font-size: 32rpx; font-weight: 700; color: var(--c-primary-strong, #c96a12); background: var(--c-primary-soft, #fdf0e0); padding: 8rpx 20rpx; border-radius: 999rpx; }
+.draft-discard { font-size: 32rpx; color: #6b7078; padding: 8rpx 10rpx; }
 .draft-discard:active { color: var(--c-danger); }
 .draft-title { font-size: 46rpx; font-weight: 700; color: #1f2329; line-height: 1.3; word-break: break-all; }
-.draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
-.draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
+.draft-summary { font-size: 32rpx; color: #6b7075; margin-top: 10rpx; }
+.draft-mat { font-size: 32rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-continue { width: 80%; margin: 26rpx auto 0; height: 104rpx; border: none; border-radius: 24rpx; background: var(--c-primary); color: #fff; font-size: 42rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 26rpx rgba(232,140,20,0.28); }
 /* 页面底部「发起其他会议」：低频但有用，收在底部；正常实心大按钮，不再灰虚 */
 /* 0716 终版：中性灰系（橙系与待办徽标抢眼已废）——浅灰底给面积感、深灰字保可读、虚线边留「添加」语义；
    与「待排/待安排」的中性灰语义一致：备用入口,可找到但不抢戏 */
-.create-misc-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
+.create-misc-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 32rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
 .create-misc-entry:active { background: #EAEDF0; }
 .draft-continue:active { background: var(--c-primary-strong); transform: scale(0.99); }
 .draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
@@ -3407,7 +3407,7 @@ onActivated(show)
 .idle { margin: 64rpx 24rpx 0; display: flex; flex-direction: column; align-items: center; }
 .idle-emoji { font-size: 104rpx; margin-bottom: 24rpx; }
 .idle-hint { font-size: 38rpx; color: var(--c-text-mid); margin-bottom: 8rpx; }
-.idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
+.idle-sub { font-size: 32rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 /* 「更多功能」三格已删（0709）：接待/培训入口移入计划卡横栏 */
 
 /* 综合评分小字（占位分数）：贴近顶栏、紧凑 */
@@ -3421,18 +3421,18 @@ onActivated(show)
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
 .plan-stack.has-meeting { gap: 18rpx; }
 .plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
-.plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 15rpx 0; }
+.plan-stack.has-meeting .plan-tab { font-size: 32rpx; padding: 15rpx 0; }
 .plan-stack.has-meeting .yc-list.plan-todo-card { padding: 16rpx 24rpx 18rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 32rpx; padding-bottom: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
 /* 接待/培训列表行：不吃开会档的极限压缩，保留舒适行高 */
 .plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain { padding: 20rpx 4rpx; }
-.plan-stack.has-meeting .plan-todo-card .yc-item-title { font-size: 31rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-item-title { font-size: 32rpx; }
 /* 24rpx→28rpx（12px→14px，0716）：接待清单的日期（6月24日…）老人要核对，不能比正文还小 */
-.plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 28rpx; margin-top: 4rpx; }
-.plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 30rpx; padding: 15rpx 22rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-item-sub { font-size: 32rpx; margin-top: 4rpx; }
+.plan-stack.has-meeting .plan-todo-card .plan-badge { min-width: 128rpx; font-size: 32rpx; padding: 15rpx 22rpx; }
 /* 25rpx→28rpx（12.5px→14px，0716）：「查看」是个要用手指点的按钮，字比正文还小最说不过去 */
-.plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 116rpx; font-size: 28rpx; padding: 12rpx 18rpx; }
+.plan-stack.has-meeting .plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 116rpx; font-size: 32rpx; padding: 12rpx 18rpx; }
 .plan-stack.has-meeting .plan-title { font-size: 36rpx; }
 /* 有会时日历紧凑（0716 用户定：年历收一收、给会议卡让位并加大间距，保证卡完整露出）。
    只压 has-meeting 态；无会时日历是主角，保持宽松版。 */
@@ -3441,8 +3441,8 @@ onActivated(show)
 .plan-stack.has-meeting .plan-calendar-card .plan-head { padding: 14rpx 20rpx 8rpx; }
 .plan-stack.has-meeting .yc-period-feedback { margin-top: 4rpx; padding: 4rpx 45rpx 6rpx; }
 .plan-stack.has-meeting .yc-cell { padding: 8rpx 0 7rpx; }
-.plan-stack.has-meeting .yc-cell.pair-cell .yc-m { font-size: 27rpx; }
-.plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 28rpx; }
+.plan-stack.has-meeting .yc-cell.pair-cell .yc-m { font-size: 28rpx; }
+.plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 32rpx; }
 .plan-switch-card, .plan-calendar-card, .plan-todo-card { background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; overflow: hidden; }
 .plan-switch-card { padding: 10rpx; order: 0; }
 /* 接待/培训(.compact)的纵向顺序：分段栏0 → 三数字1 → 登记大按钮2 → 待办清单3 → 全年日历4。
@@ -3470,7 +3470,7 @@ onActivated(show)
 .plan-tabs { display: flex; gap: 8rpx; margin: 0; background: #F2F6F7; border-radius: 16rpx; padding: 5rpx; }
 /* 未选中 500 / 选中 800（0716）：原先未选中也是 700，跟选中的 800 只差一档，等于没差。
    纵向 padding 8→14rpx（0716 用户定：tab 栏太矮，整体加高约 15%）。 */
-.plan-tab { flex: 1; text-align: center; padding: 18rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
+.plan-tab { flex: 1; text-align: center; padding: 18rpx 0; font-size: 32rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
 .plan-tab.active { background: #D97706; color: #fff; font-weight: 800; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
 .plan-tab:active { opacity: 0.75; }
 /* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
@@ -3510,21 +3510,21 @@ onActivated(show)
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
   padding: 22rpx 2rpx 16rpx; font-size: 34rpx; font-weight: 700; color: var(--c-text-strong); }
 .rec-recent-head button { padding: 8rpx 0 8rpx 20rpx; border: 0; background: transparent;
-  color: var(--c-primary-dark); font-size: 27rpx; font-weight: 500; }
+  color: var(--c-primary-dark); font-size: 28rpx; font-weight: 500; }
 .rec-recent-session { border-top: 2rpx solid #EEF1F3; }
 .rec-recent-row { display: flex; align-items: center; gap: 18rpx; padding: 20rpx 2rpx; border-top: 2rpx solid #EEF1F3; }
 .rec-recent-session .rec-recent-row { border-top: 0; }
 .rec-recent-row:active { opacity: 0.68; }
 .rec-recent-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
 .rec-recent-title { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
-.rec-recent-copy strong { font-size: 30rpx; line-height: 1.35; font-weight: 500; color: var(--c-text-strong);
+.rec-recent-copy strong { font-size: 32rpx; line-height: 1.35; font-weight: 500; color: var(--c-text-strong);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec-recent-title i { flex-shrink: 0; padding: 3rpx 11rpx; border-radius: 999rpx;
-  font-size: 21rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
+  font-size: 26rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
 .rec-recent-title i.pending { color: #9A5A13; background: #FFF1D8; }
 .rec-recent-title i.doing { color: #0F766E; background: #E7F6F3; }
 .rec-recent-title i.done { color: #287653; background: #E8F5EE; }
-.rec-recent-copy span { font-size: 25rpx; line-height: 1.35; color: var(--c-text-weak); }
+.rec-recent-copy span { font-size: 28rpx; line-height: 1.35; color: var(--c-text-weak); }
 .rec-recent-delete { flex-shrink: 0; width: 46rpx; height: 46rpx; padding: 0; border: 0;
   border-radius: 50%; background: #F1F3F4; color: #858D92; font-size: 34rpx; font-weight: 400;
   line-height: 42rpx; text-align: center; transform: translateY(4rpx); }
@@ -3534,17 +3534,17 @@ onActivated(show)
 .rec-recent-items { margin: -2rpx 0 14rpx 20rpx; padding-left: 20rpx; border-left: 4rpx solid #E8ECEE; }
 .rec-recent-item { display: flex; align-items: center; gap: 18rpx; padding: 17rpx 2rpx; border-top: 2rpx solid #F0F2F3; }
 .rec-recent-item > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.rec-recent-item strong { font-size: 28rpx; color: var(--c-text-strong); }
-.rec-recent-item span { font-size: 24rpx; color: var(--c-text-weak); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 25rpx; font-style: normal; }
+.rec-recent-item strong { font-size: 32rpx; color: var(--c-text-strong); }
+.rec-recent-item span { font-size: 26rpx; color: var(--c-text-weak); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 28rpx; font-style: normal; }
 .rec-recent-empty { padding: 22rpx 0 26rpx; border-top: 2rpx solid #EEF1F3;
-  text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
+  text-align: center; font-size: 28rpx; color: var(--c-text-weak); }
 .plan-stack.reception-mode .plan-todo-card { margin-top: 30rpx; }
 .plan-stack.reception-mode .plan-todo-card { padding-bottom: 8rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head { min-height: 72rpx; padding: 10rpx 2rpx 12rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head.foldable { cursor: pointer; }
 .rec-todo-chevron { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  width: 48rpx; height: 48rpx; color: var(--c-text-weak); font-size: 30rpx; transition: transform .2s ease; }
+  width: 48rpx; height: 48rpx; color: var(--c-text-weak); font-size: 32rpx; transition: transform .2s ease; }
 .rec-todo-chevron.open { transform: rotate(180deg); }
 .plan-stack.reception-mode .plan-todo-card .yc-head-title { font-size: 34rpx; font-weight: 400; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-count {
@@ -3555,7 +3555,7 @@ onActivated(show)
 .plan-stack.reception-mode .plan-todo-card .yc-list-count.safe { color: #278653; }
 .plan-stack.reception-mode .plan-todo-card .yc-item.todo-plain { padding: 24rpx 4rpx; cursor: default; }
 .plan-stack.reception-mode .plan-todo-card .yc-item-title { font-size: 34rpx; }
-.plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 22rpx; }
+.plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 26rpx; }
 .plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
 
 /* 接待日安排入口卡。order 4→1（0717 用户定）：接下原「会议进行中」收起栏的位置，
@@ -3579,13 +3579,13 @@ onActivated(show)
 .rnc-place { color: var(--c-text-weak); }
 .rnc-act { flex-shrink: 0; padding: 12rpx 26rpx; border-radius: 999rpx; background: #fff;
   border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
-  font-size: 30rpx; font-weight: 700; white-space: nowrap; }
+  font-size: 32rpx; font-weight: 700; white-space: nowrap; }
 .ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; padding: 24rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
 .ov-metric:active { opacity: 0.8; }
 .ov-metric.on { box-shadow: inset 0 0 0 4rpx #D97706; }
 .ov-num { font-size: 50rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1; }
 /* 24rpx→28rpx（12px→14px，0716）：开会 tab 已无一个低于 14px 的字，这两个 tab 原有 6~10 个 */
-.ov-label { font-size: 28rpx; color: var(--c-text-weak); font-weight: 600; }
+.ov-label { font-size: 32rpx; color: var(--c-text-weak); font-weight: 600; }
 /* 36→32rpx（0716 用户定：小一号）。has-meeting 那条 .plan-title 36rpx 特异性更高会反杀，补一条压住 */
 .plan-title.ov-title, .plan-stack.has-meeting .plan-title.ov-title { font-size: 32rpx; font-weight: 500; }
 .ov-metric.warn { background: #FFF7ED; }
@@ -3598,37 +3598,37 @@ onActivated(show)
 .yc-alert-main:active { opacity: 0.85; }
 .yc-alert-main.warn { background: #FFF7EA; border-color: #F2CFA0; border-left-color: var(--c-primary); box-shadow: 0 8rpx 22rpx rgba(232,140,20,0.13); }
 .yc-alert-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.yc-alert-kicker { font-size: 22rpx; font-weight: 800; color: #B02A1E; line-height: 1.2; }
+.yc-alert-kicker { font-size: 26rpx; font-weight: 800; color: #B02A1E; line-height: 1.2; }
 .yc-alert-main.warn .yc-alert-kicker { color: var(--c-primary-dark); }
 .yc-alert-title { font-size: 33rpx; font-weight: 800; color: #8F1F17; line-height: 1.2; word-break: break-all; }
 .yc-alert-main.warn .yc-alert-title { color: var(--c-primary-strong); }
-.yc-alert-sub { font-size: 23rpx; color: #81534F; line-height: 1.25; word-break: break-all; }
+.yc-alert-sub { font-size: 26rpx; color: #81534F; line-height: 1.25; word-break: break-all; }
 .yc-alert-main.warn .yc-alert-sub { color: #8A6428; }
-.yc-alert-cta { flex-shrink: 0; align-self: stretch; display: flex; align-items: center; padding: 0 14rpx; border-radius: 12rpx; background: #D83A2E; color: #fff; font-size: 25rpx; font-weight: 800; }
+.yc-alert-cta { flex-shrink: 0; align-self: stretch; display: flex; align-items: center; padding: 0 14rpx; border-radius: 12rpx; background: #D83A2E; color: #fff; font-size: 28rpx; font-weight: 800; }
 .yc-alert-main.warn .yc-alert-cta { background: var(--c-primary); }
 .yc-alert-main.secondary { margin-top: 8rpx; padding: 13rpx 16rpx; border-left-width: 6rpx; box-shadow: none; }
 .yc-alert-main.outside { margin: -8rpx 24rpx 20rpx; }
 .yc-alert-main.secondary .yc-alert-copy { gap: 2rpx; }
-.yc-alert-main.secondary .yc-alert-kicker { font-size: 20rpx; }
-.yc-alert-main.secondary .yc-alert-title { font-size: 27rpx; }
+.yc-alert-main.secondary .yc-alert-kicker { font-size: 26rpx; }
+.yc-alert-main.secondary .yc-alert-title { font-size: 28rpx; }
 .yc-alert-main.secondary .yc-alert-sub { display: none; }
-.yc-alert-main.secondary .yc-alert-cta { font-size: 23rpx; padding: 0 12rpx; }
+.yc-alert-main.secondary .yc-alert-cta { font-size: 26rpx; padding: 0 12rpx; }
 .yc-alert-ok { margin: 8rpx 20rpx 0; display: flex; flex-direction: column; gap: 4rpx; background: var(--c-success-soft); border: 2rpx solid rgba(39,174,96,0.2); border-radius: 16rpx; padding: 14rpx 18rpx; }
 .yc-alert-ok .yc-alert-kicker, .yc-alert-ok .yc-alert-title { color: var(--c-success); }
-.yc-alert-ok .yc-alert-title { font-size: 30rpx; font-weight: 800; }
+.yc-alert-ok .yc-alert-title { font-size: 32rpx; font-weight: 800; }
 .yc-focus-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10rpx; padding: 12rpx 20rpx 4rpx; }
 .yc-focus { min-width: 0; min-height: 102rpx; display: flex; flex-direction: column; justify-content: center; gap: 4rpx; padding: 12rpx 12rpx; border-radius: 14rpx; background: #F6F7F9; box-sizing: border-box; cursor: pointer; }
 .yc-focus:active { opacity: 0.75; }
-.yc-focus-label { font-size: 22rpx; font-weight: 700; color: var(--c-text-weak); line-height: 1.15; }
-.yc-focus-title { font-size: 26rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1.2; word-break: break-all; }
-.yc-focus-sub { font-size: 21rpx; color: var(--c-text-weak); line-height: 1.2; word-break: break-all; }
+.yc-focus-label { font-size: 26rpx; font-weight: 700; color: var(--c-text-weak); line-height: 1.15; }
+.yc-focus-title { font-size: 28rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1.2; word-break: break-all; }
+.yc-focus-sub { font-size: 26rpx; color: var(--c-text-weak); line-height: 1.2; word-break: break-all; }
 .yc-focus.done { background: var(--c-success-soft); }
 .yc-focus.done .yc-focus-title, .yc-focus.done .yc-focus-sub { color: var(--c-success); }
 .yc-focus.current { background: var(--c-primary-soft); }
 .yc-focus.current .yc-focus-title, .yc-focus.current .yc-focus-sub { color: var(--c-primary-dark); }
 .yc-focus.overdue { background: #FDECEA; }
 .yc-focus.overdue .yc-focus-title, .yc-focus.overdue .yc-focus-sub { color: #B02A1E; }
-.yc-year-toggle { display: flex; align-items: center; justify-content: center; gap: 8rpx; margin: 8rpx 20rpx 0; height: 50rpx; border-radius: 12rpx; background: #F6F7F9; color: #176B87; font-size: 24rpx; font-weight: 700; cursor: pointer; }
+.yc-year-toggle { display: flex; align-items: center; justify-content: center; gap: 8rpx; margin: 8rpx 20rpx 0; height: 50rpx; border-radius: 12rpx; background: #F6F7F9; color: #176B87; font-size: 26rpx; font-weight: 700; cursor: pointer; }
 .yc-year-toggle:active { opacity: 0.75; }
 .yc-year-panel { padding-top: 4rpx; }
 /* gap 10rpx → 24rpx（0716 A 案）：期次卡的边框撤掉后，「一期」全靠这道间距分组。
@@ -3651,15 +3651,15 @@ onActivated(show)
 .yc-month-grid .yc-cell { min-height: 136rpx; gap: 6rpx; }
 /* 状态字是格子里唯一的信息（22rpx→30rpx = 15px），月份只是坐标 —— 与开会 tab 同一取向 */
 .yc-month-grid .yc-m { font-size: 32rpx; }
-.yc-month-grid .yc-s { font-size: 30rpx; }
+.yc-month-grid .yc-s { font-size: 32rpx; }
 .yc-action-card { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin: 12rpx 20rpx 2rpx; padding: 18rpx 18rpx 18rpx 20rpx; border-radius: 18rpx; background: #FFF7ED; border: 2rpx solid #FED7AA; box-shadow: 0 8rpx 20rpx rgba(217,119,6,0.1); cursor: pointer; }
 .yc-action-card:active { opacity: 0.82; }
 .yc-action-card.overdue { background: #FFF4F2; border-color: #F3C6C0; box-shadow: 0 8rpx 20rpx rgba(216,58,46,0.11); }
 .yc-action-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
-.yc-action-kicker { font-size: 23rpx; color: #B45309; font-weight: 800; line-height: 1.15; }
+.yc-action-kicker { font-size: 26rpx; color: #B45309; font-weight: 800; line-height: 1.15; }
 .yc-action-card.overdue .yc-action-kicker { color: #B02A1E; }
 .yc-action-title { font-size: 33rpx; color: var(--c-text-strong); font-weight: 900; line-height: 1.18; word-break: break-all; }
-.yc-action-btn { flex-shrink: 0; min-width: 128rpx; height: 62rpx; padding: 0 20rpx; border-radius: 999rpx; display: flex; align-items: center; justify-content: center; background: #D97706; color: #fff; font-size: 28rpx; font-weight: 900; box-shadow: 0 8rpx 16rpx rgba(217,119,6,0.22); box-sizing: border-box; }
+.yc-action-btn { flex-shrink: 0; min-width: 128rpx; height: 62rpx; padding: 0 20rpx; border-radius: 999rpx; display: flex; align-items: center; justify-content: center; background: #D97706; color: #fff; font-size: 32rpx; font-weight: 900; box-shadow: 0 8rpx 16rpx rgba(217,119,6,0.22); box-sizing: border-box; }
 .yc-action-card.overdue .yc-action-btn { background: #D83A2E; box-shadow: 0 8rpx 16rpx rgba(216,58,46,0.22); }
 /* 期次卡的边框已撤（0716 用户定 A 案）。原先它和内部月格用的是同一个色（如 current 两边都是
    #FED7AA），隔 7rpx 画两遍，纯属重复；而本该扛分组的底色（期次卡底 vs 白卡底仅 1.03:1）和
@@ -3695,14 +3695,14 @@ onActivated(show)
 .yc-cell:active { opacity: 0.75; }
 /* 加粗从坐标挪到信息上（0716 用户定）：月份只是坐标（1-12 顺序排，本来就好找），状态才是要看的东西。
    原先 12 个月份全 700、状态却是 400 —— 加粗加反了，且这 12 个占了全页加粗元素的 40%。 */
-.yc-m { font-size: 28rpx; font-weight: 500; color: var(--c-text-strong); line-height: 1.1; }
-.yc-s { font-size: 22rpx; font-weight: 600; color: var(--c-text-weak); line-height: 1.2; }
+.yc-m { font-size: 32rpx; font-weight: 500; color: var(--c-text-strong); line-height: 1.1; }
+.yc-s { font-size: 26rpx; font-weight: 600; color: var(--c-text-weak); line-height: 1.2; }
 .yc-grid.compact .yc-m { font-size: 32rpx; }
-.yc-grid.compact .yc-s { font-size: 22rpx; }
-.yc-cell.pair-cell .yc-m { font-size: 31rpx; }
+.yc-grid.compact .yc-s { font-size: 26rpx; }
+.yc-cell.pair-cell .yc-m { font-size: 32rpx; }
 /* 状态字 24rpx → 30rpx（12px → 15px，0716 用户定）：它是格子里真正要看的东西，
    图例删了之后更不能小——「已开 ✓ / 待开 / 逾期 ! / 待排」现在是颜色含义的唯一说明。 */
-.yc-cell.pair-cell .yc-s { font-size: 30rpx; }
+.yc-cell.pair-cell .yc-s { font-size: 32rpx; }
 .yc-cell.done { background: #F0FAF4; border-color: #D7EFDE; }
 .yc-cell.done .yc-m, .yc-cell.done .yc-s { color: var(--c-success); }
 .yc-cell.current { background: #FFF8EC; border-color: #FED7AA; }
@@ -3715,13 +3715,13 @@ onActivated(show)
 .yc-cell.future { background: #EEF2F7; border-color: #DAE1EA; }
 .yc-cell.future .yc-m, .yc-cell.future .yc-s { color: #71829A; }
 .yc-cell.sel { box-shadow: 0 8rpx 18rpx rgba(20,42,58,0.08); }
-.yc-corner { position: absolute; top: -10rpx; right: -8rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; box-sizing: border-box; border-radius: 17rpx; background: var(--c-danger); color: #fff; font-size: 22rpx; font-weight: 700; line-height: 34rpx; text-align: center; }
+.yc-corner { position: absolute; top: -10rpx; right: -8rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; box-sizing: border-box; border-radius: 17rpx; background: var(--c-danger); color: #fff; font-size: 26rpx; font-weight: 700; line-height: 34rpx; text-align: center; }
 .period-calendar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8rpx; padding: 10rpx 20rpx 2rpx; }
 .period-cell { min-height: 88rpx; display: flex; flex-direction: column; justify-content: center; gap: 2rpx; padding: 10rpx 12rpx; border-radius: 14rpx; background: #F6F7F9; border: 3rpx solid transparent; box-sizing: border-box; cursor: pointer; }
 .period-cell.active { border-color: #176B87; }
-.period-no { font-size: 20rpx; color: var(--c-text-weak); font-weight: 700; }
-.period-month { font-size: 28rpx; color: var(--c-text-strong); font-weight: 800; line-height: 1.15; }
-.period-status { font-size: 21rpx; color: var(--c-text-weak); line-height: 1.15; }
+.period-no { font-size: 26rpx; color: var(--c-text-weak); font-weight: 700; }
+.period-month { font-size: 32rpx; color: var(--c-text-strong); font-weight: 800; line-height: 1.15; }
+.period-status { font-size: 26rpx; color: var(--c-text-weak); line-height: 1.15; }
 .period-cell.done { background: var(--c-success-soft); }
 .period-cell.done .period-month, .period-cell.done .period-status { color: var(--c-success); }
 .period-cell.current { background: var(--c-primary-soft); }
@@ -3731,7 +3731,7 @@ onActivated(show)
 .yc-list { margin: 0 20rpx 18rpx; padding: 14rpx 16rpx 12rpx; background: #F8FAFB; border-radius: 18rpx; border: 2rpx solid #EEF1F3; }
 /* 0716：整张卡的淡黄底/黄边/橙阴影撤销（满屏淡黄的真正来源），继承基础白卡样式，与日历卡统一 */
 .yc-list.plan-todo-card { margin: 0; padding: 12rpx 26rpx 18rpx; background: var(--c-bg-card); }
-.yc-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 28rpx; font-weight: 800; color: var(--c-text-strong); padding: 0 2rpx 8rpx; }
+.yc-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 32rpx; font-weight: 800; color: var(--c-text-strong); padding: 0 2rpx 8rpx; }
 /* 卡标题加粗显眼（0716 用户定）：行内文本让位后，标题是这张卡唯一该重的东西 */
 .plan-todo-card .yc-list-head { font-size: 36rpx; font-weight: 800; padding-bottom: 0; }
 /* 0716：胶囊撤销，退成一句素文字。
@@ -3740,7 +3740,7 @@ onActivated(show)
    委员是一条条点着处理的，是 4 是 5 不改变他做什么。卡片标题已写着「待跟进」、下面就摆着 4 行，
    这个数字不增加信息，却穿着最抢眼的衣服。Material 原话：什么都挂徽章，就没有徽章是重要的。 */
 .yc-list-count { flex-shrink: 0; padding: 0; background: none; color: var(--c-text-weak);
-  font-size: 28rpx; font-weight: 500; }
+  font-size: 32rpx; font-weight: 500; }
 .yc-head-title { display: inline-flex; align-items: center; min-width: 0; }
 /* .yc-list-count.active（实心橙 + todoPulse 无限脉动光环）已删（0716）：
    一个不能点、也不表示「有新东西」的计数，在那儿一直闪——正是 Material 说的通知疲劳。
@@ -3763,9 +3763,9 @@ onActivated(show)
    ⚠ 日期 26rpx=13px，破了今天定的 14px 下限——它是行内第三级的辅助信息、且用户点名要缩，
    真机测过要是看不清再回 28rpx。 */
 .plan-todo-card .yc-item.todo-plain .yc-item-title { font-weight: 400; }
-.plan-todo-card .yc-item.todo-plain .yc-item-sub { font-size: 26rpx; color: #87929D; }
+.plan-todo-card .yc-item.todo-plain .yc-item-sub { font-size: 28rpx; color: #87929D; }
 .plan-todo-card .yc-item.todo-plain .yc-item-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 124rpx; font-size: 29rpx; padding: 15rpx 20rpx; }
+.plan-todo-card .yc-item.todo-plain .plan-badge { min-width: 124rpx; font-size: 32rpx; padding: 15rpx 20rpx; }
 /* 「查看」入口：不是实心操作按钮，而是浅橙描边+箭头，表示「点进去看详情」（跟进选项在详情页里） */
 /* 描边 #FED7AA(1.35:1) → var(--c-primary)(3.63:1)：与「去通知」同一个病同一个方子——
    描边隐形时按钮只剩一行橙字，尤其现在列表里混着「已办结」灰绿标签，可点的必须一眼是按钮 */
@@ -3779,14 +3779,14 @@ onActivated(show)
 .td-pop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
 .td-pop-title { font-size: 40rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.3; }
 .td-pop-close { font-size: 48rpx; color: var(--c-text-weak); line-height: 1; padding: 0 4rpx; }
-.td-pop-status { display: inline-block; margin-top: 14rpx; padding: 8rpx 20rpx; border-radius: 999rpx; font-size: 27rpx; font-weight: 700; }
+.td-pop-status { display: inline-block; margin-top: 14rpx; padding: 8rpx 20rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; }
 .td-pop-status.warn { background: #FFF7ED; color: #B45309; }
 .td-pop-status.danger { background: #FFF4F2; color: #B02A1E; }
 .td-pop-status.done { background: var(--c-success-soft); color: var(--c-success); }
 .td-pop-status.current { background: #EAF6FF; color: #0284C7; }
 .td-pop-status.upcoming { background: #EEF0F3; color: #52646B; }
 .td-pop-body { margin-top: 24rpx; display: flex; flex-direction: column; gap: 18rpx; }
-.td-row { display: flex; gap: 18rpx; font-size: 30rpx; line-height: 1.5; }
+.td-row { display: flex; gap: 18rpx; font-size: 32rpx; line-height: 1.5; }
 .td-row-k { flex-shrink: 0; width: 128rpx; color: var(--c-text-weak); }
 .td-row-v { flex: 1; color: var(--c-text-strong); word-break: break-all; }
 .td-pop-btn { width: 100%; margin-top: 32rpx; height: 96rpx; border: none; border-radius: 22rpx; background: var(--c-primary); color: #fff; font-size: 36rpx; font-weight: 700; }
@@ -3795,32 +3795,32 @@ onActivated(show)
 .yc-item-ico { flex-shrink: 0; font-size: 32rpx; }
 .plan-todo-card .yc-item-ico { font-size: 38rpx; }
 .yc-item-info { flex: 1; min-width: 0; }
-.yc-item-title { font-size: 28rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1.25; }
-.yc-item-sub { font-size: 22rpx; color: var(--c-text-weak); margin-top: 3rpx; line-height: 1.25; }
+.yc-item-title { font-size: 32rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1.25; }
+.yc-item-sub { font-size: 26rpx; color: var(--c-text-weak); margin-top: 3rpx; line-height: 1.25; }
 /* 600 → 500（0716 用户定）：「第N期例会」是待办行的名字，不是要喊的东西——
    要看的是右边「去通知/去补开」那颗按钮。与 todo-plain 行的 500 也就此对齐。 */
 .plan-todo-card .yc-item-title { font-size: 38rpx; font-weight: 500; }
-.plan-todo-card .yc-item-sub { font-size: 28rpx; margin-top: 6rpx; }
-.yc-links { display: flex; justify-content: center; gap: 48rpx; padding: 18rpx 0 4rpx; font-size: 26rpx; font-weight: 600; color: var(--c-primary-dark); }
+.plan-todo-card .yc-item-sub { font-size: 32rpx; margin-top: 6rpx; }
+.yc-links { display: flex; justify-content: center; gap: 48rpx; padding: 18rpx 0 4rpx; font-size: 28rpx; font-weight: 600; color: var(--c-primary-dark); }
 .yc-links span:active { opacity: 0.6; }
-.plan-empty { text-align: center; color: var(--c-text-weak); font-size: 28rpx; padding: 24rpx 0 24rpx; }
+.plan-empty { text-align: center; color: var(--c-text-weak); font-size: 32rpx; padding: 24rpx 0 24rpx; }
 /* 日历下方反馈区：点选期次后就地展示（已开期记录 / 未到期提前准备）。记录行放宽有呼吸感 */
 /* 0716：下钻区内容（提示语/会议记录）两侧统一缩进1.5字符（45rpx@30rpx），不顶卡片边；虚线分隔仍全宽 */
 .yc-period-feedback { margin-top: 10rpx; border-top: 2rpx dashed #EFE7DA; padding: 8rpx 45rpx 8rpx; }
-.ypf-head { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); padding: 4rpx 6rpx 12rpx; }
+.ypf-head { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); padding: 4rpx 6rpx 12rpx; }
 /* 已结束会议名旁的绿色「已完成」小标签（0716 用户定，替代被删的「X-X月开会记录」标题） */
-.ypf-done-tag { display: inline-block; margin-left: 12rpx; font-size: 22rpx; font-weight: 700; color: var(--c-success); background: var(--c-success-soft); padding: 3rpx 14rpx; border-radius: 999rpx; vertical-align: 3rpx; }
+.ypf-done-tag { display: inline-block; margin-left: 12rpx; font-size: 26rpx; font-weight: 700; color: var(--c-success); background: var(--c-success-soft); padding: 3rpx 14rpx; border-radius: 999rpx; vertical-align: 3rpx; }
 /* 常驻「当月状态」提示条（0716 调研定型：黑字裸排像正文、身份错位显怪；改 AntUI/支付宝式浅色底信息条，
    底色与宫格语义色同族——点黄格弹黄条、红格红条、灰格灰条，零新色 */
-.ypf-tip { text-align: left; font-size: 29rpx; line-height: 1.55; padding: 8rpx 0 4rpx; }
+.ypf-tip { text-align: left; font-size: 32rpx; line-height: 1.55; padding: 8rpx 0 4rpx; }
 .ypf-tip.warn { color: #9A5A00; }
 .ypf-tip.overdue { color: #B02A1E; }
 .ypf-tip.plain { color: var(--c-text-mid); }
 .yc-period-feedback .yc-item:first-of-type { border-top: 0; }
 .yc-period-feedback .yc-item { padding: 22rpx 0; gap: 18rpx; }
-.yc-period-feedback .yc-item-title { font-size: 31rpx; line-height: 1.45; }
-.yc-period-feedback .yc-item-sub { font-size: 26rpx; margin-top: 8rpx; line-height: 1.4; }
-.yc-period-feedback .plan-badge { font-size: 26rpx; padding: 10rpx 20rpx; }
+.yc-period-feedback .yc-item-title { font-size: 32rpx; line-height: 1.45; }
+.yc-period-feedback .yc-item-sub { font-size: 28rpx; margin-top: 8rpx; line-height: 1.4; }
+.yc-period-feedback .plan-badge { font-size: 28rpx; padding: 10rpx 20rpx; }
 /* 「查看公示」小按钮：白底橙描边，带 › 引导 */
 .yc-period-feedback .plan-badge.ypf-view { background: #fff; color: #C2410C; border: 2rpx solid var(--c-primary); font-weight: 700; box-shadow: none; }
 .yc-period-feedback .plan-badge.ypf-view::after { content: '›'; margin-left: 6rpx; }
@@ -3833,7 +3833,7 @@ onActivated(show)
 /* 接待/培训：整条卡头即折叠开关（0716）。收起态下这张卡就只剩这一行，正是「放在底部不起眼处」的形态。 */
 .plan-head.foldable { cursor: pointer; padding: 22rpx 20rpx; }
 .plan-head.foldable:active { opacity: 0.7; }
-.ov-fold-chev { display: inline-flex; align-items: center; justify-content: center; width: 52rpx; height: 52rpx; color: var(--c-text-mid); font-size: 30rpx; line-height: 1; transition: transform 0.2s ease; }
+.ov-fold-chev { display: inline-flex; align-items: center; justify-content: center; width: 52rpx; height: 52rpx; color: var(--c-text-mid); font-size: 32rpx; line-height: 1; transition: transform 0.2s ease; }
 .ov-fold-chev.open { transform: rotate(180deg); }
 /* 概览（接待/培训）标题与卡片顶部再留出一点距离；仅 compact 态生效，不动开会年历 */
 .plan-stack.compact .plan-head { padding-top: 26rpx; }
@@ -3841,11 +3841,11 @@ onActivated(show)
 .plan-stack.compact .plan-calendar-card { margin-top: 10rpx; margin-bottom: 17rpx; }
 .plan-title-wrap { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
 .plan-title { font-size: 40rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1.12; }
-.plan-year { padding: 4rpx 12rpx; border-radius: 999rpx; background: #EAF6FF; color: #0284C7; font-size: 22rpx; font-weight: 800; line-height: 1.2; }
+.plan-year { padding: 4rpx 12rpx; border-radius: 999rpx; background: #EAF6FF; color: #0284C7; font-size: 26rpx; font-weight: 800; line-height: 1.2; }
 .plan-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; flex-shrink: 0; }
-.plan-tip { font-size: 24rpx; color: var(--c-text-weak); }
+.plan-tip { font-size: 26rpx; color: var(--c-text-weak); }
 /* 蓝 #0284C7 → 主色橙（0716 色彩收敛）：开会 tab 已零蓝，这里是橙色应用里最后的孤立蓝之一 */
-.plan-tip.link { color: var(--c-primary); font-weight: 700; font-size: 28rpx; padding: 4rpx 6rpx; }
+.plan-tip.link { color: var(--c-primary); font-weight: 700; font-size: 32rpx; padding: 4rpx 6rpx; }
 /* 时间轴：左侧 52rpx 轨道列（贯穿细线+节点圆点），右侧内容行。紧凑以免顶下方主按钮 */
 .plan-timeline { padding: 2rpx 26rpx 10rpx; }
 .tl-i { display: grid; grid-template-columns: 52rpx 1fr; gap: 18rpx; cursor: pointer; }
@@ -3854,7 +3854,7 @@ onActivated(show)
 .tl-rail::before { content: ''; position: absolute; top: 0; bottom: 0; width: 6rpx; background: var(--c-border); border-radius: 3rpx; }
 .tl-i:first-child .tl-rail::before { top: 30rpx; }
 .tl-i:last-child .tl-rail::before { bottom: calc(100% - 30rpx); }
-.tl-node { position: relative; z-index: 1; width: 44rpx; height: 44rpx; margin-top: 8rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; color: #fff; background: var(--c-border); font-variant-numeric: tabular-nums; }
+.tl-node { position: relative; z-index: 1; width: 44rpx; height: 44rpx; margin-top: 8rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26rpx; font-weight: 700; color: #fff; background: var(--c-border); font-variant-numeric: tabular-nums; }
 .tl-node.done { background: var(--c-success); }
 .tl-node.current { background: var(--c-primary); box-shadow: 0 0 0 6rpx var(--c-primary-soft); }
 .tl-node.overdue { background: #B02A1E; }
@@ -3862,14 +3862,14 @@ onActivated(show)
 .tl-body { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-width: 0; padding: 10rpx 0 16rpx; border-bottom: 2rpx solid #F1F2F4; }
 .tl-i:last-child .tl-body { border-bottom: none; padding-bottom: 4rpx; }
 .tl-info { min-width: 0; }
-.tl-month { font-size: 30rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1.2; }
-.tl-sub { font-size: 24rpx; color: var(--c-text-weak); margin-top: 4rpx; line-height: 1.3; }
+.tl-month { font-size: 32rpx; font-weight: 600; color: var(--c-text-strong); line-height: 1.2; }
+.tl-sub { font-size: 26rpx; color: var(--c-text-weak); margin-top: 4rpx; line-height: 1.3; }
 .tl-i.current .tl-month { color: var(--c-primary-dark); font-weight: 700; }
 .tl-i.done .tl-sub { color: var(--c-success); }
 .tl-i.overdue .tl-sub { color: #B02A1E; }
-.plan-badge { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 16rpx; border-radius: 999rpx; line-height: 1.2; }
+.plan-badge { flex-shrink: 0; font-size: 26rpx; font-weight: 700; padding: 7rpx 16rpx; border-radius: 999rpx; line-height: 1.2; }
 /* 0716 降档：36/900→30/700，让位会议卡大按钮（大按钮>徽标>灰字 三级递减） */
-.plan-todo-card .plan-badge { min-width: 132rpx; text-align: center; font-size: 30rpx; font-weight: 700; padding: 16rpx 24rpx; box-sizing: border-box; }
+.plan-todo-card .plan-badge { min-width: 132rpx; text-align: center; font-size: 32rpx; font-weight: 700; padding: 16rpx 24rpx; box-sizing: border-box; }
 /* 已开=绿｜待开=橙｜逾期=红｜待排=灰 */
 .plan-badge.done     { color: var(--c-success); background: var(--c-success-soft); }
 .plan-badge.current  { color: #fff; background: #D97706; box-shadow: 0 10rpx 22rpx rgba(217,119,6,0.34); }
@@ -3880,7 +3880,7 @@ onActivated(show)
 .plan-todo-card .yc-item.current .yc-item-title, .plan-todo-card .yc-item.overdue .yc-item-title { font-size: 32rpx; }
 .plan-todo-card .yc-item.current .plan-badge, .plan-todo-card .yc-item.overdue .plan-badge {
   width: 64%; margin: 0 auto; box-sizing: border-box;
-  text-align: center; font-size: 30rpx; font-weight: 700; padding: 18rpx 0; border-radius: 18rpx; letter-spacing: 2rpx;
+  text-align: center; font-size: 32rpx; font-weight: 700; padding: 18rpx 0; border-radius: 18rpx; letter-spacing: 2rpx;
 }
 /* 实心唯一原则（0716）：有会议卡时它是全页唯一实心大按钮，待办徽标降为浅色填充（tinted）次级按钮。
    调研定型：weui 次级钮/iOS tinted/政务App「去办理」均为浅底+品牌色字——保留按钮面积感，只降色阶；
@@ -3907,17 +3907,17 @@ onActivated(show)
 }
 .tc-progress { background: #E3E5E9; border-radius: 6rpx; height: 12rpx; overflow: hidden; margin-bottom: 10rpx; }
 .tc-fill { height: 100%; border-radius: 6rpx; background: var(--c-primary); }
-.tc-rule { font-size: 28rpx; color: var(--c-text-mid); line-height: 1.45; word-break: break-all; }
+.tc-rule { font-size: 32rpx; color: var(--c-text-mid); line-height: 1.45; word-break: break-all; }
 
 .role-intro { margin: 24rpx 24rpx 16rpx; padding: 20rpx 24rpx; background: #fff; border-radius: 18rpx; border-left: 8rpx solid #FFA800; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); }
 .role-intro.public { border-left-color: #27AE60; }
-.ri-title { font-size: 30rpx; font-weight: 700; color: #1f2329; display: block; line-height: 1.45; word-break: break-all; }
-.ri-desc { font-size: 28rpx; color: #666; margin-top: 8rpx; line-height: 1.55; display: block; word-break: break-all; }
+.ri-title { font-size: 32rpx; font-weight: 700; color: #1f2329; display: block; line-height: 1.45; word-break: break-all; }
+.ri-desc { font-size: 32rpx; color: #666; margin-top: 8rpx; line-height: 1.55; display: block; word-break: break-all; }
 
 .stage-tabs { display: flex; margin: 0 24rpx 16rpx; background: #fff; border-radius: 18rpx; padding: 8rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); }
-.tab { flex: 1; padding: 16rpx 8rpx; text-align: center; font-size: 30rpx; color: #666; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 8rpx; min-width: 0; }
+.tab { flex: 1; padding: 16rpx 8rpx; text-align: center; font-size: 32rpx; color: #666; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 8rpx; min-width: 0; }
 .tab.active { background: #FFA800; color: #fff; font-weight: 700; }
-.tab-count { font-size: 28rpx; opacity: 0.85; }
+.tab-count { font-size: 32rpx; opacity: 0.85; }
 
 .meeting-list { padding: 0 24rpx; display: flex; flex-direction: column; gap: 20rpx; }
 .meeting-card { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
@@ -3925,20 +3925,20 @@ onActivated(show)
 .muted-card { opacity: 0.92; }
 .mc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; margin-bottom: 12rpx; }
 .mc-title { font-size: 36rpx; font-weight: 700; color: #1f2329; line-height: 1.45; flex: 1; min-width: 0; word-break: break-all; }
-.mc-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 12rpx; font-size: 28rpx; color: #666; margin-bottom: 10rpx; line-height: 1.45; }
+.mc-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 12rpx; font-size: 32rpx; color: #666; margin-bottom: 10rpx; line-height: 1.45; }
 .mc-dot { color: #666; }
-.mc-summary { font-size: 28rpx; color: #C77800; line-height: 1.55; word-break: break-all; }
-.mc-stage-desc { font-size: 28rpx; color: #2980B9; }
-.personal-badge { font-size: 28rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 12rpx; background: #f0f0f0; color: #666; flex-shrink: 0; line-height: 1.35; white-space: nowrap; }
+.mc-summary { font-size: 32rpx; color: #C77800; line-height: 1.55; word-break: break-all; }
+.mc-stage-desc { font-size: 32rpx; color: #2980B9; }
+.personal-badge { font-size: 32rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 12rpx; background: #f0f0f0; color: #666; flex-shrink: 0; line-height: 1.35; white-space: nowrap; }
 .stage-pill { line-height: 1.35; flex-shrink: 0; }
 .personal-badge.doing { background: #FFF3E0; color: #E67E22; }
 .personal-badge.done { background: #E8F7EE; color: #27AE60; }
 .pp-bar { height: 8rpx; background: #f0f0f0; border-radius: 4rpx; margin-top: 14rpx; overflow: hidden; }
 .pp-fill { height: 100%; background: #FFA800; border-radius: 4rpx; }
 .pp-fill.done { background: #27AE60; }
-.section-header { padding: 24rpx 28rpx 8rpx; font-size: 28rpx; color: #666; font-weight: 500; line-height: 1.45; word-break: break-all; }
+.section-header { padding: 24rpx 28rpx 8rpx; font-size: 32rpx; color: #666; font-weight: 500; line-height: 1.45; word-break: break-all; }
 .section-header.muted { color: #777; }
-.empty, .empty-state { padding: 56rpx 24rpx; text-align: center; font-size: 30rpx; color: #777; line-height: 1.6; word-break: break-all; }
+.empty, .empty-state { padding: 56rpx 24rpx; text-align: center; font-size: 32rpx; color: #777; line-height: 1.6; word-break: break-all; }
 
 /* 准备会议主按钮（替代原工作台卡片 + 右下角 FAB） */
 .prepare-btn { display: flex; align-items: center; justify-content: center; gap: 16rpx; margin: 28rpx 24rpx 12rpx; height: 120rpx; background: linear-gradient(135deg, #FFB740, #FFA800); border-radius: 24rpx; box-shadow: 0 12rpx 28rpx rgba(255,168,0,0.34); }
@@ -3958,23 +3958,23 @@ onActivated(show)
 .create-section.meeting-info-card { margin-top: 0; margin-bottom: 31rpx; padding: 16rpx 18rpx; }
 .meeting-info-card .section-title { margin-bottom: 12rpx; }
 .meeting-info-card .form-group { margin-bottom: 14rpx; }
-.meeting-info-card .field-caption { display: block; font-size: 26rpx; color: #61656c; font-weight: 600; margin-bottom: 8rpx; line-height: 1.4; }
+.meeting-info-card .field-caption { display: block; font-size: 28rpx; color: #61656c; font-weight: 600; margin-bottom: 8rpx; line-height: 1.4; }
 /* 会议名称 caption 顶替原「会议信息」标题：放大到区块标题字号并居于卡片首行 */
 .meeting-info-card .field-caption.caption-as-title { font-size: 32rpx; color: #1f2329; font-weight: 700; margin-bottom: 12rpx; }
 /* 时间/地点信息收紧（仅本卡片，不影响议题输入框）：日期时间、地点框都变矮变小 */
 .meeting-info-card .form-row { gap: 14rpx; }
-.meeting-info-card .picker-field { min-height: 72rpx; font-size: 30rpx; border-radius: 12rpx; padding: 0 18rpx; }
-.meeting-info-card .tf-text { font-size: 30rpx; }
+.meeting-info-card .picker-field { min-height: 72rpx; font-size: 32rpx; border-radius: 12rpx; padding: 0 18rpx; }
+.meeting-info-card .tf-text { font-size: 32rpx; }
 .meeting-info-card .loc-row { margin-top: 12rpx; }
-.meeting-info-card .loc-input.form-input { height: 72rpx; min-height: 72rpx; font-size: 30rpx; border-radius: 12rpx; }
+.meeting-info-card .loc-input.form-input { height: 72rpx; min-height: 72rpx; font-size: 32rpx; border-radius: 12rpx; }
 .loc-input-manual { margin-top: 12rpx; }
 .meeting-info-card .loc-map-btn { width: 84rpx; border-radius: 12rpx; }
 
 .prefill-entry { background: #FFF8EA; border: 2rpx solid #FFE0A3; border-radius: 18rpx; padding: 22rpx; margin-bottom: 20rpx; display: flex; align-items: center; justify-content: space-between; gap: 18rpx; }
 .prefill-copy { flex: 1; min-width: 0; }
-.prefill-title { display: block; font-size: 28rpx; color: #5C3D00; font-weight: 700; line-height: 1.45; word-break: break-all; }
-.prefill-desc { display: block; font-size: 28rpx; color: #9A7600; margin-top: 6rpx; line-height: 1.45; word-break: break-all; }
-.prefill-toggle { flex-shrink: 0; min-width: 88rpx; height: 56rpx; line-height: 56rpx; text-align: center; border-radius: 28rpx; background: #fff; color: #C77800; font-size: 28rpx; font-weight: 600; }
+.prefill-title { display: block; font-size: 32rpx; color: #5C3D00; font-weight: 700; line-height: 1.45; word-break: break-all; }
+.prefill-desc { display: block; font-size: 32rpx; color: #9A7600; margin-top: 6rpx; line-height: 1.45; word-break: break-all; }
+.prefill-toggle { flex-shrink: 0; min-width: 88rpx; height: 56rpx; line-height: 56rpx; text-align: center; border-radius: 28rpx; background: #fff; color: #C77800; font-size: 32rpx; font-weight: 600; }
 .material-section { background: #fffdf7; border-color: #FFE8B8; }
 /* 快速填表按钮（窄·居中·描边药丸：明显但不抢"确认创建"，深字高对比） */
 .ai-fill-btn { width: 64%; margin: 44rpx auto 18rpx; display: flex; align-items: center; justify-content: center; gap: 12rpx; padding: 26rpx 28rpx; background: var(--c-primary-dark); border: none; border-radius: 999rpx; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); box-sizing: border-box; }
@@ -3982,7 +3982,7 @@ onActivated(show)
 .ai-fill-ico { font-size: 38rpx; line-height: 1; }
 .ai-fill-text { font-size: 32rpx; font-weight: 700; color: #fff; }
 .ai-fill-btn:disabled, .ai-fill-btn.busy { opacity: 0.65; }
-.ai-fill-hint { display: block; text-align: center; font-size: 26rpx; color: #999; margin: -8rpx 0 16rpx; }
+.ai-fill-hint { display: block; text-align: center; font-size: 28rpx; color: #6b7078; margin: -8rpx 0 16rpx; }
 /* 快速填表固定条：底部拇指区（创建/取消上方），进入即见、不随表单滚动 */
 .quick-fill-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
 .quick-fill-bar .ai-fill-btn { margin: 0 auto 10rpx; }
@@ -4000,10 +4000,10 @@ onActivated(show)
 .field-line { display: flex; align-items: center; gap: 16rpx; padding: 16rpx 18rpx; border-bottom: 2rpx solid #f2f2f2; }
 .field-line:last-child { border-bottom: none; }
 .field-line:active { background: #FAFAFA; }
-.fl-label { flex-shrink: 0; width: 100rpx; font-size: 26rpx; color: #61656c; font-weight: 700; }
-.fl-value { flex: 1; text-align: right; font-size: 28rpx; color: #1f2329; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fl-value.ph { color: #b7bbc0; }
-.fl-arrow { flex-shrink: 0; font-size: 28rpx; color: #c4c8cd; line-height: 1; }
+.fl-label { flex-shrink: 0; width: 100rpx; font-size: 28rpx; color: #61656c; font-weight: 700; }
+.fl-value { flex: 1; text-align: right; font-size: 32rpx; color: #1f2329; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-value.ph { color: #6b7078; }
+.fl-arrow { flex-shrink: 0; font-size: 32rpx; color: #9298a0; line-height: 1; }
 .field-line.field-error { background: #FFF4F4; }
 .field-line-split { padding: 0; gap: 0; }
 .fl-part { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12rpx; padding: 16rpx 18rpx; box-sizing: border-box; }
@@ -4012,24 +4012,24 @@ onActivated(show)
 .fl-part .fl-value { text-align: right; }
 .field-line-location { padding: 0 12rpx 0 18rpx; gap: 12rpx; }
 .meeting-method-line { justify-content:space-between; gap:12rpx; }
-.meeting-method-line > .fl-label { width:auto; min-width:132rpx; white-space:nowrap; font-size:30rpx; font-weight:800; color:#2d3137; }
-.online-platform-label { width:auto; min-width:132rpx; white-space:nowrap; font-size:30rpx; font-weight:800; color:#2d3137; }
+.meeting-method-line > .fl-label { width:auto; min-width:132rpx; white-space:nowrap; font-size:32rpx; font-weight:800; color:#2d3137; }
+.online-platform-label { width:auto; min-width:132rpx; white-space:nowrap; font-size:32rpx; font-weight:800; color:#2d3137; }
 .method-switch { display:flex; flex-shrink:0; gap:8rpx; padding:6rpx; background:#f1f2f4; border-radius:14rpx; }
-.method-switch button { border:0; background:transparent; color:#62676f; font-size:27rpx; padding:12rpx 24rpx; border-radius:10rpx; }
+.method-switch button { border:0; background:transparent; color:#62676f; font-size:30rpx; min-height:72rpx; padding:14rpx 24rpx; border-radius:10rpx; }
 .method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
-.platform-select { margin-left:auto; flex:0 0 250rpx; min-width:0; height:64rpx; padding:0 54rpx 0 20rpx; border:2rpx solid #e0e3e7; border-radius:12rpx; background:#fff; color:#25292f; font-size:28rpx; font-weight:700; outline:none; }
+.platform-select { margin-left:auto; flex:0 0 250rpx; min-width:0; height:88rpx; padding:0 54rpx 0 20rpx; border:2rpx solid #e0e3e7; border-radius:12rpx; background:#fff; color:#25292f; font-size:32rpx; font-weight:700; outline:none; }
 .fl-loc-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 16rpx; padding: 16rpx 0; }
 /* 「其他地点」内联输入：直接替换本行选项，无边框，视觉贴合原选项栏 */
 .fl-label-tap { color: var(--c-primary-dark); }
-.fl-inline-input { flex: 1; min-width: 0; padding: 16rpx 0; border: 0; background: transparent; text-align: right; font-size: 28rpx; font-weight: 700; color: #1f2329; outline: none; }
-.fl-inline-input::placeholder { color: #b7bbc0; }
+.fl-inline-input { flex: 1; min-width: 0; padding: 16rpx 0; border: 0; background: transparent; text-align: right; font-size: 32rpx; font-weight: 700; color: #1f2329; outline: none; }
+.fl-inline-input::placeholder { color: #6b7078; }
 .meeting-info-card .field-list { border: 0; border-radius: 0; overflow: visible; background: transparent; display: flex; flex-direction: column; gap: 16rpx; }
 .meeting-info-card .field-line { border: 2rpx solid #ececec; border-radius: 16rpx; background: #fff; }
 .meeting-info-card .field-line:last-child { border-bottom: 2rpx solid #ececec; }
-.meeting-info-card .fl-value.ph { text-align: left; font-size: 26rpx; font-weight: 500; }
+.meeting-info-card .fl-value.ph { text-align: left; font-size: 28rpx; font-weight: 500; }
 .meeting-info-card .fl-inline-input { text-align: left; }
-.meeting-info-card .fl-inline-input::placeholder { font-size: 26rpx; font-weight: 500; }
-.field-line-location .field-map-btn { width: 72rpx; height: 60rpx; min-height: 60rpx; align-self: center; border-radius: 12rpx; padding: 0; }
+.meeting-info-card .fl-inline-input::placeholder { font-size: 28rpx; font-weight: 500; }
+.field-line-location .field-map-btn { width: 84rpx; height: 76rpx; min-height: 76rpx; align-self: center; border-radius: 12rpx; padding: 0; }
 .field-map-btn svg { width: 38rpx; height: 38rpx; }
 /* 拍照/上传 双卡片（政务风功能入口）：图标圆 + 标题 + 两行说明整合在卡片内 */
 .doc-scan-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
@@ -4041,12 +4041,12 @@ onActivated(show)
 .ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
 .ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
 .ds-card:disabled { opacity: 0.75; }
-.ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30rpx; margin-bottom: 2rpx; }
+.ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32rpx; margin-bottom: 2rpx; }
 .ds-ico.or { background: #FFF3E0; }
 .ds-ico.bl { background: #EAF2FF; }
-.ds-t { font-size: 28rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
-.ds-s { font-size: 22rpx; color: #999; text-align: center; line-height: 1.4; }
-.ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
+.ds-t { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
+.ds-s { font-size: 26rpx; color: #6b7078; text-align: center; line-height: 1.4; }
+.ds-hint { font-size: 26rpx; color: #6b7078; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
 /* 待识别缩略图预览条：横向排列，可删 */
 .ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
@@ -4054,14 +4054,14 @@ onActivated(show)
 .ds-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
 .ds-thumb-file { cursor: pointer; }
 /* 放大角标：提示缩略图可点击展开看清（左下角，避开右上删除×） */
-.ds-thumb-zoom { position: absolute; bottom: 0; left: 0; width: 36rpx; height: 36rpx; border-radius: 0 12rpx 0 12rpx; background: rgba(0,0,0,0.5); color: #fff; font-size: 24rpx; line-height: 36rpx; text-align: center; }
+.ds-thumb-zoom { position: absolute; bottom: 0; left: 0; width: 36rpx; height: 36rpx; border-radius: 0 12rpx 0 12rpx; background: rgba(0,0,0,0.5); color: #fff; font-size: 26rpx; line-height: 36rpx; text-align: center; }
 .ds-thumb-file { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; background: #FAF7F1; }
 .ds-thumb-ico { font-size: 44rpx; line-height: 1; }
-.ds-thumb-ext { font-size: 20rpx; color: #A98; text-transform: uppercase; }
-.ds-thumb-del { position: absolute; top: -2rpx; right: -2rpx; width: 38rpx; height: 38rpx; border-radius: 0 14rpx 0 14rpx; background: rgba(0,0,0,0.55); color: #fff; font-size: 30rpx; line-height: 38rpx; text-align: center; }
+.ds-thumb-ext { font-size: 26rpx; color: #A98; text-transform: uppercase; }
+.ds-thumb-del { position: absolute; top: -2rpx; right: -2rpx; width: 38rpx; height: 38rpx; border-radius: 0 14rpx 0 14rpx; background: rgba(0,0,0,0.55); color: #fff; font-size: 32rpx; line-height: 38rpx; text-align: center; }
 /* 开始 AI 识别：实心橙大按钮，攒了文件才出现 */
 /* 开始 AI 识别：深青绿 + 居中变窄(70%) + 边缘淡淡发光(轻脉冲)，醒目且与橙色协调 */
-.ds-recognize { display: block; width: 62%; height: 81rpx; margin: 40rpx auto 4rpx; border: none; border-radius: 16rpx; background: #0E8A7B; color: #fff; font-size: 29rpx; font-weight: 700; box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 14rpx rgba(30,180,155,0.5); animation: dsGlow 1.9s ease-in-out infinite; }
+.ds-recognize { display: block; width: 62%; height: 81rpx; margin: 40rpx auto 4rpx; border: none; border-radius: 16rpx; background: #0E8A7B; color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 14rpx rgba(30,180,155,0.5); animation: dsGlow 1.9s ease-in-out infinite; }
 .ds-recognize:active { background: #0B6F63; }
 .ds-recognize:disabled { opacity: 0.72; animation: none; }
 @keyframes dsGlow {
@@ -4091,7 +4091,7 @@ onActivated(show)
 @keyframes spRingGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,168,0,0)); } 50% { filter: drop-shadow(0 0 5rpx rgba(255,168,0,0.55)); } }
 .sp-title { font-size: 42rpx; font-weight: 700; color: #1f2329; letter-spacing: 1rpx; }
 .sp-say { font-size: 32rpx; color: #B07400; margin: 14rpx 0 4rpx; min-height: 44rpx; }
-.sp-foot { font-size: 23rpx; color: #C0B29A; margin-top: 26rpx; letter-spacing: 0.5rpx; }
+.sp-foot { font-size: 26rpx; color: #C0B29A; margin-top: 26rpx; letter-spacing: 0.5rpx; }
 
 /* AI 识别完成：精美结果卡 */
 .scan-result-mask { position: fixed; inset: 0; z-index: 3060; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
@@ -4109,29 +4109,29 @@ onActivated(show)
 .sr-ico-chip.notice { background: #FFF1E2; }
 .sr-ico-chip.material { background: #E9F2FC; }
 .sr-card-text { flex: 1; min-width: 0; }
-.sr-card-title { font-size: 31rpx; font-weight: 800; color: #1f2329; line-height: 1.3; }
-.sr-card-sub { font-size: 25rpx; color: #7A8590; margin-top: 6rpx; line-height: 1.4; }
+.sr-card-title { font-size: 32rpx; font-weight: 800; color: #1f2329; line-height: 1.3; }
+.sr-card-sub { font-size: 28rpx; color: #7A8590; margin-top: 6rpx; line-height: 1.4; }
 
 /* 识别结果：类别小标签 + 字段一览（一眼核对） */
-.sr-cat { align-self: flex-start; display: inline-flex; align-items: center; gap: 8rpx; font-size: 28rpx; font-weight: 700; padding: 8rpx 22rpx; border-radius: 999rpx; }
+.sr-cat { align-self: flex-start; display: inline-flex; align-items: center; gap: 8rpx; font-size: 32rpx; font-weight: 700; padding: 8rpx 22rpx; border-radius: 999rpx; }
 .sr-cat.notice { background: #FFF3E0; color: #A85800; }
 .sr-cat.material { background: #E9F2FC; color: #2E86C1; }
-.sr-cat-ico { font-size: 30rpx; line-height: 1; }
+.sr-cat-ico { font-size: 32rpx; line-height: 1; }
 .sr-preview { width: 100%; background: #fff; border: 1rpx solid #EEE6D8; border-radius: 16rpx; overflow: hidden; }
 .sr-pv-row { display: flex; align-items: flex-start; gap: 16rpx; padding: 22rpx 24rpx; }
 .sr-pv-row + .sr-pv-row { border-top: 1rpx solid #F3EEE4; }
-.sr-pv-label { flex-shrink: 0; width: 90rpx; color: #8A8F98; font-size: 31rpx; line-height: 1.5; }
+.sr-pv-label { flex-shrink: 0; width: 90rpx; color: #5f636b; font-size: 32rpx; line-height: 1.5; }
 .sr-pv-val-wrap { flex: 1; min-width: 0; }
 .sr-pv-value { color: #1f2329; font-size: 34rpx; font-weight: 600; line-height: 1.5; word-break: break-all; }
 .sr-pv-value.miss { color: #B0863A; }
-.sr-mat-line { display: flex; align-items: center; gap: 12rpx; font-size: 30rpx; color: #4A5560; padding: 2rpx; line-height: 1.5; }
+.sr-mat-line { display: flex; align-items: center; gap: 12rpx; font-size: 32rpx; color: #4A5560; padding: 2rpx; line-height: 1.5; }
 .sr-mat-ico { flex-shrink: 0; color: #2E86C1; font-size: 33rpx; line-height: 1; }
 .sr-row-top { display: flex; align-items: center; gap: 14rpx; }
-.sr-pill { font-size: 24rpx; font-weight: 700; color: #fff; padding: 6rpx 18rpx; border-radius: 999rpx; flex-shrink: 0; }
+.sr-pill { font-size: 26rpx; font-weight: 700; color: #fff; padding: 6rpx 18rpx; border-radius: 999rpx; flex-shrink: 0; }
 .sr-pill.notice { background: var(--c-primary-dark); }
 .sr-pill.material { background: #2E86C1; }
 .sr-pill.warn { background: #8A5800; }
-.sr-row-note { font-size: 30rpx; color: #4A5560; font-weight: 600; }
+.sr-row-note { font-size: 32rpx; color: #4A5560; font-weight: 600; }
 /* 多份通知选择卡：逐份单选 */
 .sr-multi { background: #FBF7F0; border-color: #F0E6D6; }
 .sr-notice-opt { display: flex; align-items: flex-start; gap: 14rpx; margin-top: 14rpx; padding: 16rpx 16rpx; background: #fff; border: 2rpx solid #EDE4D4; border-radius: 14rpx; cursor: pointer; }
@@ -4140,20 +4140,20 @@ onActivated(show)
 .sr-radio.on { border-color: var(--c-primary-dark); background: radial-gradient(circle at center, var(--c-primary-dark) 0 44%, #fff 46% 100%); }
 .sr-notice-body { flex: 1; min-width: 0; }
 .sr-notice-title { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.35; }
-.sr-notice-meta { font-size: 28rpx; color: #4A5560; margin-top: 6rpx; }
-.sr-notice-topics { font-size: 25rpx; color: #6A7480; margin-top: 4rpx; line-height: 1.4; }
+.sr-notice-meta { font-size: 32rpx; color: #4A5560; margin-top: 6rpx; }
+.sr-notice-topics { font-size: 28rpx; color: #6A7480; margin-top: 4rpx; line-height: 1.4; }
 /* 信息冲突卡：偏红底 + 逐条「原值 → 新值」 */
 .sr-conflict { background: #FFF7EA; border-color: #F0DEB6; }
-.sr-conf-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx; margin-top: 12rpx; font-size: 29rpx; line-height: 1.4; }
+.sr-conf-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx; margin-top: 12rpx; font-size: 32rpx; line-height: 1.4; }
 .sr-conf-label { color: #7A8590; font-weight: 700; margin-right: 4rpx; }
-.sr-conf-old { color: #9aa0a6; text-decoration: line-through; }
+.sr-conf-old { color: #6b7078; text-decoration: line-through; }
 .sr-conf-arrow { color: #B0863A; }
 .sr-conf-new { color: #A85800; font-weight: 700; }
 /* 红字提示：仅在缺必填或多份通知时间地点冲突时出现 */
-.sr-alert { margin-top: 12rpx; font-size: 29rpx; line-height: 1.5; color: #8A5800; font-weight: 600; }
-.sr-tip { font-size: 30rpx; color: #6A7480; text-align: center; padding: 4rpx; }
+.sr-alert { margin-top: 12rpx; font-size: 32rpx; line-height: 1.5; color: #8A5800; font-weight: 600; }
+.sr-tip { font-size: 32rpx; color: #6A7480; text-align: center; padding: 4rpx; }
 .sr-tip.warn { color: #C0392B; font-weight: 600; }
-.sr-meta { font-size: 28rpx; color: #C0A587; margin: 22rpx 0 24rpx; }
+.sr-meta { font-size: 32rpx; color: #C0A587; margin: 22rpx 0 24rpx; }
 .sr-actions { display: flex; align-items: center; gap: 18rpx; width: 100%; }
 .sr-btn { height: 92rpx; border: none; border-radius: 46rpx; font-size: 34rpx; font-weight: 700; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
 .sr-btn.ghost { flex: 0 0 auto; min-width: 172rpx; padding: 0 28rpx; background: #f2f2f2; color: #777; }
@@ -4164,7 +4164,7 @@ onActivated(show)
 /* 模拟手机相机（测试用） */
 .mock-cam { position: fixed; inset: 0; z-index: 3000; background: #000; display: flex; flex-direction: column; }
 .mc-top { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: calc(20rpx + env(safe-area-inset-top)) 28rpx 16rpx; }
-.mc-badge { font-size: 24rpx; color: #FFD79A; background: rgba(255, 215, 154, 0.14); border: 1rpx solid rgba(255, 215, 154, 0.4); padding: 6rpx 18rpx; border-radius: 999rpx; }
+.mc-badge { font-size: 26rpx; color: #FFD79A; background: rgba(255, 215, 154, 0.14); border: 1rpx solid rgba(255, 215, 154, 0.4); padding: 6rpx 18rpx; border-radius: 999rpx; }
 .mc-close { width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 52rpx; line-height: 1; background: rgba(255,255,255,0.14); border-radius: 50%; }
 .mc-viewport { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; padding: 30rpx 44rpx; }
 .mc-paper { max-width: 100%; max-height: 100%; border-radius: 6rpx; box-shadow: 0 10rpx 50rpx rgba(0,0,0,0.8); transform: rotate(-1.2deg); }
@@ -4172,29 +4172,29 @@ onActivated(show)
 .mock-cam.preview { background: #2F3136; }
 .mock-cam.preview .mc-viewport { padding: 12rpx 16rpx; }
 .mc-paper.shot { width: 100%; height: 100%; object-fit: contain; transform: none; box-shadow: none; border-radius: 0; }
-.mc-confirm-tip { flex-shrink: 0; text-align: center; font-size: 28rpx; color: rgba(255,255,255,0.85); padding-top: 14rpx; }
+.mc-confirm-tip { flex-shrink: 0; text-align: center; font-size: 32rpx; color: rgba(255,255,255,0.85); padding-top: 14rpx; }
 .mock-cam.preview .mc-bottom { padding-top: 20rpx; }
 .mc-corner { position: absolute; width: 52rpx; height: 52rpx; border: 5rpx solid #FFD34D; }
 .mc-corner.tl { top: 18rpx; left: 26rpx; border-right: none; border-bottom: none; border-radius: 10rpx 0 0 0; }
 .mc-corner.tr { top: 18rpx; right: 26rpx; border-left: none; border-bottom: none; border-radius: 0 10rpx 0 0; }
 .mc-corner.bl { bottom: 18rpx; left: 26rpx; border-right: none; border-top: none; border-radius: 0 0 0 10rpx; }
 .mc-corner.br { bottom: 18rpx; right: 26rpx; border-left: none; border-top: none; border-radius: 0 0 10rpx 0; }
-.mc-tip { position: absolute; bottom: 34rpx; left: 0; right: 0; text-align: center; font-size: 26rpx; color: rgba(255,255,255,0.75); }
+.mc-tip { position: absolute; bottom: 34rpx; left: 0; right: 0; text-align: center; font-size: 28rpx; color: rgba(255,255,255,0.75); }
 /* 左右切换样张：半透明圆形箭头 + 顶部样张指示 */
 .mc-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 72rpx; height: 72rpx; border-radius: 50%; background: rgba(0,0,0,0.4); color: #fff; font-size: 48rpx; line-height: 1; border: none; display: flex; align-items: center; justify-content: center; }
 .mc-nav.prev { left: 18rpx; }
 .mc-nav.next { right: 18rpx; }
 .mc-nav:active { background: rgba(0,0,0,0.6); }
-.mc-sample-ind { position: absolute; top: 20rpx; left: 50%; transform: translateX(-50%); font-size: 24rpx; color: #fff; background: rgba(0,0,0,0.42); padding: 6rpx 22rpx; border-radius: 999rpx; white-space: nowrap; }
+.mc-sample-ind { position: absolute; top: 20rpx; left: 50%; transform: translateX(-50%); font-size: 26rpx; color: #fff; background: rgba(0,0,0,0.42); padding: 6rpx 22rpx; border-radius: 999rpx; white-space: nowrap; }
 .mc-bottom { flex-shrink: 0; position: relative; display: flex; justify-content: center; padding: 30rpx 0 calc(46rpx + env(safe-area-inset-bottom)); }
-.mc-count { font-size: 24rpx; color: #fff; background: rgba(255,255,255,0.18); padding: 6rpx 18rpx; border-radius: 999rpx; }
-.mc-done { position: absolute; right: 40rpx; top: 50%; transform: translateY(-50%); height: 78rpx; padding: 0 32rpx; border: none; border-radius: 40rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+.mc-count { font-size: 26rpx; color: #fff; background: rgba(255,255,255,0.18); padding: 6rpx 18rpx; border-radius: 999rpx; }
+.mc-done { position: absolute; right: 40rpx; top: 50%; transform: translateY(-50%); height: 78rpx; padding: 0 32rpx; border: none; border-radius: 40rpx; background: var(--c-primary-dark); color: #fff; font-size: 32rpx; font-weight: 700; }
 .mc-done:active { background: var(--c-primary-strong); }
 /* 左下角相册缩略图（像系统相机连拍）：显示最近一张 + 张数角标，点击=完成并回到列表查看/删除 */
 .mc-roll { position: absolute; left: 40rpx; top: 50%; transform: translateY(-50%); width: 92rpx; height: 92rpx; padding: 0; border: 4rpx solid rgba(255,255,255,0.9); border-radius: 16rpx; background: rgba(0,0,0,0.3); overflow: visible; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.35); }
 .mc-roll:active { transform: translateY(-50%) scale(0.92); }
 .mc-roll-img { width: 100%; height: 100%; object-fit: cover; border-radius: 12rpx; display: block; }
-.mc-roll-badge { position: absolute; top: -14rpx; right: -14rpx; min-width: 36rpx; height: 36rpx; padding: 0 8rpx; box-sizing: border-box; border-radius: 999rpx; background: var(--c-primary-strong); color: #fff; font-size: 24rpx; font-weight: 700; line-height: 36rpx; text-align: center; border: 3rpx solid #fff; }
+.mc-roll-badge { position: absolute; top: -14rpx; right: -14rpx; min-width: 36rpx; height: 36rpx; padding: 0 8rpx; box-sizing: border-box; border-radius: 999rpx; background: var(--c-primary-strong); color: #fff; font-size: 26rpx; font-weight: 700; line-height: 36rpx; text-align: center; border: 3rpx solid #fff; }
 .mc-shutter { width: 140rpx; height: 140rpx; border-radius: 50%; background: transparent; border: 8rpx solid #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
 .mc-shutter-core { width: 104rpx; height: 104rpx; border-radius: 50%; background: #fff; transition: transform .12s ease; }
 .mc-shutter:active .mc-shutter-core { transform: scale(0.85); }
@@ -4219,7 +4219,7 @@ onActivated(show)
 /* 微信式文件卡：类型图标 + 文件名 + 下方大小 */
 .mat-card { display: flex; align-items: center; gap: 18rpx; background: #F7F8FA; border: 1rpx solid #ECEEF1; border-radius: 14rpx; padding: 16rpx 18rpx; margin-top: 14rpx; cursor: pointer; }
 .mat-card:active { background: #EEF0F3; }
-.mat-badge { flex-shrink: 0; width: 72rpx; height: 72rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22rpx; font-weight: 700; letter-spacing: 1rpx; }
+.mat-badge { flex-shrink: 0; width: 72rpx; height: 72rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 26rpx; font-weight: 700; letter-spacing: 1rpx; }
 .mat-badge.t-pdf  { background: #E5533C; }
 .mat-badge.t-doc  { background: #2B7CD3; }
 .mat-badge.t-xls  { background: #1E9E5A; }
@@ -4228,10 +4228,10 @@ onActivated(show)
 .mat-badge.t-txt  { background: #7A8598; }
 .mat-badge.t-file { background: #9AA0A6; }
 .mat-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.mat-fname { font-size: 28rpx; color: #1f2329; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mat-fsize { font-size: 24rpx; color: #9aa0a6; }
-.mat-del { flex-shrink: 0; font-size: 40rpx; color: #c4c8cd; padding: 0 6rpx; line-height: 1; }
-.mat-del:active { color: #999; }
+.mat-fname { font-size: 32rpx; color: #1f2329; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mat-fsize { font-size: 26rpx; color: #6b7078; }
+.mat-del { flex-shrink: 0; font-size: 40rpx; color: #9298a0; padding: 0 6rpx; line-height: 1; }
+.mat-del:active { color: #6b7078; }
 /* 转圈圈：按钮内白色细环旋转（识别中显示，模拟进度数字在按钮文字里） */
 .ai-fill-spin { width: 34rpx; height: 34rpx; border-radius: 50%; border: 5rpx solid rgba(255,255,255,0.45); border-top-color: #fff; box-sizing: border-box; animation: aiSpin 0.7s linear infinite; }
 @keyframes aiSpin { to { transform: rotate(360deg); } }
@@ -4239,50 +4239,50 @@ onActivated(show)
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
 /* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
 .juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); cursor: pointer; }
-.juwei-title { flex: 1; min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
+.juwei-title { flex: 1; min-width: 0; font-size: 32rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
 /* 开关 */
 .juwei-switch { flex-shrink: 0; width: 84rpx; height: 48rpx; border-radius: 999rpx; background: #D3D6DB; position: relative; transition: background .2s ease; }
 .juwei-switch::after { content: ""; position: absolute; top: 5rpx; left: 5rpx; width: 38rpx; height: 38rpx; border-radius: 50%; background: #fff; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: left .2s ease; }
 .juwei-switch.on { background: var(--c-primary-dark); }
 .juwei-switch.on::after { left: 41rpx; }
 .assist-row { display: flex; gap: 18rpx; margin-bottom: 18rpx; }
-.assist-btn { flex: 1; height: 80rpx; line-height: 80rpx; border-radius: 40rpx; background: #fff; color: #C77800; border: 2rpx solid #FFE0A3; font-size: 28rpx; font-weight: 600; padding: 0 20rpx; margin: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+.assist-btn { flex: 1; height: 80rpx; line-height: 80rpx; border-radius: 40rpx; background: #fff; color: #C77800; border: 2rpx solid #FFE0A3; font-size: 32rpx; font-weight: 600; padding: 0 20rpx; margin: 0; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
 .assist-btn.primary { background: #FFA800; color: #fff; border-color: #FFA800; }
 .file-list { display: flex; flex-direction: column; gap: 12rpx; margin-bottom: 18rpx; }
 .file-item { background: #fff; border: 2rpx solid #f0f0f0; border-radius: 14rpx; padding: 16rpx 18rpx; display: flex; align-items: flex-start; justify-content: space-between; gap: 14rpx; }
-.file-name { flex: 1; min-width: 0; font-size: 28rpx; color: #333; line-height: 1.45; word-break: break-all; }
-.file-size { flex-shrink: 0; font-size: 28rpx; color: #666; line-height: 1.45; }
+.file-name { flex: 1; min-width: 0; font-size: 32rpx; color: #333; line-height: 1.45; word-break: break-all; }
+.file-size { flex-shrink: 0; font-size: 32rpx; color: #666; line-height: 1.45; }
 .material-textarea { min-height: 200rpx; height: 200rpx; margin-bottom: 18rpx; }
-.scan-line { display: block; font-size: 28rpx; color: #666; line-height: 1.6; word-break: break-all; }
+.scan-line { display: block; font-size: 32rpx; color: #666; line-height: 1.6; word-break: break-all; }
 .scan-line.ok { color: #27AE60; }
-.clear-link { display: block; margin-top: 14rpx; font-size: 28rpx; color: #666; line-height: 1.5; }
+.clear-link { display: block; margin-top: 14rpx; font-size: 32rpx; color: #666; line-height: 1.5; }
 .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-bottom: 10rpx; }
 .section-title { display: block; font-size: 32rpx; color: #1f2329; font-weight: 700; margin-bottom: 8rpx; line-height: 1.4; word-break: break-all; }
 .section-title-row .section-title { margin-bottom: 0; }
-.required-note { font-size: 28rpx; color: #E67E22; line-height: 1.35; white-space: nowrap; }
+.required-note { font-size: 32rpx; color: #E67E22; line-height: 1.35; white-space: nowrap; }
 
 .form-row { display: flex; gap: 18rpx; align-items: flex-start; }
 .form-group { margin-bottom: 12rpx; min-width: 0; }
 .form-group:last-child { margin-bottom: 0; }
 .form-group.half { flex: 1; min-width: 0; }
-.form-label { display: block; font-size: 28rpx; color: #777; margin-bottom: 12rpx; line-height: 1.45; word-break: break-all; }
+.form-label { display: block; font-size: 32rpx; color: #777; margin-bottom: 12rpx; line-height: 1.45; word-break: break-all; }
 .no-visit-quick { width: 100%; height: 84rpx; margin-bottom: 22rpx; border: 2rpx solid #D6DEE1;
-  border-radius: 16rpx; background: #F7F9F9; color: var(--c-text-strong); font-size: 31rpx; font-weight: 700; }
+  border-radius: 16rpx; background: #F7F9F9; color: var(--c-text-strong); font-size: 32rpx; font-weight: 700; }
 .no-visit-quick:active { background: #EEF2F3; }
 .no-visit-quick:disabled { opacity: 0.55; }
 .rec-visitor-card { margin: 20rpx 0; padding: 22rpx; border: 2rpx solid #E7EAEC; border-radius: 18rpx; background: #FAFBFB; }
 .rec-visitor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
-.rec-visitor-head strong { font-size: 31rpx; color: var(--c-text-strong); }
-.rec-visitor-head button { border: 0; background: transparent; color: #B42318; font-size: 27rpx; }
+.rec-visitor-head strong { font-size: 32rpx; color: var(--c-text-strong); }
+.rec-visitor-head button { border: 0; background: transparent; color: #B42318; font-size: 28rpx; }
 .rec-add-visitor { width: 100%; height: 78rpx; margin: 4rpx 0 18rpx; border: 2rpx dashed #BAC5C9; border-radius: 16rpx;
-  background: #fff; color: var(--c-primary-dark); font-size: 29rpx; font-weight: 600; }
+  background: #fff; color: var(--c-primary-dark); font-size: 32rpx; font-weight: 600; }
 .rec-add-visitor:active { background: #F5F8F8; }
 .form-input, .form-textarea { width: 100%; box-sizing: border-box; background: #fff; border-radius: 14rpx; font-size: 32rpx; color: #1f2329; border: 2rpx solid #eeeeee; }
 .form-input { height: 88rpx; min-height: 88rpx; line-height: normal; padding: 0 20rpx; }
-.form-input.large { height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 30rpx; font-weight: 600; }
-.form-input::placeholder, .form-textarea::placeholder { color: #666; font-size: 30rpx; line-height: 1.5; }
+.form-input.large { height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 32rpx; font-weight: 600; }
+.form-input::placeholder, .form-textarea::placeholder { color: #666; font-size: 32rpx; line-height: 1.5; }
 /* 会议标题输入框：占位用更淡的灰 + 常规字重（"请输入会议名称"作浅提示） */
-.form-input.large::placeholder { color: #9a9a9a; font-weight: 400; }
+.form-input.large::placeholder { color: #6b7078; font-weight: 400; }
 .picker-field { width: 100%; min-height: 88rpx; box-sizing: border-box; background: #fff; border: 2rpx solid #eeeeee; border-radius: 14rpx; padding: 0 20rpx; font-size: 32rpx; color: #1f2329; line-height: normal; word-break: break-all; display: flex; align-items: center; }
 /* 接待人原生下拉框（0717）：外观对齐 .picker-field，压掉系统箭头换统一的向下 chevron */
 .picker-select { width: 100%; min-height: 88rpx; box-sizing: border-box; background-color: #fff; border: 2rpx solid #eeeeee; border-radius: 14rpx; padding: 0 68rpx 0 20rpx; font-size: 32rpx; color: #1f2329; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%2362676F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 20rpx center; background-size: 36rpx; }
@@ -4301,32 +4301,32 @@ onActivated(show)
 .btn-primary:active { background: var(--c-primary-strong); }
 
 /* 议题构建 */
-.topic-empty { text-align: center; padding: 28rpx 0; font-size: 28rpx; color: #666; line-height: 1.6; }
+.topic-empty { text-align: center; padding: 28rpx 0; font-size: 32rpx; color: #666; line-height: 1.6; }
 /* 议题列表：议题多时固定高度、内部下拉滚动，避免把下方「重大事项」挤出屏幕 */
 .topic-list { max-height: 200rpx; overflow-y: auto; margin: 2rpx 0 6rpx; }
 .topic-line { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 4rpx; }
-.topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
+.topic-line-text { flex: 1; min-width: 0; font-size: 32rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
 .topic-line-badge { flex-shrink: 0; margin: 0; }
-.topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
+.topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #5f636b; padding: 0 10rpx; line-height: 1; }
 /* 会议议题：标题与添加条贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
 /* 添加议题触发条：点它弹出议题弹窗（输入/类型/确定都在弹窗内），单独一条大按钮，远离右下角「生成通知」防误触 */
-.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
+.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 32rpx; }
 .topic-add-trigger:active { background: #F1F3F5; }
 .topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
 .topic-inline-editor { margin-top: 16rpx; padding: 24rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
 .tie-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22rpx; }
-.tie-head > span { font-size: 30rpx; font-weight: 600; color: #1f2329; }
-.tie-head > button { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 8rpx 0 8rpx 24rpx; }
+.tie-head > span { font-size: 32rpx; font-weight: 600; color: #1f2329; }
+.tie-head > button { border: 0; background: transparent; color: #7A818B; font-size: 28rpx; padding: 8rpx 0 8rpx 24rpx; }
 .topic-inline-editor .form-group { margin-bottom: 22rpx; }
 .topic-inline-editor .type-row { margin-bottom: 0; }
 .tie-content { box-sizing: border-box; height: auto; min-height: 140rpx; line-height: 1.6; resize: none; padding: 16rpx 20rpx; }
 .tie-add-option { display: block; margin-top: 12rpx; }
-.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #3F6078; font-size: 28rpx; font-weight: 600; }
+.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #3F6078; font-size: 32rpx; font-weight: 600; }
 .topic-title-confirm:active { opacity: .88; }
 .topic-inline-editor .type-chip.on { background: #DCE8F2; color: #3F6078; box-shadow: inset 0 0 0 2rpx #C7D8E6; }
 .topic-inline-editor .add-link { color: #5B7C96; }
-.tie-confirm { width: 100%; height: 76rpx; margin-top: 2rpx; border: 0; border-radius: 14rpx; background: #B45F18; color: #fff; font-size: 29rpx; font-weight: 600; }
+.tie-confirm { width: 100%; height: 76rpx; margin-top: 2rpx; border: 0; border-radius: 14rpx; background: #B45F18; color: #fff; font-size: 32rpx; font-weight: 600; }
 .tie-confirm:active { opacity: .88; }
 .tat-ico { font-size: 34rpx; font-weight: 700; line-height: 1; }
 .tat-text { font-weight: 600; }
@@ -4335,8 +4335,8 @@ onActivated(show)
 .td-title-row .form-input { flex: 1; min-width: 0; }
 .td-mic { width: 72rpx; height: 72rpx; }
 .ct-option-row { display: flex; align-items: center; gap: 14rpx; margin-top: 12rpx; }
-.ct-opt-num { font-size: 28rpx; color: #666; width: 40rpx; text-align: right; flex-shrink: 0; }
-.ct-opt-input { flex: 1; min-width: 0; height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 28rpx; }
+.ct-opt-num { font-size: 32rpx; color: #666; width: 40rpx; text-align: right; flex-shrink: 0; }
+.ct-opt-input { flex: 1; min-width: 0; height: 72rpx; min-height: 72rpx; line-height: normal; font-size: 32rpx; }
 /* ── 接待登记（0716 从已删的接待列表页搬来）──
    刻意不叫 .modal-mask/.form-sheet：本页的 .modal-mask 是全屏白底面板（发起会议用），
    跟接待要的「半透明遮罩 + 底部抽屉」是两回事，同名会串。 */
@@ -4346,7 +4346,7 @@ onActivated(show)
 .rec-add-card { order: 3; width: 60%; align-self: center; display: flex; align-items: center; justify-content: center; gap: 12rpx;
   box-sizing: border-box; height: 92rpx; border-radius: 22rpx; background: #FFF3E5; cursor: pointer; }
 .rec-add-card:active { background: #FFE9CE; }
-.rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; line-height: 1; }
+.rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 32rpx; font-weight: 700; line-height: 1; }
 .rac-title { font-size: 32rpx; font-weight: 700; color: var(--c-primary-dark); line-height: 1.2; }
 /* z 50→150（0716 修）：底部 TabBar 是 z-index:100，50 会被它骑在头上、盖住「取消/确认登记」；
    150 压过 TabBar，又低于日期/时间选择弹窗的 210——选择器要能开在本弹窗之上 */
@@ -4358,14 +4358,14 @@ onActivated(show)
 .sheet-close { width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; border-radius: 28rpx;
   font-size: 40rpx; color: #666; background: #f5f5f5; flex-shrink: 0; }
 .type-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 18rpx; }
-.type-chip { min-height: 60rpx; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #666; background: #f5f5f5; padding: 10rpx 22rpx; border-radius: 28rpx; }
+.type-chip { min-height: 84rpx; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #5f636b; background: #f5f5f5; padding: 10rpx 28rpx; border-radius: 28rpx; }
 .type-chip.on { color: #fff; background: #FFA800; font-weight: 600; }
-.add-link { font-size: 28rpx; color: #FFA800; font-weight: 600; }
+.add-link { font-size: 32rpx; color: #FFA800; font-weight: 600; }
 .tp-del { font-size: 38rpx; color: #666; padding: 0 8rpx; flex-shrink: 0; }
 
 /* 搜索 */
 .search-bar { position: relative; margin: 16rpx 24rpx; }
-.search-input { width: 100%; height: 72rpx; background: #fff; border-radius: 36rpx; padding: 0 72rpx 0 28rpx; font-size: 30rpx; box-sizing: border-box; border: 0; }
+.search-input { width: 100%; height: 72rpx; background: #fff; border-radius: 36rpx; padding: 0 72rpx 0 28rpx; font-size: 32rpx; box-sizing: border-box; border: 0; }
 .search-clear { position: absolute; right: 24rpx; top: 50%; transform: translateY(-50%); font-size: 34rpx; color: #666; }
 
 /* 标题推荐 + 清空 */
@@ -4375,7 +4375,7 @@ onActivated(show)
 .title-ta::-webkit-scrollbar { width: 6rpx; }
 .title-ta::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3rpx; }
 .title-ta::-webkit-scrollbar-track { background: transparent; }
-.title-clear { position: absolute; right: 12rpx; top: 50%; transform: translateY(-50%); font-size: 44rpx; color: #999; line-height: 1; padding: 0 8rpx; cursor: pointer; }
+.title-clear { position: absolute; right: 12rpx; top: 50%; transform: translateY(-50%); font-size: 44rpx; color: #6b7078; line-height: 1; padding: 0 8rpx; cursor: pointer; }
 /* 文本框空时：叉淡化 */
 .title-clear.dim { opacity: 0.25; }
 /* 必填标记：灰色小字 + 红星（会议名称在文本框右上角绝对定位，会议议题在标题行右侧） */
@@ -4383,7 +4383,7 @@ onActivated(show)
 /* 必填未填的红框提醒：点进对应输入框（focus）即消失 */
 .field-error { border-color: #E4572E !important; box-shadow: 0 0 0 2rpx rgba(228,87,46,0.16); }
 /* 推荐标题：半透明覆盖在文本框内，点文字自动填入 */
-.title-ghost { position: absolute; left: 20rpx; top: 13rpx; right: 78rpx; font-size: 32rpx; font-weight: 600; color: rgba(31, 32, 36, 0.32); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.title-ghost { position: absolute; left: 20rpx; top: 13rpx; right: 78rpx; font-size: 32rpx; font-weight: 600; color: #6b7078; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 /* 会议名称：输入框 + 右侧圆形麦克风按钮 同排 */
 .title-row { display: flex; align-items: center; gap: 16rpx; }
 .title-row .title-input-wrap { flex: 1; min-width: 0; }
@@ -4406,7 +4406,7 @@ onActivated(show)
 /* 日期/时间选择字段 */
 .time-field, .date-field { justify-content: space-between; }
 .tf-text { font-size: 32rpx; color: #1f2329; }
-.tf-arrow { color: #999; font-size: 28rpx; }
+.tf-arrow { color: #6b7078; font-size: 32rpx; }
 
 /* 列选择器弹窗（日期/时间共用） */
 .picker-pop-mask { position: fixed; inset: 0; z-index: 210; background: rgba(0,0,0,0.42); display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; }
@@ -4417,7 +4417,7 @@ onActivated(show)
 .cal-nav { width: 76rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; color: var(--c-primary-dark); font-weight: 700; }
 .cal-nav:active { opacity: 0.5; }
 .cal-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8rpx; }
-.cal-wd { text-align: center; font-size: 26rpx; color: #999; padding: 8rpx 0; }
+.cal-wd { text-align: center; font-size: 28rpx; color: #6b7078; padding: 8rpx 0; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6rpx; }
 .cal-cell { height: 78rpx; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #1f2329; border-radius: 12rpx; }
 .cal-cell.empty { visibility: hidden; }
@@ -4427,7 +4427,7 @@ onActivated(show)
 .picker-pop { width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 12rpx 26rpx 48rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
 .tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #1f2329; letter-spacing: 2rpx; margin-bottom: 6rpx; }
-.tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
+.tg-label { font-size: 32rpx; color: #6b7078; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
 .tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
@@ -4437,7 +4437,7 @@ onActivated(show)
 .pop-close { display: flex; justify-content: flex-end; margin-bottom: 4rpx; }
 .pp-cols { display: flex; gap: 16rpx; }
 .pp-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.pp-col-label { text-align: center; font-size: 28rpx; color: #666; margin-bottom: 10rpx; }
+.pp-col-label { text-align: center; font-size: 32rpx; color: #666; margin-bottom: 10rpx; }
 .pp-col-scroll { height: 460rpx; overflow-y: auto; background: #f7f8fa; border-radius: 16rpx; padding: 8rpx; box-sizing: border-box; -webkit-overflow-scrolling: touch; }
 .pp-item { display: flex; align-items: center; justify-content: center; height: 76rpx; font-size: 34rpx; color: #333; border-radius: 12rpx; margin: 4rpx 0; }
 .pp-item.on { color: #fff; background: #FFA800; font-weight: 700; }
@@ -4448,16 +4448,16 @@ onActivated(show)
 /* 议题摘要行 */
 .topic-summary { background: #fff; border: 2rpx solid #eee; border-radius: 18rpx; padding: 22rpx 24rpx; margin-top: 16rpx; }
 .ts-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-bottom: 14rpx; }
-.ts-num { font-size: 26rpx; color: #8a9099; font-weight: 600; }
+.ts-num { font-size: 28rpx; color: #5f636b; font-weight: 600; }
 .ts-title { font-size: 32rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
-.ts-badge { font-size: 25rpx; padding: 6rpx 18rpx; border-radius: 20rpx; white-space: nowrap; line-height: 1.5; }
+.ts-badge { font-size: 28rpx; padding: 6rpx 18rpx; border-radius: 20rpx; white-space: nowrap; line-height: 1.5; }
 .ts-badge.badge-notice { color: #1677B8; background: #E6F4FB; }
 .ts-badge.badge-discussion { color: #2E8B57; background: #EAF6EE; }
 .ts-badge.badge-decision { color: #D56A16; background: #FFF0E5; }
 .ts-actions { display: flex; justify-content: flex-end; gap: 16rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx solid #f0f0f0; }
-.ts-edit-btn { font-size: 27rpx; color: #C77800; background: #fff; border: 2rpx solid #F0A020; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
+.ts-edit-btn { font-size: 28rpx; color: #C77800; background: #fff; border: 2rpx solid #F0A020; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
 .ts-edit-btn:active { background: #FFF6E5; }
-.ts-del-btn { font-size: 27rpx; color: #C0392B; background: #fff; border: 2rpx solid #E6B0AA; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
+.ts-del-btn { font-size: 28rpx; color: #C0392B; background: #fff; border: 2rpx solid #E6B0AA; padding: 10rpx 30rpx; border-radius: 22rpx; white-space: nowrap; line-height: 1.5; }
 .ts-del-btn:active { background: #FDF2F0; }
 
 /* 议题编辑弹窗 */
@@ -4492,9 +4492,9 @@ onActivated(show)
 }
 
 /* 议题双按钮行 */
-.topic-add-label { display: block; font-size: 28rpx; color: #8a9099; font-weight: 600; margin-top: 20rpx; margin-bottom: 8rpx; }
+.topic-add-label { display: block; font-size: 32rpx; color: #5f636b; font-weight: 600; margin-top: 20rpx; margin-bottom: 8rpx; }
 .topic-add-row { display: flex; gap: 20rpx; margin-top: 8rpx; }
-.topic-add-btn { flex: 1; height: 80rpx; font-size: 30rpx; border-radius: 16rpx; }
+.topic-add-btn { flex: 1; height: 80rpx; font-size: 32rpx; border-radius: 16rpx; }
 
 /* 流式语音输入弹窗 */
 .voice-modal-mask { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; }
@@ -4505,7 +4505,7 @@ onActivated(show)
 }
 .vm-head { display: flex; align-items: baseline; justify-content: space-between; }
 .vm-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
-.vm-hint { font-size: 26rpx; color: #999; }
+.vm-hint { font-size: 28rpx; color: #6b7078; }
 .vm-body {
   background: #f7f8fa; border-radius: 20rpx;
   padding: 24rpx 20rpx; min-height: 160rpx;
@@ -4526,8 +4526,8 @@ onActivated(show)
   50%       { transform: scaleY(1);   opacity: 1;   }
 }
 .vm-text { font-size: 32rpx; color: #1f2329; line-height: 1.6; text-align: center; width: 100%; word-break: break-all; }
-.vm-interim { color: #888; }
-.vm-placeholder { color: #aaa; }
+.vm-interim { color: #5f636b; }
+.vm-placeholder { color: #6b7078; }
 .vm-actions { display: flex; gap: 20rpx; }
 .vm-actions .btn { flex: 1; height: 88rpx; font-size: 34rpx; border-radius: 18rpx; }
 </style>

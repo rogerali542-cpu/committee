@@ -195,37 +195,37 @@ function copyAll() {
 
 .news-review-bar { display:flex; align-items:flex-start; flex-direction:column; gap:10rpx; padding:18rpx 22rpx; border-radius:16rpx; background:#FFF8E8; border:1rpx solid #EAD8AE; }
 .review-copy { display:flex; align-items:center; gap:14rpx; flex-shrink:0; }
-.review-label { padding:5rpx 12rpx; border-radius:8rpx; background:#A31219; color:#fff; font-size:22rpx; font-weight:700; }
-.review-title { color:#4A3B23; font-size:27rpx; font-weight:700; }
-.news-review-bar p { margin:0; color:#806B47; font-size:24rpx; line-height:1.55; text-align:left; }
+.review-label { padding:5rpx 12rpx; border-radius:8rpx; background:#A31219; color:#fff; font-size:26rpx; font-weight:700; }
+.review-title { color:#4A3B23; font-size:28rpx; font-weight:700; }
+.news-review-bar p { margin:0; color:#806B47; font-size:26rpx; line-height:1.55; text-align:left; }
 
 .news-paper { background:#fff; border-radius:20rpx; border:1rpx solid #E5E7EB; box-shadow:0 10rpx 34rpx rgba(35,39,47,.07); padding:48rpx 38rpx 44rpx; }
 .article-head { text-align:left; }
-.news-kicker { color:#A31219; font-size:24rpx; font-weight:700; letter-spacing:2rpx; margin-bottom:18rpx; }
+.news-kicker { color:#A31219; font-size:26rpx; font-weight:700; letter-spacing:2rpx; margin-bottom:18rpx; }
 .news-title { margin:0; color:#191B20; font-family:"Noto Serif SC","Songti SC",SimSun,serif; font-size:45rpx; line-height:1.42; font-weight:800; letter-spacing:.5rpx; }
-.news-byline { display:flex; align-items:center; flex-wrap:wrap; gap:12rpx; margin-top:22rpx; color:#7A7F87; font-size:24rpx; }
+.news-byline { display:flex; align-items:center; flex-wrap:wrap; gap:12rpx; margin-top:22rpx; color:#7A7F87; font-size:26rpx; }
 .byline-dot { width:5rpx; height:5rpx; border-radius:50%; background:#B8BBC0; }
 .article-rule { height:2rpx; margin:30rpx 0 34rpx; background:#ECEDEF; position:relative; }
 .article-rule span { position:absolute; left:0; top:0; width:76rpx; height:4rpx; background:#A31219; transform:translateY(-1rpx); }
 .article-body { max-width:68ch; margin:0 auto; }
-.news-para { margin:0 0 28rpx; color:#2F3338; font-family:"Noto Serif SC","Songti SC",SimSun,serif; font-size:31rpx; line-height:1.9; text-align:justify; }
+.news-para { margin:0 0 28rpx; color:#2F3338; font-family:"Noto Serif SC","Songti SC",SimSun,serif; font-size:32rpx; line-height:1.9; text-align:justify; }
 .news-para.lead { color:#202327; font-size:32rpx; font-weight:600; }
 .news-sign { display:flex; flex-direction:column; align-items:flex-end; gap:7rpx; margin-top:44rpx; padding-top:28rpx; border-top:1rpx solid #F0F1F2; }
-.ns-org { color:#383C42; font-size:27rpx; font-weight:700; }
-.ns-date { color:#858A92; font-size:24rpx; }
+.ns-org { color:#383C42; font-size:28rpx; font-weight:700; }
+.ns-date { color:#858A92; font-size:26rpx; }
 
 .news-actions { display:grid; grid-template-columns:1fr 1.25fr; gap:16rpx; margin-top:2rpx; }
-.news-btn { width:100%; height:88rpx; border-radius:14rpx; font-size:30rpx; font-weight:700; }
+.news-btn { width:100%; height:88rpx; border-radius:14rpx; font-size:32rpx; font-weight:700; }
 .news-btn.primary { border:0; background:#A31219; color:#fff; box-shadow:0 7rpx 18rpx rgba(163,18,25,.2); }
 .news-btn.ghost { background:#fff; color:#A31219; border:2rpx solid #D5A5A8; }
 .news-btn:active { transform:translateY(1rpx); opacity:.9; }
 .news-btn:disabled { opacity:.55; }
-.news-home { align-self:center; min-width:220rpx; height:68rpx; border:0; background:transparent; color:#6F747C; font-size:27rpx; font-weight:600; }
+.news-home { align-self:center; min-width:220rpx; height:68rpx; border:0; background:transparent; color:#6F747C; font-size:28rpx; font-weight:600; }
 
 .news-empty { width:100%; max-width:760px; margin:0 auto; padding:96rpx 18rpx; box-sizing:border-box; }
 .ne-card { background:#fff; border:1rpx solid #E5E7EB; border-radius:20rpx; padding:58rpx 36rpx; box-shadow:0 10rpx 34rpx rgba(35,39,47,.07); text-align:center; }
 .ne-flag { font-size:38rpx; font-weight:800; color:#A31219; }
-.ne-text { margin:18rpx 0 34rpx; font-size:29rpx; color:#70757D; }
+.ne-text { margin:18rpx 0 34rpx; font-size:32rpx; color:#70757D; }
 
 @media (max-width:480px) {
   .news-paper { padding:40rpx 30rpx 38rpx; }

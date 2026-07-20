@@ -809,22 +809,22 @@ function viewTodoList() {
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .page { min-height:100vh; background:#f4f5f7; padding:24rpx 24rpx 100rpx; box-sizing:border-box; }
 /* 顶栏右上角「首页」：白描边药丸，适配深橙 PageNav 头 */
-.nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:30rpx; font-weight:600; line-height:1; }
+.nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:32rpx; font-weight:600; line-height:1; }
 .nav-home:active { background:rgba(255,255,255,0.28); }
 .doc { background:#fff; border-radius:24rpx; padding:36rpx 32rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .access-card { background:#fff; border-radius:24rpx; padding:64rpx 36rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); text-align:center; }
 .access-icon { width:96rpx; height:96rpx; border-radius:50%; background:#FFF3E0; color:#E67E22; display:flex; align-items:center; justify-content:center; margin:0 auto 24rpx; font-size:52rpx; font-weight:700; }
 .access-title { display:block; font-size:38rpx; color:#1f2329; font-weight:700; margin-bottom:14rpx; }
-.access-text { display:block; font-size:30rpx; color:#666; line-height:1.7; }
+.access-text { display:block; font-size:32rpx; color:#666; line-height:1.7; }
 
-.draft-banner { background:#FFF3E0; color:#E67E22; font-size:28rpx; font-weight:600; text-align:center; padding:16rpx 20rpx; border-radius:14rpx; margin-bottom:28rpx; }
+.draft-banner { background:#FFF3E0; color:#E67E22; font-size:32rpx; font-weight:600; text-align:center; padding:16rpx 20rpx; border-radius:14rpx; margin-bottom:28rpx; }
 /* AI 生成中提示 */
 .ai-gen-banner { display:flex; align-items:center; justify-content:center; gap:16rpx; background:#FFF6E5; border:2rpx solid #FFE2A8; border-radius:16rpx; padding:28rpx 24rpx; margin-bottom:24rpx; }
-.ai-gen-text { font-size:30rpx; color:#C77800; font-weight:600; }
-.gen-hint { display:block; text-align:center; font-size:28rpx; color:#666; line-height:1.7; margin-top:8rpx; }
+.ai-gen-text { font-size:32rpx; color:#C77800; font-weight:600; }
+.gen-hint { display:block; text-align:center; font-size:32rpx; color:#666; line-height:1.7; margin-top:8rpx; }
 .ai-gen-dot { width:32rpx; height:32rpx; border-radius:50%; border:6rpx solid #FFE2A8; border-top-color:#FFA800; animation:aigenspin .8s linear infinite; flex-shrink:0; }
 @keyframes aigenspin { to { transform:rotate(360deg); } }
-.revise-hint { display:block; background:#FDF2F2; color:#C0392B; font-size:28rpx; line-height:1.6; padding:16rpx 20rpx; border-radius:14rpx; margin-bottom:18rpx; }
+.revise-hint { display:block; background:#FDF2F2; color:#C0392B; font-size:32rpx; line-height:1.6; padding:16rpx 20rpx; border-radius:14rpx; margin-bottom:18rpx; }
 
 .doc-title { font-size:42rpx; font-weight:700; text-align:center; display:block; margin-bottom:28rpx; color:#1f2329; }
 
@@ -836,12 +836,12 @@ function viewTodoList() {
 
 .doc-head { margin-bottom:28rpx; }
 .dh-row { display:flex; align-items:center; padding:14rpx 0; border-bottom:2rpx solid #f7f7f9; }
-.dh-key { font-size:28rpx; color:#666; width:160rpx; flex-shrink:0; }
-.dh-val { font-size:30rpx; color:#1f2329; font-weight:500; flex:1; }
+.dh-key { font-size:32rpx; color:#666; width:160rpx; flex-shrink:0; }
+.dh-val { font-size:32rpx; color:#1f2329; font-weight:500; flex:1; }
 
 .doc-sec { margin-bottom:28rpx; padding-top:24rpx; border-top:2rpx solid #f0f0f0; }
 .sec-title { font-size:32rpx; font-weight:700; color:#1f2329; display:block; margin-bottom:16rpx; }
-.sec-text { font-size:30rpx; color:#444; line-height:1.8; display:block; margin-bottom:8rpx; }
+.sec-text { font-size:32rpx; color:#444; line-height:1.8; display:block; margin-bottom:8rpx; }
 .sec-k { color:#666; }
 .b { font-weight:700; color:#1f2329; }
 .tag-ok { color:#27AE60; font-weight:600; }
@@ -849,11 +849,11 @@ function viewTodoList() {
 
 /* 表决 */
 .topic-item { background:#fafbfc; border-radius:16rpx; padding:20rpx; margin-bottom:14rpx; }
-.ti-title { font-size:30rpx; font-weight:600; color:#1f2329; display:block; line-height:1.5; }
-.ti-tag { font-size: 28rpx; padding:2rpx 14rpx; border-radius:10rpx; background:#FFF6E5; color:#C77800; }
+.ti-title { font-size:32rpx; font-weight:600; color:#1f2329; display:block; line-height:1.5; }
+.ti-tag { font-size: 32rpx; padding:2rpx 14rpx; border-radius:10rpx; background:#FFF6E5; color:#C77800; }
 .ti-tag.major { background:#FDECEA; color:#E74C3C; }
-.ti-result { font-size:28rpx; color:#6b7785; display:block; margin-top:12rpx; }
-.ti-conclusion { font-size:28rpx; font-weight:600; display:block; margin-top:8rpx; }
+.ti-result { font-size:32rpx; color:#6b7785; display:block; margin-top:12rpx; }
+.ti-conclusion { font-size:32rpx; font-weight:600; display:block; margin-top:8rpx; }
 .ti-conclusion.pass { color:#27AE60; }
 .ti-conclusion.fail { color:#E74C3C; }
 
@@ -862,23 +862,23 @@ function viewTodoList() {
 .conclusion-box.valid { background:#EAF7EF; }
 .conclusion-box.flawed { background:#FFF4E5; }
 .conclusion-box.invalid { background:#FDECEA; }
-.cb-text { font-size:30rpx; font-weight:600; }
+.cb-text { font-size:32rpx; font-weight:600; }
 .conclusion-box.valid .cb-text { color:#27AE60; }
 .conclusion-box.flawed .cb-text { color:#E67E22; }
 .conclusion-box.invalid .cb-text { color:#E74C3C; }
 
 .check-grid { margin-bottom:14rpx; }
 .cg-row { display:flex; align-items:center; padding:10rpx 0; }
-.cg-label { font-size:28rpx; color:#666; width:170rpx; flex-shrink:0; }
-.cg-value { font-size:28rpx; font-weight:600; }
+.cg-label { font-size:32rpx; color:#666; width:170rpx; flex-shrink:0; }
+.cg-value { font-size:32rpx; font-weight:600; }
 .cg-value.ok { color:#27AE60; }
 .cg-value.warn { color:#E67E22; }
 .cg-value.bad { color:#E74C3C; }
 
 .notes-list { margin-top:14rpx; padding:16rpx 20rpx; background:#fafbfc; border-radius:14rpx; }
-.note-item { font-size:28rpx; color:#666; display:block; padding:4rpx 0; line-height:1.6; }
+.note-item { font-size:32rpx; color:#666; display:block; padding:4rpx 0; line-height:1.6; }
 
-.doc-foot { font-size: 28rpx; color:#666; text-align:center; display:block; margin:24rpx 0; }
+.doc-foot { font-size: 32rpx; color:#666; text-align:center; display:block; margin:24rpx 0; }
 
 /* 编辑区 */
 .edit-block { margin-top:24rpx; }
@@ -899,9 +899,9 @@ function viewTodoList() {
 .edit-minutes-btn { width:100%; padding:24rpx 0; background:var(--c-primary-dark); color:#fff; border:none; border-radius:44rpx; font-size:34rpx; font-weight:700; text-align:center; }
 .edit-minutes-btn:active { background:var(--c-primary-strong); }
 .edit-minutes-btn.ghost { background:#fff; color:var(--c-primary-dark); border:2rpx solid var(--c-primary-dark); padding:22rpx 0; font-size:32rpx; font-weight:600; }
-.copy-btn { width:100%; padding:22rpx 0; text-align:center; background:#fff; color:#C77800; border:2rpx solid #FFA800; border-radius:44rpx; font-size:30rpx; font-weight:600; }
+.copy-btn { width:100%; padding:22rpx 0; text-align:center; background:#fff; color:#C77800; border:2rpx solid #FFA800; border-radius:44rpx; font-size:32rpx; font-weight:600; }
 .more-links { display:flex; flex-wrap:wrap; justify-content:center; gap:10rpx 24rpx; margin-top:8rpx; }
-.more-link { font-size:25rpx; color:#92979e; padding:8rpx 6rpx; font-weight:400; }
+.more-link { font-size:28rpx; color:#92979e; padding:8rpx 6rpx; font-weight:400; }
 .more-link.primary-link { color:#7f858c; font-weight:400; }
 
 /* 编辑纪要弹窗 —— 全屏模式，方便老年人操作 */

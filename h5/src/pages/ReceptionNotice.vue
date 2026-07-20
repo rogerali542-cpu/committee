@@ -264,7 +264,7 @@ async function exportPdf() {
 .page { background: var(--c-bg-page); min-height: 100vh; }
 .notice-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
   padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
-.page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
+.page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 32rpx; }
 /* 本页字号一律 ≥28rpx(14px)，跟接待处理页同口径 */
 .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);
   border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); }
@@ -272,25 +272,25 @@ async function exportPdf() {
 .preview-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
 .preview-card-head .sec-title { margin-bottom: 0; }
 .preview-toggle { display: inline-flex; align-items: center; gap: 6rpx; padding: 8rpx 4rpx 8rpx 18rpx;
-  border: 0; background: transparent; color: var(--c-primary-dark); font-size: 28rpx; font-weight: 600; }
-.sec-hint { margin-top: 4rpx; font-size: 28rpx; line-height: 1.5; color: var(--c-text-weak); }
+  border: 0; background: transparent; color: var(--c-primary-dark); font-size: 32rpx; font-weight: 600; }
+.sec-hint { margin-top: 4rpx; font-size: 32rpx; line-height: 1.5; color: var(--c-text-weak); }
 
 .field { margin-bottom: 24rpx; }
 .field:last-of-type { margin-bottom: 6rpx; }
-.f-label { display: block; margin-bottom: 10rpx; font-size: 28rpx; font-weight: 700; color: var(--c-text-mid); }
+.f-label { display: block; margin-bottom: 10rpx; font-size: 32rpx; font-weight: 700; color: var(--c-text-mid); }
 .f-input { width: 100%; box-sizing: border-box; height: 88rpx; padding: 0 20rpx;
   border: 2rpx solid #E3E8EB; border-radius: 16rpx; background: #FCFDFD;
-  font-size: 30rpx; color: var(--c-text-strong); outline: none; }
+  font-size: 32rpx; color: var(--c-text-strong); outline: none; }
 .f-input:focus { border-color: var(--c-border-focus); }
 .f-input:disabled { background: #F4F5F7; color: var(--c-text-weak); }
 .f-select { width:100%; box-sizing:border-box; height:88rpx; padding:0 20rpx; border:2rpx solid #E3E8EB;
-  border-radius:16rpx; background:#FCFDFD; font-size:30rpx; color:var(--c-text-strong); outline:none; }
+  border-radius:16rpx; background:#FCFDFD; font-size:32rpx; color:var(--c-text-strong); outline:none; }
 .f-select:disabled { background:#F4F5F7; color:var(--c-text-weak); }
 .reception-time-line { display: flex; align-items: center; gap: 12rpx; }
 .reception-time-line .day-select { flex: 0 0 29%; min-width: 0; }
 .reception-time-line .time-range { flex: 1; min-width: 0; }
 .confirm-adjust { display: block; width: 42%; height: 76rpx; margin: 24rpx 0 2rpx auto; border: 0;
-  border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+  border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 32rpx; font-weight: 700; }
 .confirm-adjust:disabled { opacity: 0.42; }
 .confirm-adjust:active:not(:disabled) { background: var(--c-primary-strong); }
 
@@ -298,7 +298,7 @@ async function exportPdf() {
 /* 周几多选：胶囊 chips，点了变主色。选中态要够醒目，老人得一眼看出哪几天亮着 */
 .day-chips { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 14rpx; }
 .day-chip { padding: 12rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #E3E8EB;
-  background: #FCFDFD; font-size: 28rpx; font-weight: 600; color: var(--c-text-mid);
+  background: #FCFDFD; font-size: 32rpx; font-weight: 600; color: var(--c-text-mid);
   cursor: pointer; user-select: none; }
 .day-chip.on { background: var(--c-primary-dark); border-color: var(--c-primary-dark); color: #fff; }
 .day-chip.dim { cursor: default; opacity: 0.7; }
@@ -307,16 +307,16 @@ async function exportPdf() {
 /* 起止时间：两个 time 输入并排，中间「至」 */
 .time-range { display: flex; align-items: center; gap: 14rpx; }
 .t-input { flex: 1; min-width: 0; }
-.tr-sep { flex-shrink: 0; font-size: 28rpx; color: var(--c-text-mid); }
+.tr-sep { flex-shrink: 0; font-size: 32rpx; color: var(--c-text-mid); }
 
 /* 0717 用户定：导出按钮缩小 20%（高 96→76）、宽度 60% 居中。
    字号 32→28 没砍满 20%——28rpx 是本页字号下限，破线老人看不清 */
 .big-action { display: block; width: 60%; height: 76rpx; margin: 18rpx auto 0; border: none; border-radius: 18rpx;
-  font-size: 30rpx; font-weight: 700; color: #fff; background: #A94832;
+  font-size: 32rpx; font-weight: 700; color: #fff; background: #A94832;
   box-shadow: 0 6rpx 16rpx rgba(114,48,34,0.18); }
 .big-action:active { background: #8F3B2A; }
 .big-action:disabled { opacity: 0.5; }
-.export-success { margin: 18rpx 0 -6rpx; text-align: center; color: #278653; font-size: 26rpx; line-height: 1.5; }
+.export-success { margin: 18rpx 0 -6rpx; text-align: center; color: #278653; font-size: 28rpx; line-height: 1.5; }
 
 /* 纸样预览：让委员在按下导出前就知道印出来长什么样。
    白底居中排版，刻意跟 App 的卡片风格不一样——它代表"那张纸"。
@@ -324,13 +324,13 @@ async function exportPdf() {
 .preview { display: flex; flex-direction: column; min-height: 640rpx; padding: 44rpx 32rpx; background: #fff;
   border: 2rpx solid #E3E8EB; border-radius: 12rpx; }
 .pv-title { text-align: center; font-size: 34rpx; font-weight: 800; color: #1F2329; letter-spacing: 2rpx; }
-.pv-org { margin-top: 8rpx; text-align: center; font-size: 28rpx; color: var(--c-text-mid); }
+.pv-org { margin-top: 8rpx; text-align: center; font-size: 32rpx; color: var(--c-text-mid); }
 .pv-line { margin: 14rpx 0 22rpx; height: 2rpx; background: #1F2329; }
-.pv-greet { font-size: 29rpx; line-height: 1.7; color: var(--c-text-strong); }
+.pv-greet { font-size: 32rpx; line-height: 1.7; color: var(--c-text-strong); }
 /* 正文首行缩进两字 + 1.7 行距，念出来像一封告示 */
-.pv-para { margin-top: 10rpx; font-size: 29rpx; line-height: 1.7; color: var(--c-text-strong); text-indent: 2em; }
+.pv-para { margin-top: 10rpx; font-size: 32rpx; line-height: 1.7; color: var(--c-text-strong); text-indent: 2em; }
 .pv-para.no-indent { text-indent: 0; }
-.pv-sign { margin-top: auto; padding-top: 40rpx; text-align: right; font-size: 28rpx; line-height: 1.8; color: var(--c-text-mid); }
+.pv-sign { margin-top: auto; padding-top: 40rpx; text-align: right; font-size: 32rpx; line-height: 1.8; color: var(--c-text-mid); }
 
 .bottom-space { height: 60rpx; }
 </style>

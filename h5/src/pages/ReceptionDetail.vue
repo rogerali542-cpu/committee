@@ -306,11 +306,11 @@ function goBack() {
 .page { background: var(--c-bg-page); min-height: 100vh; }
 .detail-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
   padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
-.page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
+.page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 32rpx; }
 
 /* .detail-head/.dh-title 已删（0716 用户定：与 PageNav 重复）。状态胶囊挪进信息卡首行。 */
 /* 本页字号一律 ≥28rpx(14px)：首页三个 tab 刚清到零小字，这页别又造一批 */
-.stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; }
+.stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 32rpx; font-weight: 700; }
 .stage-pill.todo { background: #FFEDD5; color: #9A3412; }
 /* 已办理（中间态）：青 #0F766E 配 #E7F6F3 = 4.92:1 ✓。
    青为什么在这儿又回来了：胶囊是「这条记录现在什么状态」，两条路都能把它推到已办理，
@@ -325,16 +325,16 @@ function goBack() {
 .info-card, .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);
   border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); }
 .field-row { display: flex; align-items: flex-start; gap: 20rpx; padding: 12rpx 0; }
-.field-label { flex-shrink: 0; width: 130rpx; font-size: 28rpx; color: var(--c-text-weak); }
-.field-val { flex: 1; min-width: 0; font-size: 30rpx; color: var(--c-text-strong); }
-.room { margin-left: 14rpx; color: var(--c-text-mid); font-size: 28rpx; }
+.field-label { flex-shrink: 0; width: 130rpx; font-size: 32rpx; color: var(--c-text-weak); }
+.field-val { flex: 1; min-width: 0; font-size: 32rpx; color: var(--c-text-strong); }
+.room { margin-left: 14rpx; color: var(--c-text-mid); font-size: 32rpx; }
 
 .sec-title { display: flex; align-items: center; gap: 12rpx; font-size: 32rpx; font-weight: 700;
   color: var(--c-text-strong); margin-bottom: 16rpx; }
-.sec-tip { font-size: 28rpx; font-weight: 400; color: var(--c-text-weak); }
-.sec-count { font-size: 28rpx; font-weight: 500; color: var(--c-text-weak); }
-.sec-add { margin-left: auto; font-size: 28rpx; font-weight: 700; color: var(--c-primary-dark); }
-.sec-hint { margin-top: 14rpx; font-size: 28rpx; line-height: 1.5; color: var(--c-text-weak); }
+.sec-tip { font-size: 32rpx; font-weight: 400; color: var(--c-text-weak); }
+.sec-count { font-size: 32rpx; font-weight: 500; color: var(--c-text-weak); }
+.sec-add { margin-left: auto; font-size: 32rpx; font-weight: 700; color: var(--c-primary-dark); }
+.sec-hint { margin-top: 14rpx; font-size: 32rpx; line-height: 1.5; color: var(--c-text-weak); }
 /* 诉求正文：这页的主角，字号最大 */
 .appeal { font-size: 32rpx; line-height: 1.6; color: var(--c-text-strong); white-space: pre-wrap; }
 
@@ -376,31 +376,31 @@ function goBack() {
      跟这里的留痕不是一回事，别看见青就往回并） */
 .tf-trace { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
   background: #F2FBF6; border: 2rpx solid #CDE9D8; border-radius: 16rpx;
-  font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
+  font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); }
 .tf-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--c-success);
-  color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
+  color: #fff; font-size: 28rpx; display: flex; align-items: center; justify-content: center; }
 
 .ticket-done { display: flex; align-items: center; gap: 16rpx; padding: 18rpx 20rpx;
   background: #F2FBF6; border: 2rpx solid #CDE9D8; border-radius: 16rpx; }
 .tk-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: var(--c-success);
-  color: #fff; font-size: 26rpx; display: flex; align-items: center; justify-content: center; }
-.tk-no { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); }
-.tk-at { margin-top: 4rpx; font-size: 28rpx; color: var(--c-text-weak); }
+  color: #fff; font-size: 28rpx; display: flex; align-items: center; justify-content: center; }
+.tk-no { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); }
+.tk-at { margin-top: 4rpx; font-size: 32rpx; color: var(--c-text-weak); }
 
 .res-input { width: 100%; box-sizing: border-box; padding: 18rpx 20rpx; border: 2rpx solid #E3E8EB;
-  border-radius: 16rpx; background: #FCFDFD; font-size: 30rpx; line-height: 1.5; color: var(--c-text-strong); outline: none; }
+  border-radius: 16rpx; background: #FCFDFD; font-size: 32rpx; line-height: 1.5; color: var(--c-text-strong); outline: none; }
 
-.ev-empty { padding: 20rpx 0; text-align: center; font-size: 28rpx; color: var(--c-text-weak); }
+.ev-empty { padding: 20rpx 0; text-align: center; font-size: 32rpx; color: var(--c-text-weak); }
 .ev-list { display: flex; flex-direction: column; gap: 12rpx; }
 .ev-item { display: flex; align-items: center; gap: 16rpx; padding: 12rpx; background: #F8FAFB; border-radius: 14rpx; }
 .ev-thumb { width: 88rpx; height: 88rpx; border-radius: 10rpx; object-fit: cover; background: #EEF1F3; }
 .ev-noimg { display: flex; align-items: center; justify-content: center; font-size: 40rpx; }
-.ev-name { flex: 1; min-width: 0; font-size: 28rpx; color: var(--c-text-mid);
+.ev-name { flex: 1; min-width: 0; font-size: 32rpx; color: var(--c-text-mid);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ev-del { flex-shrink: 0; font-size: 28rpx; color: #B02A1E; padding: 8rpx 12rpx; }
+.ev-del { flex-shrink: 0; font-size: 32rpx; color: #B02A1E; padding: 8rpx 12rpx; }
 
 .danger-zone { padding: 10rpx 24rpx 0; text-align: center; }
-.del-record { display: inline-block; padding: 18rpx 40rpx; font-size: 28rpx; color: var(--c-text-mid);
+.del-record { display: inline-block; padding: 18rpx 40rpx; font-size: 32rpx; color: var(--c-text-mid);
   border: 2rpx dashed #C9D0D6; border-radius: 18rpx; background: #F5F6F8; }
 
 /* 占位高必须 ≥ 固定返回栏的实际高度（96rpx 按钮 + 上下 16rpx padding + 安全区），

@@ -130,8 +130,8 @@ onActivated(loadList)
   display: flex; justify-content: space-between; align-items: center;
   padding: 24rpx 32rpx; background: #fff; border-bottom: 2rpx solid #eee;
 }
-.hb-title { font-size: 30rpx; font-weight: 600; color: #1f2329; }
-.hb-action { font-size: 30rpx; color: #FFA800; font-weight: 600; }
+.hb-title { font-size: 32rpx; font-weight: 600; color: #1f2329; }
+.hb-action { font-size: 32rpx; color: #FFA800; font-weight: 600; }
 
 .noti-item {
   display: flex; align-items: center; padding: 28rpx 32rpx;
@@ -145,13 +145,13 @@ onActivated(loadList)
 .noti-item.unread .ni-dot { background: #E74C3C; }
 .ni-body { flex: 1; min-width: 0; }
 .ni-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
-.ni-type { font-size: 28rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 8rpx; }
+.ni-type { font-size: 32rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 8rpx; }
 .ni-type.notice { background: #E8F5E9; color: #2E7D32; }
 .ni-type.material { background: #E3F2FD; color: #1565C0; }
 .ni-type.reception { background: #FFF3E0; color: #E67E22; }
-.ni-time { font-size: 28rpx; color: #666; }
+.ni-time { font-size: 32rpx; color: #666; }
 .ni-title { font-size: 34rpx; font-weight: 700; color: #1f2329; display: block; margin-bottom: 6rpx; }
-.ni-content { font-size: 28rpx; color: #6b7785; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ni-content { font-size: 32rpx; color: #6b7785; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ni-arrow { color: #666; font-size: 40rpx; flex-shrink: 0; margin-left: 12rpx; }
 .noti-item.unread .ni-arrow { color: #FFA800; }
 
