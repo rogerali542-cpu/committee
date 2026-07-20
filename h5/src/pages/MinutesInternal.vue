@@ -91,9 +91,9 @@ onMounted(() => {
 .access-card { background: #fff; border-radius: 24rpx; padding: 64rpx 36rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .access-icon { width: 96rpx; height: 96rpx; border-radius: 50%; background: #FFF3E0; color: #E67E22; display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx; font-weight: 700; }
 .access-title { display: block; font-size: 38rpx; color: #1f2329; font-weight: 700; margin-bottom: 14rpx; }
-.access-text { display: block; font-size: 32rpx; color: #666; line-height: 1.7; }
+.access-text { display: block; font-size: 30rpx; color: #666; line-height: 1.7; }
 
-.info-banner { background: #F1EEFB; color: #6B4FBB; font-size: 32rpx; font-weight: 600; text-align: center; padding: 18rpx 20rpx; border-radius: 14rpx; margin-bottom: 28rpx; }
+.info-banner { background: #F1EEFB; color: #6B4FBB; font-size: 28rpx; font-weight: 600; text-align: center; padding: 18rpx 20rpx; border-radius: 14rpx; margin-bottom: 28rpx; }
 
 .doc-title { font-size: 42rpx; font-weight: 700; text-align: center; display: block; margin-bottom: 20rpx; color: #1f2329; line-height: 1.4; }
 .doc-sec { margin-bottom: 24rpx; padding-top: 24rpx; border-top: 2rpx solid #f0f0f0; }

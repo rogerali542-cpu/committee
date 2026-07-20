@@ -346,7 +346,7 @@ onMounted(() => {
 .meta-val { color: #222; }
 .due-urgent { color: #CC0000; font-weight: 700; }
 
-.todo-trace { font-size: 15px; color: #6b7078; margin: 12px 0 0 48px; }
+.todo-trace { font-size: 15px; color: #999; margin: 12px 0 0 48px; }
 .todo-footer { display:flex; justify-content:flex-end; align-items:center; gap:12px; margin:18px 0 0 48px; padding-top:16px; border-top:1px solid #EEF0F2; }
 .ticket-synced { margin-right:auto; color:#276A9E; font-size:16px; font-weight:700; }
 .self-handle-btn { min-width:150px; height:48px; padding:0 17px; border:2px solid #C8D0D9; border-radius:12px; background:#fff; color:#4F5B67; font-size:16px; font-weight:700; }

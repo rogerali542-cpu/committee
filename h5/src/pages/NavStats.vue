@@ -37,10 +37,10 @@ function doReset() {
 <style scoped>
 .ns-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 60rpx; box-sizing: border-box; }
 .ns-card { background: #fff; border-radius: 20rpx; padding: 24rpx 28rpx; margin-top: 24rpx; }
-.ns-title { font-size: 32rpx; font-weight: 700; color: #333; margin-bottom: 12rpx; }
-.ns-row { display: flex; justify-content: space-between; gap: 20rpx; font-size: 32rpx; color: #444; padding: 8rpx 0; }
+.ns-title { font-size: 30rpx; font-weight: 700; color: #333; margin-bottom: 12rpx; }
+.ns-row { display: flex; justify-content: space-between; gap: 20rpx; font-size: 28rpx; color: #444; padding: 8rpx 0; }
 .ns-row b { font-weight: 600; color: #666; }
-.ns-rescue { font-size: 28rpx; color: #B23; line-height: 1.7; word-break: break-all; }
-.ns-empty { font-size: 32rpx; color: #6b7078; }
-.ns-reset { display: block; margin: 32rpx auto 0; padding: 14rpx 48rpx; border: 1.5px solid #ccc; border-radius: 12rpx; background: #fff; color: #666; font-size: 32rpx; }
+.ns-rescue { font-size: 26rpx; color: #B23; line-height: 1.7; word-break: break-all; }
+.ns-empty { font-size: 28rpx; color: #999; }
+.ns-reset { display: block; margin: 32rpx auto 0; padding: 14rpx 48rpx; border: 1.5px solid #ccc; border-radius: 12rpx; background: #fff; color: #666; font-size: 28rpx; }
 </style>

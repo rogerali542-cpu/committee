@@ -57,6 +57,6 @@ function handleClick() {
 .global-rec-entry.paused { background:rgba(72,78,88,0.96); }
 .global-rec-dot { width:12rpx; height:12rpx; flex-shrink:0; border-radius:50%; background:#FFB4AE; box-shadow:0 0 0 5rpx rgba(255,180,174,0.14); animation:globalRecPulse 1.25s ease-in-out infinite; }
 .paused .global-rec-dot { background:#D5DAE1; box-shadow:none; animation:none; }
-.global-rec-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:26rpx; font-weight:600; line-height:1.35; }
+.global-rec-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:24rpx; font-weight:600; line-height:1.35; }
 @keyframes globalRecPulse { 50% { opacity:.55; transform:scale(.86); } }
 </style>

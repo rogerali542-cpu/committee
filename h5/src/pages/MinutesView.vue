@@ -244,7 +244,7 @@ onMounted(() => {
 .mv-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
 /* 正文格式与老纪要页保持一致 */
 .doc { background: #fff; border-radius: 24rpx; padding: 36rpx 32rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
-.mv-loading { color: #5f636b; text-align: center; font-size: 32rpx; }
+.mv-loading { color: #888; text-align: center; font-size: 30rpx; }
 .minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:18rpx 10rpx 34rpx; }
 .minutes-meeting-name { font-size:42rpx; font-weight:700; color:#161616; line-height:1.45; white-space:pre-wrap; }
 .doc-body { display: block; font-size: 34rpx; color: #33373d; line-height: 1.9; white-space: pre-wrap; padding: 24rpx 0; }
@@ -254,13 +254,13 @@ onMounted(() => {
 .doc-body.editable { min-height: 52vh; }
 /* 复制/待办：在老页小链接基础上加大，方便点（老页 28rpx → 34rpx，加内边距 + 分隔线） */
 .mv-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12rpx 34rpx; margin-top: 12rpx; padding-top: 18rpx; border-top: 2rpx solid #f0f0f0; }
-.mv-link { font-size: 28rpx; font-weight: 400; color: #858b92; padding: 10rpx 16rpx; }
+.mv-link { font-size: 26rpx; font-weight: 400; color: #858b92; padding: 10rpx 16rpx; }
 .mv-link:active { opacity: 0.6; }
 .mv-signature { margin-top: 36rpx; text-align: right; font-size: 32rpx; line-height: 1.8; color: #33373d; }
 .mv-editor-actions { display: flex; gap: 20rpx; margin-top: 34rpx; padding-top: 22rpx; border-top: 2rpx solid #f0f0f0; }
 .mv-editor-actions.single { justify-content: center; }
 .mv-editor-actions.single button { flex: 0 0 60%; }
-.mv-editor-actions button { flex: 1; height: 84rpx; border-radius: 42rpx; font-size: 32rpx; border: 0; }
+.mv-editor-actions button { flex: 1; height: 84rpx; border-radius: 42rpx; font-size: 30rpx; border: 0; }
 .mv-cancel { background: #f1f2f4; color: #555; }
 .mv-save { background: var(--c-primary-dark); color: #fff; }
 .mv-editor-actions button:disabled { opacity: .55; }
@@ -268,5 +268,5 @@ onMounted(() => {
 .mv-empty { background: #fff; border-radius: 24rpx; padding: 80rpx 40rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .mv-empty-ico { font-size: 72rpx; margin-bottom: 16rpx; }
 .mv-empty-title { font-size: 34rpx; font-weight: 700; color: #1a1a1a; margin-bottom: 12rpx; }
-.mv-empty-sub { font-size: 32rpx; color: #5f636b; line-height: 1.7; }
+.mv-empty-sub { font-size: 28rpx; color: #888; line-height: 1.7; }
 </style>

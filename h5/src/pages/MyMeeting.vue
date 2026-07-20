@@ -447,7 +447,7 @@ onUnmounted(() => {
 
 /* 章节标题 */
 .mm-section-title { display: block; font-size: 40rpx; font-weight: 700; color: #1f2329; margin-bottom: 8rpx; }
-.mm-section-desc { display: block; font-size: 32rpx; color: #666; margin-bottom: 24rpx; line-height: 1.5; }
+.mm-section-desc { display: block; font-size: 28rpx; color: #666; margin-bottom: 24rpx; line-height: 1.5; }
 
 /* 大按钮：与 CommitteeDetail 的 pf-btn 一致（深橙胶囊） */
 .mm-big-btn {
@@ -469,12 +469,12 @@ onUnmounted(() => {
 }
 .mm-done-ico {
   width: 40rpx; height: 40rpx; border-radius: 50%;
-  background: #27AE60; color: #fff; font-size: 28rpx; font-weight: 700;
+  background: #27AE60; color: #fff; font-size: 26rpx; font-weight: 700;
   text-align: center; line-height: 40rpx; margin-right: 12rpx;
 }
 .mm-done-text { font-size: 32rpx; font-weight: 700; color: #1E8449; }
-.mm-cancel { margin-top: 16rpx; font-size: 32rpx; color: #666; padding: 8rpx; }
-.mm-declined { display: block; text-align: center; font-size: 32rpx; color: #E67E22; margin-bottom: 20rpx; line-height: 1.5; }
+.mm-cancel { margin-top: 16rpx; font-size: 28rpx; color: #666; padding: 8rpx; }
+.mm-declined { display: block; text-align: center; font-size: 30rpx; color: #E67E22; margin-bottom: 20rpx; line-height: 1.5; }
 .mm-decline-wrap { text-align: center; margin-top: 28rpx; }
 .mm-decline-pill { display: inline-flex; align-items: center; justify-content: center; height: 88rpx; padding: 0 56rpx; border-radius: 44rpx; background: #f5f5f5; color: #777; font-size: 32rpx; font-weight: 600; border: none; }
 
@@ -489,7 +489,7 @@ onUnmounted(() => {
 }
 .mm-rec-dot.on { background: #E74C3C; box-shadow: 0 0 12rpx rgba(231,76,60,0.4); }
 .mm-rec-time { font-size: 44rpx; font-weight: 700; color: #1f2329; font-variant-numeric: tabular-nums; margin-right: 16rpx; }
-.mm-rec-status { font-size: 32rpx; color: #666; }
+.mm-rec-status { font-size: 28rpx; color: #666; }
 
 .mm-rec-btn {
   width: 100%; height: 88rpx; border-radius: 44rpx;
@@ -505,14 +505,14 @@ onUnmounted(() => {
 
 .mm-divider { display: flex; align-items: center; margin: 8rpx 0 16rpx; }
 .mm-divider::before, .mm-divider::after { content: ''; flex: 1; height: 1rpx; background: #e8eaed; }
-.mm-divider-text { padding: 0 20rpx; font-size: 32rpx; color: #666; }
+.mm-divider-text { padding: 0 20rpx; font-size: 28rpx; color: #666; }
 
-.mm-uploading { display: block; text-align: center; font-size: 32rpx; color: #FFA800; padding: 12rpx; }
+.mm-uploading { display: block; text-align: center; font-size: 30rpx; color: #FFA800; padding: 12rpx; }
 
 .mm-tip-block { padding: 48rpx 0; text-align: center; }
 .mm-tip { font-size: 32rpx; color: #666; }
 .mm-sign-block { display: flex; flex-direction: column; gap: 20rpx; }
-.mm-sign-hint { display: block; text-align: center; font-size: 32rpx; color: #666; }
+.mm-sign-hint { display: block; text-align: center; font-size: 30rpx; color: #666; }
 
 /* 录音列表 */
 .mm-rec-item {
@@ -522,8 +522,8 @@ onUnmounted(() => {
 .mm-rec-item:first-child { border-top: none; }
 .mm-rec-item-left { flex: 1; display: flex; flex-direction: column; }
 .mm-rec-item-name { font-size: 32rpx; color: #3a434d; }
-.mm-rec-item-time { color: #666; font-size: 32rpx; }
-.mm-rec-item-status { font-size: 32rpx; color: #666; margin-top: 4rpx; }
+.mm-rec-item-time { color: #666; font-size: 28rpx; }
+.mm-rec-item-status { font-size: 28rpx; color: #666; margin-top: 4rpx; }
 .mm-rec-item-play { font-size: 48rpx; padding: 12rpx 16rpx; }
 
 /* 已结束结果 */

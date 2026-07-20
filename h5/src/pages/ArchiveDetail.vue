@@ -309,39 +309,39 @@ async function viewMinutesRevisions() {
 
 .hd-card { background: #fff; border-radius: 24rpx; padding: 32rpx 28rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .hd-title { font-size: 40rpx; font-weight: 700; color: #1f2329; display: block; line-height: 1.4; }
-.hd-sub { font-size: 32rpx; color: #666; display: block; margin-top: 10rpx; }
+.hd-sub { font-size: 28rpx; color: #666; display: block; margin-top: 10rpx; }
 .hd-tags { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 18rpx; }
-.hd-tag { font-size: 32rpx; font-weight: 600; color: #C77800; background: #FFF3DC; border-radius: 10rpx; padding: 4rpx 16rpx; }
+.hd-tag { font-size: 28rpx; font-weight: 600; color: #C77800; background: #FFF3DC; border-radius: 10rpx; padding: 4rpx 16rpx; }
 
 .sec { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
-.sec-title { font-size: 32rpx; font-weight: 600; color: #666; display: block; margin-bottom: 16rpx; }
+.sec-title { font-size: 28rpx; font-weight: 600; color: #666; display: block; margin-bottom: 16rpx; }
 .sec-head .sec-title { margin-bottom: 0; }
-.sec-action { font-size: 32rpx; color: #FFA800; font-weight: 700; background: #FFF6E5; border-radius: 14rpx; padding: 8rpx 20rpx; flex-shrink: 0; }
+.sec-action { font-size: 28rpx; color: #FFA800; font-weight: 700; background: #FFF6E5; border-radius: 14rpx; padding: 8rpx 20rpx; flex-shrink: 0; }
 .sec-text { font-size: 32rpx; color: #33373d; line-height: 1.7; }
 
 .doc-row { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; background: #fafbfc; border: 2rpx solid #f0f0f0; border-radius: 14rpx; margin-top: 12rpx; }
-.doc-icon { width: 64rpx; height: 48rpx; border-radius: 10rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #f0f0f0; color: #777; font-size: 32rpx; font-weight: 700; cursor: pointer; }
+.doc-icon { width: 64rpx; height: 48rpx; border-radius: 10rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #f0f0f0; color: #777; font-size: 28rpx; font-weight: 700; cursor: pointer; }
 .doc-thumb { width: 120rpx; height: 120rpx; object-fit: cover; border-radius: 8rpx; border: 1rpx solid #eee; flex-shrink: 0; cursor: pointer; }
 .doc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.doc-name { flex: 1; font-size: 32rpx; color: #33373d; word-break: break-all; }
-.doc-meta { font-size: 32rpx; color: #666; line-height: 1.5; }
-.doc-size { font-size: 32rpx; color: #777; }
-.doc-detail { font-size: 32rpx; color: #FFA800; font-weight: 700; background: #FFF6E5; border-radius: 12rpx; padding: 12rpx 22rpx; flex-shrink: 0; cursor: pointer; }
+.doc-name { flex: 1; font-size: 30rpx; color: #33373d; word-break: break-all; }
+.doc-meta { font-size: 28rpx; color: #666; line-height: 1.5; }
+.doc-size { font-size: 28rpx; color: #777; }
+.doc-detail { font-size: 28rpx; color: #FFA800; font-weight: 700; background: #FFF6E5; border-radius: 12rpx; padding: 12rpx 22rpx; flex-shrink: 0; cursor: pointer; }
 .doc-arrow { font-size: 36rpx; color: #FFA800; }
 .doc-row.supplement { background: #FFFDF7; border-color: #FFE8B8; }
-.empty-line { display: block; font-size: 32rpx; color: #777; padding: 14rpx 0 4rpx; }
+.empty-line { display: block; font-size: 28rpx; color: #777; padding: 14rpx 0 4rpx; }
 
 /* 归档管理 */
-.life-state { display: block; font-size: 32rpx; color: #33373d; font-weight: 600; }
-.life-reason { display: block; font-size: 32rpx; color: #E67E22; margin-top: 8rpx; }
-.life-hint { display: block; font-size: 32rpx; color: #666; margin-top: 8rpx; line-height: 1.6; }
+.life-state { display: block; font-size: 30rpx; color: #33373d; font-weight: 600; }
+.life-reason { display: block; font-size: 28rpx; color: #E67E22; margin-top: 8rpx; }
+.life-hint { display: block; font-size: 28rpx; color: #666; margin-top: 8rpx; line-height: 1.6; }
 .life-actions { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 20rpx; }
 .life-actions .btn { margin: 0; }
 .life-log { margin-top: 24rpx; border-top: 2rpx solid #f0f0f0; padding-top: 18rpx; }
-.life-log-title { display: block; font-size: 32rpx; color: #666; margin-bottom: 12rpx; }
+.life-log-title { display: block; font-size: 28rpx; color: #666; margin-bottom: 12rpx; }
 .life-log-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12rpx; padding: 8rpx 0; }
-.llr-action { font-size: 32rpx; color: #E74C3C; font-weight: 600; }
-.llr-meta { font-size: 32rpx; color: #777; }
-.llr-reason { font-size: 32rpx; color: #666; width: 100%; }
+.llr-action { font-size: 28rpx; color: #E74C3C; font-weight: 600; }
+.llr-meta { font-size: 28rpx; color: #777; }
+.llr-reason { font-size: 28rpx; color: #666; width: 100%; }
 </style>

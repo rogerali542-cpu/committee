@@ -216,10 +216,10 @@ onActivated(() => { if (mounted) refresh() })
 }
 .ph-name { font-size: 44rpx; font-weight: 700; margin-bottom: 12rpx; }
 .ph-role-chip {
-  font-size: 32rpx; font-weight: 600;
+  font-size: 28rpx; font-weight: 600;
   padding: 6rpx 24rpx; border-radius: 30rpx;
 }
-.ph-desc { font-size: 32rpx; margin-top: 14rpx; text-align: center; padding: 0 40rpx; line-height: 1.5; }
+.ph-desc { font-size: 28rpx; margin-top: 14rpx; text-align: center; padding: 0 40rpx; line-height: 1.5; }
 
 /* Stats */
 .stats-row {
@@ -237,11 +237,11 @@ onActivated(() => { if (mounted) refresh() })
 }
 .stat-item:not(:last-child) { border-right: 2rpx solid #f0f0f0; }
 .stat-num { font-size: 44rpx; font-weight: 700; color: #1f2329; }
-.stat-label { font-size: 32rpx; color: #666; }
+.stat-label { font-size: 28rpx; color: #666; }
 
 /* Section */
 .section-header {
-  font-size: 32rpx; color: #666; font-weight: 500;
+  font-size: 28rpx; color: #666; font-weight: 500;
   padding: 32rpx 32rpx 12rpx;
 }
 .section {
@@ -271,7 +271,7 @@ onActivated(() => { if (mounted) refresh() })
 .menu-check { font-size: 38rpx; color: #FFA800; font-weight: 700; }
 
 /* Identity group */
-.menu-role-tag { font-size: 32rpx; padding: 4rpx 16rpx; border-radius: 10rpx; background: #f0f0f0; color: #666; }
+.menu-role-tag { font-size: 28rpx; padding: 4rpx 16rpx; border-radius: 10rpx; background: #f0f0f0; color: #666; }
 .menu-role-tag.chair { background: #FFF3DC; color: #C77800; }
 .menu-role-tag.recorder { background: #F5EEF8; color: #9B59B6; }
 
@@ -295,7 +295,7 @@ onActivated(() => { if (mounted) refresh() })
 /* 通知未读红点 */
 .badge {
   min-width: 36rpx; height: 36rpx; line-height: 36rpx; text-align: center;
-  background: #E74C3C; color: #fff; font-size: 32rpx; font-weight: 700;
+  background: #E74C3C; color: #fff; font-size: 28rpx; font-weight: 700;
   border-radius: 18rpx; padding: 0 10rpx; margin-right: 8rpx;
 }
 </style>

@@ -12,14 +12,6 @@
   --c-text-strong: #1F2329; /* 正文/标题 */
   --c-text-mid:    #4A5560; /* 次要文字主力(≈7:1) */
   --c-text-weak:   #5C6672; /* 三级弱信息(时间戳等，仍≥4.5)；禁用更浅灰承载文字 */
-  --c-text-faint:  #6B7078; /* 适老下限：最浅可用文字(≈4.6:1)。任何中性灰文字不得比它更浅 */
-
-  /* ===== 适老字号令牌（正文≥16px；rpx 由 postcss 转 vw，750rpx=100vw） ===== */
-  --fs-body: 32rpx;  /* 16px 正文线 */
-  --fs-sub:  30rpx;  /* 15px 次要 */
-  --fs-cap:  28rpx;  /* 14px 说明/标签下限 */
-  --fs-tiny: 26rpx;  /* 13px 极小信息硬下限 */
-  --tap-min: 88rpx;  /* 44px 点击区下限 */
   --c-bg-page:     #F4F5F7;
   --c-bg-card:     #FFFFFF;
   --c-border:      #E3E5E9; /* 装饰分隔线 */
@@ -38,7 +30,7 @@ html, body, #app { margin: 0; padding: 0; min-height: 100%; }
 body {
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   background: var(--c-bg-page);
-  font-size: var(--fs-body); /* 适老：正文基线 14px→16px */
+  font-size: 28rpx;
   color: var(--c-text-strong);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -52,7 +44,7 @@ textarea, input { font-family: inherit; }
 
 /* ========== 按钮 ========== */
 .btn {
-  padding: 10px 20px; border-radius: 22px; font-size: 32rpx; font-weight: 500;
+  padding: 10px 20px; border-radius: 22px; font-size: 28rpx; font-weight: 500;
   display: inline-flex; align-items: center; justify-content: center; border: none; margin: 0;
 }
 .btn-primary { background: var(--c-primary-dark); color: #fff; }
@@ -70,14 +62,14 @@ textarea, input { font-family: inherit; }
 .btn-arrow { font-size: 40rpx; font-weight: 700; line-height: 1; margin-left: 2rpx; margin-top: -4rpx; }
 
 /* ========== 阶段标签（小面积·底+同色深字） ========== */
-.stage-pill { font-size: 32rpx; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.stage-pill { font-size: 28rpx; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
 .stage-pill.preparing { background: var(--c-warning-soft); color: var(--c-warning); }
 .stage-pill.ongoing   { background: var(--c-primary-soft); color: var(--c-primary-dark); }
 .stage-pill.ended     { background: #F0F1F3; color: var(--c-text-mid); }
 .stage-pill.invalid   { background: var(--c-danger-soft); color: var(--c-danger); }
 
 /* ========== 空状态 ========== */
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; color: var(--c-text-mid); font-size: 32rpx; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; color: var(--c-text-mid); font-size: 28rpx; }
 .mc-dot { color: var(--c-text-mid); margin: 0 2px; }
 
 /* tab 页底部为 TabBar 让位 */

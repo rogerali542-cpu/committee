@@ -961,9 +961,9 @@ async function removeOpinion(op) {
 .ts-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ts-title { min-width: 0; font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.4; word-break: break-all; }
 /* 表决标签：紧跟标题之后（内联），不再顶到右上角 */
-.ts-tag { flex-shrink: 0; font-size: 26rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
+.ts-tag { flex-shrink: 0; font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; background: #F2F2F4; color: #666; white-space: nowrap; }
 /* 指令条（研究快赢①）：左侧粗色条 + 浅色底，一句话说清此刻该做什么，按议题类型变色 */
-.ts-guide { flex-shrink: 0; margin: -4rpx 0 18rpx; padding: 16rpx 20rpx; border-radius: 12rpx; font-size: 28rpx; font-weight: 600; line-height: 1.45; border-left: 8rpx solid #9AA0A6; background: #F3F4F6; color: #4A515A; }
+.ts-guide { flex-shrink: 0; margin: -4rpx 0 18rpx; padding: 16rpx 20rpx; border-radius: 12rpx; font-size: 27rpx; font-weight: 600; line-height: 1.45; border-left: 8rpx solid #9AA0A6; background: #F3F4F6; color: #4A515A; }
 .ts-guide.vote { border-left-color: #C76A00; background: #FFF4E8; color: #9A5200; }
 .ts-guide.notice { border-left-color: #7C5CC4; background: #F4F0FC; color: #5B3FA8; }
 .ts-guide.discuss { border-left-color: #1F6FB2; background: #EFF6FC; color: #1A5C93; }
@@ -971,18 +971,18 @@ async function removeOpinion(op) {
 .ts-tag.discuss { background: #EAF6EE; color: #2E8B57; }
 .ts-tag.vote { background: #FFF0E5; color: #D56A16; }
 /* .ts-tag.notice 已删（0717 通知并入讨论，tagClass 不再产出 notice） */
-.ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #6b7078; margin: -8rpx -12rpx 0 0; }
+.ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
 /* 全部意见大窗口：覆盖在原议题弹层之上，正文列表独立滚动 */
 .ts-all-mask { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0,0,0,.38); }
 .ts-all-sheet { height: 76vh; max-height: 88vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 32rpx calc(28rpx + env(safe-area-inset-bottom)); box-shadow: 0 -10rpx 40rpx rgba(0,0,0,.16); }
 .ts-all-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #D9DDE3; margin: 0 auto 16rpx; }
 .ts-all-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding-bottom: 18rpx; border-bottom: 2rpx solid #EEF0F3; font-size: 34rpx; font-weight: 800; color: #1f2329; }
-.ts-all-close { width: 56rpx; height: 56rpx; border: 0; background: transparent; color: #5f636b; font-size: 44rpx; line-height: 1; }
+.ts-all-close { width: 56rpx; height: 56rpx; border: 0; background: transparent; color: #8A8F98; font-size: 44rpx; line-height: 1; }
 .ts-all-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6rpx 0 24rpx; }
 .ts-all-op { padding: 24rpx 4rpx; border-bottom: 2rpx solid #F0F1F3; }
 .ts-all-op:last-child { border-bottom: 0; }
-.ts-all-content { margin-top: 10rpx; color: #33373D; font-size: 32rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.ts-all-content { margin-top: 10rpx; color: #33373D; font-size: 29rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
 
 .ts-sheet.is-vote { width: 100%; height: 100vh; max-height: 100vh; box-sizing: border-box; border-radius: 0; padding: calc(18rpx + env(safe-area-inset-top)) 34rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; }
 .ts-sheet.is-vote .ts-handle { display: none; }
@@ -1004,26 +1004,26 @@ async function removeOpinion(op) {
 .ts-radio { flex-shrink: 0; width: 34rpx; height: 34rpx; border-radius: 50%; border: 3rpx solid #C5CBD3; box-sizing: border-box; background: #fff; }
 .ts-sheet.is-vote .ts-vote-btn.agree.on { border-color: #69B95B; background: #F0FAED; color: #2E7D32; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.10); }
 .ts-sheet.is-vote .ts-vote-btn.against.on { border-color: #ED7B70; background: #FFF3F1; color: #C0392B; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.10); }
-.ts-sheet.is-vote .ts-vote-btn.abstain.on { border-color: #5f636b; background: #F4F5F7; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
+.ts-sheet.is-vote .ts-vote-btn.abstain.on { border-color: #8D949D; background: #F4F5F7; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
 .ts-sheet.is-vote .ts-vote-btn.agree.on .ts-radio { border-color: #3E9B34; box-shadow: inset 0 0 0 8rpx #fff; background: #3E9B34; }
 .ts-sheet.is-vote .ts-vote-btn.against.on .ts-radio { border-color: #E24B3A; box-shadow: inset 0 0 0 8rpx #fff; background: #E24B3A; }
 .ts-sheet.is-vote .ts-vote-btn.abstain.on .ts-radio { border-color: #4D5158; box-shadow: inset 0 0 0 8rpx #fff; background: #4D5158; }
-.ts-sheet.is-vote .ts-vote-submit { width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 32rpx; background: var(--c-primary-dark, #A85800); }
+.ts-sheet.is-vote .ts-vote-submit { width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: var(--c-primary-dark, #A85800); }
 .ts-sheet.is-vote .ts-vote-submit:active { background: var(--c-primary-strong, #8A4A00); }
 .ts-sheet.is-vote .ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; }
-.ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 26rpx; color: #6b7078; }
+.ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
 .ts-sheet.is-vote .ts-tally-top { margin-bottom: 0; justify-content: center; }
-.ts-sheet.is-vote .ts-tally-scope { background: transparent; color: #5f636b; padding: 0; font-weight: 600; }
-.ts-sheet.is-vote .ts-tally-total { color: #6B7078; font-size: 28rpx; font-weight: 600; }
-.ts-sheet.is-vote .ts-tally-veilbox { margin-top: 10rpx; padding: 12rpx 0 0; border: 0; background: transparent; color: #6b7078; font-size: 26rpx; }
-.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 60%; min-height: 88rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #C8D7E5; border-radius: 16rpx; background: #F7FAFC; color: #4D6F8C; font-size: 32rpx; font-weight: 600; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: none; }
+.ts-sheet.is-vote .ts-tally-scope { background: transparent; color: #8A8F98; padding: 0; font-weight: 600; }
+.ts-sheet.is-vote .ts-tally-total { color: #6B7078; font-size: 25rpx; font-weight: 600; }
+.ts-sheet.is-vote .ts-tally-veilbox { margin-top: 10rpx; padding: 12rpx 0 0; border: 0; background: transparent; color: #A0A5AD; font-size: 24rpx; }
+.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 60%; min-height: 88rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #C8D7E5; border-radius: 16rpx; background: #F7FAFC; color: #4D6F8C; font-size: 30rpx; font-weight: 600; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: none; }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
 .ts-vote-status-row { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
-.ts-vote-progress { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; margin: 0 0 0 auto; color: #6b7078; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
+.ts-vote-progress { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; margin: 0 0 0 auto; color: #A0A5AD; font-size: 23rpx; font-weight: 500; white-space: nowrap; }
 .ts-vote-progress .ts-tally-scope,
 .ts-vote-progress .ts-tally-total { background: transparent; padding: 0; color: inherit; font-size: inherit; font-weight: inherit; }
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
@@ -1031,34 +1031,34 @@ async function removeOpinion(op) {
 /* 方案B：默认就带语义色(浅底+彩边+彩字)，同意绿/不同意红/弃权灰，一眼分清 */
 .ts-vote-btn.agree { background: #EAF6E5; border-color: #52A344; color: #2E7D32; }
 .ts-vote-btn.against { background: #FDECEA; border-color: #E74C3C; color: #C0392B; }
-.ts-vote-btn.abstain { background: #F2F2F4; border-color: #6b7078; color: #5F6570; }
+.ts-vote-btn.abstain { background: #F2F2F4; border-color: #9AA0A6; color: #5F6570; }
 /* 选中态：加深为实心白字 + 色环，与默认浅底拉开层次 */
 .ts-vote-btn.agree.on { background: #F0FAED; border-color: #69B95B; color: #2E7D32; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.10); }
 .ts-vote-btn.against.on { background: #FFF3F1; border-color: #ED7B70; color: #C0392B; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.10); }
-.ts-vote-btn.abstain.on { background: #F4F5F7; border-color: #5f636b; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
+.ts-vote-btn.abstain.on { background: #F4F5F7; border-color: #8D949D; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
 .ts-vote-btn.off { opacity: 0.35; }
 .ts-vote-btn:active { transform: scale(0.97); }
 .ts-opt { display: flex; align-items: center; justify-content: space-between; border: 2rpx solid #D8DBE0; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; font-size: 32rpx; color: #333; }
 .ts-opt.on { background: #FFF6E8; border-color: #FFA800; color: #9A6A00; font-weight: 700; }
 .ts-opt.off { opacity: 0.4; }
-.ts-opt-votes { font-size: 28rpx; color: #6b7078; }
+.ts-opt-votes { font-size: 26rpx; color: #999; }
 /* 全体计票：独立浅底卡片，与个人投票区拉开距离(避免误认成个人结果)；"全体"前缀点明范围 */
 .ts-vote-all { margin-top: 44rpx; }
 /* 顶部：全体 + 参与进度（票数明细/结论只在揭晓后出现） */
 .ts-tally-top { display: flex; align-items: center; gap: 12rpx; margin-bottom: 16rpx; }
-.ts-tally-scope { font-weight: 700; color: #6B7078; background: #E9EBEF; border-radius: 8rpx; padding: 2rpx 12rpx; font-size: 26rpx; }
-.ts-tally-total { font-weight: 700; color: #1f2329; font-size: 28rpx; }
+.ts-tally-scope { font-weight: 700; color: #6B7078; background: #E9EBEF; border-radius: 8rpx; padding: 2rpx 12rpx; font-size: 24rpx; }
+.ts-tally-total { font-weight: 700; color: #1f2329; font-size: 27rpx; }
 /* 白话结论卡：通过=绿 / 未通过=红 */
 .ts-verdict { display: flex; align-items: center; flex-wrap: wrap; gap: 4rpx 14rpx; border-radius: 16rpx; padding: 20rpx 22rpx; margin-bottom: 16rpx; }
 .ts-verdict.pass { background: #EAF6E5; border: 2rpx solid #9FD290; }
 .ts-verdict.fail { background: #FDECEA; border: 2rpx solid #F0B3AB; }
-.ts-verdict-mark { display: inline-flex; align-items: center; justify-content: center; width: 44rpx; height: 44rpx; border-radius: 50%; color: #fff; font-size: 32rpx; font-weight: 700; }
+.ts-verdict-mark { display: inline-flex; align-items: center; justify-content: center; width: 44rpx; height: 44rpx; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 700; }
 .ts-verdict.pass .ts-verdict-mark { background: #2E9E4B; }
 .ts-verdict.fail .ts-verdict-mark { background: #E24B3A; }
 .ts-verdict-word { font-size: 36rpx; font-weight: 800; }
 .ts-verdict.pass .ts-verdict-word { color: #2E7D32; }
 .ts-verdict.fail .ts-verdict-word { color: #C0392B; }
-.ts-verdict-sub { flex-basis: 100%; font-size: 28rpx; font-weight: 600; color: #6B7078; margin-top: 2rpx; }
+.ts-verdict-sub { flex-basis: 100%; font-size: 25rpx; font-weight: 600; color: #6B7078; margin-top: 2rpx; }
 /* 进度条：同意/不同意/弃权/未投 按应到人数占比拼接 */
 .ts-bar { display: flex; height: 22rpx; border-radius: 11rpx; overflow: hidden; background: #EDEFF2; margin-bottom: 18rpx; }
 .ts-bar-seg { height: 100%; }
@@ -1068,9 +1068,9 @@ async function removeOpinion(op) {
 .ts-bar-seg.none { background: #D6DAE0; }
 /* 逐项：每项独立成行，未投单列 */
 .ts-tally-rows { display: flex; flex-direction: column; gap: 2rpx; }
-.ts-tally-row { display: flex; align-items: center; gap: 14rpx; padding: 12rpx 6rpx; border-bottom: 2rpx solid #F2F2F4; font-size: 32rpx; }
+.ts-tally-row { display: flex; align-items: center; gap: 14rpx; padding: 12rpx 6rpx; border-bottom: 2rpx solid #F2F2F4; font-size: 29rpx; }
 .ts-tally-row:last-child { border-bottom: 0; }
-.ts-tally-row.none .ts-row-label { color: #5f636b; }
+.ts-tally-row.none .ts-row-label { color: #8A8F98; }
 .ts-dot { flex-shrink: 0; width: 18rpx; height: 18rpx; border-radius: 50%; }
 .ts-dot.agree { background: #3E9B34; }
 .ts-dot.against { background: #E24B3A; }
@@ -1079,93 +1079,93 @@ async function removeOpinion(op) {
 .ts-row-label { color: #444; font-weight: 600; }
 .ts-row-num { margin-left: auto; font-weight: 800; color: #1f2329; font-variant-numeric: tabular-nums; }
 /* 未揭晓：只提示结果稍后统计 */
-.ts-tally-veilbox { background: #F6F7F9; border: 2rpx dashed #D8DBE0; border-radius: 14rpx; padding: 22rpx; text-align: center; font-size: 28rpx; color: #5f636b; }
-.ts-vote-hint { font-size: 26rpx; color: #6b7078; margin-top: 10rpx; }
+.ts-tally-veilbox { background: #F6F7F9; border: 2rpx dashed #D8DBE0; border-radius: 14rpx; padding: 22rpx; text-align: center; font-size: 26rpx; color: #8A8F98; }
+.ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
-.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #A85800); color: #fff; font-size: 32rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); white-space: nowrap; }
+.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #A85800); color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); white-space: nowrap; }
 .ts-vote-submit:active { background: var(--c-primary-strong, #8A4A00); }
 .ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; box-shadow: none; }
-.ts-vote-submit-tip { font-size: 26rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
-.ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:28rpx; font-weight:800; }
+.ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
+.ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:25rpx; font-weight:800; }
 .ts-vote-feedback-mark { width:28rpx; height:28rpx; border-radius:50%; background:#2E9E4B; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:18rpx; flex-shrink:0; }
 .ts-vote-feedback.against { background:#FFF3F1; border-color:#F1B4AD; color:#C0392B; }
 .ts-vote-feedback.against .ts-vote-feedback-mark { background:#E24B3A; }
 .ts-vote-feedback.abstain { background:#F4F5F7; border-color:#D4D8DE; color:#4D5158; }
 .ts-vote-feedback.abstain .ts-vote-feedback-mark { background:#6B7078; }
 /* 已表决：结果卡整块替换选择区（占屏结果态，明确"做完了·不可改"） */
-.ts-vote-done { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; background: #EAF6E5; border: 2rpx solid #9FD290; border-radius: 16rpx; padding: 24rpx; font-size: 32rpx; font-weight: 800; color: #2E7D32; }
-.ts-vote-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; border-radius: 50%; background: #2E9E4B; color: #fff; font-size: 28rpx; margin-right: 4rpx; }
+.ts-vote-done { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; background: #EAF6E5; border: 2rpx solid #9FD290; border-radius: 16rpx; padding: 24rpx; font-size: 31rpx; font-weight: 800; color: #2E7D32; }
+.ts-vote-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; border-radius: 50%; background: #2E9E4B; color: #fff; font-size: 26rpx; margin-right: 4rpx; }
 /* 表决已结束但本人未投 */
-.ts-vote-missed { background: #F6F7F9; border: 2rpx solid #E4E6EA; border-radius: 16rpx; padding: 22rpx; font-size: 32rpx; font-weight: 600; color: #5f636b; text-align: center; }
+.ts-vote-missed { background: #F6F7F9; border: 2rpx solid #E4E6EA; border-radius: 16rpx; padding: 22rpx; font-size: 28rpx; font-weight: 600; color: #8A8F98; text-align: center; }
 /* 防从众（研究P1）：表决进行中票数处的占位文案 */
-.ts-tally-veil { font-size: 26rpx; color: #6b7078; }
+.ts-tally-veil { font-size: 24rpx; color: #9AA0A6; }
 
 /* 通报类议题：通知正文 + 已通报状态 */
 .ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 18rpx; margin-bottom: 18rpx; }
-.ts-notice-label { font-size: 28rpx; font-weight: 700; color: #A85800; margin-bottom: 12rpx; }
+.ts-notice-label { font-size: 26rpx; font-weight: 700; color: #A85800; margin-bottom: 12rpx; }
 .ts-notice-body { font-size: 32rpx; color: #1f2329; line-height: 1.7; white-space: pre-wrap; }
 .ts-notice-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
-.ts-notice-status { font-size: 28rpx; color: #6b7078; font-weight: 600; }
+.ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
 .ts-notice-status.done { color: #2E7D32; }
-.ts-notice-read { border: none; background: #3E9B34; color: #fff; font-size: 32rpx; font-weight: 700; border-radius: 14rpx; padding: 14rpx 34rpx; }
+.ts-notice-read { border: none; background: #3E9B34; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 14rpx 34rpx; }
 .ts-notice-read:active { background: #34842C; }
 /* #8：本人已确认「我已读」的状态标 */
-.ts-notice-mine { flex-shrink: 0; font-size: 28rpx; font-weight: 700; color: #2E7D32; }
+.ts-notice-mine { flex-shrink: 0; font-size: 26rpx; font-weight: 700; color: #2E7D32; }
 /* #8：主任「标记全体已通报」——单独一行、描边弱化，与委员本人确认区分开 */
 .ts-notice-chair { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
-.ts-notice-forceall { flex-shrink: 0; border: 2rpx solid #C76A00; background: #FFF6EC; color: #A85800; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 12rpx 24rpx; }
+.ts-notice-forceall { flex-shrink: 0; border: 2rpx solid #C76A00; background: #FFF6EC; color: #A85800; font-size: 26rpx; font-weight: 700; border-radius: 14rpx; padding: 12rpx 24rpx; }
 .ts-notice-forceall:active { background: #FBEAD6; }
-.ts-notice-chair-tip { font-size: 26rpx; color: #B79A6A; line-height: 1.4; }
+.ts-notice-chair-tip { font-size: 22rpx; color: #B79A6A; line-height: 1.4; }
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops.summary { margin-top: 18rpx; padding-top: 14rpx; }
 .ts-top-summary { flex-shrink: 0; margin-top: 0; margin-bottom: 12rpx; }
 .ts-ops-title-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 14rpx; }
 .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
-.ts-ops-head { font-size: 32rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
-.ts-ops-expand { flex-shrink: 0; border: 0; background: transparent; color: #1F6FB2; font-size: 28rpx; font-weight: 600; padding: 8rpx 4rpx 8rpx 18rpx; }
+.ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
+.ts-ops-expand { flex-shrink: 0; border: 0; background: transparent; color: #1F6FB2; font-size: 25rpx; font-weight: 600; padding: 8rpx 4rpx 8rpx 18rpx; }
 .ts-ops-expand:active { opacity: .6; }
-.ts-ops.summary .ts-ops-head { font-size: 28rpx; margin-bottom: 8rpx; color: #5F6570; }
+.ts-ops.summary .ts-ops-head { font-size: 26rpx; margin-bottom: 8rpx; color: #5F6570; }
 .ts-ops.summary .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
-.ts-empty { font-size: 32rpx; color: #6b7078; padding: 18rpx 0 24rpx; }
+.ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
 /* 意见条（方案C 极简两行式）：第一行 姓名+表决标签+时间，第二行 意见摘要+查看；点击整条展开全文 */
 .ts-op { padding: 16rpx 0; border-bottom: 2rpx solid #F2F0EC; cursor: pointer; }
 .ts-ops.summary .ts-op { padding: 10rpx 0; cursor: default; }
 .ts-op:last-child { border-bottom: 0; }
 .ts-op-l1 { display: flex; align-items: center; gap: 12rpx; margin-bottom: 8rpx; }
-.ts-op-name { font-size: 32rpx; font-weight: 600; color: #333; }
+.ts-op-name { font-size: 28rpx; font-weight: 600; color: #333; }
 /* 表决结果标签：同意绿 / 不同意红 / 弃权灰 / 多选项蓝，与表决按钮同一套语义色 */
-.ts-op-vote { flex-shrink: 0; font-size: 26rpx; font-weight: 600; padding: 2rpx 12rpx; border-radius: 8rpx; }
+.ts-op-vote { flex-shrink: 0; font-size: 22rpx; font-weight: 600; padding: 2rpx 12rpx; border-radius: 8rpx; }
 .ts-op-vote.agree { background: #EAF6E5; color: #2E7D32; }
 .ts-op-vote.against { background: #FDECEA; color: #C0392B; }
 .ts-op-vote.abstain { background: #F2F2F4; color: #5F6570; }
 .ts-op-vote.opt { background: #EAF2FD; color: #1F6FB2; }
-.ts-op-time { font-size: 26rpx; color: #6b7078; margin-left: auto; }
-.ts-op-del-inline { flex-shrink:0; margin-left:10rpx; border:0; background:transparent; color:#C9483D; font-size:26rpx; padding:6rpx 8rpx; font-family:inherit; }
+.ts-op-time { font-size: 22rpx; color: #BBB; margin-left: auto; }
+.ts-op-del-inline { flex-shrink:0; margin-left:10rpx; border:0; background:transparent; color:#C9483D; font-size:23rpx; padding:6rpx 8rpx; font-family:inherit; }
 .ts-op-del-inline:active { background:#FDEDEC; border-radius:8rpx; }
 .ts-op-l2 { display: flex; align-items: baseline; gap: 12rpx; }
-.ts-op-sum { flex: 1; min-width: 0; font-size: 28rpx; color: #7A756E; line-height: 1.5; word-break: break-all;
+.ts-op-sum { flex: 1; min-width: 0; font-size: 26rpx; color: #7A756E; line-height: 1.5; word-break: break-all;
   overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
-.ts-ops.summary .ts-op-sum { font-size: 26rpx; color: #5f636b; line-height: 1.45; }
-.ts-op.open .ts-op-sum { -webkit-line-clamp: unset; color: #1f2329; font-size: 32rpx; }
-.ts-op-toggle { flex-shrink: 0; font-size: 26rpx; color: #C76A00; font-weight: 600; }
+.ts-ops.summary .ts-op-sum { font-size: 24rpx; color: #8A8F98; line-height: 1.45; }
+.ts-op.open .ts-op-sum { -webkit-line-clamp: unset; color: #1f2329; font-size: 30rpx; }
+.ts-op-toggle { flex-shrink: 0; font-size: 24rpx; color: #C76A00; font-weight: 600; }
 .ts-op-actions { margin-top: 10rpx; text-align: right; }
-.ts-op-actions .ts-op-del { font-size: 26rpx; color: #E74C3C; padding: 6rpx 10rpx; background: none; border: none; }
-.ts-op-more { padding: 8rpx 0 0; font-size: 26rpx; color: #A0A6AE; text-align: center; }
+.ts-op-actions .ts-op-del { font-size: 24rpx; color: #E74C3C; padding: 6rpx 10rpx; background: none; border: none; }
+.ts-op-more { padding: 8rpx 0 0; font-size: 23rpx; color: #A0A6AE; text-align: center; }
 
 /* 通报类议题：标题/正文加大两号、间距拉大，只保留宣读确认 */
 .ts-sheet.is-notice .ts-titlewrap { max-height: 126rpx; }
 .ts-sheet.is-notice .ts-title { font-size: 42rpx; line-height: 1.5; }
 .ts-sheet.is-notice .ts-notice { padding: 30rpx 26rpx 26rpx; margin-bottom: 26rpx; }
-.ts-sheet.is-notice .ts-notice-label { font-size: 32rpx; margin-bottom: 18rpx; }
+.ts-sheet.is-notice .ts-notice-label { font-size: 30rpx; margin-bottom: 18rpx; }
 .ts-sheet.is-notice .ts-notice-body { font-size: 40rpx; line-height: 1.95; }
 .ts-sheet.is-notice .ts-notice-foot { margin-top: 28rpx; }
-.ts-sheet.is-notice .ts-notice-status { font-size: 32rpx; }
-.ts-op-claim-tag { font-size: 26rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; cursor: pointer; }
+.ts-sheet.is-notice .ts-notice-status { font-size: 28rpx; }
+.ts-op-claim-tag { font-size: 22rpx; padding: 2rpx 10rpx; border-radius: 8rpx; background: #FDECEA; color: #C0392B; cursor: pointer; }
 .ts-op-claim-tag:active { opacity: 0.7; }
 .ts-op-claim-tag.on { background: #C0392B; color: #fff; }
 .ts-op-claimrow { margin-top: 10rpx; }
-.ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 28rpx; padding: 10rpx 22rpx; }
+.ts-op-claim-btn { border: 2rpx solid #F0D9B8; border-radius: 14rpx; background: #FFF9F0; color: #B06A00; font-size: 26rpx; padding: 10rpx 22rpx; }
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
 /* 发表意见卡片：暖米底把"写意见"整块框起来，与下方导航区分开 */
@@ -1178,28 +1178,28 @@ async function removeOpinion(op) {
 .ts-voice-dot { flex-shrink: 0; width: 20rpx; height: 20rpx; margin-top: 12rpx; border-radius: 50%; background: #E74C3C; animation: ts-blink 1s infinite; }
 @keyframes ts-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .ts-voice-live-txt { flex: 1; min-width: 0; font-size: 34rpx; line-height: 1.5; color: #1a1a1a; word-break: break-word; }
-.ts-voice-live-txt.ph { color: #6b7078; }
+.ts-voice-live-txt.ph { color: #9AA0A6; }
 .ts-voice-foot { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; }
-.ts-voice-time { flex: 1; font-size: 28rpx; color: #6b7078; }
+.ts-voice-time { flex: 1; font-size: 26rpx; color: #999; }
 /* 完成待确认：结果预览 */
 .ts-voice-result { font-size: 34rpx; line-height: 1.5; color: #1a1a1a; max-height: 220rpx; overflow-y: auto; word-break: break-word; padding: 2rpx; }
 .ts-voice-result-edit { width:100%; min-height:180rpx; max-height:280rpx; box-sizing:border-box; resize:none; border:2rpx solid #D7DEE6; border-radius:16rpx; background:#fff; padding:18rpx 20rpx; font-family:inherit; outline:none; }
 .ts-voice-result-edit:focus { border-color:#4B8FD8; box-shadow:0 0 0 5rpx rgba(75,143,216,0.10); }
-.ts-voice-txt { font-size: 32rpx; color: #333; }
+.ts-voice-txt { font-size: 30rpx; color: #333; }
 .ts-voice-txt.busy { display: flex; align-items: center; justify-content: center; gap: 14rpx; color: #E8890C; font-weight: 600; padding: 16rpx 0; }
 .ts-voice-spin { width: 28rpx; height: 28rpx; border: 4rpx solid #F0D9BC; border-top-color: #E8890C; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
-.ts-voice-cancel { flex-shrink: 0; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #666; font-size: 32rpx; padding: 16rpx 34rpx; }
-.ts-voice-done { flex-shrink: 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 32rpx; font-weight: 700; padding: 18rpx 44rpx; }
-.ts-ta { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 18rpx; padding: 16rpx 20rpx; font-size: 32rpx; line-height: 1.4; resize: none; box-sizing: border-box; max-height: 160px; font-family: inherit; }
+.ts-voice-cancel { flex-shrink: 0; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #666; font-size: 30rpx; padding: 16rpx 34rpx; }
+.ts-voice-done { flex-shrink: 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 30rpx; font-weight: 700; padding: 18rpx 44rpx; }
+.ts-ta { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 18rpx; padding: 16rpx 20rpx; font-size: 30rpx; line-height: 1.4; resize: none; box-sizing: border-box; max-height: 160px; font-family: inherit; }
 .ts-ta:focus { border-color: #FFA800; outline: none; }
-.ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 32rpx; font-weight: 700; padding: 18rpx 34rpx; }
+.ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-send[disabled] { background: #E3D5C3; }
-.ts-input-hint { flex-shrink: 0; font-size: 28rpx; color: #6b7078; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
+.ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
 /* 导航：在输入卡片之外、弹层最底部。上一个=白底描边次要按钮靠左，下一个/完成=实心主按钮+呼吸发光靠右，两端隔开（方案B） */
 .ts-nav-row { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; margin-top: 20rpx; padding-top:18rpx; border-top:2rpx solid #EEF1F4; }
-.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #F7F8FA; color: #444; font-size: 32rpx; font-weight: 700; padding: 18rpx 34rpx; }
+.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #F7F8FA; color: #444; font-size: 29rpx; font-weight: 700; padding: 18rpx 34rpx; }
 .ts-nav-btn:active { background: #ECEEF1; }
-.ts-op-collapse { flex-shrink: 0; border: 2rpx solid #C7D4E2; background: #F4F8FC; color: #3F566E; font-size: 32rpx; font-weight: 800; padding: 16rpx 28rpx; border-radius: 999rpx; font-family: inherit; box-shadow: 0 4rpx 10rpx rgba(63,86,110,0.08); }
+.ts-op-collapse { flex-shrink: 0; border: 2rpx solid #C7D4E2; background: #F4F8FC; color: #3F566E; font-size: 28rpx; font-weight: 800; padding: 16rpx 28rpx; border-radius: 999rpx; font-family: inherit; box-shadow: 0 4rpx 10rpx rgba(63,86,110,0.08); }
 .ts-op-collapse:active { background: #E8F0F8; border-color: #9FB4C9; color: #26394D; }
 .ts-op-collapse.warm { border-color: #E7B36A; background: #FFF4E6; color: #A85800; box-shadow: 0 5rpx 14rpx rgba(168,88,0,0.12); }
 .ts-op-collapse.warm:active { background: #FBE7CC; border-color: #D88900; color: #874600; }
@@ -1208,7 +1208,7 @@ async function removeOpinion(op) {
 .ts-nav-btn.prev:active { background: #EEF0F3; color: #3A3F47; }
 .ts-next-action { margin-left:auto; display:flex; align-items:center; padding:10rpx; border:2rpx solid #B9D8D5; background:#F0FAF8; border-radius:22rpx; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.10); }
 .ts-next-action.disabled { border-color:#E1E5EA; background:#F6F7F9; box-shadow:none; }
-.ts-nav-btn.next { min-width:0; padding:18rpx 28rpx 18rpx 32rpx; border-radius:16rpx; background:#0F766E; border-color:#0F766E; color:#fff; font-size:32rpx; box-shadow:none; }
+.ts-nav-btn.next { min-width:0; padding:18rpx 28rpx 18rpx 32rpx; border-radius:16rpx; background:#0F766E; border-color:#0F766E; color:#fff; font-size:30rpx; box-shadow:none; }
 .ts-nav-btn.next:active { background:#0B5F59; border-color:#0B5F59; }
 .ts-nav-btn.next[disabled] { background:#D8DDE3; border-color:#D8DDE3; color:#8B949E; }
 .ts-next-arrow { font-size:34rpx; line-height:1; margin-left:4rpx; }
@@ -1218,28 +1218,28 @@ async function removeOpinion(op) {
 
 /* AI 助手行：AI 帮写(橙) / 语音输入(蓝) 两个等宽按钮并排，卡片内文本框下方，双色区分 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 0 0; background: transparent; }
-.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 32rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
+.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
 .ts-ai-btn.ai { background: #EEF6E2; border-color: #BAD79A; color: #4F8B34; }
 .ts-ai-btn.ai:active { background: #E3F0D2; }
 .ts-ai-btn.voice { background: #EAF3FC; border-color: #C6DDF3; color: #1F6FB2; }
 .ts-ai-btn.voice:active { background: #DCEAF8; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
-.ts-ai-undo { font-size: 28rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
-.ts-ai-tokenline { flex-shrink: 0; text-align: right; font-size: 26rpx; color: #C2C6CC; padding: 8rpx 2rpx 0; }
-.ts-ai-token { margin-left: auto; font-size: 26rpx; color: #C2C6CC; }
+.ts-ai-undo { font-size: 26rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
+.ts-ai-tokenline { flex-shrink: 0; text-align: right; font-size: 22rpx; color: #C2C6CC; padding: 8rpx 2rpx 0; }
+.ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
 /* AI 生成中：转圈图标 + 假进度百分比 */
-.ts-ai-prog { display: inline-flex; align-items: center; gap: 8rpx; font-size: 26rpx; font-weight: 600; color: #B06A00; font-variant-numeric: tabular-nums; }
+.ts-ai-prog { display: inline-flex; align-items: center; gap: 8rpx; font-size: 24rpx; font-weight: 600; color: #B06A00; font-variant-numeric: tabular-nums; }
 .ts-ai-spin { width: 26rpx; height: 26rpx; border: 4rpx solid #CDE3B4; border-top-color: #4F8B34; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
 @keyframes ts-ai-spin { to { transform: rotate(360deg); } }
 
 /* AI 小助手面板 */
 .ts-helper { flex-shrink: 0; border: 2rpx solid #F0D9B8; border-radius: 18rpx; background: #FFFDF8; padding: 20rpx 22rpx; margin-top: 10rpx; }
-.ts-helper-head { display: flex; align-items: center; font-size: 32rpx; font-weight: 700; color: #B06A00; margin-bottom: 8rpx; }
-.ts-helper-close { margin-left: auto; width: 52rpx; height: 52rpx; line-height: 48rpx; text-align: center; font-size: 40rpx; color: #6b7078; }
-.ts-helper-q { font-size: 28rpx; color: #6B5A3E; line-height: 1.55; margin-bottom: 14rpx; }
+.ts-helper-head { display: flex; align-items: center; font-size: 30rpx; font-weight: 700; color: #B06A00; margin-bottom: 8rpx; }
+.ts-helper-close { margin-left: auto; width: 52rpx; height: 52rpx; line-height: 48rpx; text-align: center; font-size: 40rpx; color: #999; }
+.ts-helper-q { font-size: 27rpx; color: #6B5A3E; line-height: 1.55; margin-bottom: 14rpx; }
 .ts-helper-ta { width: 100%; background: #fff; }
 .ts-helper-btns { display: flex; gap: 16rpx; margin-top: 14rpx; }
-.ts-helper-voice { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; padding: 18rpx 0; }
-.ts-helper-go { flex: 1.4; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 32rpx; font-weight: 700; padding: 18rpx 0; }
+.ts-helper-voice { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 29rpx; padding: 18rpx 0; }
+.ts-helper-go { flex: 1.4; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 29rpx; font-weight: 700; padding: 18rpx 0; }
 .ts-helper-go[disabled] { background: #E3D5C3; }
 </style>

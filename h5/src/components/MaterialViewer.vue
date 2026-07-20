@@ -207,7 +207,7 @@ async function renderPdf(url) {
   justify-content: center;
   gap: 14rpx;
   padding: 80rpx 24rpx;
-  font-size: 32rpx;
+  font-size: 30rpx;
   color: #555;
 }
 .mv-spin {
@@ -231,7 +231,7 @@ async function renderPdf(url) {
 }
 .mv-fb-ic { font-size: 100rpx; }
 .mv-fb-name { font-size: 32rpx; color: #1f2329; word-break: break-all; }
-.mv-fb-tip { font-size: 32rpx; color: #5f636b; }
+.mv-fb-tip { font-size: 28rpx; color: #888; }
 .mv-fb-btn {
   margin-top: 16rpx;
   font-size: 32rpx;
