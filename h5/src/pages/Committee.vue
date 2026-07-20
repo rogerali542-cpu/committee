@@ -4591,16 +4591,16 @@ onActivated(show)
 .create-panel .fl-loc-main { padding: 0; gap: 12rpx; }
 .create-panel .fl-loc-main .fl-label { width: 100rpx; flex-shrink: 0; }
 /* 卡片间距/输入框高度收紧（省高度大头：原 section 间距 31rpx → 16rpx） */
-.create-panel .create-body { padding-top: 10rpx; padding-bottom: 8rpx; }
+.create-panel .create-body { padding-top: 10rpx; padding-bottom: 28rpx; }
 .create-panel .create-tabs { margin-bottom: 12rpx; }
 .create-panel .create-section,
-.create-panel .create-section.meeting-info-card { margin-bottom: 12rpx; padding-top: 12rpx; padding-bottom: 12rpx; }
+.create-panel .create-section.meeting-info-card { margin-bottom: 22rpx; padding-top: 14rpx; padding-bottom: 14rpx; }
 .create-panel .meeting-info-card .form-group { margin-bottom: 6rpx; }
 .create-panel .meeting-info-card .caption-as-title { margin-bottom: 6rpx; }
 .create-panel .meeting-info-card .field-list { gap: 10rpx; }
 .create-panel .form-input.large { height: 64rpx; min-height: 64rpx; }
 .create-panel .title-input-wrap textarea.title-ta { min-height: 56rpx; }
-.create-panel .juwei-card { margin-top: 0; margin-bottom: 8rpx; padding: 12rpx 18rpx; }
+.create-panel .juwei-card { margin-top: 0; margin-bottom: 22rpx; padding: 20rpx 18rpx; }
 /* — 点击区：保持 ≥44px（88rpx） — */
 .create-panel .type-chip { min-height: 88rpx; padding: 10rpx 30rpx; color: #5f636b; font-size: 34rpx; } /* 44px, 17px字 */
 .create-panel .method-switch button { min-height: 76rpx; padding: 14rpx 26rpx; font-size: 32rpx; }      /* 线下/线上 38px */
