@@ -4616,4 +4616,7 @@ onActivated(show)
 .create-panel .meeting-info-card .field-list { gap: 0; }
 .create-panel .meeting-info-card .field-line { border: none; border-radius: 0; background: transparent; border-bottom: 2rpx solid #eef0f2; }
 .create-panel .meeting-info-card .field-line:last-child { border-bottom: none; }
+/* — 三行等高，分隔线均匀（原召开方式59/日期时间37/地点52px 不齐）：统一最小高度+上下居中 — */
+.create-panel .meeting-info-card .field-line { min-height: 108rpx; padding-top: 0; padding-bottom: 0; box-sizing: border-box; }
+.create-panel .meeting-info-card .fl-part { padding-top: 0; padding-bottom: 0; }
 </style>
