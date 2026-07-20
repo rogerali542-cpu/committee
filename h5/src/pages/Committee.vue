@@ -529,7 +529,8 @@
 
         </div>
 
-        <div class="sheet-actions fixed">
+        <!-- 添加议题时隐藏底部主按钮，避免真机键盘弹起时「取消/生成通知」压住「确定添加议题」 -->
+        <div v-show="!topicDialogOpen" class="sheet-actions fixed">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
           <button class="btn btn-primary" @click="submitNewMeeting">生成通知<span class="btn-arrow">›</span></button>
         </div>
@@ -4617,6 +4618,6 @@ onActivated(show)
 .create-panel .meeting-info-card .field-line { border: none; border-radius: 0; background: transparent; border-bottom: 2rpx solid #eef0f2; }
 .create-panel .meeting-info-card .field-line:last-child { border-bottom: none; }
 /* — 三行等高，分隔线均匀（原召开方式59/日期时间37/地点52px 不齐）：统一最小高度+上下居中 — */
-.create-panel .meeting-info-card .field-line { min-height: 108rpx; padding-top: 0; padding-bottom: 0; box-sizing: border-box; }
+.create-panel .meeting-info-card .field-line { min-height: 120rpx; padding-top: 0; padding-bottom: 0; box-sizing: border-box; }
 .create-panel .meeting-info-card .fl-part { padding-top: 0; padding-bottom: 0; }
 </style>
