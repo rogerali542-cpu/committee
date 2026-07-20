@@ -4565,13 +4565,14 @@ onActivated(show)
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
 .create-panel .create-tab { font-size: 32rpx; white-space: nowrap; min-height: 84rpx; }  /* 分段tab 16px+禁换行+点击区抬到≈42px */
 .create-panel .create-tab.active { background: #A85800; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); } /* 选中态白字对比 3.2→5.2:1，与主按钮同色(--c-primary-dark) */
-/* — 视觉层级：标签(字段名)=小·淡·常规；值(填入内容)=大·深·粗。三重差异，消除「满屏黑字」 — */
+/* — 视觉层级(适老修正)：标签=小(14px)·中灰(#6b7078,≥4.5:1可读)·常规；
+   值=大(17px)·深黑·粗。层级靠大小/粗细差，不靠低对比洗白标签。 — */
 .create-panel .fl-label,
-.create-panel .meeting-method-line > .fl-label { color: #949aa2; font-weight: 500; }  /* 标签淡灰 */
+.create-panel .meeting-method-line > .fl-label { color: #6b7078; font-weight: 500; }
 .create-panel .meeting-info-card .caption-as-title,
-.create-panel .section-title { color: #949aa2; font-weight: 600; letter-spacing: 1rpx; }
-.create-panel .juwei-title { color: #6b7078; font-weight: 500; }
-.create-panel .form-label { color: #949aa2; font-weight: 500; }
+.create-panel .section-title { color: #6b7078; font-weight: 600; letter-spacing: 1rpx; }
+.create-panel .juwei-title { color: #5c6672; font-weight: 500; }
+.create-panel .form-label { color: #6b7078; font-weight: 500; }
 .create-panel .fl-value { color: #14181d; font-weight: 700; font-size: 34rpx; }   /* 值：加深加大到17px，成为焦点 */
 .create-panel .form-input.large { color: #14181d; font-weight: 700; }              /* 会议名/议题输入值 加深 */
 .create-panel .topic-line-text { color: #1f2329; font-weight: 600; }
