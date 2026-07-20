@@ -425,6 +425,9 @@
                   <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
+                <button class="loc-map-btn field-map-btn" @click.stop="pickLocationOnMap" aria-label="从地图选点">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+                </button>
               </div>
               <div v-else class="field-line field-line-location">
                 <span class="fl-label online-platform-label">线上平台</span>
@@ -4565,11 +4568,11 @@ onActivated(show)
 /* — 视觉层级(适老修正)：标签=小(14px)·中灰(#6b7078,≥4.5:1可读)·常规；
    值=大(17px)·深黑·粗。层级靠大小/粗细差，不靠低对比洗白标签。 — */
 .create-panel .fl-label,
-.create-panel .meeting-method-line > .fl-label { color: #6b7078; font-weight: 500; }
+.create-panel .meeting-method-line > .fl-label { color: #4a5560; font-weight: 500; }
 .create-panel .meeting-info-card .caption-as-title,
-.create-panel .section-title { color: #6b7078; font-weight: 600; letter-spacing: 1rpx; }
-.create-panel .juwei-title { color: #5c6672; font-weight: 500; }
-.create-panel .form-label { color: #6b7078; font-weight: 500; }
+.create-panel .section-title { color: #4a5560; font-weight: 600; letter-spacing: 1rpx; }
+.create-panel .juwei-title { color: #3a424b; font-weight: 500; }
+.create-panel .form-label { color: #4a5560; font-weight: 500; }
 .create-panel .fl-value { color: #14181d; font-weight: 700; font-size: 34rpx; }   /* 值：加深加大到17px，成为焦点 */
 .create-panel .form-input.large { color: #14181d; font-weight: 700; }              /* 会议名/议题输入值 加深 */
 .create-panel .topic-line-text { color: #1f2329; font-weight: 600; }
