@@ -4545,8 +4545,8 @@ onActivated(show)
 .create-panel .ds-s { color: #6b7078; font-size: 28rpx; }      /* 拍照卡副标题 14px */
 .create-panel .form-label { color: #5f636b; font-size: 32rpx; }/* 议题标签 16px */
 /* — 字号：展示型字段(点选/自动填，不必更大)统一 16px；标题类 17px — */
-.create-panel .caption-as-title { font-size: 34rpx; }          /* 会议名称标题 17px */
-.create-panel .section-title { font-size: 34rpx; }             /* 会议议题标题 17px */
+.create-panel .meeting-info-card .caption-as-title { font-size: 30rpx; }  /* 会议名称标题收到15px */
+.create-panel .section-title { font-size: 32rpx; }             /* 会议议题标题 16px */
 .create-panel .fl-label { font-size: 32rpx; }                  /* 日期/时间/地点标签 16px */
 .create-panel .meeting-method-line > .fl-label { font-size: 32rpx; } /* 召开方式标签 16px */
 .create-panel .field-caption { font-size: 32rpx; }             /* 字段说明 16px */
@@ -4557,14 +4557,24 @@ onActivated(show)
 .create-panel .topic-line-text { font-size: 32rpx; }           /* 已加议题行 16px */
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
 .create-panel .create-tab { font-size: 32rpx; white-space: nowrap; }  /* 分段tab 16px+禁换行 */
-/* — 行距收紧(24→18rpx，省出竖向空间让「居委会见证」回到屏内) + 三行灰字左对齐 —
-   拆分行交给内部 fl-part、标签等宽 100rpx、gap 12rpx，三处占位左缘对齐 */
-.create-panel .field-line { padding: 18rpx 20rpx; }
+/* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
+.create-panel .field-line { padding: 14rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
-.create-panel .meeting-info-card .fl-part { padding: 18rpx 20rpx; gap: 12rpx; }
+.create-panel .meeting-info-card .fl-part { padding: 14rpx 20rpx; gap: 12rpx; }
 .create-panel .meeting-info-card .fl-part .fl-label { width: 100rpx; flex-shrink: 0; }
 .create-panel .fl-loc-main { padding: 0; gap: 12rpx; }
 .create-panel .fl-loc-main .fl-label { width: 100rpx; flex-shrink: 0; }
+/* 卡片间距/输入框高度收紧（省高度大头：原 section 间距 31rpx → 16rpx） */
+.create-panel .create-body { padding-top: 10rpx; padding-bottom: 8rpx; }
+.create-panel .create-tabs { margin-bottom: 12rpx; }
+.create-panel .create-section,
+.create-panel .create-section.meeting-info-card { margin-bottom: 12rpx; padding-top: 12rpx; padding-bottom: 12rpx; }
+.create-panel .meeting-info-card .form-group { margin-bottom: 6rpx; }
+.create-panel .meeting-info-card .caption-as-title { margin-bottom: 6rpx; }
+.create-panel .meeting-info-card .field-list { gap: 10rpx; }
+.create-panel .form-input.large { height: 64rpx; min-height: 64rpx; }
+.create-panel .title-input-wrap textarea.title-ta { min-height: 56rpx; }
+.create-panel .juwei-card { margin-top: 0; margin-bottom: 8rpx; padding: 12rpx 18rpx; }
 /* — 点击区：保持 ≥44px（88rpx） — */
 .create-panel .type-chip { min-height: 88rpx; padding: 10rpx 30rpx; color: #5f636b; font-size: 34rpx; } /* 44px, 17px字 */
 .create-panel .method-switch button { min-height: 76rpx; padding: 14rpx 26rpx; font-size: 32rpx; }      /* 线下/线上 38px */
