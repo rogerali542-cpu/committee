@@ -471,13 +471,16 @@
                   <!-- 0717 用户定：「通知」并入「讨论」，对外只剩 通知和讨论/表决 两类。
                        底层 notice/discussion 两个枚举值都保留：填了通知正文存 notice（通报正文+已读进度机制原样生效），
                        没填存 discussion（见 confirmTopic 的映射）。旧数据/旧草稿里的 notice 议题落在同一枚 chip 上。 -->
-                  <span class="type-chip" :class="{ on: topicDraft.type !== 'decision' }" @click="draftPickType('discussion')">通知和讨论</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type !== 'decision' }" @click="draftPickType('discussion')">讨论事项</span>
                   <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决事项</span>
                 </div>
               </div>
               <div class="form-group" v-if="topicDraft.type !== 'decision'">
-                <span class="form-label">通知正文（选填，填了会上出示并跟踪已读）</span>
-                <textarea class="form-input tie-content" v-model="topicDraft.content"></textarea>
+                <template v-if="topicNoticeOpen || topicDraft.content">
+                  <span class="form-label">通知正文（选填，填了会上出示并跟踪已读）</span>
+                  <textarea class="form-input tie-content" v-model="topicDraft.content"></textarea>
+                </template>
+                <span v-else class="add-link tie-notice-toggle" @click="topicNoticeOpen = true">＋ 补充通知正文（选填）</span>
               </div>
               <div class="form-group" v-if="topicDraft.type === 'decision'">
                 <span class="form-label">表决方式 *</span>
@@ -1613,6 +1616,7 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 // 议题编辑弹窗
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
+const topicNoticeOpen = ref(false) // 通知正文默认收起，点「补充通知正文」才展开
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 
 // 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
@@ -2966,8 +2970,8 @@ function removeCreateTopic(idx) {
 
 function topicTypeLabel(t) {
   if (!t) return ''
-  // 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」
-  if (t.type === 'notice' || t.type === 'discussion') return '通知和讨论'
+  // 通知并入讨论，notice/discussion 对外统一叫「讨论事项」（与「表决事项」对仗）
+  if (t.type === 'notice' || t.type === 'discussion') return '讨论事项'
   if (t.type === 'decision') return t.decisionType === 'multi_choice' ? '表决·多选一' : '表决·是否'
   return ''
 }
@@ -2987,6 +2991,7 @@ function openAddTopic() {
   topicDraft.decisionType = 'none'
   topicDraft.options = []
   topicDraft.content = ''
+  topicNoticeOpen.value = false
   topicDialogOpen.value = true
 }
 
@@ -2998,6 +3003,7 @@ function openEditTopic(idx) {
   topicDraft.decisionType = t.decisionType || 'none'
   topicDraft.options = (t.options || []).map(function (o) { return { id: o.id, label: o.label } })
   topicDraft.content = t.content || ''
+  topicNoticeOpen.value = !!(t.content)
   topicDialogOpen.value = true
 }
 
@@ -4571,6 +4577,7 @@ onActivated(show)
 /* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
 .create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }
+.create-panel .tie-notice-toggle { display: inline-block; padding: 12rpx 0; font-size: 30rpx; color: #5B7C96; }
 /* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
 .create-panel .field-line { padding: 14rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
