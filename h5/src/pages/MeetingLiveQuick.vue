@@ -236,10 +236,12 @@
         <!-- ① 会议录音 -->
         <div class="supp-head recording-compact-head">
           <span class="supp-title">会议录音</span>
-          <button v-if="!isPaused" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
+          <button v-if="!isPaused && !isSelfRemote" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
             {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
           </button>
         </div>
+        <!-- 线上参会：不参与现场录音，仅可查看已录段落与会议进展 -->
+        <div v-if="isSelfRemote" class="rec-remote-note">您以线上方式参会，无需现场录音。现场录音由到场委员完成。</div>
         <!-- 已录段落行：左侧「已录N段」文字，右侧展开/收起按钮 -->
         <div v-if="recordings.length" class="rec-seg-toggle-row">
           <span class="rec-seg-label">已录 {{ recordings.length }} 段</span>
@@ -262,7 +264,7 @@
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
         <!-- 暂停态：继续/上传放卡片下部（初始「开始录音」在头部右侧，见上方 supp-head） -->
-        <div v-if="isPaused" class="supp-actions single paused">
+        <div v-if="isPaused && !isSelfRemote" class="supp-actions single paused">
           <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
           <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
         </div>
@@ -797,6 +799,8 @@ const phaseChanging = ref(false)
 const pageActive = ref(false)
 const signedIn = ref(false)        // 后端持久态：会议开始时已清空，ongoing 阶段即"本人会上是否已签到"（按用户区分、服务器持久）
 const selfAttendance = ref(null)
+// 本人是否「线上参会」：线上参会不参与现场录音（不出录音操作、也不自动开录）
+const isSelfRemote = computed(() => !!(selfAttendance.value && selfAttendance.value.attendanceMode === 'remote'))
 
 // 录音计时显示直接复用 useRecorder（recording/paused/hasRecording 在脚本里用 rec.* 读取）
 const timeText = rec.timeText
@@ -1576,6 +1580,10 @@ function _beforeUnloadGuard(e) {
 async function toggleRecord() {
   if (type.value !== 'committee') {
     toast({ title: '快速录音暂先支持业委会会议', icon: 'none' })
+    return
+  }
+  if (isSelfRemote.value) {
+    toast({ title: '线上参会无需现场录音', icon: 'none' })
     return
   }
   if (!signedIn.value) {
@@ -3668,6 +3676,8 @@ async function returnToRecordingPage() {
 /* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
 .rec-bg-warn { width:fit-content; max-width:100%; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 14rpx; box-sizing:border-box; margin:14rpx auto 0; }  /* 移到录音卡上方，居中一条 */
 .rec-status.err { color:#C0392B; }
+/* 线上参会提示：不参与现场录音 */
+.rec-remote-note { width:100%; box-sizing:border-box; text-align:center; font-size:26rpx; line-height:1.5; color:#6B7280; background:#F6F7F9; border:1px solid #E5E7EB; border-radius:12rpx; padding:16rpx 18rpx; margin-top:12rpx; }
 .rec-main { width:52% !important; max-width:360rpx; margin:0 auto !important; font-size:26rpx !important; font-weight:700; padding:16rpx 0 !important; box-shadow:0 6rpx 16rpx rgba(232,137,12,0.22); } /* 缩小约40% */
 .rec-sub { background:none; border:0; color:#8A8F98; font-size:28rpx; padding:6rpx 20rpx; }
 .rec-sub:active { color:#5A6069; }
