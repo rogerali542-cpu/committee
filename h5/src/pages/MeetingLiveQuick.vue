@@ -389,10 +389,10 @@
           <div><span>识别状态</span><b>{{ recordingStatusText(recordingDetail.item) }}</b></div>
         </div>
         <div class="recording-detail-actions">
-          <!-- 0721 用户定：转写内容是重点（主样式在前），播放降为普通样式——录音基本没人回听 -->
+          <!-- 0721 用户定：转写内容是重点（主样式在前），播放降为普通样式——录音基本没人回听；
+               删除不进详情（录音行上已有红字删除，重复入口去掉） -->
           <button v-if="recordingDetail.item.asrStatus === 'done'" class="supp-btn rec" @click="openTranscriptFromDetail">查看这段转写</button>
           <button class="supp-btn detail-secondary" @click="togglePlay(recordingDetail.item)">{{ playingId === recordingDetail.item.id ? '暂停播放' : '播放录音' }}</button>
-          <button v-if="isChair && !polling && !extracting" class="recording-detail-delete" @click="deleteRecordingFromDetail">删除这段录音</button>
         </div>
       </div>
     </div>
@@ -1149,12 +1149,6 @@ async function openTranscriptFromDetail() {
   } finally {
     transcriptViewLoading.value = false
   }
-}
-async function deleteRecordingFromDetail() {
-  const detail = recordingDetail.value
-  if (!detail) return
-  closeRecordingDetail()
-  await deleteRecording(detail.item, detail.index)
 }
 // 转写页录音回放：当前正在播放的录音 id（null=未播放）
 const playingId = ref(null)
@@ -3930,7 +3924,6 @@ async function returnToRecordingPage() {
 .recording-detail-actions { display:flex; flex-direction:column; align-items:center; gap:18rpx; margin-top:28rpx; }
 .recording-detail-actions .supp-btn { width:82%; }
 .detail-secondary { background:#F1F4F7 !important; color:#344054 !important; }
-.recording-detail-delete { border:0; background:transparent; color:#C0392B; font-size:25rpx; padding:12rpx 24rpx; }
 .qrl-name { font-size:32rpx; color:#1F2024; font-weight:600; }
 .qrl-meta { font-size:26rpx; color:#999; }
 /* 查看内容：左对齐到正文左缘，主色链接样式，点击打开整场转写弹窗 */
