@@ -298,7 +298,9 @@ function openCreate() {
   createForm.location = '社区活动室';
   createForm.trainer = '';
   createForm.attendees = '';
-  createForm.type = learnType.value;
+  // 'training' 是街镇+专项的聚合别名、不是真实类型：在外部培训 tab 新建时默认取当前子分类，
+  // 否则会带着 'training' 提交→后端 valueOf 失败静默落成 internal，记录从培训列表消失。
+  createForm.type = learnType.value === 'training' ? trainSub.value : 'internal';
   createForm.description = '';
 }
 
