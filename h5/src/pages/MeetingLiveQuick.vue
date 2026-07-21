@@ -269,11 +269,6 @@
           <button v-if="isPaused" class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
           <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
         </div>
-        <!-- 主任手动识别入口：有"已上传未识别"的段（委员上传的/识别被中断的）且手上没有在录的段时显示。
-             没有它，这些段会永远停在"待识别"——上传自动识别只覆盖主任自己传的段 -->
-        <div v-else-if="isChair && hasPendingRecognize && !canUpload && !uploading && !polling && !extracting && !generatingMinutes" class="supp-actions single paused">
-          <button class="supp-btn upload-rec" @click="uploadAndRecognize">识别已上传录音</button>
-        </div>
         <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
       </div>
 
@@ -952,10 +947,20 @@ const needRecognize = computed(() => !generated.value
 // 有任一段"已转写出内容"（done 或本轮已识别）→ 生成按钮即可用，不再要求全部段都识别完
 const hasAnyTranscribed = computed(() => (recordings.value || [])
   .some(r => r.asrStatus === 'done' || recognizedIds.value.includes(r.id)))
-// 有已上传但未识别的段（委员上传不自动识别；或识别中途后端重启丢任务）→ 主任需要一个手动识别入口。
-// empty(静音段)不算：重识别只是再花一次钱得到同样的空结果
-const hasPendingRecognize = computed(() => (recordings.value || [])
-  .some(r => r.asrStatus !== 'done' && r.asrStatus !== 'empty'))
+// ── 主任端静默补识别：委员上传的段/识别中途丢任务的段，主任进入或刷新详情时自动识别 ──
+// 不设按钮（0721 用户定：识别入口会误导用户）。每段只自动尝试一次，失败的留给
+// 结束会议/生成纪要流程里的「先识别录音」提示兜底，避免失败段被无限重试烧识别费。
+const _autoRecognizeTried = new Set()
+function maybeAutoRecognizePending() {
+  if (!isChair.value || !signedIn.value) return
+  if (!detail.value || detail.value.stage !== 'ongoing') return
+  if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
+  const pending = (recordings.value || [])
+    .filter(r => r.asrStatus !== 'done' && r.asrStatus !== 'empty' && !_autoRecognizeTried.has(r.id))
+  if (!pending.length) return
+  pending.forEach(r => _autoRecognizeTried.add(r.id))
+  uploadAndRecognize()
+}
 // 圆圈按钮（圆圈即录音键）文案：四字状态、圈内两行显示（开始/录音 各占一行）
 const recCircleLabel = computed(() => {
   if (recActive.value) return '暂停录音'
@@ -1474,6 +1479,7 @@ async function loadDetail() {
       if (isSigned && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
       resumeBgAiTask() // 切回本页时恢复后台生成的遮罩/完成态（内存 aiTask 还在时）
       reconcileMinutesState() // 内存任务丢失(硬跳/刷新)兜底：从服务端+本地durable标记重建"生成中/查看"入口
+      maybeAutoRecognizePending() // 委员传的/中断丢任务的"待识别"段：主任端静默补识别
     } else {
       clearQuickState()
     }
