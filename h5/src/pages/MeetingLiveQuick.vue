@@ -253,7 +253,7 @@
             <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordingsChrono" :key="item.id">
               <span class="qrl-name rec-summary-name">第 {{ idx + 1 }} 段</span>
               <span class="rec-summary-duration">{{ fmtDur(item.durationSec) }}</span>
-              <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
+              <!-- 0721 用户定：行内播放按钮去掉——录音基本没人听，转写内容才是重点；试听收进详情 -->
               <span class="rec-summary-more" @click="openRecordingDetail(item, idx)">详情 ›</span>
               <span v-if="isChair" class="rec-summary-del" @click="deleteRecording(item, idx)">删除</span>
             </div>
@@ -358,6 +358,8 @@
         </div>
         <div class="qk-transcript-scroll" style="overflow-y:auto;">
           <div v-if="transcriptViewLoading" class="lp-empty">正在加载这段录音的转写…</div>
+          <!-- 单段无内容/取不到：两个 tab 统一给可读说明，不再显示"暂无"或报错 -->
+          <div v-else-if="transcriptView && transcriptView.emptyText" class="lp-empty">{{ transcriptView.emptyText }}</div>
           <div v-else-if="transcriptMode === 'short'">
             <span class="qk-transcript-body">{{ transcriptPreviewText || '暂无摘要文本' }}</span>
             <div class="qk-note">{{ transcriptView ? '这是该条录音单独识别出的原文；整会合并稿见录音卡片的查看转写。' : '摘要用于快速判断转写是否完成；正式匹配仍以全部内容为依据。' }}</div>
@@ -387,8 +389,9 @@
           <div><span>识别状态</span><b>{{ recordingStatusText(recordingDetail.item) }}</b></div>
         </div>
         <div class="recording-detail-actions">
-          <button class="supp-btn rec" @click="togglePlay(recordingDetail.item)">{{ playingId === recordingDetail.item.id ? '暂停播放' : '播放录音' }}</button>
-          <button v-if="recordingDetail.item.asrStatus === 'done'" class="supp-btn detail-secondary" @click="openTranscriptFromDetail">查看这段转写</button>
+          <!-- 0721 用户定：转写内容是重点（主样式在前），播放降为普通样式——录音基本没人回听 -->
+          <button v-if="recordingDetail.item.asrStatus === 'done'" class="supp-btn rec" @click="openTranscriptFromDetail">查看这段转写</button>
+          <button class="supp-btn detail-secondary" @click="togglePlay(recordingDetail.item)">{{ playingId === recordingDetail.item.id ? '暂停播放' : '播放录音' }}</button>
           <button v-if="isChair && !polling && !extracting" class="recording-detail-delete" @click="deleteRecordingFromDetail">删除这段录音</button>
         </div>
       </div>
@@ -1129,11 +1132,20 @@ async function openTranscriptFromDetail() {
     const raw = await api.committeeQuickRecordingTranscript(meetingId.value, item.id)
     const segs = mapTranscript(raw)
     const st = buildTranscriptState(segs)
-    transcriptView.value = { title: title, segments: segs, preview: st.transcriptPreview }
+    // 没识别到内容（静音/太轻/结果为空）→ 明确告知，而不是报错或空白
+    const empty = !segs.some(s => s.text && s.text.trim())
+    transcriptView.value = {
+      title: title,
+      segments: empty ? [] : segs,
+      preview: empty ? '' : st.transcriptPreview,
+      emptyText: empty ? '这段录音没有识别到内容（可能是静音、杂音或声音太轻）。' : ''
+    }
   } catch (e) {
-    toast({ title: e.message || '获取该段转写失败', icon: 'none' })
-    transcriptView.value = null
-    transcriptVisible.value = false
+    // 取不到也别甩「服务器错误」——在弹层里给可读的说明（老后端没有单段接口/服务重启丢缓存都会走到这）
+    transcriptView.value = {
+      title: title, segments: [], preview: '',
+      emptyText: '暂时取不到这段录音的转写内容。若刚重启过服务，请重新识别录音后再试。'
+    }
   } finally {
     transcriptViewLoading.value = false
   }
