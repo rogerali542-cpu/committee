@@ -64,6 +64,10 @@ export default {
   committeeSelfToggle: function (id, field) {
     return core.realRequest('PUT', '/api/committees/' + id + '/self?field=' + field);
   },
+  committeeSelfAttend: function (id, mode, authorizeProxySign) {
+    return core.realRequest('PUT', '/api/committees/' + id + '/self/attendance?mode=' + encodeURIComponent(mode)
+      + '&authorizeProxySign=' + (authorizeProxySign ? 'true' : 'false'));
+  },
   committeeSignAll: function (id) {
     return core.realRequest('POST', '/api/committees/' + id + '/attendance/sign-all');
   },

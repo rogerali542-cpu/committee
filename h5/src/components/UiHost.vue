@@ -106,6 +106,13 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.vote .ui-modal-content { font-size: 36rpx; font-weight: 400; color: #333; margin-top: 8rpx; line-height: 1.55; }
 .ui-modal.vote .ui-modal-btn { padding: 28rpx 0; font-size: 34rpx; }
 .ui-modal.vote .ui-modal-btn.confirm { font-weight: 600; }
+/* 参会方式确认：无标题、两个清晰选项；确认深蓝实色，取消透明灰色。 */
+.ui-modal.attendance { padding:46rpx 40rpx 34rpx; }
+.ui-modal.attendance .ui-modal-content { margin-top:0; color:#30343A; font-size:34rpx; line-height:1.65; }
+.ui-modal.attendance .ui-modal-actions { gap:20rpx; margin-top:38rpx; border-top:0; }
+.ui-modal.attendance .ui-modal-btn { box-sizing:border-box; padding:23rpx 0; border-radius:16rpx; font-size:32rpx; }
+.ui-modal.attendance .ui-modal-btn.cancel { border:2rpx solid #C9CDD3; background:transparent; color:#747A82; font-weight:600; }
+.ui-modal.attendance .ui-modal-btn.confirm { border:2rpx solid #315F7D; background:#315F7D; color:#fff; font-weight:700; }
 /* AI 帮写/润色完成卡（size:'aicard'）：轻提示，短句+清晰确认 */
 .ui-modal.aicard { width: 560rpx; max-width: 82vw; border-radius: 22rpx; padding: 36rpx 36rpx 0; box-shadow: 0 18rpx 54rpx rgba(31,35,41,0.18); }
 .ui-modal.aicard .ui-modal-content { font-size: 32rpx; font-weight: 500; color: #1f2329; line-height: 1.45; margin-top: 0; }

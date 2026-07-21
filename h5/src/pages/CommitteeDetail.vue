@@ -1870,8 +1870,7 @@ async function resolveLiveMeetingId(id) {
   }
 }
 
-// 进入「会议进行」全屏向导页：仅快速模式（软路由偶发"URL变了却不切换视图"——加硬导航兜底确保必达，
-// 对齐 Committee.vue「去通知」的做法；软跳后延时校验录音页 .live-page 是否真挂上，没挂上就 window.location 硬跳）
+// 进入「会议进行」全屏向导页：关键流程直接整页进入，避免软路由、异步组件和 DOM 兜底之间的竞态。
 async function goLive() {
   let liveId = meetingId
   try {
@@ -1884,15 +1883,7 @@ async function goLive() {
     goHome()
     return
   }
-  const target = '/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + liveId
-  const browserUrl = '/meeting-live-quick?type=committee&meetingId=' + liveId
-  try { redirectTo(target) } catch (navErr) { console.error('[开始会议] 软跳 reject：', navErr) }
-  setTimeout(() => {
-    if (!document.querySelector('.live-page')) {
-      console.warn('[开始会议] 软跳未挂载录音页，硬导航兜底 →', browserUrl)
-      window.location.href = browserUrl
-    }
-  }, 500)
+  window.location.assign('/meeting-live-quick?type=committee&meetingId=' + encodeURIComponent(liveId))
 }
 
 // 进入「会议进行」全屏向导页：仅快速模式

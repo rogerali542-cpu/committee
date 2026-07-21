@@ -136,6 +136,9 @@ public class MeetingDetailVO {
             private Boolean signedIn;
             private Boolean signed;
             private Boolean declined;
+            private String attendanceMode;
+            private Boolean proxySignAuthorized;
+            private String proxySignAuthorizedAt;
             private Boolean isSelf;
             private Boolean isProxy;
             private String operatorName;

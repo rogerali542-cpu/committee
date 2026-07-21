@@ -81,6 +81,7 @@ import { toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
 import { getStorage } from '@/utils/storage'
 import { useAuthStore } from '@/stores/auth'
+import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 
 const auth = useAuthStore()
 
@@ -170,13 +171,17 @@ function openNotifications() {
   navigateTo('/pages/notifications/notifications')
 }
 
-function switchRole(item) {
+async function switchRole(item) {
+  if (item.id === activeRole.value.id) return
   const newRole = {
     id: parseInt(item.id),
     role: item.role,
     realName: item.realName,
     communityId: 1,
     communityName: '阳光家园'
+  }
+  if (meetingRecordingSession.meetingId) {
+    await discardMeetingRecording(meetingRecordingSession.meetingId)
   }
   auth.switchRole(newRole)
   toast({ title: '已切换为 ' + item.realName, icon: 'success' })
@@ -185,7 +190,10 @@ function switchRole(item) {
 
 function goAdmin() { navigateTo('/pages/admin/admin') }
 function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
-function doLogout() {
+async function doLogout() {
+  if (meetingRecordingSession.meetingId) {
+    await discardMeetingRecording(meetingRecordingSession.meetingId)
+  }
   auth.logout()
   redirectTo('/pages/login/login')
 }

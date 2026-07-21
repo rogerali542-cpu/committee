@@ -34,6 +34,16 @@ public class RecordAttendance {
     @Column(name = "declined")
     private Boolean declined;   // 因故缺席（委员主动选择"无法参会"）；null/false=未拒绝
 
+    @Column(name = "attendance_mode", length = 20)
+    private String attendanceMode;
+
+    @Builder.Default
+    @Column(name = "proxy_sign_authorized", nullable = false)
+    private Boolean proxySignAuthorized = false;
+
+    @Column(name = "proxy_sign_authorized_at")
+    private LocalDateTime proxySignAuthorizedAt;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "operator_id")
     private UserRoleEntity operator;

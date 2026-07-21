@@ -303,9 +303,7 @@
 
     <!-- 委员且无相关会议：空闲提示 -->
     <div v-if="planTab === 'meeting' && !isChair && (!currents || !currents.length)" class="idle">
-      <span class="idle-emoji">☕</span>
-      <span class="idle-hint">暂时没有需要您处理的会议</span>
-      <span class="idle-sub">有新会议时，会在这里提醒您</span>
+      <span class="idle-hint">暂无待处理会议</span>
     </div>
 
     <!-- 待发送草稿卡：发起会议填了一半返回，内容自动存草稿，放大成首页主角，突出「继续通知」 -->
@@ -337,7 +335,9 @@
           <!-- 顶部分段切换：手动填写 / 拍照上传（两者平级，拍照入口更醒目） -->
           <div class="create-tabs">
             <div class="create-tab" :class="{ active: createTab === 'manual' }" @click="createTab = 'manual'">手动填写</div>
-            <div class="create-tab" :class="{ active: createTab === 'scan' }" @click="createTab = 'scan'">拍照 / 上传</div>
+            <div class="create-tab" :class="{ active: createTab === 'scan' }" @click="createTab = 'scan'">
+              {{ scanItems.length && createTab !== 'scan' ? '已识别 ' + scanItems.length + ' 份文件' : '拍照 / 上传' }}
+            </div>
           </div>
 
           <!-- 拍照/上传面板：拍通知照片或传文件，AI 识别后在当前面板展示结果，并把识别内容预填到下方表单 -->
@@ -352,23 +352,17 @@
                   <span class="ds-thumb-del" @click.stop="removeScanItem(it.id)">×</span>
                 </div>
               </div>
-              <div class="ds-cards ds-cards-3">
-          <button class="ds-card" :disabled="scanRecognizing" @click="startCamera()">
-            <span class="ds-ico or">📷</span>
-            <span class="ds-t">拍照</span>
-            <span class="ds-s">纸质文件</span>
-          </button>
-                <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('image')">
+              <div class="ds-cards ds-cards-2">
+                <button class="ds-card" :disabled="scanRecognizing" @click="chooseImageSource">
                   <span class="ds-ico bl">🖼️</span>
                   <span class="ds-t">图片</span>
-                  <span class="ds-s">手机相册</span>
                 </button>
                 <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
                   <span class="ds-ico bl">📄</span>
                   <span class="ds-t">文件</span>
-                  <span class="ds-s">PDF·Word</span>
                 </button>
               </div>
+              <div class="ds-shared-hint">可上传图片或 PDF、Word 文件</div>
               <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
                 {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
               </button>
@@ -452,7 +446,7 @@
               </div>
             </div>
             <div v-show="createTab === 'manual' && !topicDialogOpen" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
-              <span class="tat-ico">＋</span><span class="tat-text">点此添加议题</span>
+              <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
             </div>
             <div v-if="createTab === 'manual' && topicDialogOpen" class="topic-inline-editor">
               <div class="tie-head">
@@ -471,8 +465,8 @@
                   <!-- 0717 用户定：「通知」并入「讨论」，对外只剩 通知和讨论/表决 两类。
                        底层 notice/discussion 两个枚举值都保留：填了通知正文存 notice（通报正文+已读进度机制原样生效），
                        没填存 discussion（见 confirmTopic 的映射）。旧数据/旧草稿里的 notice 议题落在同一枚 chip 上。 -->
-                  <span class="type-chip" :class="{ on: topicDraft.type !== 'decision' }" @click="draftPickType('discussion')">讨论事项</span>
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决事项</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type !== 'decision' }" @click="draftPickType('discussion')">讨论</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决</span>
                 </div>
               </div>
               <div class="form-group" v-if="topicDraft.type !== 'decision'">
@@ -1241,9 +1235,9 @@ const calList = computed(() => {
       items.unshift({
         key: 'plan' + row.period, icon: '📅', date: '',
         title: '第' + row.period + '期例会（' + row.monthLabel + '）',
-        sub: row.status === 'overdue' ? '请尽快补开' : '',
+        sub: isChair.value && row.status === 'overdue' ? '请尽快补开' : '',
         status: row.status,
-        badge: row.status === 'overdue' ? '去补开' : '去通知',
+        badge: isChair.value ? (row.status === 'overdue' ? '去补开' : '去通知') : '等待通知',
         onTap: () => onPlanRow(row)
       })
     }
@@ -1550,7 +1544,7 @@ const planTodoList = computed(() => {
     title: '第' + row.period + '期例会（' + row.monthLabel + '）',
     sub: '',
     status: row.status,
-    badge: row.status === 'overdue' ? '去补开' : '去通知',
+    badge: isChair.value ? (row.status === 'overdue' ? '去补开' : '去通知') : '等待通知',
     onTap: () => onPlanRow(row)
   }))
 })
@@ -1820,6 +1814,12 @@ async function goCurrent(cur) {
   } catch (e) {
     toast({ title: '会议已更新，正在刷新', icon: 'none' })
     await loadAll()
+    return
+  }
+  // 进行中的会议是关键入口：主任和委员统一整页进入签到/会议流程。
+  // 不再经过详情页、RouterLink 和 DOM 延时兜底，避免路由重复或组件切换竞态导致点击无响应。
+  if (cur.stage === 'ongoing') {
+    window.location.assign('/meeting-live-quick?type=committee&meetingId=' + encodeURIComponent(cur.id))
     return
   }
   const chair = perm.isChair() || perm.isRecorder()
@@ -2277,6 +2277,16 @@ function openScanItemPreview(it) {
 
 // 上传：source='image' 选图片(可多张) / 'file' 选文档(PDF/Word 等)。拆两个入口——
 // 手机微信对"图片+文档混选"会退化成单选，纯 image/* 时一次多选更容易生效；选中的都攒进暂存列表(不立即识别)。
+async function chooseImageSource() {
+  const res = await showActionSheet({
+    title: '添加图片',
+    itemList: ['相机拍摄', '从相册选择']
+  })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  if (res.tapIndex === 0) await startCamera()
+  else if (res.tapIndex === 1) await startDocScan('image')
+}
+
 async function startDocScan(source = 'image') {
   if (scanRecognizing.value) return
   // 企业微信里「图片」走 JS-SDK 相册多选（内置浏览器把 <input multiple> 强制单选）；
@@ -2641,6 +2651,7 @@ function confirmScanResult(overwrite) {
   } else if (filled) {
     toast({ title: '已自动填写，请核对', icon: 'none' })
   }
+  createTab.value = 'manual'   // 识别完成后收起上传区，右侧入口显示已识别文件数
   scanResultCard.value = null
 }
 // 多份通知的「手动填写」：不填通知字段，但仍把材料加上
@@ -2984,9 +2995,8 @@ function removeCreateTopic(idx) {
 
 function topicTypeLabel(t) {
   if (!t) return ''
-  // 通知并入讨论，notice/discussion 对外统一叫「讨论事项」（与「表决事项」对仗）
-  if (t.type === 'notice' || t.type === 'discussion') return '讨论事项'
-  if (t.type === 'decision') return t.decisionType === 'multi_choice' ? '表决·多选一' : '表决·是否'
+  if (t.type === 'notice' || t.type === 'discussion') return '讨论'
+  if (t.type === 'decision') return '表决'
   return ''
 }
 
@@ -3145,19 +3155,23 @@ async function submitNewMeeting() {
     clearDraft()   // 会议已发出，草稿完成使命，清掉首页草稿卡
     currentStage.value = 'preparing'
     if (created && created.id) {
+      // 若测试过程中仍残留上一身份的暂停录音，先彻底释放；否则 beforeunload 会拦截通知页兜底跳转。
+      if (meetingRecordingSession.meetingId) {
+        await discardMeetingRecording(meetingRecordingSession.meetingId)
+      }
       // 竞态兜底：navigateTo(router.push) 偶发被取消/重复导航会 reject，或"URL变了却不切换视图"，
       // 都会把用户留在主页（弹窗已关）。软跳后延时校验通知页(.detail-page)是否真的挂上，没挂上就
       // window.location 硬跳过去，确保必达（对齐本 app 其它关键跳转的硬导航兜底做法）。
       const target = '/pages/committee-detail/committee-detail?id=' + created.id
       const browserUrl = '/committee-detail?id=' + created.id
       console.log('[去通知] 跳转 →', target)
-      try { await navigateTo(target) } catch (navErr) { console.error('[去通知] 软跳 reject：', navErr) }
+      try { await redirectTo(target) } catch (navErr) { console.error('[去通知] 软跳 reject：', navErr) }
       setTimeout(() => {
         if (!document.querySelector('.detail-page')) {
           console.warn('[去通知] 软跳未挂载通知页，硬导航兜底 →', browserUrl)
-          window.location.href = browserUrl
+          window.location.replace(browserUrl)
         }
-      }, 500)
+      }, 1500)
     } else {
       console.warn('[去通知] created 无 id，回列表', created)
       toast({ title: '会议已创建，请在列表中打开', icon: 'none' })
@@ -3390,7 +3404,7 @@ onActivated(show)
 .step-line.done { background: var(--c-primary); }
 .step-line.todo { background: #E3E5E9; }
 /* 大按钮（方案④ 浅橙卡包实心钮：外层浅橙框 + 内层深橙实心白字）*/
-.big-btn { padding: 10rpx; border-radius: 26rpx; background: var(--c-primary-soft); margin-top: 4rpx; box-sizing: border-box; box-shadow: 0 12rpx 84rpx 12rpx rgba(232, 140, 20, 0.26); }
+.big-btn { display:block; padding: 10rpx; border-radius: 26rpx; background: var(--c-primary-soft); margin-top: 4rpx; box-sizing: border-box; box-shadow: 0 12rpx 84rpx 12rpx rgba(232, 140, 20, 0.26); text-decoration:none; }
 .big-btn-inner { display: flex; align-items: center; justify-content: center; height: 88rpx; border-radius: 16rpx; background: var(--c-primary); }
 .big-btn:active .big-btn-inner { background: var(--c-primary-strong); }
 .big-btn-ico { font-size: 36rpx; margin-right: 12rpx; }
@@ -3426,9 +3440,7 @@ onActivated(show)
 .draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
 /* 空闲态 */
 .idle { margin: 64rpx 24rpx 0; display: flex; flex-direction: column; align-items: center; }
-.idle-emoji { font-size: 104rpx; margin-bottom: 24rpx; }
 .idle-hint { font-size: 38rpx; color: var(--c-text-mid); margin-bottom: 8rpx; }
-.idle-sub { font-size: 30rpx; color: var(--c-text-weak); margin-top: 6rpx; }
 /* 「更多功能」三格已删（0709）：接待/培训入口移入计划卡横栏 */
 
 /* 综合评分小字（占位分数）：贴近顶栏、紧凑 */
@@ -4010,8 +4022,8 @@ onActivated(show)
 .quick-fill-bar .ai-fill-hint { margin: 0; }
 /* 顶部分段切换：手动填写 / 拍照上传（复用首页 plan-tabs 视觉：灰底圆角胶囊 + active 橙底白字） */
 .create-tabs { display: flex; gap: 8rpx; background: #F2F6F7; border-radius: 16rpx; padding: 4rpx; margin-bottom: 22rpx; }
-.create-tab { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14rpx 0; font-size: 36rpx; line-height: 1.2; font-weight: 700; color: #52646B; border-radius: 12rpx; cursor: pointer; }
-.create-tab.active { background: #D97706; color: #fff; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
+.create-tab { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14rpx 0; font-size: 36rpx; line-height: 1.2; font-weight: 700; color: #40545C; background:#E7EEF0; border:1rpx solid #D5E0E3; border-radius: 12rpx; cursor: pointer; }
+.create-tab.active { background: #D97706; border-color:#D97706; color: #fff; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
 .create-tab:active { opacity: 0.8; }
 .ct-ico { font-size: 32rpx; line-height: 1; }
 /* 拍照/上传面板 */
@@ -4055,18 +4067,18 @@ onActivated(show)
 /* 拍照/上传 双卡片（政务风功能入口）：图标圆 + 标题 + 两行说明整合在卡片内 */
 .doc-scan-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
 /* 展开在顶部入口内时：去掉底部固定栏的边框/灰底，接在入口下方成一体 */
-.doc-scan-bar.inline { flex-shrink: initial; background: #FFFDF9; border: 2rpx dashed #F0B978; border-radius: 16rpx; padding: 18rpx 20rpx; }
+.doc-scan-bar.inline { flex-shrink: initial; background: transparent; border: 0; border-radius: 0; padding: 10rpx 0 6rpx; }
 .ds-cards { display: flex; gap: 18rpx; }
-.ds-cards-3 { gap: 12rpx; }
-.ds-cards-3 .ds-card { padding: 12rpx 4rpx 10rpx; }
+.ds-cards-2 { gap: 56rpx; justify-content:center; }
+.ds-cards-2 .ds-card { flex:0 0 36%; padding: 18rpx 6rpx 16rpx; }
 .ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
 .ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
 .ds-card:disabled { opacity: 0.75; }
-.ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30rpx; margin-bottom: 2rpx; }
+.ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22rpx; margin-bottom: 4rpx; }
 .ds-ico.or { background: #FFF3E0; }
 .ds-ico.bl { background: #EAF2FF; }
 .ds-t { font-size: 28rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
-.ds-s { font-size: 22rpx; color: #999; text-align: center; line-height: 1.4; }
+.ds-shared-hint { margin:12rpx 4rpx 2rpx; color:#938979; font-size:26rpx; line-height:1.45; text-align:center; white-space:nowrap; }
 .ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
 /* 待识别缩略图预览条：横向排列，可删 */
@@ -4563,11 +4575,11 @@ onActivated(show)
 .create-panel .title-clear { color: #6b7078; }                 /* 名称清除× 提深 */
 .create-panel .fl-arrow { font-size: 30rpx; color: #8a9099; }  /* 右侧箭头 15px */
 .create-panel .ds-t { font-size: 32rpx; }                      /* 拍照卡标题 16px */
-.create-panel .ds-s { color: #6b7078; font-size: 28rpx; }      /* 拍照卡副标题 14px */
 .create-panel .form-label { color: #5f636b; font-size: 32rpx; }/* 议题标签 16px */
 /* — 字号：展示型字段(点选/自动填，不必更大)统一 16px；标题类 17px — */
 .create-panel .meeting-info-card .caption-as-title { font-size: 28rpx; }  /* 会议名称标签 14px（退为次级） */
 .create-panel .section-title { font-size: 28rpx; }             /* 会议议题标签 14px（退为次级） */
+.create-panel .topic-head .section-title { font-size:30rpx; }
 .create-panel .fl-label { font-size: 28rpx; }                  /* 日期/时间/地点标签 14px */
 .create-panel .meeting-method-line > .fl-label { font-size: 28rpx; } /* 召开方式标签 14px */
 .create-panel .field-caption { font-size: 28rpx; }             /* 字段说明 14px */
@@ -4575,21 +4587,22 @@ onActivated(show)
 .create-panel .form-input.large,
 .create-panel .form-input.large::placeholder { font-size: 32rpx; } /* 名称/议题输入 16px */
 .create-panel .juwei-title { font-size: 32rpx; }               /* 居委会见证说明 16px */
-.create-panel .topic-line-text { font-size: 32rpx; }           /* 已加议题行 16px */
+.create-panel .topic-line-text { font-size: 28rpx; }           /* 已添加议题内容低于分区标题 */
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
-.create-panel .create-tab { font-size: 32rpx; white-space: nowrap; min-height: 84rpx; }  /* 分段tab 16px+禁换行+点击区抬到≈42px */
+.create-panel .create-tab { font-size: 30rpx; white-space: nowrap; min-height: 58rpx; padding:8rpx 0; }  /* Tab 总高度较原版压缩约 30% */
 .create-panel .create-tab.active { background: #A85800; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); } /* 选中态白字对比 3.2→5.2:1，与主按钮同色(--c-primary-dark) */
 /* — 视觉层级(适老修正)：标签=小(14px)·中灰(#6b7078,≥4.5:1可读)·常规；
    值=大(17px)·深黑·粗。层级靠大小/粗细差，不靠低对比洗白标签。 — */
 .create-panel .fl-label,
-.create-panel .meeting-method-line > .fl-label { color: #4a5560; font-weight: 500; }
+.create-panel .meeting-method-line > .fl-label { color: #667B88; font-weight: 500; }
 .create-panel .meeting-info-card .caption-as-title,
-.create-panel .section-title { color: #4a5560; font-weight: 600; letter-spacing: 1rpx; }
-.create-panel .juwei-title { color: #3a424b; font-weight: 500; }
-.create-panel .form-label { color: #4a5560; font-weight: 500; }
-.create-panel .fl-value { color: #14181d; font-weight: 700; font-size: 34rpx; }   /* 值：加深加大到17px，成为焦点 */
-.create-panel .form-input.large { color: #14181d; font-weight: 700; }              /* 会议名/议题输入值 加深 */
+.create-panel .section-title { color: #8A540D; font-weight: 600; letter-spacing: 1rpx; }
+.create-panel .juwei-title { color: #526774; font-weight: 500; }
+.create-panel .form-label { color: #667B88; font-weight: 500; }
+.create-panel .fl-value { color: #24364B; font-weight: 700; font-size: 34rpx; }   /* 具体值统一深蓝黑 */
+.create-panel .form-input.large { color: #24364B; font-weight: 700; }
 .create-panel .topic-line-text { color: #2C3E70; font-weight: 400; }  /* 议题正文：深靛蓝(≈9:1)替代硬黑，清爽墨水感；序号仍<b>加粗保结构 */
+.create-panel .topic-line-text b { color:#B46A12; }
 /* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
 .create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }

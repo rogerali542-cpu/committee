@@ -371,6 +371,9 @@ public class CommitteeService {
                     a.setSignedIn(false);
                     a.setSigned(false);
                 }
+                a.setAttendanceMode(null);
+                a.setProxySignAuthorized(false);
+                a.setProxySignAuthorizedAt(null);
             }
             attendanceRepo.saveAll(startAtts);
 
@@ -624,6 +627,9 @@ public class CommitteeService {
             // 无法参会 → 标记因故缺席，并取消签到
             a.setDeclined(true);
             a.setSignedIn(false);
+            a.setAttendanceMode(null);
+            a.setProxySignAuthorized(false);
+            a.setProxySignAuthorizedAt(null);
             a.setOperator(ur);
             a.setIsProxy(false);
             a.setOperatedAt(LocalDateTime.now());
@@ -631,6 +637,9 @@ public class CommitteeService {
             // 取消参会 → 回到未响应（既不确认也不缺席）
             a.setSignedIn(false);
             a.setDeclined(false);
+            a.setAttendanceMode(null);
+            a.setProxySignAuthorized(false);
+            a.setProxySignAuthorizedAt(null);
             a.setOperator(ur);
             a.setIsProxy(false);
             a.setOperatedAt(LocalDateTime.now());
@@ -641,12 +650,42 @@ public class CommitteeService {
     }
 
     @Transactional
+    public void selfAttend(Long meetingId, String mode, boolean authorizeProxySign) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (meeting.getMeetingMethod() == com.ywh.enums.MeetingMethod.online) {
+            throw new IllegalArgumentException("纯线上会议请使用原参会登记流程");
+        }
+        if (!"onsite".equals(mode) && !"remote".equals(mode)) {
+            throw new IllegalArgumentException("参会方式不正确");
+        }
+        MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElseGet(() -> initRecord(meeting));
+        Long userRoleId = SecurityUtils.getCurrentUserId();
+        UserRoleEntity userRole = SecurityUtils.getCurrentUserRole();
+        RecordAttendance attendance = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), userRoleId)
+                .orElseGet(() -> RecordAttendance.builder()
+                        .record(record).userRole(userRole).signedIn(false).signed(false).build());
+        attendance.setSignedIn(true);
+        attendance.setDeclined(false);
+        attendance.setAttendanceMode(mode);
+        attendance.setProxySignAuthorized(authorizeProxySign);
+        attendance.setProxySignAuthorizedAt(authorizeProxySign ? LocalDateTime.now() : null);
+        attendance.setOperator(userRole);
+        attendance.setIsProxy(false);
+        attendance.setOperatedAt(LocalDateTime.now());
+        attendanceRepo.save(attendance);
+    }
+
+    @Transactional
     public void signAll(Long meetingId) {
         MeetingRecord record = getRecord(meetingId);
         List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
         for (RecordAttendance a : attendances) {
-            a.setSignedIn(true);
-            a.setSigned(true);
+            if (!Boolean.TRUE.equals(a.getSignedIn())) continue;
+            boolean remote = "remote".equals(a.getAttendanceMode());
+            if (!remote || Boolean.TRUE.equals(a.getProxySignAuthorized())) {
+                a.setSigned(true);
+            }
         }
         attendanceRepo.saveAll(attendances);
         if (record.getHasMajorIssue()) {
@@ -2635,6 +2674,9 @@ public class CommitteeService {
             av.setSignedIn(a.getSignedIn());
             av.setSigned(a.getSigned());
             av.setDeclined(Boolean.TRUE.equals(a.getDeclined()));
+            av.setAttendanceMode(a.getAttendanceMode());
+            av.setProxySignAuthorized(Boolean.TRUE.equals(a.getProxySignAuthorized()));
+            av.setProxySignAuthorizedAt(a.getProxySignAuthorizedAt() == null ? null : a.getProxySignAuthorizedAt().toString());
             av.setIsSelf(ur.getId().equals(a.getUserRole().getId()));
             av.setIsProxy(Boolean.TRUE.equals(a.getIsProxy()));
             av.setOperatorName(a.getOperator() != null ? a.getOperator().getRealName() : null);

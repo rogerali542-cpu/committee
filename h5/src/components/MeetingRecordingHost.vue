@@ -7,9 +7,15 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { meetingRecordingSession as session, openMeetingRecording } from '@/composables/meetingRecordingSession'
-const show = computed(() => session.active && !session.pageVisible)
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { meetingRecordingSession as session, openMeetingRecording, discardMeetingRecording } from '@/composables/meetingRecordingSession'
+import { getStorage } from '@/utils/storage'
+const route = useRoute()
+// 录音悬浮入口只属于会议现场流程。签到、会议进行和议题表决共用
+// /meeting-live-quick；离开该流程后录音会话可按原逻辑保留，但不在其他业务页露出浮窗。
+const isMeetingFlowRoute = computed(() => route.path === '/meeting-live-quick')
+const show = computed(() => session.active && isMeetingFlowRoute.value && !session.pageVisible)
 const entryEl = ref(null)
 const dragging = ref(false)
 const position = ref(null)
@@ -18,6 +24,14 @@ const positionStyle = computed(() => position.value
   : null)
 let drag = null
 let moved = false
+
+// 测试时频繁切换身份：旧录音不得跨身份残留。immediate 也能清理由热更新前遗留的会话。
+watch(() => [session.meetingId, session.recorderName], async ([meetingId, recorderName]) => {
+  const role = getStorage('activeRole', null) || {}
+  if (meetingId && recorderName && role.realName && recorderName !== role.realName) {
+    await discardMeetingRecording(meetingId)
+  }
+}, { immediate: true })
 
 function startDrag(e) {
   if (!entryEl.value) return

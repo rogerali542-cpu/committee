@@ -212,6 +212,14 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    @PutMapping("/{id}/self/attendance")
+    public Result<Void> selfAttend(@PathVariable Long id,
+                                   @RequestParam String mode,
+                                   @RequestParam(required = false, defaultValue = "false") Boolean authorizeProxySign) {
+        service.selfAttend(id, mode, Boolean.TRUE.equals(authorizeProxySign));
+        return Result.ok();
+    }
+
     @GetMapping("/{id}/attendance/export")
     @RequireRole({"主任", "副主任", "记录员"})
     public Result<Map<String, Object>> exportAttendance(@PathVariable Long id) {
