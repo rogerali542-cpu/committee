@@ -236,6 +236,9 @@
         <!-- ① 会议录音 -->
         <div class="supp-head recording-compact-head">
           <span class="supp-title">会议录音</span>
+          <button v-if="!isPaused" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
+            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
+          </button>
         </div>
         <!-- 已录段落行：左侧「已录N段」文字，右侧展开/收起按钮 -->
         <div v-if="recordings.length" class="rec-seg-toggle-row">
@@ -257,12 +260,7 @@
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
-        <!-- 录音主控放卡片下部：非暂停=开始/暂停/继续单钮；暂停=继续+上传两钮 -->
-        <div v-if="!isPaused" class="rec-bottom-action">
-          <button class="supp-btn rec" @click="onCircleTap" :disabled="uploading || generatingMinutes">
-            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
-          </button>
-        </div>
+        <!-- 暂停态：继续/上传放卡片下部（初始「开始录音」在头部右侧，见上方 supp-head） -->
         <div v-if="isPaused" class="supp-actions single paused">
           <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
           <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
@@ -3226,7 +3224,7 @@ async function returnToRecordingPage() {
 .mct-empty { padding:20rpx 0; text-align:center; color:#8A8F98; font-size:26rpx; }
 /* 议题在录音页只是「参考+入口」，真正处理在下一页——降为次要描边样式，
    把主操作让给红色「开始录音」，避免两颗实心大按钮抢焦点。 */
-.meeting-console .meeting-stage-next { display:block; width:100%; min-width:0; margin:18rpx 0 0; padding:20rpx 0; border:2rpx solid #D8C3A0; border-radius:14rpx; background:#FFFBF3; color:#8F4A06; font-size:29rpx; font-weight:700; box-shadow:none; }
+.meeting-console .meeting-stage-next { display:block; width:70%; min-width:0; margin:18rpx auto 0; padding:20rpx 0; border:2rpx solid #D8C3A0; border-radius:14rpx; background:#FFFBF3; color:#8F4A06; font-size:29rpx; font-weight:700; box-shadow:none; }
 .meeting-console .meeting-stage-next:active { background:#F6E8D3; }
 /* 上边距拉开与顶栏的距离；底部留够绝对定位的步骤文字空间，避免探进「会议进行中」卡片——保持呼吸感 */
 .live-page:not(.lp-signin) .lp-flow { margin-top:44rpx; padding:14rpx 4rpx 44rpx; }
@@ -3340,7 +3338,7 @@ async function returnToRecordingPage() {
    描边+浅底，分量比红色「开始录音」轻，不抢主操作。 */
 .mlq-endbar { position:fixed; z-index:80; left:0; right:0; bottom:0; padding:14rpx 32rpx calc(14rpx + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:2rpx solid #ECEEF1; backdrop-filter:blur(8px); }
 .mlq-endbar-space { height:170rpx; }  /* 占位，保证滚动到底时最后内容不被钉底栏盖住 */
-.fixed-end-field-btn { display:block; width:100%; height:92rpx; border:2rpx solid #B47A34; border-radius:16rpx; background:#FFFBF3; color:#8F4A06; font-size:30rpx; font-weight:750; font-family:inherit; }
+.fixed-end-field-btn { display:block; width:70%; margin:0 auto; height:92rpx; border:2rpx solid #B47A34; border-radius:16rpx; background:#FFFBF3; color:#8F4A06; font-size:30rpx; font-weight:750; font-family:inherit; }
 .fixed-end-field-btn:active { background:#F6E8D3; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
 .end-review-head { flex-shrink:0; height:96rpx; padding:0 28rpx; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:2rpx solid #ECEFF3; box-sizing:border-box; }
