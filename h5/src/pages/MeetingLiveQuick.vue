@@ -191,7 +191,7 @@
             <div class="meeting-console-action-text">共{{ meetingTopics.length }}项，可在录音过程中同步讨论和表决</div>
           </div>
           <button class="meeting-stage-next" :disabled="phaseChanging" @click="enterVotingPhase">
-            {{ phaseChanging ? '正在处理…' : '处理会议议题' }}
+            {{ phaseChanging ? '正在处理…' : '处理议题 ›' }}
           </button>
         </div>
       </div>
@@ -3185,7 +3185,10 @@ async function returnToRecordingPage() {
 .meeting-console-action > div { flex:1; min-width:0; }
 .meeting-console-action-title { font-size:30rpx; font-weight:750; color:#252A30; }
 .meeting-console-action-text { margin-top:7rpx; font-size:26rpx; line-height:1.5; color:#7A818B; }
-.meeting-console .meeting-stage-next { flex-shrink:0; min-width:224rpx; margin:0; padding:18rpx 26rpx; border:0; border-radius:14rpx; background:var(--c-primary-strong, #8F4A06); color:#fff; font-size:28rpx; font-weight:700; box-shadow:0 5rpx 12rpx rgba(143,74,6,.16); }
+/* 议题在录音页只是「参考+入口」，真正处理在下一页——降为次要描边样式，
+   把主操作让给红色「开始录音」，避免两颗实心大按钮抢焦点。 */
+.meeting-console .meeting-stage-next { flex-shrink:0; min-width:auto; margin:0; padding:14rpx 24rpx; border:2rpx solid #D8C3A0; border-radius:12rpx; background:#FFFBF3; color:#8F4A06; font-size:27rpx; font-weight:700; box-shadow:none; }
+.meeting-console .meeting-stage-next:active { background:#F6E8D3; }
 .live-page:not(.lp-signin) .lp-flow { margin-top:18rpx; padding:12rpx 4rpx 6rpx; }
 .live-page:not(.lp-signin) .lp-flow-dot { width:42rpx; height:42rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:22rpx; }
