@@ -262,7 +262,12 @@
         <!-- 录音上传/后台转写状态：上传后自动转写 -->
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
+        <div v-else-if="uploadErrorText" class="rec-status err">⚠ {{ uploadErrorText }}</div>
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
+        <!-- 识别失败的重试入口：仅失败时出现（平时不放识别按钮，免得误导；正常识别全自动） -->
+        <div v-if="recognizeRetryVisible" class="supp-actions single paused">
+          <button class="supp-btn upload-rec" @click="uploadAndRecognize">重新识别录音</button>
+        </div>
         <!-- 暂停态：继续/上传放卡片下部（初始「开始录音」在头部右侧，见上方 supp-head）
              已停止未上传态（中断/上传失败）：只出「上传录音」，继续录音无从恢复不显示 -->
         <div v-if="(isPaused || stoppedUnuploaded) && !isSelfRemote" class="supp-actions single paused">
@@ -947,6 +952,13 @@ const needRecognize = computed(() => !generated.value
 // 有任一段"已转写出内容"（done 或本轮已识别）→ 生成按钮即可用，不再要求全部段都识别完
 const hasAnyTranscribed = computed(() => (recordings.value || [])
   .some(r => r.asrStatus === 'done' || recognizedIds.value.includes(r.id)))
+// 识别失败后的重试入口（0721 用户定：按钮仅失败时出现，平时不放识别按钮以免误导）。
+// 覆盖两种失败痕迹：本机流程刚失败(asrStatus='failed') / 服务端落库的失败段(行上"识别异常")
+const recognizeRetryVisible = computed(() => isChair.value
+  && !uploading.value && !polling.value && !extracting.value && !generatingMinutes.value
+  && !canUpload.value
+  && (asrStatus.value === 'failed' || (recordings.value || []).some(r => r.asrStatus === 'failed')))
+
 // ── 主任端静默补识别：委员上传的段/识别中途丢任务的段，主任进入或刷新详情时自动识别 ──
 // 不设按钮（0721 用户定：识别入口会误导用户）。每段只自动尝试一次，失败的留给
 // 结束会议/生成纪要流程里的「先识别录音」提示兜底，避免失败段被无限重试烧识别费。
@@ -1011,10 +1023,12 @@ const finishText = ref('录音已转写，规则抽取结果已生成')
 const generated = ref(false)
 // 识别失败/空转写的行内提示文案（后台转写不弹遮罩，失败靠这条明确告知 + 引导重试）
 const asrErrorText = computed(() => {
-  if (asrStatus.value === 'empty') return '没识别到说话声，可能录到了静音或太轻。请点上方圆圈重新录音，靠近麦克风、说清楚些再试。'
-  if (asrStatus.value === 'failed') return (processText.value || '录音识别失败') + '　可点「上传录音」重试'
+  if (asrStatus.value === 'empty') return '没识别到说话声，可能录到了静音或太轻。请点「开始录音」重新录一段，靠近麦克风、说清楚些再试。'
+  if (asrStatus.value === 'failed') return (processText.value || '录音识别失败') + '　可点下方「重新识别录音」重试'
   return ''
 })
+// 上传失败的常驻行内提示：toast 一闪即逝，用户回头看不到失败原因；重试上传/重新开录时清掉
+const uploadErrorText = ref('')
 const extraction = ref(null)
 
 const presetTopics = ref([])
@@ -1478,11 +1492,15 @@ async function loadDetail() {
     // 录音不自动开始（0721 方案A），麦克风权限在主任点「开始录音」时才申请。
 
     if (d.stage === 'ongoing') {
-      const restored = restoreQuickState(isSigned)
-      if (isSigned && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
+      // 上传/识别在途时不重放本地快照、不从服务端恢复历史成果——loadDetail 会在流程中被调用
+      // （上传成功刷新列表、加议题后刷新等），此时重放会把 polling/generated 盖掉：
+      // 识别中的状态条消失、上传按钮解禁，第二段就能在识别中并发上传（测试矩阵 S18 抓到的真 bug）
+      const flowBusy = uploading.value || polling.value || extracting.value
+      const restored = flowBusy ? true : restoreQuickState(isSigned)
+      if (isSigned && !flowBusy && (!restored || (!generated.value && !taskId.value))) tryRestoreGeneratedFromServer()
       resumeBgAiTask() // 切回本页时恢复后台生成的遮罩/完成态（内存 aiTask 还在时）
       reconcileMinutesState() // 内存任务丢失(硬跳/刷新)兜底：从服务端+本地durable标记重建"生成中/查看"入口
-      maybeAutoRecognizePending() // 委员传的/中断丢任务的"待识别"段：主任端静默补识别
+      maybeAutoRecognizePending() // 委员传的/中断丢任务的"待识别"段：主任端静默补识别（内部有忙时守卫）
     } else {
       clearQuickState()
     }
@@ -1522,11 +1540,16 @@ async function refreshAttendance() {
 async function tryRestoreGeneratedFromServer() {
   if (!meetingId.value || !signedIn.value || generated.value) return
   if (typeof api.committeeQuickTranscript !== 'function' || typeof api.committeeQuickExtract !== 'function') return
+  // 恢复是异步的：请求往返期间可能有新的上传/识别流程启动，直接覆盖状态会踩灭在途流程
+  const flowBusy = () => uploading.value || polling.value || extracting.value || generatingMinutes.value
+  if (flowBusy()) return
   try {
     const transcriptRaw = await api.committeeQuickTranscript(meetingId.value)
+    if (flowBusy() || generated.value) return
     const tr = mapTranscript(transcriptRaw)
     if (!tr.length) return
     const ext = await api.committeeQuickExtract(meetingId.value)
+    if (flowBusy() || generated.value) return
     const mapped = mapExtraction(ext)
     currentStep.value = 2 // 原 step4「整理纪要」已删；已有转写时停在录音页，用一键「生成会议纪要」继续
     extraction.value = ext
@@ -1683,7 +1706,7 @@ async function toggleRecord() {
   if (rec.recording.value && !rec.paused.value) {
     rec.pause()
     if (!rec.paused.value) {
-      toast({ title: '本设备不支持暂停，可直接点“上传录音并生成会议纪要”', icon: 'none' })
+      toast({ title: '本设备不支持暂停，可直接点「上传录音」', icon: 'none' })
     }
     return
   }
@@ -1707,6 +1730,7 @@ async function toggleRecord() {
 }
 
 async function startRecord(opts) {
+  uploadErrorText.value = '' // 用户选择重录/续录：旧的上传失败提示不再适用
   // 后台正在转写上一段 → 只启动新录音，绝不 clearPoll / 重置转写状态，避免打断后台转写
   const bgTranscribing = polling.value || extracting.value
   // 已有已上传的段或已有转写成果 → 这是「续录下一段」，不是「推倒重来」：
@@ -1999,6 +2023,7 @@ async function uploadRecordingFile(file, durationSec) {
   // 上传期间留在录音页(step 2)，显示"正在上传录音…"，不再自动跳转写页
   uploading.value = true
   startUploadEstimatedProgress()
+  uploadErrorText.value = ''
   asrStatus.value = ''
   polling.value = false
   extracting.value = false
@@ -2036,6 +2061,8 @@ async function uploadRecordingFile(file, durationSec) {
     uploading.value = false
     currentStep.value = 2 // 退回录音步，可复用已录音频重试
     processText.value = '上传失败，请重试'
+    // 常驻行内提示（toast 一闪就没）：录音还在手里，引导点「上传录音」重试
+    uploadErrorText.value = '上传失败：' + ((e && e.message) || '网络异常') + '　录音还在，请点「上传录音」重试'
     toast({ title: e.message || '上传失败', icon: 'none' })
   }
 }
@@ -2414,6 +2441,7 @@ function transcribeOneAwait(recordingId) {
 function pollUntilDone(tid, resolve, reject) {
   clearPoll()
   _pollCount = 0
+  let errStreak = 0 // 手机网络抖一下很常见：单次查询失败不放弃，连错 3 次才判失败
   _pollTimer = setInterval(async () => {
     _pollCount += 1
     if (_pollCount > maxPollCount()) {
@@ -2423,13 +2451,14 @@ function pollUntilDone(tid, resolve, reject) {
     }
     try {
       const task = await api.committeeQuickRecordingStatus(meetingId.value, tid)
+      errStreak = 0
       asrStatus.value = task.status || ''
       persistQuickState()
       if (task.status === 'done') { clearPoll(); resolve(task) }
       else if (task.status === 'failed') { clearPoll(); reject(new Error(asrFailMessage(task.message))) }
     } catch (e) {
-      clearPoll()
-      reject(e)
+      errStreak += 1
+      if (errStreak >= 3) { clearPoll(); reject(e) }
     }
   }, POLL_INTERVAL)
 }
@@ -2437,6 +2466,7 @@ function pollUntilDone(tid, resolve, reject) {
 function startPoll(tid) {
   clearPoll()
   _pollCount = 0
+  let errStreak = 0 // 与 pollUntilDone 同策略：网络抖动不放弃，连错 3 次才判失败
   _pollTimer = setInterval(async () => {
     _pollCount += 1
     if (_pollCount > maxPollCount()) {
@@ -2457,11 +2487,14 @@ function startPoll(tid) {
       asrStatus.value = task.status || ''
       processText.value = statusText(task.status, task.message)
       persistQuickState()
+      errStreak = 0
       if (task.status === 'done') {
         handleAsrDone(task)
       }
       if (task.status === 'failed') handleAsrFailed(task.message)
     } catch (e) {
+      errStreak += 1
+      if (errStreak < 3) return
       clearPoll()
       polling.value = false
       processText.value = '查询转写状态失败'
