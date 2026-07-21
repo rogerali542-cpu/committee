@@ -183,7 +183,7 @@
         </div>
         <div v-if="isChair" class="meeting-console-attendance" :class="{ ready: signinQuorum.ready }">
           <span>{{ signinStats.onsiteCount || 0 }}人现场，{{ signinStats.remoteCount || 0 }}人线上参会</span>
-          <span>{{ signinQuorum.ready ? '已达到召开人数' : '尚未达到召开人数' }}</span>
+          <span>{{ signinQuorum.ready ? '✓ 已够人数，可开会' : '还差' + signinQuorum.remaining + '人（需' + signinQuorum.required + '人）' }}</span>
         </div>
         <div class="meeting-console-action">
           <div>
@@ -273,7 +273,12 @@
         </div>
       </div>
 
-      <button v-if="isChair && meetingPhase === 'recording' && !meetingEnded" class="fixed-end-field-btn" @click="handleMeetingBottomAction">结束现场会议</button>
+      <template v-if="isChair && meetingPhase === 'recording' && !meetingEnded">
+        <div class="mlq-endbar-space"></div>
+        <div class="mlq-endbar">
+          <button class="fixed-end-field-btn" @click="handleMeetingBottomAction">结束现场会议</button>
+        </div>
+      </template>
 
       <!-- “结束现场会议”只停止现场录音并进入会后整理；“完成本次会议”在下一页执行。 -->
       <div v-if="meetingEnded || meetingPhase === 'voting'" class="end-meeting-row">
@@ -3172,18 +3177,18 @@ async function returnToRecordingPage() {
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
 .meeting-console-title { font-size:34rpx; line-height:1.35; font-weight:800; color:#20242A; }
 .meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:25rpx; color:#7A818B; }
-.meeting-console-roster { flex-shrink:0; padding:9rpx 16rpx; border-radius:999rpx; background:#F1F4F7; color:#53606D; font-size:23rpx; font-weight:650; }
-.meeting-console-attendance { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-top:22rpx; padding:14rpx 18rpx; border-radius:12rpx; background:#FFF7E8; color:#98600E; font-size:24rpx; line-height:1.4; }
+.meeting-console-roster { flex-shrink:0; padding:10rpx 18rpx; border-radius:999rpx; background:#ECEFF3; color:#2E3640; font-size:25rpx; font-weight:700; }
+.meeting-console-attendance { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-top:22rpx; padding:16rpx 20rpx; border-radius:12rpx; background:#FFF3E0; color:#9A5A00; font-size:26rpx; line-height:1.4; }
 .meeting-console-attendance.ready { background:#EDF8F1; color:#287549; }
 .meeting-console-attendance span:last-child { flex-shrink:0; font-weight:700; }
-.meeting-console-action { display:flex; align-items:center; justify-content:space-between; gap:22rpx; margin-top:24rpx; padding-top:24rpx; border-top:2rpx solid #EEF0F2; }
+.meeting-console-action { display:flex; align-items:flex-start; justify-content:space-between; gap:22rpx; margin-top:24rpx; padding-top:24rpx; border-top:2rpx solid #EEF0F2; }
 .meeting-console-action > div { flex:1; min-width:0; }
 .meeting-console-action-title { font-size:30rpx; font-weight:750; color:#252A30; }
-.meeting-console-action-text { margin-top:7rpx; font-size:24rpx; line-height:1.45; color:#7A818B; }
-.meeting-console .meeting-stage-next { flex-shrink:0; min-width:218rpx; margin:0; padding:16rpx 24rpx; border:0; border-radius:14rpx; background:var(--c-primary-strong, #8F4A06); color:#fff; font-size:27rpx; box-shadow:0 5rpx 12rpx rgba(143,74,6,.16); }
+.meeting-console-action-text { margin-top:7rpx; font-size:26rpx; line-height:1.5; color:#7A818B; }
+.meeting-console .meeting-stage-next { flex-shrink:0; min-width:224rpx; margin:0; padding:18rpx 26rpx; border:0; border-radius:14rpx; background:var(--c-primary-strong, #8F4A06); color:#fff; font-size:28rpx; font-weight:700; box-shadow:0 5rpx 12rpx rgba(143,74,6,.16); }
 .live-page:not(.lp-signin) .lp-flow { margin-top:18rpx; padding:12rpx 4rpx 6rpx; }
 .live-page:not(.lp-signin) .lp-flow-dot { width:42rpx; height:42rpx; font-size:22rpx; }
-.live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:20rpx; }
+.live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-line { margin-top:20rpx; }
 .core-head { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-bottom:22rpx; }
 .core-title { font-size:38rpx; font-weight:800; color:#1F2024; line-height:1.35; }
@@ -3227,8 +3232,8 @@ async function returnToRecordingPage() {
 .recording-compact-head { align-items:center; margin-bottom:8rpx; }
 .recording-summary-toggle { margin-left:auto; border:0; background:transparent; color:#7A828C; font-size:23rpx; font-weight:650; padding:8rpx 4rpx; white-space:nowrap; }
 .recording-head-action { flex-shrink:0; width:auto; min-width:166rpx; height:56rpx; padding:0 24rpx; font-size:25rpx; }
-.supp-head.supp-head-2 { margin-top:14rpx; padding-top:14rpx; border-top:2rpx solid #EAEDF0; } /* 「补充材料」子标题：与上方「会议录音」区分隔 */
-.supp-title { font-size:28rpx; font-weight:700; color:#6B7280; }
+.supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
+.supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
 .supp-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14rpx; margin-bottom:12rpx; }
 .supp-actions.single { grid-template-columns:1fr; }
@@ -3237,7 +3242,7 @@ async function returnToRecordingPage() {
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
 .supp-actions.single.paused .supp-btn { width:56%; min-width:250rpx; justify-self:center; }
 .rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
-.supp-btn { height:80rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:26rpx; font-weight:600; font-family:inherit; }
+.supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#A65343; background:#A65343; color:#FFF; box-shadow:0 4rpx 12rpx rgba(166,83,67,0.16); }
 .supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:88rpx; font-size:28rpx; }
 .supp-btn.rec:active { background:#8F4638; border-color:#8F4638; }
@@ -3264,8 +3269,12 @@ async function returnToRecordingPage() {
 .end-meeting-btn:active { background:#6E3B05; }
 .emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .live-page.has-fixed-end { padding-bottom:150rpx; }
-.fixed-end-field-btn { position:fixed; z-index:80; left:50%; bottom:calc(14rpx + env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(340rpx, 58vw); height:60rpx; border:2rpx solid #B47A34; border-radius:999rpx; background:rgba(255,250,242,.96); color:#8F4A06; font-size:25rpx; font-weight:750; font-family:inherit; box-shadow:0 6rpx 18rpx rgba(91,55,13,.14); backdrop-filter:blur(8px); }
-.fixed-end-field-btn:active { background:#F8EBD8; }
+/* 结束现场会议：改成钉底操作栏，消灭原来悬空按钮上方那块大空白。
+   描边+浅底，分量比红色「开始录音」轻，不抢主操作。 */
+.mlq-endbar { position:fixed; z-index:80; left:0; right:0; bottom:0; padding:14rpx 32rpx calc(14rpx + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:2rpx solid #ECEEF1; backdrop-filter:blur(8px); }
+.mlq-endbar-space { height:170rpx; }  /* 占位，保证滚动到底时最后内容不被钉底栏盖住 */
+.fixed-end-field-btn { display:block; width:100%; height:92rpx; border:2rpx solid #B47A34; border-radius:16rpx; background:#FFFBF3; color:#8F4A06; font-size:30rpx; font-weight:750; font-family:inherit; }
+.fixed-end-field-btn:active { background:#F6E8D3; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
 .end-review-head { flex-shrink:0; height:96rpx; padding:0 28rpx; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:2rpx solid #ECEFF3; box-sizing:border-box; }
 .end-review-back { width:72rpx; font-size:58rpx; line-height:1; color:#30343A; }
@@ -3506,12 +3515,13 @@ async function returnToRecordingPage() {
 .lp-flow-step.on .lp-flow-label { color:var(--c-primary-dark, #A85800); font-weight:600; }
 .lp-flow-step.done .lp-flow-dot { background:#2E8B57; color:#fff; }
 .lp-flow-step.done .lp-flow-label { color:#2E8B57; }
-.lp-flow-step.available .lp-flow-dot { background:#FFF3DE; color:#B86B00; border:2rpx solid #E9BD77; }
-.lp-flow-step.available .lp-flow-label { color:#B06A08; font-weight:600; }
+/* 未到步骤统一浅灰（原橙描边「可达」态会和当前步抢焦点，去掉）——只剩 完成绿 / 当前棕 / 未到灰 三态 */
+.lp-flow-step.available .lp-flow-dot { background:#E4E6EA; color:#9AA0A6; border:0; }
+.lp-flow-step.available .lp-flow-label { color:#9AA0A6; font-weight:400; }
 /* 连线与圆点同在 align-items:center 下自然居中(步骤已只有圆点高，无需再补 margin) */
 .lp-flow-line { flex:1; height:4rpx; background:#E4E6EA; margin:0 10rpx; border-radius:2rpx; }
 .lp-flow-line.done { background:#2E8B57; }
-.lp-flow-line.available { background:repeating-linear-gradient(90deg, #D9A45B 0 10rpx, transparent 10rpx 18rpx); opacity:.82; }
+.lp-flow-line.available { background:#E4E6EA; opacity:1; }  /* 连线统一：走过=绿、没到=灰，去掉橙虚线 */
 .lp-signin .lp-flow { padding:13rpx 43rpx 38rpx; margin-top:42rpx; }
 .lp-signin .lp-flow-dot { width:52rpx; height:52rpx; font-size:27rpx; }
 .lp-signin .lp-flow-label { top:calc(100% + 6rpx); font-size:22rpx; }
