@@ -248,11 +248,12 @@
         <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
         <div v-if="recordings.length && recListOpen" class="rec-list rec-list-before-action">
           <div class="rec-list-body">
-            <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordings" :key="item.id" @click="openRecordingDetail(item, idx)">
+            <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordingsChrono" :key="item.id" @click="openRecordingDetail(item, idx)">
               <span class="qrl-name rec-summary-name">第 {{ idx + 1 }} 段</span>
               <span class="rec-summary-duration">{{ fmtDur(item.durationSec) }}</span>
               <span class="qrl-play" :class="{ on: playingId === item.id }" @click.stop="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
               <span class="rec-summary-more">详情 ›</span>
+              <span v-if="isChair" class="rec-summary-del" @click.stop="deleteRecording(item, idx)">删除</span>
             </div>
           </div>
         </div>
@@ -307,7 +308,7 @@
     <!-- 非主任：录音试听列表（主任的录音列表已并入录音卡） -->
     <div class="lp-card qk-rec-list" v-if="currentStep === 2 && !isChair && meetingPhase !== 'recording' && recordings.length">
       <div class="qk-rec-list-head">会议录音 {{ recordings.length }} 段</div>
-      <div class="qk-rec-list-item" v-for="(item, idx) in recordings" :key="item.id">
+      <div class="qk-rec-list-item" v-for="(item, idx) in recordingsChrono" :key="item.id">
         <span class="qrl-idx">{{ idx + 1 }}</span>
         <div class="qrl-info">
           <span class="qrl-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
@@ -1080,6 +1081,9 @@ const extraOpen = ref(false)          // 「AI 额外发现」是否展开
 const isChair = ref(false)
 const myRoleId = ref(null)
 const recordings = ref([])
+// 后端按 createdAt DESC 返回（新录音在前）。展示时倒过来：最早录的=第1段，新段依次往后排（符合常规认知）。
+// index 仅用于显示编号(详情标题/删除确认)、不参与数组导航，故倒序安全。
+const recordingsChrono = computed(() => (recordings.value || []).slice().reverse())
 const recordingDetail = ref(null)
 
 function openRecordingDetail(item, index) { recordingDetail.value = { item, index } }
@@ -3822,6 +3826,9 @@ async function returnToRecordingPage() {
 .rec-summary-name { flex:1; min-width:0; }
 .rec-summary-duration { color:#667085; font-size:26rpx; font-variant-numeric:tabular-nums; }
 .rec-summary-more { flex-shrink:0; color:#8A8F98; font-size:23rpx; }
+/* 删除：红色小字，与「详情」间隔开、并加内边距扩大热区避免误点 */
+.rec-summary-del { flex-shrink:0; color:#D0392E; font-size:23rpx; margin-left:26rpx; padding:6rpx 6rpx; }
+.rec-summary-del:active { opacity:0.6; }
 .recording-detail-card { width:88%; max-height:82vh; overflow-y:auto; box-sizing:border-box; background:#fff; border-radius:24rpx; padding:30rpx; }
 .recording-detail-card .qk-modal-title { margin-bottom:0; }
 .recording-detail-grid { display:flex; flex-direction:column; gap:0; border:2rpx solid #ECEFF3; border-radius:16rpx; overflow:hidden; }
