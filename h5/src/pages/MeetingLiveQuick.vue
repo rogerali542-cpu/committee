@@ -1546,6 +1546,17 @@ async function enterLiveMeeting() {
 
 async function enterVotingPhase() {
   if (phaseChanging.value) return
+  // 状态3：没有进行中的录音、也没有已上传的录音 → 先确认（很可能是还没开始录音）。
+  // 状态1/2/4（有进行中 或 有已上传）都直接进入：进入后录音状态照旧保留，可随时返回。
+  if (!canUpload.value && !hasSavedRecordings.value) {
+    const res = await showModal({
+      title: '还没有开始录音',
+      content: '本次现场还没有录音。确定现在就去处理议题吗？也可以先返回开始录音。',
+      confirmText: '确认进入',
+      cancelText: '返回录音'
+    })
+    if (!res.confirm) return
+  }
   phaseChanging.value = true
   try {
     // 只切换议题处理页面，录音继续进行；最终结束会议时再统一停止并保存。
@@ -2827,42 +2838,43 @@ function openEndReview() {
 // 结束现场会议：只停止/保存现场录音并进入会后整理，不在这里把整场会议改为已结束。
 async function confirmEndMeeting() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可结束现场会议', icon: 'none' }); return }
-  const confirmed = await showModal({
-    title: '',
-    content: pendingTopicCount.value
-      ? '将停止录音、进入会后处理。还有 ' + pendingTopicCount.value + ' 项议题可继续。'
-      : '将停止录音，进入会后处理。',
-    confirmText: '结束会议',
-    cancelText: '继续开会'
-  })
-  if (!confirmed.confirm) return
-  if (canUpload.value) {
-    const choice = await showActionSheet({
-      title: '有录音尚未上传',
-      variant: 'opinion-change',
-      itemList: [
-        { icon: '↑', label: '上传录音', tone: 'ai' },
-        { icon: '略', label: '不上传，继续会后处理', tone: 'danger' }
-      ]
-    })
-    if (choice.tapIndex === 0) {
-      await uploadRecordingStep()
-      // 上传失败时仍保留当前录音，不进入会后整理，方便用户重试或重新选择。
-      if (canUpload.value) return
-      openEndReview()
-      return
-    }
-    // 选「不上传，继续结束」：把正在进行/未上传的这段录音停掉并扔掉（含落盘切片，避免下次进来又弹恢复提示），
-    // 不要再继续录下去；watch 会把 recording=false 同步给全局悬浮条并隐藏。
-    if (choice.tapIndex === 1) {
-      rec.reset()
-      toast({ title: '已停止并丢弃本次录音', icon: 'none' })
-    } else {
-      return // 用户取消了选择
-    }
+  // 两维状态：有无「进行中/未上传」的录音 × 有无「已上传」的录音，组合出四档确认文案。
+  const hasOngoing = canUpload.value            // 录音中 / 暂停 / 已停未传——一段没上传的录音
+  const hasUploaded = hasSavedRecordings.value  // 服务器上已有录音段
+  const pendingTail = pendingTopicCount.value ? '还有 ' + pendingTopicCount.value + ' 项议题可继续处理。' : ''
+
+  let content, confirmText, cancelText
+  if (hasOngoing && !hasUploaded) {
+    // 状态1：有进行中、无已上传。确认=放弃这段并结束；取消=返回继续录。
+    content = '当前这段录音还没有上传。结束会议会放弃这段录音，且无法再返回上传。确认结束吗？'
+    confirmText = '确认结束'; cancelText = '返回继续录音'
+  } else if (hasOngoing && hasUploaded) {
+    // 状态2：有进行中、有已上传。前面的段已保存，只放弃当前这段。
+    content = '前面的录音已上传保存，但当前这段还在录、没有上传。结束会议会放弃当前这段录音。确认结束吗？'
+    confirmText = '确认结束'; cancelText = '返回继续录音'
+  } else if (!hasOngoing && !hasUploaded) {
+    // 状态3：无进行中、无已上传。基本是没录音就想结束。
+    content = '本次现场还没有任何录音。确认要结束现场会议吗？'
+    confirmText = '确认结束'; cancelText = '返回'
+  } else {
+    // 状态4：无进行中、有已上传（最常见）。普通确认即可。
+    content = '将停止录音，进入会后处理。' + pendingTail
+    confirmText = '结束会议'; cancelText = '继续开会'
   }
-  // 录音已上传但还没有转写结果（识别失败/被中断/从未识别）→ 直接结束的话，会后生成纪要必失败。
-  // 识别在途(uploading/polling/extracting)不拦：会后整理页会显示「上传中/识别中」并在完成后放行生成。
+
+  const confirmed = await showModal({ title: '', content, confirmText, cancelText })
+  if (!confirmed.confirm) return
+
+  // 决策1：确认即放弃当前「进行中/未上传」的录音——结束后不再提供上传/返回入口。
+  // reset 会停录并清掉落盘切片，watch 把 recording=false 同步给全局悬浮条并隐藏。
+  if (hasOngoing) {
+    rec.reset()
+    toast({ title: '已停止并放弃当前录音', icon: 'none' })
+  }
+
+  // 决策2（安全网）：已上传但还没识别完成（识别失败/被中断/从未识别）→ 直接结束会导致会后生成纪要必失败。
+  // 保留二次提示（软拦截），把「先识别录音」作为推荐项；识别在途(uploading/polling/extracting)不拦：
+  // 会后整理页会显示「上传中/识别中」并在完成后放行生成。
   if (hasSavedRecordings.value && !generated.value
       && !uploading.value && !polling.value && !extracting.value) {
     const choice = await showActionSheet({
