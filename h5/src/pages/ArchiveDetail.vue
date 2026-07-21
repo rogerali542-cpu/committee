@@ -203,7 +203,7 @@ async function buildLearning() {
 function openMinutes() {
   const v = view.value
   if (!v || !v.hasMinutes) return
-  navigateTo('/pages/minutes/minutes?meetingId=' + id + '&from=' + v.minutesFrom)
+  navigateTo('/pages/minutes-view/minutes-view?meetingId=' + id)
 }
 
 function previewMaterial(idx) {

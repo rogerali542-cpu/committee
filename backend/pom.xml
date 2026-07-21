@@ -99,6 +99,13 @@
             <version>2.5.0</version>
         </dependency>
 
+        <!-- 正式留档材料 PDF（会议签到表等） -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.31</version>
+        </dependency>
+
         <!-- jave2：AudioTranscodeService 把 H5 上传录音(webm/opus、mp4/m4a)转 16k mono mp3 喂豆包录音识别（QuickMeetingController /recording/upload 在用，不可删）。
              不用 jave-all-deps（它含 win/mac/linux/arm 全平台 ffmpeg，白撑 ~150MB）；只引 linux64（容器运行）+ win64（本地 Windows 开发）两个原生二进制。 -->
         <dependency>

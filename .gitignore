@@ -37,3 +37,9 @@ miniapp-original-wx.zip
 # Office 临时锁文件
 ~$*.docx
 ~$*.xlsx
+deploy/**/.env.platform-fill
+deploy/sandbox-upload-package.zip
+
+# DB exports and local test artifacts (never commit)
+deploy/database-export/
+output/

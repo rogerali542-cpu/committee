@@ -94,48 +94,25 @@ async function loadTodos() {
   // 2) 接待事项（业委会，有 reception.manage）—— 都是待我处理且未开始，归「待开始」
   if (perm.can('reception.manage')) {
     try {
+      // 0716 接待重做：propertyStatus 状态机与 fedOwner 已随内部派单流下线。
+      // 现在 'pending' 就是「没填处理结果」，后端已按新口径过滤，这里不用再分状态。
+      // 派没派工单不影响待办：派单 ≠ 办结，工单派出去了这件事仍挂在委员名下。
       const recs = await api.receptionRecords('pending')
       ;(recs || []).forEach(r => {
-        let statusText = ''
-        if (r.category === 'property') {
-          if (r.propertyStatus === 'replied' && !r.fedOwner) statusText = '物业已回复·待反馈业主'
-          else if (!r.propertyStatus || r.propertyStatus === 'pending_dispatch') statusText = '待转物业处理'
-          // dispatched / processing：物业在处理，业委会无需操作，跳过
-        } else if (!r.fedOwner) {
-          statusText = '待反馈业主'
-        }
-        if (statusText) {
-          all.push({
-            key: 'r-' + r.id, id: r.id, kind: 'reception', tag: '接待事项',
-            title: r.content || (r.visitorName ? r.visitorName + ' 的诉求' : '接待诉求'),
-            statusText: statusText,
-            subText: r.date || '',
-            group: 'pending',
-            sortKey: (r.date || '') + ' ' + (r.time || '')
-          })
-        }
+        all.push({
+          key: 'r-' + r.id, id: r.id, kind: 'reception', tag: '接待事项',
+          title: r.content || (r.visitorName ? r.visitorName + ' 的诉求' : '接待诉求'),
+          statusText: r.ticketPushed ? '已派工单·待填处理结果' : '待处理',
+          subText: r.date || '',
+          group: 'pending',
+          sortKey: (r.date || '') + ' ' + (r.time || '')
+        })
       })
     } catch (e) { /* offline ok */ }
   }
 
-  // 3) 物业工单（仅物业角色）—— 未处理=待开始，处理中=进行中
-  if (role === '物业') {
-    try {
-      const tasks = await api.receptionPropertyTasks('all')
-      ;(tasks || [])
-        .filter(t => t.propertyStatus === 'dispatched' || t.propertyStatus === 'processing')
-        .forEach(t => {
-          all.push({
-            key: 'p-' + t.id, id: t.id, kind: 'property', tag: '物业工单',
-            title: t.content || '物业诉求',
-            statusText: t.propertyStatus === 'processing' ? '处理中·待回填' : '待处理',
-            subText: t.date || '',
-            group: t.propertyStatus === 'processing' ? 'active' : 'pending',
-            sortKey: (t.date || '') + ' ' + (t.time || '')
-          })
-        })
-    } catch (e) { /* offline ok */ }
-  }
+  // 3) 物业工单段已删（0716 方案 A）：内部派单流下线，物业不再登录本 App 干活，
+  //    改为在外部工单系统里处理业委会派过去的单。原实现见 commit 6745a12。
 
   pending.value = all.filter(i => i.group === 'pending').sort(sortByStart)
   active.value = all.filter(i => i.group === 'active').sort(sortByStart)
@@ -146,11 +123,11 @@ async function loadTodos() {
 function openItem(item) {
   const { id, kind } = item
   if (kind === 'reception') {
-    navigateTo('/pages/reception/reception')
-  } else if (kind === 'property') {
-    navigateTo('/pages/property-tasks/property-tasks')
+    // 0716：接待列表页已删，直接进这一条的处理页；哨兵 .recep-detail 在目标页根上
+    navigateTo('/pages/reception-detail/reception-detail?id=' + id)
+    setTimeout(() => { if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + id }, 300)
   } else {
-    navigateTo('/pages/committee-detail/committee-detail?id=' + id)
+    navigateTo('/pages/committee-detail/committee-detail?id=' + id + '&from=todo')
   }
 }
 

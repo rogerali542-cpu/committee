@@ -1,0 +1,65 @@
+# ============================================================
+# 业委会 demo —— 资源底座沙箱 Docker 部署编排
+# 严格遵守平台约束：
+#   ① 每个 service 只用 image（不用 build）      ② 用 expose，不用 ports
+#   ③ 只用 named volume，不挂宿主机路径          ④ 入口服务加标签 sandbox.expose:"true"
+#   ⑤ 不用 YAML 锚点(& / *)                      ⑥ depends_on 不用 condition（仅列表式）
+#
+# ⚠⚠ 平台环境变量注入模型（不懂这条容器必起不来）：
+#   资源底座把「环境变量」页填的 KEY=VALUE【直接注入到每个容器】，
+#   【不会】对本文件里的 ${VAR} / ${VAR:-default} 做 docker-compose 插值。
+#   若这里写 DB_HOST: "${DB_HOST}"，容器里拿到的就是字面量 "${DB_HOST}" → 后端/nginx 直接崩。
+#   因此本文件的 environment: 只写「平台不会注入、且永不需要改」的静态值；
+#   其余全部到平台「环境变量」页填，平台直接注入容器，应用侧读取（默认值见各应用配置）：
+#     DB_HOST / DB_PORT / DB_NAME / DB_USER / DB_PASSWORD   （外部云 MySQL）
+#     JWT_SECRET                                            （后端签发 token）
+#     OCR_SERVICE_TOKEN                                     （后端↔语音↔nginx 三方共享内网令牌）
+#     DOUBAO_LLM_* / DOUBAO_ASR_* / DOUBAO_OCR_ENABLED      （豆包；开关默认 true）
+#     ARK_* / VOLC_ASR_*                                    （语音/OCR 服务用）
+#     STORAGE_* / DEMO_PREFILL_ENABLED                      （音频存储 / 演示假识别，默认开）
+#   本地验证见 docker-compose.local.yml：用 env_file 从 .env 直接注入，行为与平台一致。
+# ============================================================
+services:
+  # OCR / 实时语音服务（Python + ffmpeg）
+  ocr-asr-service:
+    image: ywh-ocr-asr:latest
+    environment:
+      # 仅静态值。密钥/开关（OCR_SERVICE_TOKEN、ARK_*、VOLC_*）走平台环境变量直接注入。
+      PORT: "8003"
+      TZ: Asia/Shanghai
+    expose:
+      - "8003"
+
+  # 后端（Spring Boot / Java 17）
+  backend:
+    image: ywh-backend:latest
+    environment:
+      # 资源受限沙箱：单线程 GC + 限 1 核 + 小堆，避免 JVM 起大量 GC 线程失败(pthread EPERM / OOM)
+      JAVA_OPTS: "-XX:+UseSerialGC -XX:ActiveProcessorCount=1 -Xmx256m -Xms64m -Xss512k"
+      # 内网服务名 / 落盘目录（静态，平台不注入）
+      OCR_SERVICE_BASE_URL: "http://ocr-asr-service:8003"
+      STORAGE_AUDIO_DIR: "/app/data/audio"
+      TZ: Asia/Shanghai
+      # 其余全部平台注入（见文件头说明）；数据库 URL 由后端用 DB_HOST/DB_PORT/DB_NAME 自行拼装。
+    volumes:
+      - backend-audio:/app/data/audio
+    expose:
+      - "8080"
+    depends_on:
+      - ocr-asr-service
+
+  # 前端 + 入口反代（沙箱入口，平台把分配的域名指向它）
+  web:
+    image: ywh-frontend:latest
+    # OCR_SERVICE_TOKEN 由平台注入本容器 → 入口 nginx 启动时 envsubst 注入到 /asr-ws 反代。
+    # 镜像内已给 OCR_SERVICE_TOKEN 兜底空值，未注入也不会让 nginx 启动失败（仅实时语音鉴权失败→自动降级）。
+    labels:
+      sandbox.expose: "true"
+    expose:
+      - "80"
+    depends_on:
+      - backend
+      - ocr-asr-service
+
+volumes:
+  backend-audio:

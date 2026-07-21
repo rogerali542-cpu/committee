@@ -2,6 +2,7 @@ package com.ywh.controller;
 
 import com.ywh.annotation.RequireRole;
 import com.ywh.dto.MeetingTodoVO;
+import com.ywh.dto.MeetingTodoTicketVO;
 import com.ywh.dto.RecordingVO;
 import com.ywh.dto.quick.AsrResult;
 import com.ywh.dto.quick.AsrTaskVO;
@@ -12,6 +13,7 @@ import com.ywh.dto.quick.MinutesTaskStatusVO;
 import com.ywh.dto.quick.TopicSummaryRequest;
 import com.ywh.dto.quick.TopicSummaryTaskVO;
 import com.ywh.service.CommitteeService;
+import com.ywh.service.MeetingTodoTicketService;
 import com.ywh.service.quick.AsrService;
 import com.ywh.service.quick.AudioStorageService;
 import com.ywh.service.quick.AudioTranscodeService;
@@ -59,6 +61,7 @@ public class QuickMeetingController {
     private final AudioStorageService audioStorage;
     private final CommitteeService committeeService;
     private final AudioTranscodeService audioTranscodeService;
+    private final MeetingTodoTicketService meetingTodoTicketService;
 
     @PostMapping("/recording/upload")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
@@ -252,6 +255,21 @@ public class QuickMeetingController {
     @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<MeetingTodoVO> todoStatus(@PathVariable Long id, @PathVariable Long todoId, @RequestParam String status) {
         return Result.ok(committeeService.updateTodoStatus(id, todoId, status));
+    }
+
+    /** 主任删除误识别、无需执行的待办。 */
+    @DeleteMapping("/todos/{todoId}")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> todoDelete(@PathVariable Long id, @PathVariable Long todoId) {
+        committeeService.deleteTodo(id, todoId);
+        return Result.ok();
+    }
+
+    /** 将一条会议待办推送到社区工单系统；外部单号稳定，重复点击由工单系统幂等返回。 */
+    @PostMapping("/todos/{todoId}/ticket")
+    @RequireRole({"主任", "副主任"})
+    public Result<MeetingTodoTicketVO> todoTicket(@PathVariable Long id, @PathVariable Long todoId) {
+        return Result.ok(meetingTodoTicketService.push(id, todoId));
     }
 
     private List<String> topicTexts(Long meetingId, TopicSummaryRequest req) {

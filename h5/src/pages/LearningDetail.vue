@@ -1,5 +1,10 @@
 <template>
   <div class="page" style="overflow-y:auto;">
+    <!-- 回退（0717 用户指出：这页原来没有返回首页的出口）。.page 有 24rpx 横向内边距，
+         负 margin 让导航条满宽贴顶，与其他页观感一致 -->
+    <!-- backTo 显式回首页培训 tab（0717 用户定）：history.back 在硬跳兜底后不可靠，
+         且要落回对应 tab 而非默认开会（首页 show() 读 ?tab=） -->
+    <PageNav title="培训详情" back-to="/main?tab=learning" style="margin: -24rpx -24rpx 20rpx" />
     <div v-if="item">
       <!-- 头部：标题 + 阶段 -->
       <div class="detail-head">
@@ -142,6 +147,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
+import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { navigateBack } from '@/utils/navigate'

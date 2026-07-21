@@ -107,3 +107,15 @@ logging:
   level:
     com.ywh: DEBUG
     org.springframework.security: INFO
+
+# 会议待办 → 社区工单系统（服务端调用，UID 不下发浏览器）
+external:
+  ticket:
+    enabled: ${EXTERNAL_TICKET_ENABLED:false}
+    base-url: ${EXTERNAL_TICKET_BASE_URL:https://communityhub.slaicreativity.com}
+    uid: ${EXTERNAL_TICKET_UID:}
+    community-code: ${EXTERNAL_TICKET_COMMUNITY_CODE:}
+    default-reporter-name: ${EXTERNAL_TICKET_REPORTER_NAME:业委会会议}
+    default-ticket-type: ${EXTERNAL_TICKET_TYPE:会议待办}
+    default-risk-level: ${EXTERNAL_TICKET_RISK_LEVEL:LOW}
+    default-priority: ${EXTERNAL_TICKET_PRIORITY:P2}

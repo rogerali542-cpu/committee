@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import com.ywh.enums.MeetingMethod;
 
 @Data
 public class CreateMeetingRequest {
@@ -14,6 +15,7 @@ public class CreateMeetingRequest {
     private LocalDate meetingDate;
     private LocalTime meetingTime;
     private String location;
+    private MeetingMethod meetingMethod;
     private String description;
     private List<TopicRequest> topics;
 

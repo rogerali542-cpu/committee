@@ -2,6 +2,7 @@ package com.ywh.entity;
 
 import com.ywh.enums.ComplianceStatus;
 import com.ywh.enums.MeetingMode;
+import com.ywh.enums.MeetingMethod;
 import com.ywh.enums.MeetingStage;
 import jakarta.persistence.*;
 import lombok.*;
@@ -35,6 +36,11 @@ public class CommitteeMeeting {
 
     @Column(length = 100)
     private String location;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "meeting_method", nullable = false, length = 10)
+    private MeetingMethod meetingMethod = MeetingMethod.offline;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)

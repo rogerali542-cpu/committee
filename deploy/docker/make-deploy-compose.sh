@@ -11,6 +11,8 @@ OUT="docker-compose.deploy.yml"
 [ -f "$ENV_FILE" ] || { echo "缺少 $ENV_FILE（先按 .env.example 复制并填真实值）"; exit 1; }
 
 # 把 .env 一行 KEY=VALUE 输出成缩进 6 空格的  KEY: "VALUE"（转义 \ 和 "，去掉 \r）
+# 沙箱用【云数据库】：DB_* 直接取自 .env 内联进 environment（编排不含 mysql 服务）。
+# 内置 MySQL 的编排（docker-compose.yml + mysql.Dockerfile）仅用于本地验证。
 emit_env() {                        # $1 可选：只输出这一个 KEY；缺省=全部
   local want="${1:-}"
   grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$ENV_FILE" | while IFS= read -r line; do

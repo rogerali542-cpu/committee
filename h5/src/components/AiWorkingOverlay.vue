@@ -1,12 +1,24 @@
 <template>
-  <div class="aio-mask" :class="{ 'theme-party': theme === 'party' }" v-if="shown && !minimized">
-    <div class="aio-card" :class="{ 'theme-party': theme === 'party' }">
+  <div class="aio-mask" :class="{ 'theme-party': theme === 'party', 'is-news': phase === 'news' && !done }" v-if="shown && !minimized">
+    <div class="aio-card" :class="{ 'theme-party': theme === 'party', 'is-done': done, 'is-news': phase === 'news' && !done }">
       <button class="aio-min" @click="minimize" aria-label="最小化">–</button>
       <button class="aio-close" @click="onClose" aria-label="关闭">×</button>
       <span class="aio-pt" style="top:8%;left:10%;width:8rpx;height:8rpx"></span>
       <span class="aio-pt" style="top:14%;left:86%;width:10rpx;height:10rpx;animation-delay:.6s"></span>
       <span class="aio-pt" style="top:6%;left:60%;width:6rpx;height:6rpx;animation-delay:1.1s"></span>
       <span class="aio-pt" style="top:20%;left:24%;width:6rpx;height:6rpx;animation-delay:.9s"></span>
+
+      <!-- 新闻生成态：红色科技装饰（HUD 四角 + 扫描线 + 反应堆核心），仅生成中渲染 -->
+      <div v-if="phase === 'news' && !done" class="aio-scifi" aria-hidden="true">
+        <span class="sf-corner tl"></span><span class="sf-corner tr"></span>
+        <span class="sf-corner bl"></span><span class="sf-corner br"></span>
+        <span class="sf-scan"></span>
+      </div>
+      <div v-if="phase === 'news' && !done" class="aio-reactor" aria-hidden="true">
+        <span class="rc-ring"></span>
+        <span class="rc-ring rc-ring2"></span>
+        <span class="rc-core"></span>
+      </div>
 
       <div class="aio-hdr">
         <span class="aio-title">{{ title }}</span>
@@ -40,14 +52,17 @@
       <!-- 完成 -->
       <template v-else>
         <div class="aio-done-core">
-          <div class="aio-check">✓</div>
+          <div v-if="theme === 'party'" class="aio-doc-icon" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div v-else class="aio-check">✓</div>
         </div>
         <span class="aio-say done">{{ doneSay }}</span>
         <div class="aio-done-sub">用时 {{ elapsed }} · 共消耗 {{ tokens }} token</div>
       </template>
 
       <div class="aio-steps">
-        <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
+        <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' && theme !== 'party' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
       </div>
 
       <div class="aio-prog">
@@ -91,7 +106,7 @@ const CFG = {
   recognize: { target: 25, tok: 205, say: '正在为您识别录音、转写文字', lab: '已解析音频', max: 25, unit: ' 分钟', dec: 0, active: 2, doneSay: '录音识别完成', doneBtn: '下一步', title: '豆包正在为您识别录音', badge: '录音识别中', steps: ['上传录音', '识别转写', '提炼议题', '核对表决'] },
   gen: { target: 112, tok: 268, say: '正在为您提炼议题、生成纪要草稿', lab: '上下文理解', pct: true, active: 4, doneSay: '已生成会议纪要', doneBtn: '查看会议纪要', title: '豆包正在为您整理纪要', badge: '草稿生成中', steps: STEPS_MINUTES },
   // 党建新闻生成（红色党建风）：研读纪要 → 提炼党建主线 → 撰写初稿 → 润色成稿
-  news: { target: 55, tok: 240, say: '正在研读纪要、撰写党建新闻通稿', lab: '党建主线提炼', pct: true, active: 3, doneSay: '党建新闻已生成', doneBtn: '查看新闻稿', title: '豆包正在为您撰写党建新闻', badge: '新闻撰写中', steps: ['研读纪要', '提炼主线', '撰写初稿', '润色成稿'] }
+  news: { target: 55, tok: 240, say: '正在根据会议纪要整理内容', lab: '内容整理', pct: true, active: 3, doneSay: '党建新闻已生成', doneBtn: '查看新闻稿', title: '正在生成新闻稿', badge: '生成中', steps: ['读取纪要', '整理内容', '生成新闻', '完成'] }
 }
 
 const shown = ref(false)
@@ -261,6 +276,76 @@ onUnmounted(stop)
 .aio-btn { width: 100%; height: 92rpx; border: none; border-radius: 18rpx; background: linear-gradient(90deg, #4FC0FF, #2E73E6); color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 8rpx 28rpx rgba(46,115,230,.45); }
 .aio-btn:active { background: linear-gradient(90deg, #3FA8EC, #245FC4); }
 
+/* ══ 新闻生成态：红色科技风（HUD 四角 + 扫描线 + 反应堆核心 + 红色霓虹进度）══ */
+.aio-mask.theme-party.is-news { background:rgba(14,2,6,.72); backdrop-filter:blur(5px); }
+.aio-card.theme-party.is-news {
+  width:600rpx; max-width:90%; min-height:470rpx; justify-content:center;
+  padding:64rpx 46rpx 46rpx; overflow:hidden;
+  /* 网格线用 1px：rpx 用在渐变色标位置会被转换插件搞坏，导致整条 background 被丢弃 */
+  background:
+    linear-gradient(rgba(255,90,80,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,90,80,.05) 1px, transparent 1px),
+    radial-gradient(120% 92% at 50% -6%, #4A0E17 0%, #2A0810 46%, #120409 100%);
+  background-size:34rpx 34rpx, 34rpx 34rpx, auto;
+  border:1px solid rgba(255,96,84,.32);
+  box-shadow:0 28rpx 80rpx rgba(6,1,4,.6), 0 0 60rpx rgba(200,32,40,.22), inset 0 0 60rpx rgba(180,20,30,.14);
+}
+/* 顶部发光红条 */
+.aio-card.theme-party.is-news::before {
+  content:""; position:absolute; top:0; left:0; right:0; height:5rpx;
+  background:linear-gradient(90deg, transparent, #FF4D45 20%, #FFB36B 50%, #FF4D45 80%, transparent);
+  box-shadow:0 0 18rpx rgba(255,80,60,.7);
+}
+.aio-card.theme-party.is-news .aio-core,
+.aio-card.theme-party.is-news .aio-badge,
+.aio-card.theme-party.is-news .aio-steps { display:none; }
+/* 红色能量粒子（重新启用并染红） */
+.aio-card.theme-party.is-news .aio-pt { display:block; background:#FF6A5A; box-shadow:0 0 12rpx 2rpx rgba(255,96,80,.85); }
+
+/* HUD 四角 + 扫描线 装饰层 */
+.aio-scifi { position:absolute; inset:0; pointer-events:none; z-index:1; }
+.sf-corner { position:absolute; width:32rpx; height:32rpx; border:3rpx solid #FF5A52; box-shadow:0 0 12rpx rgba(255,80,64,.55); opacity:.9; }
+.sf-corner.tl { top:18rpx; left:18rpx; border-right:0; border-bottom:0; border-top-left-radius:6rpx; }
+.sf-corner.tr { top:18rpx; right:18rpx; border-left:0; border-bottom:0; border-top-right-radius:6rpx; }
+.sf-corner.bl { bottom:18rpx; left:18rpx; border-right:0; border-top:0; border-bottom-left-radius:6rpx; }
+.sf-corner.br { bottom:18rpx; right:18rpx; border-left:0; border-top:0; border-bottom-right-radius:6rpx; }
+.sf-scan { position:absolute; left:5%; right:5%; top:8%; height:2rpx; background:linear-gradient(90deg, transparent, #FF6A5A, transparent); box-shadow:0 0 18rpx 2rpx rgba(255,90,70,.55); animation:sfScan 3.4s ease-in-out infinite; }
+
+/* 反应堆核心：双环反向旋转 + 脉动红核 + 环上卫星点 */
+.aio-reactor { position:relative; width:158rpx; height:158rpx; margin:0 auto 26rpx; display:flex; align-items:center; justify-content:center; z-index:2; }
+.aio-reactor .rc-ring { position:absolute; inset:0; border-radius:50%; border:3rpx solid transparent; border-top-color:#FF5A52; border-right-color:#FFB36B; box-shadow:0 0 22rpx rgba(255,84,68,.4); animation:aioSpin 1.5s linear infinite; }
+.aio-reactor .rc-ring::after { content:""; position:absolute; top:-7rpx; left:50%; width:13rpx; height:13rpx; margin-left:-6.5rpx; border-radius:50%; background:#FFDDB0; box-shadow:0 0 14rpx #FF8A5A; }
+.aio-reactor .rc-ring2 { inset:22rpx; border-top-color:#FFCF6B; border-left-color:#FF5A52; border-right-color:transparent; animation:aioSpinR 2.4s linear infinite; }
+.aio-reactor .rc-ring2::after { top:auto; bottom:-6rpx; width:10rpx; height:10rpx; margin-left:-5rpx; background:#FFCF8A; box-shadow:0 0 12rpx #FFB36B; }
+.aio-reactor .rc-core { width:72rpx; height:72rpx; border-radius:50%; background:radial-gradient(circle at 42% 34%, #FFE6C6 0%, #FF5A46 46%, #A8121C 100%); box-shadow:0 0 36rpx rgba(255,74,58,.75), inset 0 0 16rpx rgba(255,220,180,.5); animation:aioBreathe 2.4s ease-in-out infinite; }
+
+.aio-card.theme-party.is-news .aio-hdr { justify-content:center; padding:0; position:relative; z-index:2; }
+.aio-card.theme-party.is-news .aio-title { color:#FFF4EE; font-size:38rpx; font-weight:700; letter-spacing:3rpx; text-shadow:0 0 22rpx rgba(255,90,64,.6); text-align:center; }
+.aio-card.theme-party.is-news .aio-title::before { display:none; }
+.aio-card.theme-party.is-news .aio-say { margin:20rpx 0 26rpx; color:#E9C3B8; font-size:28rpx; font-weight:400; position:relative; z-index:2; }
+.aio-card.theme-party.is-news .aio-say i { color:#FF6A5A; }
+.aio-card.theme-party.is-news .aio-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12rpx; margin-bottom:26rpx; position:relative; z-index:2; }
+.aio-card.theme-party.is-news .aio-m { position:relative; padding:16rpx 18rpx 16rpx 24rpx; background:rgba(42,7,11,.5); border:1rpx solid rgba(255,96,82,.22); border-radius:12rpx; overflow:hidden; }
+.aio-card.theme-party.is-news .aio-m::after { content:""; position:absolute; left:0; top:14rpx; bottom:14rpx; width:4rpx; background:#FF5A48; box-shadow:0 0 10rpx rgba(255,88,64,.7); border-radius:2rpx; }
+.aio-card.theme-party.is-news .aio-m:nth-child(3) { grid-column:1 / -1; }
+.aio-card.theme-party.is-news .aio-m:nth-child(4) { display:none; }
+.aio-card.theme-party.is-news .aio-ml { color:#D79C90; font-size:22rpx; }
+.aio-card.theme-party.is-news .aio-mv { margin-top:5rpx; color:#FFEDE2; font-size:31rpx; text-shadow:0 0 14rpx rgba(255,96,64,.5); font-variant-numeric:tabular-nums; }
+.aio-card.theme-party.is-news .aio-mv.eta { color:#FFCA8C; text-shadow:0 0 14rpx rgba(255,170,90,.5); }
+.aio-card.theme-party.is-news .aio-prog { display:flex; margin-bottom:24rpx; position:relative; z-index:2; }
+.aio-card.theme-party.is-news .aio-track { height:12rpx; background:rgba(255,96,82,.14); border:1rpx solid rgba(255,110,96,.2); }
+.aio-card.theme-party.is-news .aio-fill { position:relative; overflow:hidden; background:linear-gradient(90deg,#A8121C,#FF5A46 62%,#FFB36B); box-shadow:0 0 18rpx rgba(255,96,64,.6); }
+.aio-card.theme-party.is-news .aio-fill::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent); animation:sfShimmer 1.6s linear infinite; }
+.aio-card.theme-party.is-news .aio-pct { min-width:72rpx; color:#FFE7DA; font-size:29rpx; text-shadow:0 0 12rpx rgba(255,96,64,.5); }
+.aio-card.theme-party.is-news .aio-by { color:transparent; font-size:0; position:relative; z-index:2; }
+.aio-card.theme-party.is-news .aio-by::after { content:"可以先收起，生成完成后会提醒您"; color:#C79185; font-size:24rpx; font-weight:400; }
+.aio-card.theme-party.is-news .aio-close,
+.aio-card.theme-party.is-news .aio-min { color:#F0C6BC; background:rgba(40,8,12,.55); border-color:rgba(255,120,100,.28); z-index:3; }
+.aio-fab.aio-fab.theme-party { background:linear-gradient(90deg,#2A0810,#A8121C); border-color:rgba(255,150,120,.4); color:#FFEDE4; box-shadow:0 8rpx 28rpx rgba(30,4,8,.5); }
+
+@keyframes sfScan { 0%{top:10%;opacity:0} 12%{opacity:1} 88%{opacity:1} 100%{top:90%;opacity:0} }
+@keyframes sfShimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
 /* ════════ 红色党建风格（theme=party）：覆盖深蓝科技风配色 ════════ */
 .aio-mask.theme-party { background: rgba(40, 4, 6, 0.68); }
 .aio-card.theme-party {
@@ -300,6 +385,77 @@ onUnmounted(stop)
 .theme-party .aio-check { background: radial-gradient(circle at 50% 38%, #FFD98A 0%, #F5B301 55%, #C67A00 100%); color: #5C1B00; box-shadow: 0 0 40rpx rgba(245,179,1,.55); }
 .theme-party .aio-btn { background: linear-gradient(90deg, #FF6B4D, #D5262B); box-shadow: 0 8rpx 28rpx rgba(200,40,30,.5); }
 .theme-party .aio-btn:active { background: linear-gradient(90deg, #E85A3C, #B81E23); }
+
+/* 党建新闻适老版：暖白公文卡片、低刺激动效、单一完成标识 */
+.aio-mask.theme-party { background: rgba(37, 24, 24, .48); }
+.aio-card.theme-party {
+  background: #FFFDF9;
+  border: 2rpx solid #E2C9BD;
+  border-top: 12rpx solid #A81E24;
+  box-shadow: 0 22rpx 64rpx rgba(55, 25, 25, .28);
+  color: #332727;
+}
+.theme-party .aio-pt { display: none; }
+.theme-party .aio-title { color: #72171C; text-shadow: none; font-size: 38rpx; line-height: 1.4; }
+.theme-party .aio-close,
+.theme-party .aio-min { color: #7C5555; background: #F8EEEA; border-color: #E2C9BD; }
+.theme-party .aio-badge { background: #F8ECE7; color: #8B292D; border-color: #E7C7BA; font-size: 26rpx; }
+.theme-party .aio-bdot { background: #A81E24; box-shadow: none; animation: none; }
+.theme-party .aio-halo,
+.theme-party .aio-ring,
+.theme-party .aio-ring2,
+.theme-party .aio-orb { animation: none; }
+.theme-party .aio-halo { opacity: .14; }
+.theme-party .aio-say { color: #3C3030; font-size: 36rpx; line-height: 1.5; }
+.theme-party .aio-say i { color: #A81E24; animation: none; opacity: .7; }
+.theme-party .aio-say.done { color: #72171C; font-size: 42rpx; font-weight: 800; margin: 12rpx 0 8rpx; }
+.theme-party .aio-done-sub { color: #765F5F; font-size: 28rpx; margin-bottom: 34rpx; }
+.theme-party .aio-m { background: #FAF5F1; border-color: #E8D9D1; }
+.theme-party .aio-ml { color: #765F5F; font-size: 25rpx; }
+.theme-party .aio-mv,
+.theme-party .aio-mv.eta { color: #72171C; text-shadow: none; }
+.theme-party .aio-steps::before { background: #E5D5CD; }
+.theme-party .aio-sdot { background: #FFF; border-color: #D8C4BB; color: #765F5F; }
+.theme-party .aio-step.done .aio-sdot {
+  background: #A81E24; border-color: #A81E24; color: #FFF;
+  box-shadow: none;
+}
+.theme-party .aio-step.active .aio-sdot { background: #A81E24; border-color: #A81E24; animation: none; }
+.theme-party .aio-slabel { color: #765F5F; font-size: 25rpx; line-height: 1.35; }
+.theme-party .aio-step.done .aio-slabel,
+.theme-party .aio-step.active .aio-slabel { color: #72171C; font-weight: 700; }
+.theme-party .aio-track { background: #E9DDD7; height: 18rpx; }
+.theme-party .aio-fill { background: #A81E24; box-shadow: none; transition: width 1.2s linear; }
+.theme-party .aio-pct { color: #72171C; }
+.theme-party .aio-by { color: #806A6A; font-size: 25rpx; }
+.theme-party .aio-by b { color: #72171C; }
+.theme-party .aio-doc-icon {
+  position: relative; width: 104rpx; height: 126rpx; box-sizing: border-box;
+  margin: 10rpx 0 8rpx; border: 4rpx solid #A81E24; border-radius: 10rpx;
+  background: #FFF; box-shadow: 8rpx 8rpx 0 #F1E2DC;
+  display: flex; flex-direction: column; justify-content: center; gap: 14rpx; padding: 0 20rpx;
+}
+.theme-party .aio-doc-icon::after {
+  content: ""; position: absolute; right: -4rpx; top: -4rpx;
+  width: 28rpx; height: 28rpx; background: #FFFDF9;
+  border-left: 4rpx solid #A81E24; border-bottom: 4rpx solid #A81E24;
+}
+.theme-party .aio-doc-icon span { display: block; height: 4rpx; border-radius: 2rpx; background: #A81E24; opacity: .72; }
+.theme-party .aio-doc-icon span:last-child { width: 68%; }
+.theme-party.is-done .aio-hdr { padding-bottom: 12rpx; border-bottom: 2rpx solid #EEE0D9; }
+.theme-party.is-done .aio-badge { background: #F3E4DE; }
+.theme-party.is-done .aio-steps,
+.theme-party.is-done .aio-prog { display: none; }
+.theme-party.is-done .aio-done-core { padding: 34rpx 0 8rpx; }
+.theme-party.is-done .aio-done-sub { margin-bottom: 38rpx; }
+.theme-party .aio-btn {
+  height: 100rpx; border-radius: 18rpx;
+  background: #A81E24; box-shadow: none;
+  font-size: 36rpx; font-weight: 800;
+}
+.theme-party .aio-btn:active { background: #85171C; }
+.aio-fab.theme-party { background: #A81E24; border-color: #DDB7A6; color: #FFF; box-shadow: 0 8rpx 24rpx rgba(82,22,25,.28); }
+.aio-fab.theme-party .aio-fab-ico { animation-duration: 1.6s; }
 @keyframes aioBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 @keyframes aioHalo { 0%,100% { opacity: .32; transform: scale(.92); } 50% { opacity: .68; transform: scale(1.05); } }
 @keyframes aioSpin { to { transform: rotate(360deg); } }
@@ -309,7 +465,8 @@ onUnmounted(stop)
 @keyframes aioDot { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
 @keyframes aioBlink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 @media (prefers-reduced-motion: reduce) {
-  .aio-halo, .aio-ring, .aio-ring2, .aio-orb, .aio-pt, .aio-step.active .aio-sdot, .aio-bdot, .aio-say i { animation: none !important; }
+  .aio-halo, .aio-ring, .aio-ring2, .aio-orb, .aio-pt, .aio-step.active .aio-sdot, .aio-bdot, .aio-say i,
+  .sf-scan, .aio-reactor .rc-ring, .aio-reactor .rc-ring2, .aio-reactor .rc-core, .aio-card.theme-party.is-news .aio-fill::after { animation: none !important; }
   .aio-mask { backdrop-filter: none; }
 }
 </style>

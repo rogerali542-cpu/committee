@@ -34,10 +34,11 @@ export function buildCommitteeNoticeDraft(m) {
   return { title: title, content: lines.filter(Boolean).join('\n'), status: 'draft' }
 }
 
-// 接待是否完成（纯字段判断）
+// 接待是否完成（纯字段判断）。0716 重做：办结 = 填了处理结果。
+// 原口径 `fedOwner && (非物业 || propertyStatus==='replied' || fedProperty)` 里的三个字段
+// 都已随内部派单流下线。后端 ReceptionService.isDone 是同一口径，改一处必须改两处。
 export function receptionDone(r) {
-  if (!r.fedOwner) return false
-  return r.category !== RECEPTION_CATEGORY.PROPERTY || r.propertyStatus === 'replied' || !!r.fedProperty
+  return !!(r.resolution && String(r.resolution).trim())
 }
 
 // 阶段描述（会议列表卡片副标题）

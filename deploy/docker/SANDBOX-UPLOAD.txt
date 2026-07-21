@@ -1,0 +1,17 @@
+沙箱上传文件说明（云数据库 + 平台注入 .env 版）
+
+上传三件（都在本目录 deploy/sandbox-upload-package/）：
+1. images.tar          —— Docker 镜像包（ywh-frontend / ywh-backend / ywh-ocr-asr 三镜像，不含数据库）。
+2. docker-compose.yml  —— 编排文件（无密钥、无 mysql 服务；所有变量靠平台把 .env 注入各容器）。
+3. .env                —— 环境变量（32 项真实值已填好，含云数据库 DB_*）。⚠ 含密钥，只上传平台，勿提交勿外传。
+
+注意事项：
+- 数据库为外部云 MySQL（火山 RDS）。⚠ 上线前必须在火山 RDS 控制台把【沙箱出口 IP】加入白名单
+  （3306），否则后端报 Communications link failure / Connection refused 并崩溃循环。
+- deploy/docker/docker-compose.deploy.yml 是「平台不支持上传 .env」时的备用方案（密钥内联同一编排）。
+- 内置 MySQL 的编排（deploy/docker/docker-compose.yml + ywh-mysql 镜像）仅用于本地验证，勿上传。
+
+镜像：
+- ywh-frontend:latest
+- ywh-backend:latest
+- ywh-ocr-asr:latest

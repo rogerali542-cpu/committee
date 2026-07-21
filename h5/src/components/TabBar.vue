@@ -22,7 +22,8 @@ import { switchTab } from '@/utils/navigate'
 
 const route = useRoute()
 const tabs = [
-  { path: '/main', icon: '📋', label: '业委会' },
+  { path: '/main', icon: '📋', label: '业委会会议' },
+  { path: '/reception-center', icon: '🤝', label: '接待中心' },
   { path: '/profile', icon: '👤', label: '个人中心' }
 ]
 const active = computed(() => route.path)
@@ -40,5 +41,5 @@ function go(path) { if (path !== route.path) switchTab(path) }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; color: #666; }
 .tab.active { color: #FFA800; }
 .tab-icon { position: relative; font-size: 44rpx; line-height: 1; }
-.tab-label { font-size: 28rpx; }
+.tab-label { font-size: 26rpx; }
 </style>

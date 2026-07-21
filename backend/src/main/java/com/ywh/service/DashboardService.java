@@ -23,6 +23,7 @@ public class DashboardService {
     private final MeetingPublishRepository publishRepo;
     private final ReceptionRecordRepository receptionRepo;
     private final UserRoleRepository userRoleRepo;
+    private final ReceptionService receptionService;   // 接待办结口径只此一份，见 isReceptionDone
 
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
 
@@ -94,8 +95,13 @@ public class DashboardService {
         return stats;
     }
 
+    /**
+     * 0716：改为直接委托 ReceptionService.isDone，不再自己算一份。
+     * 原先这里是 `fedOwner && (非物业 || fedProperty)`，而 ReceptionService 那份还要看 propertyStatus=='replied'
+     * —— 两份口径不一致，新数据下碰巧对得上（propertyReply 会连带置 fedProperty），老数据会分叉。
+     * 现在办结 = 填了处理结果，只此一份实现。
+     */
     private boolean isReceptionDone(ReceptionRecord r) {
-        if (!r.getFedOwner()) return false;
-        return r.getCategory() != com.ywh.enums.ReceptionCategory.property || r.getFedProperty();
+        return receptionService.isDone(r);
     }
 }

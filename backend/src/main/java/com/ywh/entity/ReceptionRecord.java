@@ -26,6 +26,10 @@ public class ReceptionRecord {
 
     private LocalTime time;
 
+    /** 同一次接待可能登记多位居民；同一场次的事项共享此键。 */
+    @Column(name = "session_key", length = 64)
+    private String sessionKey;
+
     @Column(name = "visitor_name", length = 30)
     private String visitorName;
 
@@ -45,24 +49,23 @@ public class ReceptionRecord {
     @Column(columnDefinition = "TEXT")
     private String resolution;
 
-    @Column(name = "fed_property", nullable = false)
-    private Boolean fedProperty;
+    // ── 外部工单（0716）：派给「社区智能运维协同平台」后回填，照 MeetingTodo 的同名三字段 ──
+    // externalTicketNo 由本系统生成（YWH-RECEPTION-{id}）并用于幂等；ticketNo 是对方系统的单号。
+    @Column(name = "external_ticket_no", length = 128)
+    private String externalTicketNo;
 
-    @Column(name = "fed_owner", nullable = false)
-    private Boolean fedOwner;
+    @Column(name = "ticket_no", length = 128)
+    private String ticketNo;
 
-    // 物业处理工单（仅物业类）：pending_dispatch / dispatched / replied
-    @Column(name = "property_status", length = 20)
-    private String propertyStatus;
+    @Column(name = "ticket_pushed_at")
+    private LocalDateTime ticketPushedAt;
 
-    @Column(name = "property_reply", columnDefinition = "TEXT")
-    private String propertyReply;
-
-    @Column(name = "property_replied_by", length = 30)
-    private String propertyRepliedBy;
-
-    @Column(name = "property_replied_at")
-    private LocalDateTime propertyRepliedAt;
+    // ── 转物业（0717）：跟上面的工单是两条不同的路 ──
+    // 工单那条真的 POST 到外部工单系统、有对方单号、不可撤销；这条不发任何请求，
+    // 只是委员自己联系了物业、在本系统记一笔，所以可以随手反悔（前端是个开关）。
+    // 时间戳兼作布尔：null = 没转过。⚠ 不参与 isDone —— 转出去 ≠ 办结。
+    @Column(name = "property_transferred_at")
+    private LocalDateTime propertyTransferredAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

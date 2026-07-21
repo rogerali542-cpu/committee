@@ -32,9 +32,20 @@
 
   <!-- ActionSheet -->
   <div v-if="uiState.actionSheet" class="ui-mask sheet-mask" @click.self="onSheetCancel">
-    <div class="ui-sheet">
-      <button v-for="(item, idx) in uiState.actionSheet.itemList" :key="idx" class="ui-sheet-item" @click="onSheetTap(idx)">{{ item }}</button>
-      <button class="ui-sheet-item cancel" @click="onSheetCancel">取消</button>
+    <div class="ui-sheet" :class="uiState.actionSheet.variant">
+      <div v-if="uiState.actionSheet.title || uiState.actionSheet.description" class="ui-sheet-head">
+        <div v-if="uiState.actionSheet.title" class="ui-sheet-title">{{ uiState.actionSheet.title }}</div>
+        <div v-if="uiState.actionSheet.description" class="ui-sheet-desc">{{ uiState.actionSheet.description }}</div>
+      </div>
+      <button v-for="(item, idx) in uiState.actionSheet.itemList" :key="idx" class="ui-sheet-item" :class="typeof item === 'object' ? item.tone : ''" @click="onSheetTap(idx)">
+        <span v-if="typeof item === 'object' && item.icon" class="ui-sheet-icon">{{ item.icon }}</span>
+        <span class="ui-sheet-copy">
+          <b>{{ typeof item === 'object' ? item.label : item }}</b>
+          <small v-if="typeof item === 'object' && item.description">{{ item.description }}</small>
+        </span>
+        <span v-if="typeof item === 'object'" class="ui-sheet-arrow">›</span>
+      </button>
+      <button class="ui-sheet-item cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
     </div>
   </div>
 </template>
@@ -91,19 +102,37 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.large .ui-modal-content { font-size: 36rpx; color: #000; line-height: 1.8; margin-top: 28rpx; }
 .ui-modal.large .ui-modal-actions { margin-top: 48rpx; }
 .ui-modal.large .ui-modal-btn { padding: 34rpx 0; font-size: 38rpx; font-weight: 700; }
-/* 表决二次确认（size:'vote'）：文案精简、加粗放大，方便老人看清投的是哪项 */
-.ui-modal.vote .ui-modal-content { font-size: 44rpx; font-weight: 700; color: #1a1a1a; margin-top: 8rpx; }
-.ui-modal.vote .ui-modal-btn { padding: 32rpx 0; font-size: 40rpx; }
-.ui-modal.vote .ui-modal-btn.confirm { font-weight: 700; }
-/* AI 帮写/润色完成卡（size:'aicard'）：无标题、正文+消耗紧凑、大字纯黑 */
-.ui-modal.aicard { padding: 44rpx 40rpx 0; }
-.ui-modal.aicard .ui-modal-content { font-size: 40rpx; color: #000; line-height: 1.5; margin-top: 0; }
+/* 表决二次确认（size:'vote'）：轻量确认，避免抢过投票主界面 */
+.ui-modal.vote .ui-modal-content { font-size: 36rpx; font-weight: 400; color: #333; margin-top: 8rpx; line-height: 1.55; }
+.ui-modal.vote .ui-modal-btn { padding: 28rpx 0; font-size: 34rpx; }
+.ui-modal.vote .ui-modal-btn.confirm { font-weight: 600; }
+/* AI 帮写/润色完成卡（size:'aicard'）：轻提示，短句+清晰确认 */
+.ui-modal.aicard { width: 560rpx; max-width: 82vw; border-radius: 22rpx; padding: 36rpx 36rpx 0; box-shadow: 0 18rpx 54rpx rgba(31,35,41,0.18); }
+.ui-modal.aicard .ui-modal-content { font-size: 32rpx; font-weight: 500; color: #1f2329; line-height: 1.45; margin-top: 0; }
 .ui-modal-meta { text-align: center; white-space: pre-wrap; }
-.ui-modal.aicard .ui-modal-meta { margin-top: 8px; font-size: 40rpx; color: #000; line-height: 1.5; }
-.ui-modal.aicard .ui-modal-btn { padding: 30rpx 0; font-size: 38rpx; }
-.ui-modal.aicard .ui-modal-btn.confirm { font-weight: 700; }
+.ui-modal.aicard .ui-modal-meta { margin-top: 8px; font-size: 26rpx; color: #8A8F98; line-height: 1.45; }
+.ui-modal.aicard .ui-modal-actions { margin-top: 30rpx; }
+.ui-modal.aicard .ui-modal-btn { padding: 24rpx 0; font-size: 32rpx; }
+.ui-modal.aicard .ui-modal-btn.confirm { font-weight: 700; color: #4F8B34; }
 
 .ui-sheet { width: 100%; background: #f4f4f6; padding-bottom: env(safe-area-inset-bottom); }
 .ui-sheet-item { display: block; width: 100%; padding: 32rpx 0; font-size: 32rpx; background: #fff; border-bottom: 1rpx solid #eee; color: #1a1a1a; }
 .ui-sheet-item.cancel { margin-top: 14rpx; color: #666; font-weight: 600; border-bottom: none; }
+.ui-sheet.opinion-change { padding: 0 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #F5F3EF; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.12); }
+.ui-sheet-head { padding: 34rpx 20rpx 26rpx; text-align: left; }
+.ui-sheet-title { font-size: 36rpx; line-height: 1.35; font-weight: 700; color: #1F2329; }
+.ui-sheet-desc { margin-top: 10rpx; font-size: 27rpx; line-height: 1.55; color: #7A7F87; }
+.ui-sheet.opinion-change .ui-sheet-item { min-height: 112rpx; padding: 20rpx 22rpx; margin-bottom: 14rpx; border: 2rpx solid #E9E5DE; border-radius: 18rpx; display: flex; align-items: center; gap: 18rpx; text-align: left; box-shadow: 0 4rpx 14rpx rgba(31,35,41,.04); }
+.ui-sheet.opinion-change .ui-sheet-item:active { transform: scale(.99); background: #FAF9F7; }
+.ui-sheet-icon { flex: 0 0 64rpx; height: 64rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; background: #F1EEE8; font-size: 34rpx; }
+.ui-sheet-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
+.ui-sheet-copy b { font-size: 31rpx; line-height: 1.35; color: #25282D; }
+.ui-sheet-copy small { font-size: 24rpx; line-height: 1.35; color: #8A8F98; }
+.ui-sheet-arrow { color: #B0B4BA; font-size: 42rpx; line-height: 1; }
+.ui-sheet.opinion-change .ui-sheet-item.ai { border-color: #D8E6CE; background: #F8FCF5; }
+.ui-sheet.opinion-change .ui-sheet-item.ai .ui-sheet-icon { background: #E7F2DF; }
+.ui-sheet.opinion-change .ui-sheet-item.danger { border-color: #F1DDDA; background: #FFF9F8; }
+.ui-sheet.opinion-change .ui-sheet-item.danger .ui-sheet-copy b { color: #B64B42; }
+.ui-sheet.opinion-change .ui-sheet-item.danger .ui-sheet-icon { background: #FBEAE7; }
+.ui-sheet.opinion-change .ui-sheet-item.cancel { min-height: 88rpx; justify-content: center; margin: 4rpx 0 0; padding: 22rpx; text-align: center; color: #666B73; box-shadow: none; }
 </style>

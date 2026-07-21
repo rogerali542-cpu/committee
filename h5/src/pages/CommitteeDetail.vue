@@ -1,17 +1,34 @@
 <template>
   <div class="detail-page">
     <PageNav :title="navTitle" style="margin:-12px -12px 0;">
-      <!-- 会议通知页(主任·准备阶段)：左箭头=回发起业委会重新编辑；右上=回首页；其它阶段用默认单返回 -->
-      <template #left v-if="showNoticeNav">
-        <div class="nav-back" @click="backToEditInfo">‹</div>
+      <!-- 左箭头返回来源页；首页作为详情页统一的右上角轻量入口 -->
+      <template #left>
+        <div class="nav-back" @click="handleDetailBack">‹</div>
       </template>
-      <template #right v-if="showNoticeNav">
+      <template #right>
         <button class="nav-home" @click="goHome">首页</button>
       </template>
     </PageNav>
 
     <!-- AI 生成党建新闻：红色党建风工作遮罩，完成后进入独立新闻页 -->
     <AiWorkingOverlay :active="generatingNews" phase="news" theme="party" @confirm="onNewsDone" @close="onNewsClose" />
+    <!-- 会议纪要在详情页后台生成；最小化后悬浮入口仍留在当前详情页 -->
+    <AiWorkingOverlay v-if="minutesOverlayShown" :active="generatingMinutes" phase="gen" @confirm="onMinutesDone" @close="onMinutesClose" />
+    <div v-if="photoCameraVisible" class="photo-camera-overlay">
+      <div class="photo-camera-panel">
+        <div class="photo-camera-title">委员合影</div>
+        <div class="photo-camera-view">
+          <video ref="cameraVideo" autoplay playsinline muted></video>
+          <span v-if="cameraStarting" class="photo-camera-loading">正在打开相机…</span>
+        </div>
+        <div class="photo-camera-actions">
+          <button class="photo-camera-cancel" @click="closeGroupCamera">取消</button>
+          <button class="photo-camera-shoot" :disabled="cameraStarting || photoUploading" @click="captureGroupPhoto">
+            {{ photoUploading ? '保存中…' : '拍照' }}
+          </button>
+        </div>
+      </div>
+    </div>
     <div v-if="detail" class="detail-body">
       <!-- 简化阶段：进行中/已结束会议也允许主任删除（清理测试数据用；准备阶段用会议头部的取消按钮） -->
 
@@ -30,35 +47,67 @@
         <div class="notice-card">
           <div class="nc-copy">
             <div class="nc-copy-title">新会议通知：{{ detail.title || '业委会会议' }}</div>
+            <div v-if="detail.meetingMethod === 'online'" class="nc-online-emphasis">本次会议为线上会议</div>
             <div class="nc-copy-row">会议时间：{{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }}</div>
-            <div class="nc-copy-row">会议地点：<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span><span v-else class="nc-muted">待定</span></div>
-            <div v-if="detail.location" class="nc-copy-row">地点导航：<span class="loc-inline" @click="openMap(detail.location)">打开地图导航</span></div>
+            <div class="nc-copy-row">{{ detail.meetingMethod === 'online' ? '线上平台' : '会议地点' }}：<span v-if="detail.meetingMethod === 'online'">{{ detail.location || '微信工作群' }}</span><span v-else-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span><span v-else class="nc-muted">待定</span></div>
+            <div v-if="detail.meetingMethod !== 'online' && detail.location" class="nc-copy-row">地点导航：<span class="loc-inline" @click="openMap(detail.location)">打开地图导航</span></div>
             <div class="nc-copy-row">会议议题：{{ noticeTopicsText }}</div>
             <div class="nc-copy-note">请各位委员准时参加。</div>
             <div class="nc-copy-sign">业主委员会</div>
           </div>
+          <div class="prep-meeting-actions">
+            <button type="button" class="prep-cancel-light" @click="removeMeeting">取消会议</button>
+            <button type="button" class="method-convert-trigger" @click="openMethodConversion">
+              {{ detail.meetingMethod === 'online' ? '转为线下会议' : '转为线上会议' }}
+            </button>
+          </div>
+          <div v-if="methodConvertOpen" class="method-convert-panel">
+            <div class="method-convert-title">
+              {{ methodConvertForm.meetingMethod === 'online' ? '选择线上平台' : '选择会议地点' }}
+            </div>
+            <select v-if="methodConvertForm.meetingMethod === 'online'" v-model="methodConvertForm.location" class="method-convert-select">
+              <option value="微信工作群">微信工作群</option>
+              <option value="腾讯会议">腾讯会议</option>
+            </select>
+            <div v-else class="method-convert-location-row">
+              <div class="method-convert-location-main">
+                <select v-model="methodConvertForm.location" class="method-convert-select">
+                  <option value="社区活动室">社区活动室</option>
+                  <option value="社区会议室">社区会议室</option>
+                  <option value="__other__">其他地点</option>
+                </select>
+                <input v-if="methodConvertForm.location === '__other__'"
+                       v-model="methodConvertOtherLocation" class="method-convert-input" placeholder="请输入会议地点" />
+              </div>
+              <button type="button" class="method-convert-map-btn" aria-label="从地图选点" @click="pickMethodConvertLocationOnMap">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+              </button>
+            </div>
+            <div class="method-convert-actions">
+              <button type="button" @click="methodConvertOpen = false">取消</button>
+              <button type="button" class="primary" :disabled="methodConvertSaving" @click="confirmMethodConversion">
+                {{ methodConvertSaving ? '转换中…' : '确认转换' }}
+              </button>
+            </div>
+          </div>
         </div>
-
-        <!-- 取消会议（弱化，避免误删） -->
-        <div class="prep-cancel"><span @click="removeMeeting">取消会议</span></div>
 
         <!-- 通知人员：默认展开并全选，可直接调整名单 -->
         <div class="recipient-card">
           <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
             <span class="recipient-card-title">通知人员</span>
             <div class="recipient-card-right">
-              <span class="recipient-summary">{{ recipientSummary }}</span>
+              <!-- 全选控件挪到头部（替代原「全体委员·N人」摘要，两者信息重复）：点它=全选/全不选，@click.stop 不触发展开 -->
+              <div class="rcp-head-all" @click.stop="toggleRecipientAll">
+                <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
+                <span class="rcp-head-all-label">全选</span>
+                <span class="rcp-head-count">已选 {{ recipientSelectedCount }}/{{ recipientList.length }} 人</span>
+              </div>
               <span class="recipient-card-arrow" :class="{ open: recipientOpen }">›</span>
             </div>
           </div>
           <template v-if="recipientOpen">
             <div class="rcp-list page-rcp-list">
-              <!-- 全选行：挪进列表顶部（收起头只留摘要） -->
-              <div class="rcp-item page-rcp-item rcp-all-row" @click="toggleRecipientAll">
-                <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
-                <div class="rcp-person"><span class="rcp-name">全选</span></div>
-                <span class="rcp-all-count">已选 {{ recipientSelectedCount }} / {{ recipientList.length }} 人</span>
-              </div>
               <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
                 <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
                 <div class="rcp-person">
@@ -94,7 +143,8 @@
       <!-- 会议基本信息（结束阶段隐藏；主任准备阶段用上方卡片流替代） -->
       <div class="info-card" v-if="detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')">
         <div class="info-row"><span class="info-k">时间</span>{{ detail.meetingDate }} {{ detail.meetingTime }}</div>
-        <div class="info-row"><span class="info-k">地点</span><span class="loc-link" v-if="detail.location" @click="openMap(detail.location)">{{ detail.location }}<span class="loc-nav">导航 ›</span></span><span v-else>—</span></div>
+        <div class="info-row"><span class="info-k">召开方式</span><span>{{ detail.meetingMethod === 'online' ? '线上会议' : '线下会议' }}</span></div>
+        <div class="info-row"><span class="info-k">{{ detail.meetingMethod === 'online' ? '线上平台' : '地点' }}</span><span v-if="detail.meetingMethod === 'online'">{{ detail.location || '微信工作群' }}</span><span class="loc-link" v-else-if="detail.location" @click="openMap(detail.location)">{{ detail.location }}<span class="loc-nav">导航 ›</span></span><span v-else>—</span></div>
         <div class="info-row" v-if="detail.description"><span class="info-k">说明</span>{{ detail.description }}</div>
       </div>
 
@@ -191,14 +241,17 @@
           <div class="live-entry" @click="enterLive">
             <div class="live-entry-main">
               <span class="live-entry-title">会议进行中</span>
-              <span class="live-entry-sub">签到 → 录音转写 → 确认表决</span>
+              <span class="live-entry-sub">{{ detail.meetingMethod === 'online'
+                ? '确认参会人员 → 填写议题结果 → 结果确认'
+                : '签到 → 录音转写 → 确认表决' }}</span>
             </div>
             <span class="live-entry-arrow">进入 ›</span>
           </div>
           <div class="signin-prog" v-if="userView === 'chair' && detail.flowStats && detail.flowStats.attendance">
             <div class="sp-head">
-              <span class="sp-label">签到进度</span>
-              <span class="sp-count">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }} 人已签到</span>
+              <span class="sp-label">{{ detail.meetingMethod === 'online' ? '参会登记进度' : '签到进度' }}</span>
+              <span class="sp-count">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}
+                人{{ detail.meetingMethod === 'online' ? '已登记参会' : '已签到' }}</span>
             </div>
             <div class="sp-bar"><div class="sp-fill" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
           </div>
@@ -210,7 +263,7 @@
       <!-- ══════════ 结束阶段 ══════════ -->
       <template v-if="detail.stage === 'ended'">
         <!-- 会议录音存档（委员/主任可见，外部无 record 自动隐藏）-->
-        <div v-if="detail.record && detail.record.recordingUrl" class="rec-archive-card">
+        <div v-if="detail.meetingMethod !== 'online' && detail.record && detail.record.recordingUrl" class="rec-archive-card">
           <div class="rac-head">
             <span class="rac-title">🎙 会议录音</span>
             <span class="rac-sub">{{ recAudioPlaying ? '播放中…' : '会议全程录音存档' }}</span>
@@ -235,25 +288,61 @@
           <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
           <div class="member-doc-actions">
             <button class="doc-btn" @click="viewMinutes">查看会议纪要</button>
-            <button class="doc-btn ghost" @click="viewPublicMinutes">查看公开纪要</button>
+            <button class="doc-btn ghost" @click="viewPublicMinutes">查看公示材料</button>
           </div>
         </template>
 
         <!-- 主任：简洁会议卡（名称/时间/地点），点击展开完整详情（议题、纪要、材料、记录） -->
         <template v-if="userView === 'chair'">
           <div class="ar-card" :class="[detail.compliance, cardSizeClass]">
-            <div class="arc-summary" @click="endedDetailOpen = !endedDetailOpen">
+            <div class="arc-summary arc-summary-static">
               <span class="arch-title">{{ detail.title }}</span>
               <span class="arcs-meta">{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }}<template v-if="detail.location"> · {{ detail.location }}</template></span>
-              <span class="arcs-caret">{{ endedDetailOpen ? '收起详情 ▲' : '查看详情 ▾' }}</span>
             </div>
-            <template v-if="endedDetailOpen">
-            <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
+            <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet"
+              :expanded="endedDetailOpen" :on-collapse="() => { endedDetailOpen = false }" :on-expand="() => { endedDetailOpen = true }" />
             <!-- 纪要会后在此生成：未生成→「生成会议纪要」(跳纪要页看进度)；已生成→「查看会议纪要」。公示后隐藏（纪要已定稿，改看下方「查看公示内容」） -->
             <template v-if="!(detail.publish && detail.publish.published)">
               <button v-if="detail.minutesReady" class="ended-minutes-btn in-card" @click="viewMinutes">查看会议纪要</button>
-              <button v-else class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
+              <template v-else>
+              <div class="minutes-basis">
+                <div class="mb-head">
+                  <span class="mb-sub">{{ detail.meetingMethod === 'online'
+                    ? '将根据线上会议录入结果自动整理'
+                    : '将综合以下会议记录自动整理' }}</span>
+                </div>
+                <!-- 录音的「试听」和「看转写」合成一行两个动作，不再出现两行同名「会议录音」 -->
+                <div v-if="detail.meetingMethod !== 'online'" class="mb-row mb-row-static">
+                  <span class="mb-copy"><b>会议录音</b><small>{{ hasRecordings ? (recTotalDurText || '已保存') : '暂无录音' }}</small></span>
+                  <span class="mb-acts">
+                    <span v-if="hasRecordings" class="mb-act mb-act-tap" @click="toggleRecPlayback">{{ recAudioPlaying ? '播放中…' : '试听' }}</span>
+                    <span v-if="hasRecordings" class="mb-act-sep">·</span>
+                    <span class="mb-act mb-act-tap" @click="toggleBasis">{{ basisLoading ? '加载中…' : (basisOpen ? '收起转写' : '看转写') }} ›</span>
+                  </span>
+                </div>
+                <div class="mb-transcript" v-if="detail.meetingMethod !== 'online' && basisOpen">{{ basisTranscript || '暂无转写内容' }}</div>
+              </div>
+              <button class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
             </template>
+            </template>
+            <div class="attendance-sheet-entry">
+              <div class="ase-copy">
+                <b>会议记录</b>
+                <small>完整记录议题、讨论与表决，末尾统一签字</small>
+              </div>
+              <button class="ase-btn primary" :disabled="exportingMeetingRecord" @click="exportMeetingRecord">
+                {{ exportingMeetingRecord ? '生成中…' : '导出 PDF' }}
+              </button>
+            </div>
+            <div class="attendance-sheet-entry">
+              <div class="ase-copy">
+                <b>会议签到表</b>
+                <small>打印后由参会委员签名，用于评分与归档</small>
+              </div>
+              <button class="ase-btn" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
+                {{ exportingAttendanceSheet ? '生成中…' : '导出 PDF' }}
+              </button>
+            </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
                 <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openMaterialViewer(ae)" />
@@ -273,17 +362,19 @@
               </div>
               </template>
             </div>
-            </template>
           </div>
           <!-- 底部操作栏（固定在页面底部）。无效会议也照常显示公示按钮；「会议无效」提示改到点击公示后再弹 -->
           <div class="arc-bottom-action">
-            <!-- 公示会议：未公示态置顶为第一个主操作；已公示后 → 同位置替换为「查看公示内容」 -->
-            <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">公示会议</button>
-            <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示内容</button>
+            <!-- 会后统一发布事项公示材料；已发布后进入材料页查看 -->
+            <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">发布公示材料</button>
+            <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示材料</button>
             <div class="ended-btn-row">
+              <!-- 会议结束仪式：委员合影，点开直接拍照存进会议材料（会后留档） -->
+              <button class="ended-photo-btn" :disabled="photoUploading" @click="takeGroupPhoto">
+                {{ photoUploading ? '合影保存中…' : '委员合影' }}
+              </button>
               <!-- 「查看会议纪要」不再单列大按钮：入口收进上方会议卡的「查看详情」里 -->
               <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
-              <button class="ended-home-btn" @click="goHome">返回首页</button>
             </div>
             <div v-if="detail.publish && detail.publish.published" class="arp-done">
               <div class="arp-status">
@@ -298,18 +389,18 @@
             </div>
             <div v-else-if="detail.publish && detail.publish.withdrawn">
               <div style="color:#E74C3C;font-size:13px;margin-bottom:8px;">⚠ 公示已撤回{{ detail.publish.withdrawnBy ? '（' + detail.publish.withdrawnBy + '）' : '' }}{{ detail.publish.withdrawReason ? '：' + detail.publish.withdrawReason : '' }}</div>
-              <button class="arc-publish-main-btn" @click="publishNow">修订后重新公示</button>
+              <button class="arc-publish-main-btn" @click="publishNow">修订后重新发布</button>
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
-                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
               </div>
             </div>
             <div v-else-if="detail._archived">
               <span class="arp-check">✓</span><span style="font-size:13px;color:#27AE60;">已归档（未公示）</span>
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
-                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
                 <span class="ar-skip danger" @click="revokeArchive">撤销归档</span>
               </div>
             </div>
@@ -318,7 +409,7 @@
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="archiveDirect">直接归档</span>
-                <span class="ar-skip" @click="addArchiveExtra">上传材料</span>
+                <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
               </div>
             </template>
           </div>
@@ -367,11 +458,12 @@
         <div class="fw-hint">下面是通知内容，点「复制通知」粘贴到业主委员群即可</div>
         <div class="fw-preview">
           <!-- 正文与通知页同款：首行缩进，地点蓝色可点开地图，落款靠右 -->
-          <div class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
+          <div v-if="detail.meetingMethod === 'online'" class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 以线上方式召开本次会议，线上平台为{{ detail.location || '微信工作群' }}，主要议题：{{ noticeTopicsText }}，请准时参加。</div>
+          <div v-else class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
           <div class="fw-sign">业主委员会</div>
           <div class="fw-linkrows">
             <div class="fw-linkrow" @click="openJoin"><span class="fw-lr-ico">👉</span><span class="fw-lr-txt">进入会议</span><span class="fw-lr-go">›</span></div>
-            <div class="fw-linkrow" v-if="detail.location" @click="openMap(detail.location)"><span class="fw-lr-ico">📍</span><span class="fw-lr-txt">地图导航</span><span class="fw-lr-go">›</span></div>
+            <div class="fw-linkrow" v-if="detail.meetingMethod !== 'online' && detail.location" @click="openMap(detail.location)"><span class="fw-lr-ico">📍</span><span class="fw-lr-txt">地图导航</span><span class="fw-lr-go">›</span></div>
           </div>
         </div>
         <div class="fw-actions">
@@ -522,12 +614,28 @@
         </div>
 
         <div class="form-group">
+          <span class="form-label meeting-method-label">召开方式</span>
+          <div class="method-switch detail-method-switch">
+            <button type="button" :class="{ active: editForm.meetingMethod === 'offline' }" @click="setEditMeetingMethod('offline')">线下会议</button>
+            <button type="button" :class="{ active: editForm.meetingMethod === 'online' }" @click="setEditMeetingMethod('online')">线上会议</button>
+          </div>
+          <span class="form-hint">会议开始前，主任或副主任均可修改</span>
+        </div>
+
+        <div class="form-group" v-if="editForm.meetingMethod !== 'online'">
           <span class="form-label">会议地点</span>
           <select class="picker-field ep-loc-select" :value="editLocationPreset" @change="onEditLocationPreset">
             <option v-for="loc in commonLocations" :key="loc" :value="loc">{{ loc }}</option>
             <option value="__other__">其他地点（手动填写）</option>
           </select>
           <input v-if="editLocationPreset === '__other__'" class="form-input ep-loc-other" v-model="editForm.location" placeholder="请输入会议地点" />
+        </div>
+        <div class="form-group" v-else>
+          <span class="form-label meeting-method-label">线上平台</span>
+          <select class="picker-field ep-loc-select platform-select-detail" v-model="editForm.location">
+            <option value="微信工作群">微信工作群</option>
+            <option value="腾讯会议">腾讯会议</option>
+          </select>
         </div>
 
         <div class="form-group">
@@ -666,12 +774,13 @@
 import { ref, reactive, computed, h, onMounted, onActivated, onUnmounted, onDeactivated, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
+import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 import perm from '@/utils/perm'
-import { toast, showModal } from '@/utils/ui'
+import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
-import { pickAndUpload, humanSize } from '@/utils/upload'
+import { pickAndUpload, uploadAttachment, humanSize } from '@/utils/upload'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
@@ -686,19 +795,29 @@ const MeetingTopicsCard = {
   name: 'MeetingTopicsCard',
   props: {
     topics: { type: Array, default: () => [] },
-    onSelect: { type: Function, default: null }   // 点议题行 → 打开议题弹层（表决+意见）
+    onSelect: { type: Function, default: null },  // 点议题行 → 打开议题弹层（表决+意见）
+    expanded: { type: Boolean, default: true },
+    onCollapse: { type: Function, default: null },
+    onExpand: { type: Function, default: null }
   },
   setup(props) {
     return () => {
       const topics = props.topics
-      if (!topics || !topics.length) return null
+      if ((!topics || !topics.length) && !props.onCollapse && !props.onExpand) return null
       return h('div', { class: 'meeting-topics-card' }, [
         h('div', { class: 'mtc-head' }, [
           h('div', [
             h('span', { class: 'mtc-title-main' }, '会议议题')
-          ])
+          ]),
+          props.expanded && props.onCollapse ? h('button', {
+            class: 'mtc-collapse',
+            onClick: props.onCollapse
+          }, '收起议题 ▲') : (!props.expanded && props.onExpand ? h('button', {
+            class: 'mtc-collapse',
+            onClick: props.onExpand
+          }, '查看议题 ▾') : null)
         ]),
-        ...topics.map((item, index) => h('div', {
+        ...(props.expanded ? topics.map((item, index) => h('div', {
           class: ['mtc-topic', props.onSelect ? 'tappable' : ''],
           key: item.id,
           onClick: () => { if (props.onSelect) props.onSelect(item) }
@@ -716,7 +835,7 @@ const MeetingTopicsCard = {
             ])
           ]),
           props.onSelect ? h('span', { class: 'mtc-arrow' }, '›') : null
-        ]))
+        ])) : [])
       ])
     }
   }
@@ -743,8 +862,8 @@ function topicVoteCount(topic) {
 
 function topicTypeLabel(topic) {
   var type = String(topic && topic.type || '').toLowerCase()
-  if (type === 'notice') return '通报'
-  if (type === 'discussion') return '讨论'
+  // 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」
+  if (type === 'notice' || type === 'discussion') return '通知和讨论'
   if (type === 'major') return '重大'
   if (topic && topic.decisionType === 'multi_choice') return '多选一'
   if (topic && topic.voteRequired === false) return '记录'
@@ -753,8 +872,8 @@ function topicTypeLabel(topic) {
 
 function topicTypeClass(topic) {
   var type = String(topic && topic.type || '').toLowerCase()
-  if (type === 'notice') return 'notice'
-  if (type === 'discussion') return 'discussion'
+  // notice 视觉并入 discussion（同名同色）
+  if (type === 'notice' || type === 'discussion') return 'discussion'
   if (type === 'major') return 'major'
   if (topic && topic.decisionType === 'multi_choice') return 'multi'
   return 'decision'
@@ -888,6 +1007,19 @@ function formatSize(size) {
 // data（自 Page.data 1:1 迁移到 ref/reactive）
 // ═══════════════════════════════════════════════
 const detail = ref(null)
+const basisOpen = ref(false)
+const basisLoading = ref(false)
+const basisTranscript = ref('')
+async function toggleBasis() {
+  basisOpen.value = !basisOpen.value
+  if (basisOpen.value && !basisTranscript.value && !basisLoading.value) {
+    basisLoading.value = true
+    try {
+      const r = await api.committeeTranscript(meetingIdRef.value)
+      basisTranscript.value = typeof r === 'string' ? r : ((r && (r.text || r.transcript || r.content)) || '')
+    } catch (e) {} finally { basisLoading.value = false }
+  }
+}
 const userView = ref('')
 
 // ── 议题弹层（表决+意见）──
@@ -923,8 +1055,10 @@ const cardSizeClass = computed(() => {
   return 'card-sz-md'
 })
 
-// 结束页会议卡：默认【展开】完整详情（议题、纪要、材料、记录），点卡片可收起（用户要求默认展开）
+// 结束页会议卡：已生成纪要时默认展开；未生成纪要直接结束时默认收起，避免议题抢占页面。
+// 只在首次加载时决定默认值，后续刷新数据不覆盖用户手动展开/收起的选择。
 const endedDetailOpen = ref(true)
+const endedDetailInitialized = ref(false)
 // "10:00:00" → "10:00"
 function shortTime(t) { return (t || '').slice(0, 5) }
 
@@ -956,6 +1090,10 @@ const archiveLogOpen = ref(false)
 const noticePackageVisible = ref(false)
 const recAudioPlaying = ref(false)
 const generatingNews = ref(false)   // AI 生成党建新闻中（驱动红色党建工作遮罩）
+const generatingMinutes = ref(false)
+const exportingAttendanceSheet = ref(false)
+const exportingMeetingRecord = ref(false)
+const minutesOverlayShown = ref(false)
 const quickMode = ref(false)
 const step3Ready = ref(false)
 // 添加议题表单
@@ -981,7 +1119,7 @@ const proxySelectedCount = ref(0)
 const proxySubmitting = ref(false)
 // 编辑会议
 const editVisible = ref(false)
-const editForm = reactive({ title: '', meetingDate: '', meetingTime: '', location: '', description: '', content: '' })
+const editForm = reactive({ title: '', meetingDate: '', meetingTime: '', location: '', meetingMethod: 'offline', description: '', content: '' })
 
 // ── 编辑通知：会议要素选择器（与「新建会议」保持一致：地点下拉 / 日期年月日 / 时间 9—20点·每15分钟）──
 const commonLocations = ['社区活动室', '社区会议室']
@@ -1170,6 +1308,7 @@ watch(() => route.query.id, () => {
 // onUnload → onUnmounted
 onUnmounted(() => {
   destroyRecAudio()
+  closeGroupCamera()
   stopNewsPoll() // 本页轮询随页销毁；服务端 @Async 继续跑，切回时 reconcileNews 再接上
   if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onNewsVisibility)
   // 本页遮罩随本页销毁 → 交还全局悬浮胶囊（新闻生成中/已生成切走后仍有入口，不被隐藏）
@@ -1190,6 +1329,41 @@ function destroyRecAudio() {
 }
 function pauseRecAudio() {
   if (_recAudio && recAudioPlaying.value) { try { _recAudio.pause() } catch (e) {} }
+}
+// 纪要卡「会议录音」行的数据源：快速会议的多段录音列表（record.recordings），
+// 旧字段 record.recordingUrl 是老单文件流程的，快速流程下为空。
+const quickRecordings = computed(() => (detail.value && detail.value.record && detail.value.record.recordings) || [])
+const hasRecordings = computed(() => quickRecordings.value.length > 0)
+const recTotalDurText = computed(() => {
+  const list = quickRecordings.value
+  if (!list.length) return ''
+  const total = list.reduce((s, r) => s + (r.durationSec || 0), 0)
+  if (!total) return list.length + ' 段'
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return list.length + ' 段 · ' + (m ? m + '分' : '') + (s || !m ? s + '秒' : '')
+})
+let _recPlayIdx = 0
+// 试听：多段录音按顺序连播；再点=暂停，播完自动复位
+function toggleRecPlayback() {
+  const list = quickRecordings.value
+  if (!list.length) { toast({ title: '暂无录音', icon: 'none' }); return }
+  if (_recAudio && recAudioPlaying.value) { _recAudio.pause(); return }
+  if (!_recAudio) {
+    _recPlayIdx = 0
+    _recAudio = new Audio(list[0].recordingUrl)
+    _recAudio.onplay = () => { recAudioPlaying.value = true }
+    _recAudio.onpause = () => { recAudioPlaying.value = false }
+    _recAudio.onended = () => {
+      _recPlayIdx++
+      const rest = quickRecordings.value
+      if (_recPlayIdx < rest.length) { _recAudio.src = rest[_recPlayIdx].recordingUrl; _recAudio.play() }
+      else destroyRecAudio()
+    }
+    _recAudio.onerror = () => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) }
+  }
+  const p = _recAudio.play()
+  if (p && p.catch) p.catch(() => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) })
 }
 function toggleRecording() {
   const url = detail.value && detail.value.record ? detail.value.record.recordingUrl : ''
@@ -1345,6 +1519,11 @@ async function loadDetail() {
 
     // 快速会议模式（进行中时生效）：隐藏代录、添加议题等逐题表决相关入口
     const qMode = d.stage === 'ongoing' && d.meetingMode === 'quick'
+
+    if (d.stage === 'ended' && !endedDetailInitialized.value) {
+      endedDetailOpen.value = !!d.minutesReady
+      endedDetailInitialized.value = true
+    }
 
     detail.value = d
     userView.value = uv
@@ -1647,8 +1826,29 @@ async function submitProxyAction() {
   }
 }
 
+// 把会议的原定日期+时间拼成本地 Date；没有日期或格式不对返回 null（后端本来就拦无日期的会议）
+function scheduledStartTime(d) {
+  const dp = String((d && d.meetingDate) || '').split('-').map(Number)
+  if (dp.length !== 3 || dp.some(isNaN)) return null
+  const tp = String((d && d.meetingTime) || '00:00').split(':').map(Number)
+  return new Date(dp[0], dp[1] - 1, dp[2], tp[0] || 0, tp[1] || 0)
+}
+
 // 开始会议：固定使用快速模式，传统逐题表决入口不再开放
 async function startMeeting() {
+  // 0717 用户定：没到原定开会时间就点「开始会议」，先确认一次再开——
+  // 提前开会是允许的（委员到齐了就开是常态），这里只防误点，不拦
+  const d = detail.value || {}
+  const scheduled = scheduledStartTime(d)
+  if (scheduled && Date.now() < scheduled.getTime()) {
+    const res = await showModal({
+      title: '会议时间未到',
+      content: '原定会议时间为 ' + fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime) + '，尚未到。确认现在开始吗？',
+      confirmText: '确认开始',
+      cancelText: '再等等'
+    })
+    if (!res || !res.confirm) return
+  }
   try {
     await api.committeeAdvance(meetingId, 'start', 'quick')
     toast({ title: '会议已开始', icon: 'success' })
@@ -1656,11 +1856,35 @@ async function startMeeting() {
   } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
 
+async function resolveLiveMeetingId(id) {
+  try {
+    await api.committeeDetail(id)
+    return id
+  } catch (e) {
+    if (!String((e && e.message) || '').includes('会议不存在')) throw e
+    const list = await api.committeeList('ongoing').catch(() => [])
+    const hit = (list || []).find((m) => m && m.stage === 'ongoing') || (list || [])[0]
+    if (hit && hit.id) return hit.id
+    throw e
+  }
+}
+
 // 进入「会议进行」全屏向导页：仅快速模式（软路由偶发"URL变了却不切换视图"——加硬导航兜底确保必达，
 // 对齐 Committee.vue「去通知」的做法；软跳后延时校验录音页 .live-page 是否真挂上，没挂上就 window.location 硬跳）
-function goLive() {
-  const target = '/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId
-  const browserUrl = '/meeting-live-quick?type=committee&meetingId=' + meetingId
+async function goLive() {
+  let liveId = meetingId
+  try {
+    liveId = await resolveLiveMeetingId(meetingId)
+    if (String(liveId) !== String(meetingId)) {
+      toast({ title: '会议已更新，正在进入最新会议', icon: 'none' })
+    }
+  } catch (e) {
+    toast({ title: (e && e.message) || '会议无法打开', icon: 'none' })
+    goHome()
+    return
+  }
+  const target = '/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + liveId
+  const browserUrl = '/meeting-live-quick?type=committee&meetingId=' + liveId
   try { redirectTo(target) } catch (navErr) { console.error('[开始会议] 软跳 reject：', navErr) }
   setTimeout(() => {
     if (!document.querySelector('.live-page')) {
@@ -1703,8 +1927,40 @@ function toggleArchiveLog() {
   archiveLogOpen.value = !archiveLogOpen.value
 }
 
-// 顶栏左箭头「上一步」= 回「发起业委会」表单重新编辑本会议信息（带 editMeetingId 交接，保存=更新本会议不新建）；「首页」= 回主页
+// 顶栏左箭头按明确来源返回，避免 replace/硬跳后历史栈只剩首页。
 const showNoticeNav = computed(() => !!detail.value && userView.value === 'chair' && detail.value.stage === 'preparing')
+// 软路由偶发不切换 → 统一硬导航兜底（真机曾表现为"返回点了没反应"）
+function backWithFallback(target, browserUrl) {
+  redirectTo(target)
+  setTimeout(() => {
+    if (document.querySelector('.detail-page')) window.location.replace(browserUrl)
+  }, 400)
+}
+function handleDetailBack() {
+  const source = String(route.query.from || '')
+  // from=minutes 是「纪要页保存/返回后落到详情」的标记——纪要那边已经办完事了，
+  // 再跳回纪要页会形成 详情↔纪要 互踢死循环（真机踩过），返回一律出到首页。
+  if (source === 'meeting-live-quick') {
+    // 会议已结束时进行页只会渲染成无意义的签到步，回首页；进行中才回进行页
+    if (detail.value && detail.value.stage === 'ongoing') {
+      backWithFallback('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId,
+        '/meeting-live-quick?type=committee&meetingId=' + meetingId)
+      return
+    }
+    backWithFallback('/main', '/main')
+    return
+  }
+  if (source === 'todo') {
+    backWithFallback('/pages/todo/todo', '/todo')
+    return
+  }
+  if (route.query.fromNotice === '1' || source === 'notifications') {
+    backWithFallback('/pages/notifications/notifications', '/notifications')
+    return
+  }
+  // 普通详情优先回到用户刚才所在的会议列表位置；只有没有历史记录时才由 navigateBack 兜底首页。
+  navigateBack()
+}
 function backToEditInfo() {
   setStorage('editMeetingId', meetingId)   // 交给 /main 的发起会议表单以「编辑模式」打开
   redirectTo('/main')
@@ -1716,15 +1972,52 @@ const recipientOpen = ref(false)
 const recipientList = ref([])   // [{ userRoleId, name, role, checked }]
 const recipientSelectedCount = computed(() => recipientList.value.filter((x) => x.checked).length)
 const recipientAllChecked = computed(() => recipientList.value.length > 0 && recipientList.value.every((x) => x.checked))
-// 折叠头右侧摘要：全选→「全体委员 · N人」；部分→「已选 M/N人」；一个没选→「未选择」
-const recipientSummary = computed(() => {
-  const total = recipientList.value.length
-  const sel = recipientSelectedCount.value
-  if (!total) return '暂无委员'
-  if (sel >= total) return '全体委员 · ' + total + '人'
-  if (sel === 0) return '未选择'
-  return '已选 ' + sel + '/' + total + '人'
-})
+const methodConvertOpen = ref(false)
+const methodConvertSaving = ref(false)
+const methodConvertOtherLocation = ref('')
+const methodConvertForm = reactive({ meetingMethod: 'online', location: '微信工作群' })
+
+function openMethodConversion() {
+  const toOnline = detail.value && detail.value.meetingMethod !== 'online'
+  methodConvertForm.meetingMethod = toOnline ? 'online' : 'offline'
+  methodConvertForm.location = toOnline ? '微信工作群' : '社区活动室'
+  methodConvertOtherLocation.value = ''
+  methodConvertOpen.value = !methodConvertOpen.value
+}
+
+async function pickMethodConvertLocationOnMap() {
+  const res = await showActionSheet({ itemList: ['高德地图', '百度地图'] })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  const app = res.tapIndex === 0 ? '高德地图' : '百度地图'
+  methodConvertForm.location = '__other__'
+  methodConvertOtherLocation.value = '阳光家园·活动中心（' + app + '选点·演示）'
+  toast({ title: '已从' + app + '选择地点（演示）', icon: 'none' })
+}
+
+async function confirmMethodConversion() {
+  let location = methodConvertForm.location
+  if (methodConvertForm.meetingMethod === 'offline' && location === '__other__') {
+    location = methodConvertOtherLocation.value.trim()
+  }
+  if (!location) {
+    toast({ title: methodConvertForm.meetingMethod === 'online' ? '请选择线上平台' : '请输入会议地点', icon: 'none' })
+    return
+  }
+  methodConvertSaving.value = true
+  try {
+    await api.committeeUpdate(meetingId, {
+      meetingMethod: methodConvertForm.meetingMethod,
+      location
+    })
+    methodConvertOpen.value = false
+    toast({ title: methodConvertForm.meetingMethod === 'online' ? '已转为线上会议' : '已转为线下会议', icon: 'success' })
+    await loadDetail()
+  } catch (e) {
+    toast({ title: e.message || '转换失败', icon: 'none' })
+  } finally {
+    methodConvertSaving.value = false
+  }
+}
 
 async function loadRecipients(force) {
   if (!force && recipientList.value.length) return true
@@ -1826,8 +2119,11 @@ function fmtCnDate(s) {
 // 通知正文：微信口吻的一段话（替代行列式的 时间/地点/议题）
 const noticeText = computed(() => {
   const d = detail.value || {}
+  const place = d.meetingMethod === 'online'
+    ? '以线上方式召开本次会议，线上平台为' + (d.location || '微信工作群')
+    : '在' + (d.location || '') + '召开本次会议'
   return '各位委员：现拟于 ' + fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime) +
-    ' 在' + (d.location || '') + '召开本次会议，主要议题：' + noticeTopicsText.value + '，请准时出席。'
+    ' ' + place + '，主要议题：' + noticeTopicsText.value + '，请准时参加。'
 })
 
 // ——— 发送通知后的"转发到微信"弹层（可复制文本 + 进会/地图链接） ———
@@ -1850,7 +2146,11 @@ function openMap(loc) {
 }
 // 进会/地点导航链接（转发文本 + 弹窗预览复用）。进会为普通链接：委员本机登录过会自动带身份直达，否则先登录再落到该会议
 const joinUrl = computed(() => (typeof location !== 'undefined' ? location.origin : '') + '/committee-detail?id=' + (currentMeetingId() || ''))
-const mapNavUrl = computed(() => (detail.value && detail.value.location) ? mapSearchUrl(detail.value.location) : '')
+const mapNavUrl = computed(() => (
+  detail.value &&
+  detail.value.meetingMethod !== 'online' &&
+  detail.value.location
+) ? mapSearchUrl(detail.value.location) : '')
 // 转发到微信的纯文本：学腾讯会议邀请——「会议主题/时间/地点/议题」字段各占一行、链接单独成行，清晰。
 // 注：微信聊天是纯文本，只有完整网址能自动变蓝可点，无法把"地名"做成链接——故保留网址供群里点开
 const shareText = computed(() => {
@@ -1858,7 +2158,7 @@ const shareText = computed(() => {
   const time = (fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime)).trim()
   const lines = ['新会议通知：' + (d.title || '业委会会议'), '']
   if (time) lines.push('会议时间：' + time)
-  if (d.location) lines.push('会议地点：' + d.location)
+  if (d.meetingMethod !== 'online' && d.location) lines.push('会议地点：' + d.location)
   lines.push('会议议题：' + noticeTopicsText.value)
   lines.push('', '点击链接入会：', joinUrl.value)
   if (mapNavUrl.value) lines.push('', '地点导航：', mapNavUrl.value)
@@ -1993,6 +2293,13 @@ async function publishNow() {
     })
     if (!res.confirm) return
   }
+  const confirm = await showModal({
+    title: '发布事项公示材料',
+    content: '将发布事项公示正文，并附会议纪要和相关材料。签到明细、个人意见、完整投票明细及内部待办不会公开。',
+    confirmText: '确认发布',
+    cancelText: '暂不发布'
+  })
+  if (!confirm.confirm) return
   try { await api.committeePublish(meetingId); toast({ title: '已公示', icon: 'success' }); loadDetail() }
   catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
@@ -2049,12 +2356,15 @@ async function viewMinutesRevisions() {
 }
 
 async function removeMeeting() {
+  const isRecordingThisMeeting = meetingRecordingSession.active
+    && String(meetingRecordingSession.meetingId || '') === String(meetingId)
   const res = await showModal({
     title: '确认取消',
     content: '确定取消该会议？'
+      + (isRecordingThisMeeting ? '\n\n该会议正在录音，取消后录音将立即停止并丢弃。' : '')
   })
   if (res.confirm) {
-    try { await api.committeeRemove(meetingId); navigateBack() }
+    try { await api.committeeRemove(meetingId); await discardMeetingRecording(meetingId); navigateBack() }
     catch (e) { toast({ title: e.message, icon: 'none' }) }
   }
 }
@@ -2155,14 +2465,88 @@ function viewMinutes() {
   }, 300)
 }
 
-// 会后生成会议纪要：跳到纪要页 gen 模式（由纪要页统一调大模型生成并显示"生成中/结果"）。会中已不生成，纪要一律在此补生成。
-function generateMinutes() {
-  // 按钮本就只在主任视图(userView==='chair')出现，无需再守卫
-  const q = 'meetingId=' + meetingId + '&from=committee-detail&gen=1'
-  navigateTo('/pages/minutes/minutes?' + q)
-  setTimeout(() => {
-    if (document.querySelector('.detail-page')) window.location.href = '/minutes?' + q
-  }, 300)
+async function exportAttendanceSheet() {
+  if (exportingAttendanceSheet.value) return
+  exportingAttendanceSheet.value = true
+  try {
+    const blob = await api.committeeExportAttendanceSheet(meetingId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${detail.value.title || '会议'}-会议签到表.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    toast({ title: '签到表已导出', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '签到表导出失败', icon: 'none' })
+  } finally {
+    exportingAttendanceSheet.value = false
+  }
+}
+
+async function exportMeetingRecord() {
+  if (exportingMeetingRecord.value) return
+  exportingMeetingRecord.value = true
+  try {
+    const blob = await api.committeeExportMeetingRecord(meetingId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${detail.value.title || '会议'}-会议记录.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    toast({ title: '会议记录已导出', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '会议记录导出失败', icon: 'none' })
+  } finally {
+    exportingMeetingRecord.value = false
+  }
+}
+
+// 会后生成会议纪要：任务直接在会议详情页发起，最小化弹窗后也不提前跳转纪要页。
+async function generateMinutes() {
+  if (generatingMinutes.value) return
+  generatingMinutes.value = true
+  minutesOverlayShown.value = true
+  aiTask.overlayShown = true
+  startAiTask({
+    label: '会议纪要生成中…',
+    originPath: '/pages/committee-detail/committee-detail?id=' + meetingId,
+    targetPath: '/pages/minutes-view/minutes-view?meetingId=' + meetingId
+  })
+  let text = ''
+  try {
+    const result = await api.committeeQuickPolish(meetingId)
+    text = (result && (result.minutesMarkdown || result.minutes)) || ''
+    if (!text) text = await api.committeeMinutes(meetingId)
+    if (!text || !String(text).trim()) throw new Error('未生成有效的会议纪要内容')
+    finishAiTask({ doneLabel: '会议纪要已生成' })
+    generatingMinutes.value = false // 弹窗切换到“已完成”，等待用户主动查看
+    await loadDetail()
+  } catch (e) {
+    generatingMinutes.value = false
+    minutesOverlayShown.value = false
+    aiTask.overlayShown = false
+    failAiTask({ failLabel: '会议纪要生成失败' })
+    toast({ title: (e && e.message) || '生成失败，请稍后重试', icon: 'none' })
+  }
+}
+
+function onMinutesDone() {
+  minutesOverlayShown.value = false
+  aiTask.overlayShown = false
+  clearAiTask()
+  viewMinutes()
+}
+
+// 关闭弹窗只收起本页入口；后端已发起的生成请求仍会继续完成。
+function onMinutesClose() {
+  minutesOverlayShown.value = false
+  aiTask.overlayShown = false
 }
 
 // AI 生成党建新闻：红色党建遮罩开跑 → 调大模型生成 → 缓存 → 完成后进独立新闻页
@@ -2179,7 +2563,7 @@ async function generateNews() {
   generatingNews.value = true
   // overlayShown=true → 本页全屏遮罩盖着任务时隐藏全局悬浮胶囊（免重复）；关遮罩/切走时再交还胶囊。
   aiTask.overlayShown = true
-  startAiTask({ label: '党建新闻生成中…', originPath: window.location.pathname, targetPath: '/pages/news/news?meetingId=' + meetingId })
+  startAiTask({ label: '党建新闻生成中…', originPath: window.location.pathname, targetPath: '/pages/news/news?meetingId=' + meetingId + '&resume=1' })
   try {
     const st = await api.committeeGenerateNews(meetingId) // 发起（30s 内已有 running 则去重）
     if (st && st.status === 'success' && st.content) { onNewsSuccess(st); return }
@@ -2212,7 +2596,7 @@ function onNewsSuccess(st) {
   stopNewsPoll()
   newsState.value = 'success'
   try { sessionStorage.setItem('committee_news_' + meetingId, JSON.stringify({ title: st.title, content: st.content })) } catch (e) {}
-  finishAiTask({ doneLabel: '党建新闻已生成' })
+  finishAiTask({ doneLabel: '党建新闻已生成', targetPath: '/pages/news/news?meetingId=' + meetingId })
   generatingNews.value = false // 遮罩转「完成」态，等用户点「查看新闻稿」
 }
 function onNewsFailed(e) {
@@ -2237,7 +2621,7 @@ async function reconcileNews() {
     } else if (st && st.status === 'running') {
       // 服务端仍在后台生成 → 全局悬浮胶囊兜底「生成中」入口，并接着轮询到完成
       if (!aiTask.active && !aiTask.done && !aiTask.failed) {
-        startAiTask({ label: '党建新闻生成中…', originPath: '/pages/committee-detail/committee-detail?id=' + meetingId, targetPath: '/pages/news/news?meetingId=' + meetingId })
+        startAiTask({ label: '党建新闻生成中…', originPath: '/pages/committee-detail/committee-detail?id=' + meetingId, targetPath: '/pages/news/news?meetingId=' + meetingId + '&resume=1' })
       }
       watchNews()
     }
@@ -2249,8 +2633,17 @@ function onNewsVisibility() { if (typeof document !== 'undefined' && document.vi
 // 新闻按钮文案随状态：已生成→查看；生成中→去新闻页看进度；否则→生成
 const newsBtnLabel = computed(() => newsState.value === 'success' ? '查看新闻稿' : (newsState.value === 'running' ? '新闻生成中·查看' : 'AI生成新闻稿'))
 function onNewsBtn() {
-  if (newsState.value === 'success' || newsState.value === 'running') return onNewsDone()
+  if (newsState.value === 'running') return openNewsProgress()
+  if (newsState.value === 'success') return onNewsDone()
   generateNews()
+}
+
+// 生成中进入专门的进度态：保留全局任务，新闻页忽略旧缓存并读取服务端 running 状态。
+function openNewsProgress() {
+  aiTask.overlayShown = false
+  const q = 'meetingId=' + meetingId + '&resume=1'
+  navigateTo('/pages/news/news?' + q)
+  setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = '/news?' + q }, 500)
 }
 
 // 遮罩「查看新闻稿」/按钮查看：进入独立党建新闻页（带软路由不切换的硬导航兜底）。已查看→清掉全局任务。
@@ -2289,21 +2682,12 @@ function viewTodos() {
   }, 300)
 }
 
-// (4) 补充归档材料：先填补充原因，再选文件上传 → committeeAddArchiveExtra → 刷新
+// (4) 补充归档材料：点击直接选文件上传（不再要求填原因）→ committeeAddArchiveExtra → 刷新
 async function addArchiveExtra() {
-  const res = await showModal({
-    title: '补充归档材料',
-    content: '请先填写补充原因，再选择文件上传。',
-    editable: true,
-    placeholderText: '请填写补充原因（必填）'
-  })
-  if (!res.confirm) return
-  const reason = (res.content || '').trim()
-  if (!reason) { toast({ title: '请填写补充原因', icon: 'none' }); return }
   try {
     const r = await pickAndUpload('*/*')
     if (!r) return // 用户取消
-    await api.committeeAddArchiveExtra(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, reason, r.url)
+    await api.committeeAddArchiveExtra(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, '', r.url)
     toast({ title: '已上传', icon: 'success' })
     loadDetail()
   } catch (e) {
@@ -2326,6 +2710,66 @@ async function previewMaterial(idx) {
     showCancel: false,
     confirmText: '关闭'
   })
+}
+
+// 委员合影：直接打开实时摄像头取景，拍照后上传并存进会议材料。
+const photoUploading = ref(false)
+const photoCameraVisible = ref(false)
+const cameraStarting = ref(false)
+const cameraVideo = ref(null)
+let cameraStream = null
+async function takeGroupPhoto() {
+  if (photoUploading.value || photoCameraVisible.value) return
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast({ title: '当前浏览器无法调用相机，请使用手机浏览器打开', icon: 'none' })
+    return
+  }
+  photoCameraVisible.value = true
+  cameraStarting.value = true
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+    await nextTick()
+    if (cameraVideo.value) {
+      cameraVideo.value.srcObject = cameraStream
+      await cameraVideo.value.play()
+    }
+  } catch (e) {
+    closeGroupCamera()
+    toast({ title: '相机打开失败，请检查相机权限', icon: 'none' })
+  } finally {
+    cameraStarting.value = false
+  }
+}
+function closeGroupCamera() {
+  if (cameraStream) cameraStream.getTracks().forEach(track => track.stop())
+  cameraStream = null
+  photoCameraVisible.value = false
+  cameraStarting.value = false
+}
+async function captureGroupPhoto() {
+  const video = cameraVideo.value
+  if (!video || !video.videoWidth || photoUploading.value) return
+  const canvas = document.createElement('canvas')
+  canvas.width = video.videoWidth
+  canvas.height = video.videoHeight
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+  if (!blob) return
+  const file = new File([blob], '委员合影.jpg', { type: 'image/jpeg' })
+  photoUploading.value = true
+  try {
+    const already = (detail.value && detail.value.materials || []).filter(m => (m.name || '').indexOf('委员合影') >= 0).length
+    const fname = '委员合影' + (already ? '（' + (already + 1) + '）' : '') + '.jpg'
+    const r = await uploadAttachment(file)
+    await api.committeeAddMaterial(meetingId, fname, humanSize(r.fileSize), r.fileType, r.url)
+    closeGroupCamera()
+    toast({ title: '合影已存入会议材料', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '合影上传失败，请重试', icon: 'none' })
+  } finally {
+    photoUploading.value = false
+  }
 }
 
 // (3) 会议材料：选任意文件上传 → committeeAddMaterial → 刷新
@@ -2398,6 +2842,7 @@ function _doOpenEdit(d) {
     editForm.meetingTime = '10:00'
   }
   editForm.location = d.location || ''
+  editForm.meetingMethod = d.meetingMethod || (d.location === '线上会议' || d.location === '微信工作群' ? 'online' : 'offline')
   syncEditLocationPreset(editForm.location)
   // 主要议题：按准备会议时添加的议题标题，逐条编号列出；无议题则回退到补充说明
   editForm.description = buildTopicsText(d) || d.description || ''
@@ -2424,6 +2869,17 @@ function onEditContentInput(e) {
 
 function pickEditLocation(location) {
   editForm.location = location
+}
+
+function setEditMeetingMethod(method) {
+  editForm.meetingMethod = method
+  if (method === 'online' && (!editForm.location || commonLocations.includes(editForm.location))) {
+    editForm.location = '微信工作群'
+    editLocationPreset.value = '__other__'
+  } else if (method === 'offline' && ['微信工作群', '腾讯会议', '微信工作群、腾讯会议', '腾讯会议、微信工作群'].includes(editForm.location)) {
+    editForm.location = '社区活动室'
+    editLocationPreset.value = '社区活动室'
+  }
 }
 
 async function submitEdit() {
@@ -2749,11 +3205,25 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 简洁会议卡（结束页默认态）：名称+时间地点+「查看详情」，整卡可点展开 */
 .arc-summary { display:flex; flex-direction:column; align-items:center; gap:8px; padding:22px 16px 18px; text-align:center; cursor:pointer; }
 .arc-summary .arch-title { margin-top:0; }
+.arc-summary-static { gap:4px; padding:14px 16px 10px; cursor:default; }
+.arc-summary-static:active { background:transparent; }
 .arcs-meta { font-size:15px; color:#8A8F98; line-height:1.5; }
 .arcs-caret { font-size:15px; color:var(--c-primary-dark); font-weight:600; margin-top:4px; }
 .arc-summary:active { background:#FCF8F3; }
 /* 展开区里的「查看会议纪要」按钮（从底部操作栏挪进详情） */
 .ended-minutes-btn.in-card { margin:8px auto 16px; }
+.attendance-sheet-entry { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 16px 16px; padding:14px; border:1px solid #E7E9ED; border-radius:14px; background:#FAFBFC; }
+.detail-method-switch { display:flex; gap:8rpx; padding:6rpx; background:#f1f2f4; border-radius:14rpx; width:max-content; }
+.meeting-method-label { display:block; white-space:nowrap; font-size:32rpx; font-weight:800; color:#2d3137; }
+.platform-select-detail { margin-top:12rpx; width:100%; font-weight:700; }
+.detail-method-switch button { border:0; background:transparent; color:#62676f; font-size:28rpx; padding:14rpx 28rpx; border-radius:10rpx; }
+.detail-method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
+.ase-copy { display:flex; flex-direction:column; min-width:0; gap:4px; }
+.ase-copy b { color:#30343B; font-size:16px; line-height:1.35; }
+.ase-copy small { color:#7B818B; font-size:12px; line-height:1.45; }
+.ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:14px; font-weight:700; cursor:pointer; }
+.ase-btn:active { background:#EAF2FB; }
+.ase-btn:disabled { opacity:.55; cursor:default; }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
 
 
@@ -2814,20 +3284,33 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 结束页三个按钮统一成一组（方案A）：同宽同高同字号；公示=实心主操作，查看纪要/AI新闻=描边辅助 */
 .ended-btn-row { display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:8px; }
 /* 查看会议纪要：描边橙（辅助） */
-.ended-minutes-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
+.ended-minutes-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
 .ended-minutes-btn:active { background:#FDF3E7; }
 /* 未生成纪要时的「生成会议纪要」：实心橙主行动，比「查看」更醒目（会后在此补生成） */
 .ended-minutes-btn.gen { background:var(--c-primary-dark); color:#fff; border-color:var(--c-primary-dark); box-shadow:0 3px 12px rgba(199,106,0,0.22); }
 .ended-minutes-btn.gen:active { background:#A85800; }
 /* AI生成新闻稿：描边红（辅助） */
-.ended-news-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
+.ended-news-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
-/* 返回首页：描边灰（中性辅助），与上面三个同尺寸同风格 */
-.ended-home-btn { display:flex; align-items:center; justify-content:center; width:86%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#555; font-size:17px; font-weight:700; border:1.5px solid #CCC; cursor:pointer; }
-.ended-home-btn:active { background:#F2F2F2; }
-/* 公示会议：实心深橙（主操作），与上面两个同尺寸 */
-.arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 8px; width:86%; height:44px; border-radius:12px; background:var(--c-primary-dark); border:none; color:#fff; font-size:18px; font-weight:700; cursor:pointer; }
-.arc-publish-main-btn:active { opacity:0.92; }
+/* 委员合影：描边橙（会后仪式操作），点击后直接进入实时相机。 */
+.ended-photo-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark, #A85800); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
+.ended-photo-btn:active { background:#FDF3E7; }
+.ended-photo-btn:disabled { color:#B7A793; border-color:#EAD9C2; background:#FAF6F0; }
+.photo-camera-overlay { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.88); }
+.photo-camera-panel { width:min(100%, 560px); }
+.photo-camera-title { color:#fff; text-align:center; font-size:20px; font-weight:700; margin-bottom:14px; }
+.photo-camera-view { position:relative; overflow:hidden; width:100%; aspect-ratio:3/4; border-radius:18px; background:#151515; }
+.photo-camera-view video { width:100%; height:100%; object-fit:cover; }
+.photo-camera-loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:16px; }
+.photo-camera-actions { display:flex; gap:14px; margin-top:18px; }
+.photo-camera-actions button { flex:1; height:48px; border:0; border-radius:24px; font-size:17px; font-weight:700; }
+.photo-camera-cancel { background:#3A3A3A; color:#fff; }
+.photo-camera-shoot { background:#fff; color:#222; }
+.photo-camera-shoot:disabled { opacity:.5; }
+.epb-ico { font-size:19px; line-height:1; }
+/* 公示会议：描边政务蓝（官方公告动作专属色，白底与生成新闻稿同风格），与上面两个同尺寸 */
+.arc-publish-main-btn { display:flex; align-items:center; justify-content:center; margin:0 auto 8px; width:73.1%; height:44px; border-radius:12px; background:#fff; border:1.5px solid #8FB3DC; color:#2464B4; font-size:18px; font-weight:700; cursor:pointer; }
+.arc-publish-main-btn:active { background:#EAF2FB; }
 .arc-invalid-note { padding:12px 0; color:#888; font-size:13px; text-align:center; border-bottom:1px solid #f0f0f0; margin-bottom:4px; }
 /* 三个横排快捷入口 */
 .arc-quick-links { display:flex; padding:16px 0 14px; border-top:1px solid #f0f0f0; margin-top:4px; }
@@ -2930,16 +3413,17 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .prep-footer { position:fixed; bottom:0; left:0; right:0; z-index:100; box-sizing:border-box; background:#fff; border-top:1px solid #ECECEF; border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.10); padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
 .prep-footer.after-send-footer { background:transparent; border-top:none; border-radius:0; box-shadow:none; padding:0 16px calc(12px + env(safe-area-inset-bottom)); pointer-events:none; }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
-.pf-btn { display:flex; align-items:center; justify-content:center; height:88rpx; border:0; border-radius:44rpx; background: var(--c-primary-dark); color:#fff; font-size:32rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 20rpx; }
+/* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
+.pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; }
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
-.pf-btn-row .pf-btn { flex:1; min-width:0; height:80rpx; font-size:30rpx; background: var(--c-primary-dark); }
+.pf-btn-row .pf-btn { flex:1; min-width:0; height:72rpx; font-size:27rpx; background: var(--c-primary-dark); }
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
 .pf-after-send { display:flex; flex-direction:column; gap:14rpx; pointer-events:auto; }
 .after-send-footer .pf-btn-row { padding:0 20rpx; }
-.pf-btn-start-top { align-self:center; width:60%; height:86rpx; background:#0F766E; color:#fff; font-size:32rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
+.pf-btn-start-top { align-self:center; width:60%; height:78rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
 .pf-btn-start-top:active { background:#0B5F59; animation:none; }
 .pf-start-ico { font-size:24rpx; margin-right:10rpx; line-height:1; }
 @keyframes startPulse { 0%, 100% { box-shadow:0 6rpx 16rpx rgba(15,118,110,0.22); } 50% { box-shadow:0 8rpx 24rpx rgba(15,118,110,0.44), 0 0 0 5rpx rgba(15,118,110,0.12); } }
@@ -2947,12 +3431,13 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .pf-hint { display:block; text-align:center; font-size: 24rpx; color:#666; margin-top:7px; }
 
 /* ——— 通知页（精简版）：通知卡片 / 发送记录 / 取消会议 / 转发微信弹层 ——— */
-.notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:32rpx; margin-bottom:20rpx; }
-.nc-copy { padding:32rpx 34rpx; display:flex; flex-direction:column; gap:14rpx; font-size:30rpx; line-height:1.7; color:#1a1a1a; }
-.nc-copy-title { font-size:34rpx; font-weight:700; line-height:1.55; word-break:break-all; }
-.nc-copy-row { font-size:30rpx; color:#333; line-height:1.65; word-break:break-all; }
-.nc-copy-note { margin-top:4rpx; font-size:29rpx; color:#555; line-height:1.65; }
-.nc-copy-sign { margin-top:8rpx; text-align:right; font-size:30rpx; font-weight:700; color:#1a1a1a; line-height:1.7; }
+/* 通知卡片整体收紧一档：有通知后页面内容多，卡片小一点不拥挤 */
+.notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:24rpx; margin-bottom:16rpx; }
+.nc-copy { padding:26rpx 28rpx; display:flex; flex-direction:column; gap:10rpx; font-size:28rpx; line-height:1.65; color:#1a1a1a; }
+.nc-copy-title { font-size:31rpx; font-weight:700; line-height:1.5; word-break:break-all; }
+.nc-copy-row { font-size:28rpx; color:#333; line-height:1.6; word-break:break-all; }
+.nc-copy-note { margin-top:4rpx; font-size:27rpx; color:#555; line-height:1.6; }
+.nc-copy-sign { margin-top:6rpx; text-align:right; font-size:28rpx; font-weight:700; color:#1a1a1a; line-height:1.65; }
 .nc-banner { background:#C76A00; color:#fff; text-align:center; font-size:34rpx; font-weight:700; letter-spacing:6rpx; padding:24rpx 0; }
 /* 强化语气：卡片以「新会议通知」橙色标签开头，替代原来偏弱的邀请口吻 */
 .nc-kicker { text-align:center; padding:34rpx 40rpx 0; color:#C76A00; font-size:26rpx; font-weight:700; letter-spacing:8rpx; }
@@ -2972,17 +3457,40 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .nc-body { padding:18rpx 44rpx 6rpx; font-size:30rpx; color:#333; line-height:1.7; }
 .nc-sign { padding:6rpx 44rpx 34rpx; text-align:right; font-size:34rpx; font-weight:700; color:#1a1a1a; }
 /* 通知人员：前置到通知页，默认收起，避免长通知正文后再弹二次确认 */
-.recipient-card { background:#fff; border:2rpx solid #EEF0F3; border-radius:18px; box-shadow:0 4rpx 16rpx rgba(0,0,0,0.05); margin:0 0 16rpx; overflow:hidden; }
-.recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:18rpx 24rpx; }
+.recipient-card { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; overflow:hidden; }
+.recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:9rpx 18rpx; }
 .recipient-card-head:active { background:#FAFAFA; }
-.recipient-card-title { display:block; font-size:28rpx; color:#1f2329; font-weight:700; line-height:1.35; }
+.recipient-card-title { display:block; font-size:24rpx; color:#1f2329; font-weight:600; line-height:1.25; }
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
-.recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:10rpx; }
-.recipient-summary { font-size:24rpx; color:#4A5560; white-space:nowrap; }
+.recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:14rpx; }
+/* 全选控件挪进头部（替代原摘要）：小圆勾 + 「全选」 + 已选计数，点它切换全选/全不选 */
+.rcp-head-all { display:flex; align-items:center; gap:8rpx; padding:2rpx 0; }
+.rcp-head-all .rcp-check { width:26rpx; height:26rpx; border-width:2rpx; font-size:16rpx; }
+.rcp-head-all-label { font-size:21rpx; color:#A85800; font-weight:600; white-space:nowrap; }
+.rcp-head-count { font-size:19rpx; color:#8A9099; white-space:nowrap; }
 .recipient-card-arrow { color:#A4A9B0; font-size:32rpx; line-height:1; transform:rotate(90deg); transition:transform .18s ease; }
 .recipient-card-arrow.open { transform:rotate(-90deg); }
-.page-rcp-list { margin:0; max-height:420rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
-.page-rcp-item { padding:20rpx 28rpx; }
+.page-rcp-list { margin:0; max-height:329rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
+.page-rcp-item { min-height:76rpx; box-sizing:border-box; padding:14rpx 22rpx; }
+.prep-meeting-actions { width:64%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:28rpx; margin:4rpx auto 22rpx; padding-top:18rpx; border-top:1px solid #EEF0F2; }
+.method-convert-trigger { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #D1DCE5; border-radius:12rpx; background:#F7FAFC; color:#60778A; font-size:23rpx; font-weight:500; box-shadow:none; }
+.method-convert-trigger:active { background:#EEF4F8; }
+.prep-cancel-light { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #E0E3E6; border-radius:12rpx; background:#FAFAFA; color:#969CA3; font-size:23rpx; font-weight:400; }
+.prep-cancel-light:active { background:#F5F6F7; color:#626A73; }
+.method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
+.method-convert-title { margin-bottom:12rpx; color:#4B5563; font-size:24rpx; }
+.method-convert-select, .method-convert-input { width:100%; box-sizing:border-box; height:72rpx; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; padding:0 18rpx; color:#263746; font-size:27rpx; }
+.method-convert-input { margin-top:12rpx; }
+.method-convert-location-row { display:flex; align-items:flex-start; gap:12rpx; }
+.method-convert-location-main { flex:1; min-width:0; }
+.method-convert-map-btn { flex:0 0 72rpx; width:72rpx; height:72rpx; padding:0; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; color:#5D85A3; box-shadow:none; display:flex; align-items:center; justify-content:center; }
+.method-convert-map-btn svg { width:38rpx; height:38rpx; }
+.method-convert-map-btn:active { background:#EEF4F8; }
+.method-convert-actions { display:flex; justify-content:flex-end; gap:14rpx; margin-top:18rpx; }
+.method-convert-actions button { min-width:112rpx; height:62rpx; border:0; border-radius:12rpx; background:#EDF1F4; color:#65717C; font-size:25rpx; }
+.method-convert-actions button.primary { background:#DCE8F2; color:#3F6078; border:2rpx solid #C7D8E6; font-weight:600; }
+.method-convert-actions button:disabled { opacity:.6; }
+.nc-online-emphasis { margin:8rpx 0 16rpx; padding:12rpx 18rpx; border-radius:10rpx; background:#EAF3FA; color:#315F7D; font-size:28rpx; font-weight:700; text-align:center; }
 /* 通知记录：标题 + 记录 */
 .sr-section { margin:8rpx 6rpx 0; }
 .sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:2rpx 2rpx 12rpx; }
@@ -2995,8 +3503,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .send-record + .send-record { margin-top:20rpx; }   /* 多条记录之间间隔加大约 10px */
 .sr-ic { color:#2E9E5B; font-weight:700; font-size:32rpx; }
 .sr-text { font-size:32rpx; color:#2E7D46; font-weight:700; }
-.prep-cancel { text-align:center; margin:-4rpx 0 16rpx; }
-.prep-cancel span { font-size:26rpx; color:#bbb; padding:10rpx 18rpx; }
 .forward-sheet { position:relative; width:100%; max-width:480px; margin:0 auto; background:#fff; border-radius:24rpx 24rpx 0 0; padding:30rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-sizing:border-box; }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
 .fw-hint { font-size:26rpx; color:#888; text-align:center; margin:10rpx 0 20rpx; line-height:1.5; }
@@ -3260,10 +3766,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .rcp-list { margin-top:8rpx; flex:1; min-height:100rpx; }
 .rcp-item { display:flex; align-items:center; gap:14rpx; padding:15rpx 22rpx; border-bottom:1px solid #f0f0f2; }
 .rcp-item:active { background:#fafafa; }
-/* 全选行：挪到展开列表顶部，浅橙底 + 橙字，与成员行区分 */
-.rcp-all-row { background:#FFFCF7; }
-.rcp-all-row .rcp-name { color:#A85800; }
-.rcp-all-count { margin-left:auto; flex-shrink:0; font-size:21rpx; color:#8A9099; white-space:nowrap; }
 .rcp-person { display:flex; flex-direction:column; gap:2rpx; }
 .rcp-name { font-size:28rpx; color:#1f2329; font-weight:600; }
 .rcp-role { font-size:20rpx; color:#9aa0a6; }
@@ -3426,6 +3928,19 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
   color:#333;
   line-height:1.4;
 }
+.mtc-collapse {
+  flex-shrink:0;
+  margin:0;
+  padding:3px 2px;
+  border:0;
+  background:transparent;
+  color:var(--c-primary-dark, #A85800);
+  font-size:15px;
+  font-weight:600;
+  line-height:1.4;
+  cursor:pointer;
+}
+.mtc-collapse:active { opacity:.65; }
 .mtc-sub {
   display:block;
   font-size: 28rpx;
@@ -3507,7 +4022,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 }
 .mtc-chip.decision { color:#E67E22; background:#FFF3DC; }
 .mtc-chip.multi { color:#8E44AD; background:#F5EEF8; }
-.mtc-chip.notice { color:#2980B9; background:#EBF5FB; }
+/* .mtc-chip.notice 已删（0717 通知并入讨论，topicTypeClass 不再产出 notice） */
 .mtc-chip.discussion { color:#27AE60; background:#EAF7EF; }
 .mtc-chip.major { color:#E74C3C; background:#FDECEA; }
 .mtc-chip.realname { color:#2980B9; background:#EAF2F8; }
@@ -3555,4 +4070,25 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ar-card.card-sz-sm .mtc-chip { font-size:13px; padding:2px 6px; }
 .ar-card.card-sz-sm .mtc-topic { padding:12px 0; }
 .ar-card.card-sz-sm .mtc-head { margin-bottom:10px; }
+.minutes-basis { margin:10px 16px 18px; background:#FFF9F1; border:1px solid #F4D9B5; border-radius:16px; padding:16px; }
+.mb-head { display:flex; flex-direction:column; gap:3px; margin-bottom:13px; }
+.mb-sub { font-size:14px; color:#8A7258; line-height:1.45; }
+.mb-row { display:flex; align-items:center; gap:11px; min-height:54px; padding:8px 10px; margin-top:8px; border:1px solid #F1E2CE; border-radius:12px; background:#fff; cursor:pointer; }
+.mb-row:active { background:#FFF4E5; }
+/* 录音行：整行不再是单一动作，点击落在右侧「试听/看转写」两个动作上 */
+.mb-row-static { cursor:default; }
+.mb-row-static:active { background:#fff; }
+.mb-acts { flex-shrink:0; display:flex; align-items:center; gap:2px; }
+.mb-act-sep { color:#D8C3AB; font-size:14px; }
+.mb-act-tap { padding:10px 8px; margin:-10px 0; cursor:pointer; }
+.mb-act-tap:active { opacity:0.6; }
+.mb-ico { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; flex-shrink:0; font-size:16px; font-weight:700; }
+.mb-ico.audio { color:#C76A00; background:#FFF0D9; }
+.mb-ico.transcript { color:#3976B9; background:#EAF3FD; }
+.mb-ico.vote { color:#34865A; background:#EAF7EF; }
+.mb-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:2px; }
+.mb-copy b { font-size:15px; color:#2F3338; line-height:1.35; }
+.mb-copy small { font-size:13px; color:#8A8F98; line-height:1.35; }
+.mb-act { flex-shrink:0; font-size:14px; color:#B56508; font-weight:600; }
+.mb-transcript { font-size:14px; color:#444; line-height:1.7; background:#fff; border:1px solid #F0E2CC; border-radius:12px; padding:12px 14px; margin:8px 0 2px; white-space:pre-wrap; max-height:260px; overflow-y:auto; }
 </style>

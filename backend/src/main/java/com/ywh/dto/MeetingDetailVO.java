@@ -2,6 +2,7 @@ package com.ywh.dto;
 
 import com.ywh.enums.ComplianceStatus;
 import com.ywh.enums.MeetingMode;
+import com.ywh.enums.MeetingMethod;
 import com.ywh.enums.MeetingStage;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class MeetingDetailVO {
     private LocalDate meetingDate;
     private LocalTime meetingTime;
     private String location;
+    private MeetingMethod meetingMethod;
     private String description;
     private MeetingStage stage;
     private ComplianceStatus compliance;
@@ -157,13 +159,14 @@ public class MeetingDetailVO {
             private Boolean voteClosed;   // 表决是否已结束揭晓（主任点「结束表决」后为 true）
             private String status;     // passed, pending, failed
             private String text;
+            private String summaryDraft; // 主持人确认后的议题结果摘要（线上结果卡/会后材料复用）
             private String decisionType;
             // 通报类：正文 + 已通报状态 + 本人是否看过 + 已读进度（已确认「我已读」人数 / 已签到人数）
             private String content;
             private Boolean notified;
             private Boolean viewedByMe;
-            private Integer viewedCount;    // 已确认「我已读」的已签到委员数
-            private Integer signedInCount;  // 已签到委员数（"全体已通报"的分母）
+            private Integer viewedCount;    // 已确认「我已读」的参会名单委员数
+            private Integer signedInCount;  // 兼容字段名：现表示参会名单人数（"全体已通报"的分母）
             private List<Map<String, Object>> options;
             private String myVote;
             private Long mySelectedId;
@@ -197,6 +200,8 @@ public class MeetingDetailVO {
     public static class PublishInfoVO {
         private Boolean published;
         private String publishDate;
+        private String publicTitle;
+        private String publicContent;
         private String deadlineStr;
         private Integer daysLeft;
         private String scoreState;   // ontime, late, overdue, pending

@@ -9,10 +9,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 接待。0716 重做（用户定方案 A）：内部派单流（propertyStatus 状态机 + 物业侧工作台）整体下线，
+ * 改为把诉求派发到外部工单系统（见 ReceptionTicketService），物业以后只在那边干活。
+ *
+ * 办结口径同时改了：原先 done 只认 fedOwner（由「向业主反馈」那个布尔开关写），
+ * 内部派单一删、那个开关也没了，done 就没有任何输入源，每条接待会永远挂在待跟进里。
+ * 现在 done = 填了处理结果。语义上也更顺：派工单 ≠ 办结 —— 工单只是派出去，物业还没修完，
+ * 这件事仍挂在委员名下；等他知道结果、填上处理结果，才算闭环。
+ */
 @Service
 @RequiredArgsConstructor
 public class ReceptionService {
@@ -20,19 +30,61 @@ public class ReceptionService {
     private final ReceptionSystemRepository sysRepo;
     private final ReceptionRecordRepository recordRepo;
     private final ReceptionEvidenceRepository evRepo;
+    private final ReceptionNoticeExportRepository noticeExportRepo;
+    private final CommunityRepository communityRepo;
     private static final LocalDate TODAY = LocalDate.of(2026, 6, 1);
 
     public Map<String, Object> getSystem() {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         ReceptionSystem sys = sysRepo.findByCommunityId(communityId)
                 .orElse(null);
-        if (sys == null) return Collections.emptyMap();
         Map<String, Object> result = new HashMap<>();
+        // 公告抬头（已算好的整串，不是原始小区名）。给整串而不是让前端自己拼，理由见 noticeOrgName()。
+        result.put("orgName", noticeOrgName());
+        // sys 为空（从没设过接待安排）也要把抬头带回去，否则新社区第一次进页面预览是空的
+        if (sys == null) return result;
         result.put("published", sys.getPublished());
         result.put("timeDesc", sys.getTimeDesc());
         result.put("place", sys.getPlace());
         result.put("person", sys.getPerson());
+        result.put("adjustReason", sys.getAdjustReason());
+        result.put("updatedAt", sys.getUpdatedAt() != null ? sys.getUpdatedAt().toString() : null);
         return result;
+    }
+
+    /**
+     * 接待日公告的抬头，例如「阳光家园业主委员会」。
+     *
+     * 这里是全仓库该规则的唯一实现，页面预览(getSystem)和 PDF(ReceptionNoticePdfService) 都调它。
+     * 各判各的会出事：本地库里 community.name 就是坏的（存着 4 个 '?'，是早年 latin1 连接
+     * 写中文写坏的，MinutesView.vue:70 那条注释说的也是它）。PDF 侧有 isUsableName 挡掉、
+     * 退回「业主委员会」；前端若只判非空，预览就会显示「????业主委员会」——
+     * 预览跟印出来的纸不一样，预览就白做了。所以只留一份判定。
+     *
+     * ⚠ 乱码是数据问题不是代码问题：这里只是兜住不让它印到纸上，
+     * 修好 community.name 之后抬头会自动带上小区名，不用改代码。
+     */
+    public String noticeOrgName() {
+        String name = communityRepo.findById(SecurityUtils.getCurrentCommunityId())
+                .map(Community::getName).orElse(null);
+        boolean usable = name != null && !name.isBlank()
+                && !name.matches("[?？\\s]+") && !name.contains("�");
+        return usable ? name.trim() + "业主委员会" : "业主委员会";
+    }
+
+    /** 接待日公告的导出留痕（快照，不是当前设置——见 ReceptionNoticeExport 的注释）。 */
+    public List<Map<String, Object>> listNoticeExports() {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        return noticeExportRepo.findByCommunityIdOrderByExportedAtDesc(communityId).stream().map(e -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", e.getId());
+            m.put("exportedBy", e.getExportedBy());
+            m.put("exportedAt", e.getExportedAt() != null ? e.getExportedAt().toString() : null);
+            m.put("timeDesc", e.getTimeDesc());
+            m.put("place", e.getPlace());
+            m.put("person", e.getPerson());
+            return m;
+        }).collect(Collectors.toList());
     }
 
     @Transactional
@@ -46,16 +98,9 @@ public class ReceptionService {
         if (req.containsKey("timeDesc")) sys.setTimeDesc((String) req.get("timeDesc"));
         if (req.containsKey("place")) sys.setPlace((String) req.get("place"));
         if (req.containsKey("person")) sys.setPerson((String) req.get("person"));
+        if (req.containsKey("adjustReason")) sys.setAdjustReason((String) req.get("adjustReason"));
         if (req.containsKey("published")) sys.setPublished((Boolean) req.get("published"));
-        sysRepo.save(sys);
-    }
-
-    @Transactional
-    public void togglePublished() {
-        Long communityId = SecurityUtils.getCurrentCommunityId();
-        ReceptionSystem sys = sysRepo.findByCommunityId(communityId)
-                .orElseThrow(() -> new IllegalArgumentException("接待制度不存在"));
-        sys.setPublished(!sys.getPublished());
+        sys.setUpdatedAt(LocalDateTime.now());
         sysRepo.save(sys);
     }
 
@@ -64,186 +109,117 @@ public class ReceptionService {
         List<ReceptionRecord> records = recordRepo.findByCommunityIdOrderByDateDescTimeDesc(communityId);
         if ("pending".equals(filter)) records = records.stream().filter(r -> !isDone(r)).collect(Collectors.toList());
         if ("done".equals(filter)) records = records.stream().filter(this::isDone).collect(Collectors.toList());
-        return records.stream().map(r -> {
-            Map<String, Object> m = new HashMap<>();
-            m.put("id", r.getId());
-            m.put("date", r.getDate());
-            m.put("time", r.getTime());
-            m.put("visitorName", r.getVisitorName());
-            m.put("room", r.getRoom());
-            m.put("receiver", r.getReceiver());
-            m.put("category", r.getCategory().name());
-            m.put("categoryLabel", r.getCategory().getLabel());
-            m.put("content", r.getContent());
-            m.put("resolution", r.getResolution());
-            m.put("fedProperty", r.getFedProperty());
-            m.put("fedOwner", r.getFedOwner());
-            m.put("done", isDone(r));
-            m.put("needsPropertyFeedback", r.getCategory() == ReceptionCategory.property);
-            m.put("propertyStatus", r.getPropertyStatus());
-            m.put("propertyStatusLabel", propertyStatusLabel(r.getPropertyStatus()));
-            m.put("propertyReply", r.getPropertyReply());
-            m.put("propertyRepliedBy", r.getPropertyRepliedBy());
-            m.put("propertyRepliedAt", r.getPropertyRepliedAt() != null ? r.getPropertyRepliedAt().toString() : null);
-            return m;
-        }).collect(Collectors.toList());
+        return records.stream().map(this::toVO).collect(Collectors.toList());
     }
 
-    private static final Map<String, String> PROPERTY_STATUS_LABELS = Map.of(
-            "pending_dispatch", "待派单",
-            "dispatched", "物业未处理",
-            "processing", "处理中",
-            "replied", "处理完");
-
-    private String propertyStatusLabel(String status) {
-        return status != null ? PROPERTY_STATUS_LABELS.getOrDefault(status, "") : "";
+    /** 单条详情：新的「单条处理页」进来就拉这个。 */
+    public Map<String, Object> getRecord(Long id) {
+        ReceptionRecord r = recordRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
+        return toVO(r);
     }
 
-    private Map<String, Object> toTaskCard(ReceptionRecord r) {
+    private Map<String, Object> toVO(ReceptionRecord r) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", r.getId());
         m.put("date", r.getDate());
         m.put("time", r.getTime());
+        m.put("sessionKey", r.getSessionKey());
         m.put("visitorName", r.getVisitorName());
         m.put("room", r.getRoom());
+        m.put("receiver", r.getReceiver());
+        m.put("category", r.getCategory().name());
+        m.put("categoryLabel", r.getCategory().getLabel());
         m.put("content", r.getContent());
-        m.put("propertyStatus", r.getPropertyStatus());
-        m.put("propertyStatusLabel", propertyStatusLabel(r.getPropertyStatus()));
-        m.put("propertyReply", r.getPropertyReply());
-        m.put("propertyRepliedBy", r.getPropertyRepliedBy());
-        m.put("propertyRepliedAt", r.getPropertyRepliedAt() != null ? r.getPropertyRepliedAt().toString() : null);
+        m.put("resolution", r.getResolution());
+        m.put("done", isDone(r));
+        // 外部工单
+        m.put("ticketNo", r.getTicketNo());
+        m.put("ticketPushed", r.getTicketPushedAt() != null);
+        m.put("ticketPushedAt", r.getTicketPushedAt() != null ? r.getTicketPushedAt().toString() : null);
+        // 转物业（另一条路，见 setPropertyTransferred）
+        m.put("propertyTransferred", r.getPropertyTransferredAt() != null);
+        m.put("propertyTransferredAt", r.getPropertyTransferredAt() != null ? r.getPropertyTransferredAt().toString() : null);
+        // 佐证：原先只有 toTaskCard（物业侧）放了这个键，listRecords 从没放过，
+        // 于是接待页佐证数永远显示 0、永远走空状态，哪怕上传成功已落库。0716 修。
         m.put("evidences", getEvidences(r.getId()));
         return m;
-    }
-
-    private static final Set<String> DISPATCHED_STATES = Set.of("dispatched", "processing", "replied");
-
-    /** 物业工作台：派给物业的工单（已派单后均可见）。 */
-    public List<Map<String, Object>> listPropertyTasks(String status) {
-        Long communityId = SecurityUtils.getCurrentCommunityId();
-        return recordRepo.findByCommunityIdOrderByDateDescTimeDesc(communityId).stream()
-                .filter(r -> r.getCategory() == ReceptionCategory.property)
-                .filter(r -> r.getPropertyStatus() != null && DISPATCHED_STATES.contains(r.getPropertyStatus()))
-                .filter(r -> status == null || "all".equals(status) || status.equals(r.getPropertyStatus()))
-                .map(this::toTaskCard)
-                .collect(Collectors.toList());
-    }
-
-    /** 面向全体业主的物业事项公示看板（只读、脱敏：不含来访业主姓名/房号）。 */
-    public List<Map<String, Object>> listPropertyPublic() {
-        Long communityId = SecurityUtils.getCurrentCommunityId();
-        return recordRepo.findByCommunityIdOrderByDateDescTimeDesc(communityId).stream()
-                .filter(r -> r.getCategory() == ReceptionCategory.property)
-                .map(r -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("id", r.getId());
-                    m.put("date", r.getDate());
-                    m.put("content", r.getContent());
-                    m.put("statusKey", publicStatusKey(r.getPropertyStatus()));
-                    m.put("statusLabel", publicStatusLabel(r.getPropertyStatus()));
-                    m.put("propertyReply", "replied".equals(r.getPropertyStatus()) ? r.getPropertyReply() : null);
-                    m.put("propertyRepliedAt", "replied".equals(r.getPropertyStatus()) && r.getPropertyRepliedAt() != null
-                            ? r.getPropertyRepliedAt().toString() : null);
-                    return m;
-                })
-                .collect(Collectors.toList());
-    }
-
-    private String publicStatusKey(String s) {
-        if ("replied".equals(s)) return "done";
-        if ("processing".equals(s)) return "processing";
-        return "pending";
-    }
-
-    private String publicStatusLabel(String s) {
-        if ("replied".equals(s)) return "已处理";
-        if ("processing".equals(s)) return "处理中";
-        return "待处理";
-    }
-
-    /** 物业开始处理：物业未处理 → 处理中。 */
-    @Transactional
-    public void startProcessing(Long id) {
-        ReceptionRecord r = recordRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
-        if (!"dispatched".equals(r.getPropertyStatus())) {
-            throw new IllegalArgumentException("该工单当前不可开始处理");
-        }
-        r.setPropertyStatus("processing");
-        recordRepo.save(r);
-    }
-
-    /** 业委会：把物业类诉求转给物业处理。 */
-    @Transactional
-    public void dispatchToProperty(Long id) {
-        ReceptionRecord r = recordRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
-        if (r.getCategory() != ReceptionCategory.property) {
-            throw new IllegalArgumentException("仅物业类诉求可转物业处理");
-        }
-        if ("dispatched".equals(r.getPropertyStatus()) || "replied".equals(r.getPropertyStatus())) {
-            throw new IllegalArgumentException("该诉求已转物业");
-        }
-        r.setPropertyStatus("dispatched");
-        recordRepo.save(r);
-    }
-
-    /** 物业：回填处理结果。 */
-    @Transactional
-    public void propertyReply(Long id, String reply) {
-        if (reply == null || reply.trim().isEmpty()) {
-            throw new IllegalArgumentException("请填写处理结果");
-        }
-        ReceptionRecord r = recordRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
-        if (!"processing".equals(r.getPropertyStatus())) {
-            throw new IllegalArgumentException("请先开始处理");
-        }
-        if (getEvidences(id).isEmpty()) {
-            throw new IllegalArgumentException("请先上传处理佐证");
-        }
-        r.setPropertyStatus("replied");
-        r.setPropertyReply(reply.trim());
-        r.setPropertyRepliedBy(SecurityUtils.getCurrentRealName());
-        r.setPropertyRepliedAt(java.time.LocalDateTime.now());
-        r.setFedProperty(true); // 兼容旧字段
-        recordRepo.save(r);
     }
 
     @Transactional
     public ReceptionRecord create(Map<String, Object> req) {
         Long communityId = SecurityUtils.getCurrentCommunityId();
+        boolean noVisit = Boolean.TRUE.equals(req.get("noVisit"));
+        String sessionKey = req.get("sessionKey") instanceof String s && !s.isBlank()
+                ? s : UUID.randomUUID().toString();
         return recordRepo.save(ReceptionRecord.builder()
                 .community(Community.builder().id(communityId).build())
                 .date(parseDate((String) req.get("date")))
                 .time(parseTime((String) req.get("time")))
-                .visitorName((String) req.get("visitorName"))
+                .sessionKey(sessionKey)
+                .visitorName(noVisit ? "无人来访" : (String) req.get("visitorName"))
                 .room((String) req.get("room"))
                 .receiver((String) req.get("receiver"))
                 .category(ReceptionCategory.valueOf((String) req.get("category")))
-                .content((String) req.get("content"))
-                .resolution("")
-                .propertyStatus(ReceptionCategory.valueOf((String) req.get("category")) == ReceptionCategory.property
-                        ? "pending_dispatch" : null)
-                .fedProperty(false)
-                .fedOwner(false)
+                .content(noVisit ? "本次接待无居民来访" : (String) req.get("content"))
+                // 无人来访只需留档，不产生需要后续处理的事项。
+                .resolution(noVisit ? "无需处理" : "")
                 .build());
     }
 
+    /**
+     * 一次完成整场接待登记。日期、时间、接待人属于场次；每位居民的诉求独立成记录，
+     * 后续仍可分别发工单、填写处理结果和办结。
+     */
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public List<ReceptionRecord> createSession(Map<String, Object> req) {
+        boolean noVisit = Boolean.TRUE.equals(req.get("noVisit"));
+        String sessionKey = UUID.randomUUID().toString();
+        if (noVisit) {
+            Map<String, Object> single = new HashMap<>(req);
+            single.put("sessionKey", sessionKey);
+            single.put("category", ReceptionCategory.public_affairs.name());
+            return List.of(create(single));
+        }
+
+        Object raw = req.get("visitors");
+        List<Map<String, Object>> visitors = raw instanceof List<?>
+                ? (List<Map<String, Object>>) raw : Collections.emptyList();
+        if (visitors.isEmpty()) throw new IllegalArgumentException("请至少登记一位来访居民");
+
+        List<ReceptionRecord> saved = new ArrayList<>();
+        for (Map<String, Object> visitor : visitors) {
+            Map<String, Object> item = new HashMap<>(visitor);
+            item.put("date", req.get("date"));
+            item.put("time", req.get("time"));
+            item.put("receiver", req.get("receiver"));
+            item.put("sessionKey", sessionKey);
+            saved.add(create(item));
+        }
+        return saved;
+    }
+
+    /** 填写处理结果 —— 这就是办结动作（isDone 以它为准）。 */
     @Transactional
     public void updateResolution(Long id, String resolution) {
         ReceptionRecord r = recordRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
-        r.setResolution(resolution);
+        r.setResolution(resolution != null ? resolution.trim() : "");
         recordRepo.save(r);
     }
 
+    /**
+     * 转物业 —— 只在本系统打个标记，不发任何外部请求（0717 用户定：「开关（假按钮）」）。
+     * 跟 ReceptionTicketService.push 是两条不同的路：那条真的 POST 到外部工单系统、
+     * 拿得到对方单号、派出去就撤不回；这条纯粹是委员自己联系了物业、在这记一笔，所以可反悔。
+     * ⚠ 故意不参与 isDone —— 转出去 ≠ 办结，事情仍挂在委员名下，填了处理结果才闭环。
+     */
     @Transactional
-    public void toggleFollow(Long id, String field) {
+    public void setPropertyTransferred(Long id, boolean transferred) {
         ReceptionRecord r = recordRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
-        if ("fedProperty".equals(field)) r.setFedProperty(!r.getFedProperty());
-        else if ("fedOwner".equals(field)) r.setFedOwner(!r.getFedOwner());
+        r.setPropertyTransferredAt(transferred ? LocalDateTime.now() : null);
         recordRepo.save(r);
     }
 
@@ -270,12 +246,12 @@ public class ReceptionService {
         return stats;
     }
 
-    private boolean isDone(ReceptionRecord r) {
-        if (!r.getFedOwner()) return false;
-        // 物业类：物业已回复才算物业侧完成；兼容旧数据的 fedProperty
-        return r.getCategory() != ReceptionCategory.property
-                || "replied".equals(r.getPropertyStatus())
-                || Boolean.TRUE.equals(r.getFedProperty());
+    /**
+     * 办结 = 填了处理结果。0716 重写（原口径 done = fedOwner && (非物业 || propertyStatus=='replied' || fedProperty)）。
+     * ⚠ 全仓库另有一份 DashboardService.isReceptionDone，必须与此保持同一口径，否则首页和工作台会对不上。
+     */
+    public boolean isDone(ReceptionRecord r) {
+        return r.getResolution() != null && !r.getResolution().trim().isEmpty();
     }
 
     // ── 佐证 ──

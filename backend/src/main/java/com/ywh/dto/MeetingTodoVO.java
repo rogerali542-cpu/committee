@@ -18,4 +18,7 @@ public class MeetingTodoVO {
     private String lastActorName;
     /** 最后更新时间，已格式化为 MM-dd HH:mm。 */
     private String updatedAt;
+    private String externalTicketNo;
+    private String ticketNo;
+    private String ticketPushedAt;
 }

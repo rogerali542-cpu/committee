@@ -1,7 +1,8 @@
 <template>
   <div class="page" style="overflow-y:auto">
 
-    <PageNav title="学习培训" style="margin: 0 -3.2vw 0" />
+    <!-- backTo 显式回首页培训 tab（0717 用户定：回退不再全切回开会 tab） -->
+    <PageNav title="学习培训" back-to="/main?tab=learning" style="margin: 0 -3.2vw 0" />
 
     <!-- 类型切换: 内部学习 / 外部培训 -->
     <div class="type-tabs">

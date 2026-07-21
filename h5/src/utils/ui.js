@@ -55,7 +55,14 @@ export function resolveModal(result) {
 // 返回 Promise，resolve({ tapIndex })，对齐 wx.showActionSheet
 export function showActionSheet(opts = {}) {
   return new Promise((resolve) => {
-    uiState.actionSheet = { itemList: opts.itemList || [], _resolve: resolve }
+    uiState.actionSheet = {
+      title: opts.title || '',
+      description: opts.description || '',
+      itemList: opts.itemList || [],
+      cancelText: opts.cancelText || '取消',
+      variant: opts.variant || '',
+      _resolve: resolve
+    }
   })
 }
 export function resolveActionSheet(result) {
