@@ -213,42 +213,34 @@ function openDetail(item) {
 
 async function loadAll() {
   try {
-    const [rawItems, cnts] = await Promise.all([
-      api.learningList(learnType.value, learnStage.value),
-      // counts 接口只认 internal/street/special；"training" 是前端把街镇+专项聚合的别名，会 400。
-      // 外部培训页的计数另由 list 现算(visibleCounts)，这里失败兜底为 0，避免连累整次加载导致列表空白。
-      api.learningCounts(learnType.value).catch(() => ({ pending: 0, ongoing: 0, ended: 0 }))
-    ]);
-    const list = learnType.value === 'training'
-      ? rawItems.filter(i => i.type === trainSub.value)
-      : rawItems;
-    const visibleCounts = learnType.value === 'training' ? {
-      pending: list.filter(i => i.stage === 'preparing').length,
-      ongoing: list.filter(i => i.stage === 'ongoing').length,
-      ended: list.filter(i => i.stage === 'ended').length
-    } : cnts;
-
-    // For internal, get all items to calculate target stats
-    let allItems = list;
-    let trainCounts = { street: 0, special: 0 };
-    if (learnType.value === 'internal') {
+    if (learnType.value === 'training') {
+      // counts 接口只认 internal/street/special；"training" 是聚合别名会 400。
+      // 所以外部培训一次性拉全量(不带 stage)，本地按「子类 + 阶段」切分：
+      // 列表只留当前阶段，而阶段角标要跨全部阶段现算——否则非选中阶段永远算成 0。
+      const all = await api.learningList('training', null);
+      const subAll = all.filter(i => i.type === trainSub.value);
+      items.value = subAll.filter(i => i.stage === learnStage.value);
+      counts.value = {
+        pending: subAll.filter(i => i.stage === 'preparing').length,
+        ongoing: subAll.filter(i => i.stage === 'ongoing').length,
+        ended: subAll.filter(i => i.stage === 'ended').length
+      };
+      streetCount.value = all.filter(i => i.type === 'street').length;
+      specialCount.value = all.filter(i => i.type === 'special').length;
+    } else {
+      const [list, cnts] = await Promise.all([
+        api.learningList('internal', learnStage.value),
+        api.learningCounts('internal').catch(() => ({ pending: 0, ongoing: 0, ended: 0 }))
+      ]);
+      // 全量内部学习用于年度目标环的统计
+      let allItems = list;
       try { allItems = await api.learningList('internal', null); } catch (e) {}
       items.value = list;
-      counts.value = visibleCounts;
+      counts.value = cnts;
       done.value = allItems.filter(i => i.stage === 'ended').length;
       ongoing.value = allItems.filter(i => i.stage === 'ongoing').length;
       pending.value = allItems.filter(i => i.stage === 'preparing').length;
       total.value = allItems.length;
-    } else {
-      try {
-        const street = await api.learningList('training', null);
-        trainCounts.street = street.filter(i => i.type === 'street').length;
-        trainCounts.special = street.filter(i => i.type === 'special').length;
-      } catch (e) {}
-      items.value = list;
-      counts.value = visibleCounts;
-      streetCount.value = trainCounts.street;
-      specialCount.value = trainCounts.special;
     }
   } catch (e) {
     items.value = [];
