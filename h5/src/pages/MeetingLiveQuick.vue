@@ -176,6 +176,7 @@
           <div>
             <div class="meeting-console-title">会议进行中</div>
             <div class="meeting-console-sub">{{ detail.title || '本次业委会会议' }}</div>
+            <div class="meeting-console-meta">{{ detail.meetingDate }} {{ detail.meetingTime }}<template v-if="detail.location"> · {{ detail.location }}</template></div>
           </div>
           <div v-if="isChair" class="meeting-console-roster" :class="{ ready: signinQuorum.ready }">
             已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}
@@ -184,7 +185,7 @@
         <div class="meeting-console-topics">
           <div class="mct-head">
             <span class="mct-title">会议议题</span>
-            <span class="mct-count">共{{ meetingTopics.length }}项 · 录音时可同步讨论表决</span>
+            <span class="mct-count">共{{ meetingTopics.length }}项</span>
           </div>
           <div class="mct-list">
             <div class="mct-item" v-for="(t, i) in meetingTopics" :key="'mct-' + t.id">
@@ -262,8 +263,11 @@
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
         <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
-        <!-- ② 会议材料：份数紧跟标题展示；文件名蓝字下划线示可点 -->
-        <div class="supp-head supp-head-2" :class="{ 'supp-head-click': materials.length }" @click="materials.length && (matListOpen = !matListOpen)">
+      </div>
+
+      <!-- 会议材料：独立卡片（与会议录音分开）；份数紧跟标题，文件名蓝字下划线示可点 -->
+      <div class="supp-card" v-if="meetingPhase === 'recording'">
+        <div class="supp-head" :class="{ 'supp-head-click': materials.length }" @click="materials.length && (matListOpen = !matListOpen)">
           <span class="supp-title">会议材料<span v-if="materials.length">（共{{ materials.length }}份）</span></span>
           <span v-if="materials.length" class="rec-list-toggle">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
         </div>
@@ -3181,6 +3185,7 @@ async function returnToRecordingPage() {
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
 .meeting-console-title { font-size:34rpx; line-height:1.35; font-weight:800; color:#20242A; }
 .meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:26rpx; color:#7A818B; }
+.meeting-console-meta { margin-top:5rpx; font-size:23rpx; color:#9AA0A6; line-height:1.3; }
 /* 签到胶囊随法定人数变色（都放浅、对比度不强）：未过半浅黄，过半浅绿。人数够不够只由它一处表达，不再另起带背景的一行。 */
 .meeting-console-roster { flex-shrink:0; padding:10rpx 18rpx; border-radius:999rpx; background:#FBF1DC; color:#A9843F; font-size:25rpx; font-weight:700; }
 .meeting-console-roster.ready { background:#E9F4EC; color:#5A9A73; }
@@ -3261,9 +3266,9 @@ async function returnToRecordingPage() {
 .supp-actions.single.paused .supp-btn { width:56%; min-width:250rpx; justify-self:center; }
 .rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
-.supp-btn.rec { border-color:#A65343; background:#A65343; color:#FFF; box-shadow:0 4rpx 12rpx rgba(166,83,67,0.16); }
+.supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
 .supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:88rpx; font-size:28rpx; }
-.supp-btn.rec:active { background:#8F4638; border-color:#8F4638; }
+.supp-btn.rec:active { background:#A85446; border-color:#A85446; }
 .supp-btn.upload-rec { border-color:#D6A75F; background:#FFF9EF; color:#91611C; }
 .supp-btn.ai { border-color:#BFD7D9; background:#EAF6F6; color:#126A72; }
 .supp-actions.single .supp-material-btn { width:310rpx; min-width:310rpx; height:88rpx; border-radius:999rpx; border-color:#BFC9D3; background:#FFFFFF; color:#52606D; font-size:28rpx; font-weight:600; box-shadow:none; }
