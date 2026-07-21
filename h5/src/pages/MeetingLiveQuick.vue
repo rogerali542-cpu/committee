@@ -251,10 +251,8 @@
           </div>
         </div>
         <div v-if="isPaused" class="supp-actions single paused">
-          <template>
-            <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
-            <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
-          </template>
+          <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
+          <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
         </div>
         <!-- 中断预警前置：切出瞬间 JS 已被冻结、无法当场提示，只能事先讲清楚 -->
         <div v-if="recActive" class="rec-bg-warn">⚠ 录音中请不要切出微信或锁屏，否则录音会中断</div>
