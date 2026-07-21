@@ -236,9 +236,6 @@
         <!-- ① 会议录音 -->
         <div class="supp-head recording-compact-head">
           <span class="supp-title">会议录音</span>
-          <button v-if="!isPaused" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
-            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
-          </button>
         </div>
         <!-- 已录段落行：左侧「已录N段」文字，右侧展开/收起按钮 -->
         <div v-if="recordings.length" class="rec-seg-toggle-row">
@@ -256,14 +253,20 @@
             </div>
           </div>
         </div>
-        <div v-if="isPaused" class="supp-actions single paused">
-          <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
-          <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
-        </div>
         <!-- 录音上传/后台转写状态：上传后自动转写 -->
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
+        <!-- 录音主控放卡片下部：非暂停=开始/暂停/继续单钮；暂停=继续+上传两钮 -->
+        <div v-if="!isPaused" class="rec-bottom-action">
+          <button class="supp-btn rec" @click="onCircleTap" :disabled="uploading || generatingMinutes">
+            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
+          </button>
+        </div>
+        <div v-if="isPaused" class="supp-actions single paused">
+          <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
+          <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
+        </div>
         <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
       </div>
 
@@ -3275,6 +3278,9 @@ async function returnToRecordingPage() {
 /* 已录段落 toggle：独立成行、左起头、字号加大一号 */
 .rec-seg-toggle-row { display:flex; align-items:center; justify-content:space-between; margin-top:6rpx; margin-bottom:2rpx; }
 .rec-seg-label { font-size:26rpx; color:#6B7480; font-weight:650; }
+/* 录音主控放卡片下部、居中 */
+.rec-bottom-action { display:flex; justify-content:center; margin-top:16rpx; }
+.rec-bottom-action .supp-btn.rec { width:56%; min-width:260rpx; height:72rpx; font-size:27rpx; }
 .recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 0; white-space:nowrap; }
 
 /* 签到名单弹窗 */
