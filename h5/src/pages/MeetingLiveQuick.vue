@@ -3176,7 +3176,7 @@ async function returnToRecordingPage() {
 .meeting-console { margin-top:18rpx; padding:28rpx; border-radius:22rpx; background:#fff; border:2rpx solid #E8EBEF; box-shadow:0 8rpx 24rpx rgba(31,35,41,.06); }
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
 .meeting-console-title { font-size:34rpx; line-height:1.35; font-weight:800; color:#20242A; }
-.meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:25rpx; color:#7A818B; }
+.meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:26rpx; color:#7A818B; }
 .meeting-console-roster { flex-shrink:0; padding:10rpx 18rpx; border-radius:999rpx; background:#ECEFF3; color:#2E3640; font-size:25rpx; font-weight:700; }
 .meeting-console-attendance { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-top:22rpx; padding:16rpx 20rpx; border-radius:12rpx; background:#FFF3E0; color:#9A5A00; font-size:26rpx; line-height:1.4; }
 .meeting-console-attendance.ready { background:#EDF8F1; color:#287549; }
@@ -3200,7 +3200,7 @@ async function returnToRecordingPage() {
 .core-topic-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:6rpx; }
 .core-topic-title { flex:1; min-width:0; color:#1F2024; font-size:31rpx; line-height:1.45; word-break:break-all; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .core-topic-meta { font-size:25rpx; color:#8A8F98; }
-.core-topic-type { align-self:flex-start; font-size:23rpx; font-weight:700; border-radius:8rpx; padding:3rpx 12rpx; line-height:1.4; }
+.core-topic-type { align-self:flex-start; font-size:25rpx; font-weight:700; border-radius:8rpx; padding:4rpx 13rpx; line-height:1.4; }
 .core-topic-type.notice { background:#E6F4FB; color:#1677B8; }
 .core-topic-type.vote { background:#FFF0E5; color:#D56A16; }
 .core-topic-type.discuss { background:#EAF6EE; color:#2E8B57; }
