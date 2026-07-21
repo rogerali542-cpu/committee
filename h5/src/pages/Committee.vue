@@ -96,7 +96,7 @@
                原右上角的年份标签删了）。年份切换箭头已摘，按年计算的能力全保留，恢复见 0e0d15f。 -->
           <div class="plan-title-wrap">
             <span v-if="planTab === 'meeting'" class="plan-title">{{ viewYear }}年</span>
-            <span v-else class="plan-title ov-title">{{ planTab === 'reception' ? '全年接待日历' : '全年培训日历' }}</span>
+            <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
@@ -778,23 +778,6 @@
       </div>
     </div>
 
-    <!-- 待办「查看」详情弹窗：接待/培训点「查看」当场看该条详情，底部按钮再进对应页面跟进 -->
-    <div v-if="todoDetail" class="td-mask" @click.self="todoDetail = null">
-      <div class="td-pop" @click.stop>
-        <div class="td-pop-head">
-          <span class="td-pop-title">{{ todoDetail.title }}</span>
-          <span class="td-pop-close" @click="todoDetail = null">×</span>
-        </div>
-        <span class="td-pop-status" :class="todoDetail.statusClass">{{ todoDetail.statusText }}</span>
-        <div class="td-pop-body">
-          <div v-for="row in todoDetail.rows" :key="row.k" class="td-row">
-            <span class="td-row-k">{{ row.k }}</span>
-            <span class="td-row-v">{{ row.v }}</span>
-          </div>
-        </div>
-        <button class="td-pop-btn" @click="todoDetail.onGo()">{{ todoDetail.goLabel }} ›</button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -926,7 +909,7 @@ function buildYearPlan(year) {
 const yearPlan = computed(() => buildYearPlan(viewYear.value))   // 日历：跟年份箭头走
 const thisYearPlan = computed(() => buildYearPlan(curYear))      // 待办/逾期红条：恒今年，不受翻年影响
 
-// ── 履职年历：分类横栏（开会默认/培训/接待）+ 12 月宫格 + 警示条 + 点月看当月该类事项 ──
+// ── 履职年历：按路由 section 分开会/接待两态 + 12 月宫格 + 警示条 + 点月看当月该类事项 ──
 const planTab = ref(props.section === 'reception' ? 'reception' : 'meeting')
 watch(() => props.section, (section) => {
   planTab.value = section === 'reception' ? 'reception' : 'meeting'
@@ -969,8 +952,7 @@ const recentReceptionRecords = computed(() => {
     (String(b.date || '') + ' ' + String(b.time || '')).localeCompare(String(a.date || '') + ' ' + String(a.time || ''))
   ).slice(0, 2)
 })
-const calLearns = ref([])        // 全部学习培训（internal+training 合并）
-const planTabLabel = computed(() => planTab.value === 'meeting' ? '会议' : (planTab.value === 'learning' ? '培训' : '接待'))
+const planTabLabel = computed(() => planTab.value === 'meeting' ? '会议' : '接待')
 // "2026-07-05" → "7月5日"（其他格式原样返回）
 function fmtPlanDate(s) {
   const p = String(s || '').split('-')
@@ -982,15 +964,9 @@ function inMonth(dateStr, m, year) {
   const p = String(dateStr || '').split('-')
   return p.length >= 2 && Number(p[0]) === (year || curYear) && Number(p[1]) === m
 }
-// 培训是否"过期未开展"（计划日期已过还没结束）；todayStr() 用页面下方现成的函数
-function isLearnOverdue(l) { return l.stage !== 'ended' && !!l.date && String(l.date) < todayStr() }
 // 已转物业或已派工单属于「已办理」中间态，不再占用首页待处理清单；填结果后才是已办结。
 function receptionNeedsAction(r) {
   return !r.done && !r.propertyTransferred && !r.ticketPushed
-}
-function goLearningDetail(item) {
-  navigateTo('/pages/learning-detail/learning-detail?id=' + item.id)
-  setTimeout(() => { if (!document.querySelector('.dh-title')) window.location.href = '/learning-detail?id=' + item.id }, 300)
 }
 // 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间和地点。
 // 卡上只读，编辑和导出都在 /reception-notice 里
@@ -1016,12 +992,10 @@ async function loadCalExtras() {
     api.receptionSystem().catch(() => null)
   ])
   calRecs.value = recs || []
-  calLearns.value = []
   recSystem.value = sys || null
 }
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
 // 开会=该月所在双月期例会状态（已开绿✓/本期橙/逾期红!/待排灰）
-// 培训=该月培训汇总（过期未开红!/N场待开橙/已完成绿✓/无灰—）
 // 接待=该月接待汇总（N件待办橙/已办结绿✓/无灰—）
 const monthCells = computed(() => {
   const cells = []
@@ -1036,15 +1010,6 @@ const monthCells = computed(() => {
       else if (st === 'overdue') label = m % 2 === 0 ? '逾期 !' : ' '
       // 往年没开过的期次写「未开」，不能写「待排」——那年已经过完，没什么可排的了
       else label = m % 2 === 0 ? (row.past ? '未开' : '待排') : ' '
-    } else if (planTab.value === 'learning') {
-      const ls = calLearns.value.filter(l => inMonth(l.date, m))
-      const late = ls.filter(isLearnOverdue).length
-      const todo = ls.filter(l => l.stage !== 'ended').length
-      if (late) { st = 'overdue'; label = '过期未开 !' }                              // 过期未开：红
-      else if (m > curMonth) { st = 'future'; label = ls.length ? ls.length + '场待开' : '' }  // 还没到：蓝灰
-      else if (todo) { st = 'warn'; label = todo + '场待开' }                          // 有待开：黄
-      else if (ls.length) { st = 'done'; label = '已完成 ✓' }                          // 过完·已完成：绿
-      else { st = 'done'; label = '' }                                                // 过完·无安排：绿（不显示—）
     } else {
       const rs = calRecs.value.filter(r => inMonth(r.date, m))
       const todo = rs.filter(receptionNeedsAction).length
@@ -1145,7 +1110,7 @@ const selPeriodFeedback = computed(() => {
       : label + '例会还没到计划时间'
   }
 })
-// 警示条（"到期没做，赶紧补"，随分类）：例会逾期红 / 培训过期红 / 接待待跟进橙
+// 警示条（"到期没做，赶紧补"，随分类）：例会逾期红 / 接待待跟进橙
 // 恒取今年：逾期是「你现在欠的账」，跟日历翻到哪一年无关
 const overduePeriodRows = computed(() => thisYearPlan.value.filter(r => r.status === 'overdue'))
 const calAlert = computed(() => {
@@ -1160,11 +1125,6 @@ const calAlert = computed(() => {
       go: isChair.value ? '去补开 ›' : '',
       onTap: () => onPlanRow(rows[0])
     }
-  }
-  if (planTab.value === 'learning') {
-    const n = calLearns.value.filter(isLearnOverdue).length
-    if (!n) return null
-    return { level: '', text: n + '场培训已过期未开展', sub: '请尽快安排培训或补充记录', go: '去查看 ›', onTap: goLearning }
   }
   const n = calRecs.value.filter(receptionNeedsAction).length
   if (!n) return null
@@ -1241,19 +1201,6 @@ const calList = computed(() => {
         onTap: () => onPlanRow(row)
       })
     }
-  } else if (planTab.value === 'learning') {
-    for (const l of calLearns.value) {
-      if (!inMonth(l.date, m)) continue
-      const late = isLearnOverdue(l)
-      items.push({
-        key: 'l' + l.id, icon: '📖', date: l.date,
-        title: l.title || '学习培训',
-        sub: fmtPlanDate(l.date) + (l.time ? ' ' + String(l.time).slice(0, 5) : '') + (late ? ' · 已过期' : ''),
-        status: l.stage === 'ended' ? 'done' : (late ? 'overdue' : (l.stage === 'ongoing' ? 'current' : 'upcoming')),
-        badge: l.stage === 'ended' ? '已完成' : (late ? '去补开' : (l.stage === 'ongoing' ? '进行中' : '待开')),
-        onTap: () => goLearningDetail(l)
-      })
-    }
   } else {
     for (const r of calRecs.value) {
       if (!inMonth(r.date, m)) continue
@@ -1274,7 +1221,7 @@ const currentMonthTaskList = computed(() => {
   const active = calList.value.filter(it => it.status !== 'done')
   return active.length ? active : calList.value
 })
-// 方案A：接待/培训 tab 改「概览」——顶部三数字 metric（数据来自进页拉取的 calRecs / calLearns，真实统计）
+// 方案A：接待 tab 改「概览」——顶部三数字 metric（数据来自进页拉取的 calRecs，真实统计）
 const planOverview = computed(() => {
   if (planTab.value === 'reception') {
     const recs = calRecs.value || []
@@ -1284,21 +1231,8 @@ const planOverview = computed(() => {
       { key: 'all', num: recs.length, label: '全部记录', tone: '' }
     ]
   }
-  if (planTab.value === 'learning') {
-    const ls = calLearns.value || []
-    // 口径改嵌套（0716 用户指出）：待开 = 所有未开展（含逾期），逾期是它的子集单独再报——
-    // 原三桶互斥，把最该动手的逾期从「待开」里挖走，默认视图显示「待开 0 · 暂无需要处理」，
-    // 可实际欠着 3 场，报喜不报忧。逾期与待开动作相同（去开展），只是更急。
-    return [
-      { key: 'done', num: ls.filter(l => l.stage === 'ended').length, label: '已开展', tone: '' },
-      { key: 'todo', num: ls.filter(l => l.stage !== 'ended').length, label: '待开', tone: 'warn' },
-      { key: 'overdue', num: ls.filter(isLearnOverdue).length, label: '其中逾期', tone: 'danger' }
-    ]
-  }
   return []
 })
-// 待办「查看」详情弹窗：接待/培训点「查看」当场弹出该条详情，底部按钮再进对应页面做跟进
-const todoDetail = ref(null)
 // ── 接待登记（0716 从已删的接待列表页搬来；字段/校验照搬，那套是验证过的）──
 // ⚠ 命名避开 createVisible/createForm —— 那俩是「发起会议」在用的，同名会串
 const recCreateOpen = ref(false)
@@ -1408,41 +1342,21 @@ function goReceptionDetail(r) {
   setTimeout(() => { if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + r.id }, 300)
 }
 
-function openTodoDetail(type, data) {
-  {
-    const late = isLearnOverdue(data)
-    const rows = [{ k: '时间', v: fmtPlanDate(data.date) + (data.time ? ' ' + String(data.time).slice(0, 5) : '') }]
-    if (data.location) rows.push({ k: '地点', v: data.location })
-    if (data.trainer) rows.push({ k: '讲师', v: data.trainer })
-    if (data.attendees) rows.push({ k: '参加', v: data.attendees })
-    todoDetail.value = {
-      title: data.title || '学习培训',
-      statusText: late ? '已过期未开' : (data.stage === 'ongoing' ? '进行中' : '待开'),
-      statusClass: late ? 'danger' : (data.stage === 'ongoing' ? 'current' : 'upcoming'),
-      rows,
-      goLabel: '查看完整详情',
-      onGo: () => { todoDetail.value = null; goLearningDetail(data) }
-    }
-  }
-}
-// 接待/培训 12 月宫格：点月下钻看当月清单（数据与 monthCells 同源的 calRecs/calLearns）
+// 接待 12 月宫格：点月下钻看当月清单（数据与 monthCells 同源的 calRecs）
 // 接待/培训的 12 月宫格默认收起（0716 用户定）。理由：宫格是为「有制度节奏」的事设计的——
 // 例会双月一期、每期该开一次，格子空着就是欠账，那 12 格是张达标图。而接待是来一个办一个、
 // 培训也没有「这月该开 N 场」的硬标准，格子里的数字既不是达标也不是欠账，只是流水，
 // 老人看了得不出任何结论。真正要回答的「还有几件没办、是哪几件」由上方三数字+清单负责。
 // 不删是因为日历是老板提的：留在底部，他问起来展开给他看，顺带讲清适配性问题。
 const ovGridFold = ref(true)
-// 接待/培训宫格的图例（0716 用户定加回）。开会 tab 不要，是因为那边每期都写着「已开✓/待开/逾期!/待排」，
-// 颜色不是唯一载体；这两个 tab 十二格里大半是空标签、只剩颜色，没图例就是死题（WCAG 1.4.1）。
-// 措辞与排序 0716 用户定，按紧急度：逾期 → 待办 → 已完成 → 未到。
+// 接待宫格的图例（0716 用户定加回）。开会 tab 不要，是因为那边每期都写着「已开✓/待开/逾期!/待排」，
+// 颜色不是唯一载体；接待十二格里大半是空标签、只剩颜色，没图例就是死题（WCAG 1.4.1）。
 // ⚠ 留个底：绿档同时覆盖「有记录且都办完」和「那月压根没记录」（monthCells 里 rs.length 为 0 时
 // 走同一档），所以「已完成」对空月份略微 overclaim。用户已知情并选了它——「无待办」是双重否定，
 // 老人读着费劲，而两种情况对他的实际含义都是「这儿没你的事」。真要较真得改 monthCells 让空月份走中性档。
 // 措辞统一三个字（0716 用户定）：「还没到」是 future 的字面意思（monthCells 里判定就是 m > curMonth，
 // 单纯指那个月还没来），也是本 App 一贯的大白话口气（首页写的是「本期例会还没开」）。
-const ovLegend = computed(() => planTab.value === 'reception'
-  ? [{ k: 'warn', t: '有待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '还没到' }]
-  : [{ k: 'overdue', t: '已逾期' }, { k: 'warn', t: '有待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '还没到' }])
+const ovLegend = computed(() => [{ k: 'warn', t: '有待办' }, { k: 'done', t: '已完成' }, { k: 'future', t: '还没到' }])
 const calMonthTapped = ref(false)
 function onOvMonthTap(m) { calMonth.value = m; calMonthTapped.value = true }
 // meetCardOpen 已删（0717）：会议卡现在只在开会 tab 出现、恒展开，没有收起态了，
@@ -1450,29 +1364,22 @@ function onOvMonthTap(m) { calMonth.value = m; calMonthTapped.value = true }
 const calMonthDrill = computed(() => {
   if (planTab.value === 'meeting' || !calMonthTapped.value) return null
   const m = calMonth.value
-  if (planTab.value === 'reception') {
-    const items = (calRecs.value || []).filter(r => inMonth(r.date, m))
-      .slice().sort((a, b) =>
-        a.done !== b.done ? (a.done ? 1 : -1) : String(a.date || '').localeCompare(String(b.date || '')))   // 与待办清单同规则：未处理在上
-      .map(r => ({ key: 'cr' + r.id, title: (r.visitorName || '来访') + ' 来访接待', sub: fmtPlanDate(r.date) + (r.done ? ' · 已办结' : ' · 待跟进'), onTap: () => goReceptionDetail(r) }))
-    return { title: m + '月接待（' + items.length + '）', items }
-  }
-  const items = (calLearns.value || []).filter(l => inMonth(l.date, m))
-    .slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
-    .map(l => ({ key: 'cl' + l.id, title: l.title || '学习培训', sub: fmtPlanDate(l.date) + ' · ' + (l.stage === 'ended' ? '已完成' : (isLearnOverdue(l) ? '过期未开' : '待开')), onTap: () => openTodoDetail('learning', l) }))
-  return { title: m + '月培训（' + items.length + '）', items }
+  const items = (calRecs.value || []).filter(r => inMonth(r.date, m))
+    .slice().sort((a, b) =>
+      a.done !== b.done ? (a.done ? 1 : -1) : String(a.date || '').localeCompare(String(b.date || '')))   // 与待办清单同规则：未处理在上
+    .map(r => ({ key: 'cr' + r.id, title: (r.visitorName || '来访') + ' 来访接待', sub: fmtPlanDate(r.date) + (r.done ? ' · 已办结' : ' · 待跟进'), onTap: () => goReceptionDetail(r) }))
+  return { title: m + '月接待（' + items.length + '）', items }
 })
 watch(planTab, () => { calMonthTapped.value = false })
 
 // 概览三数字兼作筛选器：点某个数字，下方列表切到该范围（接待 month/pending/year，培训 done/todo/overdue），默认待办
 const ovFilter = ref('pending')
-watch(planTab, (t) => { ovFilter.value = t === 'learning' ? 'todo' : 'pending' })
+watch(planTab, () => { ovFilter.value = 'pending' })
 const planListTitle = computed(() => {
   if (planTab.value === 'reception') return ovFilter.value === 'done' ? '已完成事项' : (ovFilter.value === 'all' ? '全部接待记录' : '待处理事项')
-  if (planTab.value === 'learning') return ovFilter.value === 'done' ? '已开展' : (ovFilter.value === 'overdue' ? '逾期未开' : '待开')
   return '待办事项'
 })
-// 接待/培训列表：受概览筛选（ovFilter），按日期升序；每项点「查看」弹该条详情
+// 接待列表：受概览筛选（ovFilter），按日期升序；每项点「查看」弹该条详情
 const allPendingList = computed(() => {
   if (planTab.value === 'reception') {
     const all = calRecs.value || []
@@ -1492,28 +1399,6 @@ const allPendingList = computed(() => {
       // 也挂着「去处理」——徽章在撒谎。已办结走绿色「已办结」，点进去看详情照旧。
       date: r.date, status: r.done ? 'done' : 'view', badge: r.done ? '已办结' : '去处理', onTap: () => goReceptionDetail(r)
     }))
-  }
-  if (planTab.value === 'learning') {
-    const all = calLearns.value || []
-    let ls
-    if (ovFilter.value === 'done') ls = all.filter(l => l.stage === 'ended')
-    else if (ovFilter.value === 'overdue') ls = all.filter(isLearnOverdue)
-    // 「待开」= 所有未开展，含逾期（0716 口径改嵌套，与概览卡同步——原先这里也排除逾期，
-    // 默认视图会把最该动手的 3 场藏起来说「暂无需要处理」）
-    else ls = all.filter(l => l.stage !== 'ended')
-    // 排序与接待同规矩：急的在上——逾期置顶，组内按日期从早到晚
-    return ls.slice().sort((a, b) => {
-      const ao = isLearnOverdue(a), bo = isLearnOverdue(b)
-      return ao !== bo ? (ao ? -1 : 1) : String(a.date || '').localeCompare(String(b.date || ''))
-    }).map(l => {
-      const late = isLearnOverdue(l)
-      return {
-        key: 'l' + l.id,
-        title: l.title || '学习培训',
-        sub: fmtPlanDate(l.date) + (l.time ? ' ' + String(l.time).slice(0, 5) : '') + (late ? ' · 已过期' : ''),
-        date: l.date, status: 'view', flag: late ? 'todo-overdue' : '', badge: '查看', onTap: () => openTodoDetail('learning', l)
-      }
-    })
   }
   return []
 })
@@ -1662,7 +1547,7 @@ function show() {
   setupRoleView()
   loadUnread()
   loadAll()
-  loadCalExtras() // 履职年历：接待+培训数据（月格角标与当月清单用）
+  loadCalExtras() // 履职年历：接待数据（月格角标与当月清单用）
   loadDraft()
   // 从「会议通知」页左箭头返回：以编辑模式打开该会议（一次性交接，用完即清）
   const _editId = getStorage('editMeetingId', null)
@@ -3453,8 +3338,6 @@ onActivated(show)
 .plan-stack.compact { gap: 12rpx; }
 /* 首页有会议卡时：待办事项 + 履职年历整体缩小一档，与已缩小的会议卡协调 */
 .plan-stack.has-meeting { gap: 18rpx; }
-.plan-stack.has-meeting .plan-switch-card { padding: 6rpx; }
-.plan-stack.has-meeting .plan-tab { font-size: 28rpx; padding: 15rpx 0; }
 .plan-stack.has-meeting .yc-list.plan-todo-card { padding: 16rpx 24rpx 18rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-list-head { font-size: 32rpx; padding-bottom: 4rpx; }
 .plan-stack.has-meeting .plan-todo-card .yc-item { gap: 12rpx; padding: 8rpx 4rpx; }
@@ -3498,15 +3381,9 @@ onActivated(show)
 /* 会议卡挪进 plan-stack 后：横向靠容器 24rpx 边距、纵向靠容器 gap，自身边距清零防双重缩进 */
 .plan-stack .meet-card { margin: 0; }
 /* （折叠头已删 0716：日历恒展开） */
-/* 履职年历：分类横栏 + 12月宫格 + 警示条 + 当月清单。
+/* 履职年历：12月宫格 + 警示条 + 当月清单。
    前缀 yc-（year calendar）：cal- 已被下方日期选择弹窗的小日历占用，同名会被其 7 列网格覆盖 */
-.plan-tabs { display: flex; gap: 8rpx; margin: 0; background: #F2F6F7; border-radius: 16rpx; padding: 5rpx; }
-/* 未选中 500 / 选中 800（0716）：原先未选中也是 700，跟选中的 800 只差一档，等于没差。
-   纵向 padding 8→14rpx（0716 用户定：tab 栏太矮，整体加高约 15%）。 */
-.plan-tab { flex: 1; text-align: center; padding: 18rpx 0; font-size: 30rpx; line-height: 1.3; font-weight: 500; color: #52646B; border-radius: 12rpx; cursor: pointer; }
-.plan-tab.active { background: #D97706; color: #fff; font-weight: 800; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
-.plan-tab:active { opacity: 0.75; }
-/* 方案A：接待/培训概览三数字（本月/待跟进/年度 · 已开展/待开/过期未开） */
+/* 方案A：接待概览三数字（本月/待跟进/年度） */
 .ov-metrics { display: flex; gap: 18rpx; padding: 26rpx 22rpx 28rpx; }
 /* 独立成行版：移出日历卡。order 2→1（0716）：它是下方待办清单的筛选器（ovFilter），
    必须在清单之前。原先只顾着「排在日历上方」，没注意同时也掉到了待办清单的下方。
@@ -3804,26 +3681,6 @@ onActivated(show)
    描边隐形时按钮只剩一行橙字，尤其现在列表里混着「已办结」灰绿标签，可点的必须一眼是按钮 */
 .plan-todo-card .yc-item.todo-plain .plan-badge.view { background: #fff; color: #C2410C; border: 2rpx solid var(--c-primary); font-weight: 700; box-shadow: none; }
 .plan-todo-card .yc-item.todo-plain .plan-badge.view::after { content: '›'; margin-left: 6rpx; }
-/* 培训过期项：列表里加红左条，一眼看出「过期未开」 */
-.plan-todo-card .yc-item.todo-plain.todo-overdue { border-left: 6rpx solid #D83A2E; padding-left: 16rpx; }
-/* 待办「查看」详情弹窗 */
-.td-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 40rpx; box-sizing: border-box; }
-.td-pop { width: 100%; max-width: 620rpx; background: var(--c-bg-card, #fff); border-radius: 28rpx; padding: 34rpx 32rpx 32rpx; box-sizing: border-box; box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.25); }
-.td-pop-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
-.td-pop-title { font-size: 40rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.3; }
-.td-pop-close { font-size: 48rpx; color: var(--c-text-weak); line-height: 1; padding: 0 4rpx; }
-.td-pop-status { display: inline-block; margin-top: 14rpx; padding: 8rpx 20rpx; border-radius: 999rpx; font-size: 27rpx; font-weight: 700; }
-.td-pop-status.warn { background: #FFF7ED; color: #B45309; }
-.td-pop-status.danger { background: #FFF4F2; color: #B02A1E; }
-.td-pop-status.done { background: var(--c-success-soft); color: var(--c-success); }
-.td-pop-status.current { background: #EAF6FF; color: #0284C7; }
-.td-pop-status.upcoming { background: #EEF0F3; color: #52646B; }
-.td-pop-body { margin-top: 24rpx; display: flex; flex-direction: column; gap: 18rpx; }
-.td-row { display: flex; gap: 18rpx; font-size: 30rpx; line-height: 1.5; }
-.td-row-k { flex-shrink: 0; width: 128rpx; color: var(--c-text-weak); }
-.td-row-v { flex: 1; color: var(--c-text-strong); word-break: break-all; }
-.td-pop-btn { width: 100%; margin-top: 32rpx; height: 96rpx; border: none; border-radius: 22rpx; background: var(--c-primary); color: #fff; font-size: 36rpx; font-weight: 700; }
-.td-pop-btn:active { background: var(--c-primary-strong); }
 .yc-item:active { opacity: 0.6; }
 .yc-item-ico { flex-shrink: 0; font-size: 32rpx; }
 .plan-todo-card .yc-item-ico { font-size: 38rpx; }
@@ -4020,7 +3877,7 @@ onActivated(show)
 .quick-fill-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
 .quick-fill-bar .ai-fill-btn { margin: 0 auto 10rpx; }
 .quick-fill-bar .ai-fill-hint { margin: 0; }
-/* 顶部分段切换：手动填写 / 拍照上传（复用首页 plan-tabs 视觉：灰底圆角胶囊 + active 橙底白字） */
+/* 顶部分段切换：手动填写 / 拍照上传（灰底圆角胶囊 + active 橙底白字） */
 .create-tabs { display: flex; gap: 8rpx; background: #F2F6F7; border-radius: 16rpx; padding: 4rpx; margin-bottom: 22rpx; }
 .create-tab { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14rpx 0; font-size: 36rpx; line-height: 1.2; font-weight: 700; color: #40545C; background:#E7EEF0; border:1rpx solid #D5E0E3; border-radius: 12rpx; cursor: pointer; }
 .create-tab.active { background: #D97706; border-color:#D97706; color: #fff; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
