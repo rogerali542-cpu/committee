@@ -3189,7 +3189,8 @@ async function returnToRecordingPage() {
    把主操作让给红色「开始录音」，避免两颗实心大按钮抢焦点。 */
 .meeting-console .meeting-stage-next { flex-shrink:0; min-width:auto; margin:0; padding:14rpx 24rpx; border:2rpx solid #D8C3A0; border-radius:12rpx; background:#FFFBF3; color:#8F4A06; font-size:27rpx; font-weight:700; box-shadow:none; }
 .meeting-console .meeting-stage-next:active { background:#F6E8D3; }
-.live-page:not(.lp-signin) .lp-flow { margin-top:18rpx; padding:12rpx 4rpx 6rpx; }
+/* 上边距拉开与顶栏的距离；底部留够绝对定位的步骤文字空间，避免探进「会议进行中」卡片——保持呼吸感 */
+.live-page:not(.lp-signin) .lp-flow { margin-top:44rpx; padding:14rpx 4rpx 44rpx; }
 .live-page:not(.lp-signin) .lp-flow-dot { width:42rpx; height:42rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-line { margin-top:20rpx; }
