@@ -178,8 +178,8 @@
             <div class="meeting-console-sub">{{ detail.title || '本次业委会会议' }}</div>
             <div class="meeting-console-meta">{{ detail.meetingDate }} {{ detail.meetingTime }}<template v-if="detail.location"> · {{ detail.location }}</template></div>
           </div>
-          <div v-if="isChair" class="meeting-console-roster" :class="{ ready: signinQuorum.ready }">
-            已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}
+          <div v-if="isChair" class="meeting-console-roster" :class="{ ready: signinQuorum.ready }" @click="rosterPopOpen = true">
+            已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }} ›
           </div>
         </div>
         <div class="meeting-console-topics">
@@ -233,10 +233,13 @@
         <!-- ① 会议录音 -->
         <div class="supp-head recording-compact-head">
           <span class="supp-title">会议录音</span>
-          <button v-if="recordings.length" class="recording-summary-toggle" @click="recListOpen = !recListOpen">已录{{ recordings.length }}段 · {{ recListOpen ? '收起' : '展开' }}</button>
           <button v-if="!isPaused" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
             {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
           </button>
+        </div>
+        <!-- 已录段落 toggle：独立成行、左起头、字号加大；默认展开（recListOpen 初值 true） -->
+        <div v-if="recordings.length" class="rec-seg-toggle-row">
+          <button class="recording-summary-toggle" @click="recListOpen = !recListOpen">已录 {{ recordings.length }} 段 · {{ recListOpen ? '收起' : '展开' }}</button>
         </div>
         <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
         <div v-if="recordings.length && recListOpen" class="rec-list rec-list-before-action">
@@ -309,6 +312,24 @@
           <span class="qrl-meta">{{ fmtTimeRange(item) }}</span>
         </div>
         <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
+      </div>
+    </div>
+
+    <!-- 签到名单弹窗：点「已签到 N/M」胶囊弹出，查看各人签到状态 -->
+    <div v-if="rosterPopOpen" class="roster-pop-mask" @click.self="rosterPopOpen = false">
+      <div class="roster-pop">
+        <div class="roster-pop-head">
+          <span class="roster-pop-title">签到情况 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}</span>
+          <span class="roster-pop-close" @click="rosterPopOpen = false">×</span>
+        </div>
+        <div class="roster-pop-body">
+          <div class="roster-pop-row" v-for="a in signinStats.list" :key="a.userRoleId">
+            <span class="rp-name">{{ a.name }}<span v-if="a.role" class="rp-role"> · {{ a.role }}</span></span>
+            <span class="rp-state" :class="a.signedIn ? (a.attendanceMode === 'remote' ? 'remote' : 'on') : (a.declined ? 'off' : 'wait')">
+              {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '未签到') }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1040,7 +1061,8 @@ watch(() => meetingRecordingSession.openRequest, () => {
   syncRecordingPageVisibility()
   persistQuickState()
 })
-const recListOpen = ref(false)   // 录音卡内「已录N段」列表是否展开
+const recListOpen = ref(true)    // 录音卡内「已录N段」列表默认展开
+const rosterPopOpen = ref(false) // 点「已签到 N/M」胶囊弹出的签到名单
 const matListOpen = ref(false)   // 会中优先展示录音和主流程，材料按需展开
 const siMeetOpen = ref(false)    // 签到页：会议卡是否展开(看议题)
 const siRosterOpen = ref(false)  // 签到页：参会名单是否展开
@@ -2761,11 +2783,11 @@ function openEndReview() {
 async function confirmEndMeeting() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可结束现场会议', icon: 'none' }); return }
   const confirmed = await showModal({
-    title: '结束现场会议',
+    title: '',
     content: pendingTopicCount.value
-      ? '结束后将停止现场录音，并进入签到确认及会后处理。还有 ' + pendingTopicCount.value + ' 项议题可在下一步继续处理。'
-      : '结束后将停止现场录音，并进入签到确认及会后处理。',
-    confirmText: '结束现场会议',
+      ? '将停止录音、进入会后处理。还有 ' + pendingTopicCount.value + ' 项议题可继续。'
+      : '将停止录音，进入会后处理。',
+    confirmText: '结束会议',
     cancelText: '继续开会'
   })
   if (!confirmed.confirm) return
@@ -3247,7 +3269,25 @@ async function returnToRecordingPage() {
 .supp-card { background:#FFF; border:2rpx solid #E8EBEF; border-radius:18rpx; padding:18rpx 20rpx; margin-top:16rpx; box-shadow:0 5rpx 16rpx rgba(31,35,41,.04); } /* 会中辅助区压缩为紧凑工具卡 */
 .supp-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16rpx; margin-bottom:12rpx; }
 .recording-compact-head { align-items:center; margin-bottom:8rpx; }
-.recording-summary-toggle { margin-left:auto; border:0; background:transparent; color:#7A828C; font-size:23rpx; font-weight:650; padding:8rpx 4rpx; white-space:nowrap; }
+/* 已录段落 toggle：独立成行、左起头、字号加大一号 */
+.rec-seg-toggle-row { margin-top:6rpx; margin-bottom:2rpx; }
+.recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 0; white-space:nowrap; }
+
+/* 签到名单弹窗 */
+.roster-pop-mask { position:fixed; inset:0; z-index:160; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; padding:48rpx; }
+.roster-pop { width:100%; max-width:560rpx; max-height:76vh; overflow:auto; background:#fff; border-radius:22rpx; padding:26rpx 26rpx 30rpx; box-shadow:0 20rpx 56rpx rgba(0,0,0,0.25); }
+.roster-pop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; }
+.roster-pop-title { font-size:32rpx; font-weight:800; color:#1F2329; }
+.roster-pop-close { font-size:46rpx; color:#8A8F98; line-height:1; padding:0 6rpx; }
+.roster-pop-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
+.roster-pop-row:first-child { border-top:0; }
+.rp-name { font-size:30rpx; color:#1F2329; font-weight:600; }
+.rp-role { color:#9AA0A6; font-weight:400; font-size:26rpx; }
+.rp-state { flex-shrink:0; font-size:27rpx; font-weight:700; }
+.rp-state.on { color:#2E8B57; }
+.rp-state.remote { color:#2980B9; }
+.rp-state.wait { color:#B0752F; }
+.rp-state.off { color:#B0392E; }
 .recording-head-action { flex-shrink:0; width:auto; min-width:166rpx; height:56rpx; padding:0 24rpx; font-size:25rpx; }
 .supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
 .supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
@@ -3257,7 +3297,7 @@ async function returnToRecordingPage() {
 .supp-actions.single .supp-btn { width:56%; min-width:250rpx; justify-self:center; } /* 会中操作统一胶囊宽度 */
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
-.supp-actions.single.paused .supp-btn { width:56%; min-width:250rpx; justify-self:center; }
+.supp-actions.single.paused .supp-btn { width:50%; min-width:210rpx; height:74rpx; font-size:27rpx; justify-self:center; }  /* 暂停态按钮小一点 */
 .rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
