@@ -1,8 +1,11 @@
 <template>
   <div class="page" style="overflow-y:auto">
 
-    <!-- backTo 显式回首页培训 tab（0717 用户定：回退不再全切回开会 tab） -->
-    <PageNav title="学习培训" back-to="/main?tab=learning" style="margin: 0 -3.2vw 0" />
+    <!-- 学习培训现为底部一级 Tab（0721 用户定：加回第4个 tab）：作为根页面不挂返回箭头，
+         用空的 #left 占位保持标题居中，视觉与其它 tab 页的自定义头部一致。 -->
+    <PageNav title="学习培训" style="margin: 0 -3.2vw 0">
+      <template #left><div class="nav-left-spacer"></div></template>
+    </PageNav>
 
     <!-- 类型切换: 内部学习 / 外部培训 -->
     <div class="type-tabs">
@@ -357,6 +360,9 @@ onUnmounted(() => {
 <style scoped>
 .page { min-height: 100vh; background: #f4f5f7; padding: 0 24rpx 160rpx; box-sizing: border-box; }
 
+/* tab 根页面：左侧占位与 PageNav 右侧 96rpx 占位对齐，标题保持居中 */
+.nav-left-spacer { width: 96rpx; }
+
 /* 类型标签 */
 .type-tabs { display: flex; gap: 16rpx; margin: 20rpx 0; }
 .type-tab { flex: 1; padding: 20rpx; text-align: center; background: #fff; border-radius: 18rpx; font-size: 30rpx; color: #666; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); font-weight: 500; }
@@ -421,15 +427,18 @@ onUnmounted(() => {
 .lc-btn.start { background: var(--c-primary-dark); color: #fff; }
 .lc-btn.finish { background: #5DADE2; color: #fff; }
 
-.undo-toast { position: fixed; left: 24rpx; right: 24rpx; bottom: 40rpx; z-index: 40; background: rgba(45,45,45,0.94); color: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.2); }
+/* bottom 抬到底部 TabBar(100rpx) 之上，否则撤销条会被一级 tab 栏挡住 */
+.undo-toast { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(120rpx + env(safe-area-inset-bottom)); z-index: 40; background: rgba(45,45,45,0.94); color: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.2); }
 .undo-btn { color: #F4D03F; font-weight: 700; padding-left: 24rpx; }
 
 /* FAB */
-.fab { position: fixed; bottom: 48rpx; right: 36rpx; width: 104rpx; height: 104rpx; background: var(--c-primary-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.45); z-index: 30; }
+/* bottom 抬到底部 TabBar(100rpx) 之上，否则「+」新建按钮会压在一级 tab 栏上 */
+.fab { position: fixed; bottom: calc(140rpx + env(safe-area-inset-bottom)); right: 36rpx; width: 104rpx; height: 104rpx; background: var(--c-primary-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.45); z-index: 30; }
 .fab-icon { font-size: 56rpx; color: #fff; font-weight: 300; }
 
 /* 创建弹窗 */
-.modal-mask { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
+/* z-index 150 压过底部 TabBar(100)，否则新建弹窗底部会被一级 tab 栏骑住、按钮点不到 */
+.modal-mask { position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
 .form-sheet { width: 100%; max-height: 88vh; overflow: auto; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
 .sheet-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }

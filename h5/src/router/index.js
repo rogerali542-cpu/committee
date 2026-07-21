@@ -31,8 +31,8 @@ const routes = [
   // 接待日安排：编辑接待时间/地点/接待人 + 导出公告 PDF 去打印（0717）
   { path: '/reception-notice', component: () => import('@/pages/ReceptionNotice.vue'), meta: { title: '接待日安排' } },
   { path: '/reception', redirect: '/reception-center' },
-  { path: '/learning', redirect: '/main' },
-  { path: '/learning-detail', redirect: '/main' },
+  { path: '/learning', component: () => import('@/pages/Learning.vue'), meta: { title: '学习培训', tab: true } },
+  { path: '/learning-detail', component: () => import('@/pages/LearningDetail.vue'), meta: { title: '学习培训详情' } },
   { path: '/notifications', component: () => import('@/pages/Notifications.vue'), meta: { title: '通知' } },
   { path: '/todo', component: () => import('@/pages/Todo.vue'), meta: { title: '待办' } },
   { path: '/library', component: () => import('@/pages/Library.vue'), meta: { title: '资料库' } },

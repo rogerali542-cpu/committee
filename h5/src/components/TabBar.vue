@@ -24,6 +24,7 @@ const route = useRoute()
 const tabs = [
   { path: '/main', icon: '📋', label: '业委会会议' },
   { path: '/reception-center', icon: '🤝', label: '接待中心' },
+  { path: '/learning', icon: '📚', label: '学习培训' },
   { path: '/profile', icon: '👤', label: '个人中心' }
 ]
 const active = computed(() => route.path)
