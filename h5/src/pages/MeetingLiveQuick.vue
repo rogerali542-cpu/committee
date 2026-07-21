@@ -1253,6 +1253,11 @@ onMounted(() => {
 
 watch(() => route.query.meetingId, (val, oldVal) => {
   if (!_booted || String(val || '') === String(oldVal || '')) return
+  // KeepAlive 缓存期间用户去了别的页面：query 里 meetingId 消失≠本页要重初始化。
+  // 此时乱跑 initFromRoute 会把 meetingId 清成 undefined → 切身份时"丢弃录音"回调
+  // 因 meetingId 失配而不执行，后台 MediaRecorder 和 beforeunload 守卫一直活着，
+  // 反过来拦死首页卡片/开始会议的硬跳转（点了没反应的根因）。
+  if (route.path !== '/meeting-live-quick' || !val) return
   initFromRoute()
 })
 
@@ -1260,6 +1265,8 @@ watch(() => route.query.meetingId, (val, oldVal) => {
 onActivated(() => {
   pageActive.value = true
   syncRecordingPageVisibility()
+  // 守卫只在本页处于前台时生效（见 onDeactivated 的移除说明）
+  if (typeof window !== 'undefined') window.addEventListener('beforeunload', _beforeUnloadGuard)
   if (!_booted) return
 })
 
@@ -1288,13 +1295,21 @@ onDeactivated(() => {
   pageActive.value = false
   persistQuickState()
   syncRecordingPageVisibility()
+  // 离开本页即移除 beforeunload 守卫（onActivated 回来时再挂）。
+  // 本页被 KeepAlive 缓存、onUnmounted 不触发——守卫若一直留在 window 上，
+  // 录音/暂停期间会拦截全应用的硬跳转（首页「进入会议」、通知页「开始会议」都点不动）。
+  // 离开本页后录音切片仍持续落盘(IndexedDB)，真被硬跳杀掉也能恢复，无需靠守卫硬拦。
+  if (typeof window !== 'undefined') window.removeEventListener('beforeunload', _beforeUnloadGuard)
 })
 
 // ═══════════════════════════════════════════════
 // 方法（自 Page 方法 1:1 迁移）
 // ═══════════════════════════════════════════════
 function quickStateKey() {
-  return QUICK_STATE_PREFIX + meetingId.value
+  // 按「会议 + 角色」隔离：同设备切换委员/主任测试时，各角色的页面状态互不串味
+  // （此前共用一个键，主任进来会恢复出委员留下的步骤/阶段状态）
+  const role = getStorage('activeRole', null) || {}
+  return QUICK_STATE_PREFIX + meetingId.value + '_r' + (role.id || 0)
 }
 
 function persistQuickState(extra) {

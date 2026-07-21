@@ -185,7 +185,9 @@ async function switchRole(item) {
   }
   auth.switchRole(newRole)
   toast({ title: '已切换为 ' + item.realName, icon: 'success' })
-  setTimeout(() => refresh(), 400)
+  // 切完整页重载：KeepAlive 缓存的会议页（连同上一身份的 MediaRecorder、beforeunload 守卫、
+  // 内存状态）全部销毁，新身份从干净状态启动——否则旧身份的残留会拦跳转/串状态（真机踩过）
+  setTimeout(() => window.location.reload(), 600)
 }
 
 function goAdmin() { navigateTo('/pages/admin/admin') }
