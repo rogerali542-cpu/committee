@@ -228,6 +228,9 @@
         </div>
       </div>
 
+      <!-- 录音中断预警：放在录音卡上方（不占卡内空间）；切出瞬间 JS 冻结无法当场提示，只能前置 -->
+      <div v-if="recActive" class="rec-bg-warn">⚠ 录音中请不要切出微信或锁屏，否则录音会中断</div>
+
       <!-- 会中辅助区：拆「会议录音」+「会议材料」两个子标题区 -->
       <div class="supp-card" v-if="meetingPhase === 'recording'">
         <!-- ① 会议录音 -->
@@ -237,15 +240,15 @@
             {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
           </button>
         </div>
-        <!-- 已录段落 toggle：独立成行、左起头、字号加大；默认展开（recListOpen 初值 true） -->
+        <!-- 已录段落行：左侧「已录N段」文字，右侧展开/收起按钮 -->
         <div v-if="recordings.length" class="rec-seg-toggle-row">
-          <button class="recording-summary-toggle" @click="recListOpen = !recListOpen">已录 {{ recordings.length }} 段 · {{ recListOpen ? '收起' : '展开' }}</button>
+          <span class="rec-seg-label">已录 {{ recordings.length }} 段</span>
+          <button class="recording-summary-toggle" @click="recListOpen = !recListOpen">{{ recListOpen ? '收起 ▲' : '展开 ▾' }}</button>
         </div>
         <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
         <div v-if="recordings.length && recListOpen" class="rec-list rec-list-before-action">
           <div class="rec-list-body">
             <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordings" :key="item.id" @click="openRecordingDetail(item, idx)">
-              <span class="qrl-idx">{{ idx + 1 }}</span>
               <span class="qrl-name rec-summary-name">第 {{ idx + 1 }} 段</span>
               <span class="rec-summary-duration">{{ fmtDur(item.durationSec) }}</span>
               <span class="qrl-play" :class="{ on: playingId === item.id }" @click.stop="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
@@ -257,8 +260,6 @@
           <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
           <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
         </div>
-        <!-- 中断预警前置：切出瞬间 JS 已被冻结、无法当场提示，只能事先讲清楚 -->
-        <div v-if="recActive" class="rec-bg-warn">⚠ 录音中请不要切出微信或锁屏，否则录音会中断</div>
         <!-- 录音上传/后台转写状态：上传后自动转写 -->
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
@@ -3209,7 +3210,7 @@ async function returnToRecordingPage() {
 .meeting-console-topics { margin-top:22rpx; padding-top:22rpx; border-top:2rpx solid #EEF0F2; }
 .mct-head { display:flex; align-items:baseline; gap:12rpx; flex-wrap:wrap; margin-bottom:6rpx; }
 .mct-title { font-size:30rpx; font-weight:750; color:#252A30; }
-.mct-count { font-size:23rpx; color:#8A8F98; }
+.mct-count { font-size:23rpx; color:#8A8F98; margin-left:auto; }  /* 共N项靠右 */
 .mct-list { display:flex; flex-direction:column; }
 .mct-item { display:flex; align-items:center; gap:14rpx; padding:16rpx 0; border-top:2rpx solid #F2F4F6; }
 .mct-item:first-child { border-top:0; }
@@ -3227,7 +3228,7 @@ async function returnToRecordingPage() {
 /* 上边距拉开与顶栏的距离；底部留够绝对定位的步骤文字空间，避免探进「会议进行中」卡片——保持呼吸感 */
 .live-page:not(.lp-signin) .lp-flow { margin-top:44rpx; padding:14rpx 4rpx 44rpx; }
 /* 有顶部录音条时，流程链上移贴近录音条（录音条自带 18rpx 下边距，这里不再叠 44rpx） */
-.live-page:not(.lp-signin) .lp-flow.lp-flow--tight { margin-top:4rpx; }
+.live-page:not(.lp-signin) .lp-flow.lp-flow--tight { margin-top:-6rpx; }
 .live-page:not(.lp-signin) .lp-flow-dot { width:42rpx; height:42rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-line { margin-top:20rpx; }
@@ -3272,7 +3273,8 @@ async function returnToRecordingPage() {
 .supp-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16rpx; margin-bottom:12rpx; }
 .recording-compact-head { align-items:center; margin-bottom:8rpx; }
 /* 已录段落 toggle：独立成行、左起头、字号加大一号 */
-.rec-seg-toggle-row { margin-top:6rpx; margin-bottom:2rpx; }
+.rec-seg-toggle-row { display:flex; align-items:center; justify-content:space-between; margin-top:6rpx; margin-bottom:2rpx; }
+.rec-seg-label { font-size:26rpx; color:#6B7480; font-weight:650; }
 .recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 0; white-space:nowrap; }
 
 /* 签到名单弹窗 */
@@ -3299,7 +3301,7 @@ async function returnToRecordingPage() {
 .supp-actions.single .supp-btn { width:56%; min-width:250rpx; justify-self:center; } /* 会中操作统一胶囊宽度 */
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
-.supp-actions.single.paused .supp-btn { width:42%; min-width:180rpx; height:66rpx; font-size:26rpx; justify-self:center; }  /* 暂停态按钮再缩一档 */
+.supp-actions.single.paused .supp-btn { width:38%; min-width:156rpx; height:60rpx; font-size:25rpx; justify-self:center; }  /* 暂停态按钮再缩一档 */
 .rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
@@ -3605,7 +3607,7 @@ async function returnToRecordingPage() {
 .rec-action { margin-bottom:24rpx; display:flex; flex-direction:column; align-items:center; gap:14rpx; }
 .rec-status { display:flex; align-items:center; justify-content:center; gap:12rpx; width:100%; font-size:28rpx; color:#E8890C; font-weight:600; padding:6rpx 0; }
 /* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
-.rec-bg-warn { width:fit-content; max-width:100%; align-self:center; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 12rpx; box-sizing:border-box; margin:2rpx auto 0; }
+.rec-bg-warn { width:fit-content; max-width:100%; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 14rpx; box-sizing:border-box; margin:14rpx auto 0; }  /* 移到录音卡上方，居中一条 */
 .rec-status.err { color:#C0392B; }
 .rec-main { width:52% !important; max-width:360rpx; margin:0 auto !important; font-size:26rpx !important; font-weight:700; padding:16rpx 0 !important; box-shadow:0 6rpx 16rpx rgba(232,137,12,0.22); } /* 缩小约40% */
 .rec-sub { background:none; border:0; color:#8A8F98; font-size:28rpx; padding:6rpx 20rpx; }
