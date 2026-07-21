@@ -1427,7 +1427,7 @@ async function loadDetail() {
     voteTotal.value = total
     voteNeed.value = Math.floor(total / 2) + 1
     // 已签到但尚未进入本次前端会话时仍停在入口页，由用户点击进入；
-    // 主任的这次点击同时用于申请麦克风权限并自动开始录音。
+    // 录音不自动开始（0721 方案A），麦克风权限在主任点「开始录音」时才申请。
 
     if (d.stage === 'ongoing') {
       const restored = restoreQuickState(isSigned)
