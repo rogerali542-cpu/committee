@@ -93,7 +93,7 @@
 
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
     <!-- 阶段条：签到 → 议题表决 → 会议材料；录音作为会议记录辅助工具常驻 -->
-    <div class="lp-flow">
+    <div class="lp-flow" :class="{ 'lp-flow--tight': currentStep === 2 && (recActive || isPaused) }">
       <div class="lp-flow-step" :class="flowStep > 1 ? 'done' : (flowStep === 1 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 1">✓</template><template v-else>1</template></span>
         <span class="lp-flow-label">会议签到</span>
@@ -3226,6 +3226,8 @@ async function returnToRecordingPage() {
 .meeting-console .meeting-stage-next:active { background:#F6E8D3; }
 /* 上边距拉开与顶栏的距离；底部留够绝对定位的步骤文字空间，避免探进「会议进行中」卡片——保持呼吸感 */
 .live-page:not(.lp-signin) .lp-flow { margin-top:44rpx; padding:14rpx 4rpx 44rpx; }
+/* 有顶部录音条时，流程链上移贴近录音条（录音条自带 18rpx 下边距，这里不再叠 44rpx） */
+.live-page:not(.lp-signin) .lp-flow.lp-flow--tight { margin-top:4rpx; }
 .live-page:not(.lp-signin) .lp-flow-dot { width:42rpx; height:42rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-line { margin-top:20rpx; }
@@ -3297,7 +3299,7 @@ async function returnToRecordingPage() {
 .supp-actions.single .supp-btn { width:56%; min-width:250rpx; justify-self:center; } /* 会中操作统一胶囊宽度 */
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
-.supp-actions.single.paused .supp-btn { width:50%; min-width:210rpx; height:74rpx; font-size:27rpx; justify-self:center; }  /* 暂停态按钮小一点 */
+.supp-actions.single.paused .supp-btn { width:42%; min-width:180rpx; height:66rpx; font-size:26rpx; justify-self:center; }  /* 暂停态按钮再缩一档 */
 .rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
