@@ -19,6 +19,7 @@ import com.ywh.service.quick.AudioStorageService;
 import com.ywh.service.quick.AudioTranscodeService;
 import com.ywh.service.quick.MinutesGenService;
 import com.ywh.service.quick.QuickExtractionService;
+import com.ywh.service.quick.RecordingLiveService;
 import com.ywh.service.quick.TopicSummaryTaskService;
 import com.ywh.service.quick.TranscriptCorrectionService;
 import com.ywh.util.Result;
@@ -62,6 +63,7 @@ public class QuickMeetingController {
     private final CommitteeService committeeService;
     private final AudioTranscodeService audioTranscodeService;
     private final MeetingTodoTicketService meetingTodoTicketService;
+    private final RecordingLiveService recordingLiveService;
 
     @PostMapping("/recording/upload")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
@@ -116,6 +118,33 @@ public class QuickMeetingController {
     @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<List<RecordingVO>> recordings(@PathVariable Long id) {
         return Result.ok(committeeService.getRecordings(id));
+    }
+
+    // ── 「谁在录音」在册表：开录前查一下，避免两人同时录一段导致转写重复 ──
+
+    /** 录音心跳（录音端每 10s 打一次；开始录音时立即打）。 */
+    @PostMapping("/recording-live/beat")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<Void> recordingBeat(@PathVariable Long id) {
+        var ur = com.ywh.util.SecurityUtils.getCurrentUserRole();
+        if (ur != null) recordingLiveService.beat(id, ur.getId(), ur.getRealName());
+        return Result.ok(null);
+    }
+
+    /** 主动下线（暂停/停止/上传后）。丢心跳时由 25s TTL 兜底。 */
+    @DeleteMapping("/recording-live/beat")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<Void> recordingBeatStop(@PathVariable Long id) {
+        var ur = com.ywh.util.SecurityUtils.getCurrentUserRole();
+        if (ur != null) recordingLiveService.stop(id, ur.getId());
+        return Result.ok(null);
+    }
+
+    /** 当前正在录音的人（roleId + name），前端排除自己后用于提示。 */
+    @GetMapping("/recording-live")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<List<Map<String, Object>>> recordingLive(@PathVariable Long id) {
+        return Result.ok(recordingLiveService.active(id));
     }
 
     /** 删除一条录音（转写页删废录/多余段）。仅主任/副主任可删。 */

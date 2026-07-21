@@ -908,6 +908,36 @@ const idleAfterUpload = computed(() => !rec.recording.value && !rec.hasRecording
 // 已停止但尚未上传的录音（上传失败/录音被中断后落到此态）：必须露出「上传录音」入口——
 // 否则界面只剩「开始录音」，点了弹"有一段录音还没上传"却无处可传（用户实测踩过）
 const stoppedUnuploaded = computed(() => !rec.recording.value && rec.hasRecording.value)
+
+// ── 「谁在录音」心跳：录音进行中每 10s 报一次到服务端，供他人开录前提示 ──
+let _recBeatTimer = null
+watch(recActive, (on) => {
+  if (on) {
+    const send = () => { try { api.committeeRecordingBeat(meetingId.value).catch(() => {}) } catch (e) {} }
+    send()
+    if (!_recBeatTimer) _recBeatTimer = setInterval(send, 10000)
+  } else {
+    if (_recBeatTimer) { clearInterval(_recBeatTimer); _recBeatTimer = null }
+    try { api.committeeRecordingBeatStop(meetingId.value).catch(() => {}) } catch (e) {}
+  }
+})
+
+// 开录前查在册表：别人正在录 → 提示重复录音的后果，由用户拍板（老后端无此接口时不拦）
+async function confirmOthersRecording() {
+  try {
+    const list = await api.committeeRecordingLive(meetingId.value)
+    const others = (list || []).filter(x => String(x.roleId) !== String(myRoleId.value || ''))
+    if (!others.length) return true
+    const names = others.map(o => o.name).filter(Boolean).join('、') || '有人'
+    const r = await showModal({
+      title: names + ' 正在录音',
+      content: '一场会议一人录音即可。两人同时录到同一段发言，转写合并时会出现重复内容。确定还要再录一路吗？',
+      confirmText: '仍要录音',
+      cancelText: '先不录'
+    })
+    return !!r.confirm
+  } catch (e) { return true }
+}
 // 本轮识别已覆盖的录音 id（识别成功/恢复历史转写时回填）——用它判断是否还有新录音没识别，
 // 不依赖 recordings.asrStatus（桩模式不落该字段）
 const recognizedIds = ref([])
@@ -1290,6 +1320,7 @@ onUnmounted(() => {
   clearMinutesPoll()
   stopUploadEstimatedProgress(false)
   if (_attendanceTimer) { clearInterval(_attendanceTimer); _attendanceTimer = null }
+  if (_recBeatTimer) { clearInterval(_recBeatTimer); _recBeatTimer = null }
   if (_playAudio) { try { _playAudio.pause() } catch (e) {} _playAudio = null }
   if (typeof window !== 'undefined') {
     window.removeEventListener('beforeunload', _beforeUnloadGuard)
@@ -1628,6 +1659,8 @@ async function toggleRecord() {
     }
     return
   }
+  // 别人正在录音 → 先提示（两路同录会导致转写重复内容），用户确认后才继续
+  if (!(await confirmOthersRecording())) return
   // 暂停态的「继续录音/重新录音」由模板里并排按钮独立处理，本函数只在非暂停态被调用
   // ⚠ 本地有未上传的录音（如中断后选了「稍后处理」）→ 必须先确认，开新录会把它丢掉。
   //   这条检查必须放在 hasSavedRecordings 捷径之前——否则已传过段的会议里会不加确认直接丢（真机踩过）
@@ -1704,7 +1737,7 @@ function fmt(s) {
 // 落盘切片恢复：上次录音时页面被杀（微信杀后台/手滑刷新），切片还躺在本机 IndexedDB 里 →
 // 详情加载后查一次孤儿会话，提示主任恢复上传（走正常上传转写链路），成功即清盘。
 async function checkOrphanRecordings() {
-  if (!isChair.value) return
+  // 方案B后委员也可上传，恢复弹窗对所有已签到角色开放（此前仅主任，委员的中断录音会烂在本机）
   if (!detail.value || detail.value.stage !== 'ongoing') return
   if (rec.recording.value) return
   const sessions = await recStore.listSessions('committee-' + meetingId.value)
@@ -1964,9 +1997,11 @@ async function uploadRecordingFile(file, durationSec) {
     rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
     currentStep.value = 2 // 停在录音页：显示"上传录音并生成会议纪要"按钮
     await loadDetail() // 刷新录音列表（await 确保新录音进入列表后再自动识别）
-    // 上传成功 → 一律自动后台转写（会中只录、纪要会后在详情页生成；转写静默进行，靠录音卡下方行内提示）
+    // 上传成功 → 主任自动后台转写（会中只录、纪要会后在详情页生成；转写静默进行，靠录音卡下方行内提示）；
+    // 委员/记录员只传不转（识别是主任的动作），段先以"待识别"挂在列表里
     _recognizeAfterUpload = false
-    uploadAndRecognize()
+    if (isChair.value) uploadAndRecognize()
+    else toast({ title: '已上传，待主任识别后并入会议记录', icon: 'none' })
   } catch (e) {
     stopUploadEstimatedProgress(false)
     _recognizeAfterUpload = false
@@ -2020,8 +2055,8 @@ async function uploadAndRecognize() {
 }
 
 // 「上传录音」：上传在手录音 → 识别（转写→提炼），不生成。识别完关遮罩，露出「继续上传录音 / 生成会议纪要」两键。
+// 0721 用户定（方案B）：委员/记录员也可上传自己录的段（后端本就许可）；识别仍由主任触发。
 async function uploadRecordingStep() {
-  if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
   // 录音进行中也直接处理：走到这里都是用户明确要上传（结束会议选"上传"/生成纪要确认/点上传按钮），
   // finishRecord 会自动停止录音再上传，无需让用户回录音区手动暂停。
@@ -2032,7 +2067,11 @@ async function uploadRecordingStep() {
     return
   }
   if (!hasSavedRecordings.value) { toast({ title: '请先开始录音', icon: 'none' }); return }
-  if (needRecognize.value) await uploadAndRecognize() // 已上传但未识别 → 直接识别
+  // 已上传但未识别：识别是主任的动作（会消耗识别额度且改动全会状态）
+  if (needRecognize.value) {
+    if (isChair.value) await uploadAndRecognize()
+    else toast({ title: '录音已上传，识别由主任发起', icon: 'none' })
+  }
 }
 
 // 识别完成后的主按钮——「生成会议纪要」：表决核对（AI票数确认/未表决提示）→ 生成。
@@ -2497,6 +2536,53 @@ async function finalizeTranscription() {
     transcriptPreview.value = tState.transcriptPreview
     transcriptCharCount.value = tState.transcriptCharCount
     persistQuickState()
+  }
+
+  // 两人同时录音的兜底：各段转写两两比对，内容高度相似 → 提醒删除其一（异步、不阻塞主流程）
+  checkDuplicateTranscripts().catch(() => {})
+}
+
+// ── 重复录音检测：两段转写内容高度相似（两人同时录了同一段会议）时提醒 ──
+const _dupWarnedPairs = new Set() // 已提醒过的段对，别反复弹
+function _trNormalize(t) { return String(t || '').replace(/[\s\p{P}\p{S}]/gu, '') }
+function _trBigrams(s) { const g = new Set(); for (let i = 0; i < s.length - 1; i++) g.add(s.slice(i, i + 2)); return g }
+// 重叠系数（交集/较小集）：短段完整包含于长段（一人录得短）也能命中
+function _trSimilarity(a, b) {
+  const A = _trBigrams(a); const B = _trBigrams(b)
+  if (!A.size || !B.size) return 0
+  let inter = 0
+  for (const x of A) if (B.has(x)) inter++
+  return inter / Math.min(A.size, B.size)
+}
+async function checkDuplicateTranscripts() {
+  if (typeof api.committeeQuickRecordingTranscript !== 'function') return
+  const done = (recordingsChrono.value || []).filter(r => r.asrStatus === 'done')
+  if (done.length < 2) return
+  // 取各段单独转写的纯文本（段数少，逐个取；失败的跳过）
+  const texts = []
+  for (let i = 0; i < done.length; i++) {
+    try {
+      const raw = await api.committeeQuickRecordingTranscript(meetingId.value, done[i].id)
+      const body = ((raw && raw.segments) || []).map(s => s.text || '').join('')
+      texts.push({ idx: i + 1, id: done[i].id, norm: _trNormalize(body) })
+    } catch (e) { /* 单段取不到就不参与比对 */ }
+  }
+  for (let a = 0; a < texts.length; a++) {
+    for (let b = a + 1; b < texts.length; b++) {
+      const ta = texts[a]; const tb = texts[b]
+      if (ta.norm.length < 40 || tb.norm.length < 40) continue // 太短没有比对价值
+      const key = ta.id + '-' + tb.id
+      if (_dupWarnedPairs.has(key)) continue
+      if (_trSimilarity(ta.norm, tb.norm) >= 0.65) {
+        _dupWarnedPairs.add(key)
+        await showModal({
+          title: '两段录音内容高度相似',
+          content: '第 ' + ta.idx + ' 段与第 ' + tb.idx + ' 段的转写内容高度相似，可能是两人同时录了同一段会议。建议在录音列表删除其中一段，避免会议记录和纪要出现重复内容。',
+          confirmText: '知道了',
+          showCancel: false
+        })
+      }
+    }
   }
 }
 

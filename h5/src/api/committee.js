@@ -257,6 +257,16 @@ export default {
   committeeQuickRecordingTranscript: function (id, recordingId) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/recordings/' + recordingId + '/transcript');
   },
+  // 「谁在录音」在册表：心跳 / 下线 / 查询（开录前提示"XX 正在录音"用）
+  committeeRecordingBeat: function (id) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/recording-live/beat');
+  },
+  committeeRecordingBeatStop: function (id) {
+    return core.realRequest('DELETE', '/api/committees/' + id + '/quick/recording-live/beat');
+  },
+  committeeRecordingLive: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/recording-live');
+  },
   committeeQuickConfirm: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/confirm', data);
   },
