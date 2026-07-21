@@ -19,8 +19,11 @@ public interface AsrService {
     /** 查询转写任务状态。 */
     AsrTaskVO status(String taskId);
 
-    /** 取转写结果（status=done 时有效）。 */
+    /** 取转写结果（status=done 时有效）。多条录音已合并为一份。 */
     AsrResult result(Long meetingId);
+
+    /** 取单条录音的转写结果（用于在录音详情里单独查看该段）。未转写/不存在时返回 null。默认无。 */
+    default AsrResult resultForRecording(Long meetingId, Long recordingId) { return null; }
 
     /** 删除某条录音后，清掉它已缓存的逐条转写结果，使合并结果不再包含它。默认空实现。 */
     default void evictRecording(Long meetingId, Long recordingId) {}

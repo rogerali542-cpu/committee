@@ -253,6 +253,10 @@ export default {
   committeeQuickTranscript: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/transcript');
   },
+  // 单条录音的转写原文（录音详情里单独查看这一段）
+  committeeQuickRecordingTranscript: function (id, recordingId) {
+    return core.realRequest('GET', '/api/committees/' + id + '/quick/recordings/' + recordingId + '/transcript');
+  },
   committeeQuickConfirm: function (id, data) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/confirm', data);
   },

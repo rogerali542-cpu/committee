@@ -136,6 +136,19 @@ public class QuickMeetingController {
         return Result.ok(correctionService.correct(id, asrService.result(id)));
     }
 
+    /**
+     * 单条录音的转写原文（录音详情里「查看转写」用）。
+     * 直接返回该段的 ASR 原文，不走 correctionService.correct —— 纠错缓存按 meetingId 存，
+     * 传单段进去会覆盖整会合并稿的缓存。单段查看要的是"这条录音识别出了什么"，用原文即可；
+     * 议题匹配/纪要仍以合并后 /transcript 的纠错稿为准。未转写返回 null（前端提示先转写）。
+     */
+    @GetMapping("/recordings/{recordingId}/transcript")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<AsrResult> recordingTranscript(@PathVariable Long id,
+                                                 @PathVariable Long recordingId) {
+        return Result.ok(asrService.resultForRecording(id, recordingId));
+    }
+
     @GetMapping("/extract")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<QuickExtractionVO> extract(@PathVariable Long id) {

@@ -346,7 +346,7 @@
     <div v-if="transcriptVisible" class="qk-modal-mask" @click="closeTranscript">
       <div class="qk-transcript-sheet" @click.stop="noop">
         <div class="qk-sheet-head">
-          <span class="qk-modal-title">语音转录文本</span>
+          <span class="qk-modal-title">{{ transcriptTitle }}</span>
           <span class="qk-sheet-close" @click="closeTranscript">×</span>
         </div>
         <div class="qk-transcript-tabs">
@@ -354,14 +354,15 @@
           <span class="qk-transcript-tab" :class="transcriptMode === 'full' ? 'on' : ''" @click="switchTranscriptMode('full')">全部内容</span>
         </div>
         <div class="qk-transcript-scroll" style="overflow-y:auto;">
-          <div v-if="transcriptMode === 'short'">
-            <span class="qk-transcript-body">{{ transcriptPreview || '暂无摘要文本' }}</span>
-            <div class="qk-note">摘要用于快速判断转写是否完成；正式匹配仍以全部内容为依据。</div>
+          <div v-if="transcriptViewLoading" class="lp-empty">正在加载这段录音的转写…</div>
+          <div v-else-if="transcriptMode === 'short'">
+            <span class="qk-transcript-body">{{ transcriptPreviewText || '暂无摘要文本' }}</span>
+            <div class="qk-note">{{ transcriptView ? '这是该条录音单独识别出的原文；整会合并稿见录音卡片的查看转写。' : '摘要用于快速判断转写是否完成；正式匹配仍以全部内容为依据。' }}</div>
           </div>
           <div v-else>
-            <div v-if="transcript.length === 0" class="lp-empty">暂无转写原文</div>
+            <div v-if="transcriptSegs.length === 0" class="lp-empty">暂无转写原文</div>
             <div class="qk-tr-list" v-else>
-              <div class="qk-tr-seg" v-for="seg in transcript" :key="seg.id">
+              <div class="qk-tr-seg" v-for="seg in transcriptSegs" :key="seg.id">
                 <div class="qk-tr-meta"><span class="qk-tr-spk">{{ seg.speaker }}</span><span class="qk-tr-time">{{ seg.time }}</span></div>
                 <span class="qk-tr-text">{{ seg.text }}</span>
               </div>
@@ -384,7 +385,7 @@
         </div>
         <div class="recording-detail-actions">
           <button class="supp-btn rec" @click="togglePlay(recordingDetail.item)">{{ playingId === recordingDetail.item.id ? '暂停播放' : '播放录音' }}</button>
-          <button v-if="hasTranscript" class="supp-btn detail-secondary" @click="openTranscriptFromDetail">查看转写</button>
+          <button v-if="recordingDetail.item.asrStatus === 'done'" class="supp-btn detail-secondary" @click="openTranscriptFromDetail">查看这段转写</button>
           <button v-if="isChair && !polling && !extracting" class="recording-detail-delete" @click="deleteRecordingFromDetail">删除这段录音</button>
         </div>
       </div>
@@ -968,6 +969,12 @@ const transcriptCharCount = ref(0)
 const hasTranscript = computed(() => !!(transcriptFullText.value || '').trim() || (transcript.value || []).length > 0)
 const transcriptVisible = ref(false)
 const transcriptMode = ref('short')
+// 转写查看范围：null=整会合并稿；非空={title, segments, preview}=某条录音单独的转写
+const transcriptView = ref(null)
+const transcriptViewLoading = ref(false)
+const transcriptTitle = computed(() => transcriptView.value ? transcriptView.value.title : '语音转录文本')
+const transcriptSegs = computed(() => transcriptView.value ? transcriptView.value.segments : transcript.value)
+const transcriptPreviewText = computed(() => transcriptView.value ? transcriptView.value.preview : transcriptPreview.value)
 const ending = ref(false)
 const endReviewVisible = ref(false)
 const fieldMeetingEnded = ref(false)
@@ -1094,7 +1101,35 @@ function recordingStatusText(item) {
   if (polling.value || extracting.value) return '识别中'
   return '待识别'
 }
-function openTranscriptFromDetail() { closeRecordingDetail(); openTranscript('short') }
+// 从录音详情查看「这一条录音」单独的转写（不是整会合并稿）
+async function openTranscriptFromDetail() {
+  const detail = recordingDetail.value
+  if (!detail || !detail.item) return
+  const item = detail.item
+  const title = '第 ' + (detail.index + 1) + ' 段录音转写'
+  closeRecordingDetail()
+  transcriptView.value = { title: title, segments: [], preview: '' }
+  transcriptMode.value = 'short'
+  transcriptVisible.value = true
+  if (typeof api.committeeQuickRecordingTranscript !== 'function') {
+    // 兜底：旧后端没有单段接口时，退回整会合并稿
+    transcriptView.value = null
+    return
+  }
+  transcriptViewLoading.value = true
+  try {
+    const raw = await api.committeeQuickRecordingTranscript(meetingId.value, item.id)
+    const segs = mapTranscript(raw)
+    const st = buildTranscriptState(segs)
+    transcriptView.value = { title: title, segments: segs, preview: st.transcriptPreview }
+  } catch (e) {
+    toast({ title: e.message || '获取该段转写失败', icon: 'none' })
+    transcriptView.value = null
+    transcriptVisible.value = false
+  } finally {
+    transcriptViewLoading.value = false
+  }
+}
 async function deleteRecordingFromDetail() {
   const detail = recordingDetail.value
   if (!detail) return
@@ -2475,12 +2510,16 @@ function buildTranscriptState(tr) {
 }
 
 function openTranscript(mode) {
+  transcriptView.value = null   // 整会合并稿
+  transcriptViewLoading.value = false
   transcriptVisible.value = true
   transcriptMode.value = mode || 'short'
 }
 
 function closeTranscript() {
   transcriptVisible.value = false
+  transcriptView.value = null
+  transcriptViewLoading.value = false
 }
 
 function switchTranscriptMode(mode) {

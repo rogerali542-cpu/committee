@@ -224,6 +224,13 @@ public class DoubaoAsrService implements AsrService {
     }
 
     @Override
+    public AsrResult resultForRecording(Long meetingId, Long recordingId) {
+        if (meetingId == null || recordingId == null) return null;
+        ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
+        return perRec == null ? null : perRec.get(recordingId);
+    }
+
+    @Override
     public void evictRecording(Long meetingId, Long recordingId) {
         ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
         if (perRec != null && recordingId != null) perRec.remove(recordingId);
