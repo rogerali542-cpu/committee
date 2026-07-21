@@ -263,9 +263,10 @@
         <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
         <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
         <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
-        <!-- 暂停态：继续/上传放卡片下部（初始「开始录音」在头部右侧，见上方 supp-head） -->
-        <div v-if="isPaused && !isSelfRemote" class="supp-actions single paused">
-          <button class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
+        <!-- 暂停态：继续/上传放卡片下部（初始「开始录音」在头部右侧，见上方 supp-head）
+             已停止未上传态（中断/上传失败）：只出「上传录音」，继续录音无从恢复不显示 -->
+        <div v-if="(isPaused || stoppedUnuploaded) && !isSelfRemote" class="supp-actions single paused">
+          <button v-if="isPaused" class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
           <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
         </div>
         <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
@@ -901,6 +902,9 @@ const freshRecEmpty = computed(() => (rec.seconds.value || 0) < 1)
 const uploadRecordingDisabled = computed(() => recActive.value || freshRecEmpty.value)
 // 已上传过录音、且当前没有新录音在手 → 上传后的"空闲"态，引导继续录下一段
 const idleAfterUpload = computed(() => !rec.recording.value && !rec.hasRecording.value && hasSavedRecordings.value)
+// 已停止但尚未上传的录音（上传失败/录音被中断后落到此态）：必须露出「上传录音」入口——
+// 否则界面只剩「开始录音」，点了弹"有一段录音还没上传"却无处可传（用户实测踩过）
+const stoppedUnuploaded = computed(() => !rec.recording.value && rec.hasRecording.value)
 // 本轮识别已覆盖的录音 id（识别成功/恢复历史转写时回填）——用它判断是否还有新录音没识别，
 // 不依赖 recordings.asrStatus（桩模式不落该字段）
 const recognizedIds = ref([])
@@ -1548,7 +1552,8 @@ async function confirmSignIn() {
     signedIn.value = true
     loadDetail()
     playSigninFx()   // 播放「签到成功 → 进入录音」跳转动画，动画中途切到录音步
-    if (isChair.value) await startRecord()
+    // 0721 用户定（方案A）：不再自动开始录音——主任进入后手动点「开始录音」，
+    // 与录音卡的显式按钮一致；忘了点由「处理议题/结束会议」的状态3提示兜底
   } catch (e) {
     toast({ title: e.message || '确认失败', icon: 'none' })
   }
@@ -1558,9 +1563,7 @@ async function enterLiveMeeting() {
   currentStep.value = 2
   if (meetingPhase.value !== 'voting') meetingPhase.value = 'recording'
   persistQuickState()
-  if (isChair.value && meetingPhase.value === 'recording' && !rec.recording.value && !rec.hasRecording.value) {
-    await startRecord()
-  }
+  // 0721 用户定（方案A）：进入会议不再自动开始录音，由主任手动点「开始录音」
 }
 
 async function enterVotingPhase() {
