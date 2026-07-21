@@ -181,10 +181,18 @@
             已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}
           </div>
         </div>
-        <div class="meeting-console-action">
-          <div>
-            <div class="meeting-console-action-title">会议议题</div>
-            <div class="meeting-console-action-text">共{{ meetingTopics.length }}项，可在录音过程中同步讨论和表决</div>
+        <div class="meeting-console-topics">
+          <div class="mct-head">
+            <span class="mct-title">会议议题</span>
+            <span class="mct-count">共{{ meetingTopics.length }}项 · 录音时可同步讨论表决</span>
+          </div>
+          <div class="mct-list">
+            <div class="mct-item" v-for="(t, i) in meetingTopics" :key="'mct-' + t.id">
+              <span class="mct-no">{{ i + 1 }}</span>
+              <span class="mct-name">{{ t.title }}</span>
+              <span class="mct-type" :class="topicActionType(t)">{{ topicActionName(t) }}</span>
+            </div>
+            <div v-if="!meetingTopics.length" class="mct-empty">暂无会议议题</div>
           </div>
           <button class="meeting-stage-next" :disabled="phaseChanging" @click="enterVotingPhase">
             {{ phaseChanging ? '正在处理…' : '处理议题 ›' }}
@@ -3176,13 +3184,24 @@ async function returnToRecordingPage() {
 /* 签到胶囊随法定人数变色（都放浅、对比度不强）：未过半浅黄，过半浅绿。人数够不够只由它一处表达，不再另起带背景的一行。 */
 .meeting-console-roster { flex-shrink:0; padding:10rpx 18rpx; border-radius:999rpx; background:#FBF1DC; color:#A9843F; font-size:25rpx; font-weight:700; }
 .meeting-console-roster.ready { background:#E9F4EC; color:#5A9A73; }
-.meeting-console-action { display:flex; align-items:flex-start; justify-content:space-between; gap:22rpx; margin-top:24rpx; padding-top:24rpx; border-top:2rpx solid #EEF0F2; }
-.meeting-console-action > div { flex:1; min-width:0; }
-.meeting-console-action-title { font-size:30rpx; font-weight:750; color:#252A30; }
-.meeting-console-action-text { margin-top:7rpx; font-size:26rpx; line-height:1.5; color:#7A818B; }
+/* 议题默认展开：编号+标题+类型标签，供会中参考；「处理议题」入口整宽放列表下方 */
+.meeting-console-topics { margin-top:22rpx; padding-top:22rpx; border-top:2rpx solid #EEF0F2; }
+.mct-head { display:flex; align-items:baseline; gap:12rpx; flex-wrap:wrap; margin-bottom:6rpx; }
+.mct-title { font-size:30rpx; font-weight:750; color:#252A30; }
+.mct-count { font-size:23rpx; color:#8A8F98; }
+.mct-list { display:flex; flex-direction:column; }
+.mct-item { display:flex; align-items:center; gap:14rpx; padding:16rpx 0; border-top:2rpx solid #F2F4F6; }
+.mct-item:first-child { border-top:0; }
+.mct-no { flex-shrink:0; width:40rpx; height:40rpx; border-radius:50%; background:#F3F5F7; color:#7A818B; font-size:24rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.mct-name { flex:1; min-width:0; font-size:28rpx; color:#2A2F35; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mct-type { flex-shrink:0; font-size:22rpx; font-weight:700; padding:3rpx 12rpx; border-radius:8rpx; }
+.mct-type.notice { background:#E6F4FB; color:#1677B8; }
+.mct-type.vote { background:#FFF0E5; color:#D56A16; }
+.mct-type.discuss { background:#EAF6EE; color:#2E8B57; }
+.mct-empty { padding:20rpx 0; text-align:center; color:#8A8F98; font-size:26rpx; }
 /* 议题在录音页只是「参考+入口」，真正处理在下一页——降为次要描边样式，
    把主操作让给红色「开始录音」，避免两颗实心大按钮抢焦点。 */
-.meeting-console .meeting-stage-next { flex-shrink:0; min-width:auto; margin:0; padding:14rpx 24rpx; border:2rpx solid #D8C3A0; border-radius:12rpx; background:#FFFBF3; color:#8F4A06; font-size:27rpx; font-weight:700; box-shadow:none; }
+.meeting-console .meeting-stage-next { display:block; width:100%; min-width:0; margin:18rpx 0 0; padding:20rpx 0; border:2rpx solid #D8C3A0; border-radius:14rpx; background:#FFFBF3; color:#8F4A06; font-size:29rpx; font-weight:700; box-shadow:none; }
 .meeting-console .meeting-stage-next:active { background:#F6E8D3; }
 /* 上边距拉开与顶栏的距离；底部留够绝对定位的步骤文字空间，避免探进「会议进行中」卡片——保持呼吸感 */
 .live-page:not(.lp-signin) .lp-flow { margin-top:44rpx; padding:14rpx 4rpx 44rpx; }
