@@ -740,33 +740,29 @@ const canEndFromRecordingPage = computed(() => isChair.value && meetingPhase.val
 function topicBadgeText(item) {
   const done = topicBadgeDone(item)
   if (item.voteRequired) return done ? '已表决' : '待表决'
-  if (item.type === 'notice') return done ? '已通报' : '待通报'
   return done ? '已讨论' : '待讨论'
 }
 // 胶囊按钮文案：待办用动词(去表决/去通报/去讨论)增强"可点"召唤；已办沿用状态词(已表决…)
 function topicPillLabel(item) {
   if (topicBadgeDone(item)) return topicBadgeText(item)
   if (item.voteRequired) return '去表决'
-  if (item.type === 'notice') return '去通报'
   return '去讨论'
 }
 // 胶囊按钮按议题类型着色，与议题弹层标签同一套：表决橙 / 通报紫 / 讨论蓝
 function topicPillType(item) {
   if (item.voteRequired) return 'vote'
-  if (item.type === 'notice') return 'notice'
-  return 'discuss'
+  return 'discuss'  // 0721 通知并入讨论：不再单列 notice，「宣读/通报」统一走「讨论」
 }
 function topicActionType(item) {
   return topicPillType(item)
 }
 function topicActionName(item) {
   const t = topicActionType(item)
-  return t === 'notice' ? '宣读' : (t === 'vote' ? '表决' : '讨论')
+  return t === 'vote' ? '表决' : '讨论'
 }
 function topicActionButton(item) {
   const done = topicBadgeDone(item)
   const t = topicActionType(item)
-  if (t === 'notice') return done ? '已宣读' : '去宣读'
   if (t === 'vote') return done ? '看结果' : '去表决'
   return done ? '已记录' : '去讨论'
 }
