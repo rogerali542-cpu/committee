@@ -248,12 +248,12 @@
         <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
         <div v-if="recordings.length && recListOpen" class="rec-list rec-list-before-action">
           <div class="rec-list-body">
-            <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordingsChrono" :key="item.id" @click="openRecordingDetail(item, idx)">
+            <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordingsChrono" :key="item.id">
               <span class="qrl-name rec-summary-name">第 {{ idx + 1 }} 段</span>
               <span class="rec-summary-duration">{{ fmtDur(item.durationSec) }}</span>
-              <span class="qrl-play" :class="{ on: playingId === item.id }" @click.stop="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
-              <span class="rec-summary-more">详情 ›</span>
-              <span v-if="isChair" class="rec-summary-del" @click.stop="deleteRecording(item, idx)">删除</span>
+              <span class="qrl-play" :class="{ on: playingId === item.id }" @click="togglePlay(item)">{{ playingId === item.id ? '⏸' : '▶' }}</span>
+              <span class="rec-summary-more" @click="openRecordingDetail(item, idx)">详情 ›</span>
+              <span v-if="isChair" class="rec-summary-del" @click="deleteRecording(item, idx)">删除</span>
             </div>
           </div>
         </div>
@@ -351,12 +351,12 @@
         </div>
         <div class="qk-transcript-tabs">
           <span class="qk-transcript-tab" :class="transcriptMode === 'short' ? 'on' : ''" @click="switchTranscriptMode('short')">摘要</span>
-          <span class="qk-transcript-tab" :class="transcriptMode === 'full' ? 'on' : ''" @click="switchTranscriptMode('full')">全文</span>
+          <span class="qk-transcript-tab" :class="transcriptMode === 'full' ? 'on' : ''" @click="switchTranscriptMode('full')">全部内容</span>
         </div>
         <div class="qk-transcript-scroll" style="overflow-y:auto;">
           <div v-if="transcriptMode === 'short'">
             <span class="qk-transcript-body">{{ transcriptPreview || '暂无摘要文本' }}</span>
-            <div class="qk-note">摘要用于快速判断转写是否完成；正式匹配仍以全文分段为依据。</div>
+            <div class="qk-note">摘要用于快速判断转写是否完成；正式匹配仍以全部内容为依据。</div>
           </div>
           <div v-else>
             <div v-if="transcript.length === 0" class="lp-empty">暂无转写原文</div>
@@ -3822,10 +3822,10 @@ async function returnToRecordingPage() {
 .qk-rec-list-item:last-child { border-bottom:0; }
 .qrl-idx { width:44rpx; height:44rpx; flex-shrink:0; border-radius:50%; background:#FFF1E0; color:var(--c-primary-dark); font-size:28rpx; font-weight:700; text-align:center; line-height:44rpx; }
 .qrl-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4rpx; }
-.rec-summary-row { cursor:pointer; padding:14rpx 0; }
+.rec-summary-row { padding:14rpx 0; }
 .rec-summary-name { flex:1; min-width:0; }
 .rec-summary-duration { color:#667085; font-size:26rpx; font-variant-numeric:tabular-nums; }
-.rec-summary-more { flex-shrink:0; color:#8A8F98; font-size:23rpx; }
+.rec-summary-more { flex-shrink:0; color:#8A8F98; font-size:23rpx; cursor:pointer; padding:6rpx 4rpx; }
 /* 删除：红色小字，与「详情」间隔开、并加内边距扩大热区避免误点 */
 .rec-summary-del { flex-shrink:0; color:#D0392E; font-size:23rpx; margin-left:26rpx; padding:6rpx 6rpx; }
 .rec-summary-del:active { opacity:0.6; }
