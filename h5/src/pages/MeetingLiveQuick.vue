@@ -955,6 +955,9 @@ function maybeAutoRecognizePending() {
   if (!isChair.value || !signedIn.value) return
   if (!detail.value || detail.value.stage !== 'ongoing') return
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
+  // 主任手上有在录/未传的段时先不跑：识别在途会临时挡住主任自己的上传（finishRecord 排队），
+  // 而主任上传成功后本来就会把所有待识别段一起识别，不差这一会儿
+  if (canUpload.value) return
   const pending = (recordings.value || [])
     .filter(r => r.asrStatus !== 'done' && r.asrStatus !== 'empty' && !_autoRecognizeTried.has(r.id))
   if (!pending.length) return
@@ -1492,7 +1495,9 @@ async function loadDetail() {
   }
 }
 
-// 仅刷新签到名单/进度，不动步骤机与录音状态——供参会人查看实时签到（定时 + 手动）
+// 轻量刷新签到名单/进度 + 录音列表，不动步骤机——供参会人看实时签到（定时 + 手动）。
+// 录音列表跟着刷：别人（委员/另一位主任）新传的段 12s 内出现在本机列表；
+// 主任端顺带触发静默补识别（maybeAutoRecognizePending 内部有忙时/已试过守卫）。
 async function refreshAttendance() {
   if (!meetingId.value) return
   if (!detail.value || detail.value.stage !== 'ongoing') return
@@ -1504,6 +1509,13 @@ async function refreshAttendance() {
     signedInList.value = signed
     voteTotal.value = signed.length
     voteNeed.value = Math.floor(signed.length / 2) + 1
+    // 上传/识别在途时不动录音列表，避免和本机流程的状态刷新互相踩
+    if (!uploading.value && !polling.value && !extracting.value) {
+      const recs = (d.record && d.record.recordings) || []
+      recordings.value = recs
+      reconcilePickedIds(recs)
+      maybeAutoRecognizePending()
+    }
   } catch (e) { /* 静默：签到刷新失败不打扰主任 */ }
 }
 
@@ -1622,7 +1634,8 @@ async function enterVotingPhase() {
   if (phaseChanging.value) return
   // 状态3：没有进行中的录音、也没有已上传的录音 → 先确认（很可能是还没开始录音）。
   // 状态1/2/4（有进行中 或 有已上传）都直接进入：进入后录音状态照旧保留，可随时返回。
-  if (!canUpload.value && !hasSavedRecordings.value) {
+  // 仅主任弹：canUpload 是"本设备"的录音状态，委员设备看不到主任正在录——对委员弹"还没开始录音"是误导
+  if (isChair.value && !canUpload.value && !hasSavedRecordings.value) {
     const res = await showModal({
       title: '还没有开始录音',
       content: '本次现场还没有录音。确定现在就去处理议题吗？也可以先返回开始录音。',
@@ -2995,6 +3008,17 @@ async function confirmEndMeeting() {
     content = '将停止录音，进入会后处理。' + pendingTail
     confirmText = '结束会议'; cancelText = '继续开会'
   }
+
+  // 四状态只看得到本机：别的设备（副主任/委员）还在录音时补一句提醒——
+  // 结束现场会议不影响他们继续录和上传，只是让主任心里有数（老后端无接口时跳过）
+  try {
+    const live = await api.committeeRecordingLive(meetingId.value)
+    const others = (live || []).filter(x => String(x.roleId) !== String(myRoleId.value || ''))
+    if (others.length) {
+      const names = others.map(o => o.name).filter(Boolean).join('、') || '有人'
+      content = names + ' 还在用自己的手机录音（不受结束影响，仍可上传）。\n' + content
+    }
+  } catch (e) { /* 查不到不拦 */ }
 
   const confirmed = await showModal({ title: '', content, confirmText, cancelText })
   if (!confirmed.confirm) return
