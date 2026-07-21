@@ -269,6 +269,11 @@
           <button v-if="isPaused" class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
           <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
         </div>
+        <!-- 主任手动识别入口：有"已上传未识别"的段（委员上传的/识别被中断的）且手上没有在录的段时显示。
+             没有它，这些段会永远停在"待识别"——上传自动识别只覆盖主任自己传的段 -->
+        <div v-else-if="isChair && hasPendingRecognize && !canUpload && !uploading && !polling && !extracting && !generatingMinutes" class="supp-actions single paused">
+          <button class="supp-btn upload-rec" @click="uploadAndRecognize">识别已上传录音</button>
+        </div>
         <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
       </div>
 
@@ -947,6 +952,10 @@ const needRecognize = computed(() => !generated.value
 // 有任一段"已转写出内容"（done 或本轮已识别）→ 生成按钮即可用，不再要求全部段都识别完
 const hasAnyTranscribed = computed(() => (recordings.value || [])
   .some(r => r.asrStatus === 'done' || recognizedIds.value.includes(r.id)))
+// 有已上传但未识别的段（委员上传不自动识别；或识别中途后端重启丢任务）→ 主任需要一个手动识别入口。
+// empty(静音段)不算：重识别只是再花一次钱得到同样的空结果
+const hasPendingRecognize = computed(() => (recordings.value || [])
+  .some(r => r.asrStatus !== 'done' && r.asrStatus !== 'empty'))
 // 圆圈按钮（圆圈即录音键）文案：四字状态、圈内两行显示（开始/录音 各占一行）
 const recCircleLabel = computed(() => {
   if (recActive.value) return '暂停录音'
@@ -2045,7 +2054,8 @@ async function uploadAndRecognize() {
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
   if (!(recordings.value || []).length) { toast({ title: '还没有录音，请先录一段', icon: 'none' }); return }
   overlayPhase.value = 'recognize'
-  pickedIds.value = (recordings.value || []).filter(r => r.asrStatus !== 'done').map(r => r.id)
+  // empty(静音段)不重转：重识别只会再花一次钱得到同样的空结果
+  pickedIds.value = (recordings.value || []).filter(r => r.asrStatus !== 'done' && r.asrStatus !== 'empty').map(r => r.id)
   await transcribeSelected()
   if (generated.value) {
     recognizedIds.value = (recordings.value || []).map(r => r.id)
