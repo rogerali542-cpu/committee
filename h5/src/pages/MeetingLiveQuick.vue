@@ -177,13 +177,9 @@
             <div class="meeting-console-title">会议进行中</div>
             <div class="meeting-console-sub">{{ detail.title || '本次业委会会议' }}</div>
           </div>
-          <div v-if="isChair" class="meeting-console-roster">
-            已参会{{ (signinStats.onsiteCount || 0) + (signinStats.remoteCount || 0) }}/{{ signinStats.total || 0 }}
+          <div v-if="isChair" class="meeting-console-roster" :class="{ ready: signinQuorum.ready }">
+            已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}
           </div>
-        </div>
-        <div v-if="isChair" class="meeting-console-attendance" :class="{ ready: signinQuorum.ready }">
-          <span>{{ signinStats.onsiteCount || 0 }}人现场，{{ signinStats.remoteCount || 0 }}人线上参会</span>
-          <span>{{ signinQuorum.ready ? '✓ 已够人数，可开会' : '还差' + signinQuorum.remaining + '人（需' + signinQuorum.required + '人）' }}</span>
         </div>
         <div class="meeting-console-action">
           <div>
@@ -3177,10 +3173,9 @@ async function returnToRecordingPage() {
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
 .meeting-console-title { font-size:34rpx; line-height:1.35; font-weight:800; color:#20242A; }
 .meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:26rpx; color:#7A818B; }
-.meeting-console-roster { flex-shrink:0; padding:10rpx 18rpx; border-radius:999rpx; background:#ECEFF3; color:#2E3640; font-size:25rpx; font-weight:700; }
-.meeting-console-attendance { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-top:22rpx; padding:16rpx 20rpx; border-radius:12rpx; background:#FFF3E0; color:#9A5A00; font-size:26rpx; line-height:1.4; }
-.meeting-console-attendance.ready { background:#EDF8F1; color:#287549; }
-.meeting-console-attendance span:last-child { flex-shrink:0; font-weight:700; }
+/* 签到胶囊随法定人数变色（都放浅、对比度不强）：未过半浅黄，过半浅绿。人数够不够只由它一处表达，不再另起带背景的一行。 */
+.meeting-console-roster { flex-shrink:0; padding:10rpx 18rpx; border-radius:999rpx; background:#FBF1DC; color:#A9843F; font-size:25rpx; font-weight:700; }
+.meeting-console-roster.ready { background:#E9F4EC; color:#5A9A73; }
 .meeting-console-action { display:flex; align-items:flex-start; justify-content:space-between; gap:22rpx; margin-top:24rpx; padding-top:24rpx; border-top:2rpx solid #EEF0F2; }
 .meeting-console-action > div { flex:1; min-width:0; }
 .meeting-console-action-title { font-size:30rpx; font-weight:750; color:#252A30; }
