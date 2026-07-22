@@ -28,11 +28,15 @@
 
     <!-- 结束会议后的会后整理决策页：把“生成纪要/直接结束”从弹窗提升为明确页面 -->
     <div v-if="endReviewVisible" class="end-review-page">
-      <div class="end-review-head">
-        <span class="end-review-back" @click="closeEndReview">‹</span>
-        <span class="end-review-title">会后整理</span>
-        <span class="end-review-spacer"></span>
-      </div>
+      <!-- 与主页面同款顶栏：‹ 返回(回录音页) + 首页 -->
+      <PageNav title="会后整理">
+        <template #left>
+          <div class="mlq-back" @click="closeEndReview">‹</div>
+        </template>
+        <template #right>
+          <button class="nav-home" @click="goHome">首页</button>
+        </template>
+      </PageNav>
       <!-- 任务清单式排版（0722）：一句引导 + 三个带状态灯的核对项（绿✓=已好，黄●=待办），
            全绿后点底部主按钮。替代原「三步引导框 + 平铺区块」的无主次布局 -->
       <div class="end-review-body">
@@ -3727,10 +3731,6 @@ async function returnToRecordingPage() {
 .fixed-end-field-btn { display:block; width:70%; margin:0 auto; height:92rpx; border:2rpx solid #B47A34; border-radius:16rpx; background:#FFFBF3; color:#8F4A06; font-size:30rpx; font-weight:750; font-family:inherit; }
 .fixed-end-field-btn:active { background:#F6E8D3; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
-.end-review-head { flex-shrink:0; height:96rpx; padding:0 28rpx; display:flex; align-items:center; justify-content:space-between; background:#fff; border-bottom:2rpx solid #ECEFF3; box-sizing:border-box; }
-.end-review-back { width:72rpx; font-size:58rpx; line-height:1; color:#30343A; }
-.end-review-title { flex:1; text-align:center; font-size:38rpx; font-weight:800; color:#1F2329; }
-.end-review-spacer { width:72rpx; }
 .end-review-body { flex:1; min-height:0; overflow:auto; padding:34rpx 30rpx calc(42rpx + env(safe-area-inset-bottom)); box-sizing:border-box; display:flex; align-items:flex-start; }
 .end-review-card { width:100%; min-height:860rpx; background:#fff; border:2rpx solid #E8EEF0; border-radius:30rpx; padding:50rpx 38rpx 44rpx; box-sizing:border-box; box-shadow:0 18rpx 46rpx rgba(25,40,55,0.10); }
 .end-review-kicker { display:inline-flex; padding:8rpx 18rpx; border-radius:999rpx; background:#EAF6F6; color:#0F766E; font-size:25rpx; font-weight:800; }
