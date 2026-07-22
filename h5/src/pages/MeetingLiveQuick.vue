@@ -82,6 +82,8 @@
             </div>
             <div class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
             <div class="er-item-actions">
+              <!-- 识别出了内容才有得看：整会合并转写稿 -->
+              <button v-if="hasTranscript" class="er-act" @click="openTranscript('full')">查看转写</button>
               <button class="er-act" @click="uploadMaterial">上传会议材料</button>
             </div>
           </div>
@@ -1156,7 +1158,7 @@ const erRecordState = computed(() => {
 })
 const endReviewRecordText = computed(() => {
   if (canUpload.value) return '有未上传录音'
-  if (hasSavedRecordings.value) return '录音已保存'
+  if (hasSavedRecordings.value) return '已录 ' + ((recordings.value || []).length) + ' 段'
   return '暂无录音'
 })
 const endReviewAsrText = computed(() => {
@@ -3719,13 +3721,13 @@ async function returnToRecordingPage() {
 .er-item-state.busy { background:#EAF3FC; color:#1F6FB2; }
 .er-item-state.muted { background:#F2F3F5; color:#8A9099; }
 .er-item-sub { margin-top:12rpx; padding-left:16rpx; font-size:25rpx; color:#8A9099; line-height:1.5; }
-.er-item-actions { margin-top:16rpx; padding-left:16rpx; display:flex; gap:14rpx; }
+.er-item-actions { margin-top:26rpx; padding-left:16rpx; display:flex; gap:14rpx; }
 .er-act { border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:24rpx; font-weight:500; border-radius:999rpx; padding:10rpx 26rpx; font-family:inherit; line-height:1.3; }
 .er-act:active { background:#F1F2F4; }
 .er-act.warm { border-color:#EAC79A; background:#FFFCF7; color:#B26A19; font-weight:600; }
 .er-act:disabled { opacity:.55; }
 /* 议题结果简表：标题省略 + 右侧结论小签 */
-.er-topic-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:10rpx; }
+.er-topic-list { margin-top:16rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:18rpx; }
 .er-topic-row { display:flex; align-items:center; gap:14rpx; }
 .er-topic-title { flex:1; min-width:0; font-size:25rpx; color:#5F6673; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
@@ -4223,7 +4225,7 @@ async function returnToRecordingPage() {
 .qk-wait-tip { text-align:center; font-size:28rpx; color:#666; background:#FAFBFC; border-radius:18rpx; padding:26rpx; margin-top:12rpx; line-height:1.6; }
 
 /* 实时添加议题弹窗 */
-.qk-modal-mask { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:50; }
+.qk-modal-mask { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:200; } /* 高于会后整理页(180)：查看转写等弹窗在整理页也能弹 */
 .qk-modal { width:88%; max-height:84vh; overflow-y:auto; box-sizing:border-box; background:#fff; border-radius:24rpx; padding:54rpx 44rpx 48rpx; }
 .qk-modal-title { display:block; font-size:34rpx; font-weight:700; color:#1F2024; margin-bottom:46rpx; }
 .qk-modal-input { box-sizing:border-box; width:100%; height:88rpx; line-height:88rpx; background:#F6F6F8; border-radius:14rpx; padding:0 20rpx; font-size:30rpx; margin-bottom:18rpx; border:0; }
