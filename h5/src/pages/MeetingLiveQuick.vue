@@ -37,7 +37,7 @@
            全绿后点底部主按钮。替代原「三步引导框 + 平铺区块」的无主次布局 -->
       <div class="end-review-body">
         <div class="end-review-card">
-          <div class="er-lead">现场会议已结束。核对下面三项，然后生成会议纪要。</div>
+          <div class="er-lead">现场会议已结束。核对以下事项，然后生成会议纪要。</div>
 
           <div class="er-item">
             <div class="er-item-head">
@@ -77,14 +77,31 @@
           <div class="er-item">
             <div class="er-item-head">
               <span class="er-item-no">3</span>
-              <span class="er-item-title">会议记录</span>
+              <span class="er-item-title">会议录音</span>
               <span class="er-item-state" :class="erRecordState.cls">{{ erRecordState.text }}</span>
             </div>
             <div class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
-            <div class="er-item-actions">
+            <div v-if="hasTranscript" class="er-item-actions">
               <!-- 识别出了内容才有得看：整会合并转写稿 -->
-              <button v-if="hasTranscript" class="er-act" @click="openTranscript('full')">查看转写</button>
-              <button class="er-act" @click="uploadMaterial">上传会议材料</button>
+              <button class="er-act" @click="openTranscript('full')">查看转写</button>
+            </div>
+          </div>
+
+          <div class="er-item">
+            <div class="er-item-head">
+              <span class="er-item-no">4</span>
+              <span class="er-item-title">会议材料</span>
+              <span class="er-item-state muted">{{ materials.length ? ('共 ' + materials.length + ' 份') : '暂无材料' }}</span>
+            </div>
+            <!-- 现有材料：点名字预览 -->
+            <div v-if="materials.length" class="er-mat-list">
+              <div class="er-mat-row" v-for="(m, mi) in materials" :key="'er-mat-' + mi" @click="previewMaterial(mi)">
+                <span class="er-mat-name">{{ m.name }}</span>
+                <span class="er-mat-size">{{ m.sizeText || '查看' }}</span>
+              </div>
+            </div>
+            <div class="er-item-actions">
+              <button class="er-act" @click="uploadMaterial">上传材料</button>
             </div>
           </div>
 
@@ -3735,6 +3752,11 @@ async function returnToRecordingPage() {
 .er-topic-result.fail { color:#C0392B; }
 .er-topic-result.done { color:#2E7D32; } /* 已讨论/已通报也用绿色（0722 用户定） */
 .er-topic-result.todo { color:#B26A00; }
+/* 会议材料：现有材料一行一条，点名字预览 */
+.er-mat-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:14rpx; }
+.er-mat-row { display:flex; align-items:center; gap:14rpx; cursor:pointer; }
+.er-mat-name { flex:1; min-width:0; font-size:25rpx; color:#1A73E8; text-decoration:underline; text-underline-offset:5rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.er-mat-size { flex-shrink:0; font-size:22rpx; color:#A0A5AD; }
 /* 会议纪要块与清单之间空出一段，形成"核对完 → 生成"的段落感 */
 .er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
 .end-review-primary { display:block; width:70%; margin:14rpx auto 0; height:80rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }
