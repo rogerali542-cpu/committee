@@ -33,52 +33,53 @@
         <span class="end-review-title">会后整理</span>
         <span class="end-review-spacer"></span>
       </div>
+      <!-- 任务清单式排版（0722）：一句引导 + 三个带状态灯的核对项（绿✓=已好，黄●=待办），
+           全绿后点底部主按钮。替代原「三步引导框 + 平铺区块」的无主次布局 -->
       <div class="end-review-body">
         <div class="end-review-card">
-          <div class="end-review-guide">
-            <div class="erg-step done"><span>✓</span><div><b>现场会议已结束</b></div></div>
-            <div class="erg-line"></div>
-            <div class="erg-step current"><span>2</span><div><b>签到及议题处理</b></div></div>
-            <div class="erg-line"></div>
-            <div class="erg-step"><span>3</span><div><b>完成本次会议</b></div></div>
-          </div>
-          <div class="end-review-source-title">签到确认</div>
-          <div class="end-review-source">
-            <div class="ers-row ok">
-              <span class="ers-dot"></span>
-              <span>{{ signinStats.signedCount }} / {{ signinStats.total }} 已签到</span>
+          <div class="er-lead">现场会议已结束。核对下面三项，然后生成会议纪要。</div>
+
+          <div class="er-item">
+            <div class="er-item-head">
+              <span class="er-item-no">1</span>
+              <span class="er-item-title">签到确认</span>
+              <span class="er-item-state ok">✓ {{ signinStats.signedCount }}/{{ signinStats.total }} 已签到</span>
+            </div>
+            <div class="er-item-actions">
+              <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
+              <button class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
+                {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
+              </button>
             </div>
           </div>
-          <div class="end-review-inline-actions">
-            <!-- 与会议进行中同款：弹出悬浮名单窗，不在页内展开占位 -->
-            <button class="supp-btn ghost" @click="rosterPopOpen = true">查看签到名单</button>
-            <button class="supp-btn ghost" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
-              {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
-            </button>
-          </div>
-          <div v-if="pendingTopicCount" class="end-review-pending">
-            <div>
-              <b>还有 {{ pendingTopicCount }} 项议题待处理</b>
-              <span>可在现场会议结束后继续填写讨论或表决结果。</span>
+
+          <div class="er-item">
+            <div class="er-item-head">
+              <span class="er-item-no">2</span>
+              <span class="er-item-title">议题处理</span>
+              <span class="er-item-state" :class="pendingTopicCount ? 'warn' : 'ok'">
+                {{ pendingTopicCount ? ('● ' + pendingTopicCount + ' 项待处理') : '✓ 已全部处理' }}
+              </span>
             </div>
-            <button @click="continuePendingTopics">继续处理议题</button>
-          </div>
-          <div class="end-review-source-title">会议记录状态</div>
-          <div class="end-review-source">
-            <div class="ers-row" :class="{ ok: hasSavedRecordings || hasTranscript || generated, warn: canUpload }">
-              <span class="ers-dot"></span>
-              <span>{{ endReviewRecordText }}</span>
+            <div v-if="pendingTopicCount" class="er-item-actions">
+              <button class="er-act warm" @click="continuePendingTopics">继续处理议题</button>
             </div>
-            <div class="ers-row" :class="{ ok: generated, busy: polling || extracting }">
-              <span class="ers-dot"></span>
-              <span>{{ endReviewAsrText }}</span>
+          </div>
+
+          <div class="er-item">
+            <div class="er-item-head">
+              <span class="er-item-no">3</span>
+              <span class="er-item-title">会议记录</span>
+              <span class="er-item-state" :class="erRecordState.cls">{{ erRecordState.text }}</span>
             </div>
-            <!-- 状态结论：从页首挪到会议记录状态块内，小字弱化（0722 用户定） -->
-            <div class="end-review-sub">{{ endReviewHint }}</div>
+            <div class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
+            <div class="er-item-actions">
+              <button class="er-act" @click="uploadMaterial">上传会议材料</button>
+            </div>
           </div>
-          <div class="supp-actions single">
-            <button class="supp-btn ghost supp-material-btn" @click="uploadMaterial">上传会议材料</button>
-          </div>
+
+          <!-- 结论行紧贴主按钮：解释按钮此刻为什么可点/不可点 -->
+          <div class="er-hint">{{ endReviewHint }}</div>
           <button class="end-review-primary" :disabled="endReviewPrimaryDisabled" @click="handleEndReviewPrimary">
             {{ endReviewPrimaryText }}
           </button>
@@ -1111,6 +1112,14 @@ const endReviewHint = computed(() => {
   if (generated.value) return '已整理好会议记录，可以生成会议纪要。'
   if (hasSavedRecordings.value || hasTranscript.value) return '已有会议记录，但还没有完成识别整理。'
   return '没有可用于自动生成纪要的录音记录。'
+})
+// 清单第3项「会议记录」的状态灯：绿=可生成纪要，蓝=识别在途，黄=有录音没识别完，灰=没录音
+const erRecordState = computed(() => {
+  if (minutesGenerated.value) return { cls: 'ok', text: '✓ 纪要已生成' }
+  if (uploading.value || polling.value || extracting.value) return { cls: 'busy', text: '识别中…' }
+  if (generated.value) return { cls: 'ok', text: '✓ 已就绪' }
+  if (hasSavedRecordings.value || hasTranscript.value || canUpload.value) return { cls: 'warn', text: '● 未完成识别' }
+  return { cls: 'muted', text: '暂无录音' }
 })
 const endReviewRecordText = computed(() => {
   if (canUpload.value) return '有未上传录音'
@@ -3615,38 +3624,25 @@ async function returnToRecordingPage() {
 .end-review-body { flex:1; min-height:0; overflow:auto; padding:34rpx 30rpx calc(42rpx + env(safe-area-inset-bottom)); box-sizing:border-box; display:flex; align-items:flex-start; }
 .end-review-card { width:100%; min-height:860rpx; background:#fff; border:2rpx solid #E8EEF0; border-radius:30rpx; padding:50rpx 38rpx 44rpx; box-sizing:border-box; box-shadow:0 18rpx 46rpx rgba(25,40,55,0.10); }
 .end-review-kicker { display:inline-flex; padding:8rpx 18rpx; border-radius:999rpx; background:#EAF6F6; color:#0F766E; font-size:25rpx; font-weight:800; }
-.end-review-sub { margin-top:14rpx; padding-top:14rpx; border-top:2rpx solid #EDEFF2; font-size:30rpx; line-height:1.55; color:#3C434B; font-weight:500; }
-.end-review-guide { margin-top:38rpx; padding:30rpx; border-radius:20rpx; background:#F5FAF9; }
-.erg-step { display:flex; align-items:flex-start; gap:22rpx; color:#87919C; }
-.erg-step > span { flex-shrink:0; width:48rpx; height:48rpx; border-radius:50%; background:#E6EAEE; color:#7C8792; display:flex; align-items:center; justify-content:center; font-size:26rpx; font-weight:800; }
-.erg-step > div { display:flex; flex-direction:column; gap:5rpx; padding-top:2rpx; }
-.erg-step b { font-size:32rpx; line-height:1.5; }
-.erg-step small { font-size:24rpx; line-height:1.45; color:#89939E; }
-.erg-step.done > span { background:#DDF3E6; color:#198754; }
-.erg-step.done b { color:#26764E; }
-.erg-step.current > span { background:#0F766E; color:#fff; box-shadow:0 0 0 7rpx rgba(15,118,110,0.10); }
-.erg-step.current b { color:#0F665F; }
-.erg-line { width:2rpx; height:28rpx; background:#D9E3E3; margin:8rpx 0 8rpx 23rpx; }
-.end-review-source-title { margin-top:36rpx; font-size:29rpx; font-weight:800; color:#69737D; }
-.end-review-source { margin-top:16rpx; border-radius:18rpx; background:#F8FAFB; padding:24rpx 26rpx; display:flex; flex-direction:column; gap:20rpx; }
-.ers-row { display:flex; align-items:center; gap:16rpx; font-size:31rpx; color:#7A828C; font-weight:650; }
-.ers-dot { width:14rpx; height:14rpx; border-radius:50%; background:#B7BEC8; flex-shrink:0; }
-.ers-row.ok { color:#1B7F48; }
-.ers-row.ok .ers-dot { background:#2E9E4B; }
-.ers-row.warn { color:#B45309; }
-.ers-row.warn .ers-dot { background:#D97706; }
-.ers-row.busy { color:#0F766E; }
-.ers-row.busy .ers-dot { background:#0F766E; box-shadow:0 0 0 8rpx rgba(15,118,110,0.10); }
-.end-review-inline-actions { display:flex; gap:16rpx; margin-top:18rpx; }
-.end-review-inline-actions .supp-btn { flex:1; min-width:0; height:68rpx; font-size:25rpx; font-weight:500; }
-/* 会后整理页按钮统一缩一档：上传会议材料同步 -2号/-100 重 */
-.end-review-card .supp-actions.single .supp-btn { height:72rpx; font-size:24rpx; font-weight:500; }
-.end-review-pending { margin-top:24rpx; padding:24rpx; border-radius:18rpx; background:#FFF7E8; border:2rpx solid #F4D8A4; display:flex; align-items:center; justify-content:space-between; gap:18rpx; }
-.end-review-pending > div { min-width:0; display:flex; flex-direction:column; gap:6rpx; }
-.end-review-pending b { font-size:29rpx; color:#9A5A05; }
-.end-review-pending span { font-size:24rpx; line-height:1.45; color:#8A6A3D; }
-.end-review-pending button { flex-shrink:0; border:0; border-radius:999rpx; padding:13rpx 20rpx; background:#C77800; color:#fff; font-size:23rpx; font-weight:650; }
-.end-review-primary { width:100%; height:96rpx; margin-top:38rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:34rpx; font-weight:800; line-height:96rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
+/* ── 会后整理任务清单（0722 重排）：引导语 + 三个核对项（状态灯）+ 结论 + 主按钮 ── */
+.er-lead { font-size:30rpx; font-weight:650; color:#2A2F36; line-height:1.6; }
+.er-item { margin-top:26rpx; padding-top:24rpx; border-top:2rpx solid #EEF0F3; }
+.er-item-head { display:flex; align-items:center; gap:14rpx; }
+.er-item-no { flex-shrink:0; width:40rpx; height:40rpx; border-radius:50%; background:#FDF3D6; color:#B26A19; border:2rpx solid #EBD08A; display:flex; align-items:center; justify-content:center; font-size:24rpx; font-weight:700; }
+.er-item-title { font-size:30rpx; font-weight:700; color:#23272E; }
+.er-item-state { margin-left:auto; flex-shrink:0; font-size:23rpx; font-weight:600; padding:6rpx 16rpx; border-radius:999rpx; }
+.er-item-state.ok { background:#EAF6E5; color:#2E7D32; }
+.er-item-state.warn { background:#FFF6E8; color:#B26A00; }
+.er-item-state.busy { background:#EAF3FC; color:#1F6FB2; }
+.er-item-state.muted { background:#F2F3F5; color:#8A9099; }
+.er-item-sub { margin-top:12rpx; padding-left:54rpx; font-size:25rpx; color:#8A9099; line-height:1.5; }
+.er-item-actions { margin-top:16rpx; padding-left:54rpx; display:flex; gap:14rpx; }
+.er-act { border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:24rpx; font-weight:500; border-radius:999rpx; padding:10rpx 26rpx; font-family:inherit; line-height:1.3; }
+.er-act:active { background:#F1F2F4; }
+.er-act.warm { border-color:#EAC79A; background:#FFFCF7; color:#B26A19; font-weight:600; }
+.er-act:disabled { opacity:.55; }
+.er-hint { margin-top:28rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
+.end-review-primary { width:100%; height:96rpx; margin-top:16rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:34rpx; font-weight:800; line-height:96rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
 .end-review-secondary { width:100%; height:70rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:26rpx; font-weight:550; }
 /* 主持人操作区：仅「临时添加议题」，居中的安静次要按钮（方案A 已移除结束表决） */
