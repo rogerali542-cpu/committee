@@ -10,8 +10,8 @@
       <!-- 指令条：一句话说清此刻该做什么，按类型变色（研究快赢①：命中"进来不知道干嘛"） -->
       <div v-if="guideText" class="ts-guide" :class="guideType">{{ guideText }}</div>
 
-      <!-- 表决页顶部意见摘要：放在标题下方，详情仍从"补充意见"进入 -->
-      <div v-if="opinionSummaryMode" class="ts-ops summary ts-top-summary">
+      <!-- 表决页顶部意见摘要：仅在已有意见时置顶（没意见就不占顶部，免得空占位把投票挤到底） -->
+      <div v-if="opinionSummaryMode && hasOpinions" class="ts-ops summary ts-top-summary">
         <div class="ts-ops-title-row">
           <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
           <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">展开</button>
@@ -35,7 +35,7 @@
       <!-- 可滚动区：表决 + 意见汇总（输入框固定在底部，这里滚动看更多意见） -->
       <div class="ts-scroll">
       <!-- 表决区（仅表决类议题）：分「我的表决」和「全体表决情况」两块，避免个人/全体状态挤在一起 -->
-      <div v-if="topic.voteRequired" class="ts-vote" :class="{ 'opinion-mode': opinionOpen }">
+      <div v-if="topic.voteRequired" class="ts-vote" :class="{ 'opinion-mode': opinionOpen, 'has-ops': hasOpinions }">
         <!-- ① 我的表决：投票按钮（按钮含义自明，不加标签）+ 我的状态 -->
         <div v-show="!opinionOpen" class="ts-vote-mine">
           <!-- 未结束前选项常驻：已投项高亮，点其他选项后轻确认改票 -->
@@ -208,6 +208,8 @@
       <div v-if="opinionOpen || hasPrev || hasNext" class="ts-nav-row">
         <button v-if="opinionOpen" class="ts-op-collapse" :class="{ warm: opinions.length }" @click="opinionOpen = false">收起</button>
         <button v-if="hasPrev && !opinionOpen" class="ts-nav-btn prev" @click="$emit('prev')">‹ 上一个议题</button>
+        <!-- 第一个议题没有「上一个」：左下角补「返回」，避免左侧空着不对称（点了收起弹层回列表） -->
+        <button v-else-if="!opinionOpen && hasNext" class="ts-nav-btn back" @click="$emit('close')">返回</button>
         <div v-if="hasNext" class="ts-next-action" :class="{ disabled: !canGoNext }" @click="onNextTap">
           <button class="ts-nav-btn next" :disabled="!canGoNext">下一个议题 <span class="ts-next-arrow">›</span></button>
         </div>
@@ -283,6 +285,12 @@ const showOpinionSection = computed(() => {
 })
 const opinionSummaryMode = computed(() => {
   return !!(props.topic && props.topic.voteRequired && !opinionOpen.value)
+})
+// 是否已有意见（用 opinionCount 立即判断，避免异步拉取意见后布局跳动）：
+// 有意见→意见汇总置顶、投票区钉底(拇指区)；没意见→不占顶部，投票区直接排在指令条下(一眼看到要投票)
+const hasOpinions = computed(() => {
+  if (opinions.value.length > 0) return true
+  return !!(props.topic && (props.topic.opinionCount || 0) > 0)
 })
 const visibleOpinions = computed(() => {
   if (!opinionSummaryMode.value) return opinions.value
@@ -1010,7 +1018,8 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-scroll { display: flex; flex-direction: column; }
 .ts-sheet.is-vote .ts-vote { margin: 0; }
 .ts-sheet.is-vote .ts-vote:not(.opinion-mode) { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.ts-sheet.is-vote .ts-vote:not(.opinion-mode) .ts-vote-mine { margin-top: auto; }
+/* 有意见时投票区钉底(拇指区)；没意见时(无 .has-ops)不钉底，投票区直接排在标题下方 */
+.ts-sheet.is-vote .ts-vote.has-ops:not(.opinion-mode) .ts-vote-mine { margin-top: auto; }
 .ts-sheet.is-vote .ts-vote.opinion-mode { min-height: 0; }
 .ts-sheet.is-vote .ts-vote-btns { display: flex; flex-direction: column; gap: 16rpx; }
 .ts-sheet.is-vote .ts-vote-btn { display: flex; align-items: center; justify-content: flex-start; gap: 18rpx; border-radius: 16rpx; border: 2rpx solid #E1E4E8; background: #fff; color: #1f2329; font-size: 34rpx; font-weight: 700; padding: 26rpx 24rpx; text-align: left; box-shadow: none; }
@@ -1194,6 +1203,9 @@ async function removeOpinion(op) {
 /* 上一个议题：规整的白底描边次要按钮，靠左；把右侧主按钮顶到最右 */
 .ts-nav-btn.prev { margin-right: auto; background: #fff; border-color: #D8DBE0; color: #55585E; padding: 18rpx 30rpx; }
 .ts-nav-btn.prev:active { background: #EEF0F3; color: #3A3F47; }
+/* 返回：与「上一个议题」同款白底描边次要按钮，靠左，把右侧主按钮顶到最右 */
+.ts-nav-btn.back { margin-right: auto; background: #fff; border-color: #D8DBE0; color: #55585E; padding: 18rpx 34rpx; }
+.ts-nav-btn.back:active { background: #EEF0F3; color: #3A3F47; }
 .ts-next-action { margin-left:auto; display:flex; align-items:center; padding:10rpx; border:2rpx solid #B9D8D5; background:#F0FAF8; border-radius:22rpx; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.10); }
 .ts-next-action.disabled { border-color:#E1E5EA; background:#F6F7F9; box-shadow:none; }
 .ts-nav-btn.next { min-width:0; padding:18rpx 28rpx 18rpx 32rpx; border-radius:16rpx; background:#0F766E; border-color:#0F766E; color:#fff; font-size:30rpx; box-shadow:none; }
