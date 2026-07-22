@@ -15,6 +15,9 @@
 - [ ] **代投凭证是否恢复必填**（0722 记）：主持人代委员投票的凭证照片测试期改为选填
       （`CommitteeService.validateProxyRequest` 注释处 + TopicSheet `canSubmitProxy`），
       上线前决定是否恢复必填（防"主任替人乱投"的审计要求）。
+- [ ] **会后整理不真正结束会议（0722 记）**：测试期用户要求会议留着手动删，
+      MeetingLiveQuick `TEST_KEEP_MEETING_OPEN=true` 让「生成会议纪要/完成会后整理」跳过
+      advance('end')，会议保持进行中。上线前置回 false 恢复结束归档（公示流程依赖已结束状态）。
 - [ ] **超长录音识别预算**（低优先）：单段识别轮询预算封顶 30 分钟
       （MeetingLiveQuick `maxPollCount`），单段录音超约 1.5 小时可能误报超时。
       建议引导分段录音（已是推荐用法），或调高封顶。

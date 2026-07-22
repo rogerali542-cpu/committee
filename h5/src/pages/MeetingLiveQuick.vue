@@ -3092,24 +3092,33 @@ async function generateMinutes() {
 }
 
 // 共用：落库当前结果 + 结束会议，然后跳转到指定页面（结束本身不再等大模型）
+// ⚠ 测试期开关（0722 用户定）：生成纪要/完成会后整理不真正结束会议——不调 advance('end')，
+// 会议保持「进行中」留在首页，随时可再进各页面查看投票/记录，测试数据由用户手动删除清理。
+// 上线前置回 false 恢复「结束并归档」（公示流程需要已结束状态）。已记入 docs/上线前TODO.md
+const TEST_KEEP_MEETING_OPEN = true
+
 // 返回是否成功走到跳转（false=失败留在本页，调用方需要回滚自己的过渡态）
 async function _doEndAndGo(navUrl) {
   ending.value = true
   try {
     // 把最新(可能刚核对过的)结果再存一次，确保归档与展示一致
     try { await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload()) } catch (ce) { /* ignore */ }
-    try {
-      await api.committeeAdvance(meetingId.value, 'end')
-    } catch (ae) {
-      const msg = (ae && ae.message) || ''
-      const alreadyEnded = msg.indexOf('仅进行中') >= 0 || msg.indexOf('已结束') >= 0 || msg.indexOf('ended') >= 0
-      if (!alreadyEnded) {
-        ending.value = false
-        showModal({ title: '结束会议失败', content: msg || '请稍后重试', showCancel: false })
-        return false
+    if (TEST_KEEP_MEETING_OPEN) {
+      persistQuickState() // 保留本地状态：回到本页仍停在会后整理，可继续查看
+    } else {
+      try {
+        await api.committeeAdvance(meetingId.value, 'end')
+      } catch (ae) {
+        const msg = (ae && ae.message) || ''
+        const alreadyEnded = msg.indexOf('仅进行中') >= 0 || msg.indexOf('已结束') >= 0 || msg.indexOf('ended') >= 0
+        if (!alreadyEnded) {
+          ending.value = false
+          showModal({ title: '结束会议失败', content: msg || '请稍后重试', showCancel: false })
+          return false
+        }
       }
+      clearQuickState()
     }
-    clearQuickState()
     goAfterEnd(navUrl)
     return true
   } catch (err) {
