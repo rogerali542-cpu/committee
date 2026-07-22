@@ -63,14 +63,17 @@
             <button v-if="pendingVote != null" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
               {{ voteSubmitting ? '提交中...' : '确认提交' }}
             </button>
-            <div v-if="voteFeedbackText || (showVoteSummary && !voteRevealed && !opinionOpen)" class="ts-vote-status-row">
-              <div v-if="voteFeedbackText" class="ts-vote-feedback" :class="[voteFeedbackClass, { pending: voteFeedbackPending }]">
+            <div v-if="voteFeedbackText" class="ts-vote-status-row">
+              <div class="ts-vote-feedback" :class="[voteFeedbackClass, { pending: voteFeedbackPending }]">
                 <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
                 <span>{{ voteFeedbackText }}</span>
               </div>
-              <div v-if="showVoteSummary && !voteRevealed && !opinionOpen" class="ts-vote-progress">
-                <span>表决进度</span>
-                <span>{{ topic.voted != null ? topic.voted : 0 }}/{{ topic.total || 0 }} 人已投</span>
+            </div>
+            <!-- 表决进行中：实时票数明细，只报数不下"通过/未通过"结论(没结束不算数)。0722 用户定：不怕从众 -->
+            <div v-if="showLiveTally" class="ts-vote-all compact">
+              <div class="ts-result-line live">
+                <span class="ts-result-badge">进行中</span>
+                <span class="ts-result-nums">{{ resultNums }}</span>
               </div>
             </div>
           </template>
@@ -387,11 +390,18 @@ const voteFeedbackText = computed(() => {
 })
 const canGoNext = computed(() => !props.topic || !props.topic.voteRequired || voteCompleted.value)
 
-// ── 表决进行中对委员隐藏票数明细(防从众)；会议结束后才揭晓 ──
+// ── 表决进行中即亮实时票数明细(0722 用户定：不怕从众，透明优先)；结束后才下"通过/未通过"结论 ──
 const voteRevealed = computed(() => {
   const t = props.topic
   if (!t) return false
   return !!t.voteClosed || !props.interactive
+})
+// 进行中的实时票数：表决还开着(会议进行中且未结束)就对所有人显示，只报数不下结论
+const showLiveTally = computed(() => {
+  const t = props.topic
+  if (!t || !t.voteRequired) return false
+  if (t.voteClosed || !props.interactive) return false
+  return !opinionOpen.value
 })
 // 未投人数 = 应到 − 已投
 const notVoted = computed(() => {
@@ -1008,6 +1018,9 @@ async function removeOpinion(op) {
 .ts-result-badge { flex-shrink: 0; font-size: 26rpx; font-weight: 800; padding: 4rpx 16rpx; border-radius: 999rpx; }
 .ts-result-line.pass .ts-result-badge { background: #EAF6E5; color: #2E7D32; border: 2rpx solid #B8DFAF; }
 .ts-result-line.fail .ts-result-badge { background: #FDECEA; color: #C0392B; border: 2rpx solid #F0B3AB; }
+/* 进行中(实时票数)：中性蓝，区别于已揭晓的绿/红结论 */
+.ts-result-line.live { background: #F4F8FF; border-color: #DCE8FB; }
+.ts-result-line.live .ts-result-badge { background: #E7F0FF; color: #2F6BD8; border: 2rpx solid #C6DBF7; }
 .ts-result-nums { font-size: 25rpx; font-weight: 600; color: #5F6673; font-variant-numeric: tabular-nums; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
