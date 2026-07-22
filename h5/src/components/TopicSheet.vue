@@ -80,41 +80,13 @@
           <div v-else class="ts-vote-missed">本议题表决已结束，您未参与投票</div>
         </div>
 
-        <!-- ② 全体表决情况：进行中只给参与进度(防从众)；主任「结束表决」或会议结束后才揭晓票数明细+白话结论 -->
-        <div v-if="showVoteSummary && voteRevealed" class="ts-vote-all">
-          <div class="ts-tally-top">
-            <span class="ts-tally-scope">表决进度</span>
-            <span class="ts-tally-total">{{ topic.voted != null ? topic.voted : 0 }}/{{ topic.total || 0 }} 人已投</span>
+        <!-- ② 揭晓（主任结束表决/会议结束后）：紧凑一行——结论徽标 + 票数统计
+             （0722 用户定：看结果=自己的票+票数统计即可，不做大结论卡/进度条占屏） -->
+        <div v-if="showVoteSummary && voteRevealed" class="ts-vote-all compact">
+          <div class="ts-result-line" :class="topic.passed ? 'pass' : 'fail'">
+            <span class="ts-result-badge">{{ topic.passed ? '✓ 通过' : '✕ 未通过' }}</span>
+            <span class="ts-result-nums">{{ resultNums }}</span>
           </div>
-
-          <!-- 已揭晓：白话结论 + 进度条 + 逐项(未投独立成行) -->
-          <template v-if="voteRevealed">
-            <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
-              <div class="ts-verdict" :class="topic.passed ? 'pass' : 'fail'">
-                <span class="ts-verdict-mark">{{ topic.passed ? '✓' : '✕' }}</span>
-                <span class="ts-verdict-word">{{ topic.passed ? '通过' : '未通过' }}</span>
-                <span class="ts-verdict-sub">{{ verdictSub }}</span>
-              </div>
-              <div class="ts-bar">
-                <div v-if="topic.forVotes" class="ts-bar-seg agree" :style="{ width: barPct(topic.forVotes) }"></div>
-                <div v-if="topic.agVotes" class="ts-bar-seg against" :style="{ width: barPct(topic.agVotes) }"></div>
-                <div v-if="topic.abVotes" class="ts-bar-seg abstain" :style="{ width: barPct(topic.abVotes) }"></div>
-                <div v-if="notVoted" class="ts-bar-seg none" :style="{ width: barPct(notVoted) }"></div>
-              </div>
-              <div class="ts-tally-rows">
-                <div class="ts-tally-row"><span class="ts-dot agree"></span><span class="ts-row-label">同意</span><span class="ts-row-num">{{ topic.forVotes || 0 }}</span></div>
-                <div class="ts-tally-row"><span class="ts-dot against"></span><span class="ts-row-label">不同意</span><span class="ts-row-num">{{ topic.agVotes || 0 }}</span></div>
-                <div class="ts-tally-row"><span class="ts-dot abstain"></span><span class="ts-row-label">弃权</span><span class="ts-row-num">{{ topic.abVotes || 0 }}</span></div>
-                <div class="ts-tally-row none"><span class="ts-dot none"></span><span class="ts-row-label">未投</span><span class="ts-row-num">{{ notVoted }}</span></div>
-              </div>
-            </template>
-            <!-- 多选项：揭晓后按选项列票数，未投单列 -->
-            <div v-else class="ts-tally-rows">
-              <div class="ts-tally-row" v-for="o in (topic.options || [])" :key="o.id"><span class="ts-row-label">{{ o.label }}</span><span class="ts-row-num">{{ o.votes || 0 }}</span></div>
-              <div class="ts-tally-row none"><span class="ts-row-label">未投</span><span class="ts-row-num">{{ notVoted }}</span></div>
-            </div>
-          </template>
-
         </div>
         <button v-if="canDiscuss && !opinionOpen" class="ts-op-entry" @click="opinionOpen = true">
           补充意见
@@ -427,28 +399,17 @@ const notVoted = computed(() => {
   if (!t) return 0
   return Math.max(0, (t.total || 0) - (t.voted || 0))
 })
-// 距过半还差几票（need = 应到/2+1，后端已算）
-const shortBy = computed(() => {
-  const t = props.topic
-  if (!t) return 0
-  return Math.max(0, (t.need || 0) - (t.forVotes || 0))
-})
-// 白话结论副文案：通过=同意已过半；未通过=还差X票
-const verdictSub = computed(() => {
+// 紧凑票数统计一行：简单表决=同意/不同意/弃权/未投；多选项=各选项票数+未投
+const resultNums = computed(() => {
   const t = props.topic
   if (!t) return ''
-  const f = t.forVotes || 0, need = t.need || 0
-  return t.passed
-    ? '同意 ' + f + ' 票，已过半（需 ' + need + ' 票）'
-    : '同意 ' + f + ' 票，还差 ' + shortBy.value + ' 票（需 ' + need + ' 票）'
+  if ((t.decisionType || 'simple') === 'multi_choice') {
+    const parts = (t.options || []).map(o => (o.label || '') + ' ' + (o.votes || 0))
+    parts.push('未投 ' + notVoted.value)
+    return parts.join(' · ')
+  }
+  return '同意 ' + (t.forVotes || 0) + ' · 不同意 ' + (t.agVotes || 0) + ' · 弃权 ' + (t.abVotes || 0) + ' · 未投 ' + notVoted.value
 })
-// 进度条各段宽度：按应到人数占比
-function barPct(n) {
-  const t = props.topic
-  const total = (t && t.total) || 0
-  if (!total) return '0%'
-  return Math.round((n || 0) / total * 100) + '%'
-}
 
 // ── 语音输入意见：useRecorder 录音 → 后端 ASR 转文字 → 填入输入框（可改）→ 发表 ──
 // 注意声明须在下面 immediate watch 之前（watch 首跑就会调 cancelVoice）
@@ -1017,18 +978,12 @@ async function removeOpinion(op) {
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
-.ts-sheet.is-vote .ts-tally-top { margin-bottom: 0; justify-content: center; }
-.ts-sheet.is-vote .ts-tally-scope { background: transparent; color: #8A8F98; padding: 0; font-weight: 600; }
-.ts-sheet.is-vote .ts-tally-total { color: #6B7078; font-size: 25rpx; font-weight: 600; }
-.ts-sheet.is-vote .ts-tally-veilbox { margin-top: 10rpx; padding: 12rpx 0 0; border: 0; background: transparent; color: #A0A5AD; font-size: 24rpx; }
 .ts-op-entry { display: flex; align-items: center; justify-content: center; width: 60%; min-height: 88rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #C8D7E5; border-radius: 16rpx; background: #F7FAFC; color: #4D6F8C; font-size: 30rpx; font-weight: 600; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: none; }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
 .ts-vote-status-row { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
 .ts-vote-progress { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; margin: 0 0 0 auto; color: #A0A5AD; font-size: 23rpx; font-weight: 500; white-space: nowrap; }
-.ts-vote-progress .ts-tally-scope,
-.ts-vote-progress .ts-tally-total { background: transparent; padding: 0; color: inherit; font-size: inherit; font-weight: inherit; }
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
 .ts-vote-btn { border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; font-weight: 700; padding: 22rpx 0; }
 /* 方案B：默认就带语义色(浅底+彩边+彩字)，同意绿/不同意红/弃权灰，一眼分清 */
@@ -1047,42 +1002,13 @@ async function removeOpinion(op) {
 .ts-opt-votes { font-size: 26rpx; color: #999; }
 /* 全体计票：独立浅底卡片，与个人投票区拉开距离(避免误认成个人结果)；"全体"前缀点明范围 */
 .ts-vote-all { margin-top: 44rpx; }
-/* 顶部：全体 + 参与进度（票数明细/结论只在揭晓后出现） */
-.ts-tally-top { display: flex; align-items: center; gap: 12rpx; margin-bottom: 16rpx; }
-.ts-tally-scope { font-weight: 700; color: #6B7078; background: #E9EBEF; border-radius: 8rpx; padding: 2rpx 12rpx; font-size: 24rpx; }
-.ts-tally-total { font-weight: 700; color: #1f2329; font-size: 27rpx; }
-/* 白话结论卡：通过=绿 / 未通过=红 */
-.ts-verdict { display: flex; align-items: center; flex-wrap: wrap; gap: 4rpx 14rpx; border-radius: 16rpx; padding: 20rpx 22rpx; margin-bottom: 16rpx; }
-.ts-verdict.pass { background: #EAF6E5; border: 2rpx solid #9FD290; }
-.ts-verdict.fail { background: #FDECEA; border: 2rpx solid #F0B3AB; }
-.ts-verdict-mark { display: inline-flex; align-items: center; justify-content: center; width: 44rpx; height: 44rpx; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 700; }
-.ts-verdict.pass .ts-verdict-mark { background: #2E9E4B; }
-.ts-verdict.fail .ts-verdict-mark { background: #E24B3A; }
-.ts-verdict-word { font-size: 36rpx; font-weight: 800; }
-.ts-verdict.pass .ts-verdict-word { color: #2E7D32; }
-.ts-verdict.fail .ts-verdict-word { color: #C0392B; }
-.ts-verdict-sub { flex-basis: 100%; font-size: 25rpx; font-weight: 600; color: #6B7078; margin-top: 2rpx; }
-/* 进度条：同意/不同意/弃权/未投 按应到人数占比拼接 */
-.ts-bar { display: flex; height: 22rpx; border-radius: 11rpx; overflow: hidden; background: #EDEFF2; margin-bottom: 18rpx; }
-.ts-bar-seg { height: 100%; }
-.ts-bar-seg.agree { background: #3E9B34; }
-.ts-bar-seg.against { background: #E24B3A; }
-.ts-bar-seg.abstain { background: #9AA0A6; }
-.ts-bar-seg.none { background: #D6DAE0; }
-/* 逐项：每项独立成行，未投单列 */
-.ts-tally-rows { display: flex; flex-direction: column; gap: 2rpx; }
-.ts-tally-row { display: flex; align-items: center; gap: 14rpx; padding: 12rpx 6rpx; border-bottom: 2rpx solid #F2F2F4; font-size: 29rpx; }
-.ts-tally-row:last-child { border-bottom: 0; }
-.ts-tally-row.none .ts-row-label { color: #8A8F98; }
-.ts-dot { flex-shrink: 0; width: 18rpx; height: 18rpx; border-radius: 50%; }
-.ts-dot.agree { background: #3E9B34; }
-.ts-dot.against { background: #E24B3A; }
-.ts-dot.abstain { background: #9AA0A6; }
-.ts-dot.none { background: #D6DAE0; }
-.ts-row-label { color: #444; font-weight: 600; }
-.ts-row-num { margin-left: auto; font-weight: 800; color: #1f2329; font-variant-numeric: tabular-nums; }
-/* 未揭晓：只提示结果稍后统计 */
-.ts-tally-veilbox { background: #F6F7F9; border: 2rpx dashed #D8DBE0; border-radius: 14rpx; padding: 22rpx; text-align: center; font-size: 26rpx; color: #8A8F98; }
+/* 紧凑揭晓（0722）：一行=结论徽标+票数统计，不占大区域 */
+.ts-vote-all.compact { margin-top: 20rpx; }
+.ts-result-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 14rpx; padding: 14rpx 18rpx; border-radius: 14rpx; background: #F7F8FA; border: 2rpx solid #EDEFF2; }
+.ts-result-badge { flex-shrink: 0; font-size: 26rpx; font-weight: 800; padding: 4rpx 16rpx; border-radius: 999rpx; }
+.ts-result-line.pass .ts-result-badge { background: #EAF6E5; color: #2E7D32; border: 2rpx solid #B8DFAF; }
+.ts-result-line.fail .ts-result-badge { background: #FDECEA; color: #C0392B; border: 2rpx solid #F0B3AB; }
+.ts-result-nums { font-size: 25rpx; font-weight: 600; color: #5F6673; font-variant-numeric: tabular-nums; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
