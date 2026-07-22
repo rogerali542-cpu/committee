@@ -3149,9 +3149,10 @@ async function confirmEndMeeting() {
 }
 
 function continuePendingTopics() {
-  endReviewVisible.value = false
-  meetingPhase.value = 'voting'
-  persistQuickState()
+  // 与点击清单第一条议题同路径（0722 用户定）：留在会后整理页，直接弹出第一个议题，
+  // 用弹层的「下一个议题」逐条走完，不再跳回议题处理页
+  const first = meetingTopics.value[0]
+  if (first) openTopicSheet(first)
 }
 
 async function handleEndReviewPrimary() {
@@ -3615,7 +3616,7 @@ async function returnToRecordingPage() {
 .rp-state.remote { color:#2980B9; }
 .rp-state.wait { color:#B0752F; }
 .rp-state.off { color:#B0392E; }
-.recording-head-action { flex-shrink:0; width:auto; min-width:136rpx; height:48rpx; padding:0 20rpx; font-size:23rpx; font-weight:550; }
+.recording-head-action { flex-shrink:0; width:auto; min-width:120rpx; height:44rpx; padding:0 18rpx; font-size:22rpx; font-weight:550; }
 .supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
 .supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
@@ -3624,7 +3625,7 @@ async function returnToRecordingPage() {
 .supp-actions.single .supp-btn { width:56%; min-width:250rpx; justify-self:center; } /* 会中操作统一胶囊宽度 */
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
-.supp-actions.single.paused .supp-btn { width:34%; min-width:140rpx; height:52rpx; font-size:23rpx; font-weight:500; justify-self:center; }  /* 暂停态按钮再缩一档（0722 再缩：52rpx/23号） */
+.supp-actions.single.paused .supp-btn { width:30%; min-width:128rpx; height:46rpx; font-size:22rpx; font-weight:500; justify-self:center; }  /* 暂停态按钮（0722 二次再缩：46rpx/22号） */
 .rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
