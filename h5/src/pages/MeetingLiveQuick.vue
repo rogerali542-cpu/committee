@@ -3621,11 +3621,12 @@ async function returnToRecordingPage() {
 .end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:row; align-items:stretch; justify-content:center; gap:16rpx; border-top:2rpx solid #ECE8E1; }
 /* 钉底栏：抬离屏幕底边一点、去掉白色背景条，用页面底色（仍不透明，挡住滚动内容不露馅） */
 .end-meeting-row.pinned { position:fixed; z-index:80; left:0; right:0; bottom:0; margin-top:0; padding:14rpx 32rpx calc(38rpx + env(safe-area-inset-bottom)); background:#f4f5f7; }
-/* 返回录音（更常用）：实心填充 + 略宽，明显更显眼；结束现场会议：浅暖描边、稍窄一档 */
-.back-recording-btn { flex:1.35 1 0; display:flex; align-items:center; justify-content:center; min-height:92rpx; box-sizing:border-box; border:0; border-radius:16rpx; background:#B26A19; color:#FFF7EA; font-size:30rpx; font-weight:750; font-family:inherit; box-shadow:0 6rpx 16rpx rgba(178,106,25,.22); }
+/* 两按钮同等大小、同等重量：都实心填充、等宽等高，仅颜色轻微不同以区分语义
+   （返回录音=暖金棕，结束现场会议=略红的赭棕，明暗接近所以视觉等重）（0722） */
+.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:92rpx; box-sizing:border-box; border:0; border-radius:16rpx; background:#B4701F; color:#FFF7EA; font-size:29rpx; font-weight:750; font-family:inherit; box-shadow:0 5rpx 14rpx rgba(120,70,10,.16); }
 .back-recording-btn:active { background:#8F5312; }
-.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; background:#FFFBF3; border:2rpx solid #B47A34; color:#8F4A06; font-size:28rpx; font-weight:700; border-radius:16rpx; font-family:inherit; }
-.end-meeting-btn:active { background:#F6E8D3; }
+.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; border:0; background:#A15A33; color:#FFF3EC; font-size:29rpx; font-weight:750; border-radius:16rpx; font-family:inherit; box-shadow:0 5rpx 14rpx rgba(120,70,10,.16); }
+.end-meeting-btn:active { background:#834526; }
 .emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .live-page.has-fixed-end { padding-bottom:150rpx; }
 /* 议题处理阶段底部操作栏钉底：给页面留出等高底边，滚到底时最后内容不被盖住 */
