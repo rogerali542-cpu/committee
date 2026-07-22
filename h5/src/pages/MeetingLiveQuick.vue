@@ -3645,7 +3645,9 @@ async function returnToRecordingPage() {
 .rp-state.remote { color:#2980B9; }
 .rp-state.wait { color:#B0752F; }
 .rp-state.off { color:#B0392E; }
-.recording-head-action { flex-shrink:0; width:auto; min-width:120rpx; height:44rpx; padding:0 18rpx; font-size:22rpx; font-weight:550; }
+/* ⚠ 须用 .supp-btn.recording-head-action 提权：基础 .supp-btn(84rpx) 在文件更后面，
+   单类同权重会被其覆盖（0722 用户实测按钮一直没变小的根因） */
+.supp-btn.recording-head-action { flex-shrink:0; width:auto; min-width:116rpx; height:44rpx; padding:0 18rpx; font-size:22rpx; font-weight:550; }
 .supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
 .supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
