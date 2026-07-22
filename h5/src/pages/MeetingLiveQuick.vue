@@ -954,8 +954,9 @@ const hasAnyTranscribed = computed(() => (recordings.value || [])
   .some(r => r.asrStatus === 'done' || recognizedIds.value.includes(r.id)))
 // 识别失败后的重试入口（0721 用户定：按钮仅失败时出现，平时不放识别按钮以免误导）。
 // 覆盖两种失败痕迹：本机流程刚失败(asrStatus='failed') / 服务端落库的失败段(行上"识别异常")
-const recognizeRetryVisible = computed(() => isChair.value
-  && !uploading.value && !polling.value && !extracting.value && !generatingMinutes.value
+// 0722 起识别对全员开放，重试按钮不再限主任（委员传的段失败了自己就能重试）
+const recognizeRetryVisible = computed(() =>
+  !uploading.value && !polling.value && !extracting.value && !generatingMinutes.value
   && !canUpload.value
   && (asrStatus.value === 'failed' || (recordings.value || []).some(r => r.asrStatus === 'failed')))
 
@@ -2050,11 +2051,10 @@ async function uploadRecordingFile(file, durationSec) {
     rec.reset() // 清空录音器内存：消除返回录音页时的残留时长，避免把同一段重复上传
     currentStep.value = 2 // 停在录音页：显示"上传录音并生成会议纪要"按钮
     await loadDetail() // 刷新录音列表（await 确保新录音进入列表后再自动识别）
-    // 上传成功 → 主任自动后台转写（会中只录、纪要会后在详情页生成；转写静默进行，靠录音卡下方行内提示）；
-    // 委员/记录员只传不转（识别是主任的动作），段先以"待识别"挂在列表里
+    // 上传成功 → 一律自动后台转写（0722 用户定：委员上传的段也自动识别）。
+    // 会中只录、纪要会后在详情页生成；转写静默进行，靠录音卡下方行内提示
     _recognizeAfterUpload = false
-    if (isChair.value) uploadAndRecognize()
-    else toast({ title: '已上传，待主任识别后并入会议记录', icon: 'none' })
+    uploadAndRecognize()
   } catch (e) {
     stopUploadEstimatedProgress(false)
     _recognizeAfterUpload = false
@@ -2095,8 +2095,8 @@ function onPickRowTap(item) {
 
 // 「上传录音」：只做 转写→提炼（遮罩 recognize），完成后由遮罩「下一步」进入表决核对（voteCheckFlow），
 // 不再一键连做生成纪要——表决结果先经主任确认，再决定是否继续生成。
+// 0722 用户定：委员上传的段也自动识别 → 本函数对全部会内角色开放（后端接口已同步放开）
 async function uploadAndRecognize() {
-  if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
   if (uploading.value || polling.value || extracting.value || generatingMinutes.value) return
   if (!(recordings.value || []).length) { toast({ title: '还没有录音，请先录一段', icon: 'none' }); return }
   overlayPhase.value = 'recognize'
@@ -2123,11 +2123,7 @@ async function uploadRecordingStep() {
     return
   }
   if (!hasSavedRecordings.value) { toast({ title: '请先开始录音', icon: 'none' }); return }
-  // 已上传但未识别：识别是主任的动作（会消耗识别额度且改动全会状态）
-  if (needRecognize.value) {
-    if (isChair.value) await uploadAndRecognize()
-    else toast({ title: '录音已上传，识别由主任发起', icon: 'none' })
-  }
+  if (needRecognize.value) await uploadAndRecognize() // 已上传但未识别 → 直接识别（全员可发起）
 }
 
 // 识别完成后的主按钮——「生成会议纪要」：表决核对（AI票数确认/未表决提示）→ 生成。
@@ -2375,7 +2371,7 @@ async function deleteRecording(item, idx) {
 
 // 转写所选录音：逐条顺序转写，全部完成后统一抽取；已转写的由后端自动并入合并
 async function transcribeSelected() {
-  if (!isChair.value) { toast({ title: '仅主任/副主任可转写', icon: 'none' }); return }
+  // 0722 用户定：委员上传的段也自动识别 → 转写对全部会内角色开放
   if (polling.value || extracting.value) return
   // 勾选的都转写（含被重新勾选的“已转写”项，按 recordingId 覆盖其缓存，不会重复）
   const ids = (recordings.value || [])

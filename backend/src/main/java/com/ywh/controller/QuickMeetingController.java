@@ -105,9 +105,9 @@ public class QuickMeetingController {
         return Result.ok(asrService.status(taskId));
     }
 
-    /** 主任选片触发 ASR 转写 */
+    /** 触发 ASR 转写。0722 用户定：委员上传的段也自动识别，故放开到全部会内角色。 */
     @PostMapping("/recordings/{recordingId}/transcribe")
-    @RequireRole({"主任", "副主任"})
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
     public Result<AsrTaskVO> transcribeRecording(@PathVariable Long id,
                                                   @PathVariable Long recordingId) {
         return Result.ok(asrService.submit(id, recordingId, committeeService));

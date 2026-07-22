@@ -215,7 +215,8 @@ async function s5() {
   await click(page, '暂停录音'); await page.waitForTimeout(500)
   await click(page, '上传录音'); await page.waitForTimeout(2500)
   t('S5 委员上传成功', st.counters.upload === 1 && st.recordings.length === 1)
-  t('S5 委员上传后不自动转写', st.counters.transcribe === 0, 'transcribe=' + st.counters.transcribe)
+  await page.waitForTimeout(4000) // 0722 用户定：委员上传的段也自动识别
+  t('S5 委员上传后自动转写', st.counters.transcribe === 1 && st.recordings[0].asrStatus === 'done', 'transcribe=' + st.counters.transcribe)
   await ctx.close()
 }
 
