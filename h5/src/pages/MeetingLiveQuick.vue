@@ -3845,7 +3845,7 @@ async function returnToRecordingPage() {
 .fixed-end-field-btn:active { background:#F6E8D3; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
 .end-review-body { flex:1; min-height:0; overflow:auto; padding:34rpx 30rpx calc(42rpx + env(safe-area-inset-bottom)); box-sizing:border-box; display:flex; align-items:flex-start; }
-.end-review-card { width:100%; min-height:860rpx; background:#fff; border:2rpx solid #E8EEF0; border-radius:30rpx; padding:50rpx 38rpx 44rpx; box-sizing:border-box; box-shadow:0 18rpx 46rpx rgba(25,40,55,0.10); }
+.end-review-card { width:100%; min-height:860rpx; background:#fff; border:2rpx solid #E8EEF0; border-radius:30rpx; padding:25rpx 38rpx 44rpx; box-sizing:border-box; box-shadow:0 18rpx 46rpx rgba(25,40,55,0.10); }
 .end-review-kicker { display:inline-flex; padding:8rpx 18rpx; border-radius:999rpx; background:#EAF6F6; color:#0F766E; font-size:25rpx; font-weight:800; }
 /* ── 会后整理任务清单（0722 重排）：引导语 + 三个核对项（状态灯）+ 结论 + 主按钮 ── */
 .er-lead { font-size:30rpx; font-weight:650; color:#2A2F36; line-height:1.6; }
