@@ -3739,7 +3739,9 @@ async function returnToRecordingPage() {
 .er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
 .end-review-primary { display:block; width:70%; margin:14rpx auto 0; height:80rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
-.end-review-secondary { width:100%; height:60rpx; margin-top:18rpx; border:0; background:transparent; color:#7B838C; font-size:25rpx; font-weight:500; }
+/* 直接完成会议：与生成会议纪要同等明显（0722 用户定）——同宽同高同字重，浅底描边区分语义 */
+.end-review-secondary { display:block; width:70%; margin:18rpx auto 0; height:80rpx; box-sizing:border-box; border:2rpx solid #B9C0C9; border-radius:20rpx; background:#F7F8FA; color:#3C434B; font-size:30rpx; font-weight:700; }
+.end-review-secondary:active { background:#EBEDF0; }
 /* 主持人操作区：仅「临时添加议题」，居中的安静次要按钮（方案A 已移除结束表决） */
 .host-topic-actions { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:18rpx 0 0; display:flex; justify-content:center; gap:16rpx; }
 .hta-btn { flex:1 1 0; max-width:340rpx; font-size:27rpx; font-weight:600; background:#fff; border:2rpx solid #D8DBE0; color:#55585E; border-radius:999rpx; padding:15rpx 20rpx; line-height:1.3; font-family:inherit; }
