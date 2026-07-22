@@ -44,14 +44,16 @@
           <div class="er-lead">现场会议已结束。核对以下事项，然后生成会议纪要。</div>
 
           <div class="er-item">
-            <div class="er-item-head">
+            <div class="er-item-head" @click="toggleErItem(1)">
               <span class="er-item-no">1</span>
               <span class="er-item-title">签到确认</span>
               <!-- 过半(法定人数)绿灯，未过半黄灯提醒——未过半的表决决议无效 -->
               <span class="er-item-state" :class="signinQuorum.ready ? 'ok' : 'warn'">
                 {{ (signinQuorum.ready ? '✓ ' : '● ') + signinStats.signedCount + '/' + signinStats.expectedCount + ' 已签到' + (signinQuorum.ready ? '' : '（未过半）') }}
               </span>
+              <span class="er-item-toggle">{{ erCollapsed[1] ? '▸' : '▾' }}</span>
             </div>
+            <template v-if="!erCollapsed[1]">
             <div v-if="signinStats.absentCount > 0" class="er-item-sub">（{{ signinStats.absentCount }} 人请假缺席，不计入应到）</div>
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
@@ -59,13 +61,16 @@
                 {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
               </button>
             </div>
+            </template>
           </div>
 
           <div class="er-item">
-            <div class="er-item-head">
+            <div class="er-item-head" @click="toggleErItem(2)">
               <span class="er-item-no">2</span>
               <span class="er-item-title">议题处理</span>
+              <span class="er-item-toggle">{{ erCollapsed[2] ? '▸' : '▾' }}</span>
             </div>
+            <template v-if="!erCollapsed[2]">
             <!-- 各议题结果一行一条（纯状态展示，不可点——0722 用户定：入口统一走「继续处理议题」，
                  避免误导；未投拦截的「去代录」仍程序直开弹层） -->
             <div v-if="meetingTopics.length" class="er-topic-list">
@@ -77,14 +82,17 @@
             <div v-if="pendingTopicCount" class="er-item-actions">
               <button class="er-act warm" @click="continuePendingTopics">继续处理议题</button>
             </div>
+            </template>
           </div>
 
           <div class="er-item">
-            <div class="er-item-head">
+            <div class="er-item-head" @click="toggleErItem(3)">
               <span class="er-item-no">3</span>
               <span class="er-item-title">会议录音</span>
               <span class="er-item-state" :class="erRecordState.cls">{{ erRecordState.text }}</span>
+              <span class="er-item-toggle">{{ erCollapsed[3] ? '▸' : '▾' }}</span>
             </div>
+            <template v-if="!erCollapsed[3]">
             <!-- 就绪时这行纯重复（徽章已说就绪、下面逐段列出），只在未就绪时显示状态说明，减一行密度 -->
             <div v-if="!(generated && recordingsChrono.length)" class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
             <!-- 每段录音一行：段号+时长，右侧 转写（看这一段）/ 删除（仅主持人） -->
@@ -99,14 +107,17 @@
               <!-- 整会合并转写稿入口 -->
               <button class="er-act" @click="openTranscript('full')">查看合并转写</button>
             </div>
+            </template>
           </div>
 
           <div class="er-item">
-            <div class="er-item-head">
+            <div class="er-item-head" @click="toggleErItem(4)">
               <span class="er-item-no">4</span>
               <span class="er-item-title">会议材料</span>
               <span class="er-item-state muted">{{ materials.length ? ('共 ' + materials.length + ' 份') : '暂无材料' }}</span>
+              <span class="er-item-toggle">{{ erCollapsed[4] ? '▸' : '▾' }}</span>
             </div>
+            <template v-if="!erCollapsed[4]">
             <!-- 现有材料：点名字预览 -->
             <div v-if="materials.length" class="er-mat-list">
               <div class="er-mat-row" v-for="(m, mi) in materials" :key="'er-mat-' + mi" @click="previewMaterial(mi)">
@@ -117,6 +128,7 @@
             <div class="er-item-actions">
               <button class="er-act" @click="uploadMaterial">上传材料</button>
             </div>
+            </template>
           </div>
 
           <!-- 结论行紧贴主按钮：解释按钮此刻为什么可点/不可点 -->
@@ -1207,6 +1219,9 @@ const endReviewAsrText = computed(() => {
   if (generated.value) return '识别完成'
   return '未完成识别'
 })
+// 会后整理四个核对项的收起态（0722 用户定：每项右上角 ▾/▸ 可收起，降低整页密度）
+const erCollapsed = ref({})
+function toggleErItem(n) { erCollapsed.value = { ...erCollapsed.value, [n]: !erCollapsed.value[n] } }
 const leavingToMinutes = ref(false) // 正在结束会议并跳纪要页的过渡态：盖住按钮文案，避免闪现「已生成」
 const endReviewPrimaryText = computed(() => {
   if (leavingToMinutes.value) return '正在生成会议纪要…'
@@ -3854,7 +3869,10 @@ async function returnToRecordingPage() {
 .er-item-head { display:flex; align-items:center; gap:14rpx; }
 .er-item-no { flex-shrink:0; width:40rpx; height:40rpx; border-radius:50%; background:#FDF3D6; color:#B26A19; border:2rpx solid #EBD08A; display:flex; align-items:center; justify-content:center; font-size:24rpx; font-weight:700; }
 .er-item-title { font-size:30rpx; font-weight:700; color:#23272E; }
-.er-item-state { margin-left:auto; flex-shrink:0; font-size:23rpx; font-weight:600; padding:6rpx 16rpx; border-radius:999rpx; }
+/* 状态徽章跟在标题旁（0722 用户定），右上角是展开/收起按钮 */
+.er-item-state { flex-shrink:0; font-size:23rpx; font-weight:600; padding:6rpx 16rpx; border-radius:999rpx; }
+.er-item-toggle { margin-left:auto; flex-shrink:0; width:48rpx; height:48rpx; display:flex; align-items:center; justify-content:center; border-radius:12rpx; color:#A0A5AD; font-size:24rpx; background:#F4F5F7; }
+.er-item-toggle:active { background:#E8EAED; color:#5F6673; }
 .er-item-state.ok { background:#EAF6E5; color:#2E7D32; }
 .er-item-state.warn { background:#FFF6E8; color:#B26A00; }
 .er-item-state.busy { background:#EAF3FC; color:#1F6FB2; }
