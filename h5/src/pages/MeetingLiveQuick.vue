@@ -1220,7 +1220,8 @@ const endReviewAsrText = computed(() => {
   return '未完成识别'
 })
 // 会后整理四个核对项的收起态（0722 用户定：每项右上角 ▾/▸ 可收起，降低整页密度）
-const erCollapsed = ref({})
+// 第4项会议材料默认收起（列表长、非核对重点），其余默认展开
+const erCollapsed = ref({ 4: true })
 function toggleErItem(n) { erCollapsed.value = { ...erCollapsed.value, [n]: !erCollapsed.value[n] } }
 const leavingToMinutes = ref(false) // 正在结束会议并跳纪要页的过渡态：盖住按钮文案，避免闪现「已生成」
 const endReviewPrimaryText = computed(() => {
