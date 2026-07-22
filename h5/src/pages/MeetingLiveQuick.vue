@@ -3038,24 +3038,24 @@ async function confirmEndMeeting() {
   // 两维状态：有无「进行中/未上传」的录音 × 有无「已上传」的录音，组合出四档确认文案。
   const hasOngoing = canUpload.value            // 录音中 / 暂停 / 已停未传——一段没上传的录音
   const hasUploaded = hasSavedRecordings.value  // 服务器上已有录音段
-  const pendingTail = pendingTopicCount.value ? '还有 ' + pendingTopicCount.value + ' 项议题可继续处理。' : ''
+  const pendingTail = pendingTopicCount.value ? '还有 ' + pendingTopicCount.value + ' 项议题未处理。' : ''
 
   let content, confirmText, cancelText
   if (hasOngoing && !hasUploaded) {
-    // 状态1：有进行中、无已上传。确认=放弃这段并结束；取消=返回继续录。
-    content = '当前这段录音还没有上传。结束会议会放弃这段录音，且无法再返回上传。确认结束吗？'
-    confirmText = '确认结束'; cancelText = '返回继续录音'
+    // 状态1：有进行中、无已上传。确认=放弃这段并结束。
+    content = '这段录音还没上传，结束会放弃它。确认结束？'
+    confirmText = '确认结束'; cancelText = '继续录音'
   } else if (hasOngoing && hasUploaded) {
-    // 状态2：有进行中、有已上传。前面的段已保存，只放弃当前这段。
-    content = '前面的录音已上传保存，但当前这段还在录、没有上传。结束会议会放弃当前这段录音。确认结束吗？'
-    confirmText = '确认结束'; cancelText = '返回继续录音'
+    // 状态2：有进行中、有已上传。前面已保存，只放弃当前这段。
+    content = '当前这段录音没上传，结束会放弃它（前面的已保存）。确认结束？'
+    confirmText = '确认结束'; cancelText = '继续录音'
   } else if (!hasOngoing && !hasUploaded) {
     // 状态3：无进行中、无已上传。基本是没录音就想结束。
-    content = '本次现场还没有任何录音。确认要结束现场会议吗？'
+    content = '本次还没有任何录音，确认结束？'
     confirmText = '确认结束'; cancelText = '返回'
   } else {
     // 状态4：无进行中、有已上传（最常见）。普通确认即可。
-    content = '将停止录音，进入会后处理。' + pendingTail
+    content = '结束后进入会后整理。' + pendingTail
     confirmText = '结束会议'; cancelText = '继续开会'
   }
 
@@ -3066,7 +3066,7 @@ async function confirmEndMeeting() {
     const others = (live || []).filter(x => String(x.roleId) !== String(myRoleId.value || ''))
     if (others.length) {
       const names = others.map(o => o.name).filter(Boolean).join('、') || '有人'
-      content = names + ' 还在用自己的手机录音（不受结束影响，仍可上传）。\n' + content
+      content = names + ' 还在录音（不影响，仍可上传）。\n' + content
     }
   } catch (e) { /* 查不到不拦 */ }
 
@@ -3086,7 +3086,7 @@ async function confirmEndMeeting() {
   if (hasSavedRecordings.value && !generated.value
       && !uploading.value && !polling.value && !extracting.value) {
     const choice = await showActionSheet({
-      title: '录音还没完成识别，直接结束将无法自动生成纪要',
+      title: '录音还没识别完，直接结束无法自动生成纪要',
       variant: 'opinion-change',
       itemList: [
         { icon: 'AI', label: '先识别录音', tone: 'ai' },
