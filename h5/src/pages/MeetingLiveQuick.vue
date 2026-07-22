@@ -35,7 +35,6 @@
       </div>
       <div class="end-review-body">
         <div class="end-review-card">
-          <div class="end-review-sub">{{ endReviewHint }}</div>
           <div class="end-review-guide">
             <div class="erg-step done"><span>✓</span><div><b>现场会议已结束</b></div></div>
             <div class="erg-line"></div>
@@ -74,6 +73,8 @@
               <span class="ers-dot"></span>
               <span>{{ endReviewAsrText }}</span>
             </div>
+            <!-- 状态结论：从页首挪到会议记录状态块内，小字弱化（0722 用户定） -->
+            <div class="end-review-sub">{{ endReviewHint }}</div>
           </div>
           <div class="supp-actions single">
             <button class="supp-btn ghost supp-material-btn" @click="uploadMaterial">上传会议材料</button>
@@ -3614,7 +3615,7 @@ async function returnToRecordingPage() {
 .end-review-body { flex:1; min-height:0; overflow:auto; padding:34rpx 30rpx calc(42rpx + env(safe-area-inset-bottom)); box-sizing:border-box; display:flex; align-items:flex-start; }
 .end-review-card { width:100%; min-height:860rpx; background:#fff; border:2rpx solid #E8EEF0; border-radius:30rpx; padding:50rpx 38rpx 44rpx; box-sizing:border-box; box-shadow:0 18rpx 46rpx rgba(25,40,55,0.10); }
 .end-review-kicker { display:inline-flex; padding:8rpx 18rpx; border-radius:999rpx; background:#EAF6F6; color:#0F766E; font-size:25rpx; font-weight:800; }
-.end-review-sub { margin-top:0; font-size:34rpx; line-height:1.6; color:#252A30; font-weight:600; }
+.end-review-sub { margin-top:14rpx; padding-top:14rpx; border-top:2rpx solid #EDEFF2; font-size:30rpx; line-height:1.55; color:#3C434B; font-weight:500; }
 .end-review-guide { margin-top:38rpx; padding:30rpx; border-radius:20rpx; background:#F5FAF9; }
 .erg-step { display:flex; align-items:flex-start; gap:22rpx; color:#87919C; }
 .erg-step > span { flex-shrink:0; width:48rpx; height:48rpx; border-radius:50%; background:#E6EAEE; color:#7C8792; display:flex; align-items:center; justify-content:center; font-size:26rpx; font-weight:800; }
