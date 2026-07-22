@@ -1295,8 +1295,10 @@ async function removeOpinion(op) {
 /* 代委员投票（仅主持人）：入口小字按钮；面板浅底卡片内选人/选项/凭证/提交 */
 .ts-proxy { margin-top:26rpx; }
 /* 入口=弹层里最显眼的实心按钮（0722 用户定：不自动展开面板，用醒目入口引导） */
-.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:0; border-radius:16rpx; background:#B26A19; color:#fff; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 8rpx 18rpx rgba(178,106,25,0.22); }
-.ts-proxy-entry:active { background:#96570F; }
+/* 次级按钮层级（Ant/WeUI 惯例：一个弹层只留一个彩色填充按钮）：白底描边+主题色文字，
+   靠宽度和居中位置保持醒目，不靠色块抢戏 */
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:2rpx solid #9EC4BF; border-radius:16rpx; background:#fff; color:#0F766E; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 4rpx 12rpx rgba(31,41,51,0.08); }
+.ts-proxy-entry:active { background:#F0F7F6; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
