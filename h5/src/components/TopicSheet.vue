@@ -1220,7 +1220,7 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
 .ts-op-entry.in-summary { margin: 18rpx auto 4rpx; }
-.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 64%; min-height: 88rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 30rpx; font-weight: 700; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
+.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 51%; min-height: 70rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 32rpx; font-weight: 700; padding: 12rpx 24rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
@@ -1295,8 +1295,8 @@ async function removeOpinion(op) {
 /* 代委员投票（仅主持人）：入口小字按钮；面板浅底卡片内选人/选项/凭证/提交 */
 .ts-proxy { margin-top:26rpx; }
 /* 入口=弹层里最显眼的实心按钮（0722 用户定：不自动展开面板，用醒目入口引导） */
-.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:0; border-radius:16rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 8rpx 18rpx rgba(15,118,110,0.22); }
-.ts-proxy-entry:active { background:#0B5F59; }
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:0; border-radius:16rpx; background:#B26A19; color:#fff; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 8rpx 18rpx rgba(178,106,25,0.22); }
+.ts-proxy-entry:active { background:#96570F; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
