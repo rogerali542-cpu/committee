@@ -222,19 +222,15 @@
 
         <div v-else class="core-empty">暂无会议议题</div>
 
-        <!-- 临时添加议题（0722 用户定：仅主持人=主任可现场加议题） -->
-        <div v-if="isHost" class="lp-add-topic-row">
-          <button class="lp-add-topic" @click="openAddTopic">+ 临时添加议题</button>
-        </div>
-
-        <!-- 结束表决（0722 用户定）：卡片底部、仅主任。结束后不可再投/改票，票数与结果公布——
-             防"讨论完偷偷改票"，流程更规范 -->
-        <div v-if="isHost && hasOpenVoteTopics" class="close-vote-row">
-          <button class="close-vote-btn" :disabled="closingVotes" @click="confirmCloseVotes">
-            {{ closingVotes ? '正在结束表决…' : '结束表决' }}
+        <!-- 主持人操作区（0722 用户定：仅主持人=主任）：临时加议题 + 结束表决 并排为安静的次要按钮，
+             不与底部「结束现场会议」主按钮抢视觉。结束表决防"讨论完偷偷改票"，保留暖色示意不可逆 -->
+        <div v-if="isHost" class="host-topic-actions">
+          <button class="hta-btn add" @click="openAddTopic">+ 临时添加议题</button>
+          <button v-if="hasOpenVoteTopics" class="hta-btn close-vote" :disabled="closingVotes" @click="confirmCloseVotes">
+            {{ closingVotes ? '结束中…' : '结束表决' }}
           </button>
-          <div class="close-vote-tip">结束后不可再投票或改票，票数与结果将对全体公布</div>
         </div>
+        <div v-if="isHost && hasOpenVoteTopics" class="host-topic-tip">结束表决后不可再改票，结果将对全体公布</div>
       </div>
 
       <!-- 录音中断预警：放在录音卡上方（不占卡内空间）；切出瞬间 JS 冻结无法当场提示，只能前置 -->
@@ -3619,11 +3615,13 @@ async function returnToRecordingPage() {
 .supp-files-foot { font-size:24rpx; color:#8A8F98; text-align:right; padding-top:14rpx; margin-top:4rpx; border-top:2rpx solid #F5F6F8; }
 .supp-head-click { cursor:pointer; }
 /* 结束会议：会议进行页底部的固定出口（纪要可选，不生成也能结束）。白底描边 full-width，清晰但不抢 AI纪要 主按钮的焦点 */
-.end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; gap:22rpx; border-top:2rpx solid #ECE8E1; }
-.back-recording-btn { display:block; width:310rpx; height:70rpx; border:2rpx solid #D9C49F; border-radius:999rpx; background:#FFF9EF; color:#95600D; font-size:28rpx; font-weight:700; }
+/* 返回录音 + 结束现场会议 并排一行：返回=小号次要靠左，结束会议=主按钮占主宽，
+   避免与卡内两个按钮竖成"按钮墙"（0722） */
+.end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:row; align-items:stretch; justify-content:center; gap:16rpx; border-top:2rpx solid #ECE8E1; }
+.back-recording-btn { flex:0 0 auto; display:flex; align-items:center; justify-content:center; padding:0 26rpx; min-height:92rpx; box-sizing:border-box; border:2rpx solid #D9C49F; border-radius:18rpx; background:#FFF9EF; color:#95600D; font-size:27rpx; font-weight:700; }
 .back-recording-btn:active { background:#F9EEDB; }
 /* 收尾按钮用全局「关键确认」档（--c-primary-strong）：比主橙沉一档、比深棕浅两档，与上方浅色返回按钮过渡柔和 */
-.end-meeting-btn { display:block; width:80%; margin:0 auto; height:92rpx; box-sizing:border-box; background:var(--c-primary-strong, #8F4A06); border:0; color:#FFF6E8; font-size:32rpx; font-weight:700; border-radius:20rpx; font-family:inherit; box-shadow:0 8rpx 18rpx rgba(143,74,6,.20); }
+.end-meeting-btn { flex:1 1 auto; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; background:var(--c-primary-strong, #8F4A06); border:0; color:#FFF6E8; font-size:32rpx; font-weight:700; border-radius:20rpx; font-family:inherit; box-shadow:0 8rpx 18rpx rgba(143,74,6,.20); }
 .end-meeting-btn:active { background:#6E3B05; }
 .emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .live-page.has-fixed-end { padding-bottom:150rpx; }
@@ -3677,15 +3675,16 @@ async function returnToRecordingPage() {
 .end-review-primary { width:100%; height:104rpx; margin-top:38rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:38rpx; font-weight:900; line-height:104rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
 .end-review-secondary { width:100%; height:78rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:30rpx; font-weight:650; }
-/* 临时添加议题：会议进行卡底部，一条分隔线上方居中的蓝字按钮（主任/副主任现场加议题） */
-.lp-add-topic-row { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:16rpx 0 20rpx; display:flex; justify-content:center; }
-.lp-add-topic { font-size:28rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:12rpx 32rpx; line-height:1.3; font-family:inherit; }
-/* 结束表决：卡底居中，警示暖色描边（动作有分量但不喧宾），说明行给足后果提示 */
-.close-vote-row { border-top:2rpx solid #F2F2F4; margin-top:4rpx; padding:18rpx 0 6rpx; display:flex; flex-direction:column; align-items:center; gap:10rpx; }
-.close-vote-btn { width:70%; max-width:480rpx; font-size:29rpx; font-weight:700; color:#B54708; background:#FFF8F0; border:2rpx solid #F0C48C; border-radius:999rpx; padding:16rpx 0; line-height:1.3; font-family:inherit; }
-.close-vote-btn:disabled { opacity:.55; }
-.close-vote-tip { font-size:23rpx; color:#98A2B3; line-height:1.4; }
-.lp-add-topic:active { background:#F0F6FF; }
+/* 主持人操作区：临时加议题 + 结束表决 两个安静的次要按钮并排，颜色克制，
+   不与底部「结束现场会议」主按钮抢注意力（0722：解决主任视图"按钮墙"视觉压力） */
+.host-topic-actions { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:18rpx 0 0; display:flex; justify-content:center; gap:16rpx; }
+.hta-btn { flex:1 1 0; max-width:340rpx; font-size:27rpx; font-weight:600; background:#fff; border:2rpx solid #D8DBE0; color:#55585E; border-radius:999rpx; padding:15rpx 20rpx; line-height:1.3; font-family:inherit; }
+.hta-btn:active { background:#F1F2F4; }
+/* 结束表决保留一点暖色，示意"提交/不可逆"，但不再是大号响亮按钮 */
+.hta-btn.close-vote { border-color:#EAC79A; color:#B26A19; background:#FFFCF7; }
+.hta-btn.close-vote:active { background:#FBF1E2; }
+.hta-btn:disabled { opacity:.55; }
+.host-topic-tip { text-align:center; font-size:22rpx; color:#A0A5AD; margin-top:12rpx; line-height:1.4; }
 
 /* 主任：签到统计卡（点"查看名单"标签展开） */
 .lp-signin { position:relative; background:#fff; border-radius:24rpx; padding:32rpx; margin-bottom:28rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
