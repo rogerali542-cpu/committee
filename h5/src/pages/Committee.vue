@@ -1612,6 +1612,15 @@ async function loadUnread() {
 }
 
 // 给当前会议附加：三步进度、主操作按钮文案/图标
+// 会议进行页本地快照里「现场会议已结束」的标记（与 MeetingLiveQuick 的持久化键一致，按角色隔离）
+function _fieldEndedLocally(meetingId) {
+  try {
+    const role = getStorage('activeRole', null)
+    const saved = getStorage('committee_quick_meeting_state_' + meetingId + '_r' + ((role && role.id) || 0), null)
+    return !!(saved && saved.fieldMeetingEnded)
+  } catch (e) { return false }
+}
+
 function decorateCurrent(m, chair) {
   // 纪要已生成的已结束会议 → 三步全部完成(step=4)；否则按阶段(ended=3，会后总结进行中)
   const step = (m.stage === 'ended' && m.minutesGenerated) ? 4 : (STEP_BY_STAGE[m.stage] || 1)
@@ -1633,8 +1642,11 @@ function decorateCurrent(m, chair) {
     }
     tag = '会议通知'
   } else if (m.stage === 'ongoing') {
-    ctaLabel = chair ? '进入会议' : '查看会议'
-    ctaIcon = chair ? '🎙️' : '👀'
+    // 现场会议已结束但未归档（测试期不真正结束，靠本地快照的 fieldMeetingEnded 标记）：
+    // 主任卡片入口改「会后整理」，点进去直接落在整理页
+    const fieldEnded = chair && _fieldEndedLocally(m.id)
+    ctaLabel = fieldEnded ? '会后整理' : (chair ? '进入会议' : '查看会议')
+    ctaIcon = fieldEnded ? '📝' : (chair ? '🎙️' : '👀')
     tag = '正在开的会'
   } else {
     // ended：纪要生成中 → 继续生成会议纪要(点回纪要页)；已生成 → 查看会议；未生成 → 整理会议记录
