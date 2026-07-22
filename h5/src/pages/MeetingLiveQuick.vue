@@ -89,7 +89,7 @@
             <div v-if="recordingsChrono.length" class="er-rec-list">
               <div class="er-rec-row" v-for="(rItem, ri) in recordingsChrono" :key="'er-rec-' + rItem.id">
                 <span class="er-rec-name">第 {{ ri + 1 }} 段 · {{ fmtDur(rItem.durationSec) }}</span>
-                <button class="er-rec-act" @click="openRecordingTranscript(rItem, ri)">转写</button>
+                <button class="er-rec-act" @click="openRecordingTranscript(rItem, ri)">查看</button>
                 <button v-if="isChair" class="er-rec-act del" @click="deleteRecording(rItem, ri)">删除</button>
               </div>
             </div>
