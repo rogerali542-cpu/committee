@@ -3680,7 +3680,7 @@ async function returnToRecordingPage() {
 .er-topic-result.todo { color:#B26A00; }
 /* 会议纪要块与清单之间空出一段，形成"核对完 → 生成"的段落感 */
 .er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
-.end-review-primary { width:100%; height:80rpx; margin-top:14rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }
+.end-review-primary { display:block; width:70%; margin:14rpx auto 0; height:80rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
 .end-review-secondary { width:100%; height:60rpx; margin-top:18rpx; border:0; background:transparent; color:#7B838C; font-size:25rpx; font-weight:500; }
 /* 主持人操作区：仅「临时添加议题」，居中的安静次要按钮（方案A 已移除结束表决） */
