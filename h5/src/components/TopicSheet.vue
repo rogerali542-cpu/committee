@@ -1297,13 +1297,13 @@ async function removeOpinion(op) {
 /* 入口=弹层里最显眼的实心按钮（0722 用户定：不自动展开面板，用醒目入口引导） */
 /* 次级按钮层级（Ant/WeUI 惯例：一个弹层只留一个彩色填充按钮）：白底描边+主题色文字，
    靠宽度和居中位置保持醒目，不靠色块抢戏 */
-.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:2rpx solid #9EC4BF; border-radius:16rpx; background:#fff; color:#0F766E; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 4rpx 12rpx rgba(31,41,51,0.08); }
-.ts-proxy-entry:active { background:#F0F7F6; }
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:2rpx solid #7FB5AE; border-radius:16rpx; background:#E6F4F2; color:#0F766E; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 4rpx 12rpx rgba(15,118,110,0.14); }
+.ts-proxy-entry:active { background:#D5EBE8; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
 /* 委员选择：与签到状态同款 ▾ 悬浮下拉。触发行=已选名单+小箭头，菜单悬浮不占位 */
-.ts-proxy-pick { position:relative; margin-top:14rpx; display:flex; align-items:center; gap:14rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; padding:14rpx 18rpx; }
+.ts-proxy-pick { position:relative; margin-top:14rpx; width:30%; min-width:224rpx; box-sizing:border-box; display:flex; align-items:center; gap:10rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; padding:12rpx 14rpx; }
 .ts-proxy-pick-label { flex:1; min-width:0; font-size:26rpx; font-weight:600; color:#1F2329; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ts-proxy-pick-label.ph { color:#A0A5AD; font-weight:500; }
 .ts-proxy-pick-arrow { flex-shrink:0; width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:10rpx; color:#A0A5AD; font-size:24rpx; background:#F4F5F7; }
