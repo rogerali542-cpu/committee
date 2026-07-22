@@ -1129,7 +1129,7 @@ function erTopicResult(t) {
   if (t.voteRequired) {
     // 现场已结束（0722 用户定）：不再显示"待表决"，直接给票面结论——
     // 签到未过半会议不成立→无效；否则按当前票数 通过/未通过
-    if (!signinQuorum.value.ready) return { cls: 'fail', text: '未过半，无效' }
+    if (!signinQuorum.value.ready) return { cls: 'fail', text: '表决无效' }
     // 多选一：票数在 options 里，显示领先选项；是/否：同意:不同意
     if ((t.decisionType || 'simple') === 'multi_choice') {
       let best = null
