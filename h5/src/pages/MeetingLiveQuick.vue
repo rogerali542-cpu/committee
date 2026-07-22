@@ -803,10 +803,11 @@ function topicActionName(item) {
   const t = topicActionType(item)
   return t === 'vote' ? '表决' : '讨论'
 }
-// 行按钮的"完成感"：表决类看「本人是否投过」或表决已结束（0722 用户定：与是否过半无关——
-// 此前按 status=passed 判，同意刚过半行上就显示"看结果"，点进去却因表决未结束什么也看不到）
+// 行按钮的"完成感"：表决类只看「表决是否已结束」（0722 用户定：不再看本人是否投过——
+// 投过票但表决仍开着时若变「看结果」，想改票的人找不到入口；表决没结束就一直「去表决」，
+// 点进去既能改票也能看实时票数，表决结束后才变「看结果」，那时确实只能看）
 function topicRowDone(item) {
-  if (item.voteRequired) return !!item.voteClosed || item.myVote != null
+  if (item.voteRequired) return !!item.voteClosed
   return topicBadgeDone(item)
 }
 function topicActionButton(item) {
