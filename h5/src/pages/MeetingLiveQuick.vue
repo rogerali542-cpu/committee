@@ -3638,15 +3638,17 @@ async function returnToRecordingPage() {
 .ers-row.busy { color:#0F766E; }
 .ers-row.busy .ers-dot { background:#0F766E; box-shadow:0 0 0 8rpx rgba(15,118,110,0.10); }
 .end-review-inline-actions { display:flex; gap:16rpx; margin-top:18rpx; }
-.end-review-inline-actions .supp-btn { flex:1; min-width:0; height:76rpx; font-size:27rpx; }
+.end-review-inline-actions .supp-btn { flex:1; min-width:0; height:68rpx; font-size:25rpx; font-weight:500; }
+/* 会后整理页按钮统一缩一档：上传会议材料同步 -2号/-100 重 */
+.end-review-card .supp-actions.single .supp-btn { height:72rpx; font-size:24rpx; font-weight:500; }
 .end-review-pending { margin-top:24rpx; padding:24rpx; border-radius:18rpx; background:#FFF7E8; border:2rpx solid #F4D8A4; display:flex; align-items:center; justify-content:space-between; gap:18rpx; }
 .end-review-pending > div { min-width:0; display:flex; flex-direction:column; gap:6rpx; }
 .end-review-pending b { font-size:29rpx; color:#9A5A05; }
 .end-review-pending span { font-size:24rpx; line-height:1.45; color:#8A6A3D; }
-.end-review-pending button { flex-shrink:0; border:0; border-radius:999rpx; padding:15rpx 22rpx; background:#C77800; color:#fff; font-size:25rpx; font-weight:750; }
-.end-review-primary { width:100%; height:104rpx; margin-top:38rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:38rpx; font-weight:900; line-height:104rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
+.end-review-pending button { flex-shrink:0; border:0; border-radius:999rpx; padding:13rpx 20rpx; background:#C77800; color:#fff; font-size:23rpx; font-weight:650; }
+.end-review-primary { width:100%; height:96rpx; margin-top:38rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:34rpx; font-weight:800; line-height:96rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
-.end-review-secondary { width:100%; height:78rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:30rpx; font-weight:650; }
+.end-review-secondary { width:100%; height:70rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:26rpx; font-weight:550; }
 /* 主持人操作区：仅「临时添加议题」，居中的安静次要按钮（方案A 已移除结束表决） */
 .host-topic-actions { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:18rpx 0 0; display:flex; justify-content:center; gap:16rpx; }
 .hta-btn { flex:1 1 0; max-width:340rpx; font-size:27rpx; font-weight:600; background:#fff; border:2rpx solid #D8DBE0; color:#55585E; border-radius:999rpx; padding:15rpx 20rpx; line-height:1.3; font-family:inherit; }
