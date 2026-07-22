@@ -367,27 +367,26 @@
 
     <!-- 签到名单弹窗：点「已签到 N/M」胶囊弹出，查看各人签到状态 -->
     <div v-if="rosterPopOpen" class="roster-pop-mask" @click.self="rosterPopOpen = false">
-      <div class="roster-pop">
+      <div class="roster-pop" @click="attMenuFor = null">
         <div class="roster-pop-head">
           <span class="roster-pop-title">签到情况 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}</span>
           <span class="roster-pop-close" @click="rosterPopOpen = false">×</span>
         </div>
         <div class="roster-pop-body">
-          <!-- 状态纠错（0722 用户定）：主持人点状态右侧 ▾，行内展开同尺寸小选项（不再弹底部大面板） -->
-          <template v-for="a in signinStats.list" :key="a.userRoleId">
-            <div class="roster-pop-row">
-              <span class="rp-name">{{ a.name }}</span>
-              <span class="rp-state" :class="a.signedIn ? (a.attendanceMode === 'remote' ? 'remote' : 'on') : (a.declined ? 'off' : 'wait')">
-                {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '未签到') }}
-              </span>
-              <span v-if="canEditAttendance" class="rp-edit" :class="{ on: attMenuFor === a.userRoleId }"
-                    @click.stop="attMenuFor = attMenuFor === a.userRoleId ? null : a.userRoleId">▾</span>
+          <!-- 状态纠错（0722 用户定）：主持人点状态右侧 ▾，从该行悬浮弹出一列状态选项（不占行、不弹底部大面板） -->
+          <div class="roster-pop-row" v-for="a in signinStats.list" :key="a.userRoleId">
+            <span class="rp-name">{{ a.name }}</span>
+            <span class="rp-state" :class="a.signedIn ? (a.attendanceMode === 'remote' ? 'remote' : 'on') : (a.declined ? 'off' : 'wait')">
+              {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '未签到') }}
+            </span>
+            <span v-if="canEditAttendance" class="rp-edit" :class="{ on: attMenuFor === a.userRoleId }"
+                  @click.stop="toggleAttMenu(a, $event)">▾</span>
+            <div v-if="attMenuFor === a.userRoleId" class="rp-menu" :class="{ up: attMenuUp }">
+              <div v-for="o in ATTENDANCE_STATUS_OPTIONS" :key="o.value" class="rp-menu-item"
+                   :class="{ cur: attendanceValueOf(a) === o.value }"
+                   @click.stop="applyAttendance(a, o)">{{ o.label }}</div>
             </div>
-            <div v-if="attMenuFor === a.userRoleId" class="rp-menu">
-              <span v-for="o in ATTENDANCE_STATUS_OPTIONS" :key="o.value" class="rp-menu-item"
-                    @click.stop="applyAttendance(a, o)">{{ o.label }}</span>
-            </div>
-          </template>
+          </div>
         </div>
       </div>
     </div>
@@ -411,8 +410,12 @@
         </div>
         <div class="qk-transcript-scroll" style="overflow-y:auto;">
           <div v-if="transcriptViewLoading" class="lp-empty">正在加载这段录音的转写…</div>
-          <!-- 单段无内容/取不到：两个 tab 统一给可读说明，不再显示"暂无"或报错 -->
-          <div v-else-if="transcriptView && transcriptView.emptyText" class="lp-empty">{{ transcriptView.emptyText }}</div>
+          <!-- 单段无内容/取不到：两个 tab 统一给可读说明，不再显示"暂无"或报错；结果丢失时给重新识别入口 -->
+          <div v-else-if="transcriptView && transcriptView.emptyText" class="lp-empty">
+            {{ transcriptView.emptyText }}
+            <button v-if="transcriptView.retryId" class="qk-retry-asr" :disabled="retranscribing"
+                    @click="retranscribeSegment">重新识别这段录音</button>
+          </div>
           <div v-else-if="transcriptMode === 'short'">
             <span class="qk-transcript-body">{{ transcriptPreviewText || '暂无摘要文本' }}</span>
             <div class="qk-note">{{ transcriptView ? '这是该条录音单独识别出的原文；整会合并稿见录音卡片的查看转写。' : '摘要用于快速判断转写是否完成；正式匹配仍以全部内容为依据。' }}</div>
@@ -1292,6 +1295,16 @@ async function openRecordingTranscript(item, index) {
   transcriptViewLoading.value = true
   try {
     const raw = await api.committeeQuickRecordingTranscript(meetingId.value, item.id)
+    // 后端返回 null = 这段的转写结果不在了（旧结果没落库、服务重启被清掉）≠ 真静音。
+    // 给「重新识别」按钮当场找回，不再误报"没有识别到内容"。
+    if (!raw) {
+      transcriptView.value = {
+        title: title, segments: [], preview: '',
+        emptyText: '这段录音的转写结果暂时取不到（服务重启会丢失早期未落库的结果），点下方按钮重新识别即可，不影响已生成的会议记录。',
+        retryId: item.id, retryIndex: index
+      }
+      return
+    }
     const segs = mapTranscript(raw)
     const st = buildTranscriptState(segs)
     // 没识别到内容（静音/太轻/结果为空）→ 明确告知，而不是报错或空白
@@ -1303,13 +1316,50 @@ async function openRecordingTranscript(item, index) {
       emptyText: empty ? '这段录音没有识别到内容（可能是静音、杂音或声音太轻）。' : ''
     }
   } catch (e) {
-    // 取不到也别甩「服务器错误」——在弹层里给可读的说明（老后端没有单段接口/服务重启丢缓存都会走到这）
+    // 取不到也别甩「服务器错误」——在弹层里给可读的说明，并给重新识别入口
     transcriptView.value = {
       title: title, segments: [], preview: '',
-      emptyText: '暂时取不到这段录音的转写内容。若刚重启过服务，请重新识别录音后再试。'
+      emptyText: '暂时取不到这段录音的转写内容，可以点下方按钮重新识别。',
+      retryId: item.id, retryIndex: index
     }
   } finally {
     transcriptViewLoading.value = false
+  }
+}
+
+// 单段转写丢失时的当场找回：重新提交这一条的识别并轮询到完成。
+// 不复用 transcribeOneAwait——它会动 taskId/asrStatus 等主流程全局态，这里只做局部轮询。
+const retranscribing = ref(false)
+async function retranscribeSegment() {
+  const v = transcriptView.value
+  if (!v || !v.retryId || retranscribing.value) return
+  const rid = v.retryId
+  const idx = v.retryIndex
+  retranscribing.value = true
+  transcriptView.value = { title: v.title, segments: [], preview: '', emptyText: '正在重新识别这段录音，约需十几秒，请稍候…' }
+  try {
+    let task = await api.committeeTranscribeRecording(meetingId.value, rid)
+    const t0 = Date.now()
+    while (task && task.status !== 'done' && task.status !== 'failed') {
+      if (Date.now() - t0 > 5 * 60 * 1000) throw new Error('识别超时，请稍后再试')
+      await new Promise(r => setTimeout(r, 3000))
+      task = await api.committeeQuickRecordingStatus(meetingId.value, task.taskId)
+    }
+    if (!task || task.status === 'failed') throw new Error(asrFailMessage(task && task.message))
+    retranscribing.value = false
+    const stillOpen = transcriptVisible.value // 用户等不及关了弹层就别再动界面
+    // 先刷新再重开弹层：loadDetail 里的 restoreQuickState 会顺手把转写弹层关掉，顺序反了弹层会闪没
+    await loadDetail()
+    if (!stillOpen) return
+    await openRecordingTranscript({ id: rid }, idx)
+  } catch (e) {
+    retranscribing.value = false
+    if (!transcriptVisible.value) return
+    transcriptView.value = {
+      title: v.title, segments: [], preview: '',
+      emptyText: '重新识别失败：' + ((e && e.message) || '请稍后再试'),
+      retryId: rid, retryIndex: idx
+    }
   }
 }
 // 转写页录音回放：当前正在播放的录音 id（null=未播放）
@@ -3227,8 +3277,27 @@ const ATTENDANCE_STATUS_OPTIONS = [
   { label: '请假缺席', value: 'declined' },
   { label: '未参会', value: 'none' },
 ]
-const attMenuFor = ref(null) // 当前展开状态小选项行的 userRoleId（null=都收起）
+const attMenuFor = ref(null) // 当前弹出状态下拉的 userRoleId（null=都收起）
+const attMenuUp = ref(false) // 名单窗底部的行下方放不下菜单 → 向上弹，避免被窗口边裁掉
 watch(rosterPopOpen, () => { attMenuFor.value = null }) // 名单弹窗开合时收起
+function toggleAttMenu(a, ev) {
+  if (attMenuFor.value === a.userRoleId) { attMenuFor.value = null; return }
+  attMenuUp.value = false
+  try {
+    const el = ev && ev.currentTarget
+    const r = el ? el.getBoundingClientRect() : null
+    const pop = el ? el.closest('.roster-pop') : null
+    const bottomEdge = pop ? Math.min(pop.getBoundingClientRect().bottom, window.innerHeight) : window.innerHeight
+    if (r && bottomEdge - r.bottom < 160) attMenuUp.value = true // 四个选项约 140px
+  } catch (e) { /* 量不到就默认向下 */ }
+  attMenuFor.value = a.userRoleId
+}
+// 该行当前对应的状态值（下拉里高亮当前项用）
+function attendanceValueOf(a) {
+  if (!a) return 'none'
+  if (a.signedIn) return a.attendanceMode === 'remote' ? 'remote' : 'onsite'
+  return a.declined ? 'declined' : 'none'
+}
 async function applyAttendance(a, opt) {
   if (!canEditAttendance.value || !a || !opt) return
   attMenuFor.value = null
@@ -3680,16 +3749,20 @@ async function returnToRecordingPage() {
 .roster-pop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; }
 .roster-pop-title { font-size:32rpx; font-weight:800; color:#1F2329; }
 .roster-pop-close { font-size:46rpx; color:#8A8F98; line-height:1; padding:0 6rpx; }
-.roster-pop-row { display:flex; align-items:center; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
+.roster-pop-row { position:relative; display:flex; align-items:center; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
 .roster-pop-row:first-child { border-top:0; }
 .rp-name { flex:1; min-width:0; font-size:30rpx; color:#1F2329; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* 主持人改状态的小下拉箭头（状态右侧），弱化配色不抢眼 */
 .rp-edit { flex-shrink:0; width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:10rpx; color:#A0A5AD; font-size:24rpx; background:#F4F5F7; }
 .rp-edit:active, .rp-edit.on { background:#E8EAED; color:#5F6673; }
-/* 行内展开的状态小选项：与状态文字同级大小的小胶囊，一行排开 */
-.rp-menu { display:flex; flex-wrap:wrap; gap:10rpx; padding:4rpx 4rpx 14rpx; justify-content:flex-end; }
-.rp-menu-item { border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:23rpx; font-weight:600; border-radius:999rpx; padding:8rpx 20rpx; line-height:1.3; }
+/* 状态下拉：从 ▾ 处悬浮弹出一列选项（0722 用户定，不占行、不弹底部大面板） */
+.rp-menu { position:absolute; right:0; top:calc(100% - 8rpx); z-index:30; display:flex; flex-direction:column;
+  min-width:184rpx; padding:8rpx; background:#fff; border:2rpx solid #E8EAED; border-radius:14rpx;
+  box-shadow:0 10rpx 28rpx rgba(31,35,41,0.16); }
+.rp-menu-item { padding:14rpx 22rpx; font-size:25rpx; font-weight:600; color:#42464D; border-radius:10rpx; line-height:1.3; }
 .rp-menu-item:active { background:#F1F2F4; }
+.rp-menu-item.cur { color:#0F766E; background:#EFF6F5; }
+.rp-menu.up { top:auto; bottom:calc(100% - 8rpx); }
 .rp-state { flex-shrink:0; font-size:27rpx; font-weight:700; }
 .rp-state.on { color:#2E8B57; }
 .rp-state.remote { color:#2980B9; }
@@ -4134,6 +4207,10 @@ async function returnToRecordingPage() {
 .qk-divider::before, .qk-divider::after { content:''; flex:1; height:2rpx; background:#E5E8EC; }
 .qk-divider-text { font-size:28rpx; color:#666; }
 .lp-empty { color:#666; font-size:28rpx; text-align:center; padding:28rpx 0; }
+/* 转写弹层里"结果丢失→当场找回"的重新识别按钮 */
+.qk-retry-asr { display:block; margin:24rpx auto 0; height:68rpx; padding:0 44rpx; border:none; border-radius:34rpx;
+  background:#0F766E; color:#fff; font-size:26rpx; font-weight:600; }
+.qk-retry-asr:disabled { opacity:0.5; }
 
 /* 生成中 */
 .qk-gen { display:flex; flex-direction:column; align-items:center; gap:20rpx; padding:36rpx 0; }

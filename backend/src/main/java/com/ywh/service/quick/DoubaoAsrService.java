@@ -210,6 +210,7 @@ public class DoubaoAsrService implements AsrService {
 
     @Override
     public AsrResult result(Long meetingId) {
+        hydrateFromDb(meetingId); // 服务重启后内存为空：先把已落库的各段转写捞回来
         ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
         if (perRec == null || perRec.isEmpty()) {
             // 懒触发：最近一次任务可能已 done 但尚未缓存（status() 在 done 时写入 recordingResults）
@@ -227,7 +228,42 @@ public class DoubaoAsrService implements AsrService {
     public AsrResult resultForRecording(Long meetingId, Long recordingId) {
         if (meetingId == null || recordingId == null) return null;
         ConcurrentHashMap<Long, AsrResult> perRec = recordingResults.get(meetingId);
-        return perRec == null ? null : perRec.get(recordingId);
+        AsrResult hit = perRec == null ? null : perRec.get(recordingId);
+        if (hit != null) return hit;
+        // 内存没有（服务重启过）→ 从库里恢复
+        AsrResult fromDb = loadAsrFromDb(recordingId);
+        if (fromDb != null) {
+            recordingResults.computeIfAbsent(meetingId, k -> new ConcurrentHashMap<>()).put(recordingId, fromDb);
+        }
+        return fromDb;
+    }
+
+    /** 把该会议所有已落库的单段转写结果补进内存缓存（重启后合并稿仍可用）。已在内存的不覆盖。 */
+    private void hydrateFromDb(Long meetingId) {
+        if (meetingId == null) return;
+        try {
+            for (MeetingRecording rec : recordingRepo.findByMeetingIdOrderByCreatedAtDesc(meetingId)) {
+                if (rec.getAsrJson() == null || rec.getAsrJson().isBlank()) continue;
+                ConcurrentHashMap<Long, AsrResult> perRec =
+                        recordingResults.computeIfAbsent(meetingId, k -> new ConcurrentHashMap<>());
+                if (perRec.containsKey(rec.getId())) continue;
+                AsrResult r = loadAsrFromDb(rec.getId());
+                if (r != null) perRec.put(rec.getId(), r);
+            }
+        } catch (Exception e) {
+            log.warn("[ASR] 从库恢复转写缓存失败 meetingId={}: {}", meetingId, e.getMessage());
+        }
+    }
+
+    private AsrResult loadAsrFromDb(Long recordingId) {
+        try {
+            MeetingRecording rec = recordingRepo.findById(recordingId).orElse(null);
+            if (rec == null || rec.getAsrJson() == null || rec.getAsrJson().isBlank()) return null;
+            return mapper.readValue(rec.getAsrJson(), AsrResult.class);
+        } catch (Exception e) {
+            log.warn("[ASR] 解析已落库的转写结果失败 recordingId={}: {}", recordingId, e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -240,6 +276,18 @@ public class DoubaoAsrService implements AsrService {
     private void putRecordingResult(Long meetingId, Long recordingId, AsrResult r) {
         long key = recordingId != null ? recordingId : -1L;
         recordingResults.computeIfAbsent(meetingId, k -> new ConcurrentHashMap<>()).put(key, r);
+        // 同步落库：重启后单段查看/合并稿都能恢复。失败仅记日志，不影响识别主流程。
+        if (recordingId != null) {
+            try {
+                MeetingRecording rec = recordingRepo.findById(recordingId).orElse(null);
+                if (rec != null) {
+                    rec.setAsrJson(mapper.writeValueAsString(r));
+                    recordingRepo.save(rec);
+                }
+            } catch (Exception e) {
+                log.warn("[ASR] 转写结果落库失败 recordingId={}: {}", recordingId, e.getMessage());
+            }
+        }
     }
 
     /** 落库该录音的转写状态（none/processing/done/failed），供前端列表展示与多选去重。容错：失败仅记日志。 */

@@ -2,10 +2,9 @@
 
 > 测试期为了演示方便留下的临时方案，上线前逐条处理。处理完打勾。
 
-- [ ] **转写结果落库**（0721 记）：各段 ASR 转写目前只存在后端内存
-      （`DoubaoAsrService.recordingResults`），后端一重启就全丢，需要重新识别、重复花豆包识别费。
-      方案：`MeetingRecording` 加转写文本字段（或独立表），识别完成时落库；
-      `resultForRecording` / `result()` 优先读库，内存作缓存。
+- [x] **转写结果落库**（0721 记，0722 已做）：`MeetingRecording` 加了 `asr_json` 列
+      （V32 迁移，ddl-auto 自动建列），识别完成即落库；`resultForRecording` / `result()`
+      内存未命中时从库恢复。落库之前识别的旧录音没有该值，前端单段查看提供「重新识别」找回。
 - [ ] **首页会议卡片测试期过滤复原**（Committee.vue `loadAll` 内有"上线前复原"注释）：
       恢复 `HISTORY_ONLY_TITLES` 排除逻辑的去留决策；按产品要求决定是否加回
       `compliance !== 'invalid'` 与"已公示不再显示"两个条件。

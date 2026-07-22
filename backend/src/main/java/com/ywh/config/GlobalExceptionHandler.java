@@ -23,6 +23,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Result.fail(e.getMessage()));
     }
 
+    /** 接口不存在 / 方法不匹配：多半是后端还跑着旧代码。别让它掉进 Exception 兜底变成
+     *  「服务器内部错误」（0722 撤回投票、改参会状态两次都被这个误导过）。 */
+    @ExceptionHandler({org.springframework.web.servlet.NoHandlerFoundException.class,
+            org.springframework.web.servlet.resource.NoResourceFoundException.class,
+            org.springframework.web.HttpRequestMethodNotSupportedException.class})
+    public ResponseEntity<Result<?>> handleNoHandler(Exception e) {
+        log.warn("接口不存在或方法不匹配: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Result.fail("接口不存在：后端可能还在运行旧版本，请重启后端服务后再试"));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Result<?>> handleRuntime(RuntimeException e) {
         log.error("Runtime error", e);

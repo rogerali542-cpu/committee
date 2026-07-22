@@ -42,6 +42,12 @@ public class MeetingRecording {
     @Column(name = "asr_task_id", length = 100)
     private String asrTaskId;
 
+    // 该条录音的 ASR 转写结果（AsrResult 的 JSON）。识别完成即落库，服务重启后
+    // 单段查看 / 整会合并稿都能从库里恢复，不再依赖内存缓存。
+    @Lob
+    @Column(name = "asr_json", columnDefinition = "LONGTEXT")
+    private String asrJson;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
