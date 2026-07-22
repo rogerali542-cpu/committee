@@ -236,16 +236,18 @@
           </div>
         </template>
 
-        <!-- 进行中：进入「会议进行」向导页 -->
+        <!-- 进行中：进入「会议进行」向导页；现场已结束(本地标记)时改为会后整理入口 -->
         <template v-if="detail.stage === 'ongoing' && detail.record">
-          <div class="live-entry" @click="enterLive">
+          <div class="live-entry" :class="{ ended: fieldEndedLocal }" @click="enterLive">
             <div class="live-entry-main">
-              <span class="live-entry-title">会议进行中</span>
-              <span class="live-entry-sub">{{ detail.meetingMethod === 'online'
-                ? '确认参会人员 → 填写议题结果 → 结果确认'
-                : '签到 → 录音转写 → 确认表决' }}</span>
+              <span class="live-entry-title">{{ fieldEndedLocal ? '现场会议已结束' : '会议进行中' }}</span>
+              <span class="live-entry-sub">{{ fieldEndedLocal
+                ? '可回会后整理页查看记录、生成会议纪要'
+                : (detail.meetingMethod === 'online'
+                  ? '确认参会人员 → 填写议题结果 → 结果确认'
+                  : '签到 → 录音转写 → 确认表决') }}</span>
             </div>
-            <span class="live-entry-arrow">进入 ›</span>
+            <span class="live-entry-arrow">{{ fieldEndedLocal ? '会后整理 ›' : '进入 ›' }}</span>
           </div>
           <div class="signin-prog" v-if="userView === 'chair' && detail.flowStats && detail.flowStats.attendance">
             <div class="sp-head">
@@ -1024,6 +1026,7 @@ const userView = ref('')
 
 // ── 议题弹层（表决+意见）──
 const meetingIdRef = ref(null)   // meetingId 的响应式镜像（弹层 prop 用）
+const fieldEndedLocal = ref(false) // 现场会议已结束的本地标记（测试期不真正归档，详情页据此换会后文案）
 const sheetTopicId = ref(null)
 const sheetTopic = computed(() => {
   const d = detail.value
@@ -1075,7 +1078,8 @@ const navTitle = computed(() => {
   const d = detail.value
   if (!d) return '会议通知'
   if (d.stage === 'preparing') return '会议通知'
-  if (d.stage === 'ongoing') return '会议进行中'
+  // 现场已结束(本地标记)：别再顶着「会议进行中」，按详情页示人
+  if (d.stage === 'ongoing') return fieldEndedLocal.value ? '会议详情' : '会议进行中'
   return '会议详情'
 })
 const activeRole = ref({})
@@ -1401,6 +1405,15 @@ async function downloadRecording() {
   }
 }
 
+// 会议进行页本地快照里「现场会议已结束」的标记（与 MeetingLiveQuick 持久化键一致，按角色隔离）
+function _fieldEndedLocally() {
+  try {
+    const role = getStorage('activeRole', null)
+    const saved = getStorage('committee_quick_meeting_state_' + meetingId + '_r' + ((role && role.id) || 0), null)
+    return !!(saved && saved.fieldMeetingEnded)
+  } catch (e) { return false }
+}
+
 async function loadDetail() {
   try {
     const d = await api.committeeDetail(meetingId)
@@ -1415,12 +1428,15 @@ async function loadDetail() {
       redirectTo('/pages/my-meeting/my-meeting?id=' + meetingId)
       return
     }
-    // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）
-    if (d.stage === 'ongoing' && d.record && uv === 'chair') {
+    // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）。
+    // 例外（0722）：现场会议已结束（本地快照标记，测试期不真正归档）→ 留在详情页，
+    // 否则「完成会后整理」跳过来又被弹回会议页，看起来像按钮没反应。
+    if (d.stage === 'ongoing' && d.record && uv === 'chair' && !_fieldEndedLocally()) {
       redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
       return
     }
     if (d.taskItems) d.taskItemsText = d.taskItems.join(' / ')
+    fieldEndedLocal.value = _fieldEndedLocally()
     meetingIdRef.value = meetingId
 
     // Calculate step states for member & chair view
@@ -3388,6 +3404,8 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* Wizard Stepper */
 .live-entry { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#FFCC44,#FFA800); border-radius:16px; padding:18px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(255,168,0,0.25); }
+/* 现场已结束：黄色进行中横条换成沉稳的会后绿，避免误以为会议还在开 */
+.live-entry.ended { background:linear-gradient(135deg,#3D9C74,#2E7D5B); box-shadow:0 2px 8px rgba(46,125,91,0.25); }
 .live-entry-main { flex:1; }
 .live-entry-title { display:block; font-size: 32rpx; font-weight:700; color:#fff; line-height:1.4; }
 .live-entry-sub { display:block; font-size: 28rpx; color:rgba(255,255,255,0.85); margin-top:4px; line-height:1.5; }

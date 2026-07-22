@@ -64,7 +64,7 @@
     <!-- 业主大会纪要（纯文本） -->
     <div v-else-if="isOwner && plainText" class="doc">
       <span class="doc-title">业主大会会议纪要</span>
-      <span class="doc-body">{{ prettyText }}</span>
+      <span class="doc-body">{{ indentParagraphs(prettyText) }}</span>
       <div class="minutes-actions" v-if="!aiGenerating">
         <button v-if="canEditMinutes && minutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
         <button class="copy-btn" @click="copyText">复制全文</button>
@@ -92,85 +92,15 @@
       </div>
     </div>
 
-    <!-- 委员会纪要（结构化） -->
+    <!-- 尚无纪要正文：旧的结构化模板页已删（0722 用户定，只保留正文版纪要），给干净的引导 -->
     <div v-else-if="minutes && !isOwner" class="doc">
-      <!-- 头部信息 -->
-      <div class="doc-head">
-        <div class="dh-row"><span class="dh-key">会议名称</span><span class="dh-val">{{ minutes.meetingTitle }}</span></div>
-        <div class="dh-row"><span class="dh-key">会议时间</span><span class="dh-val">{{ minutes.meetingDate }} {{ minutes.meetingTime }}</span></div>
-        <div class="dh-row"><span class="dh-key">会议地点</span><span class="dh-val">{{ minutes.location }}</span></div>
-        <div class="dh-row"><span class="dh-key">主持人</span><span class="dh-val">{{ minutes.host }}</span></div>
-        <div class="dh-row"><span class="dh-key">记录人</span><span class="dh-val">秘书小李</span></div>
+      <div class="minutes-letterhead">
+        <span class="minutes-meeting-name">{{ (minutes.meetingTitle || '业委会') + '会议纪要' }}</span>
       </div>
-
-      <!-- 一、参会情况 -->
-      <div class="doc-sec">
-        <span class="sec-title">一、参会情况</span>
-        <span class="sec-text">应到委员 <span class="b">{{ minutes.totalMembers }}</span> 人，实到 <span class="b">{{ minutes.presentCount }}</span> 人，<span :class="minutes.quorumMet ? 'tag-ok' : 'tag-no'">{{ minutes.quorumMet ? '已过半，达到法定人数' : '未过半，未达法定人数' }}</span>。</span>
-        <span class="sec-text"><span class="sec-k">出席：</span>{{ minutes.presentNames }}</span>
-        <span class="sec-text" v-if="minutes.absentNames"><span class="sec-k">缺席：</span>{{ minutes.absentNames }}</span>
-        <span class="sec-text" v-if="minutes.juweiName"><span class="sec-k">列席：</span>{{ minutes.juweiName }}（居委会委员）</span>
-      </div>
-
-      <!-- 二、会议议题 -->
-      <div class="doc-sec">
-        <span class="sec-title">二、会议议题</span>
-        <span class="sec-text">{{ minutes.description || '（无）' }}</span>
-      </div>
-
-      <!-- 三、表决情况 -->
-      <div class="doc-sec" v-if="minutes.topics && minutes.topics.length">
-        <span class="sec-title">三、表决情况</span>
-        <div class="topic-item" v-for="(item, index) in minutes.topics" :key="item.id">
-          <span class="ti-title">{{ index + 1 }}. <span class="ti-tag" :class="{ major: item.type === 'major' }">{{ item.type === 'major' ? '重大事项' : '决定事项' }}</span> {{ item.title }}</span>
-          <span class="ti-result">赞成 <span class="b">{{ item.forVotes }}</span> · 反对 <span class="b">{{ item.agVotes }}</span> · 弃权 <span class="b">{{ item.abVotes }}</span>（赞成需≥{{ item.need }}）</span>
-          <span class="ti-conclusion" :class="item.passed ? 'pass' : 'fail'">表决结果：{{ item.text }}</span>
-        </div>
-      </div>
-
-      <!-- 四、参会确认 -->
-      <div class="doc-sec">
-        <span class="sec-title">{{ minutes.topics.length ? '四' : '三' }}、参会确认</span>
-        <span class="sec-text">本次会议经 <span class="b">{{ minutes.presentCount }}/{{ minutes.totalMembers }}</span> 名委员确认参会。</span>
-        <span class="sec-text" v-if="minutes.juweiName">重大事项 <span :class="minutes.juweiSigned ? 'tag-ok' : 'tag-no'">{{ minutes.juweiSigned ? '已' : '尚未' }}</span> 由居委会委员（{{ minutes.juweiName }}）签字。</span>
-      </div>
-
-      <!-- 五、会议结论 -->
-      <div class="doc-sec">
-        <span class="sec-title">{{ minutes.topics.length ? '五' : '四' }}、会议结论</span>
-        <div class="conclusion-box" :class="minutes.conclusionLevel">
-          <span class="cb-text">{{ minutes.conclusionText }}</span>
-        </div>
-        <div class="check-grid">
-          <div class="cg-row"><span class="cg-label">会议有效性</span><span class="cg-value" :class="minutes.meetingValid ? 'ok' : 'bad'">{{ minutes.meetingValid ? '会议有效' : '会议无效' }}</span></div>
-          <div class="cg-row"><span class="cg-label">记录完整性</span><span class="cg-value" :class="minutes.recordLevel === 'complete' ? 'ok' : minutes.recordLevel === 'minor' ? 'warn' : 'bad'">{{ minutes.recordText }}</span></div>
-          <div class="cg-row"><span class="cg-label">决议有效性</span><span class="cg-value" :class="minutes.resolutionLevel === 'passed' || minutes.resolutionLevel === 'none' ? 'ok' : minutes.resolutionLevel === 'invalid' ? 'bad' : 'warn'">{{ minutes.resolutionText }}</span></div>
-        </div>
-        <div v-if="minutes.notes && minutes.notes.length" class="notes-list">
-          <span v-for="(item, ni) in minutes.notes" :key="ni" class="note-item">· {{ item }}</span>
-        </div>
-      </div>
-
-      <!-- 附：线下佐证 -->
-      <div class="doc-sec" v-if="minutes.evidences && minutes.evidences.length">
-        <span class="sec-title">附：线下佐证</span>
-        <span class="sec-text" v-for="(item, index) in minutes.evidences" :key="item.id">{{ index + 1 }}. {{ item.fileName }}</span>
-      </div>
-
-      <!-- 底部 -->
-      <span class="doc-foot">本纪要由系统根据会议记录自动生成 · {{ minutes.draft ? '草稿' : '已定稿' }}</span>
-
-      <div class="minutes-actions" v-if="!aiGenerating">
-        <!-- 两个主操作：编辑(左·浅色) / 确认无误(右·深色更醒目) -->
+      <div class="no-minutes-tip">还没有纪要正文。可返回会后整理页点「生成会议纪要」自动生成{{ canEditMinutes ? '，或在下方直接手写' : '' }}。</div>
+      <div class="minutes-actions" v-if="canEditMinutes && !aiGenerating">
         <div class="action-row">
-          <button v-if="canEditMinutes && minutes.draft" class="end-meeting-btn" @click="endMeetingFromMinutes">确认无误</button>
-        </div>
-        <!-- 次要操作：复制全文 / 待办 / 内部报告 / 修订 -->
-        <div class="more-links">
-          <span class="more-link primary-link" @click="copyText">复制全文</span>
-          <span v-if="canViewInternalArtifacts" class="more-link primary-link" @click="viewTodoList">待办事项</span>
-          <span v-if="canReviseMinutes" class="more-link" @click="startRevise">发起修订</span>
-          <span v-if="canReviseMinutes" class="more-link" @click="viewRevisions">修订历史</span>
+          <button class="end-meeting-btn" @click="editMode = true">手写纪要</button>
         </div>
       </div>
     </div>
@@ -200,6 +130,12 @@ const prettyText = computed(() => normalizeLegacyBasicSection(String(plainText.v
   .replace(/^[ \t]*#{1,6}[ \t]*/gm, '')
   .replace(/^[^\r\n]*[（(]草稿[）)][ \t]*\r?\n+/, '')
   .replace(/^[^\r\n]*业主委员会[ \t]*\r?\n+/, '')))
+// 正文每段首行缩进两个全角空格（0722 用户定，公文格式）；只影响展示，编辑/复制仍是原文
+function indentParagraphs(text) {
+  return String(text || '').split('\n')
+    .map(l => { const t = l.trim(); return t ? '　　' + t : '' })
+    .join('\n')
+}
 // 第一行（xxx会议纪要）作标题，大字加粗；其余作正文
 const documentParts = computed(() => {
   const lines = String(prettyText.value || '').split('\n')
@@ -207,9 +143,9 @@ const documentParts = computed(() => {
   if (marker >= 0) {
     const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
     // 期号行（第N期）已从公文格式中移除：老纪要里若存有该行，按普通正文首行显示
-    return { meetingName: (meetingName || '业委会') + '会议纪要', body: lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '') }
+    return { meetingName: (meetingName || '业委会') + '会议纪要', body: indentParagraphs(lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '')) }
   }
-  return { meetingName: (lines[0] || '').trim(), body: lines.slice(1).join('\n').replace(/^\s*\n/, '') }
+  return { meetingName: (lines[0] || '').trim(), body: indentParagraphs(lines.slice(1).join('\n').replace(/^\s*\n/, '')) }
 })
 const editMode = ref(false)
 const editText = ref('')
@@ -834,6 +770,8 @@ function viewTodoList() {
 .minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:18rpx 10rpx 34rpx; }
 .minutes-meeting-name { font-size:42rpx; font-weight:700; color:#161616; line-height:1.45; white-space:pre-wrap; }
 .doc-body { display:block; font-size:34rpx; color:#33373d; line-height:1.9; white-space:pre-wrap; padding:24rpx 0; }
+/* 尚无纪要正文的引导（替代已删除的结构化模板页） */
+.no-minutes-tip { padding:56rpx 20rpx; text-align:center; color:#8A9099; font-size:27rpx; line-height:1.8; }
 
 .doc-head { margin-bottom:28rpx; }
 .dh-row { display:flex; align-items:center; padding:14rpx 0; border-bottom:2rpx solid #f7f7f9; }
