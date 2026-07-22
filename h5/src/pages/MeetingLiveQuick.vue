@@ -29,7 +29,7 @@
     <!-- 结束会议后的会后整理决策页：把“生成纪要/直接结束”从弹窗提升为明确页面 -->
     <div v-if="endReviewVisible" class="end-review-page">
       <div class="end-review-head">
-        <span class="end-review-back" @click="endReviewVisible = false">‹</span>
+        <span class="end-review-back" @click="closeEndReview">‹</span>
         <span class="end-review-title">会后整理</span>
         <span class="end-review-spacer"></span>
       </div>
@@ -1469,6 +1469,7 @@ function persistQuickState(extra) {
     currentStep: currentStep.value,
     meetingPhase: meetingPhase.value,
     fieldMeetingEnded: fieldMeetingEnded.value,
+    endReviewVisible: endReviewVisible.value, // 会后整理页可见态：刷新/重进后直接回到整理页，不落回录音页
     generated: generated.value,
     minutesGenerated: minutesGenerated.value, // 纪要已生成标志：持久化，避免回首页再进来退回「生成会议纪要」单键
     minutesGenAt: minutesGenAt.value,         // 生成发起时刻：整页刷新丢了内存任务后，据此判断"生成在途"并轮询服务端恢复入口
@@ -1500,6 +1501,7 @@ function restoreQuickState(signedInArg) {
   currentStep.value = step
   meetingPhase.value = saved.meetingPhase === 'voting' ? 'voting' : 'recording'
   fieldMeetingEnded.value = !!saved.fieldMeetingEnded
+  endReviewVisible.value = !!saved.endReviewVisible && !!saved.fieldMeetingEnded // 现场已结束才可能恢复整理页
   generated.value = !!saved.generated
   minutesGenerated.value = !!saved.minutesGenerated // 恢复「纪要已生成」→ 显示 查看纪要/重新生成 两键，而非「生成会议纪要」
   minutesGenAt.value = saved.minutesGenAt || 0      // 恢复「生成发起时刻」→ reconcileMinutesState 据此兜底恢复"生成中"入口
@@ -3090,6 +3092,12 @@ async function confirmRemoteAttend() {
 function openEndReview() {
   fieldMeetingEnded.value = true
   endReviewVisible.value = true
+  persistQuickState()
+}
+
+// 关闭会后整理页也要持久化：否则刷新后 restoreQuickState 会按旧存档把整理页又翻回来
+function closeEndReview() {
+  endReviewVisible.value = false
   persistQuickState()
 }
 
