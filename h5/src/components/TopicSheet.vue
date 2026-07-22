@@ -101,9 +101,13 @@
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
                 <div v-else-if="!proxyTargets.length" class="ts-empty">没有已签到且未投票的委员</div>
                 <template v-else>
+                  <!-- 委员选择：与签到名单同款按行列出（0722 用户定），点行选中/取消，可多选 -->
                   <div class="ts-proxy-people">
-                    <span v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-person"
-                          :class="{ on: proxySelected.has(p.memberId) }" @click="toggleProxyMember(p.memberId)">{{ p.name }}</span>
+                    <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-row"
+                         :class="{ on: proxySelected.has(p.memberId) }" @click="toggleProxyMember(p.memberId)">
+                      <span class="ts-proxy-row-name">{{ p.name }}</span>
+                      <span class="ts-proxy-row-mark">{{ proxySelected.has(p.memberId) ? '✓ 已选' : '选择' }}</span>
+                    </div>
                   </div>
                   <div class="ts-proxy-choices">
                     <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
@@ -1289,9 +1293,13 @@ async function removeOpinion(op) {
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
-.ts-proxy-people { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
-.ts-proxy-person { padding:10rpx 24rpx; border-radius:999rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
-.ts-proxy-person.on { border-color:#0F766E; background:#E6F4F2; color:#0F766E; }
+/* 委员按行列出（与签到名单同款）：名字在左、选中状态在右，点行切换 */
+.ts-proxy-people { margin-top:14rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; padding:0 18rpx; }
+.ts-proxy-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
+.ts-proxy-row:first-child { border-top:0; }
+.ts-proxy-row-name { flex:1; min-width:0; font-size:28rpx; color:#1F2329; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ts-proxy-row-mark { flex-shrink:0; font-size:24rpx; font-weight:600; color:#A0A5AD; }
+.ts-proxy-row.on .ts-proxy-row-mark { color:#0F766E; }
 .ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
 .ts-proxy-choice { padding:10rpx 24rpx; border-radius:12rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
 .ts-proxy-choice.on { border-color:#B26A19; background:#FFF6E8; color:#B26A19; }
