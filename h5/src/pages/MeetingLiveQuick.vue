@@ -43,7 +43,10 @@
             <div class="er-item-head">
               <span class="er-item-no">1</span>
               <span class="er-item-title">签到确认</span>
-              <span class="er-item-state ok">✓ {{ signinStats.signedCount }}/{{ signinStats.total }} 已签到</span>
+              <!-- 过半(法定人数)绿灯，未过半黄灯提醒——未过半的表决决议无效 -->
+              <span class="er-item-state" :class="signinQuorum.ready ? 'ok' : 'warn'">
+                {{ (signinQuorum.ready ? '✓ ' : '● ') + signinStats.signedCount + '/' + signinStats.total + ' 已签到' + (signinQuorum.ready ? '' : '（未过半）') }}
+              </span>
             </div>
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
@@ -302,7 +305,7 @@
       <template v-if="isChair && meetingPhase === 'recording' && !meetingEnded">
         <div class="mlq-endbar-space"></div>
         <div class="mlq-endbar">
-          <button class="fixed-end-field-btn" @click="handleMeetingBottomAction">结束现场会议</button>
+          <button class="fixed-end-field-btn" @click="handleMeetingBottomAction">{{ fieldMeetingEnded ? '会后整理 →' : '结束现场会议' }}</button>
         </div>
       </template>
 
@@ -1124,6 +1127,14 @@ const endReviewHint = computed(() => {
 function erTopicResult(t) {
   if (t.voteRequired) {
     if (topicBadgeDone(t)) {
+      // 多选一：票数在 options 里，显示领先选项；是/否：同意:不同意
+      if ((t.decisionType || 'simple') === 'multi_choice') {
+        let best = null
+        for (const o of (t.options || [])) if (!best || (o.votes || 0) > (best.votes || 0)) best = o
+        return t.passed
+          ? { cls: 'pass', text: '已定：' + ((best && best.label) || '') }
+          : { cls: 'fail', text: '未通过' }
+      }
       return t.passed
         ? { cls: 'pass', text: '通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
         : { cls: 'fail', text: '未通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
@@ -3149,8 +3160,21 @@ async function handleEndReviewPrimary() {
   await endAndGenerateMinutes()
 }
 
+// 完成会议前的待办拦截：会议结束即锁票（方案A），还有待处理议题时先确认，免得再也补不了
+async function confirmDespitePendingTopics() {
+  if (!pendingTopicCount.value) return true
+  const res = await showModal({
+    title: '',
+    content: '还有 ' + pendingTopicCount.value + ' 项议题未处理，完成会议后不能再表决或补充。确认完成？',
+    confirmText: '确认完成',
+    cancelText: '返回处理'
+  })
+  return !!res.confirm
+}
+
 async function endAndGenerateMinutes() {
   if (!generated.value) { toast({ title: '请先完成录音识别', icon: 'none' }); return }
+  if (!(await confirmDespitePendingTopics())) return
   minutesGenerated.value = true
   persistQuickState()
   await _doEndAndGo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&gen=1')
@@ -3158,25 +3182,8 @@ async function endAndGenerateMinutes() {
 
 async function endWithoutMinutes() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
+  if (!(await confirmDespitePendingTopics())) return
   await _doEndAndGo('/pages/committee-detail/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick')
-}
-
-// 手写会议纪要（不显眼入口）：不结束会议，直接进纪要页手写/编辑。
-function writeMinutes() {
-  if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
-  navigateTo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick')
-}
-
-// 先结束会议，纪要后续补充（不显眼入口）：只结束会议，纪要稍后在纪要页补充/修改
-async function endThenSupplement() {
-  if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
-  const res = await showModal({
-    title: '先结束会议',
-    content: '先结束本次会议，会议纪要可稍后在纪要页补充或修改。继续吗？',
-    confirmText: '结束会议',
-    cancelText: '再想想'
-  })
-  if (res.confirm) _doEndAndGo('/pages/minutes-view/minutes-view?meetingId=' + meetingId.value)
 }
 
 // ── 会议资料：任意已签到参会人可上传/查看 ──
