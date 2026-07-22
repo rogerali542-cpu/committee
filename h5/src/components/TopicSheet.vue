@@ -396,7 +396,7 @@ const voteFeedbackPending = computed(() => pendingVote.value != null)
 const voteFeedbackText = computed(() => {
   const t = props.topic
   if (!t || !t.voteRequired) return ''
-  if (voteFeedbackPending.value) return '已选：' + (pendingLabel.value || '') + '，点「确认提交」生效'
+  if (voteFeedbackPending.value) return '已选：' + (pendingLabel.value || '')
   const label = myVoteLabel.value || localVoteLabel.value
   return label ? ('已投：' + label) : ''
 })
@@ -1081,12 +1081,13 @@ async function removeOpinion(op) {
 .ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
 .ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:25rpx; font-weight:800; }
 /* 选中未提交：暖橙提示色，与提交成功的绿色明确区分（0722：别让"已选"看着像"已投"） */
-.ts-vote-feedback.pending { background:#FFF6E8; border-color:#F0CE96; color:#B26A00; }
 .ts-vote-feedback-mark { width:28rpx; height:28rpx; border-radius:50%; background:#2E9E4B; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:18rpx; flex-shrink:0; }
 .ts-vote-feedback.against { background:#FFF3F1; border-color:#F1B4AD; color:#C0392B; }
 .ts-vote-feedback.against .ts-vote-feedback-mark { background:#E24B3A; }
 .ts-vote-feedback.abstain { background:#F4F5F7; border-color:#D4D8DE; color:#4D5158; }
 .ts-vote-feedback.abstain .ts-vote-feedback-mark { background:#6B7078; }
+/* 已选未提交：中性灰（0722 用户定：不用暖棕，用原灰色）；放最后确保覆盖 agree/against/abstain 配色 */
+.ts-vote-feedback.pending { background:#F4F5F7; border-color:#D4D8DE; color:#4D5158; }
 /* 撤回：小号次要按钮，靠右，弱化不抢眼（改票是常态，撤回是少数场景/测试用） */
 .ts-vote-retract { margin-left:auto; padding:8rpx 20rpx; border-radius:999rpx; background:#fff; border:2rpx solid #D8DBE0; color:#8A9099; font-size:24rpx; font-weight:600; font-family:inherit; white-space:nowrap; }
 .ts-vote-retract:disabled { opacity:.5; }

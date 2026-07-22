@@ -423,7 +423,7 @@
           <span class="qk-type decision" :class="newTopicForm.type === 'decision' ? 'on' : ''" @click="pickTopicType('decision')">表决事项</span>
         </div>
         <template v-if="newTopicForm.type !== 'decision'">
-          <div class="qk-modal-label">通知正文（选填，填了会上出示并跟踪已读）</div>
+          <div class="qk-modal-label">通知正文（选填）</div>
           <textarea class="qk-modal-input qk-modal-textarea" placeholder="请输入内容" v-model="newTopicForm.content" rows="3"></textarea>
         </template>
         <template v-if="newTopicForm.type === 'decision'">
