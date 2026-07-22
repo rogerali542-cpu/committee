@@ -1,6 +1,7 @@
 <template>
   <div class="page minutes-page">
-    <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;">
+    <!-- 生成中和生成后是两个不同的页面态（0722 用户定）：顶栏标题跟着区分 -->
+    <PageNav :title="aiGenerating ? '生成会议纪要' : '会议纪要'" style="margin:-24rpx -24rpx 0;">
       <template #left><div class="minutes-nav-back" @click="backFromMinutes">‹</div></template>
       <template #right>
         <button class="nav-home" @click="goHome">首页</button>
