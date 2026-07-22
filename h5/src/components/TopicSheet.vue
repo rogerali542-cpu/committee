@@ -78,7 +78,7 @@
             <div v-if="showLiveTally" class="ts-vote-all compact">
               <div class="ts-result-line live">
                 <span class="ts-result-badge">进行中</span>
-                <span class="ts-result-nums"><template v-for="(p, i) in resultParts" :key="i"><span class="rn-part" :class="p.cls">{{ p.text }}</span><span v-if="i < resultParts.length - 1" class="rn-sep"> · </span></template></span>
+                <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
               </div>
             </div>
           </template>
@@ -93,7 +93,7 @@
         <div v-if="showVoteSummary && voteRevealed" class="ts-vote-all compact">
           <div class="ts-result-line" :class="topic.passed ? 'pass' : 'fail'">
             <span class="ts-result-badge">{{ topic.passed ? '✓ 通过' : '✕ 未通过' }}</span>
-            <span class="ts-result-nums"><template v-for="(p, i) in resultParts" :key="i"><span class="rn-part" :class="p.cls">{{ p.text }}</span><span v-if="i < resultParts.length - 1" class="rn-sep"> · </span></template></span>
+            <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
           </div>
         </div>
         <button v-if="canDiscuss && !opinionOpen" class="ts-op-entry" @click="opinionOpen = true">
@@ -424,20 +424,23 @@ const notVoted = computed(() => {
   if (!t) return 0
   return Math.max(0, (t.total || 0) - (t.voted || 0))
 })
-// 紧凑票数统计：拆成带颜色的片段——同意绿 / 不同意红 / 弃权·未投灰；多选项各项中性
-const resultParts = computed(() => {
+// 总进度：已投 X / 应到 Y（放最前，避免把"未投"误解成还没签到）
+const tallyProgress = computed(() => {
+  const t = props.topic
+  if (!t) return { voted: 0, total: 0 }
+  return { voted: t.voted || 0, total: t.total || 0 }
+})
+// 票数明细分项（带颜色）：简单表决=同意绿/不同意红/弃权灰；多选项=各项中性。未投单独弱化显示
+const breakdownParts = computed(() => {
   const t = props.topic
   if (!t) return []
   if ((t.decisionType || 'simple') === 'multi_choice') {
-    const parts = (t.options || []).map(o => ({ text: (o.label || '') + ' ' + (o.votes || 0), cls: 'opt' }))
-    parts.push({ text: '未投 ' + notVoted.value, cls: 'none' })
-    return parts
+    return (t.options || []).map(o => ({ text: (o.label || '') + ' ' + (o.votes || 0), cls: 'opt' }))
   }
   return [
     { text: '同意 ' + (t.forVotes || 0), cls: 'agree' },
     { text: '不同意 ' + (t.agVotes || 0), cls: 'against' },
     { text: '弃权 ' + (t.abVotes || 0), cls: 'abstain' },
-    { text: '未投 ' + notVoted.value, cls: 'none' },
   ]
 })
 
@@ -1080,13 +1083,16 @@ async function removeOpinion(op) {
 .ts-result-line.live { background: #F4F8FF; border-color: #DCE8FB; }
 .ts-result-line.live .ts-result-badge { background: #E7F0FF; color: #2F6BD8; border: 2rpx solid #C6DBF7; }
 .ts-result-nums { font-size: 25rpx; font-weight: 600; color: #5F6673; font-variant-numeric: tabular-nums; }
-/* 票数分项上色：同意绿 / 不同意红 / 弃权·未投灰（0722 用户定） */
+/* 票数分项上色：同意绿 / 不同意红 / 弃权灰（0722 用户定） */
 .rn-part.agree { color: #2E7D32; }
 .rn-part.against { color: #C0392B; }
 .rn-part.abstain { color: #5F6673; }
-.rn-part.none { color: #98A2B3; }
 .rn-part.opt { color: #5F6673; }
 .rn-sep { color: #C4C9D0; }
+/* 总进度「已投 X/Y」放最前、加重（关键信息）；后跟一段间距再列明细 */
+.rn-part.progress { color: #2A2E35; font-weight: 800; margin-right: 16rpx; }
+/* 未投弱化：小字浅灰括注，避免被误解成"还没签到" */
+.rn-part.faint { color: #B6BBC3; font-size: 22rpx; margin-left: 12rpx; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */

@@ -3621,10 +3621,10 @@ async function returnToRecordingPage() {
 /* 钉底栏：抬离屏幕底边一点、去掉白色背景条，用页面底色（仍不透明，挡住滚动内容不露馅） */
 .end-meeting-row.pinned { position:fixed; z-index:80; left:0; right:0; bottom:0; margin-top:0; padding:14rpx 32rpx calc(60rpx + env(safe-area-inset-bottom)); background:#f4f5f7; }
 /* 两按钮等宽、缩小一档：配色对齐卡内「临时添加议题」(中性白描边) 与「结束表决」(浅暖描边) */
-.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:78rpx; box-sizing:border-box; border:2rpx solid #D8DBE0; border-radius:14rpx; background:#fff; color:#55585E; font-size:27rpx; font-weight:700; font-family:inherit; }
-.back-recording-btn:active { background:#F1F2F4; }
-.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:78rpx; box-sizing:border-box; border:2rpx solid #EAC79A; background:#FFFCF7; color:#B26A19; font-size:27rpx; font-weight:700; border-radius:14rpx; font-family:inherit; }
-.end-meeting-btn:active { background:#FBF1E2; }
+.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:70rpx; box-sizing:border-box; border:2rpx solid #E6E9ED; border-radius:14rpx; background:#fff; color:#7A7F87; font-size:26rpx; font-weight:700; font-family:inherit; }
+.back-recording-btn:active { background:#F3F4F6; }
+.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:70rpx; box-sizing:border-box; border:2rpx solid #F0DBB4; background:#FFFDF8; color:#C58A3E; font-size:26rpx; font-weight:700; border-radius:14rpx; font-family:inherit; }
+.end-meeting-btn:active { background:#FCF5E7; }
 /* 两按钮的左右箭头同款样式（← / →）：仅方向与前后位置不同 */
 .emb-arrow { margin-left:10rpx; font-weight:600; opacity:0.8; font-size:28rpx; }
 .emb-arrow.pre { margin-left:0; margin-right:10rpx; }
