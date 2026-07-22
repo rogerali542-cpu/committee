@@ -309,7 +309,7 @@
            “结束现场会议”只停止现场录音并进入会后整理；“完成本次会议”在下一页执行。 -->
       <div v-if="meetingEnded || meetingPhase === 'voting'" class="end-meeting-row" :class="{ pinned: meetingPhase === 'voting' && !meetingEnded }">
         <button v-if="meetingPhase === 'voting'" class="back-recording-btn" @click="returnToRecordingPage">
-          ‹ {{ fieldMeetingEnded ? '返回整理' : '返回录音' }}
+          <span class="emb-arrow pre">←</span>{{ fieldMeetingEnded ? '返回整理' : '返回录音' }}
         </button>
         <!-- 点击进「会后整理」决策页（不会立刻结束）；箭头表明是去下一步而非直接结束 -->
         <button v-if="isChair || meetingEnded" class="end-meeting-btn" @click="handleMeetingBottomAction">
@@ -3482,7 +3482,7 @@ async function returnToRecordingPage() {
 /* 首屏容器：至少撑满一屏（100vh 减 顶栏+页面上下留白），参会名单被顶到首屏之下，往下拉才看到 */
 .lp-fold { display:flex; flex-direction:column; min-height:calc(100vh - 96rpx); }
 
-.core-card { background:#fff; border-radius:24rpx; padding:30rpx 28rpx 28rpx; margin-top:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.core-card { background:#fff; border-radius:24rpx; padding:20rpx 28rpx 28rpx; margin-top:24rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .meeting-stage-card { margin-top:18rpx; padding:30rpx 28rpx 28rpx; border-radius:18rpx; background:#FFFDF9; border:2rpx solid #EEE6D9; box-shadow:0 3rpx 12rpx rgba(48,42,32,.04); }
 .meeting-stage-title { font-size:35rpx; line-height:1.4; font-weight:700; color:#34363A; }
 .meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#5f6570; }
@@ -3523,12 +3523,12 @@ async function returnToRecordingPage() {
 .live-page:not(.lp-signin) .lp-flow-label { margin-top:7rpx; font-size:22rpx; }
 .live-page:not(.lp-signin) .lp-flow-line { margin-top:20rpx; }
 .core-head { display:flex; align-items:center; justify-content:space-between; gap:18rpx; margin-bottom:22rpx; }
-.core-title { font-size:38rpx; font-weight:800; color:#1F2024; line-height:1.35; }
+.core-title { font-size:38rpx; font-weight:700; color:#1F2024; line-height:1.35; }
 .core-sub { flex-shrink:0; font-size:26rpx; color:#0F766E; background:#E7F6F3; border:2rpx solid #B9E4DC; border-radius:999rpx; padding:8rpx 16rpx; font-weight:700; }
 .core-list { border:2rpx solid #EEF1F3; border-radius:20rpx; padding:4rpx 22rpx; margin-top:18rpx; background:#FAFBFC; }
 .core-topic { display:flex; align-items:center; gap:16rpx; padding:18rpx 0; border-top:2rpx solid rgba(31,36,42,0.06); }
 .core-topic:first-child { border-top:0; }
-.core-topic-no { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; background:#fff; color:#6B7280; border:2rpx solid #E2E6EA; display:flex; align-items:center; justify-content:center; font-size:26rpx; font-weight:700; }
+.core-topic-no { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; background:#FDF3D6; color:#B26A19; border:2rpx solid #EBD08A; display:flex; align-items:center; justify-content:center; font-size:26rpx; font-weight:700; }
 .core-topic-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:6rpx; }
 .core-topic-title { flex:1; min-width:0; color:#1F2024; font-size:31rpx; line-height:1.45; word-break:break-all; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .core-topic-meta { font-size:25rpx; color:#8A8F98; }
@@ -3620,14 +3620,14 @@ async function returnToRecordingPage() {
 .end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:row; align-items:stretch; justify-content:center; gap:16rpx; border-top:2rpx solid #ECE8E1; }
 /* 钉底栏：抬离屏幕底边一点、去掉白色背景条，用页面底色（仍不透明，挡住滚动内容不露馅） */
 .end-meeting-row.pinned { position:fixed; z-index:80; left:0; right:0; bottom:0; margin-top:0; padding:14rpx 32rpx calc(60rpx + env(safe-area-inset-bottom)); background:#f4f5f7; }
-/* 两按钮同等大小、同等重量：等宽等高、浅暖填充 + 同色系描边 + 深色文字，
-   仅色相轻微不同区分语义（返回录音=暖金，结束现场会议=赭红），浅色不突兀（0722） */
-.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:92rpx; box-sizing:border-box; border:2rpx solid #E0C48E; border-radius:16rpx; background:#F4E3C4; color:#8A5411; font-size:29rpx; font-weight:750; font-family:inherit; }
-.back-recording-btn:active { background:#EBD5AC; }
-/* 结束现场会议：改浅黄（同上方「结束表决」暖黄色系），去掉赭红；与返回录音的暖金仅轻微不同 */
-.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; border:2rpx solid #EACB86; background:#FBEFCB; color:#96590F; font-size:29rpx; font-weight:750; border-radius:16rpx; font-family:inherit; }
-.end-meeting-btn:active { background:#F5E4B4; }
-.emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
+/* 两按钮等宽、缩小一档：配色对齐卡内「临时添加议题」(中性白描边) 与「结束表决」(浅暖描边) */
+.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:78rpx; box-sizing:border-box; border:2rpx solid #D8DBE0; border-radius:14rpx; background:#fff; color:#55585E; font-size:27rpx; font-weight:700; font-family:inherit; }
+.back-recording-btn:active { background:#F1F2F4; }
+.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:78rpx; box-sizing:border-box; border:2rpx solid #EAC79A; background:#FFFCF7; color:#B26A19; font-size:27rpx; font-weight:700; border-radius:14rpx; font-family:inherit; }
+.end-meeting-btn:active { background:#FBF1E2; }
+/* 两按钮的左右箭头同款样式（← / →）：仅方向与前后位置不同 */
+.emb-arrow { margin-left:10rpx; font-weight:600; opacity:0.8; font-size:28rpx; }
+.emb-arrow.pre { margin-left:0; margin-right:10rpx; }
 .live-page.has-fixed-end { padding-bottom:150rpx; }
 /* 议题处理阶段底部操作栏钉底：给页面留出等高底边，滚到底时最后内容不被盖住 */
 .live-page.has-fixed-end-voting { padding-bottom:235rpx; }
