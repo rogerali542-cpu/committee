@@ -14,11 +14,7 @@
       <div v-if="opinionSummaryMode && hasOpinions" class="ts-ops summary ts-top-summary">
         <div class="ts-ops-title-row">
           <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
-          <div class="ts-ops-acts">
-            <!-- 补充意见入口挪进汇总标题行（0722 用户定），与查看并排 -->
-            <button class="ts-ops-addbtn" @click.stop="opinionOpen = true">补充意见</button>
-            <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">查看</button>
-          </div>
+          <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">查看</button>
         </div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
@@ -37,6 +33,8 @@
           </div>
         </div>
         <div v-if="opinions.length > visibleOpinions.length" class="ts-op-more">还有 {{ opinions.length - visibleOpinions.length }} 条，点击“补充意见”查看</div>
+        <!-- 补充意见：意见卡片正下方的显眼按钮（0722 用户定） -->
+        <button class="ts-op-entry in-summary" @click.stop="opinionOpen = true">补充意见</button>
       </div>
 
       <!-- 可滚动区：表决 + 意见汇总（输入框固定在底部，这里滚动看更多意见） -->
@@ -1210,6 +1208,7 @@ async function removeOpinion(op) {
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
+.ts-op-entry.in-summary { margin: 18rpx auto 4rpx; }
 .ts-op-entry { display: flex; align-items: center; justify-content: center; width: 64%; min-height: 88rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 30rpx; font-weight: 700; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
@@ -1254,7 +1253,7 @@ async function removeOpinion(op) {
 /* 未投弱化：小字浅灰括注，避免被误解成"还没签到" */
 .rn-part.faint { color: #B6BBC3; font-size: 22rpx; margin-left: 12rpx; }
 /* 我的投票并入票数卡内一行：细分隔线 + 状态绿字 + 右侧小号改票/撤回 */
-.ts-my-line { display: flex; align-items: center; gap: 12rpx; margin-top: 14rpx; padding-top: 14rpx; border-top: 2rpx solid #E3ECF9; }
+.ts-my-line { display: flex; align-items: center; gap: 12rpx; margin-top: 14rpx; padding: 14rpx 18rpx 0; border-top: 2rpx solid #E3ECF9; } /* 左右各 18rpx 与蓝卡内容对齐 */
 .ts-my-vote { flex: 1; min-width: 0; font-size: 25rpx; font-weight: 700; color: #2E7D32; }
 .ts-mini-act { flex-shrink: 0; border: 2rpx solid #D8DBE0; background: #fff; color: #6B7078; font-size: 23rpx; font-weight: 600; border-radius: 999rpx; padding: 6rpx 20rpx; font-family: inherit; line-height: 1.3; }
 .ts-mini-act:active { background: #F1F2F4; }
@@ -1283,9 +1282,9 @@ async function removeOpinion(op) {
 .ts-vote-change ~ .ts-vote-retract { margin-left:12rpx; } /* 与改票并排时不再各自撑开 */
 .ts-vote-retract:disabled { opacity:.5; }
 /* 代委员投票（仅主持人）：入口小字按钮；面板浅底卡片内选人/选项/凭证/提交 */
-.ts-proxy { margin-top:16rpx; }
+.ts-proxy { margin-top:26rpx; }
 /* 入口=弹层里最显眼的实心按钮（0722 用户定：不自动展开面板，用醒目入口引导） */
-.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:64%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:0; border-radius:16rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 8rpx 18rpx rgba(15,118,110,0.22); }
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:0; border-radius:16rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 8rpx 18rpx rgba(15,118,110,0.22); }
 .ts-proxy-entry:active { background:#0B5F59; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
@@ -1334,10 +1333,9 @@ async function removeOpinion(op) {
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
 .ts-ops-expand { flex-shrink: 0; border: 0; background: transparent; color: #1F6FB2; font-size: 25rpx; font-weight: 600; padding: 8rpx 4rpx 8rpx 18rpx; }
 .ts-ops-expand:active { opacity: .6; }
-.ts-ops-acts { flex-shrink: 0; display: flex; align-items: center; gap: 8rpx; }
-/* 补充意见（汇总标题行小按钮）：浅蓝描边小胶囊，比"查看"略强 */
-.ts-ops-addbtn { border: 2rpx solid #A9CBEA; background: #EAF3FC; color: #1F6FB2; font-size: 24rpx; font-weight: 650; border-radius: 999rpx; padding: 8rpx 22rpx; font-family: inherit; line-height: 1.3; }
-.ts-ops-addbtn:active { background: #DCEAF8; }
+/* 查看与意见卡内"删除"右缘对齐：卡片内边距 18rpx，查看按钮右移到同一竖线 */
+.ts-ops.summary .ts-ops-expand { padding-right: 0; margin-right: 18rpx; }
+.ts-op-foot .ts-op-del-inline { padding-right: 0; }
 .ts-ops.summary .ts-ops-head { font-size: 26rpx; margin-bottom: 8rpx; color: #5F6570; }
 .ts-ops.summary .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
