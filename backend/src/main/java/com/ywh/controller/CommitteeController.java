@@ -206,6 +206,15 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 主持人修正参会状态（名单弹窗下拉）：onsite/remote/declined/none */
+    @PutMapping("/{id}/attendance/{userRoleId}/status")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> setAttendanceStatus(@PathVariable Long id, @PathVariable Long userRoleId,
+                                            @RequestParam String value) {
+        service.setAttendanceStatus(id, userRoleId, value);
+        return Result.ok();
+    }
+
     @PutMapping("/{id}/self")
     public Result<Void> selfToggle(@PathVariable Long id, @RequestParam String field) {
         service.selfToggle(id, field);

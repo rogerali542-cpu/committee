@@ -346,13 +346,14 @@
           <span class="roster-pop-close" @click="rosterPopOpen = false">×</span>
         </div>
         <div class="roster-pop-body">
-          <!-- 隐藏纠错（0722 用户定，不做明显指引）：主持人点「未签到且未请假」的人可补记签到
-               （忘了签/手机没电等），确认弹窗防误触；后端走 proxy-actions 留痕 -->
-          <div class="roster-pop-row" v-for="a in signinStats.list" :key="a.userRoleId" @click="proxySignFor(a)">
+          <!-- 状态纠错（0722 用户定）：主持人可用状态右侧小下拉改参会状态（忘了签/手机没电等），
+               四种：已签到/线上参会/请假缺席/未参会；后端记操作人留痕 -->
+          <div class="roster-pop-row" v-for="a in signinStats.list" :key="a.userRoleId">
             <span class="rp-name">{{ a.name }}<span v-if="a.role" class="rp-role"> · {{ a.role }}</span></span>
             <span class="rp-state" :class="a.signedIn ? (a.attendanceMode === 'remote' ? 'remote' : 'on') : (a.declined ? 'off' : 'wait')">
               {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '未签到') }}
             </span>
+            <span v-if="canEditAttendance" class="rp-edit" @click.stop="editAttendance(a)">▾</span>
           </div>
         </div>
       </div>
@@ -3170,24 +3171,30 @@ async function handleEndReviewPrimary() {
 function findUnvotedVoteTopic() {
   return meetingTopics.value.find(t => t.voteRequired && (t.voted || 0) < (t.total || 0))
 }
-// 隐藏纠错（0722 用户定）：主持人在名单弹窗点「未签到且未请假」的人 → 确认后补记签到。
-// 不做明显指引（纠错功能不该被当常规流程），确认弹窗防误触；后端 proxy-actions 记操作人留痕。
-async function proxySignFor(a) {
-  if (!isHost.value || !a || a.signedIn || a.declined) return
-  if (!detail.value || detail.value.stage !== 'ongoing') return
-  const res = await showModal({
-    title: '补记签到',
-    content: '帮 ' + a.name + ' 补记签到？仅用于确实到场或已委托、但没能自己签到的情况。',
-    confirmText: '补记签到',
-    cancelText: '取消'
+// 状态纠错（0722 用户定）：主持人在名单弹窗用状态右侧小下拉改参会状态（忘了签/手机没电等）。
+// 四种：已签到/线上参会/请假缺席/未参会；仅会议进行中（含会后整理）可改，后端记操作人留痕。
+const canEditAttendance = computed(() => isHost.value && !!detail.value && detail.value.stage === 'ongoing')
+const ATTENDANCE_STATUS_OPTIONS = [
+  { label: '已签到', value: 'onsite' },
+  { label: '线上参会', value: 'remote' },
+  { label: '请假缺席', value: 'declined' },
+  { label: '未参会', value: 'none' },
+]
+async function editAttendance(a) {
+  if (!canEditAttendance.value || !a) return
+  const choice = await showActionSheet({
+    title: '修改 ' + a.name + ' 的参会状态',
+    itemList: ATTENDANCE_STATUS_OPTIONS.map(o => ({ label: o.label }))
   })
-  if (!res.confirm) return
+  if (choice.tapIndex == null || choice.tapIndex < 0) return
+  const opt = ATTENDANCE_STATUS_OPTIONS[choice.tapIndex]
+  if (!opt) return
   try {
-    await api.committeeProxySubmit(meetingId.value, { actionType: 'signIn', memberIds: [a.userRoleId], proofUrl: null })
-    toast({ title: '已补记签到', icon: 'success' })
+    await api.committeeSetAttendanceStatus(meetingId.value, a.userRoleId, opt.value)
+    toast({ title: '已改为「' + opt.label + '」', icon: 'success' })
     await loadDetail()
   } catch (e) {
-    toast({ title: (e && e.message) || '补记失败，请重试', icon: 'none' })
+    toast({ title: (e && e.message) || '修改失败，请重试', icon: 'none' })
   }
 }
 
@@ -3630,9 +3637,12 @@ async function returnToRecordingPage() {
 .roster-pop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; }
 .roster-pop-title { font-size:32rpx; font-weight:800; color:#1F2329; }
 .roster-pop-close { font-size:46rpx; color:#8A8F98; line-height:1; padding:0 6rpx; }
-.roster-pop-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
+.roster-pop-row { display:flex; align-items:center; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
 .roster-pop-row:first-child { border-top:0; }
-.rp-name { font-size:30rpx; color:#1F2329; font-weight:600; }
+.rp-name { flex:1; min-width:0; font-size:30rpx; color:#1F2329; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* 主持人改状态的小下拉箭头（状态右侧），弱化配色不抢眼 */
+.rp-edit { flex-shrink:0; width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:10rpx; color:#A0A5AD; font-size:24rpx; background:#F4F5F7; }
+.rp-edit:active { background:#E8EAED; color:#5F6673; }
 .rp-role { color:#9AA0A6; font-weight:400; font-size:26rpx; }
 .rp-state { flex-shrink:0; font-size:27rpx; font-weight:700; }
 .rp-state.on { color:#2E8B57; }

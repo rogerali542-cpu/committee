@@ -594,6 +594,31 @@ public class CommitteeService {
         attendanceRepo.save(a);
     }
 
+    /** 主持人修正参会状态（0722，名单弹窗下拉）：onsite=已签到 / remote=线上参会 / declined=请假缺席 / none=未参会。
+     *  记 operator/isProxy/operatedAt 留痕（代改他人时 isProxy=true）。 */
+    @Transactional
+    public void setAttendanceStatus(Long meetingId, Long userRoleId, String value) {
+        MeetingRecord record = getRecord(meetingId);
+        RecordAttendance a = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), userRoleId)
+                .orElseThrow(() -> new IllegalArgumentException("参会记录不存在"));
+        if ("onsite".equals(value)) {
+            a.setSignedIn(true); a.setDeclined(false); a.setAttendanceMode("onsite");
+        } else if ("remote".equals(value)) {
+            a.setSignedIn(true); a.setDeclined(false); a.setAttendanceMode("remote");
+        } else if ("declined".equals(value)) {
+            a.setSignedIn(false); a.setDeclined(true); a.setAttendanceMode(null);
+        } else if ("none".equals(value)) {
+            a.setSignedIn(false); a.setDeclined(false); a.setAttendanceMode(null);
+        } else {
+            throw new IllegalArgumentException("不支持的参会状态");
+        }
+        UserRoleEntity operator = SecurityUtils.getCurrentUserRole();
+        a.setOperator(operator);
+        a.setIsProxy(operator != null && !operator.getId().equals(userRoleId));
+        a.setOperatedAt(LocalDateTime.now());
+        attendanceRepo.save(a);
+    }
+
     @Transactional
     public void selfToggle(Long meetingId, String field) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
