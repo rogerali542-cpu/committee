@@ -49,15 +49,10 @@
               <span class="ers-dot"></span>
               <span>{{ signinStats.signedCount }} / {{ signinStats.total }} 已签到</span>
             </div>
-            <div v-if="endRosterOpen" class="end-attendance-list">
-              <div v-for="a in signinStats.list" :key="a.userRoleId" class="end-attendance-row">
-                <span>{{ a.name }} · {{ a.role }}</span>
-                <span :class="{ ok: a.signedIn }">{{ a.signedIn ? '已签到' : '未签到' }}</span>
-              </div>
-            </div>
           </div>
           <div class="end-review-inline-actions">
-            <button class="supp-btn ghost" @click="endRosterOpen = !endRosterOpen">{{ endRosterOpen ? '收起签到名单' : '查看签到名单' }}</button>
+            <!-- 与会议进行中同款：弹出悬浮名单窗，不在页内展开占位 -->
+            <button class="supp-btn ghost" @click="rosterPopOpen = true">查看签到名单</button>
             <button class="supp-btn ghost" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
               {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
             </button>
@@ -1069,7 +1064,6 @@ const transcriptPreviewText = computed(() => transcriptView.value ? transcriptVi
 const ending = ref(false)
 const endReviewVisible = ref(false)
 const fieldMeetingEnded = ref(false)
-const endRosterOpen = ref(false)
 const exportingAttendanceSheet = ref(false)
 // 重做后的「最后一步」：AI 纪要审核
 const minutesGenerated = ref(false)   // 是否已生成 AI 纪要草稿
@@ -3546,7 +3540,7 @@ async function returnToRecordingPage() {
 .recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 0; white-space:nowrap; }
 
 /* 签到名单弹窗 */
-.roster-pop-mask { position:fixed; inset:0; z-index:160; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; padding:48rpx; }
+.roster-pop-mask { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; padding:48rpx; } /* 高于会后整理页(180)，两处都能弹 */
 .roster-pop { width:100%; max-width:560rpx; max-height:76vh; overflow:auto; background:#fff; border-radius:22rpx; padding:26rpx 26rpx 30rpx; box-shadow:0 20rpx 56rpx rgba(0,0,0,0.25); }
 .roster-pop-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12rpx; }
 .roster-pop-title { font-size:32rpx; font-weight:800; color:#1F2329; }
@@ -3642,10 +3636,6 @@ async function returnToRecordingPage() {
 .ers-row.warn .ers-dot { background:#D97706; }
 .ers-row.busy { color:#0F766E; }
 .ers-row.busy .ers-dot { background:#0F766E; box-shadow:0 0 0 8rpx rgba(15,118,110,0.10); }
-.end-attendance-list { border-top:2rpx solid #E6EAED; padding-top:12rpx; display:flex; flex-direction:column; gap:12rpx; }
-.end-attendance-row { display:flex; justify-content:space-between; gap:20rpx; font-size:27rpx; color:#6B7280; }
-.end-attendance-row span:last-child { color:#9A6060; }
-.end-attendance-row span:last-child.ok { color:#1B7F48; }
 .end-review-inline-actions { display:flex; gap:16rpx; margin-top:18rpx; }
 .end-review-inline-actions .supp-btn { flex:1; min-width:0; height:76rpx; font-size:27rpx; }
 .end-review-pending { margin-top:24rpx; padding:24rpx; border-radius:18rpx; background:#FFF7E8; border:2rpx solid #F4D8A4; display:flex; align-items:center; justify-content:space-between; gap:18rpx; }

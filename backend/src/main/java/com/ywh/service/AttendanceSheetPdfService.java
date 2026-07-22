@@ -35,8 +35,9 @@ public class AttendanceSheetPdfService {
     public PdfFile generate(Long meetingId) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
-        if (meeting.getStage() != MeetingStage.ended) {
-            throw new IllegalArgumentException("会议结束后才能导出会议签到表");
+        // 会议开始后即可导出：会后整理（现场结束、stage 仍为 ongoing）正是打印签到表让大家签字的时点
+        if (meeting.getStage() == MeetingStage.preparing) {
+            throw new IllegalArgumentException("会议开始后才能导出会议签到表");
         }
         MeetingRecord record = recordRepo.findByMeetingId(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议记录不存在"));
