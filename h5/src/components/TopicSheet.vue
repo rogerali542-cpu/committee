@@ -44,25 +44,28 @@
           <!-- 表决进行中(会议 ongoing 且未结束)选项常驻：已投项高亮，点其他选项后轻确认改票；
                会议结束后(voteRevealed)自动落到下方"您已投/未投"，不再显示投票按钮（方案A） -->
           <template v-if="!voteRevealed">
-            <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
-              <div class="ts-vote-btns">
-                <button class="ts-vote-btn agree" :class="{ on: displayVote === 'for_vote' }" :disabled="voteSubmitting" @click="pickVote('for_vote')">
-                  <span class="ts-radio"></span><span>同意</span>
-                </button>
-                <button class="ts-vote-btn against" :class="{ on: displayVote === 'against' }" :disabled="voteSubmitting" @click="pickVote('against')">
-                  <span class="ts-radio"></span><span>不同意</span>
-                </button>
-                <button class="ts-vote-btn abstain" :class="{ on: displayVote === 'abstain' }" :disabled="voteSubmitting" @click="pickVote('abstain')">
-                  <span class="ts-radio"></span><span>弃权</span>
-                </button>
-              </div>
-            </template>
-            <template v-else>
-              <div class="ts-opt" v-for="o in (topic.options || [])" :key="o.id"
-                   :class="{ on: displayVote != null && String(displayVote) === String(o.id) }"
-                   @click="pickVote(o.id, o)">
-                <span class="ts-opt-label">{{ o.label }}</span>
-              </div>
+            <!-- 已投后选项收起（voteCollapsed），状态行「已投：X」+「改票/撤回」接管；点改票再展开 -->
+            <template v-if="!voteCollapsed">
+              <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
+                <div class="ts-vote-btns">
+                  <button class="ts-vote-btn agree" :class="{ on: displayVote === 'for_vote' }" :disabled="voteSubmitting" @click="pickVote('for_vote')">
+                    <span class="ts-radio"></span><span>同意</span>
+                  </button>
+                  <button class="ts-vote-btn against" :class="{ on: displayVote === 'against' }" :disabled="voteSubmitting" @click="pickVote('against')">
+                    <span class="ts-radio"></span><span>不同意</span>
+                  </button>
+                  <button class="ts-vote-btn abstain" :class="{ on: displayVote === 'abstain' }" :disabled="voteSubmitting" @click="pickVote('abstain')">
+                    <span class="ts-radio"></span><span>弃权</span>
+                  </button>
+                </div>
+              </template>
+              <template v-else>
+                <div class="ts-opt" v-for="o in (topic.options || [])" :key="o.id"
+                     :class="{ on: displayVote != null && String(displayVote) === String(o.id) }"
+                     @click="pickVote(o.id, o)">
+                  <span class="ts-opt-label">{{ o.label }}</span>
+                </div>
+              </template>
             </template>
             <button v-if="pendingVote != null" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
               {{ voteSubmitting ? '提交中...' : '确认提交' }}
@@ -72,7 +75,8 @@
                 <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
                 <span>{{ voteFeedbackText }}</span>
               </div>
-              <!-- 撤回投票（表决未结束、本人已投时）：小号次要按钮，回到未投可重投 -->
+              <!-- 已投收起态：「改票」展开选项；「撤回」回到未投 -->
+              <button v-if="voteCollapsed" class="ts-vote-change" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
               <button v-if="showRetract" class="ts-vote-retract" :disabled="voteSubmitting" @click="retractVote">撤回</button>
             </div>
             <!-- 表决进行中：实时票数明细，只报数不下"通过/未通过"结论(没结束不算数)。0722 用户定：不怕从众 -->
@@ -295,8 +299,7 @@ const props = defineProps({
   signedIn: { type: Boolean, default: false },
   isChair: { type: Boolean, default: false },
   hasPrev: { type: Boolean, default: false }, // 是否有上一个议题（父组件按列表算）
-  hasNext: { type: Boolean, default: false }, // 是否有下一个议题
-  proxyIntent: { type: Number, default: 0 }   // 递增触发：父组件经「去代录」路径打开时自动展开代投面板
+  hasNext: { type: Boolean, default: false }  // 是否有下一个议题
 })
 const emit = defineEmits(['close', 'changed', 'prev', 'next'])
 
@@ -378,6 +381,7 @@ const guideText = computed(() => {
 // 研究P1「先选后交」：本地暂存"选中但未提交"的表决，可反复改；点「确认提交」才落库
 const pendingVote = ref(null)      // 简单表决=choice字符串 / 多选=选项id
 const pendingOption = ref(null)    // 多选时记住选项对象
+const changeVoteOpen = ref(false)  // 已投后选项默认收起；点「改票」临时展开
 const voteSubmitting = ref(false)
 const localVoteValue = ref(null)
 const localVoteLabel = ref('')
@@ -393,6 +397,8 @@ const displayVote = computed(() => {
   if (pendingVote.value != null) return pendingVote.value
   return committedVote.value
 })
+// 已投且没有待提交的新选择时，收起投票选项（0722 用户定）；「改票」可临时展开
+const voteCollapsed = computed(() => committedVote.value != null && pendingVote.value == null && !changeVoteOpen.value)
 const pendingLabel = computed(() => {
   if (pendingVote.value == null) return ''
   if (pendingOption.value) return pendingOption.value.label
@@ -556,6 +562,7 @@ watch(() => props.topic && props.topic.id, (id) => {
   opinionOpen.value = false
   opinionListOpen.value = false
   pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''; localRetracted.value = false
+  changeVoteOpen.value = false
   resetProxy()
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
@@ -834,6 +841,7 @@ async function pickVote(choice, option) {
   if (currentVote != null) {
     if (String(currentVote) === String(nextVote)) {
       pendingVote.value = null; pendingOption.value = null
+      changeVoteOpen.value = false // 改票时又点回原选项 = 不改了，收回选项区
       return
     }
     const nextLabel = option ? option.label : (VOTE_LABELS[choice] || '该选项')
@@ -870,6 +878,7 @@ async function submitVote() {
     localVoteValue.value = nextValue
     localVoteLabel.value = label
     localRetracted.value = false // 重新投票后清掉撤回态
+    changeVoteOpen.value = false // 提交后选项收回
     pendingVote.value = null; pendingOption.value = null
     // 改票后立即同步本人已发表意见旁的标签，避免父组件刷新与意见请求竞态时仍显示第一次投票。
     opinions.value = opinions.value.map((opinion) => {
@@ -920,6 +929,7 @@ async function retractVote() {
     localRetracted.value = true
     localVoteValue.value = null; localVoteLabel.value = ''
     pendingVote.value = null; pendingOption.value = null
+    changeVoteOpen.value = false
     // 同步已发表意见旁的投票标签，避免仍显示撤回前的选择
     opinions.value = opinions.value.map((opinion) =>
       (opinion && opinion.isSelf) ? Object.assign({}, opinion, { voteLabel: null, voteChoice: null }) : opinion)
@@ -930,14 +940,6 @@ async function retractVote() {
     toast({ title: (e && e.message) || '撤回失败，请重试', icon: 'none' })
   } finally { voteSubmitting.value = false }
 }
-
-// 「去代录」路径（完成会议被未投拦截→跳来）：代投就是主任务，直接展开面板不用再找入口
-watch(() => props.proxyIntent, async (v) => {
-  if (!v) return
-  await nextTick()
-  const t = props.topic
-  if (props.isChair && props.interactive && t && t.voteRequired && !t.voteClosed) openProxy()
-})
 
 async function openProxy() {
   const t = props.topic
@@ -1257,13 +1259,18 @@ async function removeOpinion(op) {
 .ts-vote-feedback.abstain .ts-vote-feedback-mark { background:#6B7078; }
 /* 已选未提交：中性灰（0722 用户定：不用暖棕，用原灰色）；放最后确保覆盖 agree/against/abstain 配色 */
 .ts-vote-feedback.pending { background:#F4F5F7; border-color:#D4D8DE; color:#4D5158; }
-/* 撤回：小号次要按钮，靠右，弱化不抢眼（改票是常态，撤回是少数场景/测试用） */
+/* 已投收起态的「改票/撤回」：小号按钮靠右并排；改票略强（常用），撤回弱化（少用） */
+.ts-vote-change { margin-left:auto; padding:8rpx 22rpx; border-radius:999rpx; background:#fff; border:2rpx solid #C9CED6; color:#4D5158; font-size:24rpx; font-weight:650; font-family:inherit; white-space:nowrap; }
+.ts-vote-change:active { background:#F1F2F4; }
+.ts-vote-change:disabled { opacity:.5; }
 .ts-vote-retract { margin-left:auto; padding:8rpx 20rpx; border-radius:999rpx; background:#fff; border:2rpx solid #D8DBE0; color:#8A9099; font-size:24rpx; font-weight:600; font-family:inherit; white-space:nowrap; }
+.ts-vote-change ~ .ts-vote-retract { margin-left:12rpx; } /* 与改票并排时不再各自撑开 */
 .ts-vote-retract:disabled { opacity:.5; }
 /* 代委员投票（仅主持人）：入口小字按钮；面板浅底卡片内选人/选项/凭证/提交 */
 .ts-proxy { margin-top:16rpx; }
-.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:64%; min-height:76rpx; box-sizing:border-box; margin:0 auto; border:2rpx solid #C6D8D6; border-radius:16rpx; background:#F2F8F7; color:#0F766E; font-size:28rpx; font-weight:650; font-family:inherit; padding:14rpx 24rpx; }
-.ts-proxy-entry:active { background:#E2EFED; }
+/* 入口=弹层里最显眼的实心按钮（0722 用户定：不自动展开面板，用醒目入口引导） */
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:64%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:0; border-radius:16rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 8rpx 18rpx rgba(15,118,110,0.22); }
+.ts-proxy-entry:active { background:#0B5F59; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }

@@ -359,7 +359,6 @@
     <!-- 议题弹层：表决 + 意见（点议题行打开）；下一个议题直接切换 -->
     <TopicSheet :meeting-id="meetingId" :topic="sheetTopic" :interactive="detail.stage === 'ongoing'"
                 :signed-in="signedIn" :is-chair="isChair" :has-prev="sheetHasPrev" :has-next="sheetHasNext"
-                :proxy-intent="sheetProxyIntent"
                 @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
     </template>
 
@@ -3168,7 +3167,6 @@ async function handleEndReviewPrimary() {
 function findUnvotedVoteTopic() {
   return meetingTopics.value.find(t => t.voteRequired && (t.voted || 0) < (t.total || 0))
 }
-const sheetProxyIntent = ref(0) // 递增触发议题弹层自动展开代投面板（「去代录」路径代投是主任务）
 async function guardUnvotedBeforeEnd() {
   const t = findUnvotedVoteTopic()
   if (!t) return true
@@ -3179,7 +3177,7 @@ async function guardUnvotedBeforeEnd() {
     confirmText: '去代录',
     cancelText: '返回'
   })
-  if (res.confirm) { openTopicSheet(t); sheetProxyIntent.value++ }
+  if (res.confirm) openTopicSheet(t) // 弹层内「代委员投票」为最显眼按钮，不再自动展开面板
   return false
 }
 
