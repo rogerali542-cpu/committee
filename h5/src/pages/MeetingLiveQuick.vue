@@ -61,6 +61,13 @@
                 {{ pendingTopicCount ? ('● ' + pendingTopicCount + ' 项待处理') : '✓ 已全部处理' }}
               </span>
             </div>
+            <!-- 各议题结果一行一条：标题 + 简要结论（表决=通过/未通过含票数，讨论/通报=已办与否） -->
+            <div v-if="meetingTopics.length" class="er-topic-list">
+              <div class="er-topic-row" v-for="t in meetingTopics" :key="'er-' + t.id">
+                <span class="er-topic-title">{{ t.title }}</span>
+                <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
+              </div>
+            </div>
             <div v-if="pendingTopicCount" class="er-item-actions">
               <button class="er-act warm" @click="continuePendingTopics">继续处理议题</button>
             </div>
@@ -83,7 +90,7 @@
           <button class="end-review-primary" :disabled="endReviewPrimaryDisabled" @click="handleEndReviewPrimary">
             {{ endReviewPrimaryText }}
           </button>
-          <button class="end-review-secondary" :disabled="ending" @click="endWithoutMinutes">暂不生成，完成本次会议</button>
+          <button class="end-review-secondary" :disabled="ending" @click="endWithoutMinutes">直接完成会议</button>
         </div>
       </div>
     </div>
@@ -1113,6 +1120,20 @@ const endReviewHint = computed(() => {
   if (hasSavedRecordings.value || hasTranscript.value) return '已有会议记录，但还没有完成识别整理。'
   return '没有可用于自动生成纪要的录音记录。'
 })
+// 会后整理清单第2项：每条议题的简要结果（表决=通过/未通过含票数，讨论/通报=已办与否）
+function erTopicResult(t) {
+  if (t.voteRequired) {
+    if (topicBadgeDone(t)) {
+      return t.passed
+        ? { cls: 'pass', text: '通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
+        : { cls: 'fail', text: '未通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
+    }
+    return { cls: 'todo', text: '待表决' }
+  }
+  if (t.type === 'notice') return topicBadgeDone(t) ? { cls: 'done', text: '已通报' } : { cls: 'todo', text: '待通报' }
+  return topicBadgeDone(t) ? { cls: 'done', text: '已讨论' } : { cls: 'todo', text: '待讨论' }
+}
+
 // 清单第3项「会议记录」的状态灯：绿=可生成纪要，蓝=识别在途，黄=有录音没识别完，灰=没录音
 const erRecordState = computed(() => {
   if (minutesGenerated.value) return { cls: 'ok', text: '✓ 纪要已生成' }
@@ -1136,7 +1157,7 @@ const endReviewPrimaryText = computed(() => {
   if (minutesGenerated.value) return '已生成，查看纪要'
   if (uploading.value) return '上传中…'
   if (polling.value || extracting.value) return '识别中…'
-  if (generated.value) return '生成纪要并完成会议'
+  if (generated.value) return '生成会议纪要'
   return '暂不能生成纪要'
 })
 const endReviewPrimaryDisabled = computed(() => {
@@ -3641,10 +3662,20 @@ async function returnToRecordingPage() {
 .er-act:active { background:#F1F2F4; }
 .er-act.warm { border-color:#EAC79A; background:#FFFCF7; color:#B26A19; font-weight:600; }
 .er-act:disabled { opacity:.55; }
-.er-hint { margin-top:28rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
-.end-review-primary { width:100%; height:96rpx; margin-top:16rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:34rpx; font-weight:800; line-height:96rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
+/* 议题结果简表：标题省略 + 右侧结论小签 */
+.er-topic-list { margin-top:14rpx; padding-left:54rpx; display:flex; flex-direction:column; gap:10rpx; }
+.er-topic-row { display:flex; align-items:center; gap:14rpx; }
+.er-topic-title { flex:1; min-width:0; font-size:25rpx; color:#5F6673; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
+.er-topic-result.pass { color:#2E7D32; }
+.er-topic-result.fail { color:#C0392B; }
+.er-topic-result.done { color:#5F6673; }
+.er-topic-result.todo { color:#B26A00; }
+/* 会议纪要块与清单之间空出一段，形成"核对完 → 生成"的段落感 */
+.er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
+.end-review-primary { width:100%; height:80rpx; margin-top:14rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
-.end-review-secondary { width:100%; height:70rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:26rpx; font-weight:550; }
+.end-review-secondary { width:100%; height:60rpx; margin-top:18rpx; border:0; background:transparent; color:#7B838C; font-size:25rpx; font-weight:500; }
 /* 主持人操作区：仅「临时添加议题」，居中的安静次要按钮（方案A 已移除结束表决） */
 .host-topic-actions { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:18rpx 0 0; display:flex; justify-content:center; gap:16rpx; }
 .hta-btn { flex:1 1 0; max-width:340rpx; font-size:27rpx; font-weight:600; background:#fff; border:2rpx solid #D8DBE0; color:#55585E; border-radius:999rpx; padding:15rpx 20rpx; line-height:1.3; font-family:inherit; }
