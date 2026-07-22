@@ -3718,14 +3718,14 @@ async function returnToRecordingPage() {
 .er-item-state.warn { background:#FFF6E8; color:#B26A00; }
 .er-item-state.busy { background:#EAF3FC; color:#1F6FB2; }
 .er-item-state.muted { background:#F2F3F5; color:#8A9099; }
-.er-item-sub { margin-top:12rpx; padding-left:54rpx; font-size:25rpx; color:#8A9099; line-height:1.5; }
-.er-item-actions { margin-top:16rpx; padding-left:54rpx; display:flex; gap:14rpx; }
+.er-item-sub { margin-top:12rpx; padding-left:16rpx; font-size:25rpx; color:#8A9099; line-height:1.5; }
+.er-item-actions { margin-top:16rpx; padding-left:16rpx; display:flex; gap:14rpx; }
 .er-act { border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:24rpx; font-weight:500; border-radius:999rpx; padding:10rpx 26rpx; font-family:inherit; line-height:1.3; }
 .er-act:active { background:#F1F2F4; }
 .er-act.warm { border-color:#EAC79A; background:#FFFCF7; color:#B26A19; font-weight:600; }
 .er-act:disabled { opacity:.55; }
 /* 议题结果简表：标题省略 + 右侧结论小签 */
-.er-topic-list { margin-top:14rpx; padding-left:54rpx; display:flex; flex-direction:column; gap:10rpx; }
+.er-topic-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:10rpx; }
 .er-topic-row { display:flex; align-items:center; gap:14rpx; }
 .er-topic-title { flex:1; min-width:0; font-size:25rpx; color:#5F6673; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
