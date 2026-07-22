@@ -49,9 +49,10 @@
               <span class="er-item-title">签到确认</span>
               <!-- 过半(法定人数)绿灯，未过半黄灯提醒——未过半的表决决议无效 -->
               <span class="er-item-state" :class="signinQuorum.ready ? 'ok' : 'warn'">
-                {{ (signinQuorum.ready ? '✓ ' : '● ') + signinStats.signedCount + '/' + signinStats.total + ' 已签到' + (signinQuorum.ready ? '' : '（未过半）') }}
+                {{ (signinQuorum.ready ? '✓ ' : '● ') + signinStats.signedCount + '/' + signinStats.expectedCount + ' 已签到' + (signinQuorum.ready ? '' : '（未过半）') }}
               </span>
             </div>
+            <div v-if="signinStats.absentCount > 0" class="er-item-sub">（{{ signinStats.absentCount }} 人请假缺席，不计入应到）</div>
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
               <button class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
@@ -215,7 +216,7 @@
             <div class="meeting-console-meta">{{ detail.meetingDate }} {{ detail.meetingTime }}<template v-if="detail.location"> · {{ detail.location }}</template></div>
           </div>
           <div v-if="isChair" class="meeting-console-roster" :class="{ ready: signinQuorum.ready }" @click="rosterPopOpen = true">
-            已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }} ›
+            已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.expectedCount || 0 }} ›
           </div>
         </div>
         <div class="meeting-console-topics">
@@ -369,7 +370,7 @@
     <div v-if="rosterPopOpen" class="roster-pop-mask" @click.self="rosterPopOpen = false">
       <div class="roster-pop" @click="attMenuFor = null">
         <div class="roster-pop-head">
-          <span class="roster-pop-title">签到情况 {{ signinStats.signedCount || 0 }}/{{ signinStats.total || 0 }}</span>
+          <span class="roster-pop-title">签到情况 {{ signinStats.signedCount || 0 }}/{{ signinStats.expectedCount || 0 }}<template v-if="signinStats.absentCount"> · {{ signinStats.absentCount }}人请假</template></span>
           <span class="roster-pop-close" @click="rosterPopOpen = false">×</span>
         </div>
         <div class="roster-pop-body">
@@ -1389,7 +1390,10 @@ const signinStats = computed(() => {
     if (i > 0) { const [self] = list.splice(i, 1); list.unshift(self) }
   }
   const pct = total ? Math.round((signedCount / total) * 100) : 0
-  return { total, signedCount, onsiteCount, remoteCount, absentCount, unconfirmedCount, pct, list }
+  // 应到人数=全体-请假缺席（0722 用户定）：签到进度按应到显示，请假的人单独括注不占分母。
+  // 注意：法定人数(signinQuorum)仍按全体委员算——请假不减少"过半"门槛，否则大面积请假会误判会议有效
+  const expectedCount = Math.max(0, total - absentCount)
+  return { total, expectedCount, signedCount, onsiteCount, remoteCount, absentCount, unconfirmedCount, pct, list }
 })
 
 const signinQuorum = computed(() => {
