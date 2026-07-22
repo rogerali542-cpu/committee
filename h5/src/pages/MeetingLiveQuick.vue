@@ -85,9 +85,17 @@
               <span class="er-item-state" :class="erRecordState.cls">{{ erRecordState.text }}</span>
             </div>
             <div class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
+            <!-- 每段录音一行：段号+时长，右侧 转写（看这一段）/ 删除（仅主持人） -->
+            <div v-if="recordingsChrono.length" class="er-rec-list">
+              <div class="er-rec-row" v-for="(rItem, ri) in recordingsChrono" :key="'er-rec-' + rItem.id">
+                <span class="er-rec-name">第 {{ ri + 1 }} 段 · {{ fmtDur(rItem.durationSec) }}</span>
+                <button class="er-rec-act" @click="openRecordingTranscript(rItem, ri)">转写</button>
+                <button v-if="isChair" class="er-rec-act del" @click="deleteRecording(rItem, ri)">删除</button>
+              </div>
+            </div>
             <div v-if="hasTranscript" class="er-item-actions">
-              <!-- 识别出了内容才有得看：整会合并转写稿 -->
-              <button class="er-act" @click="openTranscript('full')">查看转写</button>
+              <!-- 整会合并转写稿入口 -->
+              <button class="er-act" @click="openTranscript('full')">查看合并转写</button>
             </div>
           </div>
 
@@ -1259,8 +1267,14 @@ async function openTranscriptFromDetail() {
   const detail = recordingDetail.value
   if (!detail || !detail.item) return
   const item = detail.item
-  const title = '第 ' + (detail.index + 1) + ' 段录音转写'
+  const index = detail.index
   closeRecordingDetail()
+  await openRecordingTranscript(item, index)
+}
+
+// 查看某一段录音的转写（录音详情/会后整理段列表共用）
+async function openRecordingTranscript(item, index) {
+  const title = '第 ' + (index + 1) + ' 段录音转写'
   transcriptView.value = { title: title, segments: [], preview: '' }
   transcriptMode.value = 'short'
   transcriptVisible.value = true
@@ -3760,6 +3774,14 @@ async function returnToRecordingPage() {
 .er-topic-result.fail { color:#C0392B; }
 .er-topic-result.done { color:#2E7D32; } /* 已讨论/已通报也用绿色（0722 用户定） */
 .er-topic-result.todo { color:#B26A00; }
+/* 会议录音：每段一行（段号+时长 + 转写/删除小按钮） */
+.er-rec-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:14rpx; }
+.er-rec-row { display:flex; align-items:center; gap:14rpx; }
+.er-rec-name { flex:1; min-width:0; font-size:25rpx; color:#5F6673; font-variant-numeric:tabular-nums; }
+.er-rec-act { flex-shrink:0; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:22rpx; font-weight:500; border-radius:999rpx; padding:6rpx 20rpx; font-family:inherit; line-height:1.3; }
+.er-rec-act:active { background:#F1F2F4; }
+.er-rec-act.del { border-color:#EBC2BC; color:#C9483D; }
+.er-rec-act.del:active { background:#FDEDEC; }
 /* 会议材料：现有材料一行一条，点名字预览 */
 .er-mat-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:14rpx; }
 .er-mat-row { display:flex; align-items:center; gap:14rpx; cursor:pointer; }
