@@ -60,9 +60,6 @@
             <div class="er-item-head">
               <span class="er-item-no">2</span>
               <span class="er-item-title">议题处理</span>
-              <span class="er-item-state" :class="pendingTopicCount ? 'warn' : 'ok'">
-                {{ pendingTopicCount ? ('● ' + pendingTopicCount + ' 项待处理') : '✓ 已全部处理' }}
-              </span>
             </div>
             <!-- 各议题结果一行一条：标题 + 简要结论；可点开议题弹层继续操作
                  （完成会议前不锁死：主持人可代投、任何人可补意见——0722 用户定） -->
@@ -1131,20 +1128,20 @@ const endReviewHint = computed(() => {
 // 会后整理清单第2项：每条议题的简要结果（表决=通过/未通过含票数，讨论/通报=已办与否）
 function erTopicResult(t) {
   if (t.voteRequired) {
-    if (topicBadgeDone(t)) {
-      // 多选一：票数在 options 里，显示领先选项；是/否：同意:不同意
-      if ((t.decisionType || 'simple') === 'multi_choice') {
-        let best = null
-        for (const o of (t.options || [])) if (!best || (o.votes || 0) > (best.votes || 0)) best = o
-        return t.passed
-          ? { cls: 'pass', text: '已定：' + ((best && best.label) || '') }
-          : { cls: 'fail', text: '未通过' }
-      }
+    // 现场已结束（0722 用户定）：不再显示"待表决"，直接给票面结论——
+    // 签到未过半会议不成立→无效；否则按当前票数 通过/未通过
+    if (!signinQuorum.value.ready) return { cls: 'fail', text: '人数未过半，无效' }
+    // 多选一：票数在 options 里，显示领先选项；是/否：同意:不同意
+    if ((t.decisionType || 'simple') === 'multi_choice') {
+      let best = null
+      for (const o of (t.options || [])) if (!best || (o.votes || 0) > (best.votes || 0)) best = o
       return t.passed
-        ? { cls: 'pass', text: '通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
-        : { cls: 'fail', text: '未通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
+        ? { cls: 'pass', text: '已定：' + ((best && best.label) || '') }
+        : { cls: 'fail', text: '未通过' }
     }
-    return { cls: 'todo', text: '待表决' }
+    return t.passed
+      ? { cls: 'pass', text: '通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
+      : { cls: 'fail', text: '未通过 ' + (t.forVotes || 0) + ':' + (t.agVotes || 0) }
   }
   if (t.type === 'notice') return topicBadgeDone(t) ? { cls: 'done', text: '已通报' } : { cls: 'todo', text: '待通报' }
   return topicBadgeDone(t) ? { cls: 'done', text: '已讨论' } : { cls: 'todo', text: '待讨论' }
