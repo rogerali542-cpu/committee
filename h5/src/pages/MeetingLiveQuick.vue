@@ -214,7 +214,7 @@
               <span class="core-topic-title">{{ item.title }}</span>
               <span class="core-topic-type" :class="topicActionType(item)">{{ topicActionName(item) }}</span>
             </div>
-            <button class="core-topic-btn" :class="[topicActionType(item), { done: topicBadgeDone(item) }]" @click="openTopicSheet(item)">
+            <button class="core-topic-btn" :class="[topicActionType(item), { done: topicRowDone(item) }]" @click="openTopicSheet(item)">
               {{ topicActionButton(item) }}
             </button>
           </div>
@@ -225,6 +225,15 @@
         <!-- 临时添加议题：从原「全部议题」卡迁入（主任/副主任可现场加议题） -->
         <div v-if="isChair" class="lp-add-topic-row">
           <button class="lp-add-topic" @click="openAddTopic">+ 临时添加议题</button>
+        </div>
+
+        <!-- 结束表决（0722 用户定）：卡片底部、仅主任。结束后不可再投/改票，票数与结果公布——
+             防"讨论完偷偷改票"，流程更规范 -->
+        <div v-if="isChair && hasOpenVoteTopics" class="close-vote-row">
+          <button class="close-vote-btn" :disabled="closingVotes" @click="confirmCloseVotes">
+            {{ closingVotes ? '正在结束表决…' : '结束表决' }}
+          </button>
+          <div class="close-vote-tip">结束后不可再投票或改票，票数与结果将对全体公布</div>
         </div>
       </div>
 
@@ -794,11 +803,43 @@ function topicActionName(item) {
   const t = topicActionType(item)
   return t === 'vote' ? '表决' : '讨论'
 }
+// 行按钮的"完成感"：表决类看「本人是否投过」或表决已结束（0722 用户定：与是否过半无关——
+// 此前按 status=passed 判，同意刚过半行上就显示"看结果"，点进去却因表决未结束什么也看不到）
+function topicRowDone(item) {
+  if (item.voteRequired) return !!item.voteClosed || item.myVote != null
+  return topicBadgeDone(item)
+}
 function topicActionButton(item) {
-  const done = topicBadgeDone(item)
   const t = topicActionType(item)
-  if (t === 'vote') return done ? '看结果' : '去表决'
-  return done ? '已记录' : '去讨论'
+  if (t === 'vote') return topicRowDone(item) ? '看结果' : '去表决'
+  return topicBadgeDone(item) ? '已记录' : '去讨论'
+}
+
+// ── 结束表决（0722 用户定）：仅主任，议题处理卡底部；一次结束全部未结束的表决议题 ──
+const hasOpenVoteTopics = computed(() => meetingTopics.value.some(t => t.voteRequired && !t.voteClosed))
+const closingVotes = ref(false)
+async function confirmCloseVotes() {
+  if (!isChair.value) return
+  const open = meetingTopics.value.filter(t => t.voteRequired && !t.voteClosed)
+  if (!open.length) return
+  const res = await showModal({
+    title: '结束表决',
+    content: '将结束 ' + open.length + ' 项表决议题。结束后委员不可再投票或改票，票数与通过结果将对全体公布。确认结束表决吗？',
+    confirmText: '结束表决',
+    cancelText: '再等等'
+  })
+  if (!res.confirm) return
+  closingVotes.value = true
+  try {
+    for (const t of open) await api.committeeCloseVote(meetingId.value, t.id)
+    toast({ title: '表决已结束，结果已公布', icon: 'success' })
+    await loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '结束表决失败，请重试', icon: 'none' })
+    loadDetail() // 部分成功也刷新，已结束的议题立即生效
+  } finally {
+    closingVotes.value = false
+  }
 }
 
 // 步骤条 UI 已删（steps 数组随之移除）；currentStep 仍驱动 签到卡(1)/录音卡(2) 的切换
@@ -3629,6 +3670,11 @@ async function returnToRecordingPage() {
 /* 临时添加议题：会议进行卡底部，一条分隔线上方居中的蓝字按钮（主任/副主任现场加议题） */
 .lp-add-topic-row { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:16rpx 0 20rpx; display:flex; justify-content:center; }
 .lp-add-topic { font-size:28rpx; color:#1A73E8; font-weight:600; background:#fff; border:2rpx solid #C9DCF8; border-radius:999rpx; padding:12rpx 32rpx; line-height:1.3; font-family:inherit; }
+/* 结束表决：卡底居中，警示暖色描边（动作有分量但不喧宾），说明行给足后果提示 */
+.close-vote-row { border-top:2rpx solid #F2F2F4; margin-top:4rpx; padding:18rpx 0 6rpx; display:flex; flex-direction:column; align-items:center; gap:10rpx; }
+.close-vote-btn { width:70%; max-width:480rpx; font-size:29rpx; font-weight:700; color:#B54708; background:#FFF8F0; border:2rpx solid #F0C48C; border-radius:999rpx; padding:16rpx 0; line-height:1.3; font-family:inherit; }
+.close-vote-btn:disabled { opacity:.55; }
+.close-vote-tip { font-size:23rpx; color:#98A2B3; line-height:1.4; }
 .lp-add-topic:active { background:#F0F6FF; }
 
 /* 主任：签到统计卡（点"查看名单"标签展开） */

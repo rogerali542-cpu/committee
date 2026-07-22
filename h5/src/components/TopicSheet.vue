@@ -64,8 +64,8 @@
               {{ voteSubmitting ? '提交中...' : '确认提交' }}
             </button>
             <div v-if="voteFeedbackText || (showVoteSummary && !voteRevealed && !opinionOpen)" class="ts-vote-status-row">
-              <div v-if="voteFeedbackText" class="ts-vote-feedback" :class="voteFeedbackClass">
-                <span class="ts-vote-feedback-mark">✓</span>
+              <div v-if="voteFeedbackText" class="ts-vote-feedback" :class="[voteFeedbackClass, { pending: voteFeedbackPending }]">
+                <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
                 <span>{{ voteFeedbackText }}</span>
               </div>
               <div v-if="showVoteSummary && !voteRevealed && !opinionOpen" class="ts-vote-progress">
@@ -404,10 +404,13 @@ const voteCompleted = computed(() => {
   if (pendingVote.value != null) return false
   return !!t.voteClosed || committedVote.value != null || !!localVoteLabel.value
 })
+// 0722 用户定：「已投」只在提交成功后显示；选中未提交显示"已选…点确认提交生效"，避免误以为投完
+const voteFeedbackPending = computed(() => pendingVote.value != null)
 const voteFeedbackText = computed(() => {
   const t = props.topic
   if (!t || !t.voteRequired) return ''
-  const label = displayVoteLabel.value || localVoteLabel.value || myVoteLabel.value
+  if (voteFeedbackPending.value) return '已选：' + (pendingLabel.value || '') + '，点「确认提交」生效'
+  const label = myVoteLabel.value || localVoteLabel.value
   return label ? ('已投：' + label) : ''
 })
 const canGoNext = computed(() => !props.topic || !props.topic.voteRequired || voteCompleted.value)
@@ -1088,6 +1091,8 @@ async function removeOpinion(op) {
 .ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; box-shadow: none; }
 .ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
 .ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:25rpx; font-weight:800; }
+/* 选中未提交：暖橙提示色，与提交成功的绿色明确区分（0722：别让"已选"看着像"已投"） */
+.ts-vote-feedback.pending { background:#FFF6E8; border-color:#F0CE96; color:#B26A00; }
 .ts-vote-feedback-mark { width:28rpx; height:28rpx; border-radius:50%; background:#2E9E4B; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:18rpx; flex-shrink:0; }
 .ts-vote-feedback.against { background:#FFF3F1; border-color:#F1B4AD; color:#C0392B; }
 .ts-vote-feedback.against .ts-vote-feedback-mark { background:#E24B3A; }
