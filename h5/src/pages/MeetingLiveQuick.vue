@@ -94,7 +94,7 @@
             </div>
             <template v-if="!erCollapsed[3]">
             <!-- 就绪时这行纯重复（徽章已说就绪、下面逐段列出），只在未就绪时显示状态说明，减一行密度 -->
-            <div v-if="!(generated && recordingsChrono.length)" class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
+            <div v-if="!(generated && recordingsChrono.length)" class="er-item-sub">{{ endReviewRecordText }}<template v-if="hasSavedRecordings || canUpload"> · {{ endReviewAsrText }}</template></div>
             <!-- 每段录音一行：段号+时长，右侧 转写（看这一段）/ 删除（仅主持人） -->
             <div v-if="recordingsChrono.length" class="er-rec-list">
               <div class="er-rec-row" v-for="(rItem, ri) in recordingsChrono" :key="'er-rec-' + rItem.id">
@@ -103,8 +103,8 @@
                 <button v-if="isChair" class="er-rec-act del" @click="deleteRecording(rItem, ri)">删除</button>
               </div>
             </div>
-            <div v-if="hasTranscript" class="er-item-actions">
-              <!-- 整会合并转写稿入口 -->
+            <!-- 整会合并转写稿入口（录音删光后本地转写是残留，不再给入口） -->
+            <div v-if="hasTranscript && recordingsChrono.length" class="er-item-actions">
               <button class="er-act" @click="openTranscript('full')">查看合并转写</button>
             </div>
             </template>
@@ -1174,8 +1174,8 @@ const endReviewHint = computed(() => {
   if (canUpload.value) return '本次未上传的录音不会用于自动生成会议纪要。'
   if (uploading.value) return '录音正在上传，完成后会自动识别。'
   if (polling.value || extracting.value) return '录音正在后台识别，你可以停留在本页等待完成。'
-  if (generated.value) return '已整理好会议记录，可以生成会议纪要。'
-  if (hasSavedRecordings.value || hasTranscript.value) return '已有会议记录，但还没有完成识别整理。'
+  if (generated.value && hasSavedRecordings.value) return '已整理好会议记录，可以生成会议纪要。'
+  if (hasSavedRecordings.value) return '已有会议记录，但还没有完成识别整理。'
   return '没有可用于自动生成纪要的录音记录。'
 })
 // 会后整理清单第2项：每条议题的简要结果（表决=通过/未通过，讨论/通报=已办与否）
@@ -1204,8 +1204,9 @@ function erTopicResult(t) {
 const erRecordState = computed(() => {
   if (minutesGenerated.value) return { cls: 'ok', text: '✓ 纪要已生成' }
   if (uploading.value || polling.value || extracting.value) return { cls: 'busy', text: '识别中…' }
-  if (generated.value) return { cls: 'ok', text: '✓ 已就绪' }
-  if (hasSavedRecordings.value || hasTranscript.value || canUpload.value) return { cls: 'warn', text: '● 未完成识别' }
+  // generated 是本地快照标志：录音被删光后它会残留，必须同时有录音在列表里才算就绪
+  if (generated.value && hasSavedRecordings.value) return { cls: 'ok', text: '✓ 已就绪' }
+  if (hasSavedRecordings.value || canUpload.value) return { cls: 'warn', text: '● 未完成识别' }
   return { cls: 'muted', text: '暂无录音' }
 })
 const endReviewRecordText = computed(() => {
@@ -1216,7 +1217,7 @@ const endReviewRecordText = computed(() => {
 const endReviewAsrText = computed(() => {
   if (uploading.value) return '上传中'
   if (polling.value || extracting.value) return '识别中'
-  if (generated.value) return '识别完成'
+  if (generated.value && hasSavedRecordings.value) return '识别完成'
   return '未完成识别'
 })
 // 会后整理四个核对项的收起态（0722 用户定：每项右上角 ▾/▸ 可收起，降低整页密度）
@@ -1229,14 +1230,14 @@ const endReviewPrimaryText = computed(() => {
   if (minutesGenerated.value) return '已生成，查看纪要'
   if (uploading.value) return '上传中…'
   if (polling.value || extracting.value) return '识别中…'
-  if (generated.value) return '生成会议纪要'
+  if (generated.value && hasSavedRecordings.value) return '生成会议纪要'
   return '暂不能生成纪要'
 })
 const endReviewPrimaryDisabled = computed(() => {
   if (minutesGenerated.value) return false
   if (ending.value || generatingMinutes.value) return true
   if (uploading.value || polling.value || extracting.value) return true
-  return !generated.value
+  return !(generated.value && hasSavedRecordings.value)
 })
 // —— 重做：阶段条 + 折叠态 + 签到跳转动画 ——
 // 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
