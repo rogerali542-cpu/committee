@@ -1007,7 +1007,7 @@ async function removeOpinion(op) {
 
 /* 全部意见大窗口：覆盖在原议题弹层之上，正文列表独立滚动 */
 .ts-all-mask { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(0,0,0,.38); }
-.ts-all-sheet { height: 76vh; max-height: 88vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 32rpx calc(28rpx + env(safe-area-inset-bottom)); box-shadow: 0 -10rpx 40rpx rgba(0,0,0,.16); }
+.ts-all-sheet { height: 88vh; max-height: 92vh; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 32rpx calc(28rpx + env(safe-area-inset-bottom)); box-shadow: 0 -10rpx 40rpx rgba(0,0,0,.16); }
 .ts-all-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #D9DDE3; margin: 0 auto 16rpx; }
 .ts-all-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding-bottom: 18rpx; border-bottom: 2rpx solid #EEF0F3; font-size: 34rpx; font-weight: 800; color: #1f2329; }
 .ts-all-close { width: 56rpx; height: 56rpx; border: 0; background: transparent; color: #8A8F98; font-size: 44rpx; line-height: 1; }
