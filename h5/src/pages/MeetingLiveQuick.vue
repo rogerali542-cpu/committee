@@ -3625,8 +3625,9 @@ async function returnToRecordingPage() {
    仅色相轻微不同区分语义（返回录音=暖金，结束现场会议=赭红），浅色不突兀（0722） */
 .back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:92rpx; box-sizing:border-box; border:2rpx solid #E0C48E; border-radius:16rpx; background:#F4E3C4; color:#8A5411; font-size:29rpx; font-weight:750; font-family:inherit; }
 .back-recording-btn:active { background:#EBD5AC; }
-.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; border:2rpx solid #E4B79E; background:#F6DACB; color:#8C4A2A; font-size:29rpx; font-weight:750; border-radius:16rpx; font-family:inherit; }
-.end-meeting-btn:active { background:#EFC9B4; }
+/* 结束现场会议：改浅黄（同上方「结束表决」暖黄色系），去掉赭红；与返回录音的暖金仅轻微不同 */
+.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; border:2rpx solid #EACB86; background:#FBEFCB; color:#96590F; font-size:29rpx; font-weight:750; border-radius:16rpx; font-family:inherit; }
+.end-meeting-btn:active { background:#F5E4B4; }
 .emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .live-page.has-fixed-end { padding-bottom:150rpx; }
 /* 议题处理阶段底部操作栏钉底：给页面留出等高底边，滚到底时最后内容不被盖住 */
