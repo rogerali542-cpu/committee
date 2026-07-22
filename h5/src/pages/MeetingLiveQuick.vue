@@ -103,7 +103,7 @@
         <span class="lp-flow-dot"><template v-if="flowStep > 3 || (flowStep === 3 && fieldMeetingEnded)">✓</template><template v-else>2</template></span>
         <span class="lp-flow-label">会议进行</span>
       </div>
-      <span class="lp-flow-line" :class="{ done: flowStep > 3, available: flowStep === 2 || (flowStep === 3 && !fieldMeetingEnded) }"></span>
+      <span class="lp-flow-line dashed" :class="{ done: flowStep > 3, available: flowStep === 2 || (flowStep === 3 && !fieldMeetingEnded) }"></span>
       <div class="lp-flow-step" :class="flowStep > 3 ? 'done' : (flowStep === 3 ? 'on' : (flowStep === 2 ? 'available' : ''))">
         <span class="lp-flow-dot">3</span>
         <span class="lp-flow-label">议题处理</span>
@@ -204,7 +204,7 @@
       <!-- 委员集中拿出手机处理议题：表决/确认通知/记录意见（0722 用户定：更名「议题处理」，与流程链、按钮用词统一） -->
       <div v-if="meetingPhase === 'voting'" class="core-card">
         <div class="core-head">
-          <span class="core-title">议题处理</span>
+          <span class="core-title">会议议题</span>
         </div>
 
         <div v-if="meetingTopics.length" class="core-list">
@@ -3890,6 +3890,9 @@ async function returnToRecordingPage() {
 .lp-flow-line { flex:1; height:4rpx; background:#E4E6EA; margin:0 10rpx; border-radius:2rpx; }
 .lp-flow-line.done { background:#2E8B57; }
 .lp-flow-line.available { background:#E4E6EA; opacity:1; }  /* 连线统一：走过=绿、没到=灰，去掉橙虚线 */
+/* 会议进行 → 议题处理 之间用棕色虚线连接（0722 用户定），不随 done/available 变绿变灰 */
+.lp-flow-line.dashed { background:transparent; height:0; border-top:3rpx dashed #A97544; border-radius:0; }
+.lp-flow-line.dashed.done, .lp-flow-line.dashed.available { background:transparent; }
 .lp-signin .lp-flow { padding:13rpx 43rpx 38rpx; margin-top:42rpx; }
 .lp-signin .lp-flow-dot { width:52rpx; height:52rpx; font-size:27rpx; }
 .lp-signin .lp-flow-label { top:calc(100% + 6rpx); font-size:22rpx; }
