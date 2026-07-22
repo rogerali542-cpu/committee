@@ -41,8 +41,9 @@
       <div v-if="topic.voteRequired" class="ts-vote" :class="{ 'opinion-mode': opinionOpen, 'has-ops': hasOpinions }">
         <!-- ① 我的表决：投票按钮（按钮含义自明，不加标签）+ 我的状态 -->
         <div v-show="!opinionOpen" class="ts-vote-mine">
-          <!-- 未结束前选项常驻：已投项高亮，点其他选项后轻确认改票 -->
-          <template v-if="!topic.voteClosed">
+          <!-- 表决进行中(会议 ongoing 且未结束)选项常驻：已投项高亮，点其他选项后轻确认改票；
+               会议结束后(voteRevealed)自动落到下方"您已投/未投"，不再显示投票按钮（方案A） -->
+          <template v-if="!voteRevealed">
             <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
               <div class="ts-vote-btns">
                 <button class="ts-vote-btn agree" :class="{ on: displayVote === 'for_vote' }" :disabled="voteSubmitting" @click="pickVote('for_vote')">

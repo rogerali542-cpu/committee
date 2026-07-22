@@ -222,15 +222,12 @@
 
         <div v-else class="core-empty">暂无会议议题</div>
 
-        <!-- 主持人操作区（0722 用户定：仅主持人=主任）：临时加议题 + 结束表决 并排为安静的次要按钮，
-             不与底部「结束现场会议」主按钮抢视觉。结束表决防"讨论完偷偷改票"，保留暖色示意不可逆 -->
+        <!-- 主持人操作区（0722 用户定：仅主持人=主任）：只保留「临时添加议题」并居中。
+             方案A：不再单设「结束表决」——表决全程开放、实时可见，由「结束现场会议/完成本次会议」
+             统一定稿（会议结束后 stage 非 ongoing，自动锁票并揭晓结果） -->
         <div v-if="isHost" class="host-topic-actions">
           <button class="hta-btn add" @click="openAddTopic">+ 临时添加议题</button>
-          <button v-if="hasOpenVoteTopics" class="hta-btn close-vote" :disabled="closingVotes" @click="confirmCloseVotes">
-            {{ closingVotes ? '结束中…' : '结束表决' }}
-          </button>
         </div>
-        <div v-if="isHost && hasOpenVoteTopics" class="host-topic-tip">结束表决后不可再改票，结果将对全体公布</div>
       </div>
 
       <!-- 录音中断预警：放在录音卡上方（不占卡内空间）；切出瞬间 JS 冻结无法当场提示，只能前置 -->
@@ -804,7 +801,8 @@ function topicActionName(item) {
 // 投过票但表决仍开着时若变「看结果」，想改票的人找不到入口；表决没结束就一直「去表决」，
 // 点进去既能改票也能看实时票数，表决结束后才变「看结果」，那时确实只能看）
 function topicRowDone(item) {
-  if (item.voteRequired) return !!item.voteClosed
+  // 方案A：表决全程开放→一直「去表决」；会议结束后（或旧数据已 voteClosed）才「看结果」
+  if (item.voteRequired) return !!item.voteClosed || meetingEnded.value
   return topicBadgeDone(item)
 }
 function topicActionButton(item) {
@@ -818,32 +816,8 @@ function topicActionButton(item) {
   return topicBadgeDone(item) ? '已记录' : '去讨论'
 }
 
-// ── 结束表决（0722 用户定）：仅主任，议题处理卡底部；一次结束全部未结束的表决议题 ──
-const hasOpenVoteTopics = computed(() => meetingTopics.value.some(t => t.voteRequired && !t.voteClosed))
-const closingVotes = ref(false)
-async function confirmCloseVotes() {
-  if (!isHost.value) return
-  const open = meetingTopics.value.filter(t => t.voteRequired && !t.voteClosed)
-  if (!open.length) return
-  const res = await showModal({
-    title: '结束表决',
-    content: '将结束 ' + open.length + ' 项表决议题。结束后委员不可再投票或改票，票数与通过结果将对全体公布。确认结束表决吗？',
-    confirmText: '结束表决',
-    cancelText: '再等等'
-  })
-  if (!res.confirm) return
-  closingVotes.value = true
-  try {
-    for (const t of open) await api.committeeCloseVote(meetingId.value, t.id)
-    toast({ title: '表决已结束，结果已公布', icon: 'success' })
-    await loadDetail()
-  } catch (e) {
-    toast({ title: (e && e.message) || '结束表决失败，请重试', icon: 'none' })
-    loadDetail() // 部分成功也刷新，已结束的议题立即生效
-  } finally {
-    closingVotes.value = false
-  }
-}
+// 方案A（0722 用户定）：取消单独的「结束表决」——表决全程开放、实时可见，
+// 会议结束（stage 非 ongoing）时统一锁票并揭晓结果，不再需要独立的结束表决动作。
 
 // 步骤条 UI 已删（steps 数组随之移除）；currentStep 仍驱动 签到卡(1)/录音卡(2) 的切换
 const currentStep = ref(1)
@@ -3681,16 +3655,11 @@ async function returnToRecordingPage() {
 .end-review-primary { width:100%; height:104rpx; margin-top:38rpx; border:0; border-radius:24rpx; background:#0F766E; color:#fff; font-size:38rpx; font-weight:900; line-height:104rpx; box-shadow:0 12rpx 26rpx rgba(15,118,110,0.25); }
 .end-review-primary[disabled] { background:#C7D1D5; box-shadow:none; color:#fff; }
 .end-review-secondary { width:100%; height:78rpx; margin-top:24rpx; border:0; background:transparent; color:#7B838C; font-size:30rpx; font-weight:650; }
-/* 主持人操作区：临时加议题 + 结束表决 两个安静的次要按钮并排，颜色克制，
-   不与底部「结束现场会议」主按钮抢注意力（0722：解决主任视图"按钮墙"视觉压力） */
+/* 主持人操作区：仅「临时添加议题」，居中的安静次要按钮（方案A 已移除结束表决） */
 .host-topic-actions { border-top:2rpx solid #F2F2F4; margin-top:10rpx; padding:18rpx 0 0; display:flex; justify-content:center; gap:16rpx; }
 .hta-btn { flex:1 1 0; max-width:340rpx; font-size:27rpx; font-weight:600; background:#fff; border:2rpx solid #D8DBE0; color:#55585E; border-radius:999rpx; padding:15rpx 20rpx; line-height:1.3; font-family:inherit; }
 .hta-btn:active { background:#F1F2F4; }
-/* 结束表决保留一点暖色，示意"提交/不可逆"，但不再是大号响亮按钮 */
-.hta-btn.close-vote { border-color:#EAC79A; color:#B26A19; background:#FFFCF7; }
-.hta-btn.close-vote:active { background:#FBF1E2; }
 .hta-btn:disabled { opacity:.55; }
-.host-topic-tip { text-align:center; font-size:22rpx; color:#A0A5AD; margin-top:12rpx; line-height:1.4; }
 
 /* 主任：签到统计卡（点"查看名单"标签展开） */
 .lp-signin { position:relative; background:#fff; border-radius:24rpx; padding:32rpx; margin-bottom:28rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
