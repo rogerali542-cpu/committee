@@ -414,7 +414,6 @@
         <span class="qk-modal-title">实时添加议题</span>
         <div class="qk-input-row">
           <input class="qk-modal-input" placeholder="输入议题" v-model="newTopicForm.title" />
-          <button class="voice-input-btn" :class="{ on: voiceOn }" @click="startTopicVoice">🎤 语音输入</button>
         </div>
         <div class="qk-modal-label">议题类型</div>
         <!-- 0717 用户定：通知并入讨论，只剩两类；填了通知正文提交时存 notice、没填存 discussion（见 submitAddTopic） -->
@@ -437,13 +436,13 @@
           <div class="qk-modal-label">选项（至少两个）</div>
           <div v-for="(opt, oi) in newTopicForm.options" :key="opt.id" class="qk-opt-row">
             <span class="qk-opt-num">{{ oi + 1 }}.</span>
-            <input class="qk-modal-input qk-opt-input" :placeholder="'选项' + (oi + 1)" v-model="opt.label" />
+            <input class="qk-modal-input qk-opt-input" placeholder="" v-model="opt.label" />
             <span v-if="newTopicForm.options.length > 1" class="qk-opt-del" @click="removeTopicOption(oi)">×</span>
           </div>
           <span class="qk-link" @click="addTopicOption" style="display:block;margin-bottom:14rpx;">+ 添加选项</span>
         </template>
         <div class="qk-modal-btns">
-          <button class="lp-ghost-btn" @click="closeAddTopic">取消</button>
+          <button class="lp-ghost-btn qk-cancel-btn" @click="closeAddTopic">取消</button>
           <button class="lp-primary-btn" @click="submitAddTopic">添加</button>
         </div>
       </div>
@@ -4186,6 +4185,9 @@ async function returnToRecordingPage() {
 .qk-modal-btns { display:flex; gap:30rpx; margin-top:22rpx; }
 /* 添加/取消 较原生尺寸缩小约30%（高约96→68rpx） */
 .qk-modal-btns .lp-ghost-btn, .qk-modal-btns .lp-primary-btn { flex:1; margin:0; padding:15rpx 0; font-size:26rpx; border-radius:34rpx; }
+/* 取消：改中性灰底（原橙字描边不清晰、显廉价），与右侧「添加」主按钮对比更明确 */
+.qk-modal-btns .lp-ghost-btn.qk-cancel-btn { background:#F0F1F3; color:#5A6069; border:2rpx solid #E2E4E8; font-weight:600; }
+.qk-modal-btns .lp-ghost-btn.qk-cancel-btn:active { background:#E5E7EA; }
 /* 议题内容 + 语音输入按钮 同行 */
 .qk-input-row { display:flex; align-items:center; gap:14rpx; margin-bottom:46rpx; }
 .qk-input-row .qk-modal-input { flex:1; min-width:0; margin-bottom:0; }
