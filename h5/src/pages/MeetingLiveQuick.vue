@@ -85,7 +85,8 @@
               <span class="er-item-title">会议录音</span>
               <span class="er-item-state" :class="erRecordState.cls">{{ erRecordState.text }}</span>
             </div>
-            <div class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
+            <!-- 就绪时这行纯重复（徽章已说就绪、下面逐段列出），只在未就绪时显示状态说明，减一行密度 -->
+            <div v-if="!(generated && recordingsChrono.length)" class="er-item-sub">{{ endReviewRecordText }} · {{ endReviewAsrText }}</div>
             <!-- 每段录音一行：段号+时长，右侧 转写（看这一段）/ 删除（仅主持人） -->
             <div v-if="recordingsChrono.length" class="er-rec-list">
               <div class="er-rec-row" v-for="(rItem, ri) in recordingsChrono" :key="'er-rec-' + rItem.id">
@@ -3849,7 +3850,7 @@ async function returnToRecordingPage() {
 .end-review-kicker { display:inline-flex; padding:8rpx 18rpx; border-radius:999rpx; background:#EAF6F6; color:#0F766E; font-size:25rpx; font-weight:800; }
 /* ── 会后整理任务清单（0722 重排）：引导语 + 三个核对项（状态灯）+ 结论 + 主按钮 ── */
 .er-lead { font-size:30rpx; font-weight:650; color:#2A2F36; line-height:1.6; }
-.er-item { margin-top:26rpx; padding-top:24rpx; border-top:2rpx solid #EEF0F3; }
+.er-item { margin-top:32rpx; padding-top:30rpx; border-top:2rpx solid #EEF0F3; }
 .er-item-head { display:flex; align-items:center; gap:14rpx; }
 .er-item-no { flex-shrink:0; width:40rpx; height:40rpx; border-radius:50%; background:#FDF3D6; color:#B26A19; border:2rpx solid #EBD08A; display:flex; align-items:center; justify-content:center; font-size:24rpx; font-weight:700; }
 .er-item-title { font-size:30rpx; font-weight:700; color:#23272E; }
@@ -3865,26 +3866,26 @@ async function returnToRecordingPage() {
 .er-act.warm { border-color:#EAC79A; background:#FFFCF7; color:#B26A19; font-weight:600; }
 .er-act:disabled { opacity:.55; }
 /* 议题结果简表：标题省略 + 右侧结论小签 */
-.er-topic-list { margin-top:16rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:18rpx; }
+.er-topic-list { margin-top:20rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:22rpx; }
 .er-topic-row { display:flex; align-items:center; gap:14rpx; }
-.er-topic-title { flex:1; min-width:0; font-size:25rpx; color:#5F6673; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.er-topic-title { flex:1; min-width:0; font-size:26rpx; color:#4A5058; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
 .er-topic-result.pass { color:#2E7D32; }
 .er-topic-result.fail { color:#C0392B; }
 .er-topic-result.done { color:#2E7D32; } /* 已讨论/已通报也用绿色（0722 用户定） */
 .er-topic-result.todo { color:#B26A00; }
 /* 会议录音：每段一行（段号+时长 + 转写/删除小按钮） */
-.er-rec-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:14rpx; }
+.er-rec-list { margin-top:18rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:18rpx; }
 .er-rec-row { display:flex; align-items:center; gap:14rpx; }
-.er-rec-name { flex:1; min-width:0; font-size:25rpx; color:#5F6673; font-variant-numeric:tabular-nums; }
+.er-rec-name { flex:1; min-width:0; font-size:26rpx; color:#4A5058; font-variant-numeric:tabular-nums; }
 .er-rec-act { flex-shrink:0; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:22rpx; font-weight:500; border-radius:999rpx; padding:6rpx 20rpx; font-family:inherit; line-height:1.3; }
 .er-rec-act:active { background:#F1F2F4; }
 .er-rec-act.del { border-color:#EBC2BC; color:#C9483D; }
 .er-rec-act.del:active { background:#FDEDEC; }
 /* 会议材料：现有材料一行一条，点名字预览 */
-.er-mat-list { margin-top:14rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:14rpx; }
+.er-mat-list { margin-top:18rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:18rpx; }
 .er-mat-row { display:flex; align-items:center; gap:14rpx; cursor:pointer; }
-.er-mat-name { flex:1; min-width:0; font-size:25rpx; color:#1A73E8; text-decoration:underline; text-underline-offset:5rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.er-mat-name { flex:1; min-width:0; font-size:26rpx; color:#1A73E8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .er-mat-size { flex-shrink:0; font-size:22rpx; color:#A0A5AD; }
 /* 会议纪要块与清单之间空出一段，形成"核对完 → 生成"的段落感 */
 .er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
