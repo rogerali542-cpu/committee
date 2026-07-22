@@ -1205,7 +1205,9 @@ const endReviewAsrText = computed(() => {
   if (generated.value) return '识别完成'
   return '未完成识别'
 })
+const leavingToMinutes = ref(false) // 正在结束会议并跳纪要页的过渡态：盖住按钮文案，避免闪现「已生成」
 const endReviewPrimaryText = computed(() => {
+  if (leavingToMinutes.value) return '正在生成会议纪要…'
   if (minutesGenerated.value) return '已生成，查看纪要'
   if (uploading.value) return '上传中…'
   if (polling.value || extracting.value) return '识别中…'
@@ -3090,6 +3092,7 @@ async function generateMinutes() {
 }
 
 // 共用：落库当前结果 + 结束会议，然后跳转到指定页面（结束本身不再等大模型）
+// 返回是否成功走到跳转（false=失败留在本页，调用方需要回滚自己的过渡态）
 async function _doEndAndGo(navUrl) {
   ending.value = true
   try {
@@ -3103,14 +3106,16 @@ async function _doEndAndGo(navUrl) {
       if (!alreadyEnded) {
         ending.value = false
         showModal({ title: '结束会议失败', content: msg || '请稍后重试', showCancel: false })
-        return
+        return false
       }
     }
     clearQuickState()
     goAfterEnd(navUrl)
+    return true
   } catch (err) {
     ending.value = false
     showModal({ title: '结束会议失败', content: (err && err.message) || '请稍后重试', showCancel: false })
+    return false
   }
 }
 
@@ -3340,9 +3345,12 @@ async function endAndGenerateMinutes() {
   if (!generated.value) { toast({ title: '请先完成录音识别', icon: 'none' }); return }
   if (!(await guardUnvotedBeforeEnd())) return
   if (!(await confirmDespitePendingTopics())) return
-  minutesGenerated.value = true
-  persistQuickState()
-  await _doEndAndGo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&gen=1')
+  // 不提前置 minutesGenerated（纪要其实还没生成，是跳到纪要页才开始生成的）：
+  // 提前置会让按钮在跳转前闪现「已生成，查看纪要」误导用户；失败留在本页时更是错误状态。
+  // 跳转期间由 leavingToMinutes 把按钮文案盖成「正在生成…」。
+  leavingToMinutes.value = true
+  const ok = await _doEndAndGo('/pages/minutes/minutes?meetingId=' + meetingId.value + '&from=meeting-live-quick&gen=1')
+  if (!ok) leavingToMinutes.value = false
 }
 
 async function endWithoutMinutes() {
