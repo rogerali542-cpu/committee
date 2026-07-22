@@ -14,7 +14,11 @@
       <div v-if="opinionSummaryMode && hasOpinions" class="ts-ops summary ts-top-summary">
         <div class="ts-ops-title-row">
           <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
-          <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">查看</button>
+          <div class="ts-ops-acts">
+            <!-- 补充意见入口挪进汇总标题行（0722 用户定），与查看并排 -->
+            <button class="ts-ops-addbtn" @click.stop="opinionOpen = true">补充意见</button>
+            <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">查看</button>
+          </div>
         </div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
@@ -70,13 +74,12 @@
             <button v-if="pendingVote != null" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
               {{ voteSubmitting ? '提交中...' : '确认提交' }}
             </button>
-            <div v-if="voteFeedbackText" class="ts-vote-status-row">
+            <!-- 已投收起态的状态并入下方票数卡；这行只在 选中未提交/改票展开 时出现 -->
+            <div v-if="voteFeedbackText && !voteCollapsed" class="ts-vote-status-row">
               <div class="ts-vote-feedback" :class="[voteFeedbackClass, { pending: voteFeedbackPending }]">
                 <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
                 <span>{{ voteFeedbackText }}</span>
               </div>
-              <!-- 已投收起态：「改票」展开选项；「撤回」回到未投 -->
-              <button v-if="voteCollapsed" class="ts-vote-change" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
               <button v-if="showRetract" class="ts-vote-retract" :disabled="voteSubmitting" @click="retractVote">撤回</button>
             </div>
             <!-- 表决进行中：实时票数明细，只报数不下"通过/未通过"结论(没结束不算数)。0722 用户定：不怕从众 -->
@@ -84,6 +87,12 @@
               <div class="ts-result-line live">
                 <span class="ts-result-badge">进行中</span>
                 <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
+              </div>
+              <!-- 我的投票并入卡内一行（0722 用户定）：状态 + 小号改票/撤回 -->
+              <div v-if="voteCollapsed" class="ts-my-line">
+                <span class="ts-my-vote">✓ 已投：{{ myVoteLabel || localVoteLabel }}</span>
+                <button class="ts-mini-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
+                <button class="ts-mini-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
               </div>
             </div>
             <!-- 代委员投票（仅主持人、表决未结束）：委员忘投/不会用手机时，主任代录并留凭证审计 -->
@@ -135,7 +144,8 @@
             <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
           </div>
         </div>
-        <button v-if="canDiscuss && !opinionOpen" class="ts-op-entry" @click="opinionOpen = true">
+        <!-- 有意见时入口已在意见汇总标题行；这里只兜底"还没人发言"的场景 -->
+        <button v-if="canDiscuss && !opinionOpen && !hasOpinions" class="ts-op-entry" @click="opinionOpen = true">
           补充意见
         </button>
       </div>
@@ -1243,6 +1253,12 @@ async function removeOpinion(op) {
 .rn-part.progress { color: #2A2E35; font-weight: 800; margin-right: 16rpx; }
 /* 未投弱化：小字浅灰括注，避免被误解成"还没签到" */
 .rn-part.faint { color: #B6BBC3; font-size: 22rpx; margin-left: 12rpx; }
+/* 我的投票并入票数卡内一行：细分隔线 + 状态绿字 + 右侧小号改票/撤回 */
+.ts-my-line { display: flex; align-items: center; gap: 12rpx; margin-top: 14rpx; padding-top: 14rpx; border-top: 2rpx solid #E3ECF9; }
+.ts-my-vote { flex: 1; min-width: 0; font-size: 25rpx; font-weight: 700; color: #2E7D32; }
+.ts-mini-act { flex-shrink: 0; border: 2rpx solid #D8DBE0; background: #fff; color: #6B7078; font-size: 23rpx; font-weight: 600; border-radius: 999rpx; padding: 6rpx 20rpx; font-family: inherit; line-height: 1.3; }
+.ts-mini-act:active { background: #F1F2F4; }
+.ts-mini-act:disabled { opacity: .5; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
@@ -1318,6 +1334,10 @@ async function removeOpinion(op) {
 .ts-ops-head { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
 .ts-ops-expand { flex-shrink: 0; border: 0; background: transparent; color: #1F6FB2; font-size: 25rpx; font-weight: 600; padding: 8rpx 4rpx 8rpx 18rpx; }
 .ts-ops-expand:active { opacity: .6; }
+.ts-ops-acts { flex-shrink: 0; display: flex; align-items: center; gap: 8rpx; }
+/* 补充意见（汇总标题行小按钮）：浅蓝描边小胶囊，比"查看"略强 */
+.ts-ops-addbtn { border: 2rpx solid #A9CBEA; background: #EAF3FC; color: #1F6FB2; font-size: 24rpx; font-weight: 650; border-radius: 999rpx; padding: 8rpx 22rpx; font-family: inherit; line-height: 1.3; }
+.ts-ops-addbtn:active { background: #DCEAF8; }
 .ts-ops.summary .ts-ops-head { font-size: 26rpx; margin-bottom: 8rpx; color: #5F6570; }
 .ts-ops.summary .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
