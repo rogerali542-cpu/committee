@@ -14,7 +14,7 @@
       <div v-if="opinionSummaryMode && hasOpinions" class="ts-ops summary ts-top-summary">
         <div class="ts-ops-title-row">
           <div class="ts-ops-head">意见汇总<span v-if="opinions.length">（{{ opinions.length }}）</span></div>
-          <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">展开</button>
+          <button v-if="opinions.length" class="ts-ops-expand" @click.stop="opinionListOpen = true">查看</button>
         </div>
         <div v-if="loading" class="ts-empty">加载中…</div>
         <div v-else-if="!opinions.length" class="ts-empty">还没有人发表意见</div>
@@ -23,10 +23,13 @@
             <span class="ts-op-name">{{ op.name }}</span>
             <span v-if="opVote(op)" class="ts-op-vote" :class="opVote(op).cls">{{ opVote(op).text }}</span>
             <span class="ts-op-time">{{ fmtTime(op.createdAt) }}</span>
-            <button v-if="op.isSelf && op.canDelete" class="ts-op-del-inline" @click.stop="removeOpinion(op)">删除</button>
           </div>
           <div class="ts-op-l2">
             <span class="ts-op-sum">{{ op.content }}</span>
+          </div>
+          <!-- 删除移到卡片右下角 -->
+          <div v-if="op.isSelf && op.canDelete" class="ts-op-foot">
+            <button class="ts-op-del-inline" @click.stop="removeOpinion(op)">删除</button>
           </div>
         </div>
         <div v-if="opinions.length > visibleOpinions.length" class="ts-op-more">还有 {{ opinions.length - visibleOpinions.length }} 条，点击“补充意见”查看</div>
@@ -1140,7 +1143,10 @@ async function removeOpinion(op) {
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
 /* 意见条（方案C 极简两行式）：第一行 姓名+表决标签+时间，第二行 意见摘要+查看；点击整条展开全文 */
 .ts-op { padding: 16rpx 0; border-bottom: 2rpx solid #F2F0EC; cursor: pointer; }
-.ts-ops.summary .ts-op { padding: 10rpx 0; cursor: default; }
+/* 意见汇总：每条意见做浅白背景小卡片，删除按钮在卡片右下角（0722 用户定） */
+.ts-ops.summary .ts-op { padding: 16rpx 18rpx; cursor: default; background: #F8F9FB; border: 2rpx solid #ECEEF2; border-radius: 14rpx; margin-bottom: 12rpx; }
+.ts-ops.summary .ts-op:last-child { margin-bottom: 0; }
+.ts-op-foot { display: flex; justify-content: flex-end; margin-top: 6rpx; }
 .ts-op:last-child { border-bottom: 0; }
 .ts-op-l1 { display: flex; align-items: center; gap: 12rpx; margin-bottom: 8rpx; }
 .ts-op-name { font-size: 28rpx; font-weight: 600; color: #333; }
