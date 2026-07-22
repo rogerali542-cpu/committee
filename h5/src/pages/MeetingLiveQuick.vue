@@ -3620,17 +3620,17 @@ async function returnToRecordingPage() {
    议题处理阶段(.pinned)钉底常驻，随时可点；两按钮同款中等重量、以颜色区分语义（0722） */
 .end-meeting-row { margin-top:38rpx; padding:24rpx 0 calc(18rpx + env(safe-area-inset-bottom)); display:flex; flex-direction:row; align-items:stretch; justify-content:center; gap:16rpx; border-top:2rpx solid #ECE8E1; }
 /* 钉底栏：抬离屏幕底边一点、去掉白色背景条，用页面底色（仍不透明，挡住滚动内容不露馅） */
-.end-meeting-row.pinned { position:fixed; z-index:80; left:0; right:0; bottom:0; margin-top:0; padding:14rpx 32rpx calc(38rpx + env(safe-area-inset-bottom)); background:#f4f5f7; }
-/* 两按钮同等大小、同等重量：都实心填充、等宽等高，仅颜色轻微不同以区分语义
-   （返回录音=暖金棕，结束现场会议=略红的赭棕，明暗接近所以视觉等重）（0722） */
-.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:92rpx; box-sizing:border-box; border:0; border-radius:16rpx; background:#B4701F; color:#FFF7EA; font-size:29rpx; font-weight:750; font-family:inherit; box-shadow:0 5rpx 14rpx rgba(120,70,10,.16); }
-.back-recording-btn:active { background:#8F5312; }
-.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; border:0; background:#A15A33; color:#FFF3EC; font-size:29rpx; font-weight:750; border-radius:16rpx; font-family:inherit; box-shadow:0 5rpx 14rpx rgba(120,70,10,.16); }
-.end-meeting-btn:active { background:#834526; }
+.end-meeting-row.pinned { position:fixed; z-index:80; left:0; right:0; bottom:0; margin-top:0; padding:14rpx 32rpx calc(60rpx + env(safe-area-inset-bottom)); background:#f4f5f7; }
+/* 两按钮同等大小、同等重量：等宽等高、浅暖填充 + 同色系描边 + 深色文字，
+   仅色相轻微不同区分语义（返回录音=暖金，结束现场会议=赭红），浅色不突兀（0722） */
+.back-recording-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; min-height:92rpx; box-sizing:border-box; border:2rpx solid #E0C48E; border-radius:16rpx; background:#F4E3C4; color:#8A5411; font-size:29rpx; font-weight:750; font-family:inherit; }
+.back-recording-btn:active { background:#EBD5AC; }
+.end-meeting-btn { flex:1 1 0; display:flex; align-items:center; justify-content:center; width:auto; margin:0; min-height:92rpx; box-sizing:border-box; border:2rpx solid #E4B79E; background:#F6DACB; color:#8C4A2A; font-size:29rpx; font-weight:750; border-radius:16rpx; font-family:inherit; }
+.end-meeting-btn:active { background:#EFC9B4; }
 .emb-arrow { margin-left:12rpx; font-weight:400; opacity:0.85; }
 .live-page.has-fixed-end { padding-bottom:150rpx; }
 /* 议题处理阶段底部操作栏钉底：给页面留出等高底边，滚到底时最后内容不被盖住 */
-.live-page.has-fixed-end-voting { padding-bottom:210rpx; }
+.live-page.has-fixed-end-voting { padding-bottom:235rpx; }
 /* 结束现场会议：改成钉底操作栏，消灭原来悬空按钮上方那块大空白。
    描边+浅底，分量比红色「开始录音」轻，不抢主操作。 */
 .mlq-endbar { position:fixed; z-index:80; left:0; right:0; bottom:0; padding:14rpx 32rpx calc(14rpx + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:2rpx solid #ECEEF1; backdrop-filter:blur(8px); }
