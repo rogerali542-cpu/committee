@@ -140,6 +140,10 @@ export default {
   committeeCloseVote: function (id, topicId) {
     return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/close-vote');
   },
+  // 撤回本人投票（表决未结束前）：回到未投，可重新投票
+  committeeRetractVote: function (id, topicId) {
+    return core.realRequest('DELETE', '/api/committees/' + id + '/topics/' + topicId + '/vote');
+  },
   // ===== 议题意见 =====
   committeeOpinions: function (id) {
     return core.request('GET', '/api/committees/' + id + '/opinions');

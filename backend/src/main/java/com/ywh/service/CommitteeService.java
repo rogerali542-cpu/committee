@@ -889,6 +889,23 @@ public class CommitteeService {
         voteRepo.save(vote);
     }
 
+    /** 撤回本人投票（表决未结束前）：删除本人对该议题的投票，回到"未投"。 */
+    @Transactional
+    public void retractVote(Long meetingId, Long topicId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (m.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("仅会议进行中可撤回投票");
+        }
+        RecordTopic topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        if (Boolean.TRUE.equals(topic.getVoteClosed())) {
+            throw new IllegalArgumentException("该议题表决已结束，无法撤回");
+        }
+        Long urId = SecurityUtils.getCurrentUserId();
+        voteRepo.findByTopicIdAndUserRoleId(topicId, urId).ifPresent(voteRepo::delete);
+    }
+
     // ===== 议题意见 =====
 
     /** 本会议全部意见（平铺，前端按 topicId 分组）；任何阶段可查看。 */

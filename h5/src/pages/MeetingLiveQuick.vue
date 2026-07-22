@@ -222,14 +222,14 @@
 
         <div v-else class="core-empty">暂无会议议题</div>
 
-        <!-- 临时添加议题：从原「全部议题」卡迁入（主任/副主任可现场加议题） -->
-        <div v-if="isChair" class="lp-add-topic-row">
+        <!-- 临时添加议题（0722 用户定：仅主持人=主任可现场加议题） -->
+        <div v-if="isHost" class="lp-add-topic-row">
           <button class="lp-add-topic" @click="openAddTopic">+ 临时添加议题</button>
         </div>
 
         <!-- 结束表决（0722 用户定）：卡片底部、仅主任。结束后不可再投/改票，票数与结果公布——
              防"讨论完偷偷改票"，流程更规范 -->
-        <div v-if="isChair && hasOpenVoteTopics" class="close-vote-row">
+        <div v-if="isHost && hasOpenVoteTopics" class="close-vote-row">
           <button class="close-vote-btn" :disabled="closingVotes" @click="confirmCloseVotes">
             {{ closingVotes ? '正在结束表决…' : '结束表决' }}
           </button>
@@ -754,7 +754,7 @@ const discussionTopics = computed(() => meetingTopics.value.filter(t => t.type !
 function openTopicSheet(item) {
   // 未签到不进表决/意见弹层：在点击时就提醒签到，而不是进去后再提示
   if (!signedIn.value) {
-    toast({ title: '请先在下方签到，签到后即可表决/发言', icon: 'none' })
+    toast({ title: '请先返回签到，签到后即可表决/发言', icon: 'none' })
     return
   }
   sheetTopicId.value = item.id
@@ -800,6 +800,7 @@ function topicActionType(item) {
   return topicPillType(item)
 }
 function topicActionName(item) {
+  if (item.type === 'notice') return '通知' // 通报类：标签文字叫「通知」，颜色仍走 discuss（与讨论一致）
   const t = topicActionType(item)
   return t === 'vote' ? '表决' : '讨论'
 }
@@ -813,6 +814,11 @@ function topicRowDone(item) {
 function topicActionButton(item) {
   const t = topicActionType(item)
   if (t === 'vote') return topicRowDone(item) ? '看结果' : '去表决'
+  // 通报类（有正文，走"宣读/我已读"确认）：主持人「去通知」、其余人「查看通知」；全体已通报后「已通报」
+  if (item.type === 'notice') {
+    if (topicBadgeDone(item)) return '已通报'
+    return isHost.value ? '去通知' : '查看通知'
+  }
   return topicBadgeDone(item) ? '已记录' : '去讨论'
 }
 
@@ -820,7 +826,7 @@ function topicActionButton(item) {
 const hasOpenVoteTopics = computed(() => meetingTopics.value.some(t => t.voteRequired && !t.voteClosed))
 const closingVotes = ref(false)
 async function confirmCloseVotes() {
-  if (!isChair.value) return
+  if (!isHost.value) return
   const open = meetingTopics.value.filter(t => t.voteRequired && !t.voteClosed)
   if (!open.length) return
   const res = await showModal({
@@ -1201,6 +1207,8 @@ const extraOpen = ref(false)          // 「AI 额外发现」是否展开
 
 // 角色 / 资料 / 实时议题 / 录音列表
 const isChair = ref(false)
+// 主持人：目前仅「主任」（0722 用户定：结束表决/临时加议题只主持人可点；后续放开副主任等再改）
+const isHost = ref(false)
 const myRoleId = ref(null)
 const recordings = ref([])
 // 后端按 createdAt DESC 返回（新录音在前）。展示时倒过来：最早录的=第1段，新段依次往后排（符合常规认知）。
@@ -1523,6 +1531,7 @@ async function loadDetail() {
     selfAttendance.value = self
     signedIn.value = isSigned
     isChair.value = d.userView === 'chair'
+    isHost.value = !!(role && role.role === '主任')
     myRoleId.value = roleId
     recordings.value = recs
     reconcilePickedIds(recs)
@@ -3256,8 +3265,8 @@ function previewMaterial(idx) {
 
 // ── 实时添加议题（主任/副主任）──
 function openAddTopic() {
-  if (!isChair.value) {
-    toast({ title: '仅主任/副主任可添加议题', icon: 'none' })
+  if (!isHost.value) {
+    toast({ title: '仅主持人可添加议题', icon: 'none' })
     return
   }
   addTopicVisible.value = true

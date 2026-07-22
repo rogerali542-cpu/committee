@@ -322,6 +322,13 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 撤回本人投票（表决未结束前）：回到未投状态，可重新投票。 */
+    @DeleteMapping("/{id}/topics/{topicId}/vote")
+    public Result<Void> retractVote(@PathVariable Long id, @PathVariable Long topicId) {
+        service.retractVote(id, topicId);
+        return Result.ok();
+    }
+
     /** 结束表决（主任/副主任）：揭晓票数并公布结果。 */
     @PostMapping("/{id}/topics/{topicId}/close-vote")
     @RequireRole({"主任", "副主任"})

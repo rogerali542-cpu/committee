@@ -68,6 +68,8 @@
                 <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
                 <span>{{ voteFeedbackText }}</span>
               </div>
+              <!-- 撤回投票（表决未结束、本人已投时）：小号次要按钮，回到未投可重投 -->
+              <button v-if="showRetract" class="ts-vote-retract" :disabled="voteSubmitting" @click="retractVote">撤回</button>
             </div>
             <!-- 表决进行中：实时票数明细，只报数不下"通过/未通过"结论(没结束不算数)。0722 用户定：不怕从众 -->
             <div v-if="showLiveTally" class="ts-vote-all compact">
@@ -331,9 +333,11 @@ const pendingOption = ref(null)    // 多选时记住选项对象
 const voteSubmitting = ref(false)
 const localVoteValue = ref(null)
 const localVoteLabel = ref('')
+const localRetracted = ref(false) // 本地撤回态：撤回后先本地回到"未投"，等父组件刷新后端票再对齐
 const VOTE_LABELS = { for_vote: '同意', against: '不同意', abstain: '弃权' }
 const committedVote = computed(() => {
   const t = props.topic
+  if (localRetracted.value) return null
   if (localVoteValue.value != null) return localVoteValue.value
   return t && t.myVote != null ? t.myVote : null
 })
@@ -472,7 +476,7 @@ watch(() => props.topic && props.topic.id, (id) => {
   aiTokens.value = 0; polishUndo.value = null; claimShowId.value = null; openOpIds.value = new Set()
   opinionOpen.value = false
   opinionListOpen.value = false
-  pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''
+  pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''; localRetracted.value = false
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
 onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
@@ -785,6 +789,7 @@ async function submitVote() {
     toast({ title: '已提交', icon: 'success' })
     localVoteValue.value = nextValue
     localVoteLabel.value = label
+    localRetracted.value = false // 重新投票后清掉撤回态
     pendingVote.value = null; pendingOption.value = null
     // 改票后立即同步本人已发表意见旁的标签，避免父组件刷新与意见请求竞态时仍显示第一次投票。
     opinions.value = opinions.value.map((opinion) => {
@@ -807,6 +812,43 @@ async function submitVote() {
 
 function pendingVoteValueForLabel(value) {
   return value === 'for_vote' || value === 'against' || value === 'abstain' ? value : null
+}
+
+// 撤回投票入口：表决未结束、本人已投、且当前不在改票选中态时显示
+const showRetract = computed(() => {
+  const t = props.topic
+  if (!t || !t.voteRequired || t.voteClosed) return false
+  if (!props.interactive || !props.signedIn) return false
+  return committedVote.value != null && pendingVote.value == null
+})
+// 撤回本人投票（表决未结束前）：回到"未投"，可重新投票
+async function retractVote() {
+  const t = props.topic
+  if (!t || t.voteClosed || voteSubmitting.value) return
+  if (!props.interactive) { toast({ title: '会议进行中才可撤回', icon: 'none' }); return }
+  if (committedVote.value == null) return
+  const res = await showModal({
+    title: '撤回投票',
+    content: '撤回后本议题回到「未投」，可以重新投票。确认撤回吗？',
+    confirmText: '撤回',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  voteSubmitting.value = true
+  try {
+    await api.committeeRetractVote(props.meetingId, t.id)
+    localRetracted.value = true
+    localVoteValue.value = null; localVoteLabel.value = ''
+    pendingVote.value = null; pendingOption.value = null
+    // 同步已发表意见旁的投票标签，避免仍显示撤回前的选择
+    opinions.value = opinions.value.map((opinion) =>
+      (opinion && opinion.isSelf) ? Object.assign({}, opinion, { voteLabel: null, voteChoice: null }) : opinion)
+    toast({ title: '已撤回', icon: 'success' })
+    emit('changed')
+    await loadOpinions()
+  } catch (e) {
+    toast({ title: (e && e.message) || '撤回失败，请重试', icon: 'none' })
+  } finally { voteSubmitting.value = false }
 }
 
 // 改票后，已有意见可能与新立场冲突：让委员明确选择如何处理最近一条本人意见。
@@ -1036,6 +1078,9 @@ async function removeOpinion(op) {
 .ts-vote-feedback.against .ts-vote-feedback-mark { background:#E24B3A; }
 .ts-vote-feedback.abstain { background:#F4F5F7; border-color:#D4D8DE; color:#4D5158; }
 .ts-vote-feedback.abstain .ts-vote-feedback-mark { background:#6B7078; }
+/* 撤回：小号次要按钮，靠右，弱化不抢眼（改票是常态，撤回是少数场景/测试用） */
+.ts-vote-retract { margin-left:auto; padding:8rpx 20rpx; border-radius:999rpx; background:#fff; border:2rpx solid #D8DBE0; color:#8A9099; font-size:24rpx; font-weight:600; font-family:inherit; white-space:nowrap; }
+.ts-vote-retract:disabled { opacity:.5; }
 /* 已表决：结果卡整块替换选择区（占屏结果态，明确"做完了·不可改"） */
 .ts-vote-done { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; background: #EAF6E5; border: 2rpx solid #9FD290; border-radius: 16rpx; padding: 24rpx; font-size: 31rpx; font-weight: 800; color: #2E7D32; }
 .ts-vote-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; border-radius: 50%; background: #2E9E4B; color: #fff; font-size: 26rpx; margin-right: 4rpx; }
