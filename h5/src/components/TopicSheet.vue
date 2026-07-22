@@ -102,7 +102,7 @@
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
                 <div v-else-if="!proxyTargets.length" class="ts-empty">没有已签到且未投票的委员</div>
                 <template v-else>
-                  <!-- 委员选择：与签到状态同款 ▾ 悬浮下拉（0722 用户定），点项选中/取消，可多选、不自动收起 -->
+                  <!-- 委员选择：与签到状态同款 ▾ 悬浮下拉（0722 用户定），单选、选完自动收起 -->
                   <div class="ts-proxy-pick" @click.stop="proxyMenuOpen = !proxyMenuOpen">
                     <span class="ts-proxy-pick-label" :class="{ ph: !proxySelected.size }">{{ proxySelectedNames || '选择委员' }}</span>
                     <span class="ts-proxy-pick-arrow" :class="{ on: proxyMenuOpen }">▾</span>
@@ -977,10 +977,10 @@ async function openProxy() {
     proxyOpen.value = false
   } finally { proxyLoading.value = false }
 }
+// 单选（0722 用户定）：一次只代一个人，选完即收起下拉；换人就再点开重选
 function toggleProxyMember(id) {
-  const next = new Set(proxySelected.value)
-  if (next.has(id)) next.delete(id); else next.add(id)
-  proxySelected.value = next
+  proxySelected.value = new Set([id])
+  proxyMenuOpen.value = false
 }
 function pickProxyProof() {
   if (!_proxyProofInput) {
@@ -1014,13 +1014,7 @@ async function submitProxy() {
   const label = isMulti
     ? (((t.options || []).find(o => String(o.id) === String(proxyOptId.value)) || {}).label || '')
     : ({ for_vote: '同意', against: '不同意', abstain: '弃权' }[proxyChoice.value] || '')
-  const res = await showModal({
-    title: '代投确认',
-    content: '代 ' + names + ' 投「' + label + '」？',
-    confirmText: '确认代投',
-    cancelText: '取消'
-  })
-  if (!res.confirm) return
+  // 按钮本身就叫「确认代投」，不再二次弹窗（0722 用户定）；成功 toast 里带上代了谁投了什么
   proxySubmitting.value = true
   try {
     await api.committeeProxySubmit(props.meetingId, {
@@ -1031,7 +1025,7 @@ async function submitProxy() {
       selectedId: isMulti ? proxyOptId.value : null,
       proofUrl: proxyProofUrl.value || null
     })
-    toast({ title: '已代投', icon: 'success' })
+    toast({ title: '已代 ' + names + ' 投「' + label + '」', icon: 'success' })
     resetProxy()
     emit('changed')
   } catch (e) {
