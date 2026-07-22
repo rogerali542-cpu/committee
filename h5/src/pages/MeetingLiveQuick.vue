@@ -306,11 +306,11 @@
            “结束现场会议”只停止现场录音并进入会后整理；“完成本次会议”在下一页执行。 -->
       <div v-if="meetingEnded || meetingPhase === 'voting'" class="end-meeting-row" :class="{ pinned: meetingPhase === 'voting' && !meetingEnded }">
         <button v-if="meetingPhase === 'voting'" class="back-recording-btn" @click="returnToRecordingPage">
-          <span class="emb-arrow pre">←</span>{{ fieldMeetingEnded ? '返回整理' : '返回录音' }}
+          <span class="emb-arrow pre">←</span>返回录音
         </button>
-        <!-- 点击进「会后整理」决策页（不会立刻结束）；箭头表明是去下一步而非直接结束 -->
+        <!-- 右键：现场未结束→结束现场会议(确认)；已结束现场→会后整理；整场已完成→查看会议详情 -->
         <button v-if="isChair || meetingEnded" class="end-meeting-btn" @click="handleMeetingBottomAction">
-          {{ meetingEnded ? '查看会议详情' : '结束现场会议' }}<span class="emb-arrow">→</span>
+          {{ meetingEnded ? '查看会议详情' : (fieldMeetingEnded ? '会后整理' : '结束现场会议') }}<span class="emb-arrow">→</span>
         </button>
       </div>
 
@@ -3003,6 +3003,11 @@ function handleMeetingBottomAction() {
     viewMeetingDetail()
     return
   }
+  // 现场会议已结束（进入过会后整理）→ 右键直接回会后整理，不再二次确认结束
+  if (fieldMeetingEnded.value) {
+    openEndReview()
+    return
+  }
   confirmEndMeeting()
 }
 
@@ -3423,12 +3428,8 @@ async function onNavBack() {
 }
 
 async function returnToRecordingPage() {
+  // 「返回录音」始终回到录音页（含现场会议已结束后：可回看录音段）；「会后整理」由右键负责
   sheetTopicId.value = null
-  if (fieldMeetingEnded.value) {
-    endReviewVisible.value = true
-    persistQuickState()
-    return
-  }
   meetingPhase.value = 'recording'
   persistQuickState()
   // 离开最后一个议题时重新拉取一次，确保“全部完成”状态和结束会议按钮立即更新。
