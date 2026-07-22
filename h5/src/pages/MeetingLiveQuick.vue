@@ -122,7 +122,7 @@
           <button class="end-review-primary" :disabled="endReviewPrimaryDisabled" @click="handleEndReviewPrimary">
             {{ endReviewPrimaryText }}
           </button>
-          <button class="end-review-secondary" :disabled="ending" @click="endWithoutMinutes">直接完成会议</button>
+          <button class="end-review-secondary" :disabled="ending" @click="endWithoutMinutes">完成会后整理</button>
         </div>
       </div>
     </div>
