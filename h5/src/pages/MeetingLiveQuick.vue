@@ -61,13 +61,12 @@
               <span class="er-item-no">2</span>
               <span class="er-item-title">议题处理</span>
             </div>
-            <!-- 各议题结果一行一条：标题 + 简要结论；可点开议题弹层继续操作
-                 （完成会议前不锁死：主持人可代投、任何人可补意见——0722 用户定） -->
+            <!-- 各议题结果一行一条（纯状态展示，不可点——0722 用户定：入口统一走「继续处理议题」，
+                 避免误导；未投拦截的「去代录」仍程序直开弹层） -->
             <div v-if="meetingTopics.length" class="er-topic-list">
-              <div class="er-topic-row clickable" v-for="t in meetingTopics" :key="'er-' + t.id" @click="openTopicSheet(t)">
-                <span class="er-topic-title">{{ t.title }}</span>
+              <div class="er-topic-row" v-for="(t, ti) in meetingTopics" :key="'er-' + t.id">
+                <span class="er-topic-title">（{{ ti + 1 }}）{{ t.title }}</span>
                 <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
-                <span class="er-topic-arrow">›</span>
               </div>
             </div>
             <div v-if="pendingTopicCount" class="er-item-actions">
@@ -1130,7 +1129,7 @@ function erTopicResult(t) {
   if (t.voteRequired) {
     // 现场已结束（0722 用户定）：不再显示"待表决"，直接给票面结论——
     // 签到未过半会议不成立→无效；否则按当前票数 通过/未通过
-    if (!signinQuorum.value.ready) return { cls: 'fail', text: '人数未过半，无效' }
+    if (!signinQuorum.value.ready) return { cls: 'fail', text: '未过半，无效' }
     // 多选一：票数在 options 里，显示领先选项；是/否：同意:不同意
     if ((t.decisionType || 'simple') === 'multi_choice') {
       let best = null
@@ -3730,11 +3729,8 @@ async function returnToRecordingPage() {
 .er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
 .er-topic-result.pass { color:#2E7D32; }
 .er-topic-result.fail { color:#C0392B; }
-.er-topic-result.done { color:#5F6673; }
+.er-topic-result.done { color:#2E7D32; } /* 已讨论/已通报也用绿色（0722 用户定） */
 .er-topic-result.todo { color:#B26A00; }
-.er-topic-row.clickable { cursor:pointer; }
-.er-topic-row.clickable:active .er-topic-title { color:#2A2F36; }
-.er-topic-arrow { flex-shrink:0; color:#C4C9D0; font-size:26rpx; line-height:1; }
 /* 会议纪要块与清单之间空出一段，形成"核对完 → 生成"的段落感 */
 .er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
 .end-review-primary { display:block; width:70%; margin:14rpx auto 0; height:80rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }
