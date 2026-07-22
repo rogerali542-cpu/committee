@@ -1300,7 +1300,7 @@ async function openRecordingTranscript(item, index) {
     if (!raw) {
       transcriptView.value = {
         title: title, segments: [], preview: '',
-        emptyText: '这段录音的转写结果暂时取不到（服务重启会丢失早期未落库的结果），点下方按钮重新识别即可，不影响已生成的会议记录。',
+        emptyText: '这段录音的转写结果不在了，重新识别即可找回。',
         retryId: item.id, retryIndex: index
       }
       return
@@ -1319,7 +1319,7 @@ async function openRecordingTranscript(item, index) {
     // 取不到也别甩「服务器错误」——在弹层里给可读的说明，并给重新识别入口
     transcriptView.value = {
       title: title, segments: [], preview: '',
-      emptyText: '暂时取不到这段录音的转写内容，可以点下方按钮重新识别。',
+      emptyText: '暂时取不到这段的转写内容，可以重新识别。',
       retryId: item.id, retryIndex: index
     }
   } finally {
@@ -1336,7 +1336,7 @@ async function retranscribeSegment() {
   const rid = v.retryId
   const idx = v.retryIndex
   retranscribing.value = true
-  transcriptView.value = { title: v.title, segments: [], preview: '', emptyText: '正在重新识别这段录音，约需十几秒，请稍候…' }
+  transcriptView.value = { title: v.title, segments: [], preview: '', emptyText: '正在重新识别，约需十几秒…' }
   try {
     let task = await api.committeeTranscribeRecording(meetingId.value, rid)
     const t0 = Date.now()
