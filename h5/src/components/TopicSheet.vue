@@ -295,7 +295,8 @@ const props = defineProps({
   signedIn: { type: Boolean, default: false },
   isChair: { type: Boolean, default: false },
   hasPrev: { type: Boolean, default: false }, // 是否有上一个议题（父组件按列表算）
-  hasNext: { type: Boolean, default: false }  // 是否有下一个议题
+  hasNext: { type: Boolean, default: false }, // 是否有下一个议题
+  proxyIntent: { type: Number, default: 0 }   // 递增触发：父组件经「去代录」路径打开时自动展开代投面板
 })
 const emit = defineEmits(['close', 'changed', 'prev', 'next'])
 
@@ -930,6 +931,14 @@ async function retractVote() {
   } finally { voteSubmitting.value = false }
 }
 
+// 「去代录」路径（完成会议被未投拦截→跳来）：代投就是主任务，直接展开面板不用再找入口
+watch(() => props.proxyIntent, async (v) => {
+  if (!v) return
+  await nextTick()
+  const t = props.topic
+  if (props.isChair && props.interactive && t && t.voteRequired && !t.voteClosed) openProxy()
+})
+
 async function openProxy() {
   const t = props.topic
   if (!t) return
@@ -1253,7 +1262,8 @@ async function removeOpinion(op) {
 .ts-vote-retract:disabled { opacity:.5; }
 /* 代委员投票（仅主持人）：入口小字按钮；面板浅底卡片内选人/选项/凭证/提交 */
 .ts-proxy { margin-top:16rpx; }
-.ts-proxy-entry { display:block; margin:0 auto; border:0; background:transparent; color:#8A9099; font-size:24rpx; font-weight:600; text-decoration:underline; text-underline-offset:6rpx; font-family:inherit; padding:8rpx 16rpx; }
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:64%; min-height:76rpx; box-sizing:border-box; margin:0 auto; border:2rpx solid #C6D8D6; border-radius:16rpx; background:#F2F8F7; color:#0F766E; font-size:28rpx; font-weight:650; font-family:inherit; padding:14rpx 24rpx; }
+.ts-proxy-entry:active { background:#E2EFED; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
