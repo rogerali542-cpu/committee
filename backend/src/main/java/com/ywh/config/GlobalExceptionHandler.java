@@ -40,10 +40,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Result.fail(e.getMessage()));
     }
 
+    /** 缺参数（如 ?value= 没传）：给出参数名，别掉进下面的兜底变成没头绪的 500。 */
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<Result<?>> handleMissingParam(
+            org.springframework.web.bind.MissingServletRequestParameterException e) {
+        return ResponseEntity.badRequest().body(Result.fail("缺少请求参数：" + e.getParameterName()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<?>> handleException(Exception e) {
         log.error("Unexpected error", e);
+        // 测试期带上异常类名，前端弹的错误就能直接定位问题类型（纯"服务器内部错误"没法排查）
+        String brief = e.getMessage() != null && e.getMessage().length() <= 60 ? "：" + e.getMessage() : "";
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error("服务器内部错误"));
+                .body(Result.error("服务器内部错误（" + e.getClass().getSimpleName() + brief + "）"));
     }
 }
