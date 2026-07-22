@@ -46,8 +46,9 @@
           <!-- 表决进行中(会议 ongoing 且未结束)选项常驻：已投项高亮，点其他选项后轻确认改票；
                会议结束后(voteRevealed)自动落到下方"您已投/未投"，不再显示投票按钮（方案A） -->
           <template v-if="!voteRevealed">
-            <!-- 已投后选项收起（voteCollapsed），状态行「已投：X」+「改票/撤回」接管；点改票再展开 -->
-            <template v-if="!voteCollapsed">
+            <!-- 已投后选项收起（voteCollapsed），状态行「已投：X」+「改票/撤回」接管；点改票再展开。
+                 代投面板展开时整块隐藏（0722 用户定：代投时不显示自己的投票） -->
+            <template v-if="!voteCollapsed && !proxyOpen">
               <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
                 <div class="ts-vote-btns">
                   <button class="ts-vote-btn agree" :class="{ on: displayVote === 'for_vote' }" :disabled="voteSubmitting" @click="pickVote('for_vote')">
@@ -69,11 +70,11 @@
                 </div>
               </template>
             </template>
-            <button v-if="pendingVote != null" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
+            <button v-if="pendingVote != null && !proxyOpen" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
               {{ voteSubmitting ? '提交中...' : '确认提交' }}
             </button>
             <!-- 已投收起态的状态并入下方票数卡；这行只在 选中未提交/改票展开 时出现 -->
-            <div v-if="voteFeedbackText && !voteCollapsed" class="ts-vote-status-row">
+            <div v-if="voteFeedbackText && !voteCollapsed && !proxyOpen" class="ts-vote-status-row">
               <div class="ts-vote-feedback" :class="[voteFeedbackClass, { pending: voteFeedbackPending }]">
                 <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
                 <span>{{ voteFeedbackText }}</span>
@@ -87,7 +88,7 @@
                 <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
               </div>
               <!-- 我的投票并入卡内一行（0722 用户定）：状态 + 小号改票/撤回 -->
-              <div v-if="voteCollapsed" class="ts-my-line">
+              <div v-if="voteCollapsed && !proxyOpen" class="ts-my-line">
                 <span class="ts-my-vote">✓ 已投：{{ myVoteLabel || localVoteLabel }}</span>
                 <button class="ts-mini-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
                 <button class="ts-mini-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
@@ -96,17 +97,19 @@
             <!-- 代委员投票（仅主持人、表决未结束）：委员忘投/不会用手机时，主任代录并留凭证审计 -->
             <div v-if="isChair && interactive" class="ts-proxy">
               <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">代委员投票</button>
-              <div v-else class="ts-proxy-panel">
+              <div v-else class="ts-proxy-panel" @click="proxyMenuOpen = false">
                 <div class="ts-proxy-title">代投对象（已签到、未投票）<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
                 <div v-else-if="!proxyTargets.length" class="ts-empty">没有已签到且未投票的委员</div>
                 <template v-else>
-                  <!-- 委员选择：与签到名单同款按行列出（0722 用户定），点行选中/取消，可多选 -->
-                  <div class="ts-proxy-people">
-                    <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-row"
-                         :class="{ on: proxySelected.has(p.memberId) }" @click="toggleProxyMember(p.memberId)">
-                      <span class="ts-proxy-row-name">{{ p.name }}</span>
-                      <span class="ts-proxy-row-mark">{{ proxySelected.has(p.memberId) ? '✓ 已选' : '选择' }}</span>
+                  <!-- 委员选择：与签到状态同款 ▾ 悬浮下拉（0722 用户定），点项选中/取消，可多选、不自动收起 -->
+                  <div class="ts-proxy-pick" @click.stop="proxyMenuOpen = !proxyMenuOpen">
+                    <span class="ts-proxy-pick-label" :class="{ ph: !proxySelected.size }">{{ proxySelectedNames || '选择委员' }}</span>
+                    <span class="ts-proxy-pick-arrow" :class="{ on: proxyMenuOpen }">▾</span>
+                    <div v-if="proxyMenuOpen" class="ts-proxy-menu">
+                      <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-menu-item"
+                           :class="{ cur: proxySelected.has(p.memberId) }"
+                           @click.stop="toggleProxyMember(p.memberId)">{{ p.name }}</div>
                     </div>
                   </div>
                   <div class="ts-proxy-choices">
@@ -549,6 +552,7 @@ const proxyOpen = ref(false)
 const proxyLoading = ref(false)
 const proxyTargets = ref([])        // 已签到且本议题未投票的委员（不含自己）
 const proxySelected = ref(new Set())
+const proxyMenuOpen = ref(false)    // 委员选择 ▾ 悬浮菜单开关
 const proxyChoice = ref(null)       // simple: for_vote/against/abstain
 const proxyOptId = ref(null)        // multi_choice: 选项 id
 const proxyProofUrl = ref('')
@@ -560,8 +564,11 @@ const canSubmitProxy = computed(() =>
   proxySelected.value.size > 0
   && ((props.topic && (props.topic.decisionType || 'simple') === 'multi_choice') ? proxyOptId.value != null : !!proxyChoice.value)
   && !proxyUploading.value)
+const proxySelectedNames = computed(() =>
+  proxyTargets.value.filter(p => proxySelected.value.has(p.memberId)).map(p => p.name).join('、'))
 function resetProxy() {
   proxyOpen.value = false; proxyLoading.value = false; proxyTargets.value = []
+  proxyMenuOpen.value = false
   proxySelected.value = new Set(); proxyChoice.value = null; proxyOptId.value = null
   proxyProofUrl.value = ''; proxyUploading.value = false; proxySubmitting.value = false
 }
@@ -1293,13 +1300,16 @@ async function removeOpinion(op) {
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
 .ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
-/* 委员按行列出（与签到名单同款）：名字在左、选中状态在右，点行切换 */
-.ts-proxy-people { margin-top:14rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; padding:0 18rpx; }
-.ts-proxy-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:18rpx 4rpx; border-top:2rpx solid #F2F4F6; }
-.ts-proxy-row:first-child { border-top:0; }
-.ts-proxy-row-name { flex:1; min-width:0; font-size:28rpx; color:#1F2329; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ts-proxy-row-mark { flex-shrink:0; font-size:24rpx; font-weight:600; color:#A0A5AD; }
-.ts-proxy-row.on .ts-proxy-row-mark { color:#0F766E; }
+/* 委员选择：与签到状态同款 ▾ 悬浮下拉。触发行=已选名单+小箭头，菜单悬浮不占位 */
+.ts-proxy-pick { position:relative; margin-top:14rpx; display:flex; align-items:center; gap:14rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; padding:14rpx 18rpx; }
+.ts-proxy-pick-label { flex:1; min-width:0; font-size:26rpx; font-weight:600; color:#1F2329; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ts-proxy-pick-label.ph { color:#A0A5AD; font-weight:500; }
+.ts-proxy-pick-arrow { flex-shrink:0; width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:10rpx; color:#A0A5AD; font-size:24rpx; background:#F4F5F7; }
+.ts-proxy-pick-arrow.on { background:#E8EAED; color:#5F6673; }
+.ts-proxy-menu { position:absolute; right:0; top:calc(100% + 4rpx); z-index:40; display:flex; flex-direction:column; min-width:184rpx; padding:8rpx; background:#fff; border:2rpx solid #E8EAED; border-radius:14rpx; box-shadow:0 10rpx 28rpx rgba(31,35,41,0.16); }
+.ts-proxy-menu-item { padding:14rpx 22rpx; font-size:25rpx; font-weight:600; color:#42464D; border-radius:10rpx; line-height:1.3; }
+.ts-proxy-menu-item:active { background:#F1F2F4; }
+.ts-proxy-menu-item.cur { color:#0F766E; background:#EFF6F5; }
 .ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
 .ts-proxy-choice { padding:10rpx 24rpx; border-radius:12rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
 .ts-proxy-choice.on { border-color:#B26A19; background:#FFF6E8; color:#B26A19; }
