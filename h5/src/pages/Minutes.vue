@@ -544,6 +544,23 @@ async function endMeetingFromMinutes() {
       if (document.querySelector('.minutes-page')) window.location.replace('/committee-detail?id=' + meetingId + '&from=minutes')
     }, 500)
   }
+  // ⚠ 测试期开关（0722 用户定，与 MeetingLiveQuick 的 TEST_KEEP_MEETING_OPEN 同语义）：
+  // 确认无误不真正结束归档会议，直接去详情页；上线前置回 false。见 docs/上线前TODO.md
+  const TEST_KEEP_MEETING_OPEN = true
+  if (TEST_KEEP_MEETING_OPEN) {
+    hideToast() // 清掉可能残留的 toast，避免吞掉紧跟的确认框
+    const res0 = await showModal({
+      title: '确认纪要',
+      content: '确认会议纪要无误吗？（测试期不会归档会议，仍可随时回来修改）',
+      confirmText: '确认',
+      cancelText: '再想想'
+    })
+    if (res0.confirm) {
+      toast({ title: '纪要已确认', icon: 'success' })
+      setTimeout(goPublish, 600)
+    }
+    return
+  }
   const doEnd = async function () {
     showLoading({ title: '正在结束…' })
     try {
