@@ -2,7 +2,7 @@
   <div v-if="detail" class="live-page" :class="{ 'lp-signin': currentStep === 1, 'has-fixed-end': isChair && currentStep === 2 && meetingPhase === 'recording' && !meetingEnded }" style="overflow-y:auto;">
 
     <!-- 页面对所有身份统一：主任/副主任可操作录音等，其余身份只读+表决/意见 -->
-    <PageNav :title="isOnlineMeeting ? '线上会议' : (currentStep === 1 ? '会议签到' : (meetingPhase === 'voting' ? '议题表决' : '会议进行'))" style="margin:-3.2vw -3.2vw 0;">
+    <PageNav :title="isOnlineMeeting ? '线上会议' : (currentStep === 1 ? '会议签到' : (meetingPhase === 'voting' ? '议题处理' : '会议进行'))" style="margin:-3.2vw -3.2vw 0;">
       <template #left>
         <div class="mlq-back" @click="onNavBack">‹</div>
       </template>
@@ -201,10 +201,10 @@
         </div>
       </div>
 
-      <!-- 现场会议结束后，委员集中拿出手机完成议题表决和意见确认 -->
+      <!-- 委员集中拿出手机处理议题：表决/确认通知/记录意见（0722 用户定：更名「议题处理」，与流程链、按钮用词统一） -->
       <div v-if="meetingPhase === 'voting'" class="core-card">
         <div class="core-head">
-          <span class="core-title">议题表决与意见确认</span>
+          <span class="core-title">议题处理</span>
         </div>
 
         <div v-if="meetingTopics.length" class="core-list">
@@ -1673,7 +1673,7 @@ async function enterVotingPhase() {
     // 只切换议题处理页面，录音继续进行；最终结束会议时再统一停止并保存。
     meetingPhase.value = 'voting'
     persistQuickState()
-    toast({ title: '已进入议题表决', icon: 'success' })
+    toast({ title: '已进入议题处理', icon: 'success' })
   } finally {
     phaseChanging.value = false
   }

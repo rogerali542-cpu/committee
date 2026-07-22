@@ -301,7 +301,7 @@ async function s11() {
   let h = await newPage(st, 3)
   await enter(h.page)
   await h.page.locator('button.meeting-stage-next').click(); await h.page.waitForTimeout(800)
-  t('S11 委员无录音点处理议题直接进', (await vis(h.page, 'text=议题表决与意见确认')) && !(await modalText(h.page)))
+  t('S11 委员无录音点处理议题直接进', (await vis(h.page, '.core-title')) && !(await modalText(h.page)))
   await h.ctx.close()
   // 主任状态3
   st = mkState('chair')
@@ -310,11 +310,11 @@ async function s11() {
   await h.page.locator('button.meeting-stage-next').click(); await h.page.waitForTimeout(800)
   t('S11 主任状态3弹确认', (await modalText(h.page)).includes('还没有开始录音'))
   await click(h.page, '返回录音'); await h.page.waitForTimeout(400)
-  t('S11 返回录音留在原页', !(await vis(h.page, 'text=议题表决与意见确认')))
+  t('S11 返回录音留在原页', !(await vis(h.page, '.core-title')))
   // 主任录音中（状态1）
   await click(h.page, '开始录音'); await h.page.waitForTimeout(1800)
   await h.page.locator('button.meeting-stage-next').click(); await h.page.waitForTimeout(800)
-  t('S11 主任录音中点处理议题直接进', await vis(h.page, 'text=议题表决与意见确认'))
+  t('S11 主任录音中点处理议题直接进', await vis(h.page, '.core-title'))
   t('S11 进表决页后录音仍在进行', await vis(h.page, '.top-rec-status'))
   await h.ctx.close()
 }
@@ -399,14 +399,14 @@ async function s16() {
   const { ctx, page } = await newPage(st, 1)
   await enter(page)
   await page.locator('button.meeting-stage-next').click(); await page.waitForTimeout(800) // 主任进表决页(状态持久化)
-  t('S16 主任已在表决页', await vis(page, 'text=议题表决与意见确认'))
+  t('S16 主任已在表决页', await vis(page, '.core-title'))
   // 切成委员 + 硬重载（同一浏览器上下文，localStorage 共享）
   st.userView = 'member'
   await page.evaluate(() => localStorage.setItem('activeRole', JSON.stringify({ id: 3, role: '委员', realName: '王志强', communityId: 1 })))
   await page.goto(BASE + '/meeting-live-quick?type=committee&meetingId=5'); await page.waitForTimeout(1500)
   const e = page.locator('button', { hasText: /进入会议/ }).first()
   if (await e.isVisible().catch(() => false)) { await e.click(); await page.waitForTimeout(1000) }
-  t('S16 委员进来不在表决页(状态未串)', !(await vis(page, 'text=议题表决与意见确认')))
+  t('S16 委员进来不在表决页(状态未串)', !(await vis(page, '.core-title')))
   await ctx.close()
 }
 
