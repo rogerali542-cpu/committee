@@ -191,7 +191,7 @@
         <template v-else>
           <div class="ts-compose">
             <div class="ts-input">
-              <textarea v-model="draft" class="ts-ta" rows="1" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
+              <textarea v-model="draft" class="ts-ta" rows="3" placeholder="说点什么…" @input="autoGrow" ref="taEl"></textarea>
               <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
             </div>
             <div class="ts-ai-row">
@@ -837,7 +837,7 @@ async function retractVote() {
   if (committedVote.value == null) return
   const res = await showModal({
     title: '撤回投票',
-    content: '撤回后本议题回到「未投」，可以重新投票。确认撤回吗？',
+    content: '撤回后可重新投票',
     confirmText: '撤回',
     cancelText: '取消'
   })
@@ -1167,7 +1167,9 @@ async function removeOpinion(op) {
 
 /* 发表意见卡片：暖米底把"写意见"整块框起来，与下方导航区分开 */
 .ts-compose { flex-shrink: 0; background: #FCF9F3; border: 2rpx solid #F0EAE0; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
-.ts-input { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; background: transparent; }
+.ts-input { flex-shrink: 0; display: flex; align-items: flex-end; gap: 14rpx; background: transparent; }
+/* 补充意见输入框默认给足高度（约3行），别只留一行让人不敢展开写；输入更多会自增到 max-height */
+.ts-input .ts-ta { min-height: 132rpx; }
 /* 语音条：录音中/识别中占满输入区，大按钮 */
 .ts-voicebar { flex-shrink: 0; padding: 18rpx 6rpx 10rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; background: #fff; box-sizing: border-box; }
 /* 听写中：实时出字区（可滚动，长句不撑破输入区） */
