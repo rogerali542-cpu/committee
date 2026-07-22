@@ -95,7 +95,7 @@
     <!-- 尚无纪要正文：旧的结构化模板页已删（0722 用户定，只保留正文版纪要），给干净的引导 -->
     <div v-else-if="minutes && !isOwner" class="doc">
       <div class="minutes-letterhead">
-        <span class="minutes-meeting-name">{{ (minutes.meetingTitle || '业委会') + '会议纪要' }}</span>
+        <span class="minutes-meeting-name">{{ joinMinutesTitle(minutes.meetingTitle) }}</span>
       </div>
       <div class="no-minutes-tip">还没有纪要正文。可返回会后整理页点「生成会议纪要」自动生成{{ canEditMinutes ? '，或在下方直接手写' : '' }}。</div>
       <div class="minutes-actions" v-if="canEditMinutes && !aiGenerating">
@@ -130,6 +130,11 @@ const prettyText = computed(() => normalizeLegacyBasicSection(String(plainText.v
   .replace(/^[ \t]*#{1,6}[ \t]*/gm, '')
   .replace(/^[^\r\n]*[（(]草稿[）)][ \t]*\r?\n+/, '')
   .replace(/^[^\r\n]*业主委员会[ \t]*\r?\n+/, '')))
+// 会议名 + 「会议纪要」拼标题：名字本身以「会议」结尾时去重，避免拼成「××会议会议纪要」
+function joinMinutesTitle(name) {
+  const n = String(name || '业委会').trim().replace(/会议纪要$/, '').replace(/会议$/, '')
+  return n + '会议纪要'
+}
 // 正文每段首行缩进两个全角空格（0722 用户定，公文格式）；只影响展示，编辑/复制仍是原文
 function indentParagraphs(text) {
   return String(text || '').split('\n')
@@ -143,7 +148,7 @@ const documentParts = computed(() => {
   if (marker >= 0) {
     const meetingName = lines.slice(0, marker).filter(line => line.trim()).join('\n').trim()
     // 期号行（第N期）已从公文格式中移除：老纪要里若存有该行，按普通正文首行显示
-    return { meetingName: (meetingName || '业委会') + '会议纪要', body: indentParagraphs(lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '')) }
+    return { meetingName: joinMinutesTitle(meetingName), body: indentParagraphs(lines.slice(marker + 1).join('\n').replace(/^\s*\n/, '')) }
   }
   return { meetingName: (lines[0] || '').trim(), body: indentParagraphs(lines.slice(1).join('\n').replace(/^\s*\n/, '')) }
 })

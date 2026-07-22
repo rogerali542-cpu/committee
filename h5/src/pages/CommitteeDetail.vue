@@ -33,7 +33,8 @@
       <!-- 简化阶段：进行中/已结束会议也允许主任删除（清理测试数据用；准备阶段用会议头部的取消按钮） -->
 
       <!-- 任务横幅（结束阶段隐藏；主任准备阶段用步骤条替代） -->
-      <div class="task-banner" :class="detail.taskLevel" v-if="detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')">
+      <!-- 现场已结束(本地标记)后任务横幅里的"去签到/去表决"类指引已过时，一并隐藏 -->
+      <div class="task-banner" :class="detail.taskLevel" v-if="detail.stage !== 'ended' && !fieldEndedLocal && !(userView === 'chair' && detail.stage === 'preparing')">
         <span class="tb-title">{{ detail.taskTitle }}</span>
         <span class="tb-items" v-if="detail.taskItemsText">{{ detail.taskItemsText }}</span>
         <span class="tb-flow">当前：{{ detail.flowNodeText }}</span>
