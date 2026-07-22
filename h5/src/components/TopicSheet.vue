@@ -993,7 +993,6 @@ async function removeOpinion(op) {
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
 .ts-vote-status-row { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
-.ts-vote-progress { display: flex; align-items: center; justify-content: flex-end; gap: 10rpx; margin: 0 0 0 auto; color: #A0A5AD; font-size: 23rpx; font-weight: 500; white-space: nowrap; }
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
 .ts-vote-btn { border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; font-weight: 700; padding: 22rpx 0; }
 /* 方案B：默认就带语义色(浅底+彩边+彩字)，同意绿/不同意红/弃权灰，一眼分清 */
