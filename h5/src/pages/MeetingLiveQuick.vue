@@ -64,11 +64,13 @@
                 {{ pendingTopicCount ? ('● ' + pendingTopicCount + ' 项待处理') : '✓ 已全部处理' }}
               </span>
             </div>
-            <!-- 各议题结果一行一条：标题 + 简要结论（表决=通过/未通过含票数，讨论/通报=已办与否） -->
+            <!-- 各议题结果一行一条：标题 + 简要结论；可点开议题弹层继续操作
+                 （完成会议前不锁死：主持人可代投、任何人可补意见——0722 用户定） -->
             <div v-if="meetingTopics.length" class="er-topic-list">
-              <div class="er-topic-row" v-for="t in meetingTopics" :key="'er-' + t.id">
+              <div class="er-topic-row clickable" v-for="t in meetingTopics" :key="'er-' + t.id" @click="openTopicSheet(t)">
                 <span class="er-topic-title">{{ t.title }}</span>
                 <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
+                <span class="er-topic-arrow">›</span>
               </div>
             </div>
             <div v-if="pendingTopicCount" class="er-item-actions">
@@ -3160,6 +3162,25 @@ async function handleEndReviewPrimary() {
   await endAndGenerateMinutes()
 }
 
+// 底层逻辑（0722 用户定）：已签到参会者都必须有投票结果——没投的由主持人代录（无意见=弃权），
+// 请假/未参会不计入（表决分母=已签到人数，后端已同步）。完成会议前硬拦截还有人未投的表决议题。
+function findUnvotedVoteTopic() {
+  return meetingTopics.value.find(t => t.voteRequired && (t.voted || 0) < (t.total || 0))
+}
+async function guardUnvotedBeforeEnd() {
+  const t = findUnvotedVoteTopic()
+  if (!t) return true
+  const missing = (t.total || 0) - (t.voted || 0)
+  const res = await showModal({
+    title: '还有人未投票',
+    content: '「' + t.title + '」还有 ' + missing + ' 人未投票。已签到的委员都需要有投票结果，可由您代录（无意见选弃权）。',
+    confirmText: '去代录',
+    cancelText: '返回'
+  })
+  if (res.confirm) openTopicSheet(t)
+  return false
+}
+
 // 完成会议前的待办拦截：会议结束即锁票（方案A），还有待处理议题时先确认，免得再也补不了
 async function confirmDespitePendingTopics() {
   if (!pendingTopicCount.value) return true
@@ -3174,6 +3195,7 @@ async function confirmDespitePendingTopics() {
 
 async function endAndGenerateMinutes() {
   if (!generated.value) { toast({ title: '请先完成录音识别', icon: 'none' }); return }
+  if (!(await guardUnvotedBeforeEnd())) return
   if (!(await confirmDespitePendingTopics())) return
   minutesGenerated.value = true
   persistQuickState()
@@ -3182,6 +3204,7 @@ async function endAndGenerateMinutes() {
 
 async function endWithoutMinutes() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
+  if (!(await guardUnvotedBeforeEnd())) return
   if (!(await confirmDespitePendingTopics())) return
   await _doEndAndGo('/pages/committee-detail/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick')
 }
@@ -3678,6 +3701,9 @@ async function returnToRecordingPage() {
 .er-topic-result.fail { color:#C0392B; }
 .er-topic-result.done { color:#5F6673; }
 .er-topic-result.todo { color:#B26A00; }
+.er-topic-row.clickable { cursor:pointer; }
+.er-topic-row.clickable:active .er-topic-title { color:#2A2F36; }
+.er-topic-arrow { flex-shrink:0; color:#C4C9D0; font-size:26rpx; line-height:1; }
 /* 会议纪要块与清单之间空出一段，形成"核对完 → 生成"的段落感 */
 .er-hint { margin-top:64rpx; text-align:center; font-size:24rpx; color:#98A2B3; line-height:1.5; }
 .end-review-primary { display:block; width:70%; margin:14rpx auto 0; height:80rpx; border:0; border-radius:20rpx; background:#0F766E; color:#fff; font-size:30rpx; font-weight:700; line-height:80rpx; box-shadow:0 10rpx 22rpx rgba(15,118,110,0.22); }

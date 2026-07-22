@@ -169,6 +169,10 @@ export default {
   committeeOpinionAssist: function (id, topicId, mode, text) {
     return core.realRequest('POST', '/api/committees/' + id + '/topics/' + topicId + '/opinions/assist', { mode: mode, text: text }, { timeout: 120000 });
   },
+  // 通用附件上传（图片/PDF）：拿到公网 URL 后再调各业务接口（如代投凭证）
+  uploadAttachment: function (fileOrBlob) {
+    return core.uploadFile('/api/attachments/upload', fileOrBlob, 'file', {}, { timeout: 60000 });
+  },
   committeeProxyTargets: function (id, keyword) {
     var params = keyword ? '?keyword=' + encodeURIComponent(keyword) : '';
     return core.request('GET', '/api/committees/' + id + '/proxy-targets' + params);

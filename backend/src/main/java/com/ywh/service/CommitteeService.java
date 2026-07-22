@@ -2486,9 +2486,7 @@ public class CommitteeService {
         if (req.getMemberIds() == null || req.getMemberIds().isEmpty()) {
             throw new IllegalArgumentException("请选择代录对象");
         }
-        if (req.getProofUrl() == null || req.getProofUrl().trim().isEmpty()) {
-            throw new IllegalArgumentException("请上传代录凭证");
-        }
+        // 代录凭证测试期选填（0722 用户定，上线前再定是否恢复必填——见 docs/上线前TODO.md）
         if ("vote".equals(req.getActionType())) {
             if (req.getTopicId() == null) {
                 throw new IllegalArgumentException("请选择投票议题");
@@ -2674,7 +2672,8 @@ public class CommitteeService {
         List<RecordEvidence> evidences = evidenceRepo.findByRecordId(record.getId());
 
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
-        int total = attendances.size();
+        // 表决分母只算已签到参会者（0722 用户定：请假/未参会不计入表决；已签到者都应有投票结果）
+        int total = (int) attendances.stream().filter(a -> Boolean.TRUE.equals(a.getSignedIn())).count();
         // 通报类「已读进度」用：会议参会名单 id 集合 + 人数（作为"全体已通报"的分母）。
         // 请假等例外由主任使用「标记全体已通报」人工收口，不让签到先后顺序提前完成通报。
         Set<Long> attendeeIds = attendances.stream()

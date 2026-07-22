@@ -82,6 +82,40 @@
                 <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
               </div>
             </div>
+            <!-- 代委员投票（仅主持人、表决未结束）：委员忘投/不会用手机时，主任代录并留凭证审计 -->
+            <div v-if="isChair && interactive" class="ts-proxy">
+              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">代委员投票</button>
+              <div v-else class="ts-proxy-panel">
+                <div class="ts-proxy-title">代投对象（已签到、未投票）<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
+                <div v-if="proxyLoading" class="ts-empty">加载中…</div>
+                <div v-else-if="!proxyTargets.length" class="ts-empty">没有已签到且未投票的委员</div>
+                <template v-else>
+                  <div class="ts-proxy-people">
+                    <span v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-person"
+                          :class="{ on: proxySelected.has(p.memberId) }" @click="toggleProxyMember(p.memberId)">{{ p.name }}</span>
+                  </div>
+                  <div class="ts-proxy-choices">
+                    <template v-if="(topic.decisionType || 'simple') !== 'multi_choice'">
+                      <span v-for="c in ['for_vote','against','abstain']" :key="c" class="ts-proxy-choice"
+                            :class="{ on: proxyChoice === c }" @click="proxyChoice = c">{{ { for_vote: '同意', against: '不同意', abstain: '弃权' }[c] }}</span>
+                    </template>
+                    <template v-else>
+                      <span v-for="o in (topic.options || [])" :key="o.id" class="ts-proxy-choice"
+                            :class="{ on: String(proxyOptId) === String(o.id) }" @click="proxyOptId = o.id">{{ o.label }}</span>
+                    </template>
+                  </div>
+                  <div class="ts-proxy-proof">
+                    <button class="ts-proxy-proof-btn" :class="{ ok: proxyProofUrl }" :disabled="proxyUploading" @click="pickProxyProof">
+                      {{ proxyUploading ? '上传中…' : (proxyProofUrl ? '✓ 已传凭证' : '凭证照片（选填）') }}
+                    </button>
+                    <span class="ts-proxy-proof-tip">纸质表决单或聊天记录截图</span>
+                  </div>
+                  <button class="ts-proxy-submit" :disabled="!canSubmitProxy || proxySubmitting" @click="submitProxy">
+                    {{ proxySubmitting ? '提交中…' : '确认代投' }}
+                  </button>
+                </template>
+              </div>
+            </div>
           </template>
           <!-- 已表决：结果卡整块替换选择区（研究P1：占屏结果态明确"做完了"，不靠按钮变淡） -->
           <div v-else-if="topic.myVote" class="ts-vote-done"><span class="ts-vote-done-mark">✓</span>您已投「{{ myVoteLabel }}」</div>
@@ -249,6 +283,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import api from '@/api'
 import { toast, showModal, showActionSheet, showLoading, hideLoading } from '@/utils/ui'
+import { getStorage } from '@/utils/storage'
 import { useRecorder } from '@/composables/useRecorder'
 import { useAsrStream } from '@/composables/useAsrStream'
 import { applyHotwords } from '@/utils/helpers'
@@ -489,6 +524,29 @@ function toggleOp(op) {
   openOpIds.value = s
 }
 
+// ── 代委员投票状态（仅主持人）：委员忘投/不会用手机时，主任代录。后端留 operator/isProxy/凭证 审计。
+// 声明须在下方 immediate watch 之前（watch 首跑就会调 resetProxy）
+const proxyOpen = ref(false)
+const proxyLoading = ref(false)
+const proxyTargets = ref([])        // 已签到且本议题未投票的委员（不含自己）
+const proxySelected = ref(new Set())
+const proxyChoice = ref(null)       // simple: for_vote/against/abstain
+const proxyOptId = ref(null)        // multi_choice: 选项 id
+const proxyProofUrl = ref('')
+const proxyUploading = ref(false)
+const proxySubmitting = ref(false)
+let _proxyProofInput = null
+// 凭证测试期选填（0722 用户定，上线前再定是否必填——见 docs/上线前TODO.md）
+const canSubmitProxy = computed(() =>
+  proxySelected.value.size > 0
+  && ((props.topic && (props.topic.decisionType || 'simple') === 'multi_choice') ? proxyOptId.value != null : !!proxyChoice.value)
+  && !proxyUploading.value)
+function resetProxy() {
+  proxyOpen.value = false; proxyLoading.value = false; proxyTargets.value = []
+  proxySelected.value = new Set(); proxyChoice.value = null; proxyOptId.value = null
+  proxyProofUrl.value = ''; proxyUploading.value = false; proxySubmitting.value = false
+}
+
 // 打开（topic 切换/出现）时拉取本议题意见；关闭/切议题时收掉语音条（释放麦克风）和 AI 状态
 watch(() => props.topic && props.topic.id, (id) => {
   cancelVoice()
@@ -497,6 +555,7 @@ watch(() => props.topic && props.topic.id, (id) => {
   opinionOpen.value = false
   opinionListOpen.value = false
   pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''; localRetracted.value = false
+  resetProxy()
   if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
 }, { immediate: true })
 onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
@@ -871,6 +930,85 @@ async function retractVote() {
   } finally { voteSubmitting.value = false }
 }
 
+async function openProxy() {
+  const t = props.topic
+  if (!t) return
+  proxyOpen.value = true
+  proxyLoading.value = true
+  try {
+    const list = await api.committeeProxyTargets(props.meetingId)
+    const me = getStorage('activeRole', null) || {}
+    proxyTargets.value = (list || []).filter(p =>
+      p.signedIn
+      && !(p.votedTopicIds || []).some(id => String(id) === String(t.id))
+      && String(p.memberId) !== String(me.id || ''))
+  } catch (e) {
+    toast({ title: (e && e.message) || '名单加载失败', icon: 'none' })
+    proxyOpen.value = false
+  } finally { proxyLoading.value = false }
+}
+function toggleProxyMember(id) {
+  const next = new Set(proxySelected.value)
+  if (next.has(id)) next.delete(id); else next.add(id)
+  proxySelected.value = next
+}
+function pickProxyProof() {
+  if (!_proxyProofInput) {
+    _proxyProofInput = document.createElement('input')
+    _proxyProofInput.type = 'file'
+    _proxyProofInput.accept = 'image/*'
+    _proxyProofInput.style.display = 'none'
+    _proxyProofInput.addEventListener('change', onProxyProofChange)
+    document.body.appendChild(_proxyProofInput)
+  }
+  _proxyProofInput.value = ''
+  _proxyProofInput.click()
+}
+async function onProxyProofChange(e) {
+  const f = (e.target.files || [])[0]
+  if (!f) return
+  proxyUploading.value = true
+  try {
+    const res = await api.uploadAttachment(f)
+    proxyProofUrl.value = (res && res.url) || ''
+    if (!proxyProofUrl.value) throw new Error('上传失败')
+  } catch (err) {
+    toast({ title: (err && err.message) || '凭证上传失败，请重试', icon: 'none' })
+  } finally { proxyUploading.value = false }
+}
+async function submitProxy() {
+  const t = props.topic
+  if (!t || !canSubmitProxy.value || proxySubmitting.value) return
+  const names = proxyTargets.value.filter(p => proxySelected.value.has(p.memberId)).map(p => p.name).join('、')
+  const isMulti = (t.decisionType || 'simple') === 'multi_choice'
+  const label = isMulti
+    ? (((t.options || []).find(o => String(o.id) === String(proxyOptId.value)) || {}).label || '')
+    : ({ for_vote: '同意', against: '不同意', abstain: '弃权' }[proxyChoice.value] || '')
+  const res = await showModal({
+    title: '代投确认',
+    content: '代 ' + names + ' 投「' + label + '」？',
+    confirmText: '确认代投',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  proxySubmitting.value = true
+  try {
+    await api.committeeProxySubmit(props.meetingId, {
+      actionType: 'vote',
+      topicId: t.id,
+      memberIds: Array.from(proxySelected.value),
+      choice: isMulti ? null : proxyChoice.value,
+      selectedId: isMulti ? proxyOptId.value : null,
+      proofUrl: proxyProofUrl.value || null
+    })
+    toast({ title: '已代投', icon: 'success' })
+    resetProxy()
+    emit('changed')
+  } catch (e) {
+    toast({ title: (e && e.message) || '代投失败，请重试', icon: 'none' })
+  } finally { proxySubmitting.value = false }
+}
+
 // 改票后，已有意见可能与新立场冲突：让委员明确选择如何处理最近一条本人意见。
 async function handleOpinionAfterVoteChange(voteValue, option) {
   const own = opinions.value.filter(op => op && op.isSelf && op.canEdit)
@@ -987,7 +1125,7 @@ async function removeOpinion(op) {
 </script>
 
 <style scoped>
-.ts-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 120; display: flex; flex-direction: column; justify-content: flex-end; }
+.ts-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 220; display: flex; flex-direction: column; justify-content: flex-end; } /* 高于会后整理页(180)：整理页点议题行也能弹出 */
 /* 弹层：flex 列——把手/标题固定在上，意见汇总区(.ts-scroll)独占中间可滚动，输入区固定在底部 */
 .ts-sheet { background: #fff; border-radius: 28rpx 28rpx 0 0; padding: 14rpx 30rpx calc(24rpx + env(safe-area-inset-bottom)); height: 88vh; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; }
 .ts-handle { flex-shrink: 0; width: 72rpx; height: 8rpx; border-radius: 4rpx; background: #E4E6EA; margin: 0 auto 16rpx; }
@@ -1113,6 +1251,24 @@ async function removeOpinion(op) {
 /* 撤回：小号次要按钮，靠右，弱化不抢眼（改票是常态，撤回是少数场景/测试用） */
 .ts-vote-retract { margin-left:auto; padding:8rpx 20rpx; border-radius:999rpx; background:#fff; border:2rpx solid #D8DBE0; color:#8A9099; font-size:24rpx; font-weight:600; font-family:inherit; white-space:nowrap; }
 .ts-vote-retract:disabled { opacity:.5; }
+/* 代委员投票（仅主持人）：入口小字按钮；面板浅底卡片内选人/选项/凭证/提交 */
+.ts-proxy { margin-top:16rpx; }
+.ts-proxy-entry { display:block; margin:0 auto; border:0; background:transparent; color:#8A9099; font-size:24rpx; font-weight:600; text-decoration:underline; text-underline-offset:6rpx; font-family:inherit; padding:8rpx 16rpx; }
+.ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
+.ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
+.ts-proxy-close { color:#98A2B3; font-size:34rpx; line-height:1; padding:0 8rpx; }
+.ts-proxy-people { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
+.ts-proxy-person { padding:10rpx 24rpx; border-radius:999rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
+.ts-proxy-person.on { border-color:#0F766E; background:#E6F4F2; color:#0F766E; }
+.ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
+.ts-proxy-choice { padding:10rpx 24rpx; border-radius:12rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
+.ts-proxy-choice.on { border-color:#B26A19; background:#FFF6E8; color:#B26A19; }
+.ts-proxy-proof { margin-top:14rpx; display:flex; align-items:center; gap:12rpx; }
+.ts-proxy-proof-btn { border:2rpx dashed #C9CED6; background:#fff; color:#7A7F87; font-size:23rpx; font-weight:500; border-radius:10rpx; padding:10rpx 20rpx; font-family:inherit; }
+.ts-proxy-proof-btn.ok { border-style:solid; border-color:#B8DFAF; background:#F2FAEF; color:#2E7D32; }
+.ts-proxy-proof-tip { font-size:21rpx; color:#A0A5AD; }
+.ts-proxy-submit { display:block; width:60%; margin:16rpx auto 0; border:0; border-radius:999rpx; background:#0F766E; color:#fff; font-size:26rpx; font-weight:700; padding:14rpx 0; font-family:inherit; }
+.ts-proxy-submit:disabled { background:#C7D1D5; }
 /* 已表决：结果卡整块替换选择区（占屏结果态，明确"做完了·不可改"） */
 .ts-vote-done { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; background: #EAF6E5; border: 2rpx solid #9FD290; border-radius: 16rpx; padding: 24rpx; font-size: 31rpx; font-weight: 800; color: #2E7D32; }
 .ts-vote-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; border-radius: 50%; background: #2E9E4B; color: #fff; font-size: 26rpx; margin-right: 4rpx; }

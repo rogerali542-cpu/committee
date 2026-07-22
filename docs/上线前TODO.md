@@ -13,6 +13,9 @@
       上线须换成真实账号体系，删掉自由切换。
 - [ ] **dev-token 鉴权关闭**：前端无 token 时用 `dev-token-<roleId>` 直通
       （h5/src/api/core.js），上线必须关闭后端对 dev-token 的接受。
+- [ ] **代投凭证是否恢复必填**（0722 记）：主持人代委员投票的凭证照片测试期改为选填
+      （`CommitteeService.validateProxyRequest` 注释处 + TopicSheet `canSubmitProxy`），
+      上线前决定是否恢复必填（防"主任替人乱投"的审计要求）。
 - [ ] **超长录音识别预算**（低优先）：单段识别轮询预算封顶 30 分钟
       （MeetingLiveQuick `maxPollCount`），单段录音超约 1.5 小时可能误报超时。
       建议引导分段录音（已是推荐用法），或调高封顶。
