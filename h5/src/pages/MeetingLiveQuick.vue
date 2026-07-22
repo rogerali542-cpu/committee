@@ -346,7 +346,9 @@
           <span class="roster-pop-close" @click="rosterPopOpen = false">×</span>
         </div>
         <div class="roster-pop-body">
-          <div class="roster-pop-row" v-for="a in signinStats.list" :key="a.userRoleId">
+          <!-- 隐藏纠错（0722 用户定，不做明显指引）：主持人点「未签到且未请假」的人可补记签到
+               （忘了签/手机没电等），确认弹窗防误触；后端走 proxy-actions 留痕 -->
+          <div class="roster-pop-row" v-for="a in signinStats.list" :key="a.userRoleId" @click="proxySignFor(a)">
             <span class="rp-name">{{ a.name }}<span v-if="a.role" class="rp-role"> · {{ a.role }}</span></span>
             <span class="rp-state" :class="a.signedIn ? (a.attendanceMode === 'remote' ? 'remote' : 'on') : (a.declined ? 'off' : 'wait')">
               {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '未签到') }}
@@ -3168,6 +3170,27 @@ async function handleEndReviewPrimary() {
 function findUnvotedVoteTopic() {
   return meetingTopics.value.find(t => t.voteRequired && (t.voted || 0) < (t.total || 0))
 }
+// 隐藏纠错（0722 用户定）：主持人在名单弹窗点「未签到且未请假」的人 → 确认后补记签到。
+// 不做明显指引（纠错功能不该被当常规流程），确认弹窗防误触；后端 proxy-actions 记操作人留痕。
+async function proxySignFor(a) {
+  if (!isHost.value || !a || a.signedIn || a.declined) return
+  if (!detail.value || detail.value.stage !== 'ongoing') return
+  const res = await showModal({
+    title: '补记签到',
+    content: '帮 ' + a.name + ' 补记签到？仅用于确实到场或已委托、但没能自己签到的情况。',
+    confirmText: '补记签到',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeProxySubmit(meetingId.value, { actionType: 'signIn', memberIds: [a.userRoleId], proofUrl: null })
+    toast({ title: '已补记签到', icon: 'success' })
+    await loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '补记失败，请重试', icon: 'none' })
+  }
+}
+
 async function guardUnvotedBeforeEnd() {
   const t = findUnvotedVoteTopic()
   if (!t) return true
