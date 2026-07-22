@@ -415,7 +415,7 @@
           <div v-else-if="transcriptView && transcriptView.emptyText" class="lp-empty">
             {{ transcriptView.emptyText }}
             <button v-if="transcriptView.retryId" class="qk-retry-asr" :disabled="retranscribing"
-                    @click="retranscribeSegment">重新识别这段录音</button>
+                    @click="retranscribeSegment">重新识别</button>
           </div>
           <div v-else-if="transcriptMode === 'short'">
             <span class="qk-transcript-body">{{ transcriptPreviewText || '暂无摘要文本' }}</span>
