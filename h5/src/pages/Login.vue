@@ -19,25 +19,44 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
+import api from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { redirectTo } from '@/utils/navigate'
 
 const auth = useAuthStore()
 
-// 1:1 自 miniapp/pages/login/login.js
-const internalRoles = [
-  { id: 99, realName: '系统管理员', role: '管理员', desc: '管理权限分配' },
-  { id: 1, realName: '张建国', role: '主任', desc: '负责召集主持会议' },
-  { id: 2, realName: '李秀英', role: '副主任', desc: '协助主任开展工作' },
-  { id: 3, realName: '王志强', role: '委员', desc: '确认参会和参与表决' },
-  { id: 4, realName: '赵丽娟', role: '委员', desc: '确认参会和参与表决' },
-  { id: 5, realName: '刘海涛', role: '委员', desc: '确认参会和参与表决' },
-  { id: 6, realName: '陈晓梅', role: '委员', desc: '确认参会和参与表决' },
-  { id: 7, realName: '杨国华', role: '委员', desc: '确认参会和参与表决' }
+const ROLE_DESC = { '主任': '负责召集主持会议', '副主任': '协助主任开展工作', '委员': '确认参会和参与表决' }
+const ADMIN_ROLE = { id: 99, realName: '系统管理员', role: '管理员', desc: '管理权限分配', communityId: 1, communityName: '阳光家园' }
+// 兜底名单（后端连不上时可用）——正常情况下 onMounted 会用数据库 user_roles 覆盖，
+// 根治"前端写死名单与库脱节→材料里人名对不上"（0723 测试反馈#1）
+const FALLBACK_ROLES = [
+  ADMIN_ROLE,
+  { id: 1, realName: '张建国', role: '主任', desc: ROLE_DESC['主任'] },
+  { id: 2, realName: '李秀英', role: '副主任', desc: ROLE_DESC['副主任'] },
+  { id: 3, realName: '王志强', role: '委员', desc: ROLE_DESC['委员'] },
+  { id: 4, realName: '赵丽娟', role: '委员', desc: ROLE_DESC['委员'] },
+  { id: 5, realName: '刘海涛', role: '委员', desc: ROLE_DESC['委员'] },
+  { id: 6, realName: '陈晓梅', role: '委员', desc: ROLE_DESC['委员'] },
+  { id: 7, realName: '杨国华', role: '委员', desc: ROLE_DESC['委员'] }
 ]
+const internalRoles = ref(FALLBACK_ROLES)
+
+onMounted(async () => {
+  try {
+    const list = await api.devRoles()
+    if (Array.isArray(list) && list.length) {
+      internalRoles.value = [ADMIN_ROLE].concat(list.map(r => ({
+        id: r.id, realName: r.realName, role: r.role,
+        desc: ROLE_DESC[r.role] || '参与业委会工作',
+        communityId: r.communityId || 1, communityName: r.communityName || '阳光家园'
+      })))
+    }
+  } catch (e) { /* 后端未启动：用兜底名单，能进但材料人名可能对不上 */ }
+})
 
 function doLogin(r) {
-  auth.login({ id: r.id, role: r.role, realName: r.realName, communityId: 1, communityName: '阳光家园' })
+  auth.login({ id: r.id, role: r.role, realName: r.realName, communityId: r.communityId || 1, communityName: r.communityName || '阳光家园' })
   redirectTo('/pages/main/main')
   // 部分手机 WebView / Cloudflare 公网预览中偶发软路由不切页；登录态已写入后用硬跳兜底。
   setTimeout(() => {

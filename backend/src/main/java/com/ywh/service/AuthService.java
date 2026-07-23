@@ -81,6 +81,26 @@ public class AuthService {
                 .build();
     }
 
+    /** 测试期身份名单：库里业委会侧角色（主任/副主任/委员），按 id 排序。名单唯一事实源=user_roles。 */
+    public List<java.util.Map<String, Object>> listDevRoles() {
+        return userRoleRepo.findAll().stream()
+                .filter(r -> {
+                    String n = r.getRole() == null ? "" : r.getRole().name();
+                    return "主任".equals(n) || "副主任".equals(n) || "委员".equals(n);
+                })
+                .sorted(java.util.Comparator.comparing(UserRoleEntity::getId))
+                .map(r -> {
+                    java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("id", r.getId());
+                    m.put("realName", r.getRealName());
+                    m.put("role", r.getRole().name());
+                    m.put("communityId", r.getCommunity() != null ? r.getCommunity().getId() : null);
+                    m.put("communityName", r.getCommunity() != null ? r.getCommunity().getName() : null);
+                    return m;
+                })
+                .collect(Collectors.toList());
+    }
+
     public LoginResponse refreshMe() {
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         if (ur == null) throw new IllegalArgumentException("未登录");

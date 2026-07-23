@@ -104,8 +104,8 @@ function refresh() {
   const role = getStorage('activeRole', null)
   if (!role) { redirectTo('/pages/login/login'); return }
 
-  // All identities for switching
-  const allIdentities = [
+  // 切换身份名单：优先用后端 user_roles（onMounted 拉取，根治写死名单与库脱节），兜底旧写死名单
+  const allIdentities = serverIdentities.value || [
     { id: 99, realName: '系统管理员', role: '管理员', roleClass: 'chair' },
     { id: 1, realName: '张建国', role: '主任', roleClass: 'chair' },
     { id: 2, realName: '李秀英', role: '副主任', roleClass: 'chair' },
@@ -177,8 +177,8 @@ async function switchRole(item) {
     id: parseInt(item.id),
     role: item.role,
     realName: item.realName,
-    communityId: 1,
-    communityName: '阳光家园'
+    communityId: item.communityId || 1,
+    communityName: item.communityName || '阳光家园'
   }
   if (meetingRecordingSession.meetingId) {
     await discardMeetingRecording(meetingRecordingSession.meetingId)
@@ -200,8 +200,25 @@ async function doLogout() {
   redirectTo('/pages/login/login')
 }
 
+// 后端身份名单（唯一事实源=user_roles）：拉到后重刷切换列表；失败留 null 走兜底写死名单
+const serverIdentities = ref(null)
+async function loadServerIdentities() {
+  try {
+    const list = await api.devRoles()
+    if (Array.isArray(list) && list.length) {
+      serverIdentities.value = [{ id: 99, realName: '系统管理员', role: '管理员', roleClass: 'chair' }]
+        .concat(list.map(r => ({
+          id: r.id, realName: r.realName, role: r.role,
+          roleClass: r.role === '委员' ? 'member' : 'chair',
+          communityId: r.communityId, communityName: r.communityName
+        })))
+      refresh()
+    }
+  } catch (e) { /* 后端未启动：走兜底名单 */ }
+}
+
 let mounted = false
-onMounted(() => { mounted = true; refresh() })
+onMounted(() => { mounted = true; refresh(); loadServerIdentities() })
 onActivated(() => { if (mounted) refresh() })
 </script>
 

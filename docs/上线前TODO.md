@@ -22,3 +22,6 @@
 - [ ] **超长录音识别预算**（低优先）：单段识别轮询预算封顶 30 分钟
       （MeetingLiveQuick `maxPollCount`），单段录音超约 1.5 小时可能误报超时。
       建议引导分段录音（已是推荐用法），或调高封顶。
+- [ ] **/api/auth/dev-roles 关闭**（0723 记）：测试期登录页/个人中心切身份的名单接口，
+      免登录暴露委员姓名（SecurityConfig permitAll + AuthController.devRoles）。
+      上线换真实登录后必须移除或加鉴权；前端 Login/Profile 的兜底写死名单一并删除。

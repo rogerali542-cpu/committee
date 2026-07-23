@@ -27,6 +27,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login").permitAll()
+                // 测试期身份名单（登录页选身份用，登录前无 token）。⚠ 上线前关闭（docs/上线前TODO.md）
+                .requestMatchers("/api/auth/dev-roles").permitAll()
                 .requestMatchers("/api/share/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/api-docs/**").permitAll()
                 .requestMatchers("/api/public-info/**").permitAll()
