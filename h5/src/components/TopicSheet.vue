@@ -1073,7 +1073,7 @@ async function handleOpinionAfterVoteChange(voteValue, option) {
       if (!generated || !generated.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
       const review = await showModal({
         title: '确认重写意见', content: generated.text, editable: true,
-        placeholderText: '可修改 AI 生成的意见', confirmText: '保存替换', cancelText: '取消', size: 'large'
+        placeholderText: '可修改 AI 生成的意见', confirmText: '替换', cancelText: '取消', size: 'large'
       })
       const content = review.confirm ? String(review.content || '').trim() : ''
       if (!content) return
