@@ -149,7 +149,9 @@
           <button class="end-review-primary" :disabled="endReviewPrimaryDisabled" @click="handleEndReviewPrimary">
             {{ endReviewPrimaryText }}
           </button>
-          <button class="end-review-secondary" :disabled="ending" @click="endWithoutMinutes">完成会后整理</button>
+          <button class="end-review-secondary" :disabled="ending || minutesGenBusy" @click="endWithoutMinutes">
+            {{ minutesGenBusy ? '纪要生成中…' : '完成会后整理' }}
+          </button>
         </div>
       </div>
     </div>
@@ -1259,6 +1261,10 @@ const endReviewPrimaryDisabled = computed(() => {
   if (uploading.value || polling.value || extracting.value) return true
   return !(generated.value && hasSavedRecordings.value)
 })
+// 纪要生成在途（本页遮罩/全局后台任务/服务端恢复轮询/正在跳纪要页）——期间「完成会后整理」必须封锁：
+// 生成中点它会带着未完成的纪要状态跳详情页，两条流程互相踩（0723 用户报的 bug）
+const minutesGenBusy = computed(() =>
+  generatingMinutes.value || bgMinutesGenerating.value || minutesResuming.value || leavingToMinutes.value)
 // —— 重做：阶段条 + 折叠态 + 签到跳转动画 ——
 // 阶段：1=签到 2=录音 3=生成会议纪要（已生成即到第3步）
 const flowStep = computed(() => endReviewVisible.value || minutesGenerated.value
@@ -3450,6 +3456,8 @@ async function endAndGenerateMinutes() {
 
 async function endWithoutMinutes() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
+  // 兜底同按钮禁用条件：纪要生成在途时不允许完成整理（生成流程与结束流程互踩）
+  if (minutesGenBusy.value) { toast({ title: '会议纪要正在生成，请等生成完成后再操作', icon: 'none' }); return }
   if (!(await guardUnvotedBeforeEnd())) return
   if (!(await confirmDespitePendingTopics())) return
   await _doEndAndGo('/pages/committee-detail/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick')
