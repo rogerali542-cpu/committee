@@ -508,9 +508,13 @@
             </div>
           </div>
 
-          <!-- 居委会见证（说明式开关卡片，精简为一行）：初始就显示，仅标记 hasMajorIssue，不自动通知 -->
+          <!-- 居委会见证（说明式开关卡片）：初始就显示，仅标记 hasMajorIssue，不自动通知。
+               0723 用户定：主标题只留「含重大事项」，两条制度要求（提前 7 天公告、居委会到场见证）小字补充 -->
           <div class="juwei-card" @click="createForm.juweiWitness = !createForm.juweiWitness">
-            <div class="juwei-title">含重大事项，需居委会到场见证</div>
+            <div class="juwei-text">
+              <div class="juwei-title">含重大事项</div>
+              <div class="juwei-sub">需提前 7 天向业主公告，并请居委会到场见证</div>
+            </div>
             <span class="juwei-switch" :class="{ on: createForm.juweiWitness }" role="switch" :aria-checked="createForm.juweiWitness"></span>
           </div>
 
@@ -4242,7 +4246,10 @@ onActivated(show)
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
 /* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
 .juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); cursor: pointer; }
-.juwei-title { flex: 1; min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
+.juwei-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.juwei-title { min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
+/* 制度要求小字（0723）：比标题小两号但不低于适老下限，深灰而非浅灰 */
+.juwei-sub { font-size: 26rpx; color: #526774; line-height: 1.45; }
 /* 开关 */
 .juwei-switch { flex-shrink: 0; width: 84rpx; height: 48rpx; border-radius: 999rpx; background: #D3D6DB; position: relative; transition: background .2s ease; }
 .juwei-switch::after { content: ""; position: absolute; top: 5rpx; left: 5rpx; width: 38rpx; height: 38rpx; border-radius: 50%; background: #fff; box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.2); transition: left .2s ease; }
@@ -4558,7 +4565,8 @@ onActivated(show)
 .create-panel .fl-value { font-size: 32rpx; }                  /* 选中值 16px（点选，不必18px） */
 .create-panel .form-input.large,
 .create-panel .form-input.large::placeholder { font-size: 32rpx; } /* 名称/议题输入 16px */
-.create-panel .juwei-title { font-size: 32rpx; }               /* 居委会见证说明 16px */
+.create-panel .juwei-title { font-size: 32rpx; }               /* 居委会见证主标题 16px */
+.create-panel .juwei-sub { font-size: 28rpx; }                 /* 制度要求小字 14px */
 .create-panel .topic-line-text { font-size: 28rpx; }           /* 已添加议题内容低于分区标题 */
 .create-panel .tat-text { font-size: 32rpx; }                  /* 点此添加议题 16px */
 .create-panel .create-tab { font-size: 30rpx; white-space: nowrap; min-height: 58rpx; padding:8rpx 0; }  /* Tab 总高度较原版压缩约 30% */
@@ -4569,7 +4577,7 @@ onActivated(show)
 .create-panel .meeting-method-line > .fl-label { color: #667B88; font-weight: 500; }
 .create-panel .meeting-info-card .caption-as-title,
 .create-panel .section-title { color: #8A540D; font-weight: 600; letter-spacing: 1rpx; }
-.create-panel .juwei-title { color: #526774; font-weight: 500; }
+.create-panel .juwei-title { color: #24364B; font-weight: 600; } /* 主标题短句后升格，小字负责解释 */
 .create-panel .form-label { color: #667B88; font-weight: 500; }
 .create-panel .fl-value { color: #24364B; font-weight: 700; font-size: 34rpx; }   /* 具体值统一深蓝黑 */
 .create-panel .form-input.large { color: #24364B; font-weight: 700; }
