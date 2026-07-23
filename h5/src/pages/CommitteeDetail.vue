@@ -143,7 +143,8 @@
 
       <!-- 会议基本信息（结束阶段隐藏；主任准备阶段用上方卡片流替代） -->
       <div class="info-card" v-if="detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')">
-        <div class="info-row"><span class="info-k">时间</span>{{ detail.meetingDate }} {{ detail.meetingTime }}</div>
+        <div class="info-row"><span class="info-k">会议名称</span><span class="info-title-v">{{ detail.title }}</span></div>
+        <div class="info-row"><span class="info-k">时间</span>{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }}</div>
         <div class="info-row"><span class="info-k">召开方式</span><span>{{ detail.meetingMethod === 'online' ? '线上会议' : '线下会议' }}</span></div>
         <div class="info-row"><span class="info-k">{{ detail.meetingMethod === 'online' ? '线上平台' : '地点' }}</span><span v-if="detail.meetingMethod === 'online'">{{ detail.location || '微信工作群' }}</span><span class="loc-link" v-else-if="detail.location" @click="openMap(detail.location)">{{ detail.location }}<span class="loc-nav">导航 ›</span></span><span v-else>—</span></div>
         <div class="info-row" v-if="detail.description"><span class="info-k">说明</span>{{ detail.description }}</div>
@@ -253,18 +254,21 @@
           <div class="signin-prog" v-if="userView === 'chair' && detail.flowStats && detail.flowStats.attendance">
             <div class="sp-head">
               <span class="sp-label">{{ detail.meetingMethod === 'online' ? '参会登记进度' : '签到进度' }}</span>
-              <span class="sp-count">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.total }}
-                人{{ detail.meetingMethod === 'online' ? '已登记参会' : '已签到' }}</span>
+              <!-- 分母=应到(全体-请假)，请假人数单独括注（0722 用户定） -->
+              <span class="sp-count">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.expectedCount }}
+                人{{ detail.meetingMethod === 'online' ? '已登记参会' : '已签到' }}<template v-if="detail.flowStats.attendance.absentCount">（{{ detail.flowStats.attendance.absentCount }}人请假）</template></span>
             </div>
             <div class="sp-bar"><div class="sp-fill" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
           </div>
-          <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
+          <!-- 现场已结束时议题卡由下方会后区自带，这里不重复渲染 -->
+          <MeetingTopicsCard v-if="!fieldEndedLocal" :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
         </template>
 
       </template>
 
       <!-- ══════════ 结束阶段 ══════════ -->
-      <template v-if="detail.stage === 'ended'">
+      <!-- 会后功能区：正式结束的会议 + 现场已结束的会议（0722 用户定：测试期不真正归档也要能看到公示/归档等会后功能） -->
+      <template v-if="detail.stage === 'ended' || fieldEndedLocal">
         <!-- 会议录音存档（委员/主任可见，外部无 record 自动隐藏）-->
         <div v-if="detail.meetingMethod !== 'online' && detail.record && detail.record.recordingUrl" class="rec-archive-card">
           <div class="rac-head">
@@ -917,7 +921,8 @@ function topicVoteSummary(topic) {
 
 function decorateMeetingTopics(detail) {
   if (!detail || !detail.record || !detail.record.topics) return
-  var ended = detail.stage === 'ended'
+  // 现场已结束(本地标记)时议题也按"会后"口径展示结论标签
+  var ended = detail.stage === 'ended' || _fieldEndedLocally()
   detail.record.topics = detail.record.topics.map(function (topic) {
     topic.typeLabel = topicTypeLabel(topic)
     topic.typeClass = topicTypeClass(topic)
@@ -947,6 +952,9 @@ function buildFlowStats(detail) {
   var signedInCount = record.signedInCount !== undefined && record.signedInCount !== null
     ? toNumber(record.signedInCount)
     : attendances.filter(function (item) { return item.signedIn }).length
+  // 应到=全体-请假缺席（0722 用户定）：进度显示按应到；法定人数(need)仍按全体算
+  var absentCount = attendances.filter(function (item) { return item.declined }).length
+  var expectedCount = Math.max(0, attendanceTotal - absentCount)
   var need = attendanceTotal > 0 ? Math.floor(attendanceTotal / 2) + 1 : 0
 
   var topics = (record.topics || []).filter(function (topic) { return topic.voteRequired !== false })
@@ -974,9 +982,11 @@ function buildFlowStats(detail) {
     },
     attendance: {
       total: attendanceTotal,
+      expectedCount: expectedCount,
+      absentCount: absentCount,
       signedInCount: signedInCount,
       need: need,
-      pct: percent(signedInCount, attendanceTotal),
+      pct: percent(signedInCount, expectedCount || attendanceTotal),
       done: attendanceTotal > 0 && signedInCount >= need,
       statusText: attendanceTotal > 0 ? (signedInCount >= need ? '已达到法定人数' : '未达到法定人数') : '暂无参会记录'
     },
@@ -1537,7 +1547,7 @@ async function loadDetail() {
     // 快速会议模式（进行中时生效）：隐藏代录、添加议题等逐题表决相关入口
     const qMode = d.stage === 'ongoing' && d.meetingMode === 'quick'
 
-    if (d.stage === 'ended' && !endedDetailInitialized.value) {
+    if ((d.stage === 'ended' || fieldEndedLocal.value) && !endedDetailInitialized.value) {
       endedDetailOpen.value = !!d.minutesReady
       endedDetailInitialized.value = true
     }
@@ -2970,9 +2980,12 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .tb-hint { font-size: 28rpx; color:#666; margin-top:4px; display:block; }
 
 /* Info */
-.info-card { background:#fff; border-radius:16px; padding:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
-.info-row { font-size: 28rpx; color:#555; margin-bottom:6px; display:flex; align-items:flex-start; gap:8px; }
-.info-k { font-size: 28rpx; color:#666; flex-shrink:0; }
+/* 0722 用户定：加会议名称行、行距收紧、字重 +100 */
+.info-card { background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+.info-row { font-size: 28rpx; color:#444; font-weight:500; margin-bottom:3px; display:flex; align-items:flex-start; gap:8px; }
+.info-row:last-child { margin-bottom:0; }
+.info-k { font-size: 28rpx; color:#666; font-weight:500; flex-shrink:0; }
+.info-title-v { font-weight:600; color:#2A2F36; }
 /* 会议地点：可点跳地图 */
 .loc-link { color:#0051FF; display:inline-flex; align-items:center; gap:8rpx; flex-wrap:wrap; cursor:pointer; }
 .loc-nav { font-size:22rpx; color:#0051FF; background:#EAF0FF; padding:2rpx 12rpx; border-radius:10rpx; white-space:nowrap; }
@@ -3405,8 +3418,11 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* Wizard Stepper */
 .live-entry { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#FFCC44,#FFA800); border-radius:16px; padding:18px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(255,168,0,0.25); }
-/* 现场已结束：黄色进行中横条换成沉稳的会后绿，避免误以为会议还在开 */
-.live-entry.ended { background:linear-gradient(135deg,#3D9C74,#2E7D5B); box-shadow:0 2px 8px rgba(46,125,91,0.25); }
+/* 现场已结束：改用浅绿底深绿字的弱化样式——只是状态说明+入口，不该比正文抢眼 */
+.live-entry.ended { background:#EEF6F1; border:1px solid #D5E8DD; box-shadow:none; }
+.live-entry.ended .live-entry-title { color:#1F5B44; }
+.live-entry.ended .live-entry-sub { color:#5E8271; }
+.live-entry.ended .live-entry-arrow { color:#fff; background:#2E7D5B; }
 .live-entry-main { flex:1; }
 .live-entry-title { display:block; font-size: 32rpx; font-weight:700; color:#fff; line-height:1.4; }
 .live-entry-sub { display:block; font-size: 28rpx; color:rgba(255,255,255,0.85); margin-top:4px; line-height:1.5; }
