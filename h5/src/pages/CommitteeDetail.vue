@@ -1061,13 +1061,14 @@ const isFreshEnded = computed(() => {
   return !(pub && pub.published) && !(pub && pub.withdrawn) && !d._archived
 })
 
-// 是否展示会后视图（结果与公示）。主任靠本地标记 fieldEndedLocal；委员没有主任的本地标记，
-// 测试期会议 stage 又一直是 ongoing，所以委员改用后端全局信号：纪要已生成或已公示即视为进入会后。
+// 是否展示会后视图（结果与公示）。同设备主任靠本地标记 fieldEndedLocal；
+// 委员没有主任的本地标记、主任换设备后本地标记也没了，故一律再认后端全局信号：
+// 纪要已生成或已公示即视为进入会后（进行中的会议这两者都为 false，不会误判）。
 const showPostMeeting = computed(() => {
   const d = detail.value
   if (!d) return false
   if (d.stage === 'ended' || fieldEndedLocal.value) return true
-  return userView.value === 'member' && (!!d.minutesReady || !!(d.publish && d.publish.published))
+  return !!d.minutesReady || !!(d.publish && d.publish.published)
 })
 
 // 顶部橙色区域标题：随会议阶段变化（创建后进入即"会议通知"——总结会议信息并向委员发送通知）
@@ -1433,7 +1434,10 @@ async function loadDetail() {
     // 进行中主任直接进入「会议进行」录音向导（替换当前页，退出即回列表）。
     // 例外（0722）：现场会议已结束（本地快照标记，测试期不真正归档）→ 留在详情页，
     // 否则「完成会后整理」跳过来又被弹回会议页，看起来像按钮没反应。
-    if (d.stage === 'ongoing' && d.record && uv === 'chair' && !_fieldEndedLocally()) {
+    // 换设备兜底（0723）：本地标记只在原设备有；只要后端已有纪要或已公示（全局信号），
+    // 说明会后流程已走过，任何设备的主任都应留在详情页看会后，而不是被弹回录音向导。
+    const chairPostSignal = !!d.minutesReady || !!(d.publish && d.publish.published)
+    if (d.stage === 'ongoing' && d.record && uv === 'chair' && !_fieldEndedLocally() && !chairPostSignal) {
       redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
       return
     }
