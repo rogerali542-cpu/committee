@@ -142,14 +142,7 @@
       </template>
 
       <!-- 会议基本信息（结束阶段隐藏；主任准备阶段用上方卡片流替代） -->
-      <!-- 现场已结束后隐藏：下方会后大卡自带 名称/时间/地点，两处重复（0722 用户定） -->
-      <div class="info-card" v-if="detail.stage !== 'ended' && !fieldEndedLocal && !(userView === 'chair' && detail.stage === 'preparing')">
-        <div class="info-row"><span class="info-k">会议名称</span><span class="info-title-v">{{ detail.title }}</span></div>
-        <div class="info-row"><span class="info-k">时间</span>{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }}</div>
-        <div class="info-row"><span class="info-k">召开方式</span><span>{{ detail.meetingMethod === 'online' ? '线上会议' : '线下会议' }}</span></div>
-        <div class="info-row"><span class="info-k">{{ detail.meetingMethod === 'online' ? '线上平台' : '地点' }}</span><span v-if="detail.meetingMethod === 'online'">{{ detail.location || '微信工作群' }}</span><span class="loc-link" v-else-if="detail.location" @click="openMap(detail.location)">{{ detail.location }}<span class="loc-nav">导航 ›</span></span><span v-else>—</span></div>
-        <div class="info-row" v-if="detail.description"><span class="info-k">说明</span>{{ detail.description }}</div>
-      </div>
+      <!-- 会议基本信息卡已删（0722 用户定）：会后大卡自带名称/时间/地点，进行中主任/委员都直进会议页看不到本页 -->
 
       <div class="notice-package-card" v-if="noticePackageVisible">
         <div class="npc-head">
@@ -252,16 +245,7 @@
             </div>
             <span class="live-entry-arrow">{{ fieldEndedLocal ? '会后整理 ›' : '进入 ›' }}</span>
           </div>
-          <!-- 现场已结束后隐藏：签到已在会后整理页重点处理过（改状态/打印签到表），此处不再重复 -->
-          <div class="signin-prog" v-if="userView === 'chair' && !fieldEndedLocal && detail.flowStats && detail.flowStats.attendance">
-            <div class="sp-head">
-              <span class="sp-label">{{ detail.meetingMethod === 'online' ? '参会登记进度' : '签到进度' }}</span>
-              <!-- 分母=应到(全体-请假)，请假人数单独括注（0722 用户定） -->
-              <span class="sp-count">{{ detail.flowStats.attendance.signedInCount }}/{{ detail.flowStats.attendance.expectedCount }}
-                人{{ detail.meetingMethod === 'online' ? '已登记参会' : '已签到' }}<template v-if="detail.flowStats.attendance.absentCount">（{{ detail.flowStats.attendance.absentCount }}人请假）</template></span>
-            </div>
-            <div class="sp-bar"><div class="sp-fill" :style="{ width: detail.flowStats.attendance.pct + '%' }"></div></div>
-          </div>
+          <!-- 签到进度卡已删（0722 用户定）：签到在会议进行页与会后整理页处理，此处不重复 -->
           <!-- 现场已结束时议题卡由下方会后区自带，这里不重复渲染 -->
           <MeetingTopicsCard v-if="!fieldEndedLocal" :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
         </template>
@@ -2981,16 +2965,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .tb-flow { font-size: 28rpx; color:#666; margin-top:4px; display:block; }
 .tb-hint { font-size: 28rpx; color:#666; margin-top:4px; display:block; }
 
-/* Info */
-/* 0722 用户定：加会议名称行、行距收紧、字重 +100 */
-.info-card { background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
-.info-row { font-size: 28rpx; color:#444; font-weight:500; margin-bottom:3px; display:flex; align-items:flex-start; gap:8px; }
-.info-row:last-child { margin-bottom:0; }
-.info-k { font-size: 28rpx; color:#666; font-weight:500; flex-shrink:0; }
-.info-title-v { font-weight:600; color:#2A2F36; }
-/* 会议地点：可点跳地图 */
-.loc-link { color:#0051FF; display:inline-flex; align-items:center; gap:8rpx; flex-wrap:wrap; cursor:pointer; }
-.loc-nav { font-size:22rpx; color:#0051FF; background:#EAF0FF; padding:2rpx 12rpx; border-radius:10rpx; white-space:nowrap; }
+/* 信息卡/地点导航样式已随信息卡删除（0722 用户定） */
 .proxy-entry {
   background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:12px;
   box-shadow:0 1px 3px rgba(0,0,0,0.04);
@@ -3380,12 +3355,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 @keyframes vi-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,168,0,0.4); } 50% { box-shadow:0 0 0 14rpx rgba(255,168,0,0); } }
 
 /* 进行中签到进度（主任视图） */
-.signin-prog { background:#fff; border-radius:12px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
-.sp-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.sp-label { font-size:28rpx; color:#666; }
-.sp-count { font-size:28rpx; font-weight:700; color:#27AE60; }
-.sp-bar { height:10px; background:#f0f0f0; border-radius:5px; overflow:hidden; }
-.sp-fill { height:100%; background:linear-gradient(90deg,#4FD0A6,#27AE60); border-radius:5px; transition:width 0.3s ease; min-width:4px; }
+/* 签到进度卡样式已随卡片删除（0722 用户定） */
 .voter-list { margin-top:8px; padding:8px 10px; background:#F7F9FA; border-radius:8px; }
 .vl-title { display:block; font-size: 28rpx; color:#2980B9; margin-bottom:4px; }
 .vl-item { display:block; font-size: 28rpx; color:#555; line-height:1.6; }
