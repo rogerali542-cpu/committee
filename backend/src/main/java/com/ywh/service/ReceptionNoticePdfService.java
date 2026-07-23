@@ -182,31 +182,10 @@ public class ReceptionNoticePdfService {
     }
 
     /**
-     * ⚠ 本方法是全仓库第三份拷贝（另见 AttendanceSheetPdfService / MeetingRecordPdfService）。
-     * 路径清单散在三处 = 部署换机器时要改三个地方，已挂清理任务，别再抄第四份。
+     * 字体查找已收敛到 PdfFontLoader（0723）：三份拷贝合一，路径/扫描逻辑只维护一处。
      */
     private PDFont loadChineseFont(PDDocument document) throws IOException {
-        String[] candidates = {
-                "C:/Windows/Fonts/simhei.ttf",
-                "C:/Windows/Fonts/simsunb.ttf",
-                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-                "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
-        };
-        for (String path : candidates) {
-            File f = new File(path);
-            if (!f.isFile()) continue;
-            if (path.toLowerCase().endsWith(".ttf")) return PDType0Font.load(document, f);
-            if (path.toLowerCase().endsWith(".ttc")) {
-                try (TrueTypeCollection collection = new TrueTypeCollection(f)) {
-                    PDFont[] loaded = new PDFont[1];
-                    collection.processAllFonts(ttf -> {
-                        if (loaded[0] == null) loaded[0] = PDType0Font.load(document, ttf, true);
-                    });
-                    if (loaded[0] != null) return loaded[0];
-                }
-            }
-        }
-        throw new IllegalStateException("服务器缺少可用的中文字体，无法生成接待日公告");
+        return com.ywh.util.PdfFontLoader.load(document);
     }
 
     private void text(PDPageContentStream cs, PDFont font, float size, String v, float x, float y) throws IOException {

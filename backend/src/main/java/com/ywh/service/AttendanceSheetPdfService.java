@@ -131,27 +131,7 @@ public class AttendanceSheetPdfService {
     }
 
     private PDFont loadChineseFont(PDDocument document) throws IOException {
-        String[] candidates = {
-                "C:/Windows/Fonts/simhei.ttf",
-                "C:/Windows/Fonts/simsunb.ttf",
-                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-                "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
-        };
-        for (String path : candidates) {
-            File f = new File(path);
-            if (!f.isFile()) continue;
-            if (path.toLowerCase().endsWith(".ttf")) return PDType0Font.load(document, f);
-            if (path.toLowerCase().endsWith(".ttc")) {
-                try (TrueTypeCollection collection = new TrueTypeCollection(f)) {
-                    PDFont[] loaded = new PDFont[1];
-                    collection.processAllFonts(ttf -> {
-                        if (loaded[0] == null) loaded[0] = PDType0Font.load(document, ttf, true);
-                    });
-                    if (loaded[0] != null) return loaded[0];
-                }
-            }
-        }
-        throw new IllegalStateException("服务器缺少可用的中文字体，无法生成签到表");
+        return com.ywh.util.PdfFontLoader.load(document); // 统一三级查找：显式配置 > 常见路径 > 扫描字体目录
     }
 
     private void text(PDPageContentStream cs, PDFont font, float size, String value, float x, float y) throws IOException {

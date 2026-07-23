@@ -337,18 +337,7 @@ public class MeetingRecordPdfService {
     private static String safe(String s) { return (usable(s) ? s : "会议").replaceAll("[\\\\/:*?\"<>|]", "_"); }
 
     private PDFont loadChineseFont(PDDocument document) throws IOException {
-        String[] paths = {"C:/Windows/Fonts/simhei.ttf", "C:/Windows/Fonts/simsun.ttc",
-                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"};
-        for (String path : paths) {
-            File f = new File(path); if (!f.isFile()) continue;
-            if (path.endsWith(".ttf")) return PDType0Font.load(document, f);
-            try (TrueTypeCollection c = new TrueTypeCollection(f)) {
-                PDFont[] found = new PDFont[1];
-                c.processAllFonts(ttf -> { if (found[0] == null) found[0] = PDType0Font.load(document, ttf, true); });
-                if (found[0] != null) return found[0];
-            }
-        }
-        throw new IllegalStateException("服务器缺少中文字体，无法生成会议记录");
+        return com.ywh.util.PdfFontLoader.load(document); // 统一三级查找：显式配置 > 常见路径 > 扫描字体目录
     }
 
     public record PdfFile(String fileName, byte[] bytes) {}
