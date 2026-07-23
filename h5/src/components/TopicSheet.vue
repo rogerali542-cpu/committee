@@ -1217,7 +1217,7 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
 .ts-op-entry.in-summary { margin: 18rpx auto 4rpx; }
-.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 51%; min-height: 70rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 32rpx; font-weight: 700; padding: 12rpx 24rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
+.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 51%; min-height: 80rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 32rpx; font-weight: 700; padding: 14rpx 24rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
