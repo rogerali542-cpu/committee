@@ -15,8 +15,24 @@
         <span v-if="!done" class="aio-badge"><i class="aio-bdot"></i>{{ badge }}</span>
       </div>
 
-      <!-- 进行中 -->
-      <template v-if="!done">
+      <!-- 进行中（适老版 party）：0723 重构——一个任务只留一个进度指标。
+           纸张随进度逐行"写出" + 步骤白话文字 + 单进度条 + 剩余时间，删指标格/步骤圆点/双百分比/抽象红球 -->
+      <template v-if="!done && theme === 'party'">
+        <div class="aiop-paper" aria-hidden="true">
+          <i class="aiop-head"></i>
+          <i v-for="n in 7" :key="n" class="aiop-line" :class="{ on: n <= paperLines }" :style="n === 7 ? 'width:62%' : ''"></i>
+        </div>
+        <span class="aiop-step">第 {{ curStep }} 步（共 {{ steps.length }} 步）</span>
+        <span class="aiop-say">{{ curStepText }}<i>…</i></span>
+        <div class="aiop-prog">
+          <div class="aiop-track"><div class="aiop-fill" :style="{ width: pct + '%' }"></div></div>
+          <span class="aiop-pct">{{ pct }}%</span>
+        </div>
+        <span class="aiop-time">已用时 {{ elapsed }} · {{ etaFriendly }}</span>
+      </template>
+
+      <!-- 进行中（深蓝科技风） -->
+      <template v-else-if="!done">
         <svg class="aio-core" viewBox="0 0 152 118" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
             <radialGradient id="aioOrb" cx="48%" cy="38%" r="62%"><stop offset="0" stop-color="#EAF4FF"/><stop offset="40%" stop-color="#62A6FF"/><stop offset="100%" stop-color="#1B47AE"/></radialGradient>
@@ -52,14 +68,17 @@
         <div class="aio-done-sub">{{ theme === 'party' ? ('用时 ' + elapsed) : ('用时 ' + elapsed + ' · 共消耗 ' + tokens + ' token') }}</div>
       </template>
 
-      <div class="aio-steps">
-        <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' && theme !== 'party' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
-      </div>
+      <!-- 步骤圆点条与底部进度条仅科技风保留；party 版进行中已内联单进度条、完成态无需进度 -->
+      <template v-if="theme !== 'party'">
+        <div class="aio-steps">
+          <div v-for="(label, i) in steps" :key="i" class="aio-step" :class="stepClass(i + 1)"><span class="aio-sdot">{{ stepClass(i + 1) === 'done' ? '✓' : (i + 1) }}</span><span class="aio-slabel">{{ label }}</span></div>
+        </div>
 
-      <div class="aio-prog">
-        <div class="aio-track"><div class="aio-fill" :style="{ width: pct + '%' }"></div></div>
-        <span class="aio-pct">{{ pct }}%</span>
-      </div>
+        <div class="aio-prog">
+          <div class="aio-track"><div class="aio-fill" :style="{ width: pct + '%' }"></div></div>
+          <span class="aio-pct">{{ pct }}%</span>
+        </div>
+      </template>
 
       <button v-if="done" class="aio-btn" @click="onConfirm">{{ doneBtn }} →</button>
       <div v-else class="aio-by">由 <b>豆包大模型</b> 提供 · 完成后自动通知您 🔔</div>
@@ -157,7 +176,12 @@ const steps = computed(() => cfg.value.steps || STEPS_MINUTES)
 const elapsed = computed(() => mmss(sec.value))
 const eta = computed(() => { const r = cfg.value.target - sec.value; return r > 3 ? '还需 ' + mmss(r) : '即将完成' })
 const tokens = computed(() => comma(sec.value * cfg.value.tok))
-const pct = computed(() => (done.value ? 100 : Math.min(96, Math.round((1 - Math.pow(1 - frac.value, 2.2)) * 96))))
+const pct = computed(() => {
+  if (done.value) return 100
+  // 适老版(party)匀速推进：进度百分比与「大约还需 X」口径一致，不做前快后慢的剧场化缓动
+  if (props.theme === 'party') return Math.min(96, Math.round(frac.value * 96))
+  return Math.min(96, Math.round((1 - Math.pow(1 - frac.value, 2.2)) * 96))
+})
 const metricLabel = computed(() => cfg.value.lab)
 const metricVal = computed(() => {
   if (cfg.value.pct) return Math.min(99, Math.round((1 - Math.pow(1 - frac.value, 1.7)) * 99)) + '%'
@@ -165,6 +189,21 @@ const metricVal = computed(() => {
 })
 
 function stepClass(i) { if (done.value) return 'done'; const a = cfg.value.active; return i < a ? 'done' : (i === a ? 'active' : '') }
+
+// 适老版(party)进行中：步骤随进度推进（不再用固定 active 的假步骤条）+ 白话剩余时间 + 纸张写出行数
+const curStep = computed(() => {
+  const n = steps.value.length
+  if (done.value) return n
+  return Math.min(n - 1, 1 + Math.floor(frac.value * (n - 1)))
+})
+const curStepText = computed(() => '正在' + (steps.value[curStep.value - 1] || '处理'))
+const etaFriendly = computed(() => {
+  const r = cfg.value.target - sec.value
+  if (r <= 5) return '马上就好'
+  if (r < 60) return '大约还需 ' + Math.ceil(r / 10) * 10 + ' 秒'
+  return '大约还需 ' + Math.ceil(r / 60) + ' 分钟'
+})
+const paperLines = computed(() => Math.max(1, Math.round(pct.value / 100 * 7)))
 
 function start() { stop(); sec.value = 0; done.value = false; timer = setInterval(() => { sec.value += 1 }, 1000) }
 function stop() { if (timer) { clearInterval(timer); timer = null } }
@@ -272,48 +311,8 @@ onUnmounted(stop)
 .aio-btn { width: 100%; height: 92rpx; border: none; border-radius: 18rpx; background: linear-gradient(90deg, #4FC0FF, #2E73E6); color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 8rpx 28rpx rgba(46,115,230,.45); }
 .aio-btn:active { background: linear-gradient(90deg, #3FA8EC, #245FC4); }
 
-/* 新闻生成的红色科幻风(HUD/扫描线/反应堆/暗红网格)已整体删除（0722 用户定：吓人且不适老），
-   新闻生成与完成态统一走下方「党建新闻适老版」暖白公文样式 */
-
-/* ════════ 红色党建风格（theme=party）：覆盖深蓝科技风配色 ════════ */
-.aio-mask.theme-party { background: rgba(40, 4, 6, 0.68); }
-.aio-card.theme-party {
-  background: radial-gradient(135% 80% at 50% 8%, #C0141B 0%, #8E0F14 52%, #5C0A0E 100%);
-  border-color: rgba(255, 210, 150, 0.4);
-  box-shadow: 0 24rpx 80rpx rgba(80, 8, 10, 0.6), 0 0 60rpx rgba(220, 60, 50, 0.3);
-}
-.theme-party .aio-close { color: #FFE1C4; background: rgba(255,255,255,.12); border-color: rgba(255,210,150,.35); }
-.theme-party .aio-pt { background: #FFD98A; box-shadow: 0 0 12rpx 2rpx rgba(255,200,120,.8); }
-.theme-party .aio-title { color: #FFF3E6; text-shadow: 0 0 24rpx rgba(255,180,120,.55); }
-.theme-party .aio-badge { background: rgba(255,220,170,.18); color: #FFE6C8; border-color: rgba(255,210,150,.4); }
-.theme-party .aio-bdot { background: #FFD070; box-shadow: 0 0 10rpx #FFD070; }
-.theme-party .aio-halo { fill: #E0322D; }
-.theme-party .aio-orb { fill: #D5262B; }
-.theme-party .aio-ring circle { stroke: #FFCF6B; }
-.theme-party .aio-ring2 circle { stroke: #FFB86B; }
-.theme-party .aio-say { color: #FFF1E4; }
-.theme-party .aio-say i { color: #FFC98A; }
-.theme-party .aio-say.done { color: #FFE0C0; }
-.theme-party .aio-done-sub { color: #E6B48C; }
-.theme-party .aio-m { background: rgba(255,255,255,.06); border-color: rgba(255,210,150,.2); }
-.theme-party .aio-ml { color: #E8B58A; }
-.theme-party .aio-mv { color: #FFE6CE; text-shadow: 0 0 16rpx rgba(255,180,120,.45); }
-.theme-party .aio-mv.eta { color: #FFD07A; text-shadow: 0 0 16rpx rgba(255,190,110,.45); }
-.theme-party .aio-steps::before { background: rgba(255,220,180,.18); }
-.theme-party .aio-sdot { background: rgba(255,255,255,.07); border-color: rgba(255,220,180,.28); color: #F0C29A; }
-.theme-party .aio-step.done .aio-sdot { background: #FFC24D; border-color: #FFC24D; color: #5C1B00; box-shadow: 0 0 18rpx rgba(255,194,77,.5); }
-.theme-party .aio-step.active .aio-sdot { background: #E0322D; border-color: #FFB27A; color: #fff; }
-.theme-party .aio-slabel { color: #E7B78F; }
-.theme-party .aio-step.active .aio-slabel { color: #FFE2C6; font-weight: 600; }
-.theme-party .aio-step.done .aio-slabel { color: #FFCF8A; }
-.theme-party .aio-track { background: rgba(255,255,255,.14); }
-.theme-party .aio-fill { background: linear-gradient(90deg, #FFC24D, #E0322D); box-shadow: 0 0 20rpx rgba(255,150,90,.7); }
-.theme-party .aio-pct { color: #FFE6CE; }
-.theme-party .aio-by { color: #E3AE86; }
-.theme-party .aio-by b { color: #FFD9A8; }
-.theme-party .aio-check { background: radial-gradient(circle at 50% 38%, #FFD98A 0%, #F5B301 55%, #C67A00 100%); color: #5C1B00; box-shadow: 0 0 40rpx rgba(245,179,1,.55); }
-.theme-party .aio-btn { background: linear-gradient(90deg, #FF6B4D, #D5262B); box-shadow: 0 8rpx 28rpx rgba(200,40,30,.5); }
-.theme-party .aio-btn:active { background: linear-gradient(90deg, #E85A3C, #B81E23); }
+/* 新闻生成的红色科幻风与暗红渐变卡两版历史样式已删（0722/0723 用户定：吓人且不适老），
+   party 主题统一走下方「党建新闻适老版」暖白公文样式 */
 
 /* 党建新闻适老版：暖白公文卡片、低刺激动效、单一完成标识 */
 .aio-mask.theme-party { background: rgba(37, 24, 24, .48); }
@@ -330,34 +329,28 @@ onUnmounted(stop)
 .theme-party .aio-min { color: #7C5555; background: #F8EEEA; border-color: #E2C9BD; }
 .theme-party .aio-badge { background: #F8ECE7; color: #8B292D; border-color: #E7C7BA; font-size: 26rpx; }
 .theme-party .aio-bdot { background: #A81E24; box-shadow: none; animation: none; }
-.theme-party .aio-halo,
-.theme-party .aio-ring,
-.theme-party .aio-ring2,
-.theme-party .aio-orb { animation: none; }
-.theme-party .aio-halo { opacity: .14; }
-.theme-party .aio-say { color: #3C3030; font-size: 36rpx; line-height: 1.5; }
-.theme-party .aio-say i { color: #A81E24; animation: none; opacity: .7; }
+/* ── 生成中（0723 重构）：公文纸随进度逐行"写出"，含义直观、动效低刺激 ── */
+.aiop-paper {
+  position: relative; width: 204rpx; height: 252rpx; box-sizing: border-box;
+  margin: 30rpx 0 4rpx; background: #FFF;
+  border: 3rpx solid #E3CFC5; border-radius: 12rpx;
+  box-shadow: 0 10rpx 24rpx rgba(90, 45, 40, .1);
+  padding: 28rpx 26rpx; display: flex; flex-direction: column; justify-content: space-between;
+}
+.aiop-head { height: 9rpx; width: 56%; border-radius: 5rpx; background: #A81E24; }
+.aiop-line { height: 7rpx; border-radius: 4rpx; background: #F0E6E0; position: relative; overflow: hidden; }
+.aiop-line::after { content: ""; position: absolute; inset: 0; background: #C5A99E; border-radius: 4rpx; transform: scaleX(0); transform-origin: left; transition: transform .9s ease; }
+.aiop-line.on::after { transform: scaleX(1); }
+.aiop-step { display: block; margin-top: 22rpx; font-size: 26rpx; color: #8A7070; }
+.aiop-say { display: block; font-size: 38rpx; font-weight: 700; color: #4A3535; margin: 10rpx 0 30rpx; }
+.aiop-say i { font-style: normal; color: #A81E24; }
+.aiop-prog { display: flex; align-items: center; gap: 18rpx; width: 100%; }
+.aiop-track { flex: 1; height: 22rpx; background: #EFE3DD; border-radius: 12rpx; overflow: hidden; }
+.aiop-fill { height: 100%; background: #A81E24; border-radius: 12rpx; transition: width 1.1s linear; }
+.aiop-pct { font-size: 36rpx; font-weight: 700; color: #72171C; min-width: 88rpx; text-align: right; font-variant-numeric: tabular-nums; }
+.aiop-time { display: block; font-size: 28rpx; color: #765F5F; margin: 18rpx 0 30rpx; text-align: center; }
 .theme-party .aio-say.done { color: #72171C; font-size: 42rpx; font-weight: 800; margin: 12rpx 0 8rpx; }
 .theme-party .aio-done-sub { color: #765F5F; font-size: 28rpx; margin-bottom: 34rpx; }
-.theme-party .aio-m { background: #FAF5F1; border-color: #E8D9D1; }
-/* 适老版隐藏 token 后剩 3 项：最后一项(进度)占满整行 */
-.theme-party .aio-metrics .aio-m:last-child { grid-column: 1 / -1; }
-.theme-party .aio-ml { color: #765F5F; font-size: 25rpx; }
-.theme-party .aio-mv,
-.theme-party .aio-mv.eta { color: #72171C; text-shadow: none; }
-.theme-party .aio-steps::before { background: #E5D5CD; }
-.theme-party .aio-sdot { background: #FFF; border-color: #D8C4BB; color: #765F5F; }
-.theme-party .aio-step.done .aio-sdot {
-  background: #A81E24; border-color: #A81E24; color: #FFF;
-  box-shadow: none;
-}
-.theme-party .aio-step.active .aio-sdot { background: #A81E24; border-color: #A81E24; animation: none; }
-.theme-party .aio-slabel { color: #765F5F; font-size: 25rpx; line-height: 1.35; }
-.theme-party .aio-step.done .aio-slabel,
-.theme-party .aio-step.active .aio-slabel { color: #72171C; font-weight: 700; }
-.theme-party .aio-track { background: #E9DDD7; height: 18rpx; }
-.theme-party .aio-fill { background: #A81E24; box-shadow: none; transition: width 1.2s linear; }
-.theme-party .aio-pct { color: #72171C; }
 .theme-party .aio-by { color: #806A6A; font-size: 25rpx; }
 .theme-party .aio-by b { color: #72171C; }
 .theme-party .aio-doc-icon {
@@ -375,8 +368,6 @@ onUnmounted(stop)
 .theme-party .aio-doc-icon span:last-child { width: 68%; }
 .theme-party.is-done .aio-hdr { padding-bottom: 12rpx; border-bottom: 2rpx solid #EEE0D9; }
 .theme-party.is-done .aio-badge { background: #F3E4DE; }
-.theme-party.is-done .aio-steps,
-.theme-party.is-done .aio-prog { display: none; }
 .theme-party.is-done .aio-done-core { padding: 34rpx 0 8rpx; }
 .theme-party.is-done .aio-done-sub { margin-bottom: 38rpx; }
 .theme-party .aio-btn {
