@@ -50,12 +50,12 @@
             </button>
           </div>
           <!-- 会前公告（0723，《指导规则》第39条）：向全体业主公告，打印张贴公示栏。
-               0723 用户反馈：按钮太宽太突兀 → 缩到与上排操作同宽档、降为描边次按钮 -->
-          <div class="pre-notice-entry">
+               0723 用户定：仅发起时勾了「含重大事项」的会议显示；显示时再淡化、宽度 50% -->
+          <div v-if="detail.record && detail.record.hasMajorIssue" class="pre-notice-entry">
             <button type="button" class="pre-notice-btn" :disabled="exportingPreNotice" @click="exportPreNotice">
               {{ exportingPreNotice ? '正在生成…' : '导出业主公告' }}
             </button>
-            <div class="pre-notice-hint">按规定应提前 7 天张贴，告知业主会议时间和议程</div>
+            <div class="pre-notice-hint">重大事项按规定应提前 7 天张贴，告知业主会议时间和议程</div>
           </div>
           <div v-if="methodConvertOpen" class="method-convert-panel">
             <div class="method-convert-title">
@@ -2305,7 +2305,7 @@ async function removeMaterial(item) {
 /* 会前公告入口：通知卡内独立一行，向业主公告用（与给委员的通知区分） */
 /* 会前公告入口：与「取消会议/转线上」同宽档(64%)的描边次按钮，不抢版面 */
 .pre-notice-entry { padding:0 12px 12px; display:flex; flex-direction:column; align-items:center; }
-.pre-notice-btn { width:64%; height:64rpx; border:2rpx solid #A7C4DD; border-radius:12rpx; background:#EAF3FB; color:#2F5678; font-size:26rpx; font-weight:600; }
+.pre-notice-btn { width:50%; height:64rpx; border:2rpx solid #C9D8E5; border-radius:12rpx; background:#fff; color:#5A7690; font-size:26rpx; font-weight:500; }
 .pre-notice-btn:active { background:#DCEBF7; }
 .pre-notice-btn:disabled { opacity:.6; }
 .pre-notice-hint { margin-top:8rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
