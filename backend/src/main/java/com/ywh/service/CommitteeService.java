@@ -614,6 +614,11 @@ public class CommitteeService {
         MeetingRecord record = getRecord(meetingId);
         RecordAttendance a = attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), userRoleId)
                 .orElseThrow(() -> new IllegalArgumentException("参会记录不存在"));
+        // 已签到的不允许改回未签到类状态（0723 用户定）：签到是既成事实，只许在现场/线上之间纠错，
+        // 不许抹掉——避免会后把真实到会记录改没，影响记录/纪要的实到人数与表决合法性。
+        if (Boolean.TRUE.equals(a.getSignedIn()) && ("declined".equals(value) || "none".equals(value))) {
+            throw new IllegalArgumentException("该委员已签到，不能改为未签到状态");
+        }
         if ("onsite".equals(value)) {
             a.setSignedIn(true); a.setDeclined(false); a.setAttendanceMode("onsite");
         } else if ("remote".equals(value)) {

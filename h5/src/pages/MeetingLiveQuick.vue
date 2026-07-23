@@ -409,7 +409,7 @@
             <span v-if="canEditAttendance" class="rp-edit" :class="{ on: attMenuFor === a.userRoleId }"
                   @click.stop="toggleAttMenu(a, $event)">▾</span>
             <div v-if="attMenuFor === a.userRoleId" class="rp-menu" :class="{ up: attMenuUp }">
-              <div v-for="o in ATTENDANCE_STATUS_OPTIONS" :key="o.value" class="rp-menu-item"
+              <div v-for="o in attendanceOptionsFor(a)" :key="o.value" class="rp-menu-item"
                    :class="{ cur: attendanceValueOf(a) === o.value }"
                    @click.stop="applyAttendance(a, o)">{{ o.label }}</div>
             </div>
@@ -3366,6 +3366,12 @@ const ATTENDANCE_STATUS_OPTIONS = [
   { label: '请假缺席', value: 'declined' },
   { label: '未参会', value: 'none' },
 ]
+// 已签到的不允许改回未签到（0723 用户定）：签到是既成事实，只能在「已签到/线上参会」间纠错，
+// 下拉里干脆不给出未签到类选项（后端同规则兜底）
+function attendanceOptionsFor(a) {
+  if (a && a.signedIn) return ATTENDANCE_STATUS_OPTIONS.filter(o => o.value === 'onsite' || o.value === 'remote')
+  return ATTENDANCE_STATUS_OPTIONS
+}
 const attMenuFor = ref(null) // 当前弹出状态下拉的 userRoleId（null=都收起）
 const attMenuUp = ref(false) // 名单窗底部的行下方放不下菜单 → 向上弹，避免被窗口边裁掉
 watch(rosterPopOpen, () => { attMenuFor.value = null }) // 名单弹窗开合时收起
@@ -3389,6 +3395,11 @@ function attendanceValueOf(a) {
 }
 async function applyAttendance(a, opt) {
   if (!canEditAttendance.value || !a || !opt) return
+  // 兜底同 attendanceOptionsFor 的规则：已签到不能改为未签到类状态
+  if (a.signedIn && (opt.value === 'declined' || opt.value === 'none')) {
+    toast({ title: '已签到的委员不能改为未签到', icon: 'none' })
+    return
+  }
   attMenuFor.value = null
   try {
     await api.committeeSetAttendanceStatus(meetingId.value, a.userRoleId, opt.value)

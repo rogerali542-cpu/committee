@@ -975,6 +975,8 @@ async function openProxy() {
       p.signedIn
       && !(p.votedTopicIds || []).some(id => String(id) === String(t.id))
       && String(p.memberId) !== String(me.id || ''))
+    // 流水线代投（0723 用户定）：打开就自动选中第一个未投的人，少一次点选
+    if (proxyTargets.value.length) selectProxyMember(proxyTargets.value[0].memberId)
   } catch (e) {
     toast({ title: (e && e.message) || '名单加载失败', icon: 'none' })
     proxyOpen.value = false
@@ -982,8 +984,16 @@ async function openProxy() {
 }
 // 单选（0722 用户定）：一次只代一个人，选完即收起下拉；换人就再点开重选
 function toggleProxyMember(id) {
-  proxySelected.value = new Set([id])
+  selectProxyMember(id)
   proxyMenuOpen.value = false
+}
+// 选中某位委员并给默认表决（0723 用户定）：绝大多数是同意，简单表决默认选中「同意」，
+// 少数不同意/弃权再手动改；换人时重置为默认，避免把上一个人改过的选项带给下一个人。
+function selectProxyMember(id) {
+  proxySelected.value = new Set([id])
+  const isMulti = (props.topic && (props.topic.decisionType || 'simple') === 'multi_choice')
+  proxyChoice.value = isMulti ? null : 'for_vote'
+  proxyOptId.value = null
 }
 function pickProxyProof() {
   if (!_proxyProofInput) {
@@ -1029,7 +1039,16 @@ async function submitProxy() {
       proofUrl: proxyProofUrl.value || null
     })
     toast({ title: '已代 ' + names + ' 投「' + label + '」', icon: 'success' })
-    resetProxy()
+    // 流水线代投（0723 用户定）：投完一个自动跳到下一个未投的委员（仍默认「同意」），
+    // 不再整个面板重置；全部投完才收起。凭证是每人一张，跳人时清空。
+    const votedIds = new Set(proxySelected.value)
+    proxyTargets.value = proxyTargets.value.filter(p => !votedIds.has(p.memberId))
+    proxyProofUrl.value = ''
+    if (proxyTargets.value.length) {
+      selectProxyMember(proxyTargets.value[0].memberId)
+    } else {
+      resetProxy()
+    }
     emit('changed')
   } catch (e) {
     toast({ title: (e && e.message) || '代投失败，请重试', icon: 'none' })
