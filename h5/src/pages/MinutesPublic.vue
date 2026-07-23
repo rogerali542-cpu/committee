@@ -268,7 +268,10 @@ onMounted(() => {
 .section-empty { text-align:center; color:var(--pub-sub); font-size:28rpx; padding:30rpx 0; }
 .todo-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:20rpx 0; border-bottom:2rpx solid #edf0f4; }.todo-row:last-child { border:0; }.todo-main { min-width:0; }.todo-main b,.todo-main span { display:block; }.todo-main b { color:var(--pub-ink); font-size:29rpx; }.todo-main span { color:var(--pub-sub); font-size:24rpx; margin-top:7rpx; }.todo-row em { flex:none; border-radius:999rpx; padding:8rpx 16rpx; font-size:24rpx; font-style:normal; }.todo-todo { background:var(--pub-amber-soft); color:var(--pub-amber); }.todo-doing { background:var(--pub-blue-soft); color:var(--pub-blue); }.todo-done { background:var(--pub-green-soft); color:var(--pub-green); }
 .public-note { background:#e9eef4; border-radius:18rpx; padding:25rpx 28rpx; color:var(--pub-sub); font-size:26rpx; line-height:1.7; }.public-note b,.public-note span { display:block; }.public-note b { color:var(--pub-ink); margin-bottom:6rpx; }
-/* 预览态：发布为唯一主按钮，复制降为描边次按钮（一屏一个实心） */
-.pub-btn.ghost { background:#fff; color:var(--pub-blue); border:2rpx solid var(--pub-blue); line-height:92rpx; }
+/* 预览态：发布为唯一主按钮，复制降为描边次按钮（一屏一个实心）。
+   0723 用户反馈：主按钮太重 → 底色改浅一档的藏青、字重降 600；两按钮间距加大。 */
+.pub-btn.publish { background:#4A6E9C; font-weight:600; }
+.pub-btn.publish:active { background:#3E5E88; }
 .pub-btn.publish:disabled { opacity:.6; }
+.pub-btn.ghost { background:#fff; color:var(--pub-blue); border:2rpx solid var(--pub-blue); line-height:92rpx; margin-top:30rpx; }
 </style>
