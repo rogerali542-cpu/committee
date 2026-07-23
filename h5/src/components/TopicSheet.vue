@@ -33,8 +33,8 @@
           </div>
         </div>
         <div v-if="opinions.length > visibleOpinions.length" class="ts-op-more">还有 {{ opinions.length - visibleOpinions.length }} 条，点击“补充意见”查看</div>
-        <!-- 补充意见：意见卡片正下方的显眼按钮（0722 用户定） -->
-        <button class="ts-op-entry in-summary" @click.stop="opinionOpen = true">补充意见</button>
+        <!-- 补充意见：意见卡片正下方的显眼按钮（0722 用户定）。会后只读（interactive=false）隐藏写入口 -->
+        <button v-if="interactive" class="ts-op-entry in-summary" @click.stop="opinionOpen = true">补充意见</button>
       </div>
 
       <!-- 可滚动区：表决 + 意见汇总（输入框固定在底部，这里滚动看更多意见） -->
@@ -150,7 +150,7 @@
           </div>
         </div>
         <!-- 有意见时入口已在意见汇总标题行；这里只兜底"还没人发言"的场景 -->
-        <button v-if="canDiscuss && !opinionOpen && !hasOpinions" class="ts-op-entry" @click="opinionOpen = true">
+        <button v-if="canDiscuss && interactive && !opinionOpen && !hasOpinions" class="ts-op-entry" @click="opinionOpen = true">
           补充意见
         </button>
       </div>

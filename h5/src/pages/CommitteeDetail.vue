@@ -737,8 +737,10 @@
     </div>
 
     <!-- 议题弹层：表决 + 意见（进行中可操作，其余阶段只读查看） -->
+    <!-- 会后（showPostMeeting）议题弹层一律只读：测试期会议 stage 仍是 ongoing，
+         若只按 stage 判断，委员/主任在会后点议题就能改表决——必须排除会后态 -->
     <TopicSheet v-if="detail && meetingIdRef" :meeting-id="meetingIdRef" :topic="sheetTopic"
-                :interactive="detail.stage === 'ongoing'" :signed-in="selfSignedIn" :is-chair="userView === 'chair'"
+                :interactive="detail.stage === 'ongoing' && !showPostMeeting" :signed-in="selfSignedIn" :is-chair="userView === 'chair'"
                 :has-prev="sheetHasPrev" :has-next="sheetHasNext"
                 @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
 
@@ -1436,8 +1438,10 @@ async function loadDetail() {
     // 否则「完成会后整理」跳过来又被弹回会议页，看起来像按钮没反应。
     // 换设备兜底（0723）：本地标记只在原设备有；只要后端已有纪要或已公示（全局信号），
     // 说明会后流程已走过，任何设备的主任都应留在详情页看会后，而不是被弹回录音向导。
+    // 去掉对 d.record 的强依赖：主任在进行中、现场未结束、后端无会后信号时，无论 record 是否已生成
+    // 都该去会议进行页；否则 record 为 null 时主任会停在一张没有任何入口的空详情页。
     const chairPostSignal = !!d.minutesReady || !!(d.publish && d.publish.published)
-    if (d.stage === 'ongoing' && d.record && uv === 'chair' && !_fieldEndedLocally() && !chairPostSignal) {
+    if (d.stage === 'ongoing' && uv === 'chair' && !_fieldEndedLocally() && !chairPostSignal) {
       redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
       return
     }
@@ -3141,10 +3145,11 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ar-verdict.flawed .arv-icon { background:#E67E22; }
 .ar-verdict.invalid .arv-icon { background:#E74C3C; }
 .arv-info { flex:1; }
-.arv-title { display:block; font-size: 26rpx; font-weight:700; color:#333; }
-.arv-meta { display:block; font-size: 24rpx; color:#666; margin-top:2px; }
-.arv-result { display:block; font-size: 24rpx; color:#666; margin-top:4px; font-weight:500; }
-.arv-reason { display:block; font-size: 24rpx; color:#666; margin-top:2px; }
+/* 委员会后能看到的结论卡：适老放大加深（这是委员进会后第一眼的信息） */
+.arv-title { display:block; font-size: 32rpx; font-weight:700; color:#222; }
+.arv-meta { display:block; font-size: 27rpx; color:#555; margin-top:4px; }
+.arv-result { display:block; font-size: 30rpx; color:#333; margin-top:6px; font-weight:700; }
+.arv-reason { display:block; font-size: 27rpx; color:#555; margin-top:4px; line-height:1.5; }
 .arch-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
 
 /* 主任归档卡片 */
