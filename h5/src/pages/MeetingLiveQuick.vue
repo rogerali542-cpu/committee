@@ -3240,12 +3240,19 @@ function closeEndReview() {
 async function confirmEndMeeting() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可结束现场会议', icon: 'none' }); return }
   // 两维状态：有无「进行中/未上传」的录音 × 有无「已上传」的录音，组合出四档确认文案。
-  const hasOngoing = canUpload.value            // 录音中 / 暂停 / 已停未传——一段没上传的录音
+  // 正在上传(uploading)单列一档（0723 用户定）：录音已在后台传输，结束不放弃、让它传完保存，
+  // 避免误报"还没上传会放弃"——那段其实正在传，reset 也拦不住已发出的请求，反而认知不一致。
+  const isUploading = uploading.value
+  const hasOngoing = canUpload.value && !isUploading  // 排除"正在上传"那段，只算真正在手里、没传的
   const hasUploaded = hasSavedRecordings.value  // 服务器上已有录音段
   const pendingTail = pendingTopicCount.value ? '还有 ' + pendingTopicCount.value + ' 项议题未处理。' : ''
 
   let content, confirmText, cancelText
-  if (hasOngoing && !hasUploaded) {
+  if (isUploading) {
+    // 正在上传：不放弃，系统后台继续传完并保存
+    content = '当前录音正在上传保存，系统会在后台继续传完，不会丢失。确认结束并进入会后整理吗？' + pendingTail
+    confirmText = '结束会议'; cancelText = '继续开会'
+  } else if (hasOngoing && !hasUploaded) {
     // 状态1：有进行中、无已上传。确认=放弃这段并结束。
     content = '这段录音还没上传，结束会放弃它。确认结束？'
     confirmText = '确认结束'; cancelText = '继续录音'
