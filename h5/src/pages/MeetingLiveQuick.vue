@@ -417,7 +417,9 @@
     </div>
 
     <!-- 议题弹层：表决 + 意见（点议题行打开）；下一个议题直接切换 -->
+    <!-- allow-proxy：代委员投票仅在现场会议结束后的会后整理阶段开放（补录未投委员），现场进行中不出现 -->
     <TopicSheet :meeting-id="meetingId" :topic="sheetTopic" :interactive="detail.stage === 'ongoing'"
+                :allow-proxy="fieldMeetingEnded"
                 :signed-in="signedIn" :is-chair="isChair" :has-prev="sheetHasPrev" :has-next="sheetHasNext"
                 @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
     </template>

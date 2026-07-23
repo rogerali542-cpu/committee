@@ -94,8 +94,9 @@
                 <button class="ts-mini-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
               </div>
             </div>
-            <!-- 代委员投票（仅主持人、表决未结束）：委员忘投/不会用手机时，主任代录并留凭证审计 -->
-            <div v-if="isChair && interactive" class="ts-proxy">
+            <!-- 代委员投票（仅主持人、会后整理阶段）：现场会议结束后，主任为忘投/不会用手机的委员补录并留凭证审计。
+                 现场会议进行中不出现——委员应本人投票（0723 用户定） -->
+            <div v-if="isChair && interactive && allowProxy" class="ts-proxy">
               <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">代委员投票</button>
               <div v-else class="ts-proxy-panel" @click="proxyMenuOpen = false">
                 <div class="ts-proxy-title">代投对象（已签到、未投票）<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
@@ -311,6 +312,7 @@ const props = defineProps({
   meetingId: { type: [String, Number], required: true },
   topic: { type: Object, default: null },        // detail.record.topics 里的一项（TopicVO）
   interactive: { type: Boolean, default: false }, // 会议进行中（可表决/发言）
+  allowProxy: { type: Boolean, default: false },  // 是否允许代委员投票——仅现场会议结束后的会后整理阶段（补录未投委员）
   signedIn: { type: Boolean, default: false },
   isChair: { type: Boolean, default: false },
   hasPrev: { type: Boolean, default: false }, // 是否有上一个议题（父组件按列表算）
