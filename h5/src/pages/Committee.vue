@@ -120,10 +120,10 @@
         <div v-if="planTab === 'meeting'" class="yc-period-grid">
           <div v-for="pair in monthPairs" :key="pair.period" class="yc-period-card" :class="[pair.status, { active: pair.months.some(mc => calMonth === mc.m) }]">
             <div class="yc-pair-months">
+              <!-- 状态字已去（0723 用户定）：颜色含义由右上角图例承担，格子只留月份坐标 -->
               <div v-for="mc in pair.months" :key="mc.m" class="yc-cell pair-cell" :class="[mc.status, { sel: calMonth === mc.m }]" @click="onYcMonthTap(pair, mc)">
                 <span v-if="mc.todo" class="yc-corner">{{ mc.todo }}</span>
                 <span class="yc-m">{{ mc.m }}月</span>
-                <span class="yc-s">{{ mc.label }}</span>
               </div>
             </div>
           </div>
@@ -3474,7 +3474,6 @@ onActivated(show)
 .plan-stack.has-meeting .yc-period-feedback { margin-top: 4rpx; padding: 4rpx 45rpx 6rpx; }
 .plan-stack.has-meeting .yc-cell { padding: 8rpx 0 7rpx; }
 .plan-stack.has-meeting .yc-cell.pair-cell .yc-m { font-size: 27rpx; }
-.plan-stack.has-meeting .yc-cell.pair-cell .yc-s { font-size: 28rpx; }
 .plan-switch-card, .plan-calendar-card, .plan-todo-card { background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; overflow: hidden; }
 .plan-switch-card { padding: 10rpx; order: 0; }
 /* 接待/培训(.compact)的纵向顺序：分段栏0 → 三数字1 → 登记大按钮2 → 待办清单3 → 全年日历4。
@@ -3722,10 +3721,8 @@ onActivated(show)
 .yc-s { font-size: 22rpx; font-weight: 600; color: var(--c-text-weak); line-height: 1.2; }
 .yc-grid.compact .yc-m { font-size: 32rpx; }
 .yc-grid.compact .yc-s { font-size: 22rpx; }
+/* 开会 tab 格子只留月份（0723 用户定）：状态字整体去掉，颜色含义由右上角图例承担 */
 .yc-cell.pair-cell .yc-m { font-size: 31rpx; }
-/* 状态字 24rpx → 30rpx（12px → 15px，0716 用户定）：它是格子里真正要看的东西。
-   右上角小图例（0723 加回）只是颜色对照，状态字仍是主要载体，不因图例回归而缩小。 */
-.yc-cell.pair-cell .yc-s { font-size: 30rpx; }
 .yc-cell.done { background: #F0FAF4; border-color: #D7EFDE; }
 .yc-cell.done .yc-m, .yc-cell.done .yc-s { color: var(--c-success); }
 .yc-cell.current { background: #FFF8EC; border-color: #FED7AA; }
