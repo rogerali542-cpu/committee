@@ -3331,7 +3331,9 @@ function findUnvotedVoteTopic() {
 }
 // 状态纠错（0722 用户定）：主持人在名单弹窗用状态右侧小下拉改参会状态（忘了签/手机没电等）。
 // 四种：已签到/线上参会/请假缺席/未参会；仅会议进行中（含会后整理）可改，后端记操作人留痕。
-const canEditAttendance = computed(() => isHost.value && !!detail.value && detail.value.stage === 'ongoing')
+// 签到状态纠错仅在现场会议结束后的会后整理阶段开放（与代投同理）：现场进行中主持人不改他人签到，
+// 委员本人签到；现场结束后整理时才由主持人补正忘签/手机没电等（0723 用户定）
+const canEditAttendance = computed(() => isHost.value && !!detail.value && detail.value.stage === 'ongoing' && fieldMeetingEnded.value)
 const ATTENDANCE_STATUS_OPTIONS = [
   { label: '已签到', value: 'onsite' },
   { label: '线上参会', value: 'remote' },
