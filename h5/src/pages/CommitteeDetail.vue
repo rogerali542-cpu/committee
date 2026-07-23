@@ -335,6 +335,9 @@
                 <small>会后生成的正式纪要，可查看与编辑</small>
               </div>
               <button class="ase-btn" @click="viewMinutes">查看</button>
+              <button class="ase-btn primary" :disabled="exportingMinutesPdf" @click="exportMinutesPdf">
+                {{ exportingMinutesPdf ? '生成中…' : '导出 PDF' }}
+              </button>
             </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
@@ -2491,6 +2494,29 @@ async function exportAttendanceSheet() {
     toast({ title: (e && e.message) || '签到表导出失败', icon: 'none' })
   } finally {
     exportingAttendanceSheet.value = false
+  }
+}
+
+// 会议纪要 PDF 导出（0722 用户定：纪要行 查看+导出PDF 两个按钮）
+const exportingMinutesPdf = ref(false)
+async function exportMinutesPdf() {
+  if (exportingMinutesPdf.value) return
+  exportingMinutesPdf.value = true
+  try {
+    const blob = await api.committeeExportMinutesPdf(meetingId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${detail.value.title || '会议'}-会议纪要.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    toast({ title: '会议纪要已导出', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '会议纪要导出失败', icon: 'none' })
+  } finally {
+    exportingMinutesPdf.value = false
   }
 }
 

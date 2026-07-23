@@ -247,6 +247,19 @@ public class CommitteeController {
                 .body(file.bytes());
     }
 
+    /** 会议纪要 PDF：正文取自已生成/已编辑的纪要（generateMinutes 同源），公文格式落页 */
+    @GetMapping("/{id}/minutes.pdf")
+    @RequireRole({"主任", "副主任", "委员"})
+    public ResponseEntity<byte[]> exportMinutesPdf(@PathVariable Long id) {
+        MeetingRecordPdfService.PdfFile file = meetingRecordPdfService.generateMinutesPdf(id, service.generateMinutes(id));
+        String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(file.bytes());
+    }
+
     @GetMapping("/{id}/meeting-record.pdf")
     @RequireRole({"主任", "副主任", "委员"})
     public ResponseEntity<byte[]> exportMeetingRecord(@PathVariable Long id) {

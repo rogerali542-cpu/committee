@@ -29,8 +29,9 @@ public class MeetingRecordPdfService {
     public PdfFile generate(Long meetingId) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
-        if (meeting.getStage() != MeetingStage.ended)
-            throw new IllegalArgumentException("会议结束后才能导出会议记录");
+        // 0722 放宽：测试期会议不真正归档(stage 保持 ongoing)，现场结束后即可导出；仅拦截尚未开始的会议
+        if (meeting.getStage() == MeetingStage.preparing)
+            throw new IllegalArgumentException("会议开始后才能导出会议记录");
         MeetingRecord record = recordRepo.findByMeetingId(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议记录不存在"));
         List<RecordAttendance> attendances = attendanceRepo.findByRecordId(record.getId());
@@ -112,6 +113,34 @@ public class MeetingRecordPdfService {
             return new PdfFile(safe(meeting.getTitle()) + "-会议记录.pdf", out.toByteArray());
         } catch (IOException e) {
             throw new IllegalStateException("会议记录生成失败", e);
+        }
+    }
+
+    /** 会议纪要 PDF：纪要正文（大模型/人工编辑稿）按公文格式落页——标题居中 + 每段首行缩进两格。 */
+    @Transactional(readOnly = true)
+    public PdfFile generateMinutesPdf(Long meetingId, String minutesText) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (minutesText == null || minutesText.isBlank())
+            throw new IllegalArgumentException("还没有纪要正文，请先生成会议纪要");
+        String meetingTitle = value(meeting.getTitle());
+        // 标题去重：会议名以「会议」结尾时避免拼成「××会议会议纪要」（与前端 joinMinutesTitle 同规则）
+        String docTitle = meetingTitle.replaceAll("会议纪要$", "").replaceAll("会议$", "") + "会议纪要";
+        try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Writer w = new Writer(doc, loadChineseFont(doc));
+            w.title(docTitle);
+            w.gap(10);
+            for (String raw : minutesText.split("\\R")) {
+                String t = raw.strip().replaceAll("^#{1,6}\\s*", ""); // 去掉 AI 稿里的 Markdown 标题记号
+                if (t.isEmpty()) { w.gap(6); continue; }
+                if (t.equals("会议纪要") || t.equals(meetingTitle) || t.equals(docTitle)) continue; // 开头标题行不重复
+                w.paragraph("　　" + t);
+            }
+            w.close();
+            doc.save(out);
+            return new PdfFile(safe(meeting.getTitle()) + "-会议纪要.pdf", out.toByteArray());
+        } catch (IOException e) {
+            throw new IllegalStateException("会议纪要生成失败", e);
         }
     }
 
