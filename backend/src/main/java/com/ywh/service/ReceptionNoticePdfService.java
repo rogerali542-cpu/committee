@@ -120,7 +120,8 @@ public class ReceptionNoticePdfService {
                 // 落款：右下角，公文规矩。位置固定在页面下方，不跟着正文长度飘——
                 // 正文再短也不能让落款吊在半空
                 float signY = 210;
-                textRight(cs, font, 16, org, pageW - right, signY);
+                // 落款用带区划+届别的全称（0723 与会议文书统一），正文仍用短名
+                textRight(cs, font, 16, receptionService.noticeOrgFullName(), pageW - right, signY);
                 LocalDate today = LocalDate.now();
                 textRight(cs, font, 16,
                         today.getYear() + " 年 " + today.getMonthValue() + " 月 " + today.getDayOfMonth() + " 日",

@@ -17,19 +17,24 @@
           <span class="field-label">时间</span>
           <span class="field-val">{{ fmtDate(rec.date) }} {{ (rec.time || '').slice(0, 5) }}</span>
         </div>
-        <div class="field-row">
+        <div class="field-row" v-if="!isNoVisit">
           <span class="field-label">分类</span>
           <span class="field-val">{{ rec.categoryLabel }}</span>
         </div>
         <div class="field-row">
-          <span class="field-label">接待人</span>
+          <span class="field-label">{{ isNoVisit ? '值班人' : '接待人' }}</span>
           <span class="field-val">{{ rec.receiver || '未填写' }}</span>
         </div>
       </div>
 
-      <!-- 居民诉求：这页最该看的东西，独立成块、字最大 -->
-      <div class="sec-card">
-        <div class="sec-title">居民诉求</div>
+      <!-- 无人来访＝值班留档（0723 用户定）：不是待办案件，不给诉求/派单/办结界面，只显示留档说明 -->
+      <div class="sec-card" v-if="isNoVisit">
+        <div class="no-visit-note"><span class="nv-ico">✓</span>本次接待日无业主来访，已完成值班留档。</div>
+      </div>
+
+      <!-- 业主诉求：这页最该看的东西，独立成块、字最大 -->
+      <div class="sec-card" v-if="!isNoVisit">
+        <div class="sec-title">业主诉求</div>
         <div class="appeal">{{ rec.content || '未填写' }}</div>
       </div>
 
@@ -39,7 +44,7 @@
            两条都不算办结（办结 = 填了处理结果），所以这块和下面的处理结果卡是并列关系、不是前后步骤。
            整块隐藏条件：已办结且两条路都没走过——事情都完了不该再给转办入口；
            走过任一条则保留（留痕）。填完处理结果 rec.done 变 true，按钮当场消失、只剩留痕。 -->
-      <div class="sec-card" v-if="rec.ticketPushed || rec.propertyTransferred || !rec.done">
+      <div class="sec-card" v-if="!isNoVisit && (rec.ticketPushed || rec.propertyTransferred || !rec.done)">
         <!-- 标题不能叫「转给物业」（0717 用户定要改）：它跟右边那颗按钮「转物业处理」几乎同词，
              看着像只在给那一颗做标题，另一颗「派发工单」反倒成了编外的。
              「物业协办」两颗都罩得住、又跟任何一颗都不撞词，字数也跟同页其它标题
@@ -81,7 +86,7 @@
       </div>
 
       <!-- 处理结果 = 办结动作 -->
-      <div class="sec-card">
+      <div class="sec-card" v-if="!isNoVisit">
         <div class="sec-title">处理结果<span v-if="canManage" class="sec-tip">填写并保存即算办结</span></div>
         <template v-if="canManage">
           <!-- 不放 placeholder（0717 用户定：默认填入的灰色幽灵字全部去除）。
@@ -97,7 +102,7 @@
 
       <!-- 佐证：原先接待页这块是坏的——listRecords 从不返回 evidences 键，
            所以永远显示 0 张、永远空状态，哪怕上传成功已落库。后端 toVO 已补上该键 -->
-      <div class="sec-card">
+      <div class="sec-card" v-if="!isNoVisit">
         <div class="sec-title">
           佐证照片<span class="sec-count">{{ (rec.evidences || []).length }} 张</span>
           <span v-if="canManage" class="sec-add" @click="pickEvidence">+ 上传</span>
@@ -153,15 +158,19 @@ const saving = ref(false)
  * 已办结 = 填了处理结果。isDone 口径一个字没动，仍然只认它 ——
  *   胶囊多出来的是中间态，不是把办结的门槛降低了。
  */
+// 无人来访＝值班留档记录（约定 visitorName='无人来访'），本页转为只读留档视图
+const isNoVisit = computed(() => !!rec.value && rec.value.visitorName === '无人来访')
+// 状态词全模块统一（0723 用户定）：待处理 / 处理中 / 已办结；无人来访显示「已留档」
 const stageText = computed(() => {
   if (!rec.value) return ''
+  if (isNoVisit.value) return '已留档'
   if (rec.value.done) return '已办结'
-  if (rec.value.ticketPushed || rec.value.propertyTransferred) return '已办理'
-  return '待跟进'
+  if (rec.value.ticketPushed || rec.value.propertyTransferred) return '处理中'
+  return '待处理'
 })
 const stageClass = computed(() => {
   if (!rec.value) return ''
-  if (rec.value.done) return 'done'
+  if (isNoVisit.value || rec.value.done) return 'done'
   if (rec.value.ticketPushed || rec.value.propertyTransferred) return 'doing'
   return 'todo'
 })
@@ -281,7 +290,7 @@ async function delEvidence(ev) {
 async function removeRecord() {
   const ok = await showModal({
     title: '删除接待记录',
-    content: '确认删除' + (rec.value.visitorName || '这位居民') + '的这条接待记录？删除后无法恢复。',
+    content: '确认删除' + (rec.value.visitorName || '这位业主') + '的这条接待记录？删除后无法恢复。',
     confirmText: '删除',
     cancelText: '取消'
   })
@@ -337,6 +346,9 @@ function goBack() {
 .sec-hint { margin-top: 14rpx; font-size: 28rpx; line-height: 1.5; color: var(--c-text-weak); }
 /* 诉求正文：这页的主角，字号最大 */
 .appeal { font-size: 32rpx; line-height: 1.6; color: var(--c-text-strong); white-space: pre-wrap; }
+/* 无人来访留档说明：绿勾+一句话，替代整套办理界面 */
+.no-visit-note { display: flex; align-items: center; gap: 14rpx; font-size: 30rpx; line-height: 1.6; color: #287653; }
+.nv-ico { flex-shrink: 0; width: 44rpx; height: 44rpx; border-radius: 50%; background: #E8F5EE; color: #287653; display: flex; align-items: center; justify-content: center; font-size: 28rpx; font-weight: 700; }
 
 /* 保存并办结。白字 16px/700 门槛 4.5:1：#A85800 是 5.17 ✓，--c-primary(#C76A00) 只有 3.83 ✗ */
 .big-action { width: 100%; height: 96rpx; border: none; border-radius: 20rpx; font-size: 32rpx; font-weight: 700; color: #fff;

@@ -11,7 +11,7 @@
     <template v-else>
       <!-- 0717 用户重定位：接待时间/地点在制度里有基本值（首页卡片展示的就是它），
            本页只干一件事——临时调整时改时间/地点，预览生成的公告并导出去张贴。
-           0717 追加：时间拆成「周几多选 + 起止时间」两个结构化的框（自由文本老人写不齐格式）；
+           0717 追加：时间拆成「周几单选 + 起止时间」两个结构化的框（自由文本老人写不齐格式）；
            公告正文改说话口吻（类会议通知），所以多了个「调整原因（选填）」。 -->
       <div class="sec-card">
         <div class="field">
@@ -59,9 +59,10 @@
           <input v-model="form.reason" class="f-input" maxlength="60" :disabled="!canManage" />
         </div>
         <div v-if="!canManage" class="sec-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
+        <!-- 灰态给出原因文案（0723）：老人首次进页看到灰按钮不知为何点不动 -->
         <button v-if="canManage" class="confirm-adjust" type="button"
                 :disabled="saving || !dirty || !timeText" @click="confirmAdjustment">
-          {{ saving ? '正在保存…' : '确定' }}
+          {{ saving ? '正在保存…' : (!dirty ? '未做修改' : '保存调整') }}
         </button>
       </div>
 
@@ -82,7 +83,7 @@
           <div v-for="(p, i) in noticeParas" :key="i" class="pv-para" :class="{ 'no-indent': p.noIndent }">{{ p.text }}</div>
           <div class="pv-para">欢迎广大业主届时前来反映问题、提出建议。</div>
           <div class="pv-sign">
-            <div>{{ orgName }}</div>
+            <div>{{ orgFullName }}</div>
             <div>{{ todayText }}</div>
           </div>
         </div>
@@ -114,6 +115,8 @@ const exportSuccess = ref(false)
 const saving = ref(false)
 const previewOpen = ref(true)
 const orgName = ref('业主委员会')
+// 落款全称（含区划+届别，0723 与会议文书统一）：后端 orgFullName，取不到退 orgName
+const orgFullName = ref('业主委员会')
 const committeeRoster = ref([])
 
 const TIME_OPTS = Array.from({ length: 25 }, (_, i) => {
@@ -200,6 +203,7 @@ async function load() {
     // （别改回「取 communityName 自己拼」：库里那个名字现在是坏的，存着 4 个 '?'，
     //   前端拼就会显示「????业主委员会」，而 PDF 那边被兜底成了「业主委员会」）
     if (sys && sys.orgName) orgName.value = sys.orgName
+    orgFullName.value = (sys && sys.orgFullName) || orgName.value
   } catch (e) {
     loadErr.value = (e && e.message) || '接待安排加载失败'
   }
@@ -295,14 +299,7 @@ async function exportPdf() {
 .confirm-adjust:active:not(:disabled) { background: var(--c-primary-strong); }
 
 
-/* 周几多选：胶囊 chips，点了变主色。选中态要够醒目，老人得一眼看出哪几天亮着 */
-.day-chips { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 14rpx; }
-.day-chip { padding: 12rpx 22rpx; border-radius: 999rpx; border: 2rpx solid #E3E8EB;
-  background: #FCFDFD; font-size: 28rpx; font-weight: 600; color: var(--c-text-mid);
-  cursor: pointer; user-select: none; }
-.day-chip.on { background: var(--c-primary-dark); border-color: var(--c-primary-dark); color: #fff; }
-.day-chip.dim { cursor: default; opacity: 0.7; }
-.day-chip:active { opacity: 0.75; }
+/* .day-chips/.day-chip* 死样式已删（0723）：周几为单选下拉，多选胶囊从未上线 */
 
 /* 起止时间：两个 time 输入并排，中间「至」 */
 .time-range { display: flex; align-items: center; gap: 14rpx; }
@@ -316,7 +313,7 @@ async function exportPdf() {
   box-shadow: 0 6rpx 16rpx rgba(114,48,34,0.18); }
 .big-action:active { background: #8F3B2A; }
 .big-action:disabled { opacity: 0.5; }
-.export-success { margin: 18rpx 0 -6rpx; text-align: center; color: #278653; font-size: 26rpx; line-height: 1.5; }
+.export-success { margin: 18rpx 0 -6rpx; text-align: center; color: #278653; font-size: 28rpx; line-height: 1.5; }
 
 /* 纸样预览：让委员在按下导出前就知道印出来长什么样。
    白底居中排版，刻意跟 App 的卡片风格不一样——它代表"那张纸"。

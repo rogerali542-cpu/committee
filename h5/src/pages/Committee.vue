@@ -50,6 +50,11 @@
           </span>
           <span class="rrc-arrow">›</span>
         </button>
+        <!-- 无人来访一键留档（0723 用户定）：值班高频动作提到一屏可见，不再藏在登记弹窗里 -->
+        <button v-if="planTab === 'reception' && canManageReception" class="rec-no-visit-quick" type="button"
+                :disabled="noVisitSaving" @click="quickNoVisit">
+          {{ noVisitSaving ? '正在留档…' : '今日无人来访，一键留档' }}
+        </button>
 
         <div v-if="planTab === 'reception'" class="rec-recent-card">
           <div class="rec-recent-head">
@@ -64,6 +69,7 @@
                   <strong>{{ session.noVisit ? '本次无人来访' : (session.visitorCount + '人来访') }}</strong>
                   <i :class="session.status">{{ session.statusText }}</i>
                 </div>
+                <span v-if="session.summaryText" class="rec-recent-summary">{{ session.summaryText }}</span>
                 <span>{{ fmtPlanDate(session.date) }}<template v-if="session.time"> · {{ String(session.time).slice(0, 5) }}</template><template v-if="session.receiver"> · {{ session.receiver }}</template></span>
               </div>
               <span v-if="session.displayRecords.length > 1" class="rec-recent-chevron" :class="{ open: recentOpenKey === session.key }">⌄</span>
@@ -72,8 +78,8 @@
             </div>
             <div v-if="recentOpenKey === session.key && session.displayRecords.length > 1" class="rec-recent-items">
               <div v-for="r in session.displayRecords" :key="r.id" class="rec-recent-item" @click="goReceptionDetail(r)">
-                <div><strong>{{ r.visitorName || '来访居民' }}</strong><span>{{ r.content }}</span></div>
-                <em>{{ r.done ? '已办结' : ((r.propertyTransferred || r.ticketPushed) ? '已办理' : '去处理') }}</em>
+                <div><strong>{{ r.visitorName || '来访业主' }}</strong><span>{{ r.content }}</span></div>
+                <em>{{ r.done ? '已办结' : ((r.propertyTransferred || r.ticketPushed) ? '处理中' : '去处理') }}</em>
               </div>
             </div>
           </div>
@@ -231,7 +237,7 @@
           <template v-if="planTab !== 'reception' || receptionTodoOpen">
             <div v-if="!planTodoList.length" class="plan-empty">暂无需要处理的{{ planTabLabel }}事项</div>
             <div v-else v-for="it in planTodoList" :key="it.key" class="yc-item" :class="[planTab === 'meeting' ? it.status : 'todo-plain', it.flag]"
-                 @click="planTab === 'reception' ? null : it.onTap()">
+                 @click="it.onTap()">
               <div class="yc-item-info">
                 <div class="yc-item-title">{{ it.title }}</div>
                 <div v-if="it.sub" class="yc-item-sub">{{ it.sub }}</div>
@@ -259,9 +265,10 @@
               </div>
             </div>
             <div class="form-group">
-              <span class="form-label">接待人</span>
+              <span class="form-label">接待人 *</span>
               <select class="picker-select" v-model="recForm.receiver">
                 <option value=""></option>
+                <option v-if="recForm.receiver && !receiverItems.includes(recForm.receiver)" :value="recForm.receiver">{{ recForm.receiver }}</option>
                 <option v-for="it in receiverItems" :key="it" :value="it">{{ it }}</option>
               </select>
             </div>
@@ -270,7 +277,7 @@
             </button>
             <div v-for="(visitor, index) in recVisitors" :key="visitor.key" class="rec-visitor-card">
               <div class="rec-visitor-head">
-                <strong>来访居民 {{ index + 1 }}</strong>
+                <strong>来访业主 {{ index + 1 }}</strong>
                 <button v-if="recVisitors.length > 1" type="button" @click="removeRecVisitor(index)">删除</button>
               </div>
               <div class="form-row">
@@ -288,13 +295,14 @@
                 <span class="type-chip" :class="visitor.category === 'property' ? 'on' : ''" @click="visitor.category = 'property'">物业类</span>
                 <span class="type-chip" :class="visitor.category === 'public_affairs' ? 'on' : ''" @click="visitor.category = 'public_affairs'">公共事务</span>
                 <span class="type-chip" :class="visitor.category === 'neighbor' ? 'on' : ''" @click="visitor.category = 'neighbor'">邻里纠纷</span>
+                <span class="type-chip" :class="visitor.category === 'other' ? 'on' : ''" @click="visitor.category = 'other'">其他</span>
               </div>
               <div class="form-group">
                 <span class="form-label">诉求内容 *</span>
                 <textarea class="form-textarea" v-model="visitor.content"></textarea>
               </div>
             </div>
-            <button class="rec-add-visitor" type="button" @click="addRecVisitor">＋ 继续添加居民</button>
+            <button class="rec-add-visitor" type="button" @click="addRecVisitor">＋ 继续添加业主</button>
             <div class="sheet-actions">
               <button class="btn btn-ghost" @click="recCreateOpen = false">取消</button>
               <button class="btn btn-primary" @click="submitReceptionCreate">确认登记</button>
@@ -942,13 +950,25 @@ const recentReceptionRecords = computed(() => {
     const status = unresolved.length === 0
       ? 'done'
       : (unresolved.every(r => r.propertyTransferred || r.ticketPushed) ? 'doing' : 'pending')
+    // 收起态摘要（0723 用户定）：不点开也知道是谁、什么事
+    let summaryText = ''
+    if (visitorRecords.length === 1) {
+      const r0 = visitorRecords[0]
+      const brief = String(r0.content || '').slice(0, 12)
+      summaryText = (r0.visitorName || '来访业主') + (brief ? '：' + brief + (String(r0.content || '').length > 12 ? '…' : '') : '')
+    } else if (visitorRecords.length > 1) {
+      const names = visitorRecords.map(r => r.visitorName).filter(Boolean)
+      summaryText = names.slice(0, 3).join('、') + (names.length > 3 ? ' 等' : '')
+    }
     return {
       ...session,
       displayRecords: visitorRecords,
       noVisit: visitorRecords.length === 0,
       visitorCount: visitorRecords.length,
+      summaryText,
       status,
-      statusText: status === 'done' ? '已办结' : (status === 'doing' ? '已办理' : '待处理')
+      // 状态词全模块统一（0723 用户定）：待处理 / 处理中 / 已办结
+      statusText: status === 'done' ? '已办结' : (status === 'doing' ? '处理中' : '待处理')
     }
   }).sort((a, b) =>
     (String(b.date || '') + ' ' + String(b.time || '')).localeCompare(String(a.date || '') + ' ' + String(a.time || ''))
@@ -1211,7 +1231,7 @@ const calList = computed(() => {
         title: (r.visitorName || '来访') + ' 来访接待',
         sub: fmtPlanDate(r.date) + ' · ' + String(r.content || '').slice(0, 14),
         status: r.done ? 'done' : 'current',
-        badge: r.done ? '已办结' : '待跟进',
+        badge: r.done ? '已办结' : '去处理',
         onTap: () => goReceptionDetail(r)
       })
     }
@@ -1257,12 +1277,48 @@ function newRecVisitor() {
 function addRecVisitor() { recVisitors.value.push(newRecVisitor()) }
 function removeRecVisitor(index) { recVisitors.value.splice(index, 1) }
 
+// 默认接待时间取接待安排的起始时刻（如「每周四晚 19:00–20:00」→ 19:00），取不到退 19:00
+function defaultReceptionTime() {
+  const m = String((recSystem.value && recSystem.value.timeDesc) || '').match(/(\d{1,2})[:：](\d{2})/)
+  return m ? (m[1].padStart(2, '0') + ':' + m[2]) : '19:00'
+}
+// 当前登录人姓名：值班的就是自己，接待人默认带出
+function currentUserName() {
+  const role = getStorage('activeRole', null) || {}
+  return role.realName || role.name || ''
+}
+
 function openReceptionCreate() {
   if (!canManageReception.value) return
-  Object.assign(recForm, { date: todayStr(), time: '14:00', receiver: '' })
+  Object.assign(recForm, { date: todayStr(), time: defaultReceptionTime(), receiver: currentUserName() })
   recVisitors.value = [newRecVisitor()]
   loadCommitteeRoster() // 不 await：名单到了选项自然出现，别让弹窗等网络
   recCreateOpen.value = true
+}
+
+// 无人来访一键留档（0723 用户定，仿真实《日常管理情况》值班流水）：
+// 首页一键完成——今天+接待时段+当前登录人为值班人,确认即留档,不再穿过登记表单
+async function quickNoVisit() {
+  if (!canManageReception.value || noVisitSaving.value) return
+  const me = currentUserName()
+  const res = await showModal({
+    title: '登记无人来访',
+    content: '今天接待日无业主来访，登记一条值班留档？\n值班人：' + (me || '（未识别，请从登记接待里选择）'),
+    confirmText: '确认留档',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  if (!me) { openReceptionCreate(); return } // 识别不到当前人 → 走表单选值班人
+  noVisitSaving.value = true
+  try {
+    await api.receptionCreateSession({ date: todayStr(), time: defaultReceptionTime(), receiver: me, noVisit: true, visitors: [] })
+    toast({ title: '已登记无人来访', icon: 'success' })
+    await loadCalExtras()
+  } catch (e) {
+    toast({ title: (e && e.message) || '登记失败', icon: 'none' })
+  } finally {
+    noVisitSaving.value = false
+  }
 }
 
 async function submitReceptionCreate() {
@@ -1272,7 +1328,7 @@ async function submitReceptionCreate() {
   }
   const incomplete = recVisitors.value.some(v => !String(v.visitorName || '').trim() || !String(v.content || '').trim())
   if (!recVisitors.value.length || incomplete) {
-    toast({ title: '请补全每位居民的姓名和诉求内容', icon: 'none' })
+    toast({ title: '请补全每位业主的姓名和诉求内容', icon: 'none' })
     return
   }
   try {
@@ -1287,6 +1343,11 @@ async function submitNoVisit() {
   if (noVisitSaving.value) return
   if (!recForm.date || !recForm.time) {
     toast({ title: '请先选择接待日期和时间', icon: 'none' })
+    return
+  }
+  // 值班留档必须有值班人（真实制度：值班记录+值班人签名）
+  if (!String(recForm.receiver || '').trim()) {
+    toast({ title: '请选择值班接待人', icon: 'none' })
     return
   }
   noVisitSaving.value = true
@@ -1309,11 +1370,16 @@ async function submitNoVisit() {
 }
 
 function openRecentSession(session) {
+  // 无人来访 session：进详情看值班留档（详情页有留档只读视图），不再是死点击
+  if (!session.displayRecords.length) {
+    if (session.records && session.records.length) goReceptionDetail(session.records[0])
+    return
+  }
   if (session.displayRecords.length === 1) {
     goReceptionDetail(session.displayRecords[0])
     return
   }
-  if (session.displayRecords.length > 1) recentOpenKey.value = recentOpenKey.value === session.key ? '' : session.key
+  recentOpenKey.value = recentOpenKey.value === session.key ? '' : session.key
 }
 
 async function removeReceptionSession(session) {
@@ -3477,12 +3543,15 @@ onActivated(show)
 .rec-recent-title { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
 .rec-recent-copy strong { font-size: 30rpx; line-height: 1.35; font-weight: 500; color: var(--c-text-strong);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-recent-title i { flex-shrink: 0; padding: 3rpx 11rpx; border-radius: 999rpx;
-  font-size: 21rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
+.rec-recent-title i { flex-shrink: 0; padding: 5rpx 14rpx; border-radius: 999rpx;
+  font-size: 25rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
 .rec-recent-title i.pending { color: #9A5A13; background: #FFF1D8; }
 .rec-recent-title i.doing { color: #0F766E; background: #E7F6F3; }
 .rec-recent-title i.done { color: #287653; background: #E8F5EE; }
-.rec-recent-copy span { font-size: 25rpx; line-height: 1.35; color: var(--c-text-weak); }
+.rec-recent-copy span { font-size: 27rpx; line-height: 1.4; color: var(--c-text-weak); }
+/* 收起态摘要行：是谁、什么事，一眼可读 */
+.rec-recent-summary { font-size: 27rpx !important; color: var(--c-text-mid) !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec-recent-delete { flex-shrink: 0; width: 46rpx; height: 46rpx; padding: 0; border: 0;
   border-radius: 50%; background: #F1F3F4; color: #858D92; font-size: 34rpx; font-weight: 400;
   line-height: 42rpx; text-align: center; transform: translateY(4rpx); }
@@ -3493,8 +3562,8 @@ onActivated(show)
 .rec-recent-item { display: flex; align-items: center; gap: 18rpx; padding: 17rpx 2rpx; border-top: 2rpx solid #F0F2F3; }
 .rec-recent-item > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .rec-recent-item strong { font-size: 28rpx; color: var(--c-text-strong); }
-.rec-recent-item span { font-size: 24rpx; color: var(--c-text-weak); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 25rpx; font-style: normal; }
+.rec-recent-item span { font-size: 26rpx; color: var(--c-text-weak); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 27rpx; font-style: normal; }
 .rec-recent-empty { padding: 22rpx 0 26rpx; border-top: 2rpx solid #EEF1F3;
   text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
 .plan-stack.reception-mode .plan-todo-card { margin-top: 30rpx; }
@@ -3513,7 +3582,7 @@ onActivated(show)
 .plan-stack.reception-mode .plan-todo-card .yc-list-count.safe { color: #278653; }
 .plan-stack.reception-mode .plan-todo-card .yc-item.todo-plain { padding: 24rpx 4rpx; cursor: default; }
 .plan-stack.reception-mode .plan-todo-card .yc-item-title { font-size: 34rpx; }
-.plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 22rpx; }
+.plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 26rpx; }
 .plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
 
 /* 接待日安排入口卡。order 4→1（0717 用户定）：接下原「会议进行中」收起栏的位置，
@@ -3523,21 +3592,7 @@ onActivated(show)
    仍然只描边不填色：位置越靠前越要压分量，否则会盖过「登记接待」那颗主动作。 */
 /* 0717 用户定：整卡加大约 30%（纵向 padding 22→30）、字体各加一号（30→32/28→30）、
    行距和行间距同步放宽（1.3→1.4、6→12、gap 16→20）——增强呼吸感，老人一眼能看清。 */
-.rec-notice-card { order: 1; display: flex; align-items: center; gap: 20rpx;
-  padding: 30rpx 30rpx; box-sizing: border-box; background: var(--c-bg-card);
-  border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07);
-  cursor: pointer; }
-.rnc-main { flex: 1; min-width: 0; }
-.rnc-title { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.4; }
-.rnc-val { margin-top: 12rpx; font-size: 32rpx; color: var(--c-text-mid); line-height: 1.4;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 没设过：按规定每月必须设并公示，所以这不是「空状态」而是「欠着的事」，用橙字而非灰字 */
-.rnc-val.none { color: #9A3412; font-weight: 700; }
-/* 地点行：比时间行弱一档（时间是主信息），仍守全站 ≥28rpx 底线 */
-.rnc-place { color: var(--c-text-weak); }
-.rnc-act { flex-shrink: 0; padding: 12rpx 26rpx; border-radius: 999rpx; background: #fff;
-  border: 2rpx solid var(--c-primary); color: var(--c-primary-dark);
-  font-size: 30rpx; font-weight: 700; white-space: nowrap; }
+/* .rec-notice-card/.rnc-* 死样式已删（0723）：模板改用 .rec-notice-hero 后零引用 */
 .ov-metric { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8rpx; padding: 24rpx 8rpx; border-radius: 18rpx; background: #F6F7F9; cursor: pointer; }
 .ov-metric:active { opacity: 0.8; }
 .ov-metric.on { box-shadow: inset 0 0 0 4rpx #D97706; }
@@ -4281,11 +4336,13 @@ onActivated(show)
 /* 登记按钮（0716 用户选方案 A：浅橙填充 tinted，中强调）。演进：实心深橙大卡 → 压七成删副标题 →
    浅橙底 #FFF3E5 + 深橙字 #A85800、内容居中、去箭头、平底无阴影。与待办按钮的 tinted 降级态同族。
    高度 92rpx=46px，仍在 44px 适老热区之上。 */
-.rec-add-card { order: 3; width: 60%; align-self: center; display: flex; align-items: center; justify-content: center; gap: 12rpx;
-  box-sizing: border-box; height: 92rpx; border-radius: 22rpx; background: #FFF3E5; cursor: pointer; }
-.rec-add-card:active { background: #FFE9CE; }
-.rac-ico { flex-shrink: 0; color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; line-height: 1; }
-.rac-title { font-size: 32rpx; font-weight: 700; color: var(--c-primary-dark); line-height: 1.2; }
+/* .rec-add-card/.rac-* 死样式已删（0723）：模板改用 .rec-register-card/.rrc-* 后零引用 */
+/* 无人来访一键留档：登记卡下方的次级描边按钮（值班高频动作，一屏可见） */
+.rec-no-visit-quick { order: 3; width: 100%; box-sizing: border-box; height: 84rpx;
+  border: 2rpx dashed #B8C4CC; border-radius: 22rpx; background: #fff;
+  color: #4A5560; font-size: 29rpx; font-weight: 600; }
+.rec-no-visit-quick:active { background: #F2F5F7; }
+.rec-no-visit-quick:disabled { opacity: .6; }
 /* z 50→150（0716 修）：底部 TabBar 是 z-index:100，50 会被它骑在头上、盖住「取消/确认登记」；
    150 压过 TabBar，又低于日期/时间选择弹窗的 210——选择器要能开在本弹窗之上 */
 .rec-mask { position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
