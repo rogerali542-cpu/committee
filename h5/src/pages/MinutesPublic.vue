@@ -112,7 +112,7 @@ const publicTitle = computed(() => {
 const publicContent = computed(() => {
   const saved = detail.value && detail.value.publish && detail.value.publish.publicContent
   if (saved) return saved
-  const org = (detail.value && detail.value.orgFullName) || '阳光花园业主委员会（第一届）'
+  const org = (detail.value && detail.value.orgFullName) || '江州市望江区阳光花园业主委员会（第一届）'
   const orgShort = org.replace(/（[^）]*）$/, '')
   const today = new Date()
   const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')

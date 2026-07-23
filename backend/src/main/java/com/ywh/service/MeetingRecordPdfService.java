@@ -149,9 +149,7 @@ public class MeetingRecordPdfService {
                 c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：未记录表决结果。");
             }
         }
-        if (usable(d.record().getTodoListText())) {
-            c.decisions.add("后续事项：" + d.record().getTodoListText().trim());
-        }
+        // 待办事项不进档案文书（0723 用户定：待办/新闻稿是本产品增值功能，与记录/纪要/公示体系无关）
         if (c.decisions.isEmpty()) c.decisions.add(anyVote ? "无" : "本次会议未形成需表决的决定事项。");
 
         // ── 会议决定、决议公告的时间：公示后自动回填（真实手写表须人工补记，这里系统代劳） ──
@@ -233,6 +231,10 @@ public class MeetingRecordPdfService {
                 if (isSignoffLine(t)) { w.right(t); continue; } // 落款（业委会全称/日期）右对齐，仿真实公文
                 w.paragraph("　　" + t);
             }
+            // 盖章位（0723 用户定：只留位、不做电子章）——落款下方标注并留白，打印后线下加盖公章
+            w.gap(6);
+            w.right("（盖章）");
+            w.gap(36);
             w.close();
             doc.save(out);
             return new PdfFile(safe(meeting.getTitle()) + "-会议纪要.pdf", out.toByteArray());
