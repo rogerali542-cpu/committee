@@ -136,7 +136,9 @@
             <div v-if="!selPeriodFeedback.records.length" class="plan-empty">该期没有会议记录</div>
             <div v-else v-for="r in selPeriodFeedback.records" :key="r.key" class="yc-item" @click="r.onTap()">
               <div class="yc-item-info">
-                <div class="yc-item-title">{{ r.title }}<span v-if="r.status === 'done'" class="ypf-done-tag">已完成</span></div>
+                <!-- 「已完成」独立成行、与标题左对齐（0723 用户定，原挂标题尾部换行后缩进不齐） -->
+                <div class="yc-item-title">{{ r.title }}</div>
+                <div v-if="r.status === 'done'" class="ypf-done-tag">已完成</div>
                 <div v-if="r.sub" class="yc-item-sub">{{ r.sub }}</div>
               </div>
               <!-- 已开的会议：右侧「查看详情」小按钮进会议详情页；未结束的仍显示状态徽标 -->
@@ -3838,7 +3840,7 @@ onActivated(show)
 .yc-period-feedback { margin-top: 10rpx; border-top: 2rpx dashed #EFE7DA; padding: 8rpx 45rpx 8rpx; }
 .ypf-head { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); padding: 4rpx 6rpx 12rpx; }
 /* 已结束会议名旁的绿色「已完成」小标签（0716 用户定，替代被删的「X-X月开会记录」标题） */
-.ypf-done-tag { display: inline-block; margin-left: 12rpx; font-size: 22rpx; font-weight: 700; color: var(--c-success); background: var(--c-success-soft); padding: 3rpx 14rpx; border-radius: 999rpx; vertical-align: 3rpx; }
+.ypf-done-tag { display: inline-block; width: fit-content; margin-top: 6rpx; font-size: 22rpx; font-weight: 700; color: var(--c-success); background: var(--c-success-soft); padding: 3rpx 14rpx; border-radius: 999rpx; }
 /* 常驻「当月状态」提示条（0716 调研定型：黑字裸排像正文、身份错位显怪；改 AntUI/支付宝式浅色底信息条，
    底色与宫格语义色同族——点黄格弹黄条、红格红条、灰格灰条，零新色 */
 .ypf-tip { text-align: left; font-size: 29rpx; line-height: 1.55; padding: 8rpx 0 4rpx; }
@@ -3850,8 +3852,8 @@ onActivated(show)
 .yc-period-feedback .yc-item-title { font-size: 31rpx; line-height: 1.45; }
 .yc-period-feedback .yc-item-sub { font-size: 26rpx; margin-top: 8rpx; line-height: 1.4; }
 .yc-period-feedback .plan-badge { font-size: 26rpx; padding: 10rpx 20rpx; }
-/* 「查看公示」小按钮：白底橙描边，带 › 引导 */
-.yc-period-feedback .plan-badge.ypf-view { background: #fff; color: #C2410C; border: 2rpx solid var(--c-primary); font-weight: 700; box-shadow: none; }
+/* 「查看详情」小按钮：浅蓝底蓝字（0723 用户定，原白底橙描边）——查看类动作降为冷色，不与橙色主动作抢 */
+.yc-period-feedback .plan-badge.ypf-view { background: #EFF6FF; color: #1B5FA8; border: 2rpx solid #BFD9F2; font-weight: 700; box-shadow: none; }
 .yc-period-feedback .plan-badge.ypf-view::after { content: '›'; margin-left: 6rpx; }
 /* 待办卡定位高亮：滚动到位后闪两下橙色提示 */
 .plan-todo-card.flash { animation: todoFlash 0.9s ease 2; }
