@@ -88,6 +88,10 @@ export default {
   committeeExportMeetingRecord: function (id) {
     return core.download('/api/committees/' + id + '/meeting-record.pdf?t=' + Date.now());
   },
+  // 会议记录纯文本（DocPreview 页内预览用，与 meeting-record.pdf 同一份内容装配）
+  committeeMeetingRecordText: function (id) {
+    return core.realRequest('GET', '/api/committees/' + id + '/meeting-record-text');
+  },
   // 会议纪要 PDF（正文与 GET /minutes 同源，公文格式）
   committeeExportMinutesPdf: function (id) {
     return core.download('/api/committees/' + id + '/minutes.pdf?t=' + Date.now());

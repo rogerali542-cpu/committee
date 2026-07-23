@@ -260,6 +260,13 @@ public class CommitteeController {
                 .body(file.bytes());
     }
 
+    /** 会议记录纯文本：页内预览用，与 meeting-record.pdf 同一份内容装配（所见即所导） */
+    @GetMapping("/{id}/meeting-record-text")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<String> meetingRecordText(@PathVariable Long id) {
+        return Result.ok(meetingRecordPdfService.generateRecordText(id));
+    }
+
     @GetMapping("/{id}/meeting-record.pdf")
     @RequireRole({"主任", "副主任", "委员"})
     public ResponseEntity<byte[]> exportMeetingRecord(@PathVariable Long id) {
