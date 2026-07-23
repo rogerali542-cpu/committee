@@ -366,7 +366,8 @@
             <button v-if="isFreshEnded || (detail.publish && detail.publish.published)" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示材料</button>
             <div class="ended-btn-row">
               <!-- 委员合影已移到会后整理页的会议材料项（0722 用户定：拍照进材料，公示自动带上） -->
-              <!-- 「查看会议纪要」不再单列大按钮：入口收进上方会议卡的「查看详情」里 -->
+              <!-- 待办事项接入工单系统，升格为与新闻稿同重量按钮（0722 用户定），各状态分支的小字入口已删 -->
+              <button class="ended-todo-btn" @click="viewTodos">待办事项</button>
               <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
             </div>
             <div v-if="detail.publish && detail.publish.published" class="arp-done">
@@ -375,7 +376,6 @@
                 <span class="arp-status-sub" v-if="detail.publish.publishDate">{{ detail.publish.publishDate }}</span>
               </div>
               <div class="arp-actions">
-                <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
                 <span class="ar-skip danger" @click="withdrawPublish">撤回公示</span>
               </div>
@@ -384,7 +384,6 @@
               <div style="color:#E74C3C;font-size:13px;margin-bottom:8px;">⚠ 公示已撤回{{ detail.publish.withdrawnBy ? '（' + detail.publish.withdrawnBy + '）' : '' }}{{ detail.publish.withdrawReason ? '：' + detail.publish.withdrawReason : '' }}</div>
               <button class="arc-publish-main-btn" @click="publishNow">修订后重新发布</button>
               <div class="arp-actions">
-                <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
                 <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
               </div>
@@ -392,7 +391,6 @@
             <div v-else-if="detail._archived">
               <span class="arp-check">✓</span><span style="font-size:13px;color:#27AE60;">已归档（未公示）</span>
               <div class="arp-actions">
-                <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
                 <span class="ar-skip danger" @click="revokeArchive">撤销归档</span>
               </div>
@@ -400,7 +398,6 @@
             <template v-else>
               <span class="ext-hint withdrawn" v-if="detail.revokeArchiveReason">⚠ 归档已撤销：{{ detail.revokeArchiveReason }}，请确认后重新归档</span>
               <div class="arp-actions">
-                <span class="ar-skip" @click="viewTodos">待办事项</span>
                 <span class="ar-skip" @click="archiveDirect">直接归档</span>
                 <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
               </div>
@@ -3352,6 +3349,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* AI生成新闻稿：描边红（辅助） */
 .ended-news-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#C0141B; font-size:17px; font-weight:700; border:1.5px solid #E39B95; cursor:pointer; }
 .ended-news-btn:active { background:#FDECEC; }
+/* 待办事项（接工单系统）：与新闻稿同重量的描边按钮，会后绿系 */
+.ended-todo-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:#1F6B4E; font-size:17px; font-weight:700; border:1.5px solid #8FBFA9; cursor:pointer; }
+.ended-todo-btn:active { background:#EDF6F1; }
 /* 委员合影：描边橙（会后仪式操作），点击后直接进入实时相机。 */
 .ended-photo-btn { display:flex; align-items:center; justify-content:center; width:73.1%; height:44px; margin:0 auto; border-radius:12px; background:#fff; color:var(--c-primary-dark, #A85800); font-size:17px; font-weight:700; border:1.5px solid #E0A96A; cursor:pointer; }
 .ended-photo-btn:active { background:#FDF3E7; }
