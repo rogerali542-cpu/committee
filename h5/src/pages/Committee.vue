@@ -4358,8 +4358,10 @@ onActivated(show)
 .tie-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10rpx; }
 .tie-label-row .form-label { margin-bottom: 0; }
 .tie-cancel { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 4rpx 0 4rpx 24rpx; }
-.tie-inline-row { display: flex; align-items: center; gap: 24rpx; }
+/* 类型/表决方式 chips 靠最右（0723 用户定）：与「议题内容/取消」同一左右结构，选项更显眼 */
+.tie-inline-row { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; }
 .tie-inline-row .form-label { margin-bottom: 0; flex-shrink: 0; }
+.tie-inline-row .type-row { justify-content: flex-end; }
 .topic-inline-editor .form-group { margin-bottom: 24rpx; }
 .create-panel .topic-inline-editor .type-chip { min-height: 52rpx; padding: 6rpx 22rpx; font-size: 28rpx; }
 .topic-inline-editor .type-row { margin-bottom: 0; }
@@ -4367,7 +4369,9 @@ onActivated(show)
 .tie-add-option { display: block; margin-top: 12rpx; }
 .topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #3F6078; font-size: 28rpx; font-weight: 600; }
 .topic-title-confirm:active { opacity: .88; }
-.topic-inline-editor .type-chip.on { background: #DCE8F2; color: #3F6078; box-shadow: inset 0 0 0 2rpx #C7D8E6; }
+/* 选中态加强（0723 用户定"明显一点"）：深蓝底白字，与未选的浅灰形成强对比 */
+.topic-inline-editor .type-chip { border: 2rpx solid #E2E5E9; background: #fff; }
+.topic-inline-editor .type-chip.on { background: #3F6078; color: #fff; border-color: #3F6078; font-weight: 700; box-shadow: 0 4rpx 10rpx rgba(63,96,120,0.25); }
 .topic-inline-editor .add-link { color: #5B7C96; }
 .tie-confirm { width: 100%; height: 76rpx; margin-top: 2rpx; border: 0; border-radius: 14rpx; background: #B45F18; color: #fff; font-size: 29rpx; font-weight: 600; }
 .tie-confirm:active { opacity: .88; }
