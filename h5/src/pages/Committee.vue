@@ -105,14 +105,16 @@
             <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
+            <!-- 开会图例（0723 用户定加回，放右上角做小图例）：已开/待开/逾期三色对照。
+                 0716 曾整行删掉，这次以「标题行右侧、小字」形态回归——不占日历高度，又给颜色一个说明。 -->
+            <div v-if="planTab === 'meeting'" class="yc-legend">
+              <span><i class="yc-lg-dot done"></i>已开</span>
+              <span><i class="yc-lg-dot current"></i>待开</span>
+              <span><i class="yc-lg-dot overdue"></i>逾期</span>
+            </div>
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
-
-        <!-- 四色图例已删（0716 用户定）。我先前补回过它，理由是「老人靠它对上颜色的含义」——站不住：
-             ①它是 10px/6px 圆点，老人本就看不清；②颜色根本不是唯一载体，每期格子里明写着
-             「已开 ✓ / 待开 / 逾期 ! / 待排」，图例等于用更小的字重复一遍旁边已有的中文。
-             腾出的高度还给日历格子。 -->
 
         <!-- 月份日历：首页主视觉。按双月期成组，保留月份，同时让一期两个月有整体感。 -->
         <div v-if="planTab === 'meeting'" class="yc-period-grid">
@@ -1739,7 +1741,7 @@ function decorateCurrent(m, chair) {
       tag = '会后总结'
     } else {
       ctaLabel = local.fieldEnded ? '会后整理' : (chair ? '进入会议' : '查看会议')
-      ctaIcon = local.fieldEnded ? '📝' : (chair ? '🎙️' : '👀')
+      ctaIcon = local.fieldEnded ? '📝' : (chair ? '🎙️' : '') // 委员「查看会议」不配图标(0723 用户定,原👀删)
       tag = '正在开的会'
     }
   } else {
@@ -3659,6 +3661,14 @@ onActivated(show)
 .ov-lg-dot.warn { background: #B27407; }
 .ov-lg-dot.overdue { background: #B02A1E; }
 .ov-lg-dot.future { background: #71829A; }
+/* 开会 tab 标题行右侧小图例（0723 用户定加回）：三色与格子状态色一一对应。
+   小字定位是「颜色对照表」，真正的状态信息仍由格子里 30rpx 的「已开✓/待开/逾期」承担。 */
+.yc-legend { display: inline-flex; align-items: center; gap: 20rpx; color: var(--c-text-mid); font-size: 24rpx; font-weight: 500; }
+.yc-legend span { display: inline-flex; align-items: center; gap: 8rpx; line-height: 1.2; white-space: nowrap; }
+.yc-lg-dot { flex-shrink: 0; width: 18rpx; height: 18rpx; border-radius: 50%; }
+.yc-lg-dot.done { background: var(--c-success); }
+.yc-lg-dot.current { background: #D97706; }
+.yc-lg-dot.overdue { background: #D83A2E; }
 /* 宫格做大（0716 用户定）：它默认收起、平时不占空间，展开就是给人细看的，没必要委屈 */
 .yc-month-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14rpx; padding: 4rpx 17rpx 20rpx; }
 .yc-month-grid .yc-cell { min-height: 136rpx; gap: 6rpx; }
@@ -3713,8 +3723,8 @@ onActivated(show)
 .yc-grid.compact .yc-m { font-size: 32rpx; }
 .yc-grid.compact .yc-s { font-size: 22rpx; }
 .yc-cell.pair-cell .yc-m { font-size: 31rpx; }
-/* 状态字 24rpx → 30rpx（12px → 15px，0716 用户定）：它是格子里真正要看的东西，
-   图例删了之后更不能小——「已开 ✓ / 待开 / 逾期 ! / 待排」现在是颜色含义的唯一说明。 */
+/* 状态字 24rpx → 30rpx（12px → 15px，0716 用户定）：它是格子里真正要看的东西。
+   右上角小图例（0723 加回）只是颜色对照，状态字仍是主要载体，不因图例回归而缩小。 */
 .yc-cell.pair-cell .yc-s { font-size: 30rpx; }
 .yc-cell.done { background: #F0FAF4; border-color: #D7EFDE; }
 .yc-cell.done .yc-m, .yc-cell.done .yc-s { color: var(--c-success); }
