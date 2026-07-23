@@ -236,8 +236,8 @@
         <template v-if="detail.stage === 'ongoing' && detail.record">
           <div class="live-entry" :class="{ ended: fieldEndedLocal }" @click="enterLive">
             <div class="live-entry-main">
-              <!-- 会后横幅是功能引导（0722 用户定）：结束动作在上一页已完成，这里只讲本页能做什么 -->
-              <span class="live-entry-title">{{ fieldEndedLocal ? '会议结果与公示' : '会议进行中' }}</span>
+              <!-- 会后横幅是功能引导（0722 用户定）：标题上移到顶栏，这里只留一行流程，避免双标题 -->
+              <span v-if="!fieldEndedLocal" class="live-entry-title">会议进行中</span>
               <span class="live-entry-sub">{{ fieldEndedLocal
                 ? '查看结果 → 导出记录与纪要 → 发布公示'
                 : (detail.meetingMethod === 'online'
@@ -1087,8 +1087,8 @@ const navTitle = computed(() => {
   const d = detail.value
   if (!d) return '会议通知'
   if (d.stage === 'preparing') return '会议通知'
-  // 现场已结束(本地标记)：别再顶着「会议进行中」，按详情页示人
-  if (d.stage === 'ongoing') return fieldEndedLocal.value ? '会议详情' : '会议进行中'
+  // 现场已结束(本地标记)：顶栏直接用本页定位做标题，横幅只留流程引导（避免双标题）
+  if (d.stage === 'ongoing') return fieldEndedLocal.value ? '会议结果与公示' : '会议进行中'
   return '会议详情'
 })
 const activeRole = ref({})
