@@ -469,8 +469,9 @@
                   <span class="form-label">议题内容</span>
                   <button type="button" class="tie-cancel" @click="topicDialogOpen = false">取消</button>
                 </div>
+                <!-- 灰色占位文案已删（0723 用户定）：标签「议题内容」已经说明用途，占位字是重复噪音 -->
                 <div class="td-title-row">
-                  <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
+                  <input class="form-input large" v-model="topicDraft.title" />
                 </div>
               </div>
               <div class="form-group tie-inline-row">
@@ -506,12 +507,14 @@
 
           <!-- 居委会见证（说明式开关卡片）：初始就显示，仅标记 hasMajorIssue，不自动通知。
                0723 用户定：主标题只留「含重大事项」，两条制度要求（提前 7 天公告、居委会到场见证）小字补充 -->
-          <div class="juwei-card" @click="createForm.juweiWitness = !createForm.juweiWitness">
+          <!-- 只点右侧开关才切换（0723 用户定）：整行可点容易误触 -->
+          <div class="juwei-card">
             <div class="juwei-text">
               <div class="juwei-title">含重大事项</div>
               <div class="juwei-sub">需提前 7 天向业主公告，并请居委会到场见证</div>
             </div>
-            <span class="juwei-switch" :class="{ on: createForm.juweiWitness }" role="switch" :aria-checked="createForm.juweiWitness"></span>
+            <span class="juwei-switch" :class="{ on: createForm.juweiWitness }" role="switch" :aria-checked="createForm.juweiWitness"
+                  @click="createForm.juweiWitness = !createForm.juweiWitness"></span>
           </div>
 
           <!-- 会议材料：拍照/上传识别出材料后才在底部出现（建会后自动挂到会议供委员传阅） -->
@@ -4269,7 +4272,8 @@ onActivated(show)
 /* 居委会见证（创建页，移自通知页）：白卡 + 标题/说明 + 适老化大复选框 */
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
 /* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
-.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); cursor: pointer; }
+.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+.juwei-switch { cursor: pointer; }
 .juwei-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .juwei-title { min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
 /* 制度要求小字（0723）：比标题小两号但不低于适老下限，深灰而非浅灰 */
@@ -4350,13 +4354,13 @@ onActivated(show)
 .topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
 /* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40%；
    「议题内容+取消」「议题类型/表决方式+chips」各并成一行 */
-.topic-inline-editor { margin-top: 16rpx; padding: 16rpx 20rpx 20rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
-.tie-label-row { display: flex; align-items: center; justify-content: space-between; }
+.topic-inline-editor { margin-top: 16rpx; padding: 22rpx 24rpx 26rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
+.tie-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10rpx; }
 .tie-label-row .form-label { margin-bottom: 0; }
 .tie-cancel { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 4rpx 0 4rpx 24rpx; }
-.tie-inline-row { display: flex; align-items: center; gap: 20rpx; }
+.tie-inline-row { display: flex; align-items: center; gap: 24rpx; }
 .tie-inline-row .form-label { margin-bottom: 0; flex-shrink: 0; }
-.topic-inline-editor .form-group { margin-bottom: 16rpx; }
+.topic-inline-editor .form-group { margin-bottom: 24rpx; }
 .create-panel .topic-inline-editor .type-chip { min-height: 52rpx; padding: 6rpx 22rpx; font-size: 28rpx; }
 .topic-inline-editor .type-row { margin-bottom: 0; }
 .tie-content { box-sizing: border-box; height: auto; min-height: 140rpx; line-height: 1.6; resize: none; padding: 16rpx 20rpx; }
