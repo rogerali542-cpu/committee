@@ -886,7 +886,7 @@ function topicTypeClass(topic) {
 
 function topicStatusLabel(topic, ended) {
   if (!topic) return '待确认'
-  if (topic.voteRequired === false) return '已记录'
+  if (topic.voteRequired === false) return '已完成'
   if (topic.status === 'passed' || topic.passed) return '已通过'
   if (topic.status === 'failed') return '未通过'
   // 会议已结束：无明确表决结果的议题不再显示「待完成」，会已开完即为「已完成」

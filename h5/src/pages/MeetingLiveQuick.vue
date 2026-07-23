@@ -880,7 +880,7 @@ function topicActionButton(item) {
     if (topicBadgeDone(item)) return '已通报'
     return isHost.value ? '去通知' : '查看通知'
   }
-  return topicBadgeDone(item) ? '已记录' : '去讨论'
+  return topicBadgeDone(item) ? '已完成' : '去讨论'
 }
 
 // 方案A（0722 用户定）：取消单独的「结束表决」——表决全程开放、实时可见，

@@ -139,7 +139,7 @@ function timeStr(s) {
 }
 
 function topicResult(t) {
-  if (t.voteRequired === false) return '已记录'
+  if (t.voteRequired === false) return '已完成'
   if (t.passed || t.status === 'passed') return '通过'
   if (t.status === 'failed') return '未通过'
   return '待定'
