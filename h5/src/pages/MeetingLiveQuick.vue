@@ -1227,7 +1227,7 @@ function toggleErItem(n) { erCollapsed.value = { ...erCollapsed.value, [n]: !erC
 const leavingToMinutes = ref(false) // 正在结束会议并跳纪要页的过渡态：盖住按钮文案，避免闪现「已生成」
 const endReviewPrimaryText = computed(() => {
   if (leavingToMinutes.value) return '正在生成会议纪要…'
-  if (minutesGenerated.value) return '已生成，查看纪要'
+  if (minutesGenerated.value) return '查看纪要'
   if (uploading.value) return '上传中…'
   if (polling.value || extracting.value) return '识别中…'
   if (generated.value && hasSavedRecordings.value) return '生成会议纪要'
