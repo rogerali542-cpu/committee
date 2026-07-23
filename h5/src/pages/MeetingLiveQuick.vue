@@ -3250,7 +3250,7 @@ async function confirmEndMeeting() {
   let content, confirmText, cancelText
   if (isUploading) {
     // 正在上传：不放弃，系统后台继续传完并保存
-    content = '当前录音正在上传保存，系统会在后台继续传完，不会丢失。确认结束并进入会后整理吗？' + pendingTail
+    content = '录音正在后台上传，不会丢失，确认结束会议吗？' + pendingTail
     confirmText = '结束会议'; cancelText = '继续开会'
   } else if (hasOngoing && !hasUploaded) {
     // 状态1：有进行中、无已上传。确认=放弃这段并结束。
