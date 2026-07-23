@@ -92,6 +92,10 @@ export default {
   committeeMeetingRecordText: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/meeting-record-text');
   },
+  // 会前公告 PDF（向全体业主公告会议议程、征求意见，会前7天张贴公示栏）
+  committeeExportPreNotice: function (id) {
+    return core.download('/api/committees/' + id + '/pre-notice.pdf?t=' + Date.now());
+  },
   // 列席人员（居委/街道/物业等非委员到会者）：会后整理页登记，进入会议记录与纪要
   committeeSetObservers: function (id, text) {
     return core.request('PUT', '/api/committees/' + id + '/observers', { text: text });

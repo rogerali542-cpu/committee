@@ -199,6 +199,8 @@
                 </template>
               </div>
 
+              <div v-if="cur.preNoticeTip" class="pre-notice-tip">📢 {{ cur.preNoticeTip }}</div>
+
               <div class="big-btn" @click="goCurrent(cur)">
                 <div class="big-btn-inner">
                   <span v-if="cur.ctaIcon" class="big-btn-ico">{{ cur.ctaIcon }}</span>
@@ -1621,6 +1623,17 @@ function _quickLocalFlags(meetingId) {
   } catch (e) { return { fieldEnded: false, reviewDone: false } }
 }
 
+// 会议日期距今天数（用真实今天算倒计时，供会前公告提示）
+function daysUntilMeeting(dateStr) {
+  if (!dateStr) return null
+  const p = String(dateStr).split('-')
+  if (p.length < 3) return null
+  const target = new Date(+p[0], +p[1] - 1, +p[2])
+  if (isNaN(target.getTime())) return null
+  const now = new Date(); now.setHours(0, 0, 0, 0)
+  return Math.round((target - now) / 86400000)
+}
+
 function decorateCurrent(m, chair) {
   // 测试期会议保持 ongoing，现场结束/整理完成 两个节点靠本地快照标记推进卡片形态
   const local = (m.stage === 'ongoing' && chair) ? _quickLocalFlags(m.id) : { fieldEnded: false, reviewDone: false }
@@ -1633,11 +1646,19 @@ function decorateCurrent(m, chair) {
   }))
   let ctaLabel, ctaIcon, tag
   let minutesGen = false
+  let preNoticeTip = ''
   if (m.stage === 'preparing') {
     if (chair) {
       // 准备阶段(会议通知阶段)：卡片按钮统一「继续通知」——点回会议通知页继续发送/开始会议
       ctaLabel = '继续通知'
       ctaIcon = '📣'
+      // 会前公告提示（0723，《指导规则》第39条：业委会会议应提前7天向业主公告议程征意见）
+      const d = daysUntilMeeting(m.meetingDate)
+      if (d != null) {
+        preNoticeTip = d > 7 ? '记得提前 7 天向全体业主公告议程、征求意见'
+          : d >= 0 ? ('距会议召开 ' + d + ' 天，请尽快向业主公告议程（会前公示 7 天）')
+            : ''
+      }
     } else {
       ctaLabel = '查看会议通知'
       ctaIcon = '📋'
@@ -1671,7 +1692,8 @@ function decorateCurrent(m, chair) {
     id: m.id, title: m.title, meetingDate: m.meetingDate, meetingTime: (m.meetingTime || '').slice(0, 5),
     location: m.location, timeText: formatMeetingTime(m), locationText: m.location || '地点待定',
     step: step, steps: steps, stage: m.stage, stageText: MEETING_STAGE_TEXT[m.stage] || '未开始',
-    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen, reviewDone: local.reviewDone
+    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen, reviewDone: local.reviewDone,
+    preNoticeTip: preNoticeTip
   }
 }
 
@@ -3313,6 +3335,8 @@ onActivated(show)
 .step-line.done { background: var(--c-primary); }
 .step-line.todo { background: #E3E5E9; }
 /* 大按钮（方案④ 浅橙卡包实心钮：外层浅橙框 + 内层深橙实心白字）*/
+/* 会前公告提示：准备阶段会议卡上，提醒主任提前7天向业主公告议程 */
+.pre-notice-tip { margin:14rpx 0 4rpx; padding:16rpx 20rpx; background:#FFF6E9; border:2rpx solid #F0D9AE; border-radius:14rpx; color:#8A5A1B; font-size:26rpx; line-height:1.5; }
 .big-btn { display:block; padding: 10rpx; border-radius: 26rpx; background: var(--c-primary-soft); margin-top: 4rpx; box-sizing: border-box; box-shadow: 0 12rpx 84rpx 12rpx rgba(232, 140, 20, 0.26); text-decoration:none; }
 .big-btn-inner { display: flex; align-items: center; justify-content: center; height: 88rpx; border-radius: 16rpx; background: var(--c-primary); }
 .big-btn:active .big-btn-inner { background: var(--c-primary-strong); }

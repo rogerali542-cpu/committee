@@ -47,6 +47,13 @@
               {{ detail.meetingMethod === 'online' ? '转为线下会议' : '转为线上会议' }}
             </button>
           </div>
+          <!-- 会前公告（0723 补齐"会前7天公告议程征意见"环节，《指导规则》第39条）：向全体业主公告，打印张贴公示栏 -->
+          <div class="pre-notice-entry">
+            <button type="button" class="pre-notice-btn" :disabled="exportingPreNotice" @click="exportPreNotice">
+              {{ exportingPreNotice ? '正在生成公告…' : '导出业主公告（会前张贴公示栏）' }}
+            </button>
+            <div class="pre-notice-hint">按规定业委会会议应提前 7 天向全体业主公告议程、征求意见</div>
+          </div>
           <div v-if="methodConvertOpen" class="method-convert-panel">
             <div class="method-convert-title">
               {{ methodConvertForm.meetingMethod === 'online' ? '选择线上平台' : '选择会议地点' }}
@@ -1530,6 +1537,29 @@ async function viewMinutesRevisions() {
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
+// 会前公告：导出面向全体业主的会议公告 PDF（议程+7天征意见），打印张贴公示栏
+const exportingPreNotice = ref(false)
+async function exportPreNotice() {
+  if (exportingPreNotice.value) return
+  exportingPreNotice.value = true
+  try {
+    const blob = await api.committeeExportPreNotice(meetingId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = (detail.value && detail.value.title || '会议') + '-会议公告.pdf'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => { try { URL.revokeObjectURL(url) } catch (e) {} }, 10000)
+    toast({ title: '业主公告已导出', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '导出失败，请稍后重试', icon: 'none' })
+  } finally {
+    exportingPreNotice.value = false
+  }
+}
+
 async function removeMeeting() {
   const isRecordingThisMeeting = meetingRecordingSession.active
     && String(meetingRecordingSession.meetingId || '') === String(meetingId)
@@ -2267,6 +2297,12 @@ async function removeMaterial(item) {
 .method-convert-trigger:active { background:#DCEBF7; }
 .prep-cancel-light { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #CBD0D6; border-radius:12rpx; background:#F1F3F5; color:#5C6672; font-size:26rpx; font-weight:600; }
 .prep-cancel-light:active { background:#E7EAED; color:#3a424b; }
+/* 会前公告入口：通知卡内独立一行，向业主公告用（与给委员的通知区分） */
+.pre-notice-entry { padding:0 12px 16px; }
+.pre-notice-btn { width:100%; height:80rpx; border:2rpx solid #2F6FB2; border-radius:14rpx; background:#fff; color:#2F6FB2; font-size:29rpx; font-weight:700; }
+.pre-notice-btn:active { background:#EAF3FB; }
+.pre-notice-btn:disabled { opacity:.6; }
+.pre-notice-hint { margin-top:10rpx; font-size:23rpx; color:#8A9099; line-height:1.5; text-align:center; }
 .method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
 .method-convert-title { margin-bottom:12rpx; color:#4B5563; font-size:24rpx; }
 .method-convert-select, .method-convert-input { width:100%; box-sizing:border-box; height:72rpx; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; padding:0 18rpx; color:#263746; font-size:27rpx; }

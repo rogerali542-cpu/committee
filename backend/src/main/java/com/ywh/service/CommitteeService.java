@@ -1756,6 +1756,44 @@ public class CommitteeService {
         return text.toString();
     }
 
+    private static final String[] CN_NUM_SVC = {"", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"};
+    private static String cnNumSvc(int i) { return i >= 1 && i <= 10 ? CN_NUM_SVC[i] : String.valueOf(i); }
+    private static String cnDateSvc(LocalDate d) {
+        return d == null ? "近期" : d.getYear() + "年" + d.getMonthValue() + "月" + d.getDayOfMonth() + "日";
+    }
+
+    /**
+     * 会前公告（0723 补齐"会前7天公告议程征意见"环节）：《业主大会和业主委员会指导规则》第三十九条——
+     * 业委会应于会议召开7日前，在物业管理区域内公告会议内容和议程，听取业主意见。面向全体业主，张贴公示栏。
+     */
+    @Transactional(readOnly = true)
+    public String buildPreNoticeContent(Long meetingId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        String community = communityName(m);
+        String org = community.isBlank() ? "业主委员会" : community + "业主委员会";
+        MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElse(null);
+        List<RecordTopic> topics = record == null ? Collections.emptyList()
+                : topicRepo.findByRecordIdOrderBySortOrder(record.getId());
+        LocalDate end = TODAY.plusDays(6); // 公示期7天（含首尾）
+        StringBuilder t = new StringBuilder();
+        t.append("关于召开业主委员会会议征求业主意见的公告\n\n");
+        t.append("根据《中华人民共和国民法典》《物业管理条例》及本小区《业主大会议事规则》的相关规定，")
+                .append(org).append("拟于").append(cnDateSvc(m.getMeetingDate()))
+                .append("召开业主委员会会议，现将会议议程予以公告，征求全体业主意见：\n\n");
+        if (topics.isEmpty()) {
+            t.append("一、〔会议议题以正式通知为准〕\n");
+        } else {
+            int i = 1;
+            for (RecordTopic topic : topics) t.append(cnNumSvc(i++)).append("、").append(nullToUnknown(topic.getTitle())).append("\n");
+        }
+        t.append("\n本公告自").append(TODAY).append("起在本小区业委会公示栏张榜公布，公示期7天（")
+                .append(TODAY).append("至").append(end).append("）。\n");
+        t.append("业主如对上述议题有意见或建议，请在业主接待日到居委会办公室当面反映，或以书面形式投递至业委会意见箱，供会议研究参考。\n\n");
+        t.append("特此公告。\n\n").append(orgFullName(m)).append("\n").append(TODAY);
+        return t.toString();
+    }
+
     /**
      * 撤回公示（见 产品边界定稿.md §5）。必须填写原因并留痕，不丢历史。
      */

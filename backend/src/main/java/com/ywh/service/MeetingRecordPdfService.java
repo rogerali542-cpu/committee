@@ -283,6 +283,37 @@ public class MeetingRecordPdfService {
         }
     }
 
+    /** 会前公告 PDF（0723）：面向全体业主的会议召开征意见公告，公文格式——标题居中 + 段首缩进 + 落款右对齐 + 盖章位。 */
+    @Transactional(readOnly = true)
+    public PdfFile generateNoticePdf(Long meetingId, String fullText) {
+        CommitteeMeeting meeting = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (fullText == null || fullText.isBlank())
+            throw new IllegalArgumentException("公告内容为空");
+        String[] lines = fullText.split("\\R", -1);
+        String title = lines.length > 0 ? lines[0].strip() : "会议公告";
+        try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Writer w = new Writer(doc, loadChineseFont(doc));
+            w.title(title);
+            w.gap(10);
+            for (int i = 1; i < lines.length; i++) {
+                String t = lines[i].strip();
+                if (t.isEmpty()) { w.gap(6); continue; }
+                if (isSignoffLine(t)) { w.right(t); continue; }         // 落款右对齐
+                if (t.matches("^[一二三四五六七八九十]+、.*")) { w.line("　　" + t); continue; } // 议程条目
+                w.paragraph("　　" + t);
+            }
+            w.gap(6);
+            w.right("（盖章）");
+            w.gap(36);
+            w.close();
+            doc.save(out);
+            return new PdfFile(safe(meeting.getTitle()) + "-会议公告.pdf", out.toByteArray());
+        } catch (IOException e) {
+            throw new IllegalStateException("会议公告生成失败", e);
+        }
+    }
+
     /** 落款行判定：业委会全称（可带届别）或日期行，右对齐排版。 */
     private static boolean isSignoffLine(String t) {
         return t.matches(".{0,30}业主委员会(（第.{1,6}届）)?") || t.matches("\\d{4}年\\d{1,2}月\\d{1,2}日");

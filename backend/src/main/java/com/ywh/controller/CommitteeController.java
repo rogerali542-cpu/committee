@@ -268,6 +268,26 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 会前公告文本（预览用）：向全体业主公告会议议程、征求意见（会前7天） */
+    @GetMapping("/{id}/pre-notice")
+    @RequireRole({"主任", "副主任"})
+    public Result<String> preNotice(@PathVariable Long id) {
+        return Result.ok(service.buildPreNoticeContent(id));
+    }
+
+    /** 会前公告 PDF：主任在准备阶段导出，打印张贴公示栏 */
+    @GetMapping("/{id}/pre-notice.pdf")
+    @RequireRole({"主任", "副主任"})
+    public ResponseEntity<byte[]> exportPreNotice(@PathVariable Long id) {
+        MeetingRecordPdfService.PdfFile file = meetingRecordPdfService.generateNoticePdf(id, service.buildPreNoticeContent(id));
+        String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(file.bytes());
+    }
+
     /** 归档材料目录（编号台账）：会议记录/纪要/公示 + 会议材料 + 补充材料。先做后台端点，查看入口后续接 */
     @GetMapping("/{id}/archive-catalog")
     @RequireRole({"主任", "副主任", "委员"})
