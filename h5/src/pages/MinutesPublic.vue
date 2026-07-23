@@ -46,7 +46,11 @@
         </section>
         <!-- 未发布时主任在预览页里发布（0722 用户定：详情页入口改为「查看公示材料」，先看内容再发布） -->
         <button v-if="canPublish" class="pub-btn publish" :disabled="publishing" @click="publishFromPreview">{{ publishing ? '发布中…' : '确认发布公示' }}</button>
-        <button class="pub-btn" :class="{ ghost: canPublish }" @click="copyText">复制公示正文</button>
+        <!-- 导出打印（0723 用户定）：公示的最终归宿是打印后张贴小区公告栏，给主任一键导出 PDF -->
+        <button v-if="isChairUser" class="pub-btn" :class="{ ghost: canPublish }" :disabled="exportingPdf" @click="exportPublicPdf">
+          {{ exportingPdf ? '正在导出…' : '导出 PDF 打印张贴' }}
+        </button>
+        <button class="pub-btn ghost" @click="copyText">复制公示正文</button>
         <span class="pub-foot">{{ isPublished ? '本页为面向本小区业主发布的事项公示材料' : '以上为公示材料预览，发布后对本小区业主公开' }}</span>
       </template>
     </div>
@@ -256,6 +260,29 @@ async function copyText() {
     await navigator.clipboard.writeText(lines.filter(Boolean).join('\n\n'))
     toast({ title: '公示正文已复制' })
   } catch (e) { toast({ title: '复制失败', icon: 'none' }) }
+}
+
+// 导出公示 PDF（0723 用户定）：公示的最终归宿是打印张贴公告栏——后端出公文排版 PDF（带盖章位），一键下载
+const exportingPdf = ref(false)
+async function exportPublicPdf() {
+  if (exportingPdf.value) return
+  exportingPdf.value = true
+  try {
+    const blob = await api.committeeExportPublicNotice(meetingId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = ((detail.value && detail.value.title) || '会议') + '-会议公示.pdf'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => { try { URL.revokeObjectURL(url) } catch (e) {} }, 10000)
+    toast({ title: '公示 PDF 已导出，打印后张贴公告栏', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '导出失败，请稍后重试', icon: 'none' })
+  } finally {
+    exportingPdf.value = false
+  }
 }
 
 onMounted(() => {

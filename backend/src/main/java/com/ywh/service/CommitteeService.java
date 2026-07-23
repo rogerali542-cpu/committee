@@ -1691,6 +1691,20 @@ public class CommitteeService {
         snapshotRevision(meetingId, generateMinutes(meetingId));
     }
 
+    /** 公示全文（标题+正文，PDF 导出用，0723）：已公示取存档的公示标题/正文，未公示按当前数据现拼。
+     *  首行为标题（generateNoticePdf 按首行居中排标题），与公示页所见一致。 */
+    @Transactional(readOnly = true)
+    public String publicNoticeText(Long meetingId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        MeetingPublish pub = publishRepo.findByMeetingId(meetingId).orElse(null);
+        String title = pub != null && pub.getPublicTitle() != null && !pub.getPublicTitle().isBlank()
+                ? pub.getPublicTitle() : buildPublicNoticeTitle(m);
+        String content = pub != null && pub.getPublicContent() != null && !pub.getPublicContent().isBlank()
+                ? pub.getPublicContent() : buildPublicNoticeContent(m);
+        return title + "\n\n" + content;
+    }
+
     private String buildPublicNoticeTitle(CommitteeMeeting meeting) {
         MeetingRecord record = recordRepo.findByMeetingId(meeting.getId()).orElse(null);
         List<RecordTopic> topics = record == null ? Collections.emptyList()

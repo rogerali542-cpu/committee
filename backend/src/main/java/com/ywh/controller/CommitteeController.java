@@ -288,6 +288,19 @@ public class CommitteeController {
                 .body(file.bytes());
     }
 
+    /** 会后公示 PDF（0723）：公示页一键导出打印，张贴到小区公告栏。已公示导存档正文，未公示导当前预览。 */
+    @GetMapping("/{id}/public-notice.pdf")
+    @RequireRole({"主任", "副主任"})
+    public ResponseEntity<byte[]> exportPublicNotice(@PathVariable Long id) {
+        MeetingRecordPdfService.PdfFile file = meetingRecordPdfService.generateNoticePdf(id, service.publicNoticeText(id), "会议公示");
+        String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(file.bytes());
+    }
+
     /** 归档材料目录（编号台账）：会议记录/纪要/公示 + 会议材料 + 补充材料。先做后台端点，查看入口后续接 */
     @GetMapping("/{id}/archive-catalog")
     @RequireRole({"主任", "副主任", "委员"})

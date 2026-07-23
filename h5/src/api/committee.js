@@ -96,6 +96,10 @@ export default {
   committeeExportPreNotice: function (id) {
     return core.download('/api/committees/' + id + '/pre-notice.pdf?t=' + Date.now());
   },
+  // 会后公示 PDF（公示页一键导出打印，张贴公告栏）
+  committeeExportPublicNotice: function (id) {
+    return core.download('/api/committees/' + id + '/public-notice.pdf?t=' + Date.now());
+  },
   // 列席人员（居委/街道/物业等非委员到会者）：会后整理页登记，进入会议记录与纪要
   committeeSetObservers: function (id, text) {
     return core.request('PUT', '/api/committees/' + id + '/observers', { text: text });

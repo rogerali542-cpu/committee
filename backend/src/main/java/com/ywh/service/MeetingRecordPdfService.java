@@ -283,9 +283,15 @@ public class MeetingRecordPdfService {
         }
     }
 
-    /** 会前公告 PDF（0723）：面向全体业主的会议召开征意见公告，公文格式——标题居中 + 段首缩进 + 落款右对齐 + 盖章位。 */
+    /** 会前公告 PDF（0723）：面向全体业主的会议召开公告，公文格式——标题居中 + 段首缩进 + 落款右对齐 + 盖章位。 */
     @Transactional(readOnly = true)
     public PdfFile generateNoticePdf(Long meetingId, String fullText) {
+        return generateNoticePdf(meetingId, fullText, "会议公告");
+    }
+
+    /** 同一公文排版复用于 会前公告/会后公示（kind 决定导出文件名后缀）。 */
+    @Transactional(readOnly = true)
+    public PdfFile generateNoticePdf(Long meetingId, String fullText, String kind) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         if (fullText == null || fullText.isBlank())
@@ -308,9 +314,9 @@ public class MeetingRecordPdfService {
             w.gap(36);
             w.close();
             doc.save(out);
-            return new PdfFile(safe(meeting.getTitle()) + "-会议公告.pdf", out.toByteArray());
+            return new PdfFile(safe(meeting.getTitle()) + "-" + kind + ".pdf", out.toByteArray());
         } catch (IOException e) {
-            throw new IllegalStateException("会议公告生成失败", e);
+            throw new IllegalStateException(kind + "生成失败", e);
         }
     }
 
