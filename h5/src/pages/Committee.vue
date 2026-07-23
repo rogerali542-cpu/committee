@@ -463,8 +463,8 @@
               <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
             </div>
             <div v-if="createTab === 'manual' && topicDialogOpen" class="topic-inline-editor">
+              <!-- 标题「添加议题」已删（0723 用户定，卡片压缩）：头部只留右侧「取消」 -->
               <div class="tie-head">
-                <span>{{ topicEditIdx >= 0 ? '编辑议题' : '添加议题' }}</span>
                 <button type="button" @click="topicDialogOpen = false">取消</button>
               </div>
               <div class="form-group">
@@ -483,13 +483,7 @@
                   <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决</span>
                 </div>
               </div>
-              <div class="form-group" v-if="topicDraft.type !== 'decision'">
-                <template v-if="topicNoticeOpen || topicDraft.content">
-                  <span class="form-label">通知正文（选填，填了会上出示并跟踪已读）</span>
-                  <textarea class="form-input tie-content" v-model="topicDraft.content"></textarea>
-                </template>
-                <span v-else class="add-link tie-notice-toggle" @click="topicNoticeOpen = true">＋ 补充通知正文（选填）</span>
-              </div>
+              <!-- 「补充通知正文」入口已删（0723 用户定，卡片压缩）：底层 content→notice 映射保留，旧议题的正文编辑保存时原样带回 -->
               <div class="form-group" v-if="topicDraft.type === 'decision'">
                 <span class="form-label">表决方式</span>
                 <div class="type-row">
@@ -1594,7 +1588,6 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 // 议题编辑弹窗
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
-const topicNoticeOpen = ref(false) // 通知正文默认收起，点「补充通知正文」才展开
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 
 // 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
@@ -3042,7 +3035,6 @@ function openAddTopic() {
   topicDraft.decisionType = 'none'
   topicDraft.options = []
   topicDraft.content = ''
-  topicNoticeOpen.value = false
   topicDialogOpen.value = true
 }
 
@@ -3054,7 +3046,6 @@ function openEditTopic(idx) {
   topicDraft.decisionType = t.decisionType || 'none'
   topicDraft.options = (t.options || []).map(function (o) { return { id: o.id, label: o.label } })
   topicDraft.content = t.content || ''
-  topicNoticeOpen.value = !!(t.content)
   topicDialogOpen.value = true
 }
 
@@ -4357,11 +4348,12 @@ onActivated(show)
 .topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
 .topic-add-trigger:active { background: #F1F3F5; }
 .topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
-.topic-inline-editor { margin-top: 16rpx; padding: 24rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
-.tie-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22rpx; }
-.tie-head > span { font-size: 30rpx; font-weight: 600; color: #1f2329; }
+/* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40% */
+.topic-inline-editor { margin-top: 16rpx; padding: 14rpx 20rpx 20rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
+.tie-head { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 2rpx; }
 .tie-head > button { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 8rpx 0 8rpx 24rpx; }
-.topic-inline-editor .form-group { margin-bottom: 22rpx; }
+.topic-inline-editor .form-group { margin-bottom: 16rpx; }
+.create-panel .topic-inline-editor .type-chip { min-height: 52rpx; padding: 6rpx 22rpx; font-size: 28rpx; }
 .topic-inline-editor .type-row { margin-bottom: 0; }
 .tie-content { box-sizing: border-box; height: auto; min-height: 140rpx; line-height: 1.6; resize: none; padding: 16rpx 20rpx; }
 .tie-add-option { display: block; margin-top: 12rpx; }
