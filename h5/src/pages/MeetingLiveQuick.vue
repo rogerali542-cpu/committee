@@ -1511,6 +1511,10 @@ watch(() => route.query.meetingId, (val, oldVal) => {
 onActivated(() => {
   pageActive.value = true
   syncRecordingPageVisibility()
+  // KeepAlive 复用实例：上次「生成纪要/完成会后整理」跳走时留下的过渡态必须复位，
+  // 否则回到会后整理后两个按钮一个卡在"正在生成…"、一个被 ending 锁死点不动（0722 实测）
+  ending.value = false
+  leavingToMinutes.value = false
   // 守卫只在本页处于前台时生效（见 onDeactivated 的移除说明）
   if (typeof window !== 'undefined') window.addEventListener('beforeunload', _beforeUnloadGuard)
   if (!_booted) return
