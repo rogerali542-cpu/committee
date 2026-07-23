@@ -2324,8 +2324,9 @@ async function removeMaterial(item) {
 .method-convert-actions button:disabled { opacity:.6; }
 .nc-online-emphasis { margin:8rpx 0 16rpx; padding:12rpx 18rpx; border-radius:10rpx; background:#EAF3FA; color:#315F7D; font-size:28rpx; font-weight:700; text-align:center; }
 /* 通知记录：标题 + 记录 */
-.sr-section { margin:8rpx 6rpx 0; }
-.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:2rpx 2rpx 12rpx; }
+/* 通知记录：与通知人员同族的白卡容器（0723 修：原先无容器，内容裸贴屏幕左右边缘） */
+.sr-section { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; padding:20rpx 28rpx 22rpx; box-sizing:border-box; }
+.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:0 0 12rpx; }
 .sr-heading { font-size:32rpx; font-weight:700; color:#1f2329; }
 /* 清空通知记录：测试用弱化小按钮（灰描边胶囊） */
 .sr-clear-btn { flex-shrink:0; font-size:25rpx; color:#8A9099; padding:5rpx 18rpx; border:2rpx solid #E3E5E9; border-radius:999rpx; line-height:1.3; }

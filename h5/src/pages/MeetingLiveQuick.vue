@@ -3960,8 +3960,9 @@ async function returnToRecordingPage() {
 .live-page.has-fixed-end-voting { padding-bottom:235rpx; }
 /* 结束现场会议：改成钉底操作栏，消灭原来悬空按钮上方那块大空白。
    描边+浅底，分量比红色「开始录音」轻，不抢主操作。 */
-.mlq-endbar { position:fixed; z-index:80; left:0; right:0; bottom:0; padding:14rpx 32rpx calc(14rpx + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:2rpx solid #ECEEF1; backdrop-filter:blur(8px); }
-.mlq-endbar-space { height:170rpx; }  /* 占位，保证滚动到底时最后内容不被钉底栏盖住 */
+/* 0723 排版修整：上下留白加厚，按钮不再顶着底栏边缘 */
+.mlq-endbar { position:fixed; z-index:80; left:0; right:0; bottom:0; padding:22rpx 32rpx calc(22rpx + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:2rpx solid #ECEEF1; backdrop-filter:blur(8px); }
+.mlq-endbar-space { height:190rpx; }  /* 占位，保证滚动到底时最后内容不被钉底栏盖住 */
 .fixed-end-field-btn { display:block; width:70%; margin:0 auto; height:92rpx; border:2rpx solid #B47A34; border-radius:16rpx; background:#FFFBF3; color:#8F4A06; font-size:30rpx; font-weight:750; font-family:inherit; }
 .fixed-end-field-btn:active { background:#F6E8D3; }
 .end-review-page { position:fixed; inset:0; z-index:180; background:#F6F7F9; display:flex; flex-direction:column; }
