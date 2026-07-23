@@ -20,6 +20,8 @@ const routes = [
   { path: '/minutes-public', component: () => import('@/pages/MinutesPublic.vue'), meta: { title: '公开纪要' } },
   { path: '/minutes-internal', component: () => import('@/pages/MinutesInternal.vue'), meta: { title: '内部总结' } },
   { path: '/minutes-todos', component: () => import('@/pages/MinutesTodos.vue'), meta: { title: '待办事项' } },
+  // 会议记录/纪要 PDF 预览页（kind=record|minutes）：页内预览+导出
+  { path: '/doc-preview', component: () => import('@/pages/DocPreview.vue'), meta: { title: '文档预览' } },
 
   // 其余页
   { path: '/my-meeting', component: () => import('@/pages/MyMeeting.vue'), meta: { title: '我的会议' } },

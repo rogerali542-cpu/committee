@@ -319,18 +319,14 @@
             </template>
             <!-- 签到表行已删（0722 用户定）：会后整理页已有「打印签到表」，不重复。
                  记录/纪要统一只留「查看」→ PDF 预览弹层，导出按钮在预览里（0722 用户定） -->
-            <!-- 灰色说明小字已删（0722 用户定）：标题自明，点查看即见内容 -->
+            <!-- 灰色说明小字已删（0722 用户定）：标题自明；查看=进独立预览页(页内预览+导出PDF) -->
             <div class="attendance-sheet-entry">
               <div class="ase-copy"><b>会议记录</b></div>
-              <button class="ase-btn primary" :disabled="pdfPreviewLoading === 'record'" @click="previewPdf('record')">
-                {{ pdfPreviewLoading === 'record' ? '生成中…' : '查看' }}
-              </button>
+              <button class="ase-btn primary" @click="viewDoc('record')">查看</button>
             </div>
             <div class="attendance-sheet-entry" v-if="detail.minutesReady">
               <div class="ase-copy"><b>会议纪要</b></div>
-              <button class="ase-btn primary" :disabled="pdfPreviewLoading === 'minutes'" @click="previewPdf('minutes')">
-                {{ pdfPreviewLoading === 'minutes' ? '生成中…' : '查看' }}
-              </button>
+              <button class="ase-btn primary" @click="viewDoc('minutes')">查看</button>
             </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
@@ -750,20 +746,6 @@
                 :has-prev="sheetHasPrev" :has-next="sheetHasNext"
                 @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
 
-    <!-- 会议记录/纪要 PDF 预览弹层：iframe 预览 + 底部导出（0722 用户定） -->
-    <div v-if="pdfPreview" class="pdfp-mask" @click.self="closePdfPreview">
-      <div class="pdfp-sheet">
-        <div class="pdfp-head">
-          <span class="pdfp-title">{{ pdfPreview.title }}</span>
-          <span class="pdfp-close" @click="closePdfPreview">×</span>
-        </div>
-        <iframe class="pdfp-frame" :src="pdfPreview.url"></iframe>
-        <div class="pdfp-foot">
-          <span class="pdfp-tip">如无法直接预览，可导出后查看</span>
-          <button class="pdfp-export" @click="downloadPreviewPdf">导出 PDF</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -2511,43 +2493,11 @@ async function exportAttendanceSheet() {
   }
 }
 
-// ——— 会议记录/会议纪要 PDF 预览弹层（0722 用户定：行内只留「查看」，导出按钮在预览里） ———
-const pdfPreview = ref(null)        // { title, url, blob, fileName }
-const pdfPreviewLoading = ref('')   // 'record' | 'minutes' | ''
-async function previewPdf(kind) {
-  if (pdfPreviewLoading.value) return
-  pdfPreviewLoading.value = kind
-  try {
-    const blob = kind === 'record'
-      ? await api.committeeExportMeetingRecord(meetingId)
-      : await api.committeeExportMinutesPdf(meetingId)
-    const title = kind === 'record' ? '会议记录' : '会议纪要'
-    pdfPreview.value = {
-      title: title,
-      url: URL.createObjectURL(blob),
-      blob: blob,
-      fileName: `${(detail.value && detail.value.title) || '会议'}-${title}.pdf`
-    }
-  } catch (e) {
-    toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' })
-  } finally {
-    pdfPreviewLoading.value = ''
-  }
-}
-function closePdfPreview() {
-  if (pdfPreview.value) { try { URL.revokeObjectURL(pdfPreview.value.url) } catch (e) {} }
-  pdfPreview.value = null
-}
-function downloadPreviewPdf() {
-  const p = pdfPreview.value
-  if (!p) return
-  const link = document.createElement('a')
-  link.href = p.url
-  link.download = p.fileName
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  toast({ title: p.title + '已导出', icon: 'success' })
+// 会议记录/纪要「查看」→ 独立预览页（0722 用户定：页内预览+导出PDF），带硬导航兜底
+function viewDoc(kind) {
+  const target = '/doc-preview?meetingId=' + meetingId + '&kind=' + kind
+  navigateTo('/pages/doc-preview/doc-preview?meetingId=' + meetingId + '&kind=' + kind)
+  setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = target }, 400)
 }
 
 async function exportMeetingRecord() {
@@ -3412,16 +3362,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 @keyframes vi-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,168,0,0.4); } 50% { box-shadow:0 0 0 14rpx rgba(255,168,0,0); } }
 
 /* 进行中签到进度（主任视图） */
-/* 会议记录/纪要 PDF 预览弹层 */
-.pdfp-mask { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:260; display:flex; align-items:center; justify-content:center; padding:20px 14px; }
-.pdfp-sheet { width:100%; max-width:560px; height:86vh; background:#fff; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; }
-.pdfp-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #EEF0F3; }
-.pdfp-title { font-size:32rpx; font-weight:700; color:#1F2329; }
-.pdfp-close { font-size:44rpx; color:#8A8F98; line-height:1; padding:0 4px; }
-.pdfp-frame { flex:1; width:100%; border:0; background:#F5F6F8; }
-.pdfp-foot { display:flex; align-items:center; gap:10px; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid #EEF0F3; }
-.pdfp-tip { flex:1; font-size:22rpx; color:#A0A5AD; }
-.pdfp-export { flex-shrink:0; border:0; border-radius:999px; background:#2F6FB2; color:#fff; font-size:27rpx; font-weight:600; padding:9px 22px; }
+/* 会议记录/纪要预览已改为独立页 DocPreview.vue（0722 用户定），弹层样式随之删除 */
 /* 签到进度卡样式已随卡片删除（0722 用户定） */
 .voter-list { margin-top:8px; padding:8px 10px; background:#F7F9FA; border-radius:8px; }
 .vl-title { display:block; font-size: 28rpx; color:#2980B9; margin-bottom:4px; }
