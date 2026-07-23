@@ -55,14 +55,16 @@
             </div>
             <template v-if="!erCollapsed[1]">
             <div v-if="signinStats.absentCount > 0" class="er-item-sub">（{{ signinStats.absentCount }} 人请假缺席，不计入应到）</div>
-            <!-- 列席人员（0723 向真实材料看齐）：居委/街道/物业等非委员到会者，进会议记录（实到 N+M）与纪要（到会指导） -->
-            <div class="er-observers" @click="isChair && editObservers()">
+            <!-- 列席人员（0723 向真实材料看齐）：居委/街道/物业等非委员到会者，进会议记录（实到 N+M）与纪要（到会指导）。
+                 没登记时整行隐藏（0723 用户定），登记入口在下方按钮排的「登记列席」 -->
+            <div v-if="observersText" class="er-observers" @click="isChair && editObservers()">
               <span class="er-observers-label">列席人员</span>
-              <span class="er-observers-value">{{ observersText || '未登记（居委、街道、物业等到会人员）' }}</span>
-              <button v-if="isChair" class="er-observers-edit">{{ observersText ? '修改' : '登记' }}</button>
+              <span class="er-observers-value">{{ observersText }}</span>
+              <button v-if="isChair" class="er-observers-edit">修改</button>
             </div>
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
+              <button v-if="isChair && !observersText" class="er-act" @click="editObservers">登记列席</button>
               <button class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
                 {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
               </button>

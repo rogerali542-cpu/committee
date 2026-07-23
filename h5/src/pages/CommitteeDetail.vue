@@ -47,12 +47,13 @@
               {{ detail.meetingMethod === 'online' ? '转为线下会议' : '转为线上会议' }}
             </button>
           </div>
-          <!-- 会前公告（0723 补齐"会前7天公告议程征意见"环节，《指导规则》第39条）：向全体业主公告，打印张贴公示栏 -->
+          <!-- 会前公告（0723，《指导规则》第39条）：向全体业主公告，打印张贴公示栏。
+               0723 用户反馈：按钮太宽太突兀 → 缩到与上排操作同宽档、降为描边次按钮 -->
           <div class="pre-notice-entry">
             <button type="button" class="pre-notice-btn" :disabled="exportingPreNotice" @click="exportPreNotice">
-              {{ exportingPreNotice ? '正在生成公告…' : '导出业主公告（会前张贴公示栏）' }}
+              {{ exportingPreNotice ? '正在生成…' : '导出业主公告' }}
             </button>
-            <div class="pre-notice-hint">按规定业委会会议应提前 7 天向全体业主公告会议时间和议程</div>
+            <div class="pre-notice-hint">按规定应提前 7 天张贴，告知业主会议时间和议程</div>
           </div>
           <div v-if="methodConvertOpen" class="method-convert-panel">
             <div class="method-convert-title">
@@ -2253,7 +2254,8 @@ async function removeMaterial(item) {
 /* ——— 通知页（精简版）：通知卡片 / 发送记录 / 取消会议 / 转发微信弹层 ——— */
 /* 通知卡片整体收紧一档：有通知后页面内容多，卡片小一点不拥挤 */
 .notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:24rpx; margin-bottom:16rpx; }
-.nc-copy { padding:26rpx 28rpx; display:flex; flex-direction:column; gap:10rpx; font-size:28rpx; line-height:1.65; color:#1a1a1a; }
+/* 0723 加入会前公告按钮后整卡压密一档：padding/gap/行距微收，总高不涨 */
+.nc-copy { padding:20rpx 28rpx; display:flex; flex-direction:column; gap:6rpx; font-size:28rpx; line-height:1.55; color:#1a1a1a; }
 .nc-copy-title { font-size:31rpx; font-weight:700; line-height:1.5; word-break:break-all; }
 .nc-copy-row { font-size:28rpx; color:#333; line-height:1.6; word-break:break-all; }
 .nc-copy-note { margin-top:4rpx; font-size:27rpx; color:#555; line-height:1.6; }
@@ -2292,17 +2294,18 @@ async function removeMaterial(item) {
 .recipient-card-arrow.open { transform:rotate(-90deg); }
 .page-rcp-list { margin:0; max-height:329rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
 .page-rcp-item { min-height:76rpx; box-sizing:border-box; padding:14rpx 22rpx; }
-.prep-meeting-actions { width:64%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:28rpx; margin:4rpx auto 22rpx; padding-top:18rpx; border-top:1px solid #EEF0F2; }
+.prep-meeting-actions { width:64%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:28rpx; margin:2rpx auto 14rpx; padding-top:14rpx; border-top:1px solid #EEF0F2; }
 .method-convert-trigger { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #A7C4DD; border-radius:12rpx; background:#EAF3FB; color:#2F5678; font-size:26rpx; font-weight:600; box-shadow:none; }
 .method-convert-trigger:active { background:#DCEBF7; }
 .prep-cancel-light { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #CBD0D6; border-radius:12rpx; background:#F1F3F5; color:#5C6672; font-size:26rpx; font-weight:600; }
 .prep-cancel-light:active { background:#E7EAED; color:#3a424b; }
 /* 会前公告入口：通知卡内独立一行，向业主公告用（与给委员的通知区分） */
-.pre-notice-entry { padding:0 12px 16px; }
-.pre-notice-btn { width:100%; height:80rpx; border:2rpx solid #2F6FB2; border-radius:14rpx; background:#fff; color:#2F6FB2; font-size:29rpx; font-weight:700; }
-.pre-notice-btn:active { background:#EAF3FB; }
+/* 会前公告入口：与「取消会议/转线上」同宽档(64%)的描边次按钮，不抢版面 */
+.pre-notice-entry { padding:0 12px 12px; display:flex; flex-direction:column; align-items:center; }
+.pre-notice-btn { width:64%; height:64rpx; border:2rpx solid #A7C4DD; border-radius:12rpx; background:#EAF3FB; color:#2F5678; font-size:26rpx; font-weight:600; }
+.pre-notice-btn:active { background:#DCEBF7; }
 .pre-notice-btn:disabled { opacity:.6; }
-.pre-notice-hint { margin-top:10rpx; font-size:23rpx; color:#8A9099; line-height:1.5; text-align:center; }
+.pre-notice-hint { margin-top:8rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
 .method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
 .method-convert-title { margin-bottom:12rpx; color:#4B5563; font-size:24rpx; }
 .method-convert-select, .method-convert-input { width:100%; box-sizing:border-box; height:72rpx; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; padding:0 18rpx; color:#263746; font-size:27rpx; }
@@ -2737,14 +2740,16 @@ async function removeMaterial(item) {
 }
 
 /* 详情页议题正文整体缩两号（md=3议题基准）；0722 用户定：适老化整体+1号 */
-.ar-card .mtc-title-main { font-size:18px; }
+/* 「会议议题/收起议题」行加大两号（0723 用户定，会议结果与公示页） */
+.ar-card .mtc-title-main { font-size:20px; }
+.ar-card .mtc-collapse { font-size:17px; }
 .ar-card .mtc-topic-title { font-size:18px; }
 .ar-card .mtc-status { font-size:16px; }
 .ar-card .mtc-summary { font-size:17px; }
 .ar-card .mtc-no { width:26px; height:26px; font-size:16px; }
 
 /* 按议题数量动态调整议题卡字号 */
-.ar-card.card-sz-xl .mtc-title-main { font-size:22px; }
+.ar-card.card-sz-xl .mtc-title-main { font-size:24px; }
 .ar-card.card-sz-xl .mtc-topic-title { font-size:22px; }
 .ar-card.card-sz-xl .mtc-status { font-size:20px; }
 .ar-card.card-sz-xl .mtc-no { font-size:20px; width:32px; height:32px; }
@@ -2752,7 +2757,7 @@ async function removeMaterial(item) {
 .ar-card.card-sz-xl .mtc-topic { padding:24px 0; }
 .ar-card.card-sz-xl .mtc-head { margin-bottom:18px; }
 
-.ar-card.card-sz-lg .mtc-title-main { font-size:20px; }
+.ar-card.card-sz-lg .mtc-title-main { font-size:22px; }
 .ar-card.card-sz-lg .mtc-topic-title { font-size:20px; }
 .ar-card.card-sz-lg .mtc-status { font-size:18px; }
 .ar-card.card-sz-lg .mtc-no { font-size:18px; width:30px; height:30px; }
@@ -2760,7 +2765,7 @@ async function removeMaterial(item) {
 .ar-card.card-sz-lg .mtc-topic { padding:20px 0; }
 .ar-card.card-sz-lg .mtc-head { margin-bottom:14px; }
 
-.ar-card.card-sz-sm .mtc-title-main { font-size:16px; }
+.ar-card.card-sz-sm .mtc-title-main { font-size:18px; }
 .ar-card.card-sz-sm .mtc-topic-title { font-size:16px; }
 .ar-card.card-sz-sm .mtc-status { font-size:15px; }
 .ar-card.card-sz-sm .mtc-no { font-size:15px; width:24px; height:24px; }
