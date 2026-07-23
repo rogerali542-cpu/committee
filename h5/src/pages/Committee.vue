@@ -3703,14 +3703,17 @@ onActivated(show)
 .yc-grid.compact .yc-cell { min-height: 94rpx; gap: 4rpx; padding: 15rpx 0 13rpx; border-radius: 16rpx; }
 /* 图例删掉后腾出的高度还给格子（0716 用户定）：日历是首页第一重点，格子该撑起来。 */
 .yc-cell.pair-cell { min-height: 104rpx; gap: 4rpx; padding: 12rpx 0 10rpx; border-radius: 14rpx; background: rgba(255,255,255,0.66); }
-/* 选中月保留状态底色、压到 60%（0716 用户定）。原先这里强推 rgba(255,255,255,0.66)，
-   而 .pair-cell.sel 比 .yc-cell.current 多一个类、specificity 反超状态色 → 一选中就变全白，
-   同一期里两个月一白一黄。选中本来就靠 ::after 橙环 + ::before 圆点标记，不必再拿底色去抢。
-   下面这条是 .upcoming（没有状态色）的白底兜底，状态色三档各自覆盖。 */
-.yc-cell.pair-cell.sel { background: rgba(255,255,255,0.66); }
-.yc-cell.pair-cell.sel.done    { background: rgba(240, 250, 244, 0.6); }
-.yc-cell.pair-cell.sel.current { background: rgba(255, 248, 236, 0.6); }
-.yc-cell.pair-cell.sel.overdue { background: rgba(253, 236, 234, 0.6); }
+/* 选中反馈加强（0723 用户定，原细描边+小圆点太弱）：选中格直接用本状态色「实底+白字」，
+   点到哪个月哪个月整块变实色，与未选中的浅色格形成强对比；状态含义不丢（实底仍是本状态色）。
+   无状态色的月份（待排/普通月）用中性深灰蓝实底兜底。 */
+.yc-cell.pair-cell.sel { background: #6B7A90; border-color: #6B7A90; box-shadow: 0 8rpx 20rpx rgba(20,42,58,0.22); }
+.yc-cell.pair-cell.sel.done    { background: var(--c-success); border-color: var(--c-success); box-shadow: 0 8rpx 20rpx rgba(22,130,80,0.30); }
+.yc-cell.pair-cell.sel.current { background: #D97706; border-color: #D97706; box-shadow: 0 8rpx 20rpx rgba(217,119,6,0.32); }
+.yc-cell.pair-cell.sel.overdue { background: #D83A2E; border-color: #D83A2E; box-shadow: 0 8rpx 20rpx rgba(216,58,46,0.30); }
+.yc-cell.pair-cell.sel .yc-m { color: #fff; font-weight: 700; }
+.yc-cell.pair-cell { transition: background 0.15s, box-shadow 0.15s; }
+/* 实底方案下橙环/圆点是重复标记，开会 tab 不再需要；接待/培训宫格仍用环+点 */
+.yc-cell.pair-cell.sel::after, .yc-cell.pair-cell.sel::before { display: none; }
 /* 0716 选中框：游离紫 #8B5CF6 → 主题深橙（--c-primary-dark，描边专用档）；全页去紫，只留品牌橙 */
 .yc-cell.sel::after { content: ''; position: absolute; inset: -4rpx; border: 3rpx solid var(--c-primary-dark); border-radius: 18rpx; pointer-events: none; }
 .yc-cell.sel::before { content: ''; position: absolute; top: 8rpx; right: 8rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: var(--c-primary-dark); box-shadow: 0 0 0 4rpx rgba(168,88,0,0.15); pointer-events: none; }
