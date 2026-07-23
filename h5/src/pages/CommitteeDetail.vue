@@ -297,8 +297,8 @@
               :expanded="endedDetailOpen" :on-collapse="() => { endedDetailOpen = false }" :on-expand="() => { endedDetailOpen = true }" />
             <!-- 纪要会后在此生成：未生成→「生成会议纪要」(跳纪要页看进度)；已生成→「查看会议纪要」。公示后隐藏（纪要已定稿，改看下方「查看公示内容」） -->
             <template v-if="!(detail.publish && detail.publish.published)">
-              <button v-if="detail.minutesReady" class="ended-minutes-btn in-card" @click="viewMinutes">查看会议纪要</button>
-              <template v-else>
+              <!-- 「查看会议纪要」独立大按钮已删（0722 用户定）：入口并入下方「会议纪要」行 -->
+              <template v-if="!detail.minutesReady">
               <div class="minutes-basis">
                 <div class="mb-head">
                   <span class="mb-sub">{{ detail.meetingMethod === 'online'
@@ -319,6 +319,7 @@
               <button class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
             </template>
             </template>
+            <!-- 签到表行已删（0722 用户定）：会后整理页已有「打印签到表」，不重复 -->
             <div class="attendance-sheet-entry">
               <div class="ase-copy">
                 <b>会议记录</b>
@@ -328,14 +329,12 @@
                 {{ exportingMeetingRecord ? '生成中…' : '导出 PDF' }}
               </button>
             </div>
-            <div class="attendance-sheet-entry">
+            <div class="attendance-sheet-entry" v-if="detail.minutesReady">
               <div class="ase-copy">
-                <b>会议签到表</b>
-                <small>打印后由参会委员签名，用于评分与归档</small>
+                <b>会议纪要</b>
+                <small>会后生成的正式纪要，可查看与编辑</small>
               </div>
-              <button class="ase-btn" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
-                {{ exportingAttendanceSheet ? '生成中…' : '导出 PDF' }}
-              </button>
+              <button class="ase-btn" @click="viewMinutes">查看</button>
             </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
@@ -4001,6 +4000,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .mtc-status {
   flex-shrink:0;
   font-size:19px;
+  font-weight:500; /* 0722 用户定：状态文字字重+100 */
   line-height:1.35;
   padding-top:2px;
 }
