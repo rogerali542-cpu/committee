@@ -350,8 +350,8 @@
           </div>
           <!-- 底部操作栏（固定在页面底部）。无效会议也照常显示公示按钮；「会议无效」提示改到点击公示后再弹 -->
           <div class="arc-bottom-action">
-            <!-- 统一「查看公示材料」（0722 用户定）：先进预览页看内容，未发布时在预览页里点发布 -->
-            <button v-if="isFreshEnded || (detail.publish && detail.publish.published)" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示材料</button>
+            <!-- 入口统一「会议公示」（0722 用户定）：未发布进去是预览+发布，已发布是正式公示页 -->
+            <button v-if="isFreshEnded || (detail.publish && detail.publish.published)" class="arc-publish-main-btn" @click="viewPublicMinutes">会议公示</button>
             <div class="ended-btn-row">
               <!-- 委员合影已移到会后整理页的会议材料项（0722 用户定：拍照进材料，公示自动带上） -->
               <!-- 待办事项接入工单系统，升格为与新闻稿同重量按钮（0722 用户定），各状态分支的小字入口已删 -->

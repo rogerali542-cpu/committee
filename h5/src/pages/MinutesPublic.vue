@@ -19,21 +19,20 @@
           <div class="notice-content-body">{{ publicContent }}</div>
         </section>
 
-        <section class="pub-card">
+        <!-- 0722 精简（用户定）：对齐线下公告栏形态——一张公示 + 附件清单。
+             纪要全文不再平铺（改为附件入口进 /doc-preview）；意见反馈/公示说明两段删除，
+             反馈方式已在公示正文末尾一句带出 -->
+        <section class="pub-card" v-if="minutesText || relatedMaterials.length">
           <header class="section-head">
-            <span class="section-index">附件一</span>
-            <div><h2>会议纪要</h2><p>与本次事项公示相关的会议决定摘要</p></div>
-          </header>
-          <div v-if="minutesText" class="minutes-body">{{ minutesText }}</div>
-          <div v-else class="section-empty">正式会议纪要尚未生成</div>
-        </section>
-
-        <section class="pub-card" v-if="relatedMaterials.length">
-          <header class="section-head">
-            <span class="section-index">附件二</span>
-            <div><h2>相关材料与公示留痕</h2><p>会议附件及公示照片</p></div>
+            <span class="section-index">附件</span>
+            <div><h2>公示附件</h2><p>会议纪要及相关材料，点击查看</p></div>
           </header>
           <div class="material-list">
+            <div v-if="minutesText" class="material-row" @click="viewMinutesDoc">
+              <span class="material-icon">附件</span>
+              <span class="material-name">会议纪要</span>
+              <span class="material-open">查看 ›</span>
+            </div>
             <a v-for="item in relatedMaterials" :key="item.id || item.url || item.fileName" class="material-row" :href="item.url || item.fileUrl" target="_blank">
               <span class="material-icon">附件</span>
               <span class="material-name">{{ item.fileName || item.name || '相关材料' }}</span>
@@ -41,22 +40,6 @@
             </a>
           </div>
         </section>
-
-        <section class="pub-card feedback-card">
-          <header class="section-head">
-            <span class="section-index">反馈</span>
-            <div><h2>意见反馈</h2><p>对公示事项提出意见或建议</p></div>
-          </header>
-          <div class="feedback-copy">
-            <b>请通过业主接待渠道提交书面意见</b>
-            <span>意见将作为本事项后续处理和归档的组成材料。</span>
-          </div>
-        </section>
-
-        <div class="public-note">
-          <b>公示说明</b>
-          <span>本页公开事项公示、会议纪要及相关附件。签到明细、个人意见、完整投票明细、录音转写和内部待办仅作内部归档。</span>
-        </div>
         <!-- 未发布时主任在预览页里发布（0722 用户定：详情页入口改为「查看公示材料」，先看内容再发布） -->
         <button v-if="canPublish" class="pub-btn publish" :disabled="publishing" @click="publishFromPreview">{{ publishing ? '发布中…' : '确认发布公示' }}</button>
         <button class="pub-btn" :class="{ ghost: canPublish }" @click="copyText">复制公示正文</button>
@@ -210,9 +193,16 @@ async function publishFromPreview() {
   } finally { publishing.value = false }
 }
 
+// 附件「会议纪要」→ 独立预览页（页内预览+导出PDF），带硬导航兜底
+function viewMinutesDoc() {
+  const target = '/doc-preview?meetingId=' + meetingId + '&kind=minutes'
+  redirectTo('/pages/doc-preview/doc-preview?meetingId=' + meetingId + '&kind=minutes')
+  setTimeout(() => { if (document.querySelector('.minutes-public-page')) window.location.href = target }, 400)
+}
+
 async function copyText() {
   const lines = [publicTitle.value, publicContent.value]
-  if (minutesText.value) lines.push('附件：会议纪要\n' + minutesText.value)
+  if (minutesText.value) lines.push('附件：会议纪要（备查）')
   try {
     await navigator.clipboard.writeText(lines.filter(Boolean).join('\n\n'))
     toast({ title: '公示正文已复制' })
