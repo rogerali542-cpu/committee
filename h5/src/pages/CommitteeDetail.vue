@@ -238,7 +238,7 @@
             <div class="live-entry-main">
               <span class="live-entry-title">{{ fieldEndedLocal ? '现场会议已结束' : '会议进行中' }}</span>
               <span class="live-entry-sub">{{ fieldEndedLocal
-                ? '可回会后整理页查看记录、生成会议纪要'
+                ? '在本页查看会议结果、导出记录与纪要、发布公示'
                 : (detail.meetingMethod === 'online'
                   ? '确认参会人员 → 填写议题结果 → 结果确认'
                   : '签到 → 录音转写 → 确认表决') }}</span>
