@@ -320,24 +320,24 @@
               <button class="ended-minutes-btn in-card gen" @click="generateMinutes">生成会议纪要</button>
             </template>
             </template>
-            <!-- 签到表行已删（0722 用户定）：会后整理页已有「打印签到表」，不重复 -->
+            <!-- 签到表行已删（0722 用户定）：会后整理页已有「打印签到表」，不重复。
+                 记录/纪要统一只留「查看」→ PDF 预览弹层，导出按钮在预览里（0722 用户定） -->
             <div class="attendance-sheet-entry">
               <div class="ase-copy">
                 <b>会议记录</b>
                 <small>完整记录议题、讨论与表决，末尾统一签字</small>
               </div>
-              <button class="ase-btn primary" :disabled="exportingMeetingRecord" @click="exportMeetingRecord">
-                {{ exportingMeetingRecord ? '生成中…' : '导出 PDF' }}
+              <button class="ase-btn primary" :disabled="pdfPreviewLoading === 'record'" @click="previewPdf('record')">
+                {{ pdfPreviewLoading === 'record' ? '生成中…' : '查看' }}
               </button>
             </div>
             <div class="attendance-sheet-entry" v-if="detail.minutesReady">
               <div class="ase-copy">
                 <b>会议纪要</b>
-                <small>会后生成的正式纪要，可查看与编辑</small>
+                <small>会后生成的正式纪要，可预览与导出</small>
               </div>
-              <button class="ase-btn" @click="viewMinutes">查看</button>
-              <button class="ase-btn primary" :disabled="exportingMinutesPdf" @click="exportMinutesPdf">
-                {{ exportingMinutesPdf ? '生成中…' : '导出 PDF' }}
+              <button class="ase-btn primary" :disabled="pdfPreviewLoading === 'minutes'" @click="previewPdf('minutes')">
+                {{ pdfPreviewLoading === 'minutes' ? '生成中…' : '查看' }}
               </button>
             </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
@@ -760,6 +760,21 @@
                 :interactive="detail.stage === 'ongoing'" :signed-in="selfSignedIn" :is-chair="userView === 'chair'"
                 :has-prev="sheetHasPrev" :has-next="sheetHasNext"
                 @close="sheetTopicId = null" @changed="loadDetail" @prev="gotoPrevTopic" @next="gotoNextTopic" />
+
+    <!-- 会议记录/纪要 PDF 预览弹层：iframe 预览 + 底部导出（0722 用户定） -->
+    <div v-if="pdfPreview" class="pdfp-mask" @click.self="closePdfPreview">
+      <div class="pdfp-sheet">
+        <div class="pdfp-head">
+          <span class="pdfp-title">{{ pdfPreview.title }}</span>
+          <span class="pdfp-close" @click="closePdfPreview">×</span>
+        </div>
+        <iframe class="pdfp-frame" :src="pdfPreview.url"></iframe>
+        <div class="pdfp-foot">
+          <span class="pdfp-tip">如无法直接预览，可导出后查看</span>
+          <button class="pdfp-export" @click="downloadPreviewPdf">导出 PDF</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -2498,27 +2513,43 @@ async function exportAttendanceSheet() {
   }
 }
 
-// 会议纪要 PDF 导出（0722 用户定：纪要行 查看+导出PDF 两个按钮）
-const exportingMinutesPdf = ref(false)
-async function exportMinutesPdf() {
-  if (exportingMinutesPdf.value) return
-  exportingMinutesPdf.value = true
+// ——— 会议记录/会议纪要 PDF 预览弹层（0722 用户定：行内只留「查看」，导出按钮在预览里） ———
+const pdfPreview = ref(null)        // { title, url, blob, fileName }
+const pdfPreviewLoading = ref('')   // 'record' | 'minutes' | ''
+async function previewPdf(kind) {
+  if (pdfPreviewLoading.value) return
+  pdfPreviewLoading.value = kind
   try {
-    const blob = await api.committeeExportMinutesPdf(meetingId)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${detail.value.title || '会议'}-会议纪要.pdf`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast({ title: '会议纪要已导出', icon: 'success' })
+    const blob = kind === 'record'
+      ? await api.committeeExportMeetingRecord(meetingId)
+      : await api.committeeExportMinutesPdf(meetingId)
+    const title = kind === 'record' ? '会议记录' : '会议纪要'
+    pdfPreview.value = {
+      title: title,
+      url: URL.createObjectURL(blob),
+      blob: blob,
+      fileName: `${(detail.value && detail.value.title) || '会议'}-${title}.pdf`
+    }
   } catch (e) {
-    toast({ title: (e && e.message) || '会议纪要导出失败', icon: 'none' })
+    toast({ title: (e && e.message) || '生成失败，请重试', icon: 'none' })
   } finally {
-    exportingMinutesPdf.value = false
+    pdfPreviewLoading.value = ''
   }
+}
+function closePdfPreview() {
+  if (pdfPreview.value) { try { URL.revokeObjectURL(pdfPreview.value.url) } catch (e) {} }
+  pdfPreview.value = null
+}
+function downloadPreviewPdf() {
+  const p = pdfPreview.value
+  if (!p) return
+  const link = document.createElement('a')
+  link.href = p.url
+  link.download = p.fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  toast({ title: p.title + '已导出', icon: 'success' })
 }
 
 async function exportMeetingRecord() {
@@ -3378,6 +3409,16 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 @keyframes vi-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,168,0,0.4); } 50% { box-shadow:0 0 0 14rpx rgba(255,168,0,0); } }
 
 /* 进行中签到进度（主任视图） */
+/* 会议记录/纪要 PDF 预览弹层 */
+.pdfp-mask { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:260; display:flex; align-items:center; justify-content:center; padding:20px 14px; }
+.pdfp-sheet { width:100%; max-width:560px; height:86vh; background:#fff; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; }
+.pdfp-head { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #EEF0F3; }
+.pdfp-title { font-size:32rpx; font-weight:700; color:#1F2329; }
+.pdfp-close { font-size:44rpx; color:#8A8F98; line-height:1; padding:0 4px; }
+.pdfp-frame { flex:1; width:100%; border:0; background:#F5F6F8; }
+.pdfp-foot { display:flex; align-items:center; gap:10px; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid #EEF0F3; }
+.pdfp-tip { flex:1; font-size:22rpx; color:#A0A5AD; }
+.pdfp-export { flex-shrink:0; border:0; border-radius:999px; background:#2F6FB2; color:#fff; font-size:27rpx; font-weight:600; padding:9px 22px; }
 /* 签到进度卡样式已随卡片删除（0722 用户定） */
 .voter-list { margin-top:8px; padding:8px 10px; background:#F7F9FA; border-radius:8px; }
 .vl-title { display:block; font-size: 28rpx; color:#2980B9; margin-bottom:4px; }
