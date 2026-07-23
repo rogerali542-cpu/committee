@@ -158,84 +158,6 @@
         </div>
       </div>
 
-      <!-- 会议材料：委员仅在材料送达后可见（主任的材料卡在上方卡片流） -->
-      <div class="materials-card" v-if="!noticePackageVisible && detail.stage === 'preparing' && userView === 'member' && detail.myDelivery && detail.myDelivery.materialDelivered && detail.materials && detail.materials.length">
-        <div class="mt-head-row">
-          <span class="mt-title">会议材料（{{ detail.materials ? detail.materials.length : 0 }}）</span>
-        </div>
-        <div v-if="detail.materials && detail.materials.length">
-          <div v-for="(item, index) in detail.materials" :key="item.id || item.name" class="mt-item" @click="item.url ? openMaterialViewer(item) : previewMaterial(index)">
-            <img v-if="item.url && isImageFile(item.url, item.fileType)" :src="item.url" class="file-thumb" @click.stop="openMaterialViewer(item)" />
-            <span class="mt-name">{{ item.name }}</span>
-            <span v-if="item.ocrStatus === 'processing'" class="ocr-badge ocr-proc">识别中…</span>
-            <span v-else-if="item.ocrStatus === 'done'" class="ocr-badge ocr-done">✓ 已识别</span>
-            <span v-else-if="item.ocrStatus === 'failed'" class="ocr-badge ocr-fail">识别失败</span>
-            <span class="mt-size">{{ item.sizeText || '' }}</span>
-            <span class="mt-arrow">›</span>
-            <span v-if="userView === 'chair'" class="mt-del" @click.stop="removeMaterial(item)">×</span>
-          </div>
-        </div>
-        <div v-else class="mt-empty">
-          <span v-if="userView === 'chair'">暂未上传材料，点击上方"上传材料"添加</span>
-          <span v-else>暂无会议材料</span>
-        </div>
-      </div>
-
-      <!-- ══════════ 委员 和 主任/副主任 共用：个人操作 ══════════ -->
-      <template v-if="userView === 'member' || userView === 'chair'">
-        <!-- 准备阶段：委员个人送达状态（主任不显示个人确认卡——发送时已自动计入已读，用上方送达进度卡管理） -->
-        <template v-if="userView === 'member' && !noticePackageVisible && detail.stage === 'preparing' && detail.myDelivery">
-          <!-- 通知已送达 → 显示通知草稿 -->
-          <div class="my-delivery-card" v-if="detail.myDelivery.noticeDelivered">
-            <span class="mdc-title">📨 会议通知</span>
-            <span class="mdc-big" :class="detail.mySignedIn ? 'ok' : (detail.myDeclined ? 'declined' : '')">{{ detail.mySignedIn ? '✅ 你已确认参会' : (detail.myDeclined ? '已登记：因故缺席' : '收到会议通知，请确认是否参加') }}</span>
-            <div v-if="!detail.mySignedIn && !detail.noticeDraft" class="attend-actions">
-              <button class="attend-btn primary" @click="confirmAttend">确认参会</button>
-              <button class="attend-btn ghost" @click="declineAttend">无法参会</button>
-            </div>
-          </div>
-          <div class="notice-draft-card" v-if="detail.myDelivery.noticeDelivered && detail.noticeDraft">
-            <div class="nd-head">
-              <span class="nd-title">会议通知</span>
-              <span class="nd-status ok">{{ detail.mySignedIn ? '已确认参会' : (detail.myDeclined ? '因故缺席' : '待确认') }}</span>
-            </div>
-            <span class="nd-content">{{ detail.noticeDraft.content }}</span>
-            <div v-if="!detail.mySignedIn" class="attend-actions">
-              <button class="attend-btn primary" @click="confirmAttend">确认参会</button>
-              <button class="attend-btn ghost" @click="declineAttend">无法参会</button>
-            </div>
-          </div>
-          <!-- 通知未送达 -->
-          <div class="my-delivery-card" v-else-if="!detail.myDelivery.noticeDelivered">
-            <span class="mdc-title">会议通知</span>
-            <span class="mdc-big">尚未送达，请等待主任发送通知</span>
-          </div>
-          <!-- 材料送达状态 -->
-          <div class="my-delivery-card" v-if="detail.myDelivery.noticeDelivered && detail.materials && detail.materials.length">
-            <span class="mdc-title">📎 会议材料</span>
-            <span class="mdc-big" :class="detail.myDelivery.materialDelivered ? 'ok' : ''">{{ detail.myDelivery.materialDelivered ? '材料已送达' : '材料尚未送达' }}</span>
-          </div>
-        </template>
-
-        <!-- 进行中：进入「会议进行」向导页。现场已结束(本地标记)时整条横幅删除（0722 用户定）：
-             顶栏标题已说明本页定位，内容一屏可见，无需再放流程引导 -->
-        <template v-if="detail.stage === 'ongoing' && detail.record && !showPostMeeting">
-          <div v-if="!fieldEndedLocal" class="live-entry" @click="enterLive">
-            <div class="live-entry-main">
-              <span class="live-entry-title">会议进行中</span>
-              <span class="live-entry-sub">{{ detail.meetingMethod === 'online'
-                ? '确认参会人员 → 填写议题结果 → 结果确认'
-                : '签到 → 录音转写 → 确认表决' }}</span>
-            </div>
-            <span class="live-entry-arrow">进入 ›</span>
-          </div>
-          <!-- 签到进度卡已删（0722 用户定）：签到在会议进行页与会后整理页处理，此处不重复 -->
-          <!-- 现场已结束时议题卡由下方会后区自带，这里不重复渲染 -->
-          <MeetingTopicsCard v-if="!fieldEndedLocal" :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet" />
-        </template>
-
-      </template>
-
       <!-- ══════════ 结束阶段 ══════════ -->
       <!-- 会后功能区：正式结束的会议 + 现场已结束的会议（0722 用户定：测试期不真正归档也要能看到公示/归档等会后功能） -->
       <template v-if="showPostMeeting">
@@ -445,294 +367,6 @@
           <button class="fw-btn" @click="openWechat">转发到微信</button>
         </div>
         <span class="fw-close" @click="closeForward">完成</span>
-      </div>
-    </div>
-
-    <!-- 添加议题弹窗 -->
-    <div v-if="addTopicVisible" class="modal-mask" @click="closeAddTopic">
-      <div class="form-sheet" @click.stop style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
-        <div class="sheet-head">
-          <span class="sheet-title">添加议题</span>
-          <span class="sheet-close" @click="closeAddTopic">×</span>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">议题名称</span>
-          <input class="form-input large" v-model="newTopicForm.title" placeholder="输入议题名称" />
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">表决类型</span>
-          <div class="type-row">
-            <span class="type-chip" :class="newTopicForm.decisionType === 'simple' ? 'on' : ''" @click="pickDecisionType('simple')">普通表决</span>
-            <span class="type-chip" :class="newTopicForm.decisionType === 'multi_choice' ? 'on' : ''" @click="pickDecisionType('multi_choice')">多选一</span>
-          </div>
-        </div>
-
-        <div v-if="newTopicForm.decisionType === 'multi_choice'" class="form-group">
-          <span class="form-label">选项（每行一个，第一个为默认选项）</span>
-          <textarea class="form-textarea" v-model="newTopicForm.optionsText" placeholder="每行写一个选项，如：&#10;完全更换为智能门禁&#10;保留现有门禁，加装人脸识别&#10;暂不改造，维持现状" style="min-height:90px;height:90px;"></textarea>
-        </div>
-
-        <div class="form-group">
-          <div class="realname-row" @click="toggleRealName">
-            <div>
-              <span class="form-label">实名表决</span>
-              <span class="realname-hint">开启后将公开每位委员的投票选择，须在投票前确定</span>
-            </div>
-            <div class="rn-switch" :class="newTopicForm.realName ? 'on' : ''"><div class="rn-knob"></div></div>
-          </div>
-        </div>
-
-        <div class="sheet-actions weighted-actions">
-          <button class="btn btn-ghost" @click="closeAddTopic">取消</button>
-          <button class="btn btn-primary" @click="submitAddTopic">确认添加</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 代录弹层 -->
-    <div v-if="proxyVisible" class="modal-mask" @click="closeProxyRecorder">
-      <div class="form-sheet proxy-sheet" @click.stop>
-        <div class="sheet-head">
-          <span class="sheet-title">会议代录</span>
-          <span class="sheet-close" @click="closeProxyRecorder">×</span>
-        </div>
-
-        <div class="proxy-tabs">
-          <span class="proxy-tab" :class="proxyAction === 'signIn' ? 'on' : ''" @click="pickProxyAction('signIn')">代签到</span>
-          <span class="proxy-tab" :class="proxyAction === 'vote' ? 'on' : ''" @click="pickProxyAction('vote')">代投票</span>
-        </div>
-
-        <div v-if="proxyAction === 'vote'" class="proxy-section">
-          <span class="form-label">选择议题</span>
-          <div class="proxy-topic-list">
-            <span v-for="item in (detail && detail.record ? detail.record.topics : [])" :key="item.id" class="proxy-topic" :class="proxyTopicId == item.id ? 'on' : ''" @click="pickProxyTopic(item.id)">{{ item.title }}</span>
-          </div>
-          <template v-for="topic in (detail && detail.record ? detail.record.topics : [])" :key="topic.id">
-            <div v-if="proxyTopicId == topic.id && topic.decisionType !== 'multi_choice'" class="proxy-choice-row">
-              <span class="proxy-choice for" :class="proxyChoice === 'for_vote' ? 'on' : ''" @click="pickProxyChoice('for_vote')">赞成</span>
-              <span class="proxy-choice ag" :class="proxyChoice === 'against' ? 'on' : ''" @click="pickProxyChoice('against')">反对</span>
-              <span class="proxy-choice ab" :class="proxyChoice === 'abstain' ? 'on' : ''" @click="pickProxyChoice('abstain')">弃权</span>
-            </div>
-            <div v-if="proxyTopicId == topic.id && topic.decisionType === 'multi_choice'" class="proxy-option-list">
-              <div class="proxy-option" :class="proxySelectedId == opt.id ? 'on' : ''" v-for="opt in topic.options" :key="opt.id" @click="pickProxyOption(opt.id)">
-                <span>{{ opt.label }}</span>
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <div class="proxy-section">
-          <span class="form-label">选择代录对象</span>
-          <input class="form-input" :value="proxyKeyword" @input="onProxyKeywordInput" placeholder="搜索姓名或房号" />
-          <div class="proxy-target-list" style="overflow-y:auto;">
-            <div v-for="item in proxyTargets" :key="item.memberId" class="proxy-target" :class="[item.checked ? 'on' : '', item.disabled ? 'disabled' : '']" @click="toggleProxyTarget(item.memberId)">
-              <div class="proxy-check">{{ item.checked ? '✓' : '' }}</div>
-              <div class="proxy-person">
-                <span class="proxy-name">{{ item.name }}</span>
-                <span class="proxy-meta">{{ item.role }}{{ item.roomNumber ? ' · ' + item.roomNumber : '' }}</span>
-              </div>
-              <span v-if="item.disabledText" class="proxy-state">{{ item.disabledText }}</span>
-            </div>
-            <div v-if="!proxyTargets.length" class="proxy-empty">没有匹配人员</div>
-          </div>
-        </div>
-
-        <div class="proxy-section">
-          <span class="form-label">代录凭证</span>
-          <div class="proof-picker" @click="pickProxyProof">
-            <span class="proof-main">{{ proxyProofName || '上传现场照片、授权截图或纸质凭证' }}</span>
-            <span class="proof-action">{{ proxyProofName ? '重新选择' : '选择图片' }}</span>
-          </div>
-        </div>
-
-        <div class="proxy-submit-row">
-          <span class="proxy-count">已选 {{ proxySelectedCount }} 人</span>
-          <button class="btn btn-primary proxy-submit" :class="{ loading: proxySubmitting }" @click="submitProxyAction">提交代录</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 编辑会议弹窗 -->
-    <div v-if="editVisible" class="modal-mask" @click="closeEdit">
-      <div class="form-sheet" @click.stop style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
-        <div class="sheet-head">
-          <span class="sheet-title">编辑会议</span>
-          <span class="sheet-close" @click="closeEdit">×</span>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">会议标题 *</span>
-          <div class="vi-row">
-            <input class="form-input large" v-model="editForm.title" placeholder="会议标题" />
-            <button class="vi-btn" :class="{ on: voiceTarget === 'title' }" @click.stop="startVoice('title')">🎤</button>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group half">
-            <span class="form-label">会议日期 *</span>
-            <div class="picker-field ep-field" @click="openEditDatePicker">
-              <span class="ep-text">{{ editForm.meetingDate || '点击选择' }}</span>
-              <span class="ep-arrow">▾</span>
-            </div>
-          </div>
-          <div class="form-group half">
-            <span class="form-label">开始时间 *</span>
-            <div class="picker-field ep-field" @click="openEditTimePicker">
-              <span class="ep-text">{{ editForm.meetingTime || '点击选择' }}</span>
-              <span class="ep-arrow">▾</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label meeting-method-label">召开方式</span>
-          <div class="method-switch detail-method-switch">
-            <button type="button" :class="{ active: editForm.meetingMethod === 'offline' }" @click="setEditMeetingMethod('offline')">线下会议</button>
-            <button type="button" :class="{ active: editForm.meetingMethod === 'online' }" @click="setEditMeetingMethod('online')">线上会议</button>
-          </div>
-          <span class="form-hint">会议开始前，主任或副主任均可修改</span>
-        </div>
-
-        <div class="form-group" v-if="editForm.meetingMethod !== 'online'">
-          <span class="form-label">会议地点</span>
-          <select class="picker-field ep-loc-select" :value="editLocationPreset" @change="onEditLocationPreset">
-            <option v-for="loc in commonLocations" :key="loc" :value="loc">{{ loc }}</option>
-            <option value="__other__">其他地点（手动填写）</option>
-          </select>
-          <input v-if="editLocationPreset === '__other__'" class="form-input ep-loc-other" v-model="editForm.location" placeholder="请输入会议地点" />
-        </div>
-        <div class="form-group" v-else>
-          <span class="form-label meeting-method-label">线上平台</span>
-          <select class="picker-field ep-loc-select platform-select-detail" v-model="editForm.location">
-            <option value="微信工作群">微信工作群</option>
-            <option value="腾讯会议">腾讯会议</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">主要议题 / 补充说明</span>
-          <div class="vi-row" style="align-items:flex-start;">
-            <textarea class="form-textarea" style="min-height:72px;height:72px;flex:1;" v-model="editForm.description" placeholder="主要议题或其他需要记录的事项"></textarea>
-            <button class="vi-btn" :class="{ on: voiceTarget === 'description' }" @click.stop="startVoice('description')" style="margin-top:6rpx;">🎤</button>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">通知正文</span>
-          <span class="form-hint">默认按上面信息自动生成；如需自定义措辞可在此直接编辑。</span>
-          <textarea class="form-textarea" style="min-height:160px;height:160px;" :value="editForm.content" @input="onEditContentInput" placeholder="通知正文"></textarea>
-        </div>
-
-        <div class="sheet-actions weighted-actions">
-          <button class="btn btn-ghost" @click="closeEdit">取消</button>
-          <button class="btn btn-primary" @click="submitEdit">保存修改<span class="btn-arrow">›</span></button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 编辑通知：日期选择弹窗（年/月/日，与「新建会议」一致） -->
-    <div v-if="editDatePickerOpen" class="ep-pop-mask" @click="editDatePickerOpen = false">
-      <div class="ep-pop" @click.stop>
-        <div class="ep-head">选择会议日期</div>
-        <div class="ep-cols">
-          <div class="ep-col">
-            <div class="ep-col-label">年</div>
-            <div class="ep-col-scroll">
-              <span v-for="y in yearOptions" :key="y" class="ep-item" :class="{ on: y === edpYear }" @click="setEdpYear(y)">{{ y }}</span>
-            </div>
-          </div>
-          <div class="ep-col">
-            <div class="ep-col-label">月</div>
-            <div class="ep-col-scroll">
-              <span v-for="mo in monthOptions" :key="mo" class="ep-item" :class="{ on: mo === edpMonth }" @click="setEdpMonth(mo)">{{ mo }}</span>
-            </div>
-          </div>
-          <div class="ep-col">
-            <div class="ep-col-label">日</div>
-            <div class="ep-col-scroll">
-              <span v-for="d in edpDayOptions" :key="d" class="ep-item" :class="{ on: d === edpDay }" @click="edpDay = d">{{ d }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="ep-actions">
-          <button class="btn btn-ghost" @click="editDatePickerOpen = false">取消</button>
-          <button class="btn btn-primary" @click="confirmEditDate">确定</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 编辑通知：时间选择弹窗（小时 9—20 / 分钟每15分钟，与「新建会议」一致） -->
-    <div v-if="editTimePickerOpen" class="ep-pop-mask" @click="editTimePickerOpen = false">
-      <div class="ep-pop" @click.stop>
-        <div class="ep-head">选择开始时间</div>
-        <div class="ep-cols">
-          <div class="ep-col">
-            <div class="ep-col-label">时</div>
-            <div class="ep-col-scroll">
-              <span v-for="h2 in hourOptions" :key="h2" class="ep-item" :class="{ on: h2 === etpHour }" @click="etpHour = h2">{{ String(h2).padStart(2, '0') }}</span>
-            </div>
-          </div>
-          <div class="ep-col">
-            <div class="ep-col-label">分</div>
-            <div class="ep-col-scroll">
-              <span v-for="mi in minuteOptions" :key="mi" class="ep-item" :class="{ on: mi === etpMinute }" @click="etpMinute = mi">{{ String(mi).padStart(2, '0') }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="ep-actions">
-          <button class="btn btn-ghost" @click="editTimePickerOpen = false">取消</button>
-          <button class="btn btn-primary" @click="confirmEditTime">确定</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 语音输入确认弹窗 -->
-    <div v-if="voiceConfirmField" class="voice-modal-mask">
-      <div class="voice-modal">
-        <div class="vm-head">
-          <span class="vm-title">🎤 语音输入{{ voiceConfirmField === 'title' ? '标题' : '议题' }}</span>
-          <span class="vm-hint">{{ voiceListening ? '正在听…' : '确认或重新输入' }}</span>
-        </div>
-        <div class="vm-body">
-          <div class="vm-wave" v-if="voiceListening"><span></span><span></span><span></span><span></span><span></span></div>
-          <div class="vm-text">
-            <span v-if="voiceResult">{{ voiceResult }}</span>
-            <span v-else class="vm-placeholder">正在听，请说话…</span>
-          </div>
-        </div>
-        <div class="vm-actions">
-          <button class="btn btn-ghost" @click="cancelVoice">取消</button>
-          <button class="btn btn-ghost" @click="retryVoice" :disabled="voiceListening">重新输入</button>
-          <button class="btn btn-primary" @click="confirmVoice" :disabled="!voiceResult">确认</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 编辑通知草稿弹窗 -->
-    <div v-if="noticeEditVisible" class="modal-mask" @click="closeNoticeEdit">
-      <div class="form-sheet" @click.stop style="padding-bottom:calc(18px + env(safe-area-inset-bottom));">
-        <div class="sheet-head">
-          <span class="sheet-title">编辑通知</span>
-          <span class="sheet-close" @click="closeNoticeEdit">×</span>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">通知标题</span>
-          <input class="form-input large" v-model="noticeEditForm.title" placeholder="通知标题" />
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">通知正文</span>
-          <textarea class="form-textarea" style="min-height:200px;height:200px;" v-model="noticeEditForm.content" placeholder="通知正文"></textarea>
-        </div>
-
-        <div class="sheet-actions weighted-actions">
-          <button class="btn btn-ghost" @click="closeNoticeEdit">取消</button>
-          <button class="btn btn-primary" @click="submitNoticeEdit">保存<span class="btn-arrow">›</span></button>
-        </div>
       </div>
     </div>
 
@@ -1090,192 +724,15 @@ const step1Time = ref(''), step2Time = ref(''), step3Time = ref('')
 const stepDone = ref(0), stepTotal = ref(2), stepAllDone = ref(false)
 const prepareSteps = ref([]), prepareHint = ref(''), prepareMode = ref('')
 const deliveryExpanded = ref(false)
-const flowStatsOpen = ref(false)
 const archiveLogOpen = ref(false)
 const noticePackageVisible = ref(false)
 const recAudioPlaying = ref(false)
 const generatingNews = ref(false)   // AI 生成党建新闻中（驱动红色党建工作遮罩）
 const generatingMinutes = ref(false)
-const exportingAttendanceSheet = ref(false)
-const exportingMeetingRecord = ref(false)
 const minutesOverlayShown = ref(false)
 const quickMode = ref(false)
 const step3Ready = ref(false)
-// 添加议题表单
-const addTopicVisible = ref(false)
-const newTopicForm = reactive({
-  title: '',
-  decisionType: 'simple',
-  type: 'decision',
-  optionsText: '',
-  realName: false
-})
-const proxyVisible = ref(false)
-const proxyAction = ref('signIn')
-const proxyTargets = ref([])
-const proxyAllTargets = ref([])
-const proxyKeyword = ref('')
-const proxyProofUrl = ref('')
-const proxyProofName = ref('')
-const proxyTopicId = ref(null)
-const proxyChoice = ref('for_vote')
-const proxySelectedId = ref(null)
-const proxySelectedCount = ref(0)
-const proxySubmitting = ref(false)
-// 编辑会议
-const editVisible = ref(false)
-const editForm = reactive({ title: '', meetingDate: '', meetingTime: '', location: '', meetingMethod: 'offline', description: '', content: '' })
-
-// ── 编辑通知：会议要素选择器（与「新建会议」保持一致：地点下拉 / 日期年月日 / 时间 9—20点·每15分钟）──
-const commonLocations = ['社区活动室', '社区会议室']
-const editLocationPreset = ref('社区活动室')
-const _epNowYear = new Date().getFullYear()
-const yearOptions = [_epNowYear - 1, _epNowYear, _epNowYear + 1]
-const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
-const hourOptions = Array.from({ length: 12 }, (_, i) => i + 9)   // 业委会会议时段：9点—20点
-const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15) // 每15分钟
-const editDatePickerOpen = ref(false)
-const edpYear = ref(_epNowYear)
-const edpMonth = ref(1)
-const edpDay = ref(1)
-const edpDayOptions = computed(() => {
-  const n = new Date(edpYear.value, edpMonth.value, 0).getDate()
-  return Array.from({ length: n }, (_, i) => i + 1)
-})
-const editTimePickerOpen = ref(false)
-const etpHour = ref(9)
-const etpMinute = ref(0)
-
-// 打开选择器时把地点下拉同步到当前值：命中常用项→选它；非预设值→切"其他"并回显手填框
-function syncEditLocationPreset(val) {
-  if (val && commonLocations.indexOf(val) >= 0) editLocationPreset.value = val
-  else if (val) editLocationPreset.value = '__other__'
-  else editLocationPreset.value = '社区活动室'
-}
-function onEditLocationPreset(e) {
-  const v = e.target.value
-  editLocationPreset.value = v
-  editForm.location = (v === '__other__') ? '' : v
-}
-function clampEdpDay() {
-  const n = new Date(edpYear.value, edpMonth.value, 0).getDate()
-  if (edpDay.value > n) edpDay.value = n
-}
-function setEdpYear(y) { edpYear.value = y; clampEdpDay() }
-function setEdpMonth(m) { edpMonth.value = m; clampEdpDay() }
-function openEditDatePicker() {
-  const parts = (editForm.meetingDate || '').split('-')
-  edpYear.value = Number(parts[0]) || _epNowYear
-  edpMonth.value = Number(parts[1]) || 1
-  edpDay.value = Number(parts[2]) || 1
-  clampEdpDay()
-  editDatePickerOpen.value = true
-  scrollEditPickerToSelected()
-}
-function confirmEditDate() {
-  editForm.meetingDate = edpYear.value + '-' + String(edpMonth.value).padStart(2, '0') + '-' + String(edpDay.value).padStart(2, '0')
-  editDatePickerOpen.value = false
-}
-function openEditTimePicker() {
-  const parts = (editForm.meetingTime || '09:00').split(':')
-  etpHour.value = Math.min(20, Math.max(9, Number(parts[0]) || 9))           // 夹到 9—20 点
-  etpMinute.value = (Math.round((Number(parts[1]) || 0) / 15) * 15) % 60     // 对齐到每 15 分钟
-  editTimePickerOpen.value = true
-  scrollEditPickerToSelected()
-}
-function confirmEditTime() {
-  editForm.meetingTime = String(etpHour.value).padStart(2, '0') + ':' + String(etpMinute.value).padStart(2, '0')
-  editTimePickerOpen.value = false
-}
-// 打开后把已选项滚到列中部（只滚列内部，不影响页面）
-function scrollEditPickerToSelected() {
-  nextTick(() => {
-    document.querySelectorAll('.ep-pop .ep-col-scroll').forEach((scroll) => {
-      const on = scroll.querySelector('.ep-item.on')
-      if (on) scroll.scrollTop = on.offsetTop - scroll.clientHeight / 2 + on.clientHeight / 2
-    })
-  })
-}
-const noticeContentDirty = ref(false)
-// 语音输入
-const voiceTarget = ref('')
-const voiceListening = ref(false)
-const voiceResult = ref('')
-const voiceConfirmField = ref('')
-let _voiceRec = null
-
-const HOTWORDS = [
-  ['叶委会', '业委会'], ['夜委会', '业委会'], ['页委会', '业委会'], ['一委会', '业委会'],
-  ['物业肥', '物业费'], ['物业菲', '物业费'],
-  ['主人', '主任'], ['副主人', '副主任'],
-  ['为员', '委员'], ['位员', '委员'], ['纬员', '委员'],
-  ['记要', '纪要'], ['计要', '纪要'],
-  ['意题', '议题'], ['一题', '议题'],
-  ['签道', '签到'], ['前到', '签到'], ['前道', '签到'],
-  ['表绝', '表决'],
-  ['公探', '公摊'], ['弓摊', '公摊'],
-  ['停车未', '停车位'], ['停车卫', '停车位'],
-  ['物业公私', '物业公司'],
-  ['维修基础', '维修基金'],
-]
-function applyHotwords(text) {
-  let r = text
-  for (const [wrong, right] of HOTWORDS) r = r.replaceAll(wrong, right)
-  return r
-}
-
-function startVoice(field) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-  if (!SR) { toast({ title: '浏览器暂不支持语音输入', icon: 'none' }); return }
-  if (voiceListening.value) {
-    if (_voiceRec) { try { _voiceRec.stop() } catch (e) {} }
-    voiceListening.value = false; voiceTarget.value = ''
-    if (voiceConfirmField.value === field) { voiceConfirmField.value = ''; voiceResult.value = ''; return }
-  }
-  voiceResult.value = ''
-  voiceConfirmField.value = field
-  voiceTarget.value = field
-  voiceListening.value = true
-  _voiceRec = new SR()
-  _voiceRec.lang = 'zh-CN'
-  _voiceRec.interimResults = false
-  _voiceRec.maxAlternatives = 1
-  _voiceRec.onresult = (e) => {
-    voiceResult.value = applyHotwords(e.results[0][0].transcript)
-  }
-  _voiceRec.onend = () => {
-    voiceListening.value = false; voiceTarget.value = ''
-    if (!voiceResult.value) { voiceConfirmField.value = ''; toast({ title: '没有识别到语音，请重试', icon: 'none' }) }
-  }
-  _voiceRec.onerror = () => {
-    voiceListening.value = false; voiceTarget.value = ''
-    voiceResult.value = ''; voiceConfirmField.value = ''
-    toast({ title: '语音识别失败，请重试', icon: 'none' })
-  }
-  _voiceRec.start()
-}
-function confirmVoice() {
-  const text = voiceResult.value
-  const field = voiceConfirmField.value
-  voiceResult.value = ''; voiceConfirmField.value = ''
-  if (!text || !field) return
-  if (field === 'title') editForm.title = text
-  else if (field === 'description') editForm.description = (editForm.description ? editForm.description + '\n' : '') + text
-}
-function retryVoice() {
-  const field = voiceConfirmField.value
-  voiceResult.value = ''
-  startVoice(field)
-}
-function cancelVoice() {
-  if (_voiceRec) { try { _voiceRec.stop() } catch (e) {} _voiceRec = null }
-  voiceListening.value = false; voiceTarget.value = ''
-  voiceResult.value = ''; voiceConfirmField.value = ''
-}
 const locationOptions = ['社区活动室', '物业办公室', '社区会议室', '线上会议', '待定']
-// 编辑通知
-const noticeEditVisible = ref(false)
-const noticeEditForm = reactive({ title: '', content: '' })
 const sendSubmitting = ref(false)
 
 // onLoad 上下文（this.meetingId / this.fromNotice）
@@ -1577,56 +1034,6 @@ async function loadDetail() {
   }
 }
 
-function goStep(step) {
-  // 只能跳转到已解锁的步骤
-  if (step === 1 || (step === 2 && step1Done.value)) {
-    currentStep.value = step
-  }
-}
-
-async function confirmStep1() {
-  const res = await showModal({
-    title: '入会签到',
-    content: '请确认：你已到场参加本次会议。',
-    confirmText: '签到',
-    cancelText: '再看看'
-  })
-  if (!res.confirm) return
-  const now = new Date()
-  const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0')
-  step1Done.value = true
-  step2Done.value = true
-  step1Time.value = time
-  currentStep.value = 2
-  stepDone.value = Math.max(stepDone.value, 1)
-  api.committeeSelfToggle(meetingId, 'signedIn').catch(() => {})
-}
-
-function confirmStep2() {
-  currentStep.value = 2
-}
-
-async function confirmStep3() {
-  const topics = detail.value && detail.value.record ? (detail.value.record.topics || []) : []
-  if (topics.length && topics.some(t => !t.myVote)) {
-    toast({ title: '请先完成全部议题投票', icon: 'none' })
-    return
-  }
-  const res = await showModal({
-    title: '确认提交',
-    content: '提交后不能修改。请确认你的选择已经完成。',
-    confirmText: '确认提交',
-    cancelText: '再看看'
-  })
-  if (!res.confirm) return
-  const now = new Date()
-  const time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0')
-  step3Done.value = true
-  step3Time.value = time
-  stepDone.value = 2
-  stepAllDone.value = true
-}
-
 async function vote(topicId, choice, selectedId) {
   if (!step1Done.value) {
     toast({ title: '请先签到', icon: 'none' })
@@ -1670,187 +1077,6 @@ async function _submitVote(topicId, choice, selectedId) {
     if (allVoted) step3Ready.value = true
   }
   try { await api.committeeVote(meetingId, topicId, choice, selectedId) } catch (e) {}
-}
-
-async function openProxyRecorder() {
-  const d = detail.value
-  if (!d || d.stage !== 'ongoing') {
-    toast({ title: '会议进行中才可代录', icon: 'none' })
-    return
-  }
-  proxyVisible.value = true
-  proxyAction.value = 'signIn'
-  proxyKeyword.value = ''
-  proxyProofUrl.value = ''
-  proxyProofName.value = ''
-  proxyTopicId.value = d.record && d.record.topics && d.record.topics[0] ? d.record.topics[0].id : null
-  proxyChoice.value = 'for_vote'
-  proxySelectedId.value = null
-  proxySelectedCount.value = 0
-  await loadProxyTargets()
-}
-
-function closeProxyRecorder() {
-  proxyVisible.value = false
-}
-
-async function loadProxyTargets() {
-  try {
-    const targets = await api.committeeProxyTargets(meetingId, proxyKeyword.value)
-    proxyAllTargets.value = targets || []
-    refreshProxyTargets()
-  } catch (e) {
-    toast({ title: e.message || '代录名单加载失败', icon: 'none' })
-  }
-}
-
-function refreshProxyTargets() {
-  const action = proxyAction.value
-  const topicId = proxyTopicId.value
-  const keyword = (proxyKeyword.value || '').trim().toLowerCase()
-  let selectedCount = 0
-  const targets = (proxyAllTargets.value || [])
-    .filter(function (item) {
-      if (!keyword) return true
-      const name = (item.name || '').toLowerCase()
-      const room = (item.roomNumber || '').toLowerCase()
-      return name.indexOf(keyword) >= 0 || room.indexOf(keyword) >= 0
-    })
-    .map(function (item) {
-      const votedTopicIds = item.votedTopicIds || []
-      let disabled = false
-      let disabledText = ''
-      if (action === 'signIn') {
-        disabled = !!item.signedIn
-        disabledText = item.signedIn ? (item.signInByProxy ? '已代录签到' : '已签到') : ''
-      } else {
-        if (!topicId) {
-          disabled = true
-          disabledText = '请选择议题'
-        } else if (!item.signedIn) {
-          disabled = true
-          disabledText = '未签到'
-        } else if (votedTopicIds.indexOf(Number(topicId)) >= 0) {
-          disabled = true
-          disabledText = '已投票'
-        }
-      }
-      const checked = disabled ? false : !!item.checked
-      if (checked) selectedCount += 1
-      return Object.assign({}, item, { disabled: disabled, disabledText: disabledText, checked: checked })
-    })
-  proxyTargets.value = targets
-  proxySelectedCount.value = selectedCount
-}
-
-function onProxyKeywordInput(e) {
-  proxyKeyword.value = e.target.value || ''
-  refreshProxyTargets()
-}
-
-function pickProxyAction(action) {
-  proxyAction.value = action
-  proxyChoice.value = 'for_vote'
-  proxySelectedId.value = null
-  refreshProxyTargets()
-}
-
-function pickProxyTopic(topicId) {
-  proxyTopicId.value = Number(topicId)
-  proxyChoice.value = 'for_vote'
-  proxySelectedId.value = null
-  refreshProxyTargets()
-}
-
-function pickProxyChoice(choice) {
-  proxyChoice.value = choice
-  proxySelectedId.value = null
-}
-
-function pickProxyOption(selectedId) {
-  proxySelectedId.value = Number(selectedId)
-  proxyChoice.value = ''
-}
-
-function toggleProxyTarget(memberId) {
-  memberId = Number(memberId)
-  const targets = (proxyTargets.value || []).map(function (item) {
-    if (Number(item.memberId) === memberId && !item.disabled) {
-      return Object.assign({}, item, { checked: !item.checked })
-    }
-    return item
-  })
-  const selectedIds = targets.filter(function (item) { return item.checked }).map(function (item) { return item.memberId })
-  const allTargets = (proxyAllTargets.value || []).map(function (item) {
-    return Object.assign({}, item, { checked: selectedIds.indexOf(item.memberId) >= 0 })
-  })
-  proxyTargets.value = targets
-  proxyAllTargets.value = allTargets
-  proxySelectedCount.value = selectedIds.length
-}
-
-// (2) 代录凭证：只选图上传，结果写入 proxyProofUrl / proxyProofName，供 submitProxyAction 使用
-async function pickProxyProof() {
-  try {
-    const r = await pickAndUpload('image/*')
-    if (!r) return // 用户取消
-    proxyProofUrl.value = r.url
-    proxyProofName.value = r.fileName
-    toast({ title: '已上传', icon: 'success' })
-  } catch (e) {
-    toast({ title: e.message || '上传失败', icon: 'none' })
-  }
-}
-
-async function submitProxyAction() {
-  if (proxySubmitting.value) return
-  const selectedIds = (proxyTargets.value || [])
-    .filter(function (item) { return item.checked && !item.disabled })
-    .map(function (item) { return item.memberId })
-  if (!selectedIds.length) {
-    toast({ title: '请选择代录对象', icon: 'none' })
-    return
-  }
-  if (!proxyProofUrl.value) {
-    toast({ title: '请上传凭证', icon: 'none' })
-    return
-  }
-
-  const payload = {
-    actionType: proxyAction.value,
-    memberIds: selectedIds,
-    proofUrl: proxyProofUrl.value,
-    proofName: proxyProofName.value
-  }
-  if (proxyAction.value === 'vote') {
-    if (!proxyTopicId.value) {
-      toast({ title: '请选择投票议题', icon: 'none' })
-      return
-    }
-    payload.topicId = proxyTopicId.value
-    const topic = (detail.value.record.topics || []).find(t => Number(t.id) === Number(proxyTopicId.value))
-    if (topic && topic.decisionType === 'multi_choice') {
-      if (!proxySelectedId.value) {
-        toast({ title: '请选择投票选项', icon: 'none' })
-        return
-      }
-      payload.selectedId = proxySelectedId.value
-    } else {
-      payload.choice = proxyChoice.value || 'for_vote'
-    }
-  }
-
-  proxySubmitting.value = true
-  try {
-    await api.committeeProxySubmit(meetingId, payload)
-    toast({ title: '代录已提交', icon: 'success' })
-    proxyVisible.value = false
-    proxySubmitting.value = false
-    loadDetail()
-  } catch (e) {
-    proxySubmitting.value = false
-    toast({ title: e.message || '提交失败', icon: 'none' })
-  }
 }
 
 // 把会议的原定日期+时间拼成本地 Date；没有日期或格式不对返回 null（后端本来就拦无日期的会议）
@@ -1915,38 +1141,11 @@ async function goLive() {
 // 进入「会议进行」全屏向导页：仅快速模式
 function enterLive() { goLive() }
 
-async function endMeeting() {
-  try {
-    await api.committeeAdvance(meetingId, 'end')
-    toast({ title: '会议已结束', icon: 'success' })
-    loadDetail()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
-async function toggleFlag(flag) {
-  try { await api.committeeToggleFlag(meetingId, flag); loadDetail() }
-  catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
-async function toggleJuwei() {
-  try { await api.committeeToggleJuwei(meetingId); loadDetail() }
-  catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
-function toggleDeliveryList() {
-  deliveryExpanded.value = !deliveryExpanded.value
-}
-
-function toggleFlowStats() {
-  flowStatsOpen.value = !flowStatsOpen.value
-}
-
 function toggleArchiveLog() {
   archiveLogOpen.value = !archiveLogOpen.value
 }
 
 // 顶栏左箭头按明确来源返回，避免 replace/硬跳后历史栈只剩首页。
-const showNoticeNav = computed(() => !!detail.value && userView.value === 'chair' && detail.value.stage === 'preparing')
 // 软路由偶发不切换 → 统一硬导航兜底（真机曾表现为"返回点了没反应"）
 function backWithFallback(target, browserUrl) {
   redirectTo(target)
@@ -2244,55 +1443,6 @@ async function openWechat() {
   }
 }
 
-// 委员"确认参会"：标记本人出席(signedIn)，与主任的确认参会人数统计、「我的会议」页保持一致
-async function confirmAttend() {
-  try {
-    await api.committeeSelfToggle(meetingId, 'signedIn')
-    toast({ title: '已确认参会', icon: 'success' })
-    loadDetail()
-  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) }
-}
-
-// 委员"无法参会"：标记因故缺席(declined)
-async function declineAttend() {
-  try {
-    await api.committeeSelfToggle(meetingId, 'declined')
-    toast({ title: '已登记：无法参会', icon: 'none' })
-    loadDetail()
-  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) }
-}
-
-// "取消参会"：回到未响应（从确认参会人数中移除）
-async function cancelAttend() {
-  const res = await showModal({
-    title: '取消参会',
-    content: '确定取消本人参会？取消后将从确认参会人数中移除。',
-    confirmText: '取消参会',
-    cancelText: '再想想'
-  })
-  if (!res.confirm) return
-  try {
-    await api.committeeSelfToggle(meetingId, 'cancel')
-    toast({ title: '已取消参会', icon: 'none' })
-    loadDetail()
-  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) }
-}
-
-async function toggleDelivery(userRoleId, field) {
-  try { await api.committeeToggleDelivery(meetingId, userRoleId, field); loadDetail() }
-  catch (err) { toast({ title: err.message, icon: 'none' }) }
-}
-
-async function signAll() {
-  try { await api.committeeSignAll(meetingId); loadDetail() }
-  catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
-async function markCompliance(status) {
-  try { await api.committeeCompliance(meetingId, status); loadDetail() }
-  catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
 async function archiveDirect() {
   const res = await showModal({
     title: '直接归档',
@@ -2408,76 +1558,10 @@ async function clearNotices() {
   } catch (e) { toast({ title: (e && e.message) || '清空失败', icon: 'none' }) }
 }
 
-function openAddTopic() {
-  addTopicVisible.value = true
-  newTopicForm.title = ''
-  newTopicForm.decisionType = 'simple'
-  newTopicForm.type = 'decision'
-  newTopicForm.optionsText = ''
-  newTopicForm.realName = false
-}
-function closeAddTopic() {
-  addTopicVisible.value = false
-}
-function pickDecisionType(type) {
-  newTopicForm.decisionType = type
-}
-function toggleRealName() {
-  newTopicForm.realName = !newTopicForm.realName
-}
-async function submitAddTopic() {
-  const f = newTopicForm
-  if (!f.title.trim()) {
-    toast({ title: '请输入议题名称', icon: 'none' })
-    return
-  }
-  var optionsJson = null
-  if (f.decisionType === 'multi_choice' && f.optionsText.trim()) {
-    var labels = f.optionsText.split('\n').filter(function (l) { return l.trim() })
-    var opts = labels.map(function (l, i) { return { id: i + 1, label: l.trim() } })
-    optionsJson = JSON.stringify(opts)
-  }
-  try {
-    await api.committeeAddTopic(meetingId, f.title.trim(), f.type, f.decisionType, optionsJson, f.realName)
-    toast({ title: '议题已添加', icon: 'success' })
-    addTopicVisible.value = false
-    loadDetail()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-async function removeTopic(topicId) {
-  const res = await showModal({ title: '删除议题', content: '确认删除该议题？' })
-  if (res.confirm) {
-    try { await api.committeeRemoveTopic(meetingId, topicId); await loadDetail() }
-    catch (e) { toast({ title: e.message, icon: 'none' }) }
-  }
-}
-// 在新标签页打开/预览文件（H5）
-function openFile(url) {
-  if (!url) return
-  window.open(url, '_blank')
-}
-
 // 判断是否图片（按 fileType 或扩展名）
 function isImageFile(url, fileType) {
   var s = ((fileType || '') + ' ' + (url || '')).toLowerCase()
   return /\.(jpg|jpeg|png|gif|webp)(\?|$)/.test(s) || /(jpg|jpeg|png|gif|webp|图片|照片)/.test((fileType || '').toLowerCase())
-}
-
-// (1) 议题证据：选图/PDF 上传 → committeeAddEvidence → 刷新
-async function addEvidence() {
-  try {
-    const r = await pickAndUpload('image/*,application/pdf')
-    if (!r) return // 用户取消
-    await api.committeeAddEvidence(meetingId, r.fileName, r.fileType, r.url)
-    toast({ title: '已上传', icon: 'success' })
-    loadDetail()
-  } catch (e) {
-    toast({ title: e.message || '上传失败', icon: 'none' })
-  }
-}
-async function removeEvidence(evId) {
-  try { await api.committeeRemoveEvidence(meetingId, evId); await loadDetail() }
-  catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
 function viewMinutes() {
@@ -2490,53 +1574,11 @@ function viewMinutes() {
   }, 300)
 }
 
-async function exportAttendanceSheet() {
-  if (exportingAttendanceSheet.value) return
-  exportingAttendanceSheet.value = true
-  try {
-    const blob = await api.committeeExportAttendanceSheet(meetingId)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${detail.value.title || '会议'}-会议签到表.pdf`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast({ title: '签到表已导出', icon: 'success' })
-  } catch (e) {
-    toast({ title: (e && e.message) || '签到表导出失败', icon: 'none' })
-  } finally {
-    exportingAttendanceSheet.value = false
-  }
-}
-
 // 会议记录/纪要「查看」→ 独立预览页（0722 用户定：页内预览+导出PDF），带硬导航兜底
 function viewDoc(kind) {
   const target = '/doc-preview?meetingId=' + meetingId + '&kind=' + kind
   navigateTo('/pages/doc-preview/doc-preview?meetingId=' + meetingId + '&kind=' + kind)
   setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = target }, 400)
-}
-
-async function exportMeetingRecord() {
-  if (exportingMeetingRecord.value) return
-  exportingMeetingRecord.value = true
-  try {
-    const blob = await api.committeeExportMeetingRecord(meetingId)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${detail.value.title || '会议'}-会议记录.pdf`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast({ title: '会议记录已导出', icon: 'success' })
-  } catch (e) {
-    toast({ title: (e && e.message) || '会议记录导出失败', icon: 'none' })
-  } finally {
-    exportingMeetingRecord.value = false
-  }
 }
 
 // 会后生成会议纪要：任务直接在会议详情页发起，最小化弹窗后也不提前跳转纪要页。
@@ -2697,13 +1739,6 @@ function viewPublicMinutes() {
   setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = target }, 300)
 }
 
-// 内部总结（内部 AI 议题报告详细版 + 决议），仅供业委会内部查看。同上加硬导航兜底
-function viewInternalReport() {
-  const target = '/minutes-internal?meetingId=' + meetingId
-  navigateTo('/pages/minutes-internal/minutes-internal?meetingId=' + meetingId)
-  setTimeout(() => { if (document.querySelector('.detail-page')) window.location.href = target }, 300)
-}
-
 // 会议待办事项独立页
 function viewTodos() {
   // 软路由偶发不切换 → 硬导航兜底
@@ -2727,10 +1762,6 @@ async function addArchiveExtra() {
   }
 }
 
-function removeArchiveExtra() {
-  toast({ title: '归档补充材料已留痕，不支持直接删除', icon: 'none' })
-}
-
 async function previewMaterial(idx) {
   var materials = detail.value && detail.value.materials
   if (!materials || !materials[idx]) return
@@ -2746,19 +1777,6 @@ async function previewMaterial(idx) {
 
 // 委员合影/现场材料拍照已移到会后整理页（MeetingLiveQuick「拍照上传」），详情页不再放拍照入口。
 
-// (3) 会议材料：选任意文件上传 → committeeAddMaterial → 刷新
-async function uploadMaterial() {
-  try {
-    const r = await pickAndUpload('*/*')
-    if (!r) return // 用户取消
-    await api.committeeAddMaterial(meetingId, r.fileName, humanSize(r.fileSize), r.fileType, r.url)
-    toast({ title: '已上传', icon: 'success' })
-    loadDetail()
-  } catch (e) {
-    toast({ title: e.message || '上传失败', icon: 'none' })
-  }
-}
-
 async function removeMaterial(item) {
   if (!item) return
   const res = await showModal({
@@ -2771,142 +1789,6 @@ async function removeMaterial(item) {
   }
 }
 
-async function previewArchiveMaterials() {
-  var materials = detail.value && detail.value.materials
-  if (!materials || !materials.length) return
-  var list = materials.map(function (m, i) { return (i + 1) + '. ' + m.name }).join('\n')
-  await showModal({
-    title: '会议材料（' + materials.length + '份）',
-    content: list,
-    showCancel: false,
-    confirmText: '关闭'
-  })
-}
-
-// ── 编辑会议 ──
-
-async function openEdit() {
-  var d = detail.value
-  // 规则8：已通知后修改重大信息须重新通知全体成员
-  if (d.coreLocked) {
-    const res = await showModal({
-      title: '会议已通知',
-      content: '会议已通知全体成员。修改日期/时间/地点等重大信息后，需重新通知。是否继续？',
-      confirmText: '继续修改'
-    })
-    if (res.confirm) _doOpenEdit(d)
-    return
-  }
-  _doOpenEdit(d)
-}
-
-function _doOpenEdit(d) {
-  editVisible.value = true
-  noticeContentDirty.value = false
-  editForm.title = d.title || ''
-  if (d.meetingDate) {
-    editForm.meetingDate = d.meetingDate
-    editForm.meetingTime = (d.meetingTime || '').slice(0, 5) // 去掉秒（"09:00:00"→"09:00"），与新建会议一致
-  } else {
-    const t = new Date()
-    t.setDate(t.getDate() + 1)
-    const mo = String(t.getMonth() + 1).padStart(2, '0')
-    const day = String(t.getDate()).padStart(2, '0')
-    editForm.meetingDate = t.getFullYear() + '-' + mo + '-' + day
-    editForm.meetingTime = '10:00'
-  }
-  editForm.location = d.location || ''
-  editForm.meetingMethod = d.meetingMethod || (d.location === '线上会议' || d.location === '微信工作群' ? 'online' : 'offline')
-  syncEditLocationPreset(editForm.location)
-  // 主要议题：按准备会议时添加的议题标题，逐条编号列出；无议题则回退到补充说明
-  editForm.description = buildTopicsText(d) || d.description || ''
-  editForm.content = (d.noticeDraft && d.noticeDraft.content) || ''
-}
-
-// 把会议议题标题拼成"1.xxx\n2.xxx"
-function buildTopicsText(d) {
-  const topics = (d && d.record && d.record.topics) || []
-  return topics
-    .filter(t => (t.title || '').trim())
-    .map((t, i) => (i + 1) + '.' + t.title.trim())
-    .join('\n')
-}
-
-function closeEdit() {
-  editVisible.value = false
-}
-
-function onEditContentInput(e) {
-  editForm.content = e.target.value
-  noticeContentDirty.value = true
-}
-
-function pickEditLocation(location) {
-  editForm.location = location
-}
-
-function setEditMeetingMethod(method) {
-  editForm.meetingMethod = method
-  if (method === 'online' && (!editForm.location || commonLocations.includes(editForm.location))) {
-    editForm.location = '微信工作群'
-    editLocationPreset.value = '__other__'
-  } else if (method === 'offline' && ['微信工作群', '腾讯会议', '微信工作群、腾讯会议', '腾讯会议、微信工作群'].includes(editForm.location)) {
-    editForm.location = '社区活动室'
-    editLocationPreset.value = '社区活动室'
-  }
-}
-
-async function submitEdit() {
-  var form = editForm
-  if (!form.title || !form.meetingDate || !form.meetingTime || !form.location) {
-    toast({ title: '请补全标题、时间和地点', icon: 'none' })
-    return
-  }
-  try {
-    // 先存会议要素（会按新要素自动重生成通知草稿）
-    await api.committeeUpdate(meetingId, { ...form })
-    // 若手动改过通知正文，再覆盖保存（保留自定义措辞）
-    if (noticeContentDirty.value && form.content) {
-      await api.committeeUpdateNotice(meetingId, form.title, form.content)
-    }
-    toast({ title: '已保存', icon: 'success' })
-    editVisible.value = false
-    loadDetail()
-  } catch (e) {
-    toast({ title: e.message || '保存失败', icon: 'none' })
-  }
-}
-
-// ── 编辑通知草稿 ──
-
-function editNoticeDraft() {
-  var draft = detail.value && detail.value.noticeDraft
-  noticeEditVisible.value = true
-  noticeEditForm.title = draft ? draft.title : ''
-  noticeEditForm.content = draft ? draft.content : ''
-}
-
-function closeNoticeEdit() {
-  noticeEditVisible.value = false
-}
-
-async function submitNoticeEdit() {
-  var form = noticeEditForm
-  if (!form.title || !form.content) {
-    toast({ title: '标题和正文不能为空', icon: 'none' })
-    return
-  }
-  try {
-    await api.committeeUpdateNotice(meetingId, form.title, form.content)
-    toast({ title: '通知已更新', icon: 'success' })
-    noticeEditVisible.value = false
-    loadDetail()
-  } catch (e) {
-    toast({ title: e.message || '保存失败', icon: 'none' })
-  }
-}
-
-function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 </script>
 
 <style scoped>
@@ -2942,13 +1824,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
   font-size: 28rpx; font-weight:700; flex-shrink:0;
 }
 .proxy-entry-btn.disabled { background:#e8e8e8; color:#666; }
-.notice-draft-card { background:#FFF8EA; border:1px solid #FFE0A3; border-radius:16px; padding:16px; margin-bottom:12px; }
-.nd-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
-.nd-title { font-size: 28rpx; font-weight:700; color:#5C3D00; line-height:1.45; }
-.nd-status { flex-shrink:0; font-size: 28rpx; color:#D88900; background:#fff; border-radius:12px; padding:3px 9px; line-height:1.35; }
-.nd-status.ok { color:#1D9E75; background:#E1F5EE; }
-.nd-content { display:block; font-size: 28rpx; color:#6B5300; line-height:1.7; white-space:pre-wrap; word-break:break-all; }
-.nd-confirm-btn { margin-top:14px; width:100%; min-height:44px; padding:11px; background:var(--c-primary-dark); color:#fff; font-size: 30rpx; font-weight:700; border:none; border-radius:12px; }
 .notice-package-card {
   background:#fff; border-radius:16px; padding:16px; margin-bottom:12px;
   border:1px solid #FFE0A3; box-shadow:0 1px 3px rgba(0,0,0,0.04);
@@ -2963,24 +1838,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .npc-content { display:block; font-size: 28rpx; color:#555; line-height:1.75; white-space:pre-wrap; word-break:break-all; }
 .npc-empty { display:block; font-size: 28rpx; color:#666; padding:8px 0; }
 
-/* Member: delivery card */
-.my-delivery-card { background:#fff; border-radius:16px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); margin-bottom:12px; }
-.mdc-title { font-size: 28rpx; font-weight:600; color:#333; margin-bottom:10px; display:block; }
-.mdc-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; }
-.mdc-label { font-size: 28rpx; color:#666; }
-.mdc-status { font-size: 28rpx; font-weight:600; }
-.mdc-status.ok { color:#27AE60; }
-.mdc-status.no { color:#666; }
-.mdc-tip { font-size: 28rpx; color:#666; margin-top:8px; line-height:1.5; display:block; }
-.mdc-big { display:block; font-size: 28rpx; font-weight:600; color:#E67E22; margin-top:4px; }
-.mdc-big.ok { color:#27AE60; }
 
-/* 会议材料 */
-.materials-card {
-  background:#fff; border-radius:16px; padding:16px; margin-bottom:12px;
-  box-shadow:0 1px 3px rgba(0,0,0,0.04);
-}
-.mt-title { font-size: 28rpx; font-weight:600; color:#333; display:block; margin-bottom:8px; }
 .mt-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; }
 .mt-item:last-child { border-bottom:none; }
 .mt-name { font-size: 28rpx; color:#444; flex:1; }
@@ -3183,11 +2041,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 展开区里的「查看会议纪要」按钮（从底部操作栏挪进详情） */
 .ended-minutes-btn.in-card { margin:8px auto 16px; }
 .attendance-sheet-entry { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:6px 16px 16px; padding:14px; border:1px solid #E7E9ED; border-radius:14px; background:#FAFBFC; }
-.detail-method-switch { display:flex; gap:8rpx; padding:6rpx; background:#f1f2f4; border-radius:14rpx; width:max-content; }
-.meeting-method-label { display:block; white-space:nowrap; font-size:32rpx; font-weight:800; color:#2d3137; }
-.platform-select-detail { margin-top:12rpx; width:100%; font-weight:700; }
-.detail-method-switch button { border:0; background:transparent; color:#62676f; font-size:28rpx; padding:14rpx 28rpx; border-radius:10rpx; }
-.detail-method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
 .ase-copy { display:flex; flex-direction:column; min-width:0; gap:4px; }
 /* 说明小字删除后标题升格（0722 用户定）：加到 22px、字重+100 */
 .ase-copy b { color:#30343B; font-size:22px; font-weight:650; line-height:1.35; }
@@ -3285,13 +2138,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ar-skip { display:block; text-align:center; font-size:16px; color:var(--c-primary-dark); margin-top:10px; font-weight:700; }
 .ar-skip.danger { color:#E74C3C; }
 
-/* 实名表决开关（添加议题表单） */
-.realname-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.realname-hint { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
-.rn-switch { width:44px; height:24px; border-radius:12px; background:#ddd; flex:0 0 auto; position:relative; transition:background .2s; }
-.rn-switch.on { background:#27AE60; }
-.rn-knob { width:20px; height:20px; border-radius:50%; background:#fff; position:absolute; top:2px; left:2px; transition:left .2s; }
-.rn-switch.on .rn-knob { left:22px; }
 
 /* 议题留痕 + 实名标记 */
 .tp-meta { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:4px 0 2px; }
@@ -3300,11 +2146,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .tp-tag.live { color:#E67E22; background:#FDF2E3; }
 .tp-tag.realname { color:#2980B9; background:#EAF2F8; }
 
-/* 语音输入 */
-.vi-row { display:flex; align-items:center; gap:12rpx; }
-.vi-btn { flex-shrink:0; width:76rpx; height:76rpx; border-radius:50%; background:#f0f2f5; border:2rpx solid #ddd; font-size:32rpx; display:flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; padding:0; }
-.vi-btn.on { background:#FFA800; border-color:#FFA800; animation:vi-pulse 1.2s ease-in-out infinite; }
-@keyframes vi-pulse { 0%,100% { box-shadow:0 0 0 0 rgba(255,168,0,0.4); } 50% { box-shadow:0 0 0 14rpx rgba(255,168,0,0); } }
 
 /* 进行中签到进度（主任视图） */
 /* 会议记录/纪要预览已改为独立页 DocPreview.vue（0722 用户定），弹层样式随之删除 */
@@ -3342,13 +2183,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .ext-sub { font-size: 28rpx; opacity:0.7; margin-top:2px; display:block; }
 .ext-hint { text-align:center; color:#666; font-size: 28rpx; padding:16px 0; display:block; }
 
-/* Wizard Stepper */
-.live-entry { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#FFCC44,#FFA800); border-radius:16px; padding:18px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(255,168,0,0.25); }
-/* 现场已结束的横幅已整条删除（0722 用户定），ended 变体样式随之移除 */
-.live-entry-main { flex:1; }
-.live-entry-title { display:block; font-size: 32rpx; font-weight:700; color:#fff; line-height:1.4; }
-.live-entry-sub { display:block; font-size: 28rpx; color:rgba(255,255,255,0.85); margin-top:4px; line-height:1.5; }
-.live-entry-arrow { flex-shrink:0; font-size: 28rpx; font-weight:700; color:#fff; background:rgba(255,255,255,0.2); border-radius:16px; padding:6px 14px; }
 
 /* 准备阶段步骤条 */
 .prep-steps { display:flex; background:#fff; border-radius:12px; padding:14px 6px; margin-bottom:18px; border:0.5px solid #ECECEF; }
@@ -3639,14 +2473,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .sheet-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
 .sheet-title { font-size: 34rpx; font-weight:700; color:#333; }
 .sheet-close { width:32px; height:32px; line-height:30px; text-align:center; border-radius:16px; font-size: 44rpx; color:#666; background:#f5f5f5; flex-shrink:0; }
-.type-row { display:flex; flex-wrap:wrap; gap:8px; }
-.type-chip {
-  min-height:34px; line-height:18px; box-sizing:border-box;
-  display:flex; align-items:center; justify-content:center;
-  font-size: 28rpx; color:#666; background:#f5f5f5;
-  padding:7px 12px; border-radius:16px;
-}
-.type-chip.on { color:#fff; background:#FFA800; font-weight:600; }
 .form-group { margin-bottom:12px; min-width:0; }
 .form-label { display:block; font-size: 28rpx; color:#777; margin-bottom:7px; line-height:1.45; }
 .form-hint { display:block; font-size: 28rpx; color:#666; margin:-3px 0 7px; line-height:1.5; }
@@ -3671,23 +2497,6 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
   height:44px; min-height:44px; line-height:normal; padding:0 12px;
   border:0;
 }
-/* 编辑通知：会议要素选择器（与「新建会议」一致） */
-.ep-field { display:flex; align-items:center; justify-content:space-between; cursor:pointer; }
-.ep-text { font-size:28rpx; color:#1f2329; }
-.ep-arrow { color:#999; font-size:26rpx; }
-.ep-loc-select { appearance:none; -webkit-appearance:none; padding-right:60rpx; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M5 7l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 20rpx center; }
-.ep-loc-other { margin-top:16rpx; }
-.ep-pop-mask { position:fixed; inset:0; z-index:120; background:rgba(0,0,0,0.42); display:flex; align-items:center; justify-content:center; padding:48rpx; box-sizing:border-box; }
-.ep-pop { width:100%; max-width:660rpx; background:#fff; border-radius:26rpx; padding:28rpx 26rpx 24rpx; box-sizing:border-box; }
-.ep-head { text-align:center; font-size:34rpx; font-weight:700; color:#1f2329; margin-bottom:20rpx; }
-.ep-cols { display:flex; gap:16rpx; }
-.ep-col { flex:1; min-width:0; display:flex; flex-direction:column; }
-.ep-col-label { text-align:center; font-size:28rpx; color:#666; margin-bottom:10rpx; }
-.ep-col-scroll { height:460rpx; overflow-y:auto; background:#f7f8fa; border-radius:16rpx; padding:8rpx; box-sizing:border-box; -webkit-overflow-scrolling:touch; }
-.ep-item { display:flex; align-items:center; justify-content:center; height:76rpx; font-size:34rpx; color:#333; border-radius:12rpx; margin:4rpx 0; }
-.ep-item.on { color:#fff; background:#FFA800; font-weight:700; }
-.ep-actions { display:flex; gap:18rpx; margin-top:24rpx; }
-.ep-actions .btn { flex:1; height:44px; line-height:44px; border-radius:22px; font-size:28rpx; font-weight:600; border:0; display:flex; align-items:center; justify-content:center; }
 .sheet-actions { display:flex; gap:10px; justify-content:space-between; padding:12px 0 calc(18px + env(safe-area-inset-bottom)); }
 .sheet-actions .btn {
   flex:1; min-width:0; height:44px; line-height:44px;
@@ -3735,119 +2544,17 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .rcp-btn.primary { background:var(--c-primary); color:#fff; }
 .rcp-btn.primary:disabled { opacity:0.5; }
 .rcp-btn:active { opacity:0.88; }
-.proxy-sheet { max-height:88vh; padding-bottom:calc(18px + env(safe-area-inset-bottom)); }
-.proxy-tabs { display:flex; gap:8px; margin-bottom:12px; }
-.proxy-tab {
-  flex:1; text-align:center; padding:10px 0; border-radius:18px;
-  background:#f5f5f5; color:#777; font-size: 28rpx; font-weight:600;
-}
-.proxy-tab.on { background:#FFA800; color:#fff; }
-.proxy-section { margin-bottom:14px; }
-.proxy-topic-list { display:flex; flex-wrap:wrap; gap:8px; }
-.proxy-topic {
-  max-width:100%; box-sizing:border-box; padding:8px 10px; border-radius:12px;
-  background:#f7f7f7; color:#666; font-size: 28rpx; line-height:1.35;
-}
-.proxy-topic.on { background:#FFF3DC; color:#B36B00; font-weight:700; }
-.proxy-choice-row { display:flex; gap:8px; margin-top:10px; }
-.proxy-choice {
-  flex:1; text-align:center; padding:9px 0; border-radius:16px;
-  background:#f5f5f5; color:#777; font-size: 28rpx; font-weight:600;
-}
-.proxy-choice.for.on { background:#E8F7EE; color:#27AE60; }
-.proxy-choice.ag.on { background:#FDECEA; color:#E74C3C; }
-.proxy-choice.ab.on { background:#EBF5FB; color:#2980B9; }
-.proxy-option-list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
-.proxy-option {
-  padding:10px 12px; border-radius:12px; background:#f7f7f7;
-  color:#555; font-size: 28rpx; line-height:1.4; border:1px solid transparent;
-}
-.proxy-option.on { background:#FFF3DC; border-color:#FFA800; color:#B36B00; font-weight:700; }
-.proxy-target-list { max-height:260px; margin-top:10px; }
-.proxy-target {
-  display:flex; align-items:center; gap:10px; padding:10px 0;
-  border-bottom:1px solid #f2f2f2;
-}
-.proxy-target:last-child { border-bottom:none; }
-.proxy-target.disabled { opacity:0.45; }
-.proxy-target.on .proxy-check { background:#27AE60; border-color:#27AE60; color:#fff; }
-.proxy-check {
-  width:22px; height:22px; border-radius:50%; border:1px solid #ddd;
-  display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size: 28rpx; font-weight:700; flex-shrink:0;
-}
-.proxy-person { flex:1; min-width:0; }
-.proxy-name { display:block; font-size: 28rpx; color:#333; font-weight:600; }
-.proxy-meta { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
-.proxy-state { font-size: 28rpx; color:#666; flex-shrink:0; }
-.proxy-empty { text-align:center; color:#666; font-size: 28rpx; padding:18px 0; }
-.proof-picker {
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  background:#f7f7f7; border-radius:12px; padding:12px;
-}
-.proof-main { flex:1; min-width:0; font-size: 28rpx; color:#555; word-break:break-all; }
-.proof-action { font-size: 28rpx; color:#FFA800; font-weight:700; flex-shrink:0; }
-.proxy-submit-row {
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding-top:4px;
-}
-.proxy-count { font-size: 28rpx; color:#666; flex-shrink:0; }
-.proxy-submit {
-  flex:1; height:44px; line-height:44px; border-radius:22px;
-  margin:0; padding:0; font-size: 28rpx; font-weight:700;
-}
-
 /* —— 适老化补充：委员纪要按钮 + 归档页折叠头 —— */
 .fsc-toggle { font-size: 28rpx; color:#C77800; font-weight:600; flex-shrink:0; white-space:nowrap; }
 .arclog-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
 .arclog-toggle { font-size: 28rpx; color:#C77800; font-weight:600; }
 
-/* —— 委员确认参会 / 无法参会 —— */
-.attend-actions { display:flex; flex-direction:column; gap:20rpx; margin-top:24rpx; }
-.attend-btn { border:none; margin:0; }
-.attend-btn.primary { width:100%; min-height:104rpx; line-height:104rpx; border-radius:18rpx; font-size:34rpx; font-weight:700; background:var(--c-primary-dark); color:#fff; box-shadow:0 8rpx 22rpx rgba(255,168,0,0.4); }
-.attend-btn.ghost { align-self:center; width:auto; min-height:84rpx; line-height:84rpx; padding:0 72rpx; border-radius:42rpx; font-size:32rpx; font-weight:600; background:#eef0f3; color:#5b6673; }
-.mdc-big.declined { color:#E67E22; }
 .pp-declined { display:block; font-size: 28rpx; color:#E67E22; margin-top:10rpx; }
 .my-attend-tip { display:block; font-size:30rpx; color:#4a5560; margin-bottom:16rpx; line-height:1.5; }
 .my-attend-tip.declined { color:#E67E22; }
 .my-attend-tip.ok { color:#27AE60; font-weight:600; margin-bottom:0; }
 .my-attend-cancel { display:block; text-align:center; margin-top:24rpx; font-size:30rpx; color:#666; padding:8rpx; }
 
-/* 语音输入确认弹窗 */
-.voice-modal-mask { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; }
-.voice-modal {
-  width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
-  padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; gap: 24rpx;
-}
-.vm-head { display: flex; align-items: baseline; justify-content: space-between; }
-.vm-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
-.vm-hint { font-size: 26rpx; color: #999; }
-.vm-body {
-  background: #f7f8fa; border-radius: 20rpx;
-  padding: 24rpx 20rpx; min-height: 120rpx;
-  display: flex; flex-direction: column; align-items: center; gap: 18rpx;
-}
-.vm-wave { display: flex; align-items: flex-end; gap: 8rpx; height: 48rpx; }
-.vm-wave span {
-  width: 8rpx; border-radius: 4rpx; background: #0051FF;
-  animation: vm-bar 1.1s ease-in-out infinite;
-}
-.vm-wave span:nth-child(1) { height: 20rpx; animation-delay: 0s; }
-.vm-wave span:nth-child(2) { height: 36rpx; animation-delay: 0.15s; }
-.vm-wave span:nth-child(3) { height: 48rpx; animation-delay: 0.3s; }
-.vm-wave span:nth-child(4) { height: 36rpx; animation-delay: 0.45s; }
-.vm-wave span:nth-child(5) { height: 20rpx; animation-delay: 0.6s; }
-@keyframes vm-bar {
-  0%, 100% { transform: scaleY(0.4); opacity: 0.6; }
-  50%       { transform: scaleY(1);   opacity: 1;   }
-}
-.vm-text { font-size: 32rpx; color: #1f2329; line-height: 1.6; text-align: center; width: 100%; word-break: break-all; }
-.vm-placeholder { color: #aaa; }
-.vm-actions { display: flex; gap: 20rpx; }
-.vm-actions .btn { flex: 1; height: 88rpx; font-size: 34rpx; border-radius: 18rpx; }
-.vm-actions .btn:disabled { opacity: 0.4; }
 </style>
 
 <!-- 会议议题卡：由 render 函数子组件 MeetingTopicsCard 渲染，其节点不带父 scope 属性，
