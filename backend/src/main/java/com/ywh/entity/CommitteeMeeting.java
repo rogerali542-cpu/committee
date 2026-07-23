@@ -55,6 +55,14 @@ public class CommitteeMeeting {
     @Column(name = "meeting_mode", length = 10)
     private MeetingMode meetingMode;
 
+    // 直接归档（0723）：主任在详情页显式归档，会议移入资料库并从日常列表隐藏。
+    // 归档是终局动作：未结束的会一并置为已结束。null 视为未归档（旧数据兼容）。
+    @Column
+    private Boolean archived;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 

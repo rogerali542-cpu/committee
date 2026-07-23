@@ -47,8 +47,25 @@ public class CommitteeController {
 
     @GetMapping
     public Result<List<Map<String, Object>>> list(
-            @RequestParam(required = false) String stage) {
-        return Result.ok(service.listMeetings(stage));
+            @RequestParam(required = false) String stage,
+            @RequestParam(required = false) Boolean archived) {
+        return Result.ok(service.listMeetings(stage, archived));
+    }
+
+    /** 直接归档（不公示，0723 补实现）：终局动作，会议移入资料库并从日常列表隐藏 */
+    @PostMapping("/{id}/archive")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> archive(@PathVariable Long id) {
+        service.archive(id);
+        return Result.ok();
+    }
+
+    /** 撤销归档（仅误归档用，原因必填；已公示需先撤回公示） */
+    @PostMapping("/{id}/archive/revoke")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> revokeArchive(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> req) {
+        service.revokeArchive(id, req == null ? null : (String) req.get("reason"));
+        return Result.ok();
     }
 
     @GetMapping("/members")

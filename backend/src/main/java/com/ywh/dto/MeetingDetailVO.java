@@ -1,5 +1,6 @@
 package com.ywh.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.ywh.enums.ComplianceStatus;
 import com.ywh.enums.MeetingMode;
 import com.ywh.enums.MeetingMethod;
@@ -25,6 +26,10 @@ public class MeetingDetailVO {
     private ComplianceStatus compliance;
     private MeetingMode meetingMode;   // normal / quick
     private List<String> invalidNotes;
+
+    // 直接归档标记（前端历史字段名 _archived，helpers/详情页/纪要页均按此读取）
+    @JsonProperty("_archived")
+    private Boolean archivedFlag;
 
     // Current user's task summary
     private String taskLevel;   // todo, warn, ok, readonly

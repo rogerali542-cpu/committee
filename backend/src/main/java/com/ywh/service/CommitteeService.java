@@ -64,6 +64,11 @@ public class CommitteeService {
 
     // ===== List =====
     public List<Map<String, Object>> listMeetings(String stage) {
+        return listMeetings(stage, null);
+    }
+
+    /** archived=true → 只看已归档（资料库）；默认排除已归档（日常列表不再出现，这正是归档的意义）。 */
+    public List<Map<String, Object>> listMeetings(String stage, Boolean archived) {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         UserRoleEntity currentUr = SecurityUtils.getCurrentUserRole();
         // 物业不参与小区行政，不开放业委会会议
@@ -101,9 +106,15 @@ public class CommitteeService {
                     .collect(Collectors.toList());
         }
 
+        boolean archivedOnly = Boolean.TRUE.equals(archived);
+        meetings = meetings.stream()
+                .filter(m -> archivedOnly == Boolean.TRUE.equals(m.getArchived()))
+                .collect(Collectors.toList());
+
         return meetings.stream().map(m -> {
             Map<String, Object> card = new HashMap<>();
             card.put("id", m.getId());
+            card.put("_archived", Boolean.TRUE.equals(m.getArchived()));
             card.put("title", m.getTitle());
             card.put("meetingDate", m.getMeetingDate());
             card.put("meetingTime", m.getMeetingTime());
@@ -195,6 +206,7 @@ public class CommitteeService {
                         .map(rec -> rec.getMinutesText() != null && !rec.getMinutesText().isBlank())
                         .orElse(false))
                 .publish(publishInfo)
+                .archivedFlag(Boolean.TRUE.equals(m.getArchived()))
                 .members(hideInternalRecord ? null : getMemberSummaries(m))
                 .orgFullName(orgFullName(m))
                 .observers(hideInternalRecord ? null : recordRepo.findByMeetingId(meetingId)
@@ -1689,6 +1701,34 @@ public class CommitteeService {
         publishRepo.save(pub);
         // 快照本次公示的纪要版本，使"历史版本"能定位到被公示的内容
         snapshotRevision(meetingId, generateMinutes(meetingId));
+    }
+
+    /** 直接归档（0723 补实现，此前前端按钮调的端点不存在）：终局动作——未结束的会置为已结束，
+     *  移入资料库并从日常列表隐藏。幂等：已归档再点视为成功。 */
+    @Transactional
+    public void archive(Long meetingId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (Boolean.TRUE.equals(m.getArchived())) return;
+        if (m.getStage() != MeetingStage.ended) m.setStage(MeetingStage.ended);
+        m.setArchived(true);
+        m.setArchivedAt(LocalDateTime.now());
+        meetingRepo.save(m);
+    }
+
+    /** 撤销归档（仅误归档用）：已公示的先撤回公示再撤归档；原因必填（记审计日志）。 */
+    @Transactional
+    public void revokeArchive(Long meetingId, String reason) {
+        if (reason == null || reason.isBlank()) throw new IllegalArgumentException("请填写撤销原因");
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        if (!Boolean.TRUE.equals(m.getArchived())) throw new IllegalArgumentException("会议未归档");
+        boolean published = publishRepo.findByMeetingId(meetingId)
+                .map(p -> Boolean.TRUE.equals(p.getPublished())).orElse(false);
+        if (published) throw new IllegalArgumentException("已公示的会议请先撤回公示，再撤销归档");
+        m.setArchived(false);
+        m.setArchivedAt(null);
+        meetingRepo.save(m);
     }
 
     /** 公示全文（标题+正文，PDF 导出用，0723）：已公示取存档的公示标题/正文，未公示按当前数据现拼。
