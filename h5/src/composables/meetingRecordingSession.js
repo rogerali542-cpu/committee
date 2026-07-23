@@ -33,7 +33,14 @@ export async function discardMeetingRecording(meetingId) {
   const id = String(meetingId == null ? '' : meetingId)
   if (!id || String(meetingRecordingSession.meetingId || '') !== id) return false
   try { if (discardHandler) await discardHandler(id) } catch (e) { /* 状态清理仍须继续 */ }
-  const sessions = await recStore.listSessions('committee-' + id)
+  // 落盘键按角色分（committee-<id>-r<roleId>，0723 修身份串号）+ 兼容旧格式（无 -r 后缀）：
+  // 删会议要把本机所有角色留下的切片一起清掉，全量列出后按前缀过滤。
+  const all = await recStore.listSessions()
+  const prefix = 'committee-' + id
+  const sessions = all.filter((s) => {
+    const mk = String(s.meetingKey || '')
+    return mk === prefix || mk.startsWith(prefix + '-r')
+  })
   await Promise.all(sessions.map((s) => recStore.clearSession(s.key)))
   meetingRecordingSession.meetingId = ''
   meetingRecordingSession.meetingTitle = ''

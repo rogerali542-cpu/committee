@@ -1480,6 +1480,7 @@ let _asrDoneHandled = false
 let _recognizeAfterUpload = false // 「上传录音」标记：上传成功后只识别、不生成
 let _pollTimer = null
 let _booted = false
+let _instanceRoleId = '' // 本组件实例初始化时的角色 id：KeepAlive 复用实例，onActivated 据此检测身份切换
 let _attendanceTimer = null // 主任签到进度的轻量轮询
 let _playAudio = null       // 转写页录音回放用的 HTMLAudioElement
 
@@ -1506,6 +1507,7 @@ function initFromRoute() {
 
 onMounted(() => {
   pageActive.value = true
+  _instanceRoleId = _currentRoleId()
   syncRecordingPageVisibility()
   // onLoad(options)
   initFromRoute()
@@ -1529,6 +1531,13 @@ watch(() => route.query.meetingId, (val, oldVal) => {
 
 // onShow → onMounted 首跑 + onActivated（保持热切回页刷新；但避免与 onMounted 重复首跑）
 onActivated(() => {
+  // 身份切换检测（0723 修串号）：KeepAlive 复用实例，主任暂停的录音器/页面状态会原样留给
+  // 切换后的委员（按钮直接显示"继续录音"）。身份变了 → 整页重载按新身份重新初始化；
+  // 旧身份的录音切片已落盘且按角色分键，不丢、也不会被新身份捡走，切回原身份可恢复。
+  if (_instanceRoleId && _currentRoleId() !== _instanceRoleId) {
+    window.location.reload()
+    return
+  }
   pageActive.value = true
   syncRecordingPageVisibility()
   // KeepAlive 复用实例：上次「生成纪要/完成会后整理」跳走时留下的过渡态必须复位，
@@ -1576,11 +1585,15 @@ onDeactivated(() => {
 // ═══════════════════════════════════════════════
 // 方法（自 Page 方法 1:1 迁移）
 // ═══════════════════════════════════════════════
+function _currentRoleId() {
+  const role = getStorage('activeRole', null) || {}
+  return String(role.id || 0)
+}
+
 function quickStateKey() {
   // 按「会议 + 角色」隔离：同设备切换委员/主任测试时，各角色的页面状态互不串味
   // （此前共用一个键，主任进来会恢复出委员留下的步骤/阶段状态）
-  const role = getStorage('activeRole', null) || {}
-  return QUICK_STATE_PREFIX + meetingId.value + '_r' + (role.id || 0)
+  return QUICK_STATE_PREFIX + meetingId.value + '_r' + _currentRoleId()
 }
 
 function persistQuickState(extra) {
@@ -1962,7 +1975,8 @@ async function startRecord(opts) {
   try {
     // 中断续录(resume)：不 reset——旧段落地会话要留给后台上传成功后再清；start 自会重置录音内部状态
     if (!(opts && opts.resume)) rec.reset()
-    await rec.start({ persistKey: 'committee-' + meetingId.value, keepPrevPersist: !!(opts && opts.resume) }) // 切片落盘：页面被杀后可恢复
+    // 落盘键带角色（0723 修身份串号）：主任暂停的录音切片不再被切到委员身份后当孤儿捡回
+    await rec.start({ persistKey: 'committee-' + meetingId.value + '-r' + _currentRoleId(), keepPrevPersist: !!(opts && opts.resume) }) // 切片落盘：页面被杀后可恢复
   } catch (e) {
     console.error('[startRecord] 录音启动失败:', e && e.name, e && e.message, e)
     showModal({ title: '无法开始录音', content: micErrorText(e), showCancel: false, confirmText: '知道了' })
@@ -1996,7 +2010,10 @@ async function checkOrphanRecordings() {
   // 方案B后委员也可上传，恢复弹窗对所有已签到角色开放（此前仅主任，委员的中断录音会烂在本机）
   if (!detail.value || detail.value.stage !== 'ongoing') return
   if (rec.recording.value) return
-  const sessions = await recStore.listSessions('committee-' + meetingId.value)
+  // 只认当前身份的落盘会话（0723 修身份串号）；兼容旧格式（无 -r 后缀）的历史切片仍归本机第一个进来的人
+  const sessions = await recStore.listSessions('committee-' + meetingId.value + '-r' + _currentRoleId())
+  const legacy = await recStore.listSessions('committee-' + meetingId.value)
+  sessions.push(...legacy)
   if (!sessions.length) return
   const totalSec = sessions.reduce((s, x) => s + x.chunkCount, 0)
   if (totalSec < 5) { sessions.forEach(s => recStore.clearSession(s.key)); return } // 几秒的碎片没有恢复价值
