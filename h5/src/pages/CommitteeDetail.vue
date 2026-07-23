@@ -3277,7 +3277,8 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .detail-method-switch button { border:0; background:transparent; color:#62676f; font-size:28rpx; padding:14rpx 28rpx; border-radius:10rpx; }
 .detail-method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
 .ase-copy { display:flex; flex-direction:column; min-width:0; gap:4px; }
-.ase-copy b { color:#30343B; font-size:17px; line-height:1.35; }
+/* 说明小字删除后标题升格（0722 用户定）：+1号、字重+100 */
+.ase-copy b { color:#30343B; font-size:18px; font-weight:800; line-height:1.35; }
 .ase-copy small { color:#7B818B; font-size:14px; line-height:1.45; }
 .ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:15px; font-weight:700; cursor:pointer; }
 .ase-btn:active { background:#EAF2FB; }
