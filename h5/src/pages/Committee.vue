@@ -463,17 +463,17 @@
               <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
             </div>
             <div v-if="createTab === 'manual' && topicDialogOpen" class="topic-inline-editor">
-              <!-- 标题「添加议题」已删（0723 用户定，卡片压缩）：头部只留右侧「取消」 -->
-              <div class="tie-head">
-                <button type="button" @click="topicDialogOpen = false">取消</button>
-              </div>
+              <!-- 标题「添加议题」已删；「取消」并入「议题内容」标签行，标签+chips 同行（0723 用户定，卡片压缩） -->
               <div class="form-group">
-                <span class="form-label">议题内容</span>
+                <div class="tie-label-row">
+                  <span class="form-label">议题内容</span>
+                  <button type="button" class="tie-cancel" @click="topicDialogOpen = false">取消</button>
+                </div>
                 <div class="td-title-row">
                   <input class="form-input large" v-model="topicDraft.title" placeholder="请输入议题内容" />
                 </div>
               </div>
-              <div class="form-group">
+              <div class="form-group tie-inline-row">
                 <span class="form-label">议题类型</span>
                 <div class="type-row">
                   <!-- 0717 用户定：「通知」并入「讨论」，对外只剩 通知和讨论/表决 两类。
@@ -484,7 +484,7 @@
                 </div>
               </div>
               <!-- 「补充通知正文」入口已删（0723 用户定，卡片压缩）：底层 content→notice 映射保留，旧议题的正文编辑保存时原样带回 -->
-              <div class="form-group" v-if="topicDraft.type === 'decision'">
+              <div class="form-group tie-inline-row" v-if="topicDraft.type === 'decision'">
                 <span class="form-label">表决方式</span>
                 <div class="type-row">
                   <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
@@ -4348,10 +4348,14 @@ onActivated(show)
 .topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
 .topic-add-trigger:active { background: #F1F3F5; }
 .topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
-/* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40% */
-.topic-inline-editor { margin-top: 16rpx; padding: 14rpx 20rpx 20rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
-.tie-head { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 2rpx; }
-.tie-head > button { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 8rpx 0 8rpx 24rpx; }
+/* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40%；
+   「议题内容+取消」「议题类型/表决方式+chips」各并成一行 */
+.topic-inline-editor { margin-top: 16rpx; padding: 16rpx 20rpx 20rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
+.tie-label-row { display: flex; align-items: center; justify-content: space-between; }
+.tie-label-row .form-label { margin-bottom: 0; }
+.tie-cancel { border: 0; background: transparent; color: #7A818B; font-size: 26rpx; padding: 4rpx 0 4rpx 24rpx; }
+.tie-inline-row { display: flex; align-items: center; gap: 20rpx; }
+.tie-inline-row .form-label { margin-bottom: 0; flex-shrink: 0; }
 .topic-inline-editor .form-group { margin-bottom: 16rpx; }
 .create-panel .topic-inline-editor .type-chip { min-height: 52rpx; padding: 6rpx 22rpx; font-size: 28rpx; }
 .topic-inline-editor .type-row { margin-bottom: 0; }
