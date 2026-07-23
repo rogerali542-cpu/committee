@@ -268,6 +268,13 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    /** 归档材料目录（编号台账）：会议记录/纪要/公示 + 会议材料 + 补充材料。先做后台端点，查看入口后续接 */
+    @GetMapping("/{id}/archive-catalog")
+    @RequireRole({"主任", "副主任", "委员"})
+    public Result<Map<String, Object>> archiveCatalog(@PathVariable Long id) {
+        return Result.ok(service.buildArchiveCatalog(id));
+    }
+
     /** 会议记录纯文本：页内预览用，与 meeting-record.pdf 同一份内容装配（所见即所导） */
     @GetMapping("/{id}/meeting-record-text")
     @RequireRole({"主任", "副主任", "委员"})

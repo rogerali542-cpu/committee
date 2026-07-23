@@ -65,10 +65,14 @@ public class MeetingRecordPdfService {
         String org;                                // 小区业委会（居中行）
         List<String[]> infoRows = new ArrayList<>(); // 表头行：label,value 交替
         List<String> content = new ArrayList<>();    // 会议内容
-        List<String> decisions = new ArrayList<>();  // 会议有关决定及表决结果
+        List<String> decisions = new ArrayList<>();  // 会议有关决定及表决结果（主表：票数概要）
+        List<String> resultAppendix = new ArrayList<>(); // 会议结果附页（逐题详细表决明细，对应主表"另附"）
         String noticeTime;                           // 会议决定、决议公告的时间
         List<String> attendees = new ArrayList<>();  // 出席成员（签章格）
     }
+
+    private static final String[] CN_NUM = {"", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"};
+    private static String cnNum(int i) { return i >= 1 && i <= 10 ? CN_NUM[i] : String.valueOf(i); }
 
     private RecordContent buildRecordContent(RecordData d) {
         CommitteeMeeting meeting = d.meeting();
@@ -120,10 +124,11 @@ public class MeetingRecordPdfService {
             }
         }
 
-        // ── 会议有关决定及表决结果：表决=签名口径（同意的委员/不同意的委员，无人写（无）） ──
+        // ── 会议有关决定及表决结果：主表写票数概要，逐题详细（同意/不同意/弃权委员名单）另附《会议结果》一页 ──
         int di = 1;
         boolean anyVote = false;
         for (RecordTopic topic : d.topics()) {
+            String title = value(topic.getTitle());
             List<TopicVote> votes = voteRepo.findByTopicId(topic.getId());
             if (!votes.isEmpty()) {
                 anyVote = true;
@@ -135,22 +140,35 @@ public class MeetingRecordPdfService {
                     byChoice.computeIfAbsent(choice, k -> new ArrayList<>())
                             .add(v.getUserRole() == null ? "未知委员" : v.getUserRole().getRealName());
                 }
-                c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：" + counts.entrySet().stream()
-                        .map(e -> e.getKey() + e.getValue() + "票").reduce((a, b) -> a + "，" + b).orElse("无") + "。");
-                c.decisions.add("   同意的委员：" + String.join("、", byChoice.getOrDefault("同意", List.of("（无）"))) +
-                        "；不同意的委员：" + String.join("、", byChoice.getOrDefault("反对", List.of("（无）"))) +
-                        (byChoice.containsKey("弃权") ? "；弃权：" + String.join("、", byChoice.get("弃权")) : "") + "。");
+                String tally = counts.entrySet().stream()
+                        .map(e -> e.getKey() + e.getValue() + "票").reduce((a, b) -> a + "，" + b).orElse("无");
+                // 主表：票数概要一行
+                c.decisions.add(di + ". " + title + "：" + tally + "。");
+                // 附页：逐题详细表决明细
+                c.resultAppendix.add(cnNum(di) + "、" + title + "【" + mergedTypeLabel(topic) + "】");
+                c.resultAppendix.add("　　表决情况：" + tally + "。");
+                c.resultAppendix.add("　　同意的委员：" + String.join("、", byChoice.getOrDefault("同意", List.of("（无）"))) + "。");
+                c.resultAppendix.add("　　不同意的委员：" + String.join("、", byChoice.getOrDefault("反对", List.of("（无）"))) + "。");
+                if (byChoice.containsKey("弃权"))
+                    c.resultAppendix.add("　　弃权的委员：" + String.join("、", byChoice.get("弃权")) + "。");
             } else if (topic.getType() == null
                     || "notice".equals(topic.getType().name()) || "discussion".equals(topic.getType().name())) {
                 String kind = topic.getType() != null && "discussion".equals(topic.getType().name())
                         ? "有关意见已在会议中讨论并记录" : "有关情况已在会议中通报";
-                c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：" + kind + "。");
+                c.decisions.add(di + ". " + title + "：" + kind + "。");
+                c.resultAppendix.add(cnNum(di) + "、" + title + "【" + mergedTypeLabel(topic) + "】：" + kind + "。");
             } else {
-                c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：未记录表决结果。");
+                c.decisions.add(di + ". " + title + "：未记录表决结果。");
+                c.resultAppendix.add(cnNum(di) + "、" + title + "：未记录表决结果。");
             }
+            di++;
         }
         // 待办事项不进档案文书（0723 用户定：待办/新闻稿是本产品增值功能，与记录/纪要/公示体系无关）
-        if (c.decisions.isEmpty()) c.decisions.add(anyVote ? "无" : "本次会议未形成需表决的决定事项。");
+        if (c.decisions.isEmpty()) {
+            c.decisions.add(anyVote ? "无" : "本次会议未形成需表决的决定事项。");
+        } else if (anyVote) {
+            c.decisions.add("各议题详细表决情况及委员表决记录见附页《会议结果》。");
+        }
 
         // ── 会议决定、决议公告的时间：公示后自动回填（真实手写表须人工补记，这里系统代劳） ──
         MeetingPublish pub = publishRepo.findByMeetingId(meeting.getId()).orElse(null);
@@ -184,6 +202,23 @@ public class MeetingRecordPdfService {
         w.center("出席成员名单及签章", 11);
         w.gap(4);
         w.signGrid(c.attendees, 5);
+        // ── 会议结果附页（独立一页，对应主表"会议结果另附"）──
+        if (!c.resultAppendix.isEmpty()) {
+            w.newPage();
+            w.title("会议结果");
+            w.center(c.org + "（会议记录附页）", 10.5f);
+            w.gap(14);
+            for (String s : c.resultAppendix) {
+                if (s.matches("^[一二三四五六七八九十\\d]+、.*")) w.subheading(s); // 议题标题行加粗
+                else w.line(s);
+            }
+            w.gap(16);
+            w.line("以上表决情况经出席委员核对无误。");
+            w.gap(10);
+            w.center("出席委员签字", 11);
+            w.gap(4);
+            w.signGrid(c.attendees, 5);
+        }
     }
 
     /** 纯文本（页内预览）：同一份内容按行排出，前端按标签行加粗。 */
@@ -203,6 +238,11 @@ public class MeetingRecordPdfService {
         sb.append("\n出席成员名单及签章：\n");
         sb.append(c.attendees.isEmpty() ? "（无出席记录）" : String.join("、", c.attendees));
         sb.append("\n（打印后由出席委员在签章格内签字）\n");
+        if (!c.resultAppendix.isEmpty()) {
+            sb.append("\n附页：会议结果\n");
+            for (String s : c.resultAppendix) sb.append(s).append('\n');
+            sb.append("以上表决情况经出席委员核对无误。（打印后由出席委员签字）\n");
+        }
         return sb.toString().strip();
     }
 

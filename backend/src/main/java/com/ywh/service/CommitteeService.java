@@ -1604,6 +1604,60 @@ public class CommitteeService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 归档材料目录（0723 向真实《业主委员会档案目录》台账看齐）：把一次会议形成的全部归档材料
+     * 编号成一份台账（会议记录/纪要/公示 + 会议材料 + 补充材料）。先做后台端点，查看入口后续接。
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> buildArchiveCatalog(Long meetingId) {
+        CommitteeMeeting m = meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        String mdate = m.getMeetingDate() != null ? m.getMeetingDate().toString() : "";
+        List<Map<String, Object>> entries = new ArrayList<>();
+        int[] seq = {1};
+
+        MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElse(null);
+        if (record != null) {
+            boolean hasVote = topicRepo.findByRecordIdOrderBySortOrder(record.getId()).stream()
+                    .anyMatch(t -> !voteRepo.findByTopicId(t.getId()).isEmpty());
+            entries.add(catalogEntry(seq[0]++, "会议记录", "会议档案", mdate,
+                    hasVote ? "会议原始记录，含《会议结果》附页" : "会议原始记录"));
+            if (record.getMinutesText() != null && !record.getMinutesText().isBlank())
+                entries.add(catalogEntry(seq[0]++, "会议纪要", "会议档案", mdate, "对外公示与存档用"));
+        }
+        MeetingPublish pub = publishRepo.findByMeetingId(meetingId).orElse(null);
+        if (pub != null && Boolean.TRUE.equals(pub.getPublished()))
+            entries.add(catalogEntry(seq[0]++, pub.getPublicTitle() != null ? pub.getPublicTitle() : "事项公示材料",
+                    "公示公告", pub.getPublishDate() != null ? pub.getPublishDate().toString() : mdate, "已在业委会公示栏公示"));
+        for (MeetingMaterial mat : materialRepo.findByMeetingId(meetingId))
+            entries.add(catalogEntry(seq[0]++, mat.getFileName(), "会议材料",
+                    mat.getCreatedAt() != null ? mat.getCreatedAt().toLocalDate().toString() : mdate,
+                    mat.getSizeText() != null ? mat.getSizeText() : ""));
+        for (ArchiveExtra ex : archiveExtraRepo.findByMeetingId(meetingId))
+            entries.add(catalogEntry(seq[0]++, ex.getFileName(), "补充材料",
+                    ex.getCreatedAt() != null ? ex.getCreatedAt().toLocalDate().toString() : mdate,
+                    ex.getReason() != null && !ex.getReason().isBlank() ? ex.getReason() : (ex.getSizeText() != null ? ex.getSizeText() : "")));
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("meetingId", meetingId);
+        out.put("meetingTitle", m.getTitle());
+        out.put("org", orgFullName(m));
+        out.put("meetingDate", mdate);
+        out.put("total", entries.size());
+        out.put("entries", entries);
+        return out;
+    }
+
+    private Map<String, Object> catalogEntry(int seq, String name, String category, String date, String note) {
+        Map<String, Object> e = new LinkedHashMap<>();
+        e.put("seq", seq);
+        e.put("name", name);
+        e.put("category", category);
+        e.put("date", date);
+        e.put("note", note);
+        return e;
+    }
+
     // ===== Publish =====
     @Transactional
     public void publish(Long meetingId) {
