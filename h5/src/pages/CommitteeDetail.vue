@@ -319,20 +319,15 @@
             </template>
             <!-- 签到表行已删（0722 用户定）：会后整理页已有「打印签到表」，不重复。
                  记录/纪要统一只留「查看」→ PDF 预览弹层，导出按钮在预览里（0722 用户定） -->
+            <!-- 灰色说明小字已删（0722 用户定）：标题自明，点查看即见内容 -->
             <div class="attendance-sheet-entry">
-              <div class="ase-copy">
-                <b>会议记录</b>
-                <small>完整记录议题、讨论与表决，末尾统一签字</small>
-              </div>
+              <div class="ase-copy"><b>会议记录</b></div>
               <button class="ase-btn primary" :disabled="pdfPreviewLoading === 'record'" @click="previewPdf('record')">
                 {{ pdfPreviewLoading === 'record' ? '生成中…' : '查看' }}
               </button>
             </div>
             <div class="attendance-sheet-entry" v-if="detail.minutesReady">
-              <div class="ase-copy">
-                <b>会议纪要</b>
-                <small>会后生成的正式纪要，可预览与导出</small>
-              </div>
+              <div class="ase-copy"><b>会议纪要</b></div>
               <button class="ase-btn primary" :disabled="pdfPreviewLoading === 'minutes'" @click="previewPdf('minutes')">
                 {{ pdfPreviewLoading === 'minutes' ? '生成中…' : '查看' }}
               </button>
