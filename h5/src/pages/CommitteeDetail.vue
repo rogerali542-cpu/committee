@@ -3242,7 +3242,8 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .arch-reason { display:block; font-size: 28rpx; color:#666; margin-top:2px; }
 
 /* 主任归档卡片 */
-.ar-card { background:#fff; border-radius:16px; margin:12px 12px 0; box-shadow:0 2px 10px rgba(0,0,0,0.06); overflow:hidden; }
+/* 底部留白盖过固定操作栏（3按钮+小链接约230px），滚到底时会议纪要行不被压住 */
+.ar-card { background:#fff; border-radius:16px; margin:12px 12px 260px; box-shadow:0 2px 10px rgba(0,0,0,0.06); overflow:hidden; }
 .arc-minutes-link { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-top:1px solid #f0f0f0; cursor:pointer; }
 .arc-minutes-link span:first-child { font-size:18px; font-weight:700; color:var(--c-primary-dark); }
 .arc-minutes-arrow { font-size:22px; color:var(--c-primary-dark); }
@@ -3278,7 +3279,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .detail-method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
 .ase-copy { display:flex; flex-direction:column; min-width:0; gap:4px; }
 /* 说明小字删除后标题升格（0722 用户定）：加到 22px、字重+100 */
-.ase-copy b { color:#30343B; font-size:22px; font-weight:800; line-height:1.35; }
+.ase-copy b { color:#30343B; font-size:22px; font-weight:650; line-height:1.35; }
 .ase-copy small { color:#7B818B; font-size:14px; line-height:1.45; }
 .ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:15px; font-weight:700; cursor:pointer; }
 .ase-btn:active { background:#EAF2FB; }
@@ -3426,7 +3427,8 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .vl-title { display:block; font-size: 28rpx; color:#2980B9; margin-bottom:4px; }
 .vl-item { display:block; font-size: 28rpx; color:#555; line-height:1.6; }
 .arp-done.withdrawn { flex-direction:column; align-items:stretch; color:#E67E22; font-size:15px; gap:4px; }
-.arp-actions { display:flex; width:100%; margin-top:6px; }
+/* 小链接行与上方按钮同宽居中（0722）：不再横跨整屏，视觉上归成一组 */
+.arp-actions { display:flex; width:73.1%; margin:6px auto 0; }
 .arp-actions .ar-skip { flex:1; margin-top:0; border-right:1px solid #e8e8e8; padding:4px 0; }
 .arp-actions .ar-skip:last-child { border-right:none; }
 .arc-bottom-action .arp-actions { margin-top:16px; }
