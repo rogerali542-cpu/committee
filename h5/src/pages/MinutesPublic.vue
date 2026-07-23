@@ -57,8 +57,10 @@
           <b>公示说明</b>
           <span>本页公开事项公示、会议纪要及相关附件。签到明细、个人意见、完整投票明细、录音转写和内部待办仅作内部归档。</span>
         </div>
-        <button class="pub-btn" @click="copyText">复制公示正文</button>
-        <span class="pub-foot">本页为面向本小区业主发布的事项公示材料</span>
+        <!-- 未发布时主任在预览页里发布（0722 用户定：详情页入口改为「查看公示材料」，先看内容再发布） -->
+        <button v-if="canPublish" class="pub-btn publish" :disabled="publishing" @click="publishFromPreview">{{ publishing ? '发布中…' : '确认发布公示' }}</button>
+        <button class="pub-btn" :class="{ ghost: canPublish }" @click="copyText">复制公示正文</button>
+        <span class="pub-foot">{{ isPublished ? '本页为面向本小区业主发布的事项公示材料' : '以上为公示材料预览，发布后对本小区业主公开' }}</span>
       </template>
     </div>
   </div>
@@ -68,7 +70,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
-import { toast } from '@/utils/ui'
+import { toast, showModal } from '@/utils/ui'
 import { redirectTo, navigateBack } from '@/utils/navigate'
 import PublishNav from '@/components/PublishNav.vue'
 
@@ -177,6 +179,37 @@ async function load() {
   }
 }
 
+// 主任在预览页发布公示（自详情页 publishNow 移入：先看内容再发布）
+const publishing = ref(false)
+const canPublish = computed(() => !!(detail.value && detail.value.userView === 'chair' && !isPublished.value))
+async function publishFromPreview() {
+  if (publishing.value) return
+  if (detail.value && detail.value.compliance === 'invalid') {
+    const res = await showModal({
+      title: '会议无效，仍要公示吗？',
+      content: '本次会议签到不过半，已判定为「会议无效」。确认仍要公示归档吗？',
+      confirmText: '仍要公示',
+      cancelText: '再想想'
+    })
+    if (!res.confirm) return
+  }
+  const confirm = await showModal({
+    title: '发布事项公示材料',
+    content: '将发布本页公示正文，并附会议纪要和相关材料。签到明细、个人意见、完整投票明细及内部待办不会公开。',
+    confirmText: '确认发布',
+    cancelText: '暂不发布'
+  })
+  if (!confirm.confirm) return
+  publishing.value = true
+  try {
+    await api.committeePublish(meetingId)
+    toast({ title: '已公示', icon: 'success' })
+    load()
+  } catch (e) {
+    toast({ title: (e && e.message) || '发布失败，请重试', icon: 'none' })
+  } finally { publishing.value = false }
+}
+
 async function copyText() {
   const lines = [publicTitle.value, publicContent.value]
   if (minutesText.value) lines.push('附件：会议纪要\n' + minutesText.value)
@@ -245,4 +278,7 @@ onMounted(() => {
 .section-empty { text-align:center; color:var(--pub-sub); font-size:28rpx; padding:30rpx 0; }
 .todo-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:20rpx 0; border-bottom:2rpx solid #edf0f4; }.todo-row:last-child { border:0; }.todo-main { min-width:0; }.todo-main b,.todo-main span { display:block; }.todo-main b { color:var(--pub-ink); font-size:29rpx; }.todo-main span { color:var(--pub-sub); font-size:24rpx; margin-top:7rpx; }.todo-row em { flex:none; border-radius:999rpx; padding:8rpx 16rpx; font-size:24rpx; font-style:normal; }.todo-todo { background:var(--pub-amber-soft); color:var(--pub-amber); }.todo-doing { background:var(--pub-blue-soft); color:var(--pub-blue); }.todo-done { background:var(--pub-green-soft); color:var(--pub-green); }
 .public-note { background:#e9eef4; border-radius:18rpx; padding:25rpx 28rpx; color:var(--pub-sub); font-size:26rpx; line-height:1.7; }.public-note b,.public-note span { display:block; }.public-note b { color:var(--pub-ink); margin-bottom:6rpx; }
+/* 预览态：发布为唯一主按钮，复制降为描边次按钮（一屏一个实心） */
+.pub-btn.ghost { background:#fff; color:var(--pub-blue); border:2rpx solid var(--pub-blue); line-height:92rpx; }
+.pub-btn.publish:disabled { opacity:.6; }
 </style>

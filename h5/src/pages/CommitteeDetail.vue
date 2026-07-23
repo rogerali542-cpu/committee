@@ -359,14 +359,10 @@
           </div>
           <!-- 底部操作栏（固定在页面底部）。无效会议也照常显示公示按钮；「会议无效」提示改到点击公示后再弹 -->
           <div class="arc-bottom-action">
-            <!-- 会后统一发布事项公示材料；已发布后进入材料页查看 -->
-            <button v-if="isFreshEnded" class="arc-publish-main-btn" @click="publishNow">发布公示材料</button>
-            <button v-else-if="detail.publish && detail.publish.published" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示材料</button>
+            <!-- 统一「查看公示材料」（0722 用户定）：先进预览页看内容，未发布时在预览页里点发布 -->
+            <button v-if="isFreshEnded || (detail.publish && detail.publish.published)" class="arc-publish-main-btn" @click="viewPublicMinutes">查看公示材料</button>
             <div class="ended-btn-row">
-              <!-- 会议结束仪式：委员合影，点开直接拍照存进会议材料（会后留档） -->
-              <button class="ended-photo-btn" :disabled="photoUploading" @click="takeGroupPhoto">
-                {{ photoUploading ? '合影保存中…' : '委员合影' }}
-              </button>
+              <!-- 委员合影已移到会后整理页的会议材料项（0722 用户定：拍照进材料，公示自动带上） -->
               <!-- 「查看会议纪要」不再单列大按钮：入口收进上方会议卡的「查看详情」里 -->
               <button class="ended-news-btn" @click="onNewsBtn">{{ newsBtnLabel }}</button>
             </div>
