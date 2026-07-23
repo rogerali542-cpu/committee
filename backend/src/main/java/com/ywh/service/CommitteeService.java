@@ -1775,22 +1775,18 @@ public class CommitteeService {
         MeetingRecord record = recordRepo.findByMeetingId(meetingId).orElse(null);
         List<RecordTopic> topics = record == null ? Collections.emptyList()
                 : topicRepo.findByRecordIdOrderBySortOrder(record.getId());
-        LocalDate end = TODAY.plusDays(6); // 公示期7天（含首尾）
         StringBuilder t = new StringBuilder();
-        t.append("关于召开业主委员会会议征求业主意见的公告\n\n");
+        t.append("关于召开业主委员会会议的公告\n\n");
         t.append("根据《中华人民共和国民法典》《物业管理条例》及本小区《业主大会议事规则》的相关规定，")
-                .append(org).append("拟于").append(cnDateSvc(m.getMeetingDate()))
-                .append("召开业主委员会会议，现将会议议程予以公告，征求全体业主意见：\n\n");
+                .append(org).append("定于").append(cnDateSvc(m.getMeetingDate()))
+                .append("召开业主委员会会议，现将会议议程公告如下：\n\n");
         if (topics.isEmpty()) {
             t.append("一、〔会议议题以正式通知为准〕\n");
         } else {
             int i = 1;
             for (RecordTopic topic : topics) t.append(cnNumSvc(i++)).append("、").append(nullToUnknown(topic.getTitle())).append("\n");
         }
-        t.append("\n本公告自").append(TODAY).append("起在本小区业委会公示栏张榜公布，公示期7天（")
-                .append(TODAY).append("至").append(end).append("）。\n");
-        t.append("业主如对上述议题有意见或建议，请在业主接待日到居委会办公室当面反映，或以书面形式投递至业委会意见箱，供会议研究参考。\n\n");
-        t.append("特此公告。\n\n").append(orgFullName(m)).append("\n").append(TODAY);
+        t.append("\n特此公告，请全体业主知悉。\n\n").append(orgFullName(m)).append("\n").append(TODAY);
         return t.toString();
     }
 

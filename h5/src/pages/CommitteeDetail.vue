@@ -52,7 +52,7 @@
             <button type="button" class="pre-notice-btn" :disabled="exportingPreNotice" @click="exportPreNotice">
               {{ exportingPreNotice ? '正在生成公告…' : '导出业主公告（会前张贴公示栏）' }}
             </button>
-            <div class="pre-notice-hint">按规定业委会会议应提前 7 天向全体业主公告议程、征求意见</div>
+            <div class="pre-notice-hint">按规定业委会会议应提前 7 天向全体业主公告会议时间和议程</div>
           </div>
           <div v-if="methodConvertOpen" class="method-convert-panel">
             <div class="method-convert-title">
