@@ -147,8 +147,8 @@ const processSteps = computed(() => [
 ])
 
 function topicTypeText(type) {
-  // 0717 用户定：通知并入讨论，非表决类统一「通知和讨论」
-  return type === 'vote' ? '表决' : '通知和讨论'
+  // 0722 用户定：类型写清楚——通知/讨论分开显示
+  return type === 'vote' ? '表决' : (type === 'notice' ? '通知' : '讨论')
 }
 function opinionsFor(topicId) {
   return opinions.value.filter(item => Number(item.topicId) === Number(topicId) && item.content)

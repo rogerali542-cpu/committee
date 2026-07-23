@@ -151,11 +151,12 @@ public class MeetingRecordPdfService {
     }
     private static boolean usable(String s) { return s != null && !s.isBlank() && !s.matches("[?？\\s]+") && !s.contains("锟"); }
     private static String value(Object o) { return o == null || String.valueOf(o).isBlank() ? "未记录" : String.valueOf(o); }
-    /** 对外类型名（0717 用户定：通知并入讨论）：notice/discussion 统一「通知和讨论」，其余沿用枚举 label；枚举值本身不动。 */
+    /** 对外类型名（0722 用户定：类型写清楚）：notice=通知、discussion=讨论，其余沿用枚举 label。 */
     private static String mergedTypeLabel(RecordTopic topic) {
         if (topic.getType() == null) return "未分类";
         String name = topic.getType().name();
-        if ("notice".equals(name) || "discussion".equals(name)) return "通知和讨论";
+        if ("notice".equals(name)) return "通知";
+        if ("discussion".equals(name)) return "讨论";
         return topic.getType().getLabel();
     }
     private static String safe(String s) { return (usable(s) ? s : "会议").replaceAll("[\\\\/:*?\"<>|]", "_"); }

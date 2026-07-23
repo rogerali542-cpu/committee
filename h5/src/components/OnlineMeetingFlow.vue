@@ -67,9 +67,9 @@
             <span class="topic-no">{{ index + 1 }}</span>
             <div class="topic-heading">
               <b>{{ topic.title }}</b>
-              <!-- 0717 用户定：通知并入讨论，非表决类统一「通知和讨论」同名同色 -->
+              <!-- 0722 用户定：类型写清楚——通知/讨论分开显示（同色） -->
               <span class="topic-kind" :class="topic.voteRequired ? 'vote' : 'discussion'">
-                {{ topic.voteRequired ? '表决' : '通知和讨论' }}
+                {{ topic.voteRequired ? '表决' : (topic.type === 'notice' ? '通知' : '讨论') }}
               </span>
             </div>
           </div>

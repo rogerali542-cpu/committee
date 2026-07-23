@@ -334,7 +334,8 @@ const tagClass = computed(() => {
 })
 const tagLabel = computed(() => {
   const t = props.topic && props.topic.type
-  return t === 'decision' ? '表决' : '通知和讨论'
+  // 0722 用户定：类型写清楚——通知/讨论分开显示（配色仍同一组）
+  return t === 'decision' ? '表决' : (t === 'notice' ? '通知' : '讨论')
 })
 const canDiscuss = computed(() => props.topic && props.topic.type !== 'notice')
 const showOpinionSection = computed(() => {

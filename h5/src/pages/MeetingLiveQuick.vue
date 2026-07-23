@@ -618,8 +618,9 @@ function resultLabel(result) {
 }
 
 function topicTypeLabel(type) {
-  // 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」
-  if (type === 'notice' || type === 'discussion') return '通知和讨论'
+  // 0722 用户定：类型写清楚——通知/讨论分开显示
+  if (type === 'notice') return '通知'
+  if (type === 'discussion') return '讨论'
   if (type === 'major') return '重大表决'
   return '表决事项'
 }

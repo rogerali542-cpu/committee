@@ -867,8 +867,9 @@ function topicVoteCount(topic) {
 
 function topicTypeLabel(topic) {
   var type = String(topic && topic.type || '').toLowerCase()
-  // 0717 用户定：通知并入讨论，notice/discussion 对外统一叫「通知和讨论」
-  if (type === 'notice' || type === 'discussion') return '通知和讨论'
+  // 0722 用户定：类型写清楚——通知就是通知、讨论就是讨论（同色不同名）
+  if (type === 'notice') return '通知'
+  if (type === 'discussion') return '讨论'
   if (type === 'major') return '重大'
   if (topic && topic.decisionType === 'multi_choice') return '多选一'
   if (topic && topic.voteRequired === false) return '记录'
