@@ -1137,6 +1137,9 @@ const transcriptPreviewText = computed(() => transcriptView.value ? transcriptVi
 const ending = ref(false)
 const endReviewVisible = ref(false)
 const fieldMeetingEnded = ref(false)
+// 会后整理已完成（点过「生成会议纪要/完成会后整理」）：测试期会议仍是 ongoing，
+// 首页卡片靠这个本地标记把入口从「会后整理」切成「会议详情」
+const reviewCompleted = ref(false)
 const exportingAttendanceSheet = ref(false)
 // 重做后的「最后一步」：AI 纪要审核
 const minutesGenerated = ref(false)   // 是否已生成 AI 纪要草稿
@@ -1577,6 +1580,7 @@ function persistQuickState(extra) {
     currentStep: currentStep.value,
     meetingPhase: meetingPhase.value,
     fieldMeetingEnded: fieldMeetingEnded.value,
+    reviewCompleted: reviewCompleted.value,
     endReviewVisible: endReviewVisible.value, // 会后整理页可见态：刷新/重进后直接回到整理页，不落回录音页
     generated: generated.value,
     minutesGenerated: minutesGenerated.value, // 纪要已生成标志：持久化，避免回首页再进来退回「生成会议纪要」单键
@@ -1609,6 +1613,7 @@ function restoreQuickState(signedInArg) {
   currentStep.value = step
   meetingPhase.value = saved.meetingPhase === 'voting' ? 'voting' : 'recording'
   fieldMeetingEnded.value = !!saved.fieldMeetingEnded
+  reviewCompleted.value = !!saved.reviewCompleted
   endReviewVisible.value = !!saved.endReviewVisible && !!saved.fieldMeetingEnded // 现场已结束才可能恢复整理页
   generated.value = !!saved.generated
   minutesGenerated.value = !!saved.minutesGenerated // 恢复「纪要已生成」→ 显示 查看纪要/重新生成 两键，而非「生成会议纪要」
@@ -3136,6 +3141,7 @@ async function _doEndAndGo(navUrl) {
     // 把最新(可能刚核对过的)结果再存一次，确保归档与展示一致
     try { await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload()) } catch (ce) { /* ignore */ }
     if (TEST_KEEP_MEETING_OPEN) {
+      reviewCompleted.value = true // 整理已完成：首页卡片入口切「会议详情」
       persistQuickState() // 保留本地状态：回到本页仍停在会后整理，可继续查看
     } else {
       try {

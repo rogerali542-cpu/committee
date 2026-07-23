@@ -1613,17 +1613,19 @@ async function loadUnread() {
 
 // 给当前会议附加：三步进度、主操作按钮文案/图标
 // 会议进行页本地快照里「现场会议已结束」的标记（与 MeetingLiveQuick 的持久化键一致，按角色隔离）
-function _fieldEndedLocally(meetingId) {
+function _quickLocalFlags(meetingId) {
   try {
     const role = getStorage('activeRole', null)
     const saved = getStorage('committee_quick_meeting_state_' + meetingId + '_r' + ((role && role.id) || 0), null)
-    return !!(saved && saved.fieldMeetingEnded)
-  } catch (e) { return false }
+    return { fieldEnded: !!(saved && saved.fieldMeetingEnded), reviewDone: !!(saved && saved.reviewCompleted) }
+  } catch (e) { return { fieldEnded: false, reviewDone: false } }
 }
 
 function decorateCurrent(m, chair) {
-  // 纪要已生成的已结束会议 → 三步全部完成(step=4)；否则按阶段(ended=3，会后总结进行中)
-  const step = (m.stage === 'ended' && m.minutesGenerated) ? 4 : (STEP_BY_STAGE[m.stage] || 1)
+  // 测试期会议保持 ongoing，现场结束/整理完成 两个节点靠本地快照标记推进卡片形态
+  const local = (m.stage === 'ongoing' && chair) ? _quickLocalFlags(m.id) : { fieldEnded: false, reviewDone: false }
+  // 纪要已生成的已结束会议 → 三步全部完成(step=4)；整理已完成 → 会后总结(3)；否则按阶段
+  const step = (m.stage === 'ended' && m.minutesGenerated) ? 4 : (local.reviewDone ? 3 : (STEP_BY_STAGE[m.stage] || 1))
   const steps = [1, 2, 3].map((no) => ({
     no: no,
     label: STEP_LABELS[no],
@@ -1642,12 +1644,17 @@ function decorateCurrent(m, chair) {
     }
     tag = '会议通知'
   } else if (m.stage === 'ongoing') {
-    // 现场会议已结束但未归档（测试期不真正结束，靠本地快照的 fieldMeetingEnded 标记）：
-    // 主任卡片入口改「会后整理」，点进去直接落在整理页
-    const fieldEnded = chair && _fieldEndedLocally(m.id)
-    ctaLabel = fieldEnded ? '会后整理' : (chair ? '进入会议' : '查看会议')
-    ctaIcon = fieldEnded ? '📝' : (chair ? '🎙️' : '👀')
-    tag = '正在开的会'
+    // 现场会议已结束但未归档（测试期不真正结束，靠本地快照标记）：
+    // 整理已完成 → 入口「会议详情」直进详情页；仅现场结束 → 「会后整理」落整理页
+    if (local.reviewDone) {
+      ctaLabel = '会议详情'
+      ctaIcon = ''
+      tag = '会后总结'
+    } else {
+      ctaLabel = local.fieldEnded ? '会后整理' : (chair ? '进入会议' : '查看会议')
+      ctaIcon = local.fieldEnded ? '📝' : (chair ? '🎙️' : '👀')
+      tag = '正在开的会'
+    }
   } else {
     // ended：纪要生成中 → 继续生成会议纪要(点回纪要页)；已生成 → 查看会议；未生成 → 整理会议记录
     minutesGen = !m.minutesGenerated && aiTask.active && !!aiTask.targetPath && aiTask.targetPath.indexOf('meetingId=' + m.id) >= 0
@@ -1664,7 +1671,7 @@ function decorateCurrent(m, chair) {
     id: m.id, title: m.title, meetingDate: m.meetingDate, meetingTime: (m.meetingTime || '').slice(0, 5),
     location: m.location, timeText: formatMeetingTime(m), locationText: m.location || '地点待定',
     step: step, steps: steps, stage: m.stage, stageText: MEETING_STAGE_TEXT[m.stage] || '未开始',
-    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen
+    ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen, reviewDone: local.reviewDone
   }
 }
 
@@ -1716,6 +1723,11 @@ async function goCurrent(cur) {
   // 进行中的会议是关键入口：主任和委员统一整页进入签到/会议流程。
   // 不再经过详情页、RouterLink 和 DOM 延时兜底，避免路由重复或组件切换竞态导致点击无响应。
   if (cur.stage === 'ongoing') {
+    // 会后整理已完成（测试期本地标记）→ 直进会议详情页，不再回会议流程页
+    if (cur.reviewDone) {
+      window.location.assign('/committee-detail?id=' + encodeURIComponent(cur.id) + '&from=committee')
+      return
+    }
     window.location.assign('/meeting-live-quick?type=committee&meetingId=' + encodeURIComponent(cur.id))
     return
   }
