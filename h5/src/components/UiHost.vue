@@ -97,7 +97,9 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { color: #999; font-weight: 400; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
-.ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }
+.ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; font-weight: 600; }
+/* 大号编辑弹窗（修改/重写意见）：文本框多留几行，便于阅读长意见 */
+.ui-modal.large .ui-modal-input { min-height: 320rpx; }
 .ui-modal.large .ui-modal-content { font-size: 36rpx; color: #000; line-height: 1.8; margin-top: 28rpx; }
 .ui-modal.large .ui-modal-actions { margin-top: 48rpx; }
 .ui-modal.large .ui-modal-btn { padding: 34rpx 0; font-size: 38rpx; font-weight: 700; }

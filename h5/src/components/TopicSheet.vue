@@ -1041,55 +1041,62 @@ async function handleOpinionAfterVoteChange(voteValue, option) {
   const own = opinions.value.filter(op => op && op.isSelf && op.canEdit)
   if (!own.length) return
   const target = own[own.length - 1]
-  const sheet = await showActionSheet({
-    title: '表决已修改，原意见怎么处理？',
-    variant: 'opinion-change',
-    itemList: [
-      { icon: '✎', label: '自己修改', tone: 'edit' },
-      { icon: 'AI', label: 'AI 按新表决重写', tone: 'ai' },
-      { icon: '删', label: '删除原意见', tone: 'danger' }
-    ]
-  })
-  if (sheet.tapIndex === 0) {
-    const edited = await showModal({
-      title: '修改原意见', content: target.content || '', editable: true,
-      placeholderText: '请输入修改后的意见', confirmText: '保存', cancelText: '取消', size: 'large'
+  // 循环：编辑/重写弹窗点「取消」返回三选一，而不是直接关闭整个流程（0723 用户定）
+  while (true) {
+    const sheet = await showActionSheet({
+      title: '表决已修改，原意见怎么处理？',
+      variant: 'opinion-change',
+      itemList: [
+        { icon: '✎', label: '自己修改', tone: 'edit' },
+        { icon: 'AI', label: 'AI 按新表决重写', tone: 'ai' },
+        { icon: '删', label: '删除原意见', tone: 'danger' }
+      ]
     })
-    const content = edited.confirm ? String(edited.content || '').trim() : ''
-    if (!content) return
-    const updated = await api.committeeUpdateOpinion(props.meetingId, target.id, content)
-    opinions.value = opinions.value.map(op => op.id === target.id ? updated : op)
-    toast({ title: '意见已修改', icon: 'success' })
-    emit('changed')
-    return
-  }
-  if (sheet.tapIndex === 1) {
-    const seed = voteStanceSeed(voteValue, option)
-    if (!seed) return
-    try {
-      showLoading({ title: 'AI 正在按新表决重写，请稍等…' })
-      const generated = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'draft', seed)
-      hideLoading()
-      if (!generated || !generated.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
-      const review = await showModal({
-        title: '确认重写意见', content: generated.text, editable: true,
-        placeholderText: '可修改 AI 生成的意见', confirmText: '替换', cancelText: '取消', size: 'large'
+    if (!sheet || sheet.tapIndex == null || sheet.tapIndex < 0) return // 三选一本身取消=退出
+    if (sheet.tapIndex === 0) {
+      const edited = await showModal({
+        title: '修改原意见', content: target.content || '', editable: true,
+        placeholderText: '请输入修改后的意见', confirmText: '确认', cancelText: '取消', size: 'large'
       })
-      const content = review.confirm ? String(review.content || '').trim() : ''
-      if (!content) return
+      if (!edited.confirm) continue // 取消→返回三选一
+      const content = String(edited.content || '').trim()
+      if (!content) continue
       const updated = await api.committeeUpdateOpinion(props.meetingId, target.id, content)
       opinions.value = opinions.value.map(op => op.id === target.id ? updated : op)
-      toast({ title: '意见已按新投票重写', icon: 'success' })
+      toast({ title: '意见已修改', icon: 'success' })
       emit('changed')
-    } catch (e) {
-      toast({ title: (e && e.message) || 'AI 重写失败，请稍后重试', icon: 'none' })
-    } finally {
-      hideLoading()
+      return
     }
-    return
-  }
-  if (sheet.tapIndex === 2) {
-    await removeOpinion(target)
+    if (sheet.tapIndex === 1) {
+      const seed = voteStanceSeed(voteValue, option)
+      if (!seed) return
+      try {
+        showLoading({ title: 'AI 正在按新表决重写，请稍等…' })
+        const generated = await api.committeeOpinionAssist(props.meetingId, props.topic.id, 'draft', seed)
+        hideLoading()
+        if (!generated || !generated.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); continue }
+        const review = await showModal({
+          title: '确认重写意见', content: generated.text, editable: true,
+          placeholderText: '可修改 AI 生成的意见', confirmText: '替换', cancelText: '取消', size: 'large'
+        })
+        if (!review.confirm) continue // 取消→返回三选一
+        const content = String(review.content || '').trim()
+        if (!content) continue
+        const updated = await api.committeeUpdateOpinion(props.meetingId, target.id, content)
+        opinions.value = opinions.value.map(op => op.id === target.id ? updated : op)
+        toast({ title: '意见已按新投票重写', icon: 'success' })
+        emit('changed')
+        return
+      } catch (e) {
+        hideLoading()
+        toast({ title: (e && e.message) || 'AI 重写失败，请稍后重试', icon: 'none' })
+        return
+      }
+    }
+    if (sheet.tapIndex === 2) {
+      await removeOpinion(target)
+      return
+    }
   }
 }
 
