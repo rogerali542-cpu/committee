@@ -91,11 +91,10 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 /* 突出确认（emphasizeConfirm）：取消收窄、确认占大头，并加粗强调 */
 .ui-modal-actions.emphasize-confirm .ui-modal-btn.cancel { flex: 0 0 34%; }
 .ui-modal-actions.emphasize-confirm .ui-modal-btn.confirm { flex: 1; font-weight: 700; }
-/* 突出取消（emphasizeCancel）：取消占大头并主色加粗为主，确认收窄、灰化为次要（破坏性确认宜次要） */
-/* row-reverse：左右互换位置——次要的「确认关闭」在左，主要的「继续等待」在右（语义不变，点遮罩仍=继续等待） */
-.ui-modal-actions.emphasize-cancel { flex-direction: row-reverse; }
-.ui-modal-actions.emphasize-cancel .ui-modal-btn.cancel { flex: 1; color: var(--c-primary-dark); font-weight: 700; border-right: none; border-left: 1rpx solid #eee; }
-.ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { flex: 0 0 34%; color: #999; font-weight: 400; }
+/* 突出取消（emphasizeCancel）：按钮位置保持通用习惯——取消类(继续等待)在左、确认动作(确认关闭)在右，
+   突出只靠颜色字重：安全选项主色加粗，破坏性确认灰化为次要（0723 用户定：不再 row-reverse 换位） */
+.ui-modal-actions.emphasize-cancel .ui-modal-btn.cancel { color: var(--c-primary-dark); font-weight: 700; }
+.ui-modal-actions.emphasize-cancel .ui-modal-btn.confirm { color: #999; font-weight: 400; }
 /* 加大版弹窗（size:'large'）：识别结果等重要确认框——大字、纯黑、选项加粗 */
 .ui-modal.large { width: 660rpx; max-width: 92vw; border-radius: 28rpx; padding: 52rpx 44rpx 0; }
 .ui-modal.large .ui-modal-title { font-size: 44rpx; color: #000; }
