@@ -74,7 +74,7 @@ public class ReceptionService {
         return usable ? name.trim() + "业主委员会" : "业主委员会";
     }
 
-    /** 落款全称（0723 与会议文书统一口径）：区划前缀+小区名+业主委员会（第X届），如「江州市望江区阳光花园业主委员会（第一届）」。 */
+    /** 落款全称（0723 与会议文书统一口径）：区划前缀+小区名+业主委员会（第X届），如「上海市静安区阳光花园业主委员会（第一届）」。 */
     public String noticeOrgFullName() {
         Community c = communityRepo.findById(SecurityUtils.getCurrentCommunityId()).orElse(null);
         String name = c != null ? c.getName() : null;

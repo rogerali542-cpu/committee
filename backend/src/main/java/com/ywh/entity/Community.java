@@ -25,7 +25,7 @@ public class Community {
     @Column(name = "committee_term", length = 20)
     private String committeeTerm;
 
-    /** 行政区划前缀（市+区），拼正式落款全称用，如「江州市望江区」+小区名+业主委员会（第X届）。 */
+    /** 行政区划前缀（市+区），拼正式落款全称用，如「上海市静安区」+小区名+业主委员会（第X届）。 */
     @Column(name = "org_region", length = 60)
     private String orgRegion;
 

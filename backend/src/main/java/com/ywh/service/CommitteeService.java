@@ -1705,7 +1705,7 @@ public class CommitteeService {
     /**
      * 业委会全称（落款/抬头统一用）：市区前缀+小区名+业主委员会（第X届）。
      * 真实材料（备案证/公章/公告落款）均为此格式，如「上海市黄浦区瞿溪新村业主委员会（第三届）」；
-     * 演示户口（全虚构）：「江州市望江区阳光花园业主委员会（第一届）」，见 CommunityProfileSeeder。
+     * 演示户口（全虚构）：「上海市静安区阳光花园业主委员会（第一届）」，见 CommunityProfileSeeder。
      */
     public String orgFullName(CommitteeMeeting meeting) {
         String community = communityName(meeting);

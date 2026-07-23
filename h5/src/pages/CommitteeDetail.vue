@@ -1,6 +1,8 @@
 <template>
   <div class="detail-page">
-    <PageNav :title="navTitle" style="margin:-12px -12px 0;">
+    <!-- 页面左右 padding 为 0，负 margin 只抵顶部（0723 修：左右 -12px 无 padding 可抵，
+         把文档撑宽 12px，真机能横向晃动——Chrome 桌面测不出来） -->
+    <PageNav :title="navTitle" style="margin:-12px 0 0;">
       <!-- 左箭头返回来源页；首页作为详情页统一的右上角轻量入口 -->
       <template #left>
         <div class="nav-back" @click="handleDetailBack">‹</div>
@@ -1826,7 +1828,8 @@ async function removeMaterial(item) {
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .del-meeting-link { color:#ccc; font-size:12px; border:1px solid #e8e8e8; border-radius:6px; padding:3px 10px; cursor:pointer; }
 .del-meeting-link:active { background:#f5f5f5; }
-.detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 280px; display:flex; flex-direction:column; box-sizing:border-box; }
+/* overflow-x:hidden 兜底（0723）：任何子元素越界都不再把页面撑宽导致真机横向晃动 */
+.detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 280px; display:flex; flex-direction:column; box-sizing:border-box; overflow-x:hidden; }
 .detail-body { flex:1 0 auto; }
 
 /* Task banner */
