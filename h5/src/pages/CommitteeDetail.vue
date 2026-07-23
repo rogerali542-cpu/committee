@@ -232,20 +232,17 @@
           </div>
         </template>
 
-        <!-- 进行中：进入「会议进行」向导页；现场已结束(本地标记)时改为会后整理入口 -->
+        <!-- 进行中：进入「会议进行」向导页。现场已结束(本地标记)时整条横幅删除（0722 用户定）：
+             顶栏标题已说明本页定位，内容一屏可见，无需再放流程引导 -->
         <template v-if="detail.stage === 'ongoing' && detail.record">
-          <div class="live-entry" :class="{ ended: fieldEndedLocal }" @click="enterLive">
+          <div v-if="!fieldEndedLocal" class="live-entry" @click="enterLive">
             <div class="live-entry-main">
-              <!-- 会后横幅是功能引导（0722 用户定）：标题上移到顶栏，这里只留一行流程，避免双标题 -->
-              <span v-if="!fieldEndedLocal" class="live-entry-title">会议进行中</span>
-              <span class="live-entry-sub">{{ fieldEndedLocal
-                ? '查看结果 → 导出记录与纪要 → 发布公示'
-                : (detail.meetingMethod === 'online'
-                  ? '确认参会人员 → 填写议题结果 → 结果确认'
-                  : '签到 → 录音转写 → 确认表决') }}</span>
+              <span class="live-entry-title">会议进行中</span>
+              <span class="live-entry-sub">{{ detail.meetingMethod === 'online'
+                ? '确认参会人员 → 填写议题结果 → 结果确认'
+                : '签到 → 录音转写 → 确认表决' }}</span>
             </div>
-            <!-- 现场已结束态不放按钮（0722 用户定）：顶栏返回箭头就是回会后整理页 -->
-            <span v-if="!fieldEndedLocal" class="live-entry-arrow">进入 ›</span>
+            <span class="live-entry-arrow">进入 ›</span>
           </div>
           <!-- 签到进度卡已删（0722 用户定）：签到在会议进行页与会后整理页处理，此处不重复 -->
           <!-- 现场已结束时议题卡由下方会后区自带，这里不重复渲染 -->
@@ -3455,11 +3452,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 
 /* Wizard Stepper */
 .live-entry { display:flex; align-items:center; gap:12px; background:linear-gradient(135deg,#FFCC44,#FFA800); border-radius:16px; padding:18px 16px; margin-bottom:12px; box-shadow:0 2px 8px rgba(255,168,0,0.25); }
-/* 现场已结束：改用浅绿底深绿字的弱化样式——只是状态说明+入口，不该比正文抢眼 */
-.live-entry.ended { background:#EEF6F1; border:1px solid #D5E8DD; box-shadow:none; }
-.live-entry.ended .live-entry-title { color:#1F5B44; }
-.live-entry.ended .live-entry-sub { color:#5E8271; font-weight:500; }
-.live-entry.ended .live-entry-arrow { color:#fff; background:#2E7D5B; }
+/* 现场已结束的横幅已整条删除（0722 用户定），ended 变体样式随之移除 */
 .live-entry-main { flex:1; }
 .live-entry-title { display:block; font-size: 32rpx; font-weight:700; color:#fff; line-height:1.4; }
 .live-entry-sub { display:block; font-size: 28rpx; color:rgba(255,255,255,0.85); margin-top:4px; line-height:1.5; }
