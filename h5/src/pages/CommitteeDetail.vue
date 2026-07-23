@@ -272,7 +272,7 @@
             <div class="arv-icon">{{ detail.compliance === 'valid' ? '✓' : detail.compliance === 'flawed' ? '!' : '✕' }}</div>
             <div class="arv-info">
               <span class="arv-title">{{ detail.title }}</span>
-              <span class="arv-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · {{ detail.location }}</span>
+              <span class="arv-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · {{ meetingPlaceText }}</span>
               <span class="arv-result">{{ detail.compliance === 'valid' ? '会议有效' : detail.compliance === 'flawed' ? '有效（带说明）' : '会议无效' }} · {{ detail.publish && detail.publish.published ? '已公示归档' : detail._archived ? '已归档' : '待公示' }}</span>
               <span class="arv-reason" v-if="detail.complianceReason">{{ detail.complianceReason }}</span>
             </div>
@@ -289,7 +289,7 @@
           <div class="ar-card" :class="[detail.compliance, cardSizeClass]">
             <div class="arc-summary arc-summary-static">
               <span class="arch-title">{{ detail.title }}</span>
-              <span class="arcs-meta">{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }}<template v-if="detail.location"> · {{ detail.location }}</template></span>
+              <span class="arcs-meta">{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }} · {{ meetingPlaceText }}</span>
             </div>
             <MeetingTopicsCard :topics="detail.record ? detail.record.topics : []" :on-select="openTopicSheet"
               :expanded="endedDetailOpen" :on-collapse="() => { endedDetailOpen = false }" :on-expand="() => { endedDetailOpen = true }" />
@@ -1073,6 +1073,14 @@ const endedDetailInitialized = ref(false)
 function shortTime(t) { return (t || '').slice(0, 5) }
 
 // 「未公示」态（既未公示、未撤回、未归档）→ 顶部显示「公示会议」主操作。无效会议也显示，点击后再提示。
+// 地点显示：线上会议标注平台+「（线上会议）」，线下按实际地点（0722 用户定）
+const meetingPlaceText = computed(() => {
+  const d = detail.value
+  if (!d) return ''
+  if (d.meetingMethod === 'online') return (d.location || '微信工作群') + '（线上会议）'
+  return d.location || '地点待定'
+})
+
 const isFreshEnded = computed(() => {
   const d = detail.value
   if (!d) return false
