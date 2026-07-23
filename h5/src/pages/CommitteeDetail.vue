@@ -236,9 +236,10 @@
         <template v-if="detail.stage === 'ongoing' && detail.record">
           <div class="live-entry" :class="{ ended: fieldEndedLocal }" @click="enterLive">
             <div class="live-entry-main">
-              <span class="live-entry-title">{{ fieldEndedLocal ? '现场会议已结束' : '会议进行中' }}</span>
+              <!-- 会后横幅是功能引导（0722 用户定）：结束动作在上一页已完成，这里只讲本页能做什么 -->
+              <span class="live-entry-title">{{ fieldEndedLocal ? '会议结果与公示' : '会议进行中' }}</span>
               <span class="live-entry-sub">{{ fieldEndedLocal
-                ? '在本页查看会议结果、导出记录与纪要、发布公示'
+                ? '查看结果 → 导出记录与纪要 → 发布公示'
                 : (detail.meetingMethod === 'online'
                   ? '确认参会人员 → 填写议题结果 → 结果确认'
                   : '签到 → 录音转写 → 确认表决') }}</span>
