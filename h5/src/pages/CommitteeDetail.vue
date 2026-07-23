@@ -142,7 +142,8 @@
       </template>
 
       <!-- 会议基本信息（结束阶段隐藏；主任准备阶段用上方卡片流替代） -->
-      <div class="info-card" v-if="detail.stage !== 'ended' && !(userView === 'chair' && detail.stage === 'preparing')">
+      <!-- 现场已结束后隐藏：下方会后大卡自带 名称/时间/地点，两处重复（0722 用户定） -->
+      <div class="info-card" v-if="detail.stage !== 'ended' && !fieldEndedLocal && !(userView === 'chair' && detail.stage === 'preparing')">
         <div class="info-row"><span class="info-k">会议名称</span><span class="info-title-v">{{ detail.title }}</span></div>
         <div class="info-row"><span class="info-k">时间</span>{{ detail.meetingDate }} {{ shortTime(detail.meetingTime) }}</div>
         <div class="info-row"><span class="info-k">召开方式</span><span>{{ detail.meetingMethod === 'online' ? '线上会议' : '线下会议' }}</span></div>
@@ -251,7 +252,8 @@
             </div>
             <span class="live-entry-arrow">{{ fieldEndedLocal ? '会后整理 ›' : '进入 ›' }}</span>
           </div>
-          <div class="signin-prog" v-if="userView === 'chair' && detail.flowStats && detail.flowStats.attendance">
+          <!-- 现场已结束后隐藏：签到已在会后整理页重点处理过（改状态/打印签到表），此处不再重复 -->
+          <div class="signin-prog" v-if="userView === 'chair' && !fieldEndedLocal && detail.flowStats && detail.flowStats.attendance">
             <div class="sp-head">
               <span class="sp-label">{{ detail.meetingMethod === 'online' ? '参会登记进度' : '签到进度' }}</span>
               <!-- 分母=应到(全体-请假)，请假人数单独括注（0722 用户定） -->
