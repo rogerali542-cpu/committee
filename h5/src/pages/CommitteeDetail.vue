@@ -2296,7 +2296,7 @@ async function markCompliance(status) {
 async function archiveDirect() {
   const res = await showModal({
     title: '直接归档',
-    content: '归档后该会议将移出会议管理，进入资料库供查阅。确认归档？',
+    content: '会议将存入资料库，确认归档？',
     confirmText: '确认归档'
   })
   if (!res.confirm) return
