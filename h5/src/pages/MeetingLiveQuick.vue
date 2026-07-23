@@ -133,9 +133,10 @@
             </div>
             <div class="er-item-actions">
               <button class="er-act" @click="uploadMaterial">上传材料</button>
-              <!-- 委员合影（0722 从详情页移入）：拍照直接存入会议材料，公示材料自动带上 -->
-              <button v-if="isChair" class="er-act" :disabled="photoUploading" @click="takeGroupPhoto">
-                {{ photoUploading ? '合影保存中…' : '拍委员合影' }}
+              <!-- 拍照上传（0723 泛化）：可拍委员合影，也可把纸质材料（手写记录/签到表/方案等）拍下来存档，
+                   都直接进会议材料，公示材料自动带上 -->
+              <button v-if="isChair" class="er-act" :disabled="photoUploading" @click="takePhoto">
+                {{ photoUploading ? '照片保存中…' : '拍照上传' }}
               </button>
             </div>
             </template>
@@ -3511,11 +3512,21 @@ async function editObservers() {
   }
 }
 
-// ——— 委员合影（0722 从详情页移入会后整理）：input capture 直接调相机，拍完存进会议材料 ———
+// ——— 拍照上传（0723 泛化）：既能拍委员合影，也能把纸质材料（手写记录/签到表/纸质方案等）
+// 拍下来存档；拍完都直接进会议材料，公示材料自动带上。先选类型（决定命名前缀）再调相机。———
 const photoUploading = ref(false)
 let _groupPhotoInput = null
-function takeGroupPhoto() {
+let _photoNamePrefix = '委员合影'  // 当前拍摄类型的命名前缀，onChange 时按此命名
+const PHOTO_KINDS = [
+  { label: '委员合影', prefix: '委员合影' },
+  { label: '现场材料照片（手写记录/签到表等）', prefix: '现场材料' }
+]
+async function takePhoto() {
   if (photoUploading.value) return
+  // 先选拍什么：老人一次点选，不用打字命名
+  const res = await showActionSheet({ title: '拍照上传', itemList: PHOTO_KINDS.map(k => k.label) })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  _photoNamePrefix = PHOTO_KINDS[res.tapIndex].prefix
   if (!_groupPhotoInput) {
     _groupPhotoInput = document.createElement('input')
     _groupPhotoInput.type = 'file'
@@ -3533,15 +3544,16 @@ async function onGroupPhotoChange(e) {
   if (!f) return
   photoUploading.value = true
   try {
-    const already = (materials.value || []).filter(m => ((m.name || '')).indexOf('委员合影') >= 0).length
-    const fname = '委员合影' + (already ? '（' + (already + 1) + '）' : '') + '.jpg'
+    const prefix = _photoNamePrefix
+    const already = (materials.value || []).filter(m => ((m.name || '')).indexOf(prefix) >= 0).length
+    const fname = prefix + (already ? '（' + (already + 1) + '）' : '') + '.jpg'
     const file = new File([f], fname, { type: f.type || 'image/jpeg' })
     const r = await uploadAttachment(file)
     await api.committeeAddMaterial(meetingId.value, fname, humanSize(r.fileSize), r.fileType, r.url)
-    toast({ title: '合影已存入会议材料', icon: 'success' })
+    toast({ title: '照片已存入会议材料', icon: 'success' })
     loadDetail()
   } catch (err) {
-    toast({ title: (err && err.message) || '合影上传失败，请重试', icon: 'none' })
+    toast({ title: (err && err.message) || '照片上传失败，请重试', icon: 'none' })
   } finally { photoUploading.value = false }
 }
 
