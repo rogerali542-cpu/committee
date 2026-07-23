@@ -84,11 +84,15 @@ public class MinutesGenServiceStub implements MinutesGenService {
         String host = lineValue(basic, "主持人：");
         String present = lineValue(basic, "实到委员：");
         String observers = lineValue(basic, "列席指导人员（居委/街道/物业等，非委员）：");
+        String meetingName = lineValue(basic, "会议名称：");
+        // 联席会议按会议名称如实表述会议性质（真实《工作例会制度》：每季度与居委会、物业联合召开联席会议）
+        boolean joint = meetingName != null && meetingName.contains("联席");
 
         StringBuilder sb = new StringBuilder();
         sb.append(community.isBlank() ? "业委会会议纪要" : community + "业委会会议纪要").append("\n\n");
         sb.append(blankToUnknown(time)).append("，").append(org.replaceAll("（[^）]*）$", ""))
-                .append("在").append(blankToUnknown(location)).append("召开了业委会全体委员会议");
+                .append("在").append(blankToUnknown(location)).append("召开了")
+                .append(joint ? meetingName.trim() : "业委会全体委员会议");
         if (!present.isBlank()) sb.append("，").append(present.replaceAll("；.*$", ""));
         if (!host.isBlank()) sb.append("，会议由").append(host).append("主持");
         sb.append("。\n\n");
