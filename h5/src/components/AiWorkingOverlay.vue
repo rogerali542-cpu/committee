@@ -9,9 +9,10 @@
       <span class="aio-pt" style="top:6%;left:60%;width:6rpx;height:6rpx;animation-delay:1.1s"></span>
       <span class="aio-pt" style="top:20%;left:24%;width:6rpx;height:6rpx;animation-delay:.9s"></span>
 
+      <!-- 完成后标题与「已完成」标签合二为一（0722 用户定）：标题直接切完成态文案，不再单挂标签 -->
       <div class="aio-hdr">
-        <span class="aio-title">{{ title }}</span>
-        <span class="aio-badge"><i class="aio-bdot"></i>{{ done ? '已完成' : badge }}</span>
+        <span class="aio-title">{{ done ? doneTitle : title }}</span>
+        <span v-if="!done" class="aio-badge"><i class="aio-bdot"></i>{{ badge }}</span>
       </div>
 
       <!-- 进行中 -->
@@ -146,6 +147,11 @@ const say = computed(() => cfg.value.say)
 const doneSay = computed(() => cfg.value.doneSay)
 const doneBtn = computed(() => cfg.value.doneBtn)
 const title = computed(() => cfg.value.title || '豆包正在为您整理纪要')
+// 完成态标题：短语式,与中部大号 doneSay 不重复
+const doneTitle = computed(() => {
+  if (props.phase === 'news' || props.phase === 'gen') return '生成完成'
+  return '识别完成'
+})
 const badge = computed(() => cfg.value.badge || '草稿生成中')
 const steps = computed(() => cfg.value.steps || STEPS_MINUTES)
 const elapsed = computed(() => mmss(sec.value))
