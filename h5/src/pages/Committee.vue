@@ -1124,6 +1124,11 @@ const selPeriodFeedback = computed(() => {
     return { kind: 'tip', tone: 'warn', tip: '该期（' + label + '）会议正在进行，请从下方会议卡进入' }
   }
   if (row.status === 'current') {
+    // 期限临近（剩<10天）：提示条同步升级为红色并写明剩余天数
+    const urgent = viewYear.value === curYear ? currentPeriodUrgency.value : null
+    if (urgent) {
+      return { kind: 'tip', tone: 'overdue', tip: '本期（' + label + '）例会还没开，距期限只剩 ' + urgent.daysLeft + ' 天，请尽快安排' }
+    }
     return { kind: 'tip', tone: 'warn', tip: '本期（' + label + '）例会还没开，请在下方待办事项中处理' }
   }
   if (row.status === 'overdue') {
@@ -1141,6 +1146,17 @@ const selPeriodFeedback = computed(() => {
 // 警示条（"到期没做，赶紧补"，随分类）：例会逾期红 / 接待待跟进橙
 // 恒取今年：逾期是「你现在欠的账」，跟日历翻到哪一年无关
 const overduePeriodRows = computed(() => thisYearPlan.value.filter(r => r.status === 'overdue'))
+// 期限临近加强提示（0723 用户定）：本期（两个月一期）到期末只剩不到 10 天、例会还没开
+// 也没有会议在准备/进行 → 待办行升级红色紧急态并写明剩余天数。恒取今年（同待办口径）。
+const currentPeriodUrgency = computed(() => {
+  const row = thisYearPlan.value[Math.ceil(curMonth / 2) - 1]
+  if (!row || row.status !== 'current') return null
+  if (activeMeetingPeriods.value.has(row.period)) return null // 本期已有会在办，不催
+  const today = new Date()
+  const end = new Date(curYear, row.period * 2, 0) // 期末月最后一天（月序号传下月的第 0 天）
+  const daysLeft = Math.floor((end - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000) + 1 // 含今天
+  return daysLeft < 10 ? { row: row, daysLeft: Math.max(daysLeft, 0) } : null
+})
 const calAlert = computed(() => {
   if (planTab.value === 'meeting') {
     const rows = overduePeriodRows.value
@@ -1497,15 +1513,21 @@ const planTodoList = computed(() => {
     if (active.has(row.period)) continue
     if (!rows.some(r => r.period === row.period)) rows.push(row)
   }
-  return rows.map(row => ({
-    key: 'todo-meeting-' + row.period,
-    icon: '📅',
-    title: '第' + row.period + '期例会（' + row.monthLabel + '）',
-    sub: '',
-    status: row.status,
-    badge: isChair.value ? (row.status === 'overdue' ? '去补开' : '去通知') : '等待通知',
-    onTap: () => onPlanRow(row)
-  }))
+  const urgent = currentPeriodUrgency.value
+  return rows.map(row => {
+    // 期限临近（剩<10天，0723 用户定）：本期待办行标红加剩余天数，催促感升级
+    const isUrgent = !!(urgent && row.status === 'current' && row.period === urgent.row.period)
+    return {
+      key: 'todo-meeting-' + row.period,
+      icon: '📅',
+      title: '第' + row.period + '期例会（' + row.monthLabel + '）',
+      sub: isUrgent ? ('距期限只剩 ' + urgent.daysLeft + ' 天，请尽快安排会议') : '',
+      status: row.status,
+      flag: isUrgent ? 'urgent' : '',
+      badge: isChair.value ? (row.status === 'overdue' ? '去补开' : '去通知') : '等待通知',
+      onTap: () => onPlanRow(row)
+    }
+  })
 })
 const currentStage = ref('preparing')
 const meetings = ref([])
@@ -3901,6 +3923,15 @@ onActivated(show)
 .plan-stack.has-meeting .plan-todo-card .yc-item.current, .plan-stack.has-meeting .plan-todo-card .yc-item.overdue { background: #fff; }
 .plan-todo-card .yc-item.current .plan-badge.current { animation: ctaBreathOrange 2.2s ease-in-out infinite; }
 .plan-todo-card .yc-item.overdue .plan-badge.overdue { animation: ctaBreathRed 2.2s ease-in-out infinite; }
+/* 期限临近紧急态（0723 用户定，剩<10天）：本期待办由橙升红——「去通知」红底白字呼吸、副行红字写剩余天数。
+   比 .plan-stack.has-meeting 的淡化规则多一个 .urgent 类，紧急时压过淡化。 */
+.plan-todo-card .yc-item.urgent .plan-badge.current,
+.plan-stack.has-meeting .plan-todo-card .yc-item.urgent .plan-badge.current {
+  color: #fff; background: #D83A2E; border: none;
+  box-shadow: 0 10rpx 22rpx rgba(216,58,46,0.30);
+  animation: ctaBreathRed 2.2s ease-in-out infinite;
+}
+.plan-todo-card .yc-item.urgent .yc-item-sub { color: #B02A1E; font-weight: 600; }
 @keyframes ctaBreathOrange {
   0%, 100% { box-shadow: 0 10rpx 22rpx rgba(217,119,6,0.35); }
   50% { box-shadow: 0 12rpx 34rpx rgba(217,119,6,0.62), 0 0 0 16rpx rgba(217,119,6,0.22); }
