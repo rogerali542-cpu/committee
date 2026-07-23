@@ -3457,7 +3457,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 现场已结束：改用浅绿底深绿字的弱化样式——只是状态说明+入口，不该比正文抢眼 */
 .live-entry.ended { background:#EEF6F1; border:1px solid #D5E8DD; box-shadow:none; }
 .live-entry.ended .live-entry-title { color:#1F5B44; }
-.live-entry.ended .live-entry-sub { color:#5E8271; }
+.live-entry.ended .live-entry-sub { color:#5E8271; font-weight:500; }
 .live-entry.ended .live-entry-arrow { color:#fff; background:#2E7D5B; }
 .live-entry-main { flex:1; }
 .live-entry-title { display:block; font-size: 32rpx; font-weight:700; color:#fff; line-height:1.4; }
@@ -4068,7 +4068,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .mtc-status {
   flex-shrink:0;
   font-size:19px;
-  font-weight:500; /* 0722 用户定：状态文字字重+100 */
+  font-weight:600; /* 0722 用户定：状态文字字重再+100（500→600） */
   line-height:1.35;
   padding-top:2px;
 }
