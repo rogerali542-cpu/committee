@@ -21,6 +21,10 @@ public class Community {
     @Column(length = 255)
     private String address;
 
+    /** 业委会届别（真实材料：备案证/公章/落款均带「第X届」）。空按「第一届」处理。 */
+    @Column(name = "committee_term", length = 20)
+    private String committeeTerm;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

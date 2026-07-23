@@ -57,27 +57,35 @@ function joinMinutesTitle(meetingTitle) {
 }
 
 const HEAD_RE = /^[一二三四五六七八九十]+、/
+// 记录表格版式（0723 仿工作手册）的分区标签行
+const RECORD_HEAD_RE = /^(会议内容：|会议有关决定及表决结果|会议决定、决议公告的时间|出席成员名单及签章)/
+// 落款行（业委会全称/日期）：右对齐、不缩进，与导出 PDF 同规则
+const SIGNOFF_RE = /^(.{0,30}业主委员会(（第.{1,6}届）)?|\d{4}年\d{1,2}月\d{1,2}日)$/
 
 // 纪要正文 → 展示行：去 Markdown 记号、跳过开头重复标题、每段首行缩进两格（与导出 PDF 同规则）
 function minutesLines(text, meetingTitle) {
   const full = joinMinutesTitle(meetingTitle)
   const out = []
+  let bodyStarted = false
   for (const raw of String(text).split(/\r?\n/)) {
     const t = raw.trim().replace(/^#{1,6}\s*/, '')
-    if (!t) { out.push({ text: '', cls: 'blank' }); continue }
-    if (t === '会议纪要' || t === meetingTitle || t === full) continue
+    if (!t) { if (bodyStarted) out.push({ text: '', cls: 'blank' }); continue }
+    // 正文开头的标题行一律跳过（页顶已有标题）：含 AI 稿自带的「××业委会会议纪要」
+    if (!bodyStarted && (t === '会议纪要' || t === meetingTitle || t === full || (t.length <= 30 && /会议纪要$/.test(t)))) continue
+    bodyStarted = true
+    if (SIGNOFF_RE.test(t)) { out.push({ text: t, cls: 'sign' }); continue }
     out.push({ text: '　　' + t, cls: HEAD_RE.test(t) ? 'head' : '' })
   }
   return out
 }
 
-// 记录文本 → 展示行：第一行是居中的业委会落款行，「一、二、…」为章节标题
+// 记录文本 → 展示行：第一行是居中的业委会行，分区标签行（会议内容/决定及表决结果等）加粗
 function recordLines(lines) {
   return lines.map((raw, i) => {
     const t = String(raw).trimEnd()
     if (!t.trim()) return { text: '', cls: 'blank' }
     if (i === 0) return { text: t, cls: 'center' }
-    return { text: t, cls: HEAD_RE.test(t.trim()) ? 'head' : '' }
+    return { text: t, cls: (RECORD_HEAD_RE.test(t.trim()) || HEAD_RE.test(t.trim())) ? 'head' : '' }
   })
 }
 
@@ -159,6 +167,7 @@ onMounted(() => {
 .docp-ln { margin:0; font-size:30rpx; line-height:1.9; color:#333A45; white-space:pre-wrap; word-break:break-all; }
 .docp-ln.center { text-align:center; color:#555C68; font-size:27rpx; }
 .docp-ln.head { font-weight:700; color:#1E2430; margin-top:18rpx; }
+.docp-ln.sign { text-align:right; padding-right:30rpx; margin-top:6rpx; }
 .docp-ln.blank { height:20rpx; }
 .docp-foot { display:flex; align-items:center; gap:16rpx; padding:14rpx 20rpx calc(14rpx + env(safe-area-inset-bottom)); background:#fff; border-top:2rpx solid #EEF0F3; }
 .docp-tip { flex:1; font-size:25rpx; color:#8A9099; }

@@ -260,6 +260,14 @@ public class CommitteeController {
                 .body(file.bytes());
     }
 
+    /** 列席人员（居委/街道/物业等非委员到会者）：会后整理页登记，进入会议记录与纪要 */
+    @PutMapping("/{id}/observers")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> setObservers(@PathVariable Long id, @RequestBody Map<String, Object> req) {
+        service.setObservers(id, req == null ? null : (String) req.get("text"));
+        return Result.ok();
+    }
+
     /** 会议记录纯文本：页内预览用，与 meeting-record.pdf 同一份内容装配（所见即所导） */
     @GetMapping("/{id}/meeting-record-text")
     @RequireRole({"主任", "副主任", "委员"})

@@ -92,6 +92,10 @@ export default {
   committeeMeetingRecordText: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/meeting-record-text');
   },
+  // 列席人员（居委/街道/物业等非委员到会者）：会后整理页登记，进入会议记录与纪要
+  committeeSetObservers: function (id, text) {
+    return core.request('PUT', '/api/committees/' + id + '/observers', { text: text });
+  },
   // 会议纪要 PDF（正文与 GET /minutes 同源，公文格式）
   committeeExportMinutesPdf: function (id) {
     return core.download('/api/committees/' + id + '/minutes.pdf?t=' + Date.now());

@@ -24,32 +24,26 @@ public class MeetingRecordPdfService {
     private final RecordTopicRepository topicRepo;
     private final TopicOpinionRepository opinionRepo;
     private final TopicVoteRepository voteRepo;
+    private final MeetingPublishRepository publishRepo;
 
     @Transactional(readOnly = true)
     public PdfFile generate(Long meetingId) {
-        RecordData d = loadRecordData(meetingId);
+        RecordContent c = buildRecordContent(loadRecordData(meetingId));
         try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Writer w = new Writer(doc, loadChineseFont(doc));
-            writeRecord(d, w);
+            renderRecordForm(c, w);
             w.close();
             doc.save(out);
-            return new PdfFile(safe(d.meeting().getTitle()) + "-会议记录.pdf", out.toByteArray());
+            return new PdfFile(safe(c.meetingTitle) + "-会议记录.pdf", out.toByteArray());
         } catch (IOException e) {
             throw new IllegalStateException("会议记录生成失败", e);
         }
     }
 
-    /** 会议记录纯文本（页内预览用）：与 PDF 走同一份 writeRecord 装配，保证所见即所导。 */
+    /** 会议记录纯文本（页内预览用）：与 PDF 同一份 buildRecordContent 装配，保证所见即所导。 */
     @Transactional(readOnly = true)
     public String generateRecordText(Long meetingId) {
-        RecordData d = loadRecordData(meetingId);
-        TextSink t = new TextSink();
-        try {
-            writeRecord(d, t);
-        } catch (IOException e) {
-            throw new IllegalStateException("会议记录生成失败", e);
-        }
-        return t.text();
+        return renderRecordText(buildRecordContent(loadRecordData(meetingId)));
     }
 
     private RecordData loadRecordData(Long meetingId) {
@@ -65,79 +59,153 @@ public class MeetingRecordPdfService {
         return new RecordData(meeting, record, attendances, topics);
     }
 
-    /** 记录内容装配：PDF(Writer) 与文本预览(TextSink) 共用，改章节结构只改这里。 */
-    private void writeRecord(RecordData d, Sink w) throws IOException {
+    /** 会议记录内容（0723 向真实《业主委员会工作手册》表格看齐）：PDF 表单与文本预览共用。 */
+    private static class RecordContent {
+        String meetingTitle;                       // 文件名用
+        String org;                                // 小区业委会（居中行）
+        List<String[]> infoRows = new ArrayList<>(); // 表头行：label,value 交替
+        List<String> content = new ArrayList<>();    // 会议内容
+        List<String> decisions = new ArrayList<>();  // 会议有关决定及表决结果
+        String noticeTime;                           // 会议决定、决议公告的时间
+        List<String> attendees = new ArrayList<>();  // 出席成员（签章格）
+    }
+
+    private RecordContent buildRecordContent(RecordData d) {
         CommitteeMeeting meeting = d.meeting();
         List<RecordAttendance> attendances = d.attendances();
-        w.title("业主委员会会议记录");
+        List<RecordAttendance> present = attendances.stream().filter(a -> Boolean.TRUE.equals(a.getSignedIn())).toList();
+        RecordContent c = new RecordContent();
+        c.meetingTitle = value(meeting.getTitle());
         String community = meeting.getCommunity() == null ? "" : meeting.getCommunity().getName();
-        w.center((usable(community) ? community.trim() : "") + "业主委员会", 11);
-        w.gap(16);
-        w.line("会议名称：" + value(meeting.getTitle()));
-        w.line("会议时间：" + value(meeting.getMeetingDate()) + " " +
-                (meeting.getMeetingTime() == null ? "" : meeting.getMeetingTime().format(DateTimeFormatter.ofPattern("HH:mm"))));
-        w.line("会议地点：" + value(meeting.getLocation()));
-        int present = (int) attendances.stream().filter(a -> Boolean.TRUE.equals(a.getSignedIn())).count();
-        w.line("应到委员：" + attendances.size() + "人    实到委员：" + present + "人");
+        c.org = (usable(community) ? community.trim() : "") + "业主委员会";
 
-        w.heading("一、参会情况");
-        int ai = 1;
-        for (RecordAttendance a : attendances) {
-            if (a.getUserRole() == null) continue;
-            String status = Boolean.TRUE.equals(a.getSignedIn()) ? "参会" : Boolean.TRUE.equals(a.getDeclined()) ? "请假" : "缺席";
-            w.line(ai++ + ". " + value(a.getUserRole().getRealName()) + "（" + role(a) + "）  " + status);
+        String host = attendances.stream()
+                .filter(a -> a.getUserRole() != null && a.getUserRole().getRole() != null && a.getUserRole().getRole().isChair())
+                .findFirst().map(a -> a.getUserRole().getRealName())
+                .orElse(present.isEmpty() ? "" : present.get(0).getUserRole().getRealName());
+        String time = value(meeting.getMeetingDate()) + " " +
+                (meeting.getMeetingTime() == null ? "" : meeting.getMeetingTime().format(DateTimeFormatter.ofPattern("HH:mm")));
+        boolean online = meeting.getMeetingMethod() == com.ywh.enums.MeetingMethod.online;
+        String place = usable(meeting.getLocation()) ? meeting.getLocation() : (online ? "微信工作群" : "未记录");
+        if (online && usable(meeting.getLocation())) place = meeting.getLocation() + "（线上）";
+        // 实到写「N+M」＝委员+列席（真实手写表惯例：7+3）
+        String observers = d.record().getObserversText();
+        int obsCount = !usable(observers) ? 0 : observers.trim().split("[、，,\\s]+").length;
+        String presentText = obsCount > 0 ? present.size() + "+" + obsCount + "（委员" + present.size() + "人，列席" + obsCount + "人）"
+                : String.valueOf(present.size());
+
+        c.infoRows.add(new String[]{"会议议题", c.meetingTitle, "时  间", time, "主持人", host});
+        c.infoRows.add(new String[]{"会议地址", place, "记录人", host});
+        c.infoRows.add(new String[]{"应到人数", String.valueOf(attendances.size()), "实到人数", presentText});
+
+        // ── 会议内容：列席、到会情况与议题过程 ──
+        if (obsCount > 0) c.content.add("列席人员：" + observers.trim() + "。");
+        List<RecordAttendance> absent = attendances.stream().filter(a -> !Boolean.TRUE.equals(a.getSignedIn())).toList();
+        if (!absent.isEmpty()) {
+            c.content.add("缺席委员：" + absent.stream()
+                    .map(a -> value(a.getUserRole() == null ? null : a.getUserRole().getRealName())
+                            + (Boolean.TRUE.equals(a.getDeclined()) ? "（请假）" : ""))
+                    .reduce((a, b) -> a + "、" + b).orElse("") + "。");
         }
-
-        w.heading("二、议题及过程记录");
-        if (d.topics().isEmpty()) w.line("本次会议未登记议题。");
+        if (d.topics().isEmpty()) c.content.add("本次会议未登记议题。");
         int ti = 1;
         for (RecordTopic topic : d.topics()) {
-            w.subheading(ti++ + ". " + value(topic.getTitle()) + "【" + mergedTypeLabel(topic) + "】");
-            if (usable(topic.getContent())) w.paragraph("议题说明：" + topic.getContent());
+            c.content.add(ti++ + ". " + value(topic.getTitle()) + "【" + mergedTypeLabel(topic) + "】");
+            if (usable(topic.getContent())) c.content.add("议题说明：" + topic.getContent());
             List<TopicOpinion> opinions = opinionRepo.findByTopicId(topic.getId());
-            if (!opinions.isEmpty()) {
-                w.line("讨论意见：");
-                for (TopicOpinion o : opinions) {
-                    String speaker = o.getUserRole() != null ? o.getUserRole().getRealName() : o.getSpeakerName();
-                    // 项目符号用中点「·」：西文 •(U+2022) 在 SimHei 等中文字体里没有字形，会整份导出报错
-                    w.paragraph("· " + value(speaker) + "：" + value(o.getContent()));
-                }
+            for (TopicOpinion o : opinions) {
+                String speaker = o.getUserRole() != null ? o.getUserRole().getRealName() : o.getSpeakerName();
+                // 项目符号用中点「·」：西文 •(U+2022) 在 SimHei 等中文字体里没有字形，会整份导出报错
+                c.content.add("· " + value(speaker) + "：" + value(o.getContent()));
             }
+        }
+
+        // ── 会议有关决定及表决结果：表决=签名口径（同意的委员/不同意的委员，无人写（无）） ──
+        int di = 1;
+        boolean anyVote = false;
+        for (RecordTopic topic : d.topics()) {
             List<TopicVote> votes = voteRepo.findByTopicId(topic.getId());
             if (!votes.isEmpty()) {
-                w.line("表决记录：");
+                anyVote = true;
                 Map<String, Integer> counts = new LinkedHashMap<>();
+                Map<String, List<String>> byChoice = new LinkedHashMap<>();
                 for (TopicVote v : votes) {
                     String choice = v.getChoice() == null ? "未表决" : v.getChoice().getLabel();
                     counts.merge(choice, 1, Integer::sum);
-                    String voter = v.getUserRole() == null ? "未知委员" : v.getUserRole().getRealName();
-                    w.line("· " + voter + "：" + choice);
+                    byChoice.computeIfAbsent(choice, k -> new ArrayList<>())
+                            .add(v.getUserRole() == null ? "未知委员" : v.getUserRole().getRealName());
                 }
-                w.line("表决汇总：" + counts.entrySet().stream()
-                        .map(e -> e.getKey() + e.getValue() + "票").reduce((a, b) -> a + "，" + b).orElse("无"));
-            } else if (topic.getType() != null
-                    && !"notice".equals(topic.getType().name())
-                    && !"discussion".equals(topic.getType().name())) {
-                // 通知和讨论类不表决，没投票记录是常态，不打「未记录表决结果」（0717 随类型合并修正：原先只豁免 notice）
-                w.line("结果：未记录表决结果");
+                c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：" + counts.entrySet().stream()
+                        .map(e -> e.getKey() + e.getValue() + "票").reduce((a, b) -> a + "，" + b).orElse("无") + "。");
+                c.decisions.add("   同意的委员：" + String.join("、", byChoice.getOrDefault("同意", List.of("（无）"))) +
+                        "；不同意的委员：" + String.join("、", byChoice.getOrDefault("反对", List.of("（无）"))) +
+                        (byChoice.containsKey("弃权") ? "；弃权：" + String.join("、", byChoice.get("弃权")) : "") + "。");
+            } else if (topic.getType() == null
+                    || "notice".equals(topic.getType().name()) || "discussion".equals(topic.getType().name())) {
+                String kind = topic.getType() != null && "discussion".equals(topic.getType().name())
+                        ? "有关意见已在会议中讨论并记录" : "有关情况已在会议中通报";
+                c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：" + kind + "。");
+            } else {
+                c.decisions.add(di++ + ". " + value(topic.getTitle()) + "：未记录表决结果。");
             }
-            w.gap(6);
         }
-
-        w.heading("三、会议决定及后续事项");
-        if (usable(d.record().getTodoListText())) w.paragraph(d.record().getTodoListText());
-        else w.line("无已登记的会后待办事项。");
-
-        w.heading("四、签字确认");
-        w.paragraph("以上记录经出席委员核对无误，由出席委员统一签字确认。");
-        List<RecordAttendance> presentRows = attendances.stream().filter(a -> Boolean.TRUE.equals(a.getSignedIn())).toList();
-        for (RecordAttendance a : presentRows) {
-            w.signature(value(a.getUserRole() == null ? null : a.getUserRole().getRealName()));
+        if (usable(d.record().getTodoListText())) {
+            c.decisions.add("后续事项：" + d.record().getTodoListText().trim());
         }
+        if (c.decisions.isEmpty()) c.decisions.add(anyVote ? "无" : "本次会议未形成需表决的决定事项。");
+
+        // ── 会议决定、决议公告的时间：公示后自动回填（真实手写表须人工补记，这里系统代劳） ──
+        MeetingPublish pub = publishRepo.findByMeetingId(meeting.getId()).orElse(null);
+        c.noticeTime = pub != null && Boolean.TRUE.equals(pub.getPublished()) && pub.getPublishDate() != null
+                ? pub.getPublishDate() + "，会议纪要及有关事项进行了公示"
+                : "（待公示后回填）";
+
+        for (RecordAttendance a : present) {
+            c.attendees.add(value(a.getUserRole() == null ? null : a.getUserRole().getRealName()));
+        }
+        return c;
+    }
+
+    /** PDF：仿《业主委员会工作手册》表格版式——表头格、内容区、决定区、公告时间行、签章格。 */
+    private void renderRecordForm(RecordContent c, Writer w) throws IOException {
+        w.title("业主委员会会议记录");
+        w.center(c.org, 11);
         w.gap(12);
-        w.line("主持人签字：____________________");
-        w.gap(14);
-        w.line("日期：________年____月____日                 业主委员会盖章：");
+        w.formRow(c.infoRows.get(0), new float[]{0.95f, 2.4f, 0.7f, 1.5f, 0.75f, 0.9f});
+        w.formRow(c.infoRows.get(1), new float[]{0.95f, 4.0f, 0.75f, 1.5f});
+        w.formRow(c.infoRows.get(2), new float[]{0.95f, 2.65f, 0.95f, 2.65f});
+        w.gap(10);
+        w.heading("会议内容：");
+        for (String s : c.content) w.line(s);
+        w.gap(6); w.hr();
+        w.heading("会议有关决定及表决结果（会议结果另附）：");
+        for (String s : c.decisions) w.line(s);
+        w.gap(6); w.hr();
+        w.formRow(new String[]{"会议决定、决议公告的时间", c.noticeTime}, new float[]{2.0f, 5.2f});
+        w.gap(12);
+        w.center("出席成员名单及签章", 11);
+        w.gap(4);
+        w.signGrid(c.attendees, 5);
+    }
+
+    /** 纯文本（页内预览）：同一份内容按行排出，前端按标签行加粗。 */
+    private String renderRecordText(RecordContent c) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("业主委员会会议记录\n").append(c.org).append("\n\n");
+        for (String[] row : c.infoRows) {
+            List<String> pairs = new ArrayList<>();
+            for (int i = 0; i + 1 < row.length; i += 2) pairs.add(row[i].replace("  ", "") + "：" + row[i + 1]);
+            sb.append(String.join("    ", pairs)).append('\n');
+        }
+        sb.append("\n会议内容：\n");
+        for (String s : c.content) sb.append(s).append('\n');
+        sb.append("\n会议有关决定及表决结果（会议结果另附）：\n");
+        for (String s : c.decisions) sb.append(s).append('\n');
+        sb.append("\n会议决定、决议公告的时间：").append(c.noticeTime).append('\n');
+        sb.append("\n出席成员名单及签章：\n");
+        sb.append(c.attendees.isEmpty() ? "（无出席记录）" : String.join("、", c.attendees));
+        sb.append("\n（打印后由出席委员在签章格内签字）\n");
+        return sb.toString().strip();
     }
 
     /** 会议纪要 PDF：纪要正文（大模型/人工编辑稿）按公文格式落页——标题居中 + 每段首行缩进两格。 */
@@ -154,10 +222,15 @@ public class MeetingRecordPdfService {
             Writer w = new Writer(doc, loadChineseFont(doc));
             w.title(docTitle);
             w.gap(10);
+            boolean bodyStarted = false;
             for (String raw : minutesText.split("\\R")) {
                 String t = raw.strip().replaceAll("^#{1,6}\\s*", ""); // 去掉 AI 稿里的 Markdown 标题记号
-                if (t.isEmpty()) { w.gap(6); continue; }
-                if (t.equals("会议纪要") || t.equals(meetingTitle) || t.equals(docTitle)) continue; // 开头标题行不重复
+                if (t.isEmpty()) { if (bodyStarted) w.gap(6); continue; }
+                // 正文开头的标题行不重复（页首已排 docTitle）：含 AI 稿自带的「××业委会会议纪要」
+                if (!bodyStarted && (t.equals("会议纪要") || t.equals(meetingTitle) || t.equals(docTitle)
+                        || (t.length() <= 30 && t.endsWith("会议纪要")))) continue;
+                bodyStarted = true;
+                if (isSignoffLine(t)) { w.right(t); continue; } // 落款（业委会全称/日期）右对齐，仿真实公文
                 w.paragraph("　　" + t);
             }
             w.close();
@@ -166,6 +239,11 @@ public class MeetingRecordPdfService {
         } catch (IOException e) {
             throw new IllegalStateException("会议纪要生成失败", e);
         }
+    }
+
+    /** 落款行判定：业委会全称（可带届别）或日期行，右对齐排版。 */
+    private static boolean isSignoffLine(String t) {
+        return t.matches(".{0,30}业主委员会(（第.{1,6}届）)?") || t.matches("\\d{4}年\\d{1,2}月\\d{1,2}日");
     }
 
     private String role(RecordAttendance a) {
@@ -205,34 +283,7 @@ public class MeetingRecordPdfService {
     private record RecordData(CommitteeMeeting meeting, MeetingRecord record,
                               List<RecordAttendance> attendances, List<RecordTopic> topics) {}
 
-    /** 记录内容的输出端：PDF(Writer) 与纯文本(TextSink) 各自实现，writeRecord 只写一份。 */
-    private interface Sink {
-        void title(String s) throws IOException;
-        void center(String s, float size) throws IOException;
-        void heading(String s) throws IOException;
-        void subheading(String s) throws IOException;
-        void line(String s) throws IOException;
-        void paragraph(String s) throws IOException;
-        void signature(String name) throws IOException;
-        void gap(float v) throws IOException;
-    }
-
-    /** 纯文本输出：标题/章节间以空行分隔，供前端页内预览排版。 */
-    private static class TextSink implements Sink {
-        private final StringBuilder sb = new StringBuilder();
-        private void add(String s) { sb.append(s == null ? "" : s).append('\n'); }
-        public void title(String s) { add(s); }
-        public void center(String s, float size) { add(s); }
-        public void heading(String s) { add(""); add(s); }
-        public void subheading(String s) { add(s); }
-        public void line(String s) { add(s); }
-        public void paragraph(String s) { add(s); }
-        public void signature(String name) { add(name + "：____________________"); }
-        public void gap(float v) { if (v >= 10) add(""); }
-        String text() { return sb.toString().strip(); }
-    }
-
-    private static class Writer implements Sink {
+    private static class Writer {
         private final PDDocument doc; private final PDFont font; private PDPage page; private PDPageContentStream cs;
         private float y; private final float left = 48, right = 48;
         private final Map<Integer, String> glyphCache = new HashMap<>(); // 码点→可渲染替代，逐字校验的结果缓存
@@ -245,8 +296,54 @@ public class MeetingRecordPdfService {
         public void subheading(String s) throws IOException { ensure(24); text(s, 11, left, y); y-=19; }
         public void line(String s) throws IOException { for(String row:wrap(s, 10.5f, page.getMediaBox().getWidth()-left-right)){ ensure(18); text(row,10.5f,left,y); y-=17; } }
         public void paragraph(String s) throws IOException { line(s); gap(3); }
+        /** 右对齐行：落款（业委会全称/日期）用，仿真实公文靠右落款。 */
+        public void right(String s) throws IOException { s = sanitize(s); ensure(20); float w=font.getStringWidth(s)/1000f*10.5f; text(s, 10.5f, page.getMediaBox().getWidth()-right-w-30, y); y-=17; }
         public void signature(String name) throws IOException { ensure(35); text(name + "：____________________", 10.5f, left, y); y-=30; }
         public void gap(float v) { y-=v; }
+        float usableW() { return page.getMediaBox().getWidth() - left - right; }
+        /** 通栏横线（表格分区） */
+        void hr() throws IOException { ensure(10); cs.setLineWidth(0.8f); cs.moveTo(left, y); cs.lineTo(left + usableW(), y); cs.stroke(); y -= 10; }
+        /** 表格行：cells 依序排满一行，widths 为各格宽度权重；文字自动换行，行高取最高格。 */
+        void formRow(String[] cells, float[] weights) throws IOException {
+            float total = 0; for (float f : weights) total += f;
+            float[] ws = new float[weights.length];
+            for (int i = 0; i < weights.length; i++) ws[i] = usableW() * weights[i] / total;
+            List<List<String>> wrapped = new ArrayList<>();
+            int maxLines = 1;
+            for (int i = 0; i < cells.length; i++) {
+                List<String> ls = wrap(cells[i] == null ? "" : cells[i], 10.5f, ws[i] - 10);
+                wrapped.add(ls);
+                maxLines = Math.max(maxLines, ls.size());
+            }
+            float h = Math.max(26, maxLines * 15 + 11);
+            ensure(h + 4);
+            cs.setLineWidth(0.8f);
+            float x = left;
+            for (int i = 0; i < cells.length; i++) {
+                cs.addRect(x, y - h, ws[i], h); cs.stroke();
+                float ty = y - 17;
+                for (String ln : wrapped.get(i)) { text(ln, 10.5f, x + 5, ty); ty -= 15; }
+                x += ws[i];
+            }
+            y -= h;
+        }
+        /** 签章格：每行 cols 格，格内左上印姓名、留白供签字（仿工作手册「出席成员名单及签章」）。 */
+        void signGrid(List<String> names, int cols) throws IOException {
+            float cw = usableW() / cols, ch = 46;
+            int rows = Math.max(1, (int) Math.ceil(names.size() / (double) cols));
+            cs.setLineWidth(0.8f);
+            for (int r = 0; r < rows; r++) {
+                ensure(ch + 4);
+                float x = left;
+                for (int cIdx = 0; cIdx < cols; cIdx++) {
+                    int idx = r * cols + cIdx;
+                    cs.addRect(x, y - ch, cw, ch); cs.stroke();
+                    if (idx < names.size()) text(names.get(idx), 9.5f, x + 5, y - 14);
+                    x += cw;
+                }
+                y -= ch;
+            }
+        }
         void text(String s,float size,float x,float yy)throws IOException{cs.beginText();cs.setFont(font,size);cs.newLineAtOffset(x,yy);cs.showText(sanitize(s));cs.endText();}
         List<String> wrap(String s,float size,float max)throws IOException{List<String> out=new ArrayList<>();for(String para:sanitize(value(s)).split("\\R",-1)){StringBuilder b=new StringBuilder();for(char c:para.toCharArray()){String n=b.toString()+c;if(font.getStringWidth(n)/1000f*size>max&&b.length()>0){out.add(b.toString());b.setLength(0);}b.append(c);}out.add(b.toString());}return out;}
         void close() throws IOException { if(cs!=null){cs.close();cs=null;} }

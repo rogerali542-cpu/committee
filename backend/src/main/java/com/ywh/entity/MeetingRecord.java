@@ -42,6 +42,10 @@ public class MeetingRecord {
     @Column(name = "todo_list_text", columnDefinition = "TEXT")
     private String todoListText;
 
+    /** 列席人员（居委/街道/物业等非委员到会者，顿号分隔）。真实记录实到写「7+3」=委员+列席。 */
+    @Column(name = "observers_text", length = 500)
+    private String observersText;
+
     @Column(name = "quick_confirm_json", columnDefinition = "TEXT")
     private String quickConfirmJson;
 

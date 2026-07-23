@@ -39,6 +39,10 @@
               <span class="material-open">查看 ›</span>
             </a>
           </div>
+          <!-- 张贴留痕（0723 向真实档案看齐：每份公示都配公示栏张贴照片存档） -->
+          <button v-if="isPublished && isChairUser" class="post-photo-btn" :disabled="photoUploading" @click="takePostPhoto">
+            {{ photoUploading ? '正在上传照片…' : '拍照留痕：公示栏张贴照片' }}
+          </button>
         </section>
         <!-- 未发布时主任在预览页里发布（0722 用户定：详情页入口改为「查看公示材料」，先看内容再发布） -->
         <button v-if="canPublish" class="pub-btn publish" :disabled="publishing" @click="publishFromPreview">{{ publishing ? '发布中…' : '确认发布公示' }}</button>
@@ -56,6 +60,7 @@ import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
 import { redirectTo, navigateBack } from '@/utils/navigate'
 import PublishNav from '@/components/PublishNav.vue'
+import { uploadAttachment, humanSize } from '@/utils/upload'
 
 const route = useRoute()
 
@@ -102,18 +107,27 @@ const publicTitle = computed(() => {
   const clean = String(subject || '本次会议有关事项').replace(/^关于/, '').replace(/(的)?(会议|议题)$/, '')
   return '关于' + clean + '的公示'
 })
+// 预览 fallback 与后端 buildPublicNoticeContent 同模板（0723 向真实公告样张看齐：
+// 依据条款开头、公示期+张榜地点+收意见安排、「特此公示。」、落款带届别）；发布后以后端存的正文为准
 const publicContent = computed(() => {
   const saved = detail.value && detail.value.publish && detail.value.publish.publicContent
   if (saved) return saved
-  const lines = ['根据相关规定，经阳光花园业主委员会会议研究，现将有关事项公示如下：', '']
+  const org = (detail.value && detail.value.orgFullName) || '阳光花园业主委员会（第一届）'
+  const orgShort = org.replace(/（[^）]*）$/, '')
+  const today = new Date()
+  const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0')
+  const lines = ['根据《中华人民共和国民法典》《物业管理条例》及本小区《业主大会议事规则》的相关规定，经' + orgShort + '会议研究，现将有关事项公示如下：', '']
   topics.value.forEach((topic, index) => {
     const result = topic.type === 'notice' ? '有关情况已在会议中通报'
       : topic.type === 'discussion' ? '有关意见已在会议中讨论并记录'
         : (topic.text || resultText(topic))
     lines.push(`${index + 1}. ${topic.title}：${result}。`)
   })
-  lines.push('', '相关会议纪要及附件一并公示。如有意见或建议，请通过业主接待渠道以书面形式反馈。', '', '阳光花园业主委员会')
-  if (detail.value && detail.value.publish && detail.value.publish.publishDate) lines.push(detail.value.publish.publishDate)
+  lines.push('',
+    '本公示自' + dateStr + '起在本小区业委会公示栏张榜公布，公示期7天。相关会议纪要及附件一并公示。',
+    '公示期内如有意见或建议，请在业主接待日向业主委员会当面反映，或以书面形式投递至意见箱。',
+    '', '特此公示。', '', org,
+    (detail.value && detail.value.publish && detail.value.publish.publishDate) || dateStr)
   return lines.join('\n')
 })
 const relatedMaterials = computed(() => {
@@ -193,6 +207,41 @@ async function publishFromPreview() {
   } finally { publishing.value = false }
 }
 
+// ── 张贴留痕（0723）：公示栏张贴后拍照存档，进会议材料并显示在附件清单 ──
+const isChairUser = computed(() => !!(detail.value && detail.value.userView === 'chair'))
+const photoUploading = ref(false)
+let _postPhotoInput = null
+function takePostPhoto() {
+  if (photoUploading.value) return
+  if (!_postPhotoInput) {
+    _postPhotoInput = document.createElement('input')
+    _postPhotoInput.type = 'file'
+    _postPhotoInput.accept = 'image/*'
+    _postPhotoInput.capture = 'environment'
+    _postPhotoInput.style.display = 'none'
+    _postPhotoInput.addEventListener('change', onPostPhotoChange)
+    document.body.appendChild(_postPhotoInput)
+  }
+  _postPhotoInput.value = ''
+  _postPhotoInput.click()
+}
+async function onPostPhotoChange(e) {
+  const f = (e.target.files || [])[0]
+  if (!f) return
+  photoUploading.value = true
+  try {
+    const already = ((detail.value && detail.value.materials) || []).filter(m => ((m.name || '')).indexOf('公示张贴照片') >= 0).length
+    const fname = '公示张贴照片' + (already ? '（' + (already + 1) + '）' : '') + '.jpg'
+    const file = new File([f], fname, { type: f.type || 'image/jpeg' })
+    const r = await uploadAttachment(file)
+    await api.committeeAddMaterial(meetingId, fname, humanSize(r.fileSize), r.fileType, r.url)
+    toast({ title: '张贴照片已存档', icon: 'success' })
+    load()
+  } catch (err) {
+    toast({ title: (err && err.message) || '照片上传失败，请重试', icon: 'none' })
+  } finally { photoUploading.value = false }
+}
+
 // 附件「会议纪要」→ 独立预览页（页内预览+导出PDF），带硬导航兜底
 function viewMinutesDoc() {
   const target = '/doc-preview?meetingId=' + meetingId + '&kind=minutes'
@@ -268,6 +317,9 @@ onMounted(() => {
 .section-empty { text-align:center; color:var(--pub-sub); font-size:28rpx; padding:30rpx 0; }
 .todo-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:20rpx 0; border-bottom:2rpx solid #edf0f4; }.todo-row:last-child { border:0; }.todo-main { min-width:0; }.todo-main b,.todo-main span { display:block; }.todo-main b { color:var(--pub-ink); font-size:29rpx; }.todo-main span { color:var(--pub-sub); font-size:24rpx; margin-top:7rpx; }.todo-row em { flex:none; border-radius:999rpx; padding:8rpx 16rpx; font-size:24rpx; font-style:normal; }.todo-todo { background:var(--pub-amber-soft); color:var(--pub-amber); }.todo-doing { background:var(--pub-blue-soft); color:var(--pub-blue); }.todo-done { background:var(--pub-green-soft); color:var(--pub-green); }
 .public-note { background:#e9eef4; border-radius:18rpx; padding:25rpx 28rpx; color:var(--pub-sub); font-size:26rpx; line-height:1.7; }.public-note b,.public-note span { display:block; }.public-note b { color:var(--pub-ink); margin-bottom:6rpx; }
+/* 张贴留痕按钮：附件卡内轻量虚线按钮，不与主按钮抢层级 */
+.post-photo-btn { width:100%; margin-top:20rpx; padding:20rpx 0; border:2rpx dashed var(--pub-blue); border-radius:14rpx; background:transparent; color:var(--pub-blue); font-size:29rpx; font-weight:600; }
+.post-photo-btn:disabled { opacity:.55; }
 /* 预览态：发布为唯一主按钮，复制降为描边次按钮（一屏一个实心）。
    0723 用户反馈：主按钮太重 → 底色改浅一档的藏青、字重降 600；两按钮间距加大。 */
 .pub-btn.publish { background:#4A6E9C; font-weight:600; }

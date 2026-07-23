@@ -196,7 +196,20 @@ public class CommitteeService {
                         .orElse(false))
                 .publish(publishInfo)
                 .members(hideInternalRecord ? null : getMemberSummaries(m))
+                .orgFullName(orgFullName(m))
+                .observers(hideInternalRecord ? null : recordRepo.findByMeetingId(meetingId)
+                        .map(MeetingRecord::getObserversText).orElse(null))
                 .build();
+    }
+
+    /** 列席人员（居委/街道/物业等非委员到会者）：主任在会后整理页登记，进入记录与纪要。 */
+    @Transactional
+    public void setObservers(Long meetingId, String text) {
+        meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        MeetingRecord record = getRecord(meetingId);
+        record.setObserversText(text == null ? null : text.trim());
+        recordRepo.save(record);
     }
 
     // ===== Create =====
@@ -1629,9 +1642,30 @@ public class CommitteeService {
         return "关于" + subject + "的公示";
     }
 
-    private String buildPublicNoticeContent(CommitteeMeeting meeting) {
-        String community = meeting.getCommunity() != null && meeting.getCommunity().getName() != null
+    /** 业委会小区名（无则空串）。 */
+    private String communityName(CommitteeMeeting meeting) {
+        return meeting.getCommunity() != null && meeting.getCommunity().getName() != null
                 ? meeting.getCommunity().getName().trim() : "";
+    }
+
+    /**
+     * 业委会全称（落款/抬头统一用）：小区名+业主委员会（第X届）。
+     * 真实材料（备案证/公章/公告落款）均带届别，如「上海市黄浦区瞿溪新村业主委员会（第三届）」。
+     */
+    public String orgFullName(CommitteeMeeting meeting) {
+        String community = communityName(meeting);
+        String term = meeting.getCommunity() != null && meeting.getCommunity().getCommitteeTerm() != null
+                && !meeting.getCommunity().getCommitteeTerm().isBlank()
+                ? meeting.getCommunity().getCommitteeTerm().trim() : "第一届";
+        return (community.isBlank() ? "" : community) + "业主委员会（" + term + "）";
+    }
+
+    /**
+     * 公示正文（0723 向真实公告样张看齐）：开头列依据条款、正文一事一条、
+     * 公示期+张榜地点+收意见安排写具体、结尾「特此公示。」、落款带届别+日期。盖章打印后线下加盖。
+     */
+    private String buildPublicNoticeContent(CommitteeMeeting meeting) {
+        String community = communityName(meeting);
         String org = community.isBlank() ? "业主委员会" : community + "业主委员会";
         MeetingRecord record = recordRepo.findByMeetingId(meeting.getId()).orElse(null);
         List<RecordTopic> topics = record == null ? Collections.emptyList()
@@ -1639,7 +1673,8 @@ public class CommitteeService {
         Map<Long, QuickConfirmRequest.TopicResult> confirmed = record == null
                 ? Collections.emptyMap() : quickConfirmTopicMap(record);
         StringBuilder text = new StringBuilder();
-        text.append("根据相关规定，经").append(org).append("会议研究，现将有关事项公示如下：\n\n");
+        text.append("根据《中华人民共和国民法典》《物业管理条例》及本小区《业主大会议事规则》的相关规定，经")
+                .append(org).append("会议研究，现将有关事项公示如下：\n\n");
         if (topics.isEmpty()) {
             text.append("本次会议形成的有关事项及会议纪要现予公示。\n");
         } else {
@@ -1657,8 +1692,10 @@ public class CommitteeService {
                 text.append("。\n");
             }
         }
-        text.append("\n相关会议纪要及附件一并公示。如有意见或建议，请通过业主接待渠道以书面形式反馈。\n\n");
-        text.append(org).append("\n").append(TODAY);
+        text.append("\n本公示自").append(TODAY).append("起在本小区业委会公示栏张榜公布，公示期7天。相关会议纪要及附件一并公示。\n");
+        text.append("公示期内如有意见或建议，请在业主接待日向业主委员会当面反映，或以书面形式投递至意见箱。\n\n");
+        text.append("特此公示。\n\n");
+        text.append(orgFullName(meeting)).append("\n").append(TODAY);
         return text.toString();
     }
 
@@ -1786,11 +1823,9 @@ public class CommitteeService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("【会议基本信息】\n");
-        String communityName = (m.getCommunity() != null && m.getCommunity().getName() != null && !m.getCommunity().getName().isBlank())
-                ? m.getCommunity().getName().trim() : "";
-        String orgFullName = communityName.isEmpty() ? "业主委员会" : communityName + "业主委员会";
+        String communityName = communityName(m);
         sb.append("小区名称：").append(communityName.isEmpty() ? "未明确说明" : communityName).append('\n');
-        sb.append("业委会全称（纪要抬头与落款统一使用此名称）：").append(orgFullName).append('\n');
+        sb.append("业委会全称（纪要抬头与落款统一使用此名称）：").append(orgFullName(m)).append('\n');
         sb.append("会议名称：").append(nullToUnknown(m.getTitle())).append('\n');
         sb.append("会议时间：").append(nullToUnknown(m.getMeetingDate())).append(" ").append(nullToUnknown(m.getMeetingTime())).append('\n');
         sb.append("会议地点：").append(nullToUnknown(m.getLocation())).append('\n');
@@ -1798,10 +1833,18 @@ public class CommitteeService {
         sb.append("会议说明：").append(nullToUnknown(m.getDescription())).append('\n');
         sb.append("主持人：").append(host).append('\n');
         sb.append("应到委员：").append(attendances.size()).append("人\n");
-        sb.append("实到委员：").append(present.size()).append("人；名单：")
-                .append(present.isEmpty() ? "未明确说明" : present.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append('\n');
+        // 到会构成拆现场/线上（真实纪要句式：「有五名委员现场到会，因公、因病未能现场到会的两名委员在微信工作群同时参加会议」）
+        List<RecordAttendance> onsite = present.stream().filter(a -> !"remote".equals(a.getAttendanceMode())).toList();
+        List<RecordAttendance> remote = present.stream().filter(a -> "remote".equals(a.getAttendanceMode())).toList();
+        sb.append("实到委员：").append(present.size()).append("人；现场到会")
+                .append(onsite.size()).append("人（").append(onsite.isEmpty() ? "无" : onsite.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、")))
+                .append("），线上参加").append(remote.size()).append("人（").append(remote.isEmpty() ? "无" : remote.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、")))
+                .append("）\n");
         if (!absent.isEmpty()) {
             sb.append("缺席委员：").append(absent.stream().map(a -> a.getUserRole().getRealName()).collect(Collectors.joining("、"))).append('\n');
+        }
+        if (record.getObserversText() != null && !record.getObserversText().isBlank()) {
+            sb.append("列席指导人员（居委/街道/物业等，非委员）：").append(record.getObserversText().trim()).append('\n');
         }
         if (record.getHasMajorIssue()) {
             sb.append("居委会签字：").append(nullToUnknown(record.getJuweiName()))
@@ -1879,6 +1922,7 @@ public class CommitteeService {
         sb.append("请严格仿照真实业委会一页式纪要生成正式《业主委员会会议纪要》：第一行只写“小区名称+业委会会议纪要”，正文不用信息块和分节小标题。");
         sb.append("第一自然段交代日期、地点或线上方式、参会情况和主持人；第二自然段用“一是、二是、三是”集中概括议程；第三自然段集中写通报知悉、讨论意见或表决结果，以及已明确的紧接办理动作。");
         sb.append("不逐人展开意见，不写完整投票明细、内部分析、风险、详细待办或没有依据的后续安排；明确出现“原则同意”等保留意见时必须保留原表述。");
+        sb.append("如有列席指导人员，仿照真实纪要在结尾自然段写明「××、××等同志到会指导」；没有则不写。");
         sb.append("优先依据人工确认结果和议题报告摘录，不要逐句复述转写，不要输出冗长背景。");
         sb.append("如有【会议材料摘录】，可据此补充方案要点、数据或条款等事实细节，但人工确认结果与材料冲突时以人工确认结果为准；材料识别可能有误，不确定的不要写入。");
         sb.append("纪要缺失信息直接省略，不写“未明确说明”，不得编造；末尾仅写业委会全称和会议日期，全文以一页为目标。");

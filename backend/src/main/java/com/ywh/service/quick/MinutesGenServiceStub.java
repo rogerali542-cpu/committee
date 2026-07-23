@@ -72,30 +72,47 @@ public class MinutesGenServiceStub implements MinutesGenService {
                 .build();
     }
 
+    /** 0723 向真实纪要样张看齐：一页式叙事体（单行标题/召开情况自然段/议程逐条/列席指导/落款），不再分节。 */
     private String minutesFromContext(String meetingContext, List<QuickPolishVO.TopicSummary> topics) {
         String basic = section(meetingContext, "【会议基本信息】", "【人工确认后的议题结果】");
         String topicText = section(meetingContext, "【人工确认后的议题结果】", "【必要转写补充】");
+        String community = lineValue(basic, "小区名称：");
+        String org = lineValue(basic, "业委会全称（纪要抬头与落款统一使用此名称）：");
+        if (org.isBlank()) org = (community.isBlank() ? "" : community) + "业主委员会";
+        String time = lineValue(basic, "会议时间：");
+        String location = lineValue(basic, "会议地点：");
+        String host = lineValue(basic, "主持人：");
+        String present = lineValue(basic, "实到委员：");
+        String observers = lineValue(basic, "列席指导人员（居委/街道/物业等，非委员）：");
 
         StringBuilder sb = new StringBuilder();
-        sb.append("业主委员会会议纪要（草稿）\n\n");
-        sb.append("一、会议基本情况\n");
-        appendBasicMinutes(sb, basic);
-        sb.append("\n二、议题审议情况\n");
+        sb.append(community.isBlank() ? "业委会会议纪要" : community + "业委会会议纪要").append("\n\n");
+        sb.append(blankToUnknown(time)).append("，").append(org.replaceAll("（[^）]*）$", ""))
+                .append("在").append(blankToUnknown(location)).append("召开了业委会全体委员会议");
+        if (!present.isBlank()) sb.append("，").append(present.replaceAll("；.*$", ""));
+        if (!host.isBlank()) sb.append("，会议由").append(host).append("主持");
+        sb.append("。\n\n");
         String renderedTopics = renderConfirmedTopics(topicText);
         if (!renderedTopics.isBlank()) {
-            sb.append(renderedTopics);
+            sb.append("会议议程及审议情况如下：\n").append(renderedTopics);
         } else if (topics != null && !topics.isEmpty()) {
             int index = 1;
             for (QuickPolishVO.TopicSummary t : topics) {
                 String summary = concise(t.getSummary(), 260);
                 if (!summary.isBlank()) sb.append(index++).append(". ").append(summary).append("\n");
             }
-        } else {
-            sb.append("未明确说明。\n");
         }
-        sb.append("\n三、会议结论与后续安排\n");
-        sb.append("会议已按人工确认结果记录相关事项。通知和讨论类事项按会议记录与形成的意见继续推进，表决事项按确认票数和表决结果执行。\n");
+        if (!observers.isBlank()) sb.append("\n").append(observers).append("等同志到会指导。\n");
+        sb.append("\n").append(org).append("\n").append(cnDate(time)).append("\n");
         return sb.toString();
+    }
+
+    /** 会议日期转公文落款格式：2026-07-23 → 2026年7月23日；解析不了原样返回日期部分。 */
+    private String cnDate(String time) {
+        if (time == null) return "";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{4})-(\\d{1,2})-(\\d{1,2})").matcher(time);
+        if (m.find()) return m.group(1) + "年" + Integer.parseInt(m.group(2)) + "月" + Integer.parseInt(m.group(3)) + "日";
+        return time.split("\\s+")[0];
     }
 
     private String topicReportFromContext(String meetingContext, List<QuickPolishVO.TopicSummary> topics) {
@@ -145,20 +162,6 @@ public class MinutesGenServiceStub implements MinutesGenService {
                     .append("；负责人：未明确说明；截止时间：未明确说明；状态：待完成。\n");
         }
         return sb.toString();
-    }
-
-    private void appendBasicMinutes(StringBuilder sb, String basic) {
-        String title = lineValue(basic, "会议名称：");
-        String time = lineValue(basic, "会议时间：");
-        String location = lineValue(basic, "会议地点：");
-        String host = lineValue(basic, "主持人：");
-        String present = lineValue(basic, "实到委员：");
-        String total = lineValue(basic, "应到委员：");
-        sb.append("会议名称：").append(blankToUnknown(title)).append("\n");
-        sb.append("会议时间：").append(blankToUnknown(time)).append("\n");
-        sb.append("会议地点：").append(blankToUnknown(location)).append("\n");
-        sb.append("主持人：").append(blankToUnknown(host)).append("\n");
-        sb.append("参会情况：应到委员").append(blankToUnknown(total)).append("，实到委员").append(blankToUnknown(present)).append("。\n");
     }
 
     private String renderConfirmedTopics(String topicText) {

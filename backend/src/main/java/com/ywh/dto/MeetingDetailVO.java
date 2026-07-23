@@ -71,6 +71,11 @@ public class MeetingDetailVO {
     // Scores (ended stage)
     private PublishScoreVO publishScore;
 
+    /** 业委会全称（含届别）：落款/抬头统一用，如「阳光花园业主委员会（第一届）」 */
+    private String orgFullName;
+    /** 列席人员（居委/街道/物业等非委员到会者，顿号分隔） */
+    private String observers;
+
     // Members
     private List<MemberSummaryVO> members;
 

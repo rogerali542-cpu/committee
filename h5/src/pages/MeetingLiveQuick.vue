@@ -55,6 +55,12 @@
             </div>
             <template v-if="!erCollapsed[1]">
             <div v-if="signinStats.absentCount > 0" class="er-item-sub">（{{ signinStats.absentCount }} 人请假缺席，不计入应到）</div>
+            <!-- 列席人员（0723 向真实材料看齐）：居委/街道/物业等非委员到会者，进会议记录（实到 N+M）与纪要（到会指导） -->
+            <div class="er-observers" @click="isChair && editObservers()">
+              <span class="er-observers-label">列席人员</span>
+              <span class="er-observers-value">{{ observersText || '未登记（居委、街道、物业等到会人员）' }}</span>
+              <button v-if="isChair" class="er-observers-edit">{{ observersText ? '修改' : '登记' }}</button>
+            </div>
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
               <button class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
@@ -3483,6 +3489,28 @@ async function onMaterialFileChange(e) {
   }
 }
 
+// ——— 列席人员（0723 向真实材料看齐）：居委/街道/物业等非委员到会者。
+// 登记后进会议记录（实到写「委员数+列席数」）与纪要（结尾「××等同志到会指导」） ———
+const observersText = computed(() => (detail.value && detail.value.observers) || '')
+async function editObservers() {
+  const res = await showModal({
+    title: '登记列席人员',
+    content: observersText.value,
+    editable: true,
+    placeholderText: '如：新村居委朱书记、街道治家服务站张同志（顿号分隔）',
+    confirmText: '保存',
+    cancelText: '取消'
+  })
+  if (!res.confirm) return
+  try {
+    await api.committeeSetObservers(meetingId.value, (res.content || '').trim())
+    toast({ title: '列席人员已登记', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
+  }
+}
+
 // ——— 委员合影（0722 从详情页移入会后整理）：input capture 直接调相机，拍完存进会议材料 ———
 const photoUploading = ref(false)
 let _groupPhotoInput = null
@@ -3930,6 +3958,11 @@ async function returnToRecordingPage() {
 .er-item-state.busy { background:#EAF3FC; color:#1F6FB2; }
 .er-item-state.muted { background:#F2F3F5; color:#8A9099; }
 .er-item-sub { margin-top:12rpx; padding-left:16rpx; font-size:25rpx; color:#8A9099; line-height:1.5; }
+/* 列席人员行：签到项内轻量一行，标签+值+登记按钮 */
+.er-observers { display:flex; align-items:center; gap:14rpx; margin-top:14rpx; padding:14rpx 16rpx; background:#F7F8FA; border-radius:12rpx; }
+.er-observers-label { flex-shrink:0; font-size:26rpx; color:#55585E; font-weight:600; }
+.er-observers-value { flex:1; min-width:0; font-size:25rpx; color:#8A9099; line-height:1.5; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.er-observers-edit { flex-shrink:0; border:2rpx solid #8FB3DC; background:#fff; color:#2464B4; font-size:25rpx; font-weight:600; border-radius:999rpx; padding:8rpx 24rpx; }
 .er-item-actions { margin-top:26rpx; padding-left:16rpx; display:flex; gap:14rpx; }
 .er-act { border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:24rpx; font-weight:500; border-radius:999rpx; padding:10rpx 26rpx; font-family:inherit; line-height:1.3; }
 .er-act:active { background:#F1F2F4; }
