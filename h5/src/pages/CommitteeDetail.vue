@@ -3270,7 +3270,7 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .arc-summary .arch-title { margin-top:0; }
 .arc-summary-static { gap:4px; padding:14px 16px 10px; cursor:default; }
 .arc-summary-static:active { background:transparent; }
-.arcs-meta { font-size:15px; color:#8A8F98; line-height:1.5; }
+.arcs-meta { font-size:16px; color:#8A8F98; line-height:1.5; }
 .arcs-caret { font-size:15px; color:var(--c-primary-dark); font-weight:600; margin-top:4px; }
 .arc-summary:active { background:#FCF8F3; }
 /* 展开区里的「查看会议纪要」按钮（从底部操作栏挪进详情） */
@@ -3282,9 +3282,9 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 .detail-method-switch button { border:0; background:transparent; color:#62676f; font-size:28rpx; padding:14rpx 28rpx; border-radius:10rpx; }
 .detail-method-switch button.active { background:#fff; color:var(--c-primary-dark); font-weight:700; box-shadow:0 2rpx 8rpx rgba(0,0,0,.08); }
 .ase-copy { display:flex; flex-direction:column; min-width:0; gap:4px; }
-.ase-copy b { color:#30343B; font-size:16px; line-height:1.35; }
-.ase-copy small { color:#7B818B; font-size:12px; line-height:1.45; }
-.ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:14px; font-weight:700; cursor:pointer; }
+.ase-copy b { color:#30343B; font-size:17px; line-height:1.35; }
+.ase-copy small { color:#7B818B; font-size:14px; line-height:1.45; }
+.ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:15px; font-weight:700; cursor:pointer; }
 .ase-btn:active { background:#EAF2FB; }
 .ase-btn:disabled { opacity:.55; cursor:default; }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
@@ -3387,10 +3387,10 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 /* 左侧状态栏（已公示 + 日期），右侧功能小字并排 */
 .arp-status { flex-shrink:0; display:flex; flex-direction:column; gap:2px; }
 .arp-status-main { display:flex; align-items:center; gap:5px; font-size:17px; font-weight:700; color:#27AE60; }
-.arp-status-sub { font-size:12px; color:#999; }
+.arp-status-sub { font-size:13px; color:#999; }
 .arp-done .arp-actions { flex:1; width:auto; margin-top:0; }
 .arp-check { width:20px; height:20px; border-radius:50%; background:#27AE60; color:#fff; display:flex; align-items:center; justify-content:center; font-size: 24rpx; }
-.ar-skip { display:block; text-align:center; font-size:15px; color:var(--c-primary-dark); margin-top:10px; font-weight:700; }
+.ar-skip { display:block; text-align:center; font-size:16px; color:var(--c-primary-dark); margin-top:10px; font-weight:700; }
 .ar-skip.danger { color:#E74C3C; }
 
 /* 实名表决开关（添加议题表单） */
@@ -4112,11 +4112,11 @@ function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
   word-break:break-all;
 }
 
-/* 详情页议题正文整体缩两号（md=3议题基准，无 size 类走这里；xl/lg/sm 见下方各自覆盖，均已同步下调） */
-.ar-card .mtc-title-main { font-size:17px; }
-.ar-card .mtc-topic-title { font-size:17px; }
-.ar-card .mtc-status { font-size:15px; }
-.ar-card .mtc-summary { font-size:16px; }
+/* 详情页议题正文整体缩两号（md=3议题基准）；0722 用户定：适老化整体+1号 */
+.ar-card .mtc-title-main { font-size:18px; }
+.ar-card .mtc-topic-title { font-size:18px; }
+.ar-card .mtc-status { font-size:16px; }
+.ar-card .mtc-summary { font-size:17px; }
 .ar-card .mtc-no { width:26px; height:26px; font-size:16px; }
 
 /* 按议题数量动态调整议题卡字号 */
