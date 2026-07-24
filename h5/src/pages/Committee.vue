@@ -117,15 +117,21 @@
 
         <div v-if="cockpitTodos.length" class="ck-section">
           <div class="ck-sec-title">待处理</div>
-          <div v-for="t in cockpitTodos" :key="t.key" class="ck-todo" :class="t.tone" @click="t.onTap()">
+          <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
+               class="ck-todo" :class="currentCockpitTodo.tone" @click="currentCockpitTodo.onTap()">
             <div class="ck-todo-head">
-              <span class="ck-todo-tag" :class="t.tone">{{ t.tag }}</span>
-              <button v-if="t.onDelete" type="button" class="ck-todo-delete" @click.stop="t.onDelete()">删除会议</button>
+              <span class="ck-todo-tag" :class="currentCockpitTodo.tone">{{ currentCockpitTodo.tag }}</span>
+              <div class="ck-todo-head-actions">
+                <button v-if="currentCockpitTodo.onDelete" type="button" class="ck-todo-delete"
+                        @click.stop="currentCockpitTodo.onDelete()">删除会议</button>
+                <button v-if="cockpitTodos.length > 1" type="button" class="ck-todo-next"
+                        @click.stop="showNextCockpitTodo">查看下一项</button>
+              </div>
             </div>
-            <div class="ck-todo-title">{{ t.title }}</div>
+            <div class="ck-todo-title">{{ currentCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
-              <div v-if="t.sub" class="ck-todo-sub">{{ t.sub }}</div>
-              <span class="ck-todo-cta">{{ t.cta }} <i>›</i></span>
+              <div v-if="currentCockpitTodo.sub" class="ck-todo-sub">{{ currentCockpitTodo.sub }}</div>
+              <span class="ck-todo-cta">{{ currentCockpitTodo.cta }} <i>›</i></span>
             </div>
           </div>
         </div>
@@ -1307,6 +1313,19 @@ const cockpitTodos = computed(() => {
       onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } })
   }
   return items
+})
+const cockpitTodoIndex = ref(0)
+const currentCockpitTodo = computed(() => {
+  const items = cockpitTodos.value
+  if (!items.length) return null
+  return items[cockpitTodoIndex.value % items.length]
+})
+function showNextCockpitTodo() {
+  if (cockpitTodos.value.length < 2) return
+  cockpitTodoIndex.value = (cockpitTodoIndex.value + 1) % cockpitTodos.value.length
+}
+watch(() => cockpitTodos.value.map(item => item.key).join('|'), () => {
+  if (cockpitTodoIndex.value >= cockpitTodos.value.length) cockpitTodoIndex.value = 0
 })
 function formatLocalDay(value) {
   const d = value instanceof Date ? value : new Date(value)
@@ -3804,6 +3823,7 @@ onActivated(show)
 .ck-todo.green::before { background: #3F7C5A; }
 .ck-todo:active { transform: translateY(2rpx); }
 .ck-todo-head { display: flex; align-items: center; justify-content: space-between; min-height: 44rpx; margin-top: -7rpx; }
+.ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
 .ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
@@ -3814,6 +3834,8 @@ onActivated(show)
 .ck-todo-cta i { margin-left: 5rpx; font-style: normal; font-size: 33rpx; line-height: 1; }
 .ck-todo-delete { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #956B6B; font-size: 24rpx; font-weight: 500; transform: translate(7rpx, -4rpx); }
 .ck-todo-delete:active { color: #C0392B; }
+.ck-todo-next { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #6F7E93; font-size: 23rpx; font-weight: 500; }
+.ck-todo-next:active { color: #3E6BA8; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
