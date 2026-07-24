@@ -358,7 +358,7 @@ onMounted(async () => {
   background: #F2F4F6; color: #28333F; font-size: 32rpx; }
 .hour-grid button.selected, .minute-grid button.selected { background: #E4ECF6; color: #2F609D;
   box-shadow: inset 0 0 0 3rpx #4775AF; font-weight: 800; }
-.time-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; margin-top: 28rpx; }
+.time-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; margin-top: 48rpx; }
 .time-actions button { height: 74rpx; border-radius: 16rpx; font-size: 30rpx; font-weight: 700; }
 .time-actions .cancel { border: 2rpx solid #D8DEE4; background: #fff; color: #66717C; }
 .time-actions .confirm { border: 0; background: #4775AF; color: #fff; }
