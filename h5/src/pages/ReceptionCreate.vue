@@ -18,10 +18,10 @@
           </label>
           <label class="field half">
             <span>接待时间 *</span>
-            <select v-model="form.time" class="control">
-              <option value="" disabled>请选择</option>
-              <option v-for="time in TIME_OPTIONS" :key="time" :value="time">{{ time }}</option>
-            </select>
+            <button class="control time-control" type="button" @click="openTimePicker">
+              <span>{{ form.time || '请选择时间' }}</span>
+              <span class="clock-icon"></span>
+            </button>
           </label>
         </div>
 
@@ -109,6 +109,43 @@
         </footer>
       </section>
     </div>
+
+    <div v-if="timePickerOpen" class="calendar-mask" @click="timePickerOpen = false">
+      <section class="time-panel" role="dialog" aria-modal="true" aria-label="选择接待时间" @click.stop>
+        <header class="time-heading">
+          <span>选择接待时间</span>
+          <strong>{{ paddedHour }}:{{ paddedMinute }}</strong>
+        </header>
+        <div class="time-label">小时</div>
+        <div class="hour-grid">
+          <button
+            v-for="hour in HOUR_OPTIONS"
+            :key="hour"
+            type="button"
+            :class="{ selected: hour === pickedHour }"
+            @click="pickedHour = hour"
+          >
+            {{ String(hour).padStart(2, '0') }}
+          </button>
+        </div>
+        <div class="time-label minute-label">分钟</div>
+        <div class="minute-grid">
+          <button
+            v-for="minute in MINUTE_OPTIONS"
+            :key="minute"
+            type="button"
+            :class="{ selected: minute === pickedMinute }"
+            @click="pickedMinute = minute"
+          >
+            {{ String(minute).padStart(2, '0') }}
+          </button>
+        </div>
+        <footer class="time-actions">
+          <button type="button" class="cancel" @click="timePickerOpen = false">取消</button>
+          <button type="button" class="confirm" @click="confirmTime">确认</button>
+        </footer>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -125,10 +162,8 @@ function localDateString(date = new Date()) {
 
 const today = localDateString()
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
-const TIME_OPTIONS = Array.from({ length: 23 }, (_, index) => {
-  const minutes = 10 * 60 + index * 30
-  return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0')
-})
+const HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) => index + 10)
+const MINUTE_OPTIONS = [0, 30]
 const CATEGORIES = [
   { value: 'property', label: '物业类' },
   { value: 'public_affairs', label: '公共事务' },
@@ -148,6 +183,9 @@ const saving = ref(false)
 const calendarOpen = ref(false)
 const calendarYear = ref(new Date().getFullYear())
 const calendarMonth = ref(new Date().getMonth() + 1)
+const timePickerOpen = ref(false)
+const pickedHour = ref(19)
+const pickedMinute = ref(0)
 let visitorKey = 0
 
 const displayDate = computed(() => {
@@ -156,6 +194,8 @@ const displayDate = computed(() => {
 })
 const leadingBlankCount = computed(() => new Date(calendarYear.value, calendarMonth.value - 1, 1).getDay())
 const calendarDayCount = computed(() => new Date(calendarYear.value, calendarMonth.value, 0).getDate())
+const paddedHour = computed(() => String(pickedHour.value).padStart(2, '0'))
+const paddedMinute = computed(() => String(pickedMinute.value).padStart(2, '0'))
 
 function dateAt(day) {
   return `${calendarYear.value}-${String(calendarMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -183,6 +223,16 @@ function goToday() {
   calendarYear.value = now.getFullYear()
   calendarMonth.value = now.getMonth() + 1
   calendarOpen.value = false
+}
+function openTimePicker() {
+  const [hour, minute] = String(form.time || '19:00').split(':').map(Number)
+  pickedHour.value = HOUR_OPTIONS.includes(hour) ? hour : 19
+  pickedMinute.value = MINUTE_OPTIONS.includes(minute) ? minute : 0
+  timePickerOpen.value = true
+}
+function confirmTime() {
+  form.time = `${paddedHour.value}:${paddedMinute.value}`
+  timePickerOpen.value = false
 }
 
 function newVisitor() {
@@ -263,8 +313,13 @@ onMounted(async () => {
 .field > span { display: block; margin-bottom: 10rpx; }
 .control { width: 100%; height: 84rpx; box-sizing: border-box; padding: 0 18rpx; border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833; font-size: 30rpx; outline: none; }
 .date-control { display: flex; align-items: center; justify-content: space-between; text-align: left; }
+.time-control { display: flex; align-items: center; justify-content: space-between; text-align: left; }
 .calendar-icon { display: flex; align-items: center; justify-content: center; width: 42rpx; height: 42rpx;
   border: 3rpx solid #4775AF; border-radius: 8rpx; color: #4775AF; font-size: 22rpx; font-weight: 800; }
+.clock-icon { position: relative; width: 40rpx; height: 40rpx; box-sizing: border-box;
+  border: 3rpx solid #4775AF; border-radius: 50%; }
+.clock-icon::before { content: ""; position: absolute; left: 17rpx; top: 7rpx; width: 3rpx; height: 12rpx; border-radius: 2rpx; background: #4775AF; }
+.clock-icon::after { content: ""; position: absolute; left: 17rpx; top: 17rpx; width: 10rpx; height: 3rpx; border-radius: 2rpx; background: #4775AF; transform: rotate(25deg); transform-origin: left center; }
 .textarea { height: 170rpx; padding-top: 16rpx; resize: none; }
 .no-visit-btn { width: 100%; height: 80rpx; border: 2rpx solid #B9C4CC; border-radius: 18rpx; background: #fff; color: #4A5560; font-size: 29rpx; font-weight: 700; }
 .visitor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22rpx; color: #202833; font-size: 32rpx; }
@@ -295,5 +350,22 @@ onMounted(async () => {
 .calendar-actions button { min-width: 120rpx; height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 14rpx;
   background: #EDF3FA; color: #376AAB; font-size: 29rpx; font-weight: 700; }
 .calendar-actions button:last-child { background: #F2F3F5; color: #65707C; }
+.time-panel { width: 100%; max-width: 650rpx; padding: 30rpx 28rpx 26rpx; box-sizing: border-box;
+  border-radius: 28rpx; background: #fff; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .24); }
+.time-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
+.time-heading span { color: #5F6975; font-size: 29rpx; font-weight: 700; }
+.time-heading strong { color: #8B5E34; font-size: 54rpx; letter-spacing: 2rpx; }
+.time-label { margin: 0 0 12rpx; color: #727D88; font-size: 27rpx; font-weight: 700; }
+.minute-label { margin-top: 24rpx; }
+.hour-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13rpx; }
+.minute-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
+.hour-grid button, .minute-grid button { height: 76rpx; border: 0; border-radius: 14rpx;
+  background: #F2F4F6; color: #28333F; font-size: 32rpx; }
+.hour-grid button.selected, .minute-grid button.selected { background: #E4ECF6; color: #2F609D;
+  box-shadow: inset 0 0 0 3rpx #4775AF; font-weight: 800; }
+.time-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; margin-top: 28rpx; }
+.time-actions button { height: 74rpx; border-radius: 16rpx; font-size: 30rpx; font-weight: 700; }
+.time-actions .cancel { border: 2rpx solid #D8DEE4; background: #fff; color: #66717C; }
+.time-actions .confirm { border: 0; background: #4775AF; color: #fff; }
 button:disabled { opacity: .55; }
 </style>
