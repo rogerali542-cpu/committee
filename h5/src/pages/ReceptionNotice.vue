@@ -83,7 +83,7 @@
         <div class="preview-card-head">
           <div class="sec-title">公告预览</div>
           <button class="preview-toggle" type="button" @click="previewOpen = !previewOpen">
-            {{ previewOpen ? '收起' : '展开' }}
+            {{ previewOpen ? '收起' : '查看' }}
           </button>
         </div>
         <div v-if="previewOpen" class="preview">
@@ -348,7 +348,7 @@ async function exportPdf() {
 
 /* 0717 用户定：导出按钮缩小 20%（高 96→76）、宽度 60% 居中。
    字号 32→28 没砍满 20%——28rpx 是本页字号下限，破线老人看不清 */
-.big-action { display: block; width: 60%; height: 76rpx; margin: 18rpx auto 0; border: none; border-radius: 18rpx;
+.big-action { display: block; width: 60%; height: 76rpx; margin: 48rpx auto 0; border: none; border-radius: 18rpx;
   font-size: 30rpx; font-weight: 700; color: #fff; background: #A94832;
   box-shadow: 0 6rpx 16rpx rgba(114,48,34,0.18); }
 .big-action:active { background: #8F3B2A; }
