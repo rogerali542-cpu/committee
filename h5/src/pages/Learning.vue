@@ -199,6 +199,7 @@ const createForm = reactive({
 
 let undoTimer = null;
 let undoData = null;
+let initialViewResolved = false;
 
 function openDetail(item) {
   navigateTo('/pages/learning-detail/learning-detail?id=' + item.id);
@@ -215,6 +216,24 @@ async function loadAll() {
     annualStudyCount.value = completedInternal + completedExternal;
     annualStreetDone.value = allTraining.some(i => i.type === 'street' && i.stage === 'ended');
     annualSpecialDone.value = allTraining.some(i => i.type === 'special' && i.stage === 'ended');
+
+    // 首次进入不固定停在一个空的“内部学习·待参加”筛选上。
+    // 优先展示有待办的数据；没有待办时展示实际存在的完成记录，避免上方显示已完成、下方却说暂无记录。
+    if (!initialViewResolved) {
+      initialViewResolved = true;
+      if (!allInternal.length && allTraining.length) {
+        learnType.value = 'training';
+        const streetRecords = allTraining.filter(i => i.type === 'street');
+        trainSub.value = streetRecords.length ? 'street' : 'special';
+      }
+      const initialRecords = learnType.value === 'training'
+        ? allTraining.filter(i => i.type === trainSub.value)
+        : allInternal;
+      if (!initialRecords.some(i => i.stage === 'preparing')) {
+        learnStage.value = initialRecords.some(i => i.stage === 'ongoing') ? 'ongoing' : 'ended';
+      }
+    }
+
     if (learnType.value === 'training') {
       // counts 接口只认 internal/street/special；"training" 是聚合别名会 400。
       // 所以外部培训一次性拉全量(不带 stage)，本地按「子类 + 阶段」切分：
