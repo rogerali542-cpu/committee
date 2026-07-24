@@ -112,7 +112,6 @@
     <div v-if="timePickerOpen" class="calendar-mask" @click="timePickerOpen = false">
       <section class="time-panel" role="dialog" aria-modal="true" aria-label="选择接待时间" @click.stop>
         <header class="time-heading">
-          <span>选择接待时间</span>
           <strong>{{ paddedHour }}:{{ paddedMinute }}</strong>
         </header>
         <div class="time-label">小时</div>
@@ -349,8 +348,7 @@ onMounted(async () => {
 .calendar-actions button:last-child { background: #F2F3F5; color: #65707C; }
 .time-panel { width: 100%; max-width: 650rpx; padding: 30rpx 28rpx 26rpx; box-sizing: border-box;
   border-radius: 28rpx; background: #fff; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .24); }
-.time-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
-.time-heading span { color: #5F6975; font-size: 29rpx; font-weight: 700; }
+.time-heading { display: flex; align-items: center; justify-content: center; margin-bottom: 24rpx; }
 .time-heading strong { color: #8B5E34; font-size: 54rpx; letter-spacing: 2rpx; }
 .time-label { margin: 0 0 12rpx; color: #727D88; font-size: 27rpx; font-weight: 700; }
 .minute-label { margin-top: 24rpx; }
