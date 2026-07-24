@@ -7,10 +7,11 @@
       </div>
 
       <!-- 腾讯官方 H5 选点组件：搜索/定位/拖图选点后点组件内「确认」，postMessage 回传地址与经纬度 -->
-      <iframe v-if="provider === 'tencent'" :src="tencentUrl" class="mp-frame" frameborder="0" allow="geolocation"></iframe>
+      <iframe v-if="activeProvider === 'tencent'" :src="tencentUrl" class="mp-frame" frameborder="0"
+              allow="geolocation" @load="onTencentIframeLoad"></iframe>
 
       <!-- 高德 JS API 选点：中心固定针，拖图取点，逆地理出地址；顶部关键字搜索 -->
-      <template v-else-if="provider === 'amap'">
+      <template v-else-if="activeProvider === 'amap'">
         <div class="mp-search-row">
           <input class="mp-search-input" v-model="amapKeyword" placeholder="搜索小区/大厦/路名" @keyup.enter="amapSearch" />
           <button type="button" class="mp-search-btn" @click="amapSearch">搜索</button>
@@ -49,6 +50,8 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { getStorage, setStorage } from '@/utils/storage'
+import { toast } from '@/utils/ui'
 
 const props = defineProps({
   open: { type: Boolean, default: false }
@@ -61,13 +64,55 @@ const TX_REFERER = import.meta.env.VITE_TXMAP_REFERER || '业委会智能履职'
 const AMAP_KEY = import.meta.env.VITE_AMAP_KEY || ''
 const AMAP_JSCODE = import.meta.env.VITE_AMAP_JSCODE || ''
 const PREFER = (import.meta.env.VITE_MAP_PROVIDER || '').toLowerCase()
-const provider = computed(() => {
+// 配置指定的首选供应商（管理员定）
+const configuredProvider = computed(() => {
   if (PREFER === 'amap' && AMAP_KEY) return 'amap'
   if (PREFER === 'tencent' && TX_KEY) return 'tencent'
   if (TX_KEY) return 'tencent'
   if (AMAP_KEY) return 'amap'
   return ''
 })
+
+// ── 自动降级（0723 用户定）：默认腾讯，腾讯加载失败当场切高德（不让用户干等）；
+//    连续失败达阈值后，以后直接默认高德；冷却期过再自动给腾讯一次机会（临时抽风能自愈）。──
+const FAIL_KEY = 'map_tx_fail_count'   // 腾讯连续加载失败次数
+const FAIL_TS_KEY = 'map_tx_fail_ts'   // 最近一次失败时刻
+const FAIL_THRESHOLD = 2               // 连续失败 2 次 → 默认改高德
+const WATCHDOG_MS = 7000               // 腾讯 iframe 未在此时限内 load 视为失败（page load 很快，够宽松）
+const RETRY_COOLDOWN_MS = 30 * 60 * 1000 // 降级后 30 分钟再自动试一次腾讯
+
+// 本次实际展示的供应商（可在腾讯失败时被切成 amap）
+const activeProvider = ref('')
+let _watchdog = null
+
+// 决定本次打开先用哪家：只有两家都配置时才有降级逻辑
+function pickStartProvider() {
+  if (!TX_KEY || !AMAP_KEY) return configuredProvider.value        // 只配一家 → 无从降级
+  if (configuredProvider.value === 'amap') return 'amap'           // 管理员显式选高德 → 就用高德
+  let fails = Number(getStorage(FAIL_KEY, 0)) || 0
+  const lastTs = Number(getStorage(FAIL_TS_KEY, 0)) || 0
+  // 已降级但冷却期已过 → 重置为 1，本次再给腾讯一次机会（失败即重新锁定高德）
+  if (fails >= FAIL_THRESHOLD && Date.now() - lastTs > RETRY_COOLDOWN_MS) {
+    fails = 1; setStorage(FAIL_KEY, 1)
+  }
+  return fails >= FAIL_THRESHOLD ? 'amap' : 'tencent'
+}
+
+function armWatchdog() { clearWatchdog(); _watchdog = setTimeout(onTencentTimeout, WATCHDOG_MS) }
+function clearWatchdog() { if (_watchdog) { clearTimeout(_watchdog); _watchdog = null } }
+// 腾讯选点页加载成功（含慢网）→ 清连续失败计数
+function onTencentIframeLoad() { clearWatchdog(); setStorage(FAIL_KEY, 0) }
+// 腾讯超时未加载 → 记一次失败；当场切高德保证用户有可用地图
+function onTencentTimeout() {
+  _watchdog = null
+  const fails = (Number(getStorage(FAIL_KEY, 0)) || 0) + 1
+  setStorage(FAIL_KEY, fails); setStorage(FAIL_TS_KEY, Date.now())
+  if (AMAP_KEY) {
+    activeProvider.value = 'amap'
+    initAmap()
+    toast({ title: fails >= FAIL_THRESHOLD ? '腾讯地图暂不可用，已切换高德地图' : '地图加载较慢，已切换备用地图' })
+  }
+}
 
 // ── 腾讯：locpicker iframe ──
 const tencentUrl = computed(() =>
@@ -77,9 +122,10 @@ const tencentUrl = computed(() =>
 
 // 选点组件回传：{ module:'locationPicker', latlng:{lat,lng}, poiaddress, poiname, cityname }
 function onMessage(ev) {
-  if (!props.open || provider.value !== 'tencent') return
+  if (!props.open || activeProvider.value !== 'tencent') return
   const d = ev && ev.data
   if (!d || d.module !== 'locationPicker') return
+  clearWatchdog() // 拿到回传说明腾讯选点正常工作
   emit('picked', {
     name: d.poiname || '',
     address: d.poiaddress || '',
@@ -89,7 +135,7 @@ function onMessage(ev) {
   emit('close')
 }
 onMounted(() => window.addEventListener('message', onMessage, false))
-onBeforeUnmount(() => { window.removeEventListener('message', onMessage, false); destroyAmap() })
+onBeforeUnmount(() => { window.removeEventListener('message', onMessage, false); clearWatchdog(); destroyAmap() })
 
 // ── 高德：JS API 2.0 中心取点 + 逆地理 + 关键字搜索 ──
 const amapEl = ref(null)
@@ -185,8 +231,13 @@ function destroyAmap() {
 }
 
 watch(() => props.open, (v) => {
-  if (v && provider.value === 'amap') initAmap()
-  if (!v) destroyAmap()
+  if (v) {
+    activeProvider.value = pickStartProvider()
+    if (activeProvider.value === 'amap') initAmap()
+    else if (activeProvider.value === 'tencent') armWatchdog() // 起看门狗：超时未加载→切高德
+  } else {
+    clearWatchdog(); destroyAmap()
+  }
 })
 
 function close() { emit('close') }
