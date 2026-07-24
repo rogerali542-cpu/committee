@@ -12,21 +12,21 @@
     <template v-else-if="reviewMode">
       <div class="review-intro">
         <div class="review-title">确认待办事项</div>
-        <div class="review-sub">以下是系统从会议中识别的待办<b>建议</b>，请勾选保留、修改或补充后确认。未勾选的不会加入待办。</div>
+        <div class="review-sub">以下是系统从会议中识别的待办<b>建议</b>，可修改内容、删除不需要的、或手动补充，确认后才生成正式待办。</div>
       </div>
-      <div class="review-card" v-for="(r, i) in reviewRows" :key="i" :class="{ off: !r.keep }">
-        <div class="review-head">
-          <label class="review-keep"><input type="checkbox" v-model="r.keep" /><span>保留此项</span></label>
-          <button class="review-del" @click="reviewRows.splice(i, 1)">删除</button>
-        </div>
+      <div class="review-card" v-for="(r, i) in reviewRows" :key="i">
+        <span class="review-idx">{{ i + 1 }}</span>
+        <button class="review-del" @click="reviewRows.splice(i, 1)" aria-label="删除此项">×</button>
         <textarea class="review-input title" v-model="r.title" rows="2" placeholder="待办内容"></textarea>
         <div class="review-row2">
           <input class="review-input" v-model="r.owner" placeholder="负责人（选填）" />
           <input class="review-input" v-model="r.due" placeholder="截止时间（选填）" />
         </div>
       </div>
-      <button class="review-add" @click="addReviewRow">＋ 手动添加待办</button>
-      <button class="review-confirm" :disabled="confirming" @click="confirmReview">{{ confirming ? '保存中…' : '确认待办清单' }}</button>
+      <div class="review-actions">
+        <button class="review-add" @click="addReviewRow">＋ 手动添加待办</button>
+        <button class="review-confirm" :disabled="confirming" @click="confirmReview">{{ confirming ? '保存中…' : '确认待办清单' }}</button>
+      </div>
     </template>
 
     <template v-else>
@@ -95,10 +95,11 @@ const reviewMode = ref(false)
 const reviewRows = ref([])
 const confirming = ref(false)
 function addReviewRow() {
-  reviewRows.value.push({ keep: true, title: '', owner: '', due: '', status: '', source: '' })
+  reviewRows.value.push({ title: '', owner: '', due: '', status: '', source: '' })
 }
 async function confirmReview() {
-  const rows = reviewRows.value.filter(r => r.keep && String(r.title || '').trim())
+  // 卡片留下即保留、删除即弃用（0724：去掉重复的「保留」勾选）；空标题的行忽略
+  const rows = reviewRows.value.filter(r => String(r.title || '').trim())
   if (!rows.length) { toast({ title: '请至少保留或添加一条待办', icon: 'none' }); return }
   confirming.value = true
   try {
@@ -268,7 +269,7 @@ async function load() {
       if (parsed.length) {
         // 人工判断（0724）：不再静默自动固化。主任进入确认清单勾选/编辑/增补；委员先看占位。
         if (isChair) {
-          reviewRows.value = parsed.map(c => ({ keep: true, title: c.title, owner: c.owner, due: c.due, status: c.status, source: c.source }))
+          reviewRows.value = parsed.map(c => ({ title: c.title, owner: c.owner, due: c.due, status: c.status, source: c.source }))
           reviewMode.value = true
           loading.value = false
           return
@@ -379,25 +380,27 @@ onMounted(() => {
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .todos-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 100rpx; box-sizing: border-box; }
 
-/* 人工确认清单（0724）：AI 建议 → 主任勾选/编辑/增补后固化 */
-.review-intro { background: #fff; border-radius: 16px; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.review-title { font-size: 34rpx; font-weight: 700; color: #1f2329; }
-.review-sub { margin-top: 12rpx; font-size: 26rpx; color: #667B88; line-height: 1.5; }
+/* 人工确认清单（0724）：AI 建议 → 主任编辑/删除/增补后固化。留下即保留、删除即弃用（去掉重复的「保留」勾选） */
+.review-intro { background: #fff; border-radius: 18rpx; padding: 26rpx 28rpx; margin-bottom: 22rpx; box-shadow: 0 4rpx 14rpx rgba(20,42,58,0.05); }
+.review-title { font-size: 36rpx; font-weight: 800; color: #1f2329; }
+.review-sub { margin-top: 12rpx; font-size: 27rpx; color: #667B88; line-height: 1.55; }
 .review-sub b { color: #C77800; }
-.review-card { background: #fff; border-radius: 16px; padding: 20rpx 22rpx 24rpx; margin-bottom: 18rpx; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.review-card.off { opacity: 0.55; }
-.review-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
-.review-keep { display: flex; align-items: center; gap: 12rpx; font-size: 28rpx; color: #24364B; font-weight: 600; }
-.review-keep input { width: 40rpx; height: 40rpx; }
-.review-del { border: 0; background: transparent; color: #B0463A; font-size: 26rpx; padding: 6rpx 4rpx 6rpx 20rpx; }
-.review-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E2E5E9; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
-.review-input.title { font-weight: 600; resize: none; line-height: 1.4; }
+.review-card { position: relative; background: #fff; border-radius: 18rpx; padding: 26rpx 24rpx 24rpx; margin-bottom: 18rpx; box-shadow: 0 4rpx 14rpx rgba(20,42,58,0.05); }
+/* 序号角标：左上角小圆，给卡片一点条理感 */
+.review-idx { position: absolute; top: 22rpx; left: 24rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: #EEF2F6; color: #526774; font-size: 24rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+/* 删除：右上角圆形 ×，替代「保留/删除」的重复设计 */
+.review-del { position: absolute; top: 16rpx; right: 16rpx; width: 52rpx; height: 52rpx; border: 0; border-radius: 50%; background: #F4F6F8; color: #98A2AE; font-size: 40rpx; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
+.review-del:active { background: #FBE6E2; color: #B0463A; }
+.review-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E5E9ED; border-radius: 14rpx; padding: 18rpx 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
+.review-input.title { margin-top: 48rpx; font-weight: 600; resize: none; line-height: 1.45; }
 .review-row2 { display: flex; gap: 14rpx; margin-top: 14rpx; }
 .review-row2 .review-input { flex: 1; }
-.review-add { width: 100%; min-height: 84rpx; margin-top: 4rpx; border: 2rpx dashed #C9D0D6; border-radius: 16rpx; background: #F5F6F8; color: #526774; font-size: 29rpx; font-weight: 600; }
-.review-add:active { background: #EAEDF0; }
-.review-confirm { width: 100%; min-height: 92rpx; margin-top: 22rpx; border: 0; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 32rpx; font-weight: 700; }
-.review-confirm:disabled { opacity: 0.6; }
+/* 底部两按钮：各 70% 宽居中；手动添加升为清晰的描边色块（不再是若隐若现的虚线） */
+.review-actions { display: flex; flex-direction: column; align-items: center; gap: 18rpx; margin-top: 26rpx; }
+.review-add { width: 70%; min-height: 88rpx; border: 2rpx solid var(--c-primary); border-radius: 16rpx; background: #FFF6EC; color: #C2410C; font-size: 30rpx; font-weight: 700; }
+.review-add:active { background: #FDEBD8; }
+.review-confirm { width: 70%; min-height: 92rpx; border: 0; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 8rpx 20rpx rgba(168,88,0,0.22); }
+.review-confirm:disabled { opacity: 0.6; box-shadow: none; }
 .review-confirm:active { opacity: 0.9; }
 .todo-card { background: #fff; border-radius: 16px; padding: 22px 20px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .todo-top { display: flex; align-items: flex-start; position: relative; }
