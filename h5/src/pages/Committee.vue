@@ -26,14 +26,20 @@
          现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
     <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'reception-mode': planTab === 'reception', 'has-meeting': planTab === 'meeting' && currents && currents.length }">
         <!-- 当前重点横幅（0724 领导意见#1：关键信息突出）：仅记录列表版(甲)显示；欢迎引导页(乙)是业务选择，不放横幅 -->
-        <div v-if="planTab === 'meeting' && homeFocus && homeLayout === 'tabs'" class="home-focus" :class="homeFocus.level" @click="homeFocus.onTap && homeFocus.onTap()">
-          <div class="hf-body">
-            <div class="hf-kicker"><span class="hf-dot"></span>{{ homeFocus.kicker }}</div>
-            <div class="hf-title">{{ homeFocus.title }}</div>
-            <div v-if="homeFocus.sub" class="hf-sub">{{ homeFocus.sub }}</div>
+        <div v-if="planTab === 'meeting' && homeFocusItems.length && homeLayout === 'tabs'"
+             class="home-focus" :class="[homeFocusItems[0].level, { multi: homeFocusItems.length > 1 }]">
+          <div class="hf-section-head">
+            <span><i class="hf-dot"></i>{{ homeFocusItems.length > 1 ? '当前会议' : homeFocusItems[0].kicker }}</span>
+            <em v-if="homeFocusItems.length > 1">{{ homeFocusItems.length }}项</em>
           </div>
-          <button v-if="homeFocus.cta" type="button" class="hf-cta" @click.stop="homeFocus.onTap && homeFocus.onTap()">
-            <span v-if="homeFocus.icon" class="hf-cta-ico">{{ homeFocus.icon }}</span>{{ homeFocus.cta }}
+          <button v-for="focus in homeFocusItems" :key="focus.key" type="button"
+                  class="hf-item" @click="focus.onTap && focus.onTap()">
+            <span class="hf-body">
+              <span v-if="homeFocusItems.length > 1" class="hf-item-state">{{ focus.kicker }}</span>
+              <strong class="hf-title">{{ focus.title }}</strong>
+              <span v-if="focus.sub" class="hf-sub">{{ focus.sub }}</span>
+            </span>
+            <span v-if="focus.cta" class="hf-cta">{{ focus.cta }}<i>›</i></span>
           </button>
         </div>
         <!-- 登记：接待的入口动作，独立成大按钮（0716 用户定）。委员接待完来访，先用它把事情记进下面的
@@ -346,7 +352,7 @@
     </div>
 
     <!-- 待发送草稿卡：发起会议填了一半返回，内容自动存草稿，放大成首页主角，突出「继续通知」 -->
-    <div v-if="isChair && hasDraft && homeLayout === 'tabs'" class="draft-card">
+    <div v-if="false && isChair && hasDraft && homeLayout === 'tabs'" class="draft-card">
       <div class="draft-card-top">
         <span class="draft-badge">通知编辑中</span>
       </div>
@@ -1244,6 +1250,12 @@ const homeFocus = computed(() => {
   const ended = list.find(c => c.stage === 'ended' && c.ctaLabel !== '查看会议')
   if (ended) return { level: 'active', kicker: ended.minutesGen ? '会议纪要生成中' : '待整理会议记录',
     title: ended.title, sub: ended.timeText, cta: ended.ctaLabel, icon: ended.ctaIcon, onTap: () => goCurrent(ended) }
+  if (hasDraft.value) return { level: 'active', kicker: '通知编辑中', title: draftTitle.value,
+    sub: draftSummary.value || '会议通知尚未完成', cta: '继续通知', onTap: () => continueDraft() }
+  const prep = list.find(c => c.stage === 'preparing')
+  if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
+    sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
+    onTap: () => goCurrent(prep) }
   const urg = viewYear.value === curYear ? currentPeriodUrgency.value : null
   if (urg) return { level: 'urgent', kicker: '本期例会临期', title: '本期例会还没召开',
     sub: '距期限只剩 ' + urg.daysLeft + ' 天，请尽快安排会议', cta: isChair.value ? '去通知' : '等待通知',
@@ -1251,15 +1263,39 @@ const homeFocus = computed(() => {
   const od = overduePeriodRows.value[0]
   if (od) return { level: 'urgent', kicker: '例会逾期', title: od.monthLabel + '例会逾期未开',
     sub: '例会是履职核心，请尽快补开', cta: isChair.value ? '去补开' : '等待通知', onTap: () => onPlanRow(od) }
-  const prep = list.find(c => c.stage === 'preparing')
-  if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
-    sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
-    onTap: () => goCurrent(prep) }
   // 表扬语（0724 用户定）：无待办时给正向反馈，不再是冷冰冰的"正常"
   const doneCount = (currents.value || []).filter(c => c.stage === 'ended').length
   return { level: 'calm', kicker: '履职状态',
     title: doneCount ? '例会按时召开，履职规范 👍' : '各项工作井然有序 👍',
     sub: '本期暂无待办事项，继续保持', cta: '', onTap: null }
+})
+
+const homeFocusItems = computed(() => {
+  if (planTab.value !== 'meeting') return []
+  const list = currents.value || []
+  const items = []
+  list.filter(c => c.stage === 'ongoing' && !c.reviewDone).forEach(c => items.push({
+    key: 'ongoing-' + c.id, level: 'active', kicker: '进行中', title: c.title,
+    sub: [c.timeText, c.locationText].filter(Boolean).join(' · '),
+    cta: c.ctaLabel || '进入会议', onTap: () => goCurrent(c)
+  }))
+  list.filter(c => c.stage === 'preparing').forEach(c => items.push({
+    key: 'preparing-' + c.id, level: 'active', kicker: '待召开', title: c.title,
+    sub: [c.timeText, c.locationText].filter(Boolean).join(' · '),
+    cta: c.ctaLabel || '查看会议', onTap: () => goCurrent(c)
+  }))
+  list.filter(c => c.stage === 'ended' && c.ctaLabel !== '查看会议').forEach(c => items.push({
+    key: 'ended-' + c.id, level: 'active',
+    kicker: c.minutesGen ? '纪要生成中' : '待整理',
+    title: c.title, sub: c.timeText, cta: c.ctaLabel, onTap: () => goCurrent(c)
+  }))
+  if (hasDraft.value) items.push({
+    key: 'draft', level: 'active', kicker: '通知编辑中', title: draftTitle.value,
+    sub: draftSummary.value || '会议通知尚未完成', cta: '继续通知', onTap: () => continueDraft()
+  })
+  if (items.length) return items
+  const focus = homeFocus.value
+  return focus ? [Object.assign({ key: 'status-focus' }, focus)] : []
 })
 
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
@@ -1268,6 +1304,33 @@ const recDoneOpen = ref(false)
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
   const toRow = (r) => {
+    const current = (currents.value || []).find(c => meetingPeriod(c, viewYear.value) === r.period)
+    const draftMatch = hasDraft.value && meetingPeriod(draft.value || {}, viewYear.value) === r.period
+    if (current) {
+      const state = current.stage === 'ongoing' ? '进行中'
+        : current.stage === 'preparing' ? '待召开'
+          : (current.minutesGen ? '纪要生成中' : (current.ctaLabel === '查看会议' ? '已完成' : '待整理'))
+      return {
+        key: 'mr-current-' + current.id, done: current.stage === 'ended' && current.ctaLabel === '查看会议',
+        badgeTop: current.meetingDate ? Number(String(current.meetingDate).split('-')[2]) + '日' : String(r.monthLabel || '').replace('月', ''),
+        badgeBot: current.meetingDate ? Number(String(current.meetingDate).split('-')[1]) + '月' : '月',
+        title: current.title || ('第' + r.period + '次业委会例会'),
+        sub: [current.timeText, current.locationText].filter(Boolean).join(' · '),
+        statusLabel: state,
+        statusClass: current.stage === 'ongoing' ? 'current' : (current.stage === 'ended' ? 'done' : 'upcoming'),
+        onTap: () => goCurrent(current)
+      }
+    }
+    if (draftMatch) {
+      return {
+        key: 'mr-draft-' + r.period, done: false,
+        badgeTop: String(r.monthLabel || '').replace('月', ''), badgeBot: '月',
+        title: draftTitle.value,
+        sub: '会议通知尚未完成，点击继续编辑',
+        statusLabel: '通知编辑中', statusClass: 'current',
+        onTap: () => continueDraft()
+      }
+    }
     const held = r.meeting
     if (r.status === 'done' && held) {
       const d = String(held.meetingDate || '').split('-')
@@ -3543,22 +3606,52 @@ onActivated(show)
 /* 当前会议主卡片 */
 /* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
    适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
-.home-focus { margin: 16rpx 24rpx 6rpx; border-radius: 22rpx; padding: 26rpx 26rpx 24rpx; display: flex; flex-direction: column; gap: 18rpx; box-shadow: 0 10rpx 26rpx rgba(20,42,58,0.10); cursor: pointer; }
-.home-focus.active { background: #2E5A6E; }
-.home-focus.urgent { background: #A0503F; }
-.home-focus.calm { background: #3B7150; }
-.home-focus:active { opacity: 0.94; }
-.hf-body { min-width: 0; }
-.hf-kicker { display: inline-flex; align-items: center; gap: 10rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.88); letter-spacing: 1rpx; }
-.hf-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(255,255,255,0.85); }
-.hf-title { margin-top: 12rpx; font-size: 40rpx; font-weight: 800; color: #fff; line-height: 1.28; }
-.hf-sub { margin-top: 8rpx; font-size: 27rpx; color: rgba(255,255,255,0.9); line-height: 1.4; }
-.hf-cta { align-self: stretch; min-height: 92rpx; border: 0; border-radius: 16rpx; background: #fff; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12rpx; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.12); }
-.home-focus.active .hf-cta { color: #2E5A6E; }
-.home-focus.urgent .hf-cta { color: #A0503F; }
-.home-focus.calm .hf-cta { color: #3B7150; }
-.hf-cta:active { transform: translateY(1rpx); }
-.hf-cta-ico { font-size: 30rpx; }
+.home-focus {
+  margin: 16rpx 24rpx 8rpx; overflow: hidden; border-radius: 22rpx;
+  padding: 0; background: #fff; border: 1rpx solid #e5e9ec;
+  box-shadow: 0 8rpx 24rpx rgba(20,42,58,.08);
+}
+.hf-section-head {
+  display: flex; height: 66rpx; padding: 0 24rpx; align-items: center;
+  justify-content: space-between; background: #edf4f8; color: #315c73;
+  font-size: 23rpx; font-weight: 700;
+}
+.home-focus.urgent .hf-section-head { background: #f9edeb; color: #9a5145; }
+.home-focus.calm .hf-section-head { background: #edf5f0; color: #47705a; }
+.hf-section-head span { display: flex; align-items: center; gap: 10rpx; }
+.hf-section-head em {
+  padding: 3rpx 12rpx; border-radius: 999rpx; background: rgba(49,92,115,.1);
+  font-size: 19rpx; font-style: normal; font-weight: 600;
+}
+.hf-dot { width: 11rpx; height: 11rpx; border-radius: 50%; background: currentColor; }
+.hf-item {
+  display: flex; width: 100%; min-height: 112rpx; padding: 20rpx 22rpx;
+  border: 0; border-bottom: 1rpx solid #edf0f2; align-items: center;
+  gap: 18rpx; background: #fff; text-align: left;
+}
+.hf-item:last-child { border-bottom: 0; }
+.hf-item:active { background: #f7f9fa; }
+.hf-body { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.hf-item-state {
+  margin-bottom: 5rpx; color: #547488; font-size: 20rpx; line-height: 1.2;
+}
+.hf-title {
+  overflow: hidden; color: #263741; font-size: 29rpx; font-weight: 700;
+  line-height: 1.3; text-overflow: ellipsis; white-space: nowrap;
+}
+.hf-sub {
+  overflow: hidden; margin-top: 7rpx; color: #89949b; font-size: 21rpx;
+  line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
+}
+.hf-cta {
+  display: flex; flex: 0 0 auto; min-width: 116rpx; min-height: 58rpx;
+  padding: 0 17rpx; border-radius: 13rpx; align-items: center; justify-content: center;
+  background: #315f79; color: #fff; font-size: 22rpx; font-weight: 650;
+  box-shadow: none;
+}
+.home-focus.urgent .hf-cta { background: #a75b4f; }
+.home-focus.calm .hf-cta { background: #537a63; }
+.hf-cta i { margin-left: 7rpx; font-size: 27rpx; font-style: normal; }
 /* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。铺满整屏（0724 用户定：老人大按钮铺满更好点）；欢迎页隐藏底栏 */
 .portal-home { min-height: 100vh; background: linear-gradient(180deg, #f5f7f9 0%, #eef2f5 100%); }
 .portal-home .hd {
