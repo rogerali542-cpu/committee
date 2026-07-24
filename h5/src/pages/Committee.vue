@@ -1179,14 +1179,9 @@ const HOME_V2 = true // 详情大会议卡并入顶部横幅（旧卡暂留代�
 const homeFocus = computed(() => {
   if (planTab.value !== 'meeting') return null
   const list = currents.value || []
-  const stepText = (c) => {
-    const on = (c.steps || []).filter(s => s.state !== 'done').length
-    const total = (c.steps || []).length
-    return total ? '第 ' + Math.min(total - on + 1, total) + '/' + total + ' 步' : ''
-  }
   const ongoing = list.find(c => c.stage === 'ongoing' && !c.reviewDone)
   if (ongoing) return { level: 'active', kicker: ongoing.tag || '正在进行', title: ongoing.title,
-    sub: [ongoing.timeText, ongoing.locationText, stepText(ongoing)].filter(Boolean).join(' · '),
+    sub: [ongoing.timeText, ongoing.locationText].filter(Boolean).join(' · '),
     cta: ongoing.ctaLabel, icon: ongoing.ctaIcon, onTap: () => goCurrent(ongoing) }
   // 只把「还需整理/生成纪要」的已结束会议当重点；已生成纪要（按钮=查看会议）算完成，不占焦点
   const ended = list.find(c => c.stage === 'ended' && c.ctaLabel !== '查看会议')
@@ -1203,8 +1198,11 @@ const homeFocus = computed(() => {
   if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
     sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
     onTap: () => goCurrent(prep) }
-  return { level: 'calm', kicker: '履职状态', title: '本期履职正常',
-    sub: '暂无待办会议事项，可从下方发起新的会议', cta: '', onTap: null }
+  // 表扬语（0724 用户定）：无待办时给正向反馈，不再是冷冰冰的"正常"
+  const doneCount = (currents.value || []).filter(c => c.stage === 'ended').length
+  return { level: 'calm', kicker: '履职状态',
+    title: doneCount ? '例会按时召开，履职规范 👍' : '各项工作井然有序 👍',
+    sub: '本期暂无待办事项，继续保持', cta: '', onTap: null }
 })
 
 const calAlert = computed(() => {
@@ -3456,23 +3454,22 @@ onActivated(show)
 .hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
-/* 当前重点横幅（0724 首页改版）：整屏第一视觉，色随紧急度——active 品牌深橙 / urgent 红 / calm 中性 */
-.home-focus { margin: 16rpx 24rpx 6rpx; border-radius: 22rpx; padding: 26rpx 26rpx 24rpx; display: flex; flex-direction: column; gap: 18rpx; box-shadow: 0 12rpx 30rpx rgba(20,42,58,0.12); cursor: pointer; }
-.home-focus.active { background: linear-gradient(150deg,#C97C1E,#A85800); }
-.home-focus.urgent { background: linear-gradient(150deg,#E24B3B,#C42718); }
-.home-focus.calm { background: linear-gradient(150deg,#5B6B7E,#3D4C5E); }
+/* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
+   适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
+.home-focus { margin: 16rpx 24rpx 6rpx; border-radius: 22rpx; padding: 26rpx 26rpx 24rpx; display: flex; flex-direction: column; gap: 18rpx; box-shadow: 0 10rpx 26rpx rgba(20,42,58,0.10); cursor: pointer; }
+.home-focus.active { background: #2E5A6E; }
+.home-focus.urgent { background: #A0503F; }
+.home-focus.calm { background: #3B7150; }
 .home-focus:active { opacity: 0.94; }
 .hf-body { min-width: 0; }
-.hf-kicker { display: inline-flex; align-items: center; gap: 10rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.9); letter-spacing: 1rpx; }
-.hf-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #fff; box-shadow: 0 0 0 6rpx rgba(255,255,255,0.22); }
-.home-focus.urgent .hf-dot { animation: hfPulse 1.6s ease-in-out infinite; }
-@keyframes hfPulse { 0%,100% { box-shadow: 0 0 0 4rpx rgba(255,255,255,0.28); } 50% { box-shadow: 0 0 0 12rpx rgba(255,255,255,0.12); } }
-.hf-title { margin-top: 12rpx; font-size: 40rpx; font-weight: 800; color: #fff; line-height: 1.25; }
-.hf-sub { margin-top: 8rpx; font-size: 27rpx; color: rgba(255,255,255,0.88); line-height: 1.4; }
-.hf-cta { align-self: stretch; min-height: 92rpx; border: 0; border-radius: 16rpx; background: #fff; color: #1f2329; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12rpx; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.14); }
-.home-focus.active .hf-cta { color: #A85800; }
-.home-focus.urgent .hf-cta { color: #C42718; }
-.home-focus.calm .hf-cta { color: #3D4C5E; }
+.hf-kicker { display: inline-flex; align-items: center; gap: 10rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.88); letter-spacing: 1rpx; }
+.hf-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(255,255,255,0.85); }
+.hf-title { margin-top: 12rpx; font-size: 40rpx; font-weight: 800; color: #fff; line-height: 1.28; }
+.hf-sub { margin-top: 8rpx; font-size: 27rpx; color: rgba(255,255,255,0.9); line-height: 1.4; }
+.hf-cta { align-self: stretch; min-height: 92rpx; border: 0; border-radius: 16rpx; background: #fff; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12rpx; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.12); }
+.home-focus.active .hf-cta { color: #2E5A6E; }
+.home-focus.urgent .hf-cta { color: #A0503F; }
+.home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
