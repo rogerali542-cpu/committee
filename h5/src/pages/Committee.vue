@@ -1270,6 +1270,27 @@ const portalDomains = computed(() => {
 const cockpitTodos = computed(() => {
   const items = []
   const f = homeFocus.value
+  // 逾期例会只是需要补齐的历史欠项，不能挡住当前双月期的正常召开入口。
+  // 当首页焦点落在逾期期次时，同时把本期例会放在前面，两个期次分别办理。
+  if (f && f.periodRow && f.periodRow.status === 'overdue') {
+    const currentRow = thisYearPlan.value[curPeriod - 1]
+    if (currentRow && currentRow.status === 'current' && !currentRow.active) {
+      items.push({
+        key: 'committee-current-period',
+        tag: '业委会',
+        tone: 'blue',
+        level: 'active',
+        title: currentRow.monthLabel + '例会待召开',
+        sub: '按本期计划安排会议',
+        cta: isChair.value ? '去发起' : '等待通知',
+        timeScope: 'recent',
+        onTap: () => {
+          enterWorkArea()
+          onPlanRow(currentRow)
+        }
+      })
+    }
+  }
   if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
     const todayKey = formatLocalDay(new Date())
     const meetingDay = f.meeting && f.meeting.meetingDate ? String(f.meeting.meetingDate).slice(0, 10) : ''
@@ -1328,7 +1349,8 @@ const homeFocus = computed(() => {
     onTap: () => onPlanRow(urg.row) }
   const od = overduePeriodRows.value[0]
   if (od) return { level: 'urgent', kicker: '例会逾期', title: od.monthLabel + '例会逾期未开',
-    sub: '例会是履职核心，请尽快补开', cta: isChair.value ? '去补开' : '等待通知', onTap: () => onPlanRow(od) }
+    sub: '可在本期例会之后补开', cta: isChair.value ? '去补开' : '等待通知',
+    periodRow: od, onTap: () => onPlanRow(od) }
   // 表扬语（0724 用户定）：无待办时给正向反馈，不再是冷冰冰的"正常"
   const doneCount = (currents.value || []).filter(c => c.stage === 'ended').length
   return { level: 'calm', kicker: '履职状态',
