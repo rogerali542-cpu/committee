@@ -73,7 +73,7 @@
         <!-- 灰态给出原因文案（0723）：老人首次进页看到灰按钮不知为何点不动 -->
         <button v-if="canManage" class="confirm-adjust" type="button"
                 :disabled="saving || !dirty || !timeText" @click="confirmAdjustment">
-          {{ saving ? '正在保存…' : (!dirty ? '未做修改' : '保存调整') }}
+          {{ saving ? '正在保存…' : (!dirty ? '未做修改' : '保存') }}
         </button>
       </div>
 
