@@ -1331,7 +1331,7 @@ const cockpitTodos = computed(() => {
     const meetingDay = f.meeting && f.meeting.meetingDate ? String(f.meeting.meetingDate).slice(0, 10) : ''
     items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
       title: f.title, sub: f.sub, cta: f.cta,
-      timeScope: (f.meeting && f.meeting.stage === 'ongoing') || meetingDay === todayKey ? 'today' : 'recent',
+      timeScope: meetingDay === todayKey ? 'today' : 'recent',
       onDelete: f.meeting && isChair.value ? () => removeCurrent(f.meeting) : null,
       onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
   }
@@ -1416,7 +1416,7 @@ const homeFocusItems = computed(() => {
   const list = currents.value || []
   const items = []
   list.filter(c => c.stage === 'ongoing' && !c.reviewDone).forEach(c => items.push({
-    key: 'ongoing-' + c.id, level: 'active', kicker: '进行中', title: c.title,
+    key: 'ongoing-' + c.id, level: 'active', kicker: c.tag || '进行中', title: c.title,
     sub: [c.timeText, c.locationText].filter(Boolean).join(' · '),
     cta: c.ctaLabel || '进入会议', onTap: () => goCurrent(c)
   }))
@@ -2075,6 +2075,29 @@ function daysUntilMeeting(dateStr) {
   return Math.round((target - now) / 86400000)
 }
 
+// 后端阶段表示业务流程节点，不能单独用来判断会议此刻是否正在召开。
+// 首页统一以计划开始时间为准：开始前只允许查看，到点后才进入现场会议。
+function meetingStartTime(m) {
+  if (!m || !m.meetingDate) return null
+  const date = String(m.meetingDate).slice(0, 10)
+  const time = String(m.meetingTime || '00:00').slice(0, 5)
+  const value = new Date(date + 'T' + time + ':00')
+  return Number.isNaN(value.getTime()) ? null : value
+}
+
+function meetingTimeStatus(m) {
+  const now = new Date()
+  const start = meetingStartTime(m)
+  if (!start || start.getTime() <= now.getTime()) {
+    return { started: true, tag: '正在开的会' }
+  }
+  const meetingDay = formatLocalDay(start)
+  if (meetingDay === formatLocalDay(now)) return { started: false, tag: '今日会议' }
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  if (meetingDay === formatLocalDay(tomorrow)) return { started: false, tag: '明日会议' }
+  return { started: false, tag: '待召开' }
+}
+
 function decorateCurrent(m, chair) {
   // 测试期会议保持 ongoing，现场结束/整理完成 两个节点靠本地快照标记推进卡片形态
   const local = (m.stage === 'ongoing' && chair) ? _quickLocalFlags(m.id) : { fieldEnded: false, reviewDone: false }
@@ -2106,6 +2129,7 @@ function decorateCurrent(m, chair) {
     }
     tag = '会议通知'
   } else if (m.stage === 'ongoing') {
+    const timing = meetingTimeStatus(m)
     // 现场会议已结束但未归档（测试期不真正结束，靠本地快照标记）：
     // 整理已完成 → 入口「会议详情」直进详情页；仅现场结束 → 「会后整理」落整理页
     if (local.reviewDone) {
@@ -2113,9 +2137,11 @@ function decorateCurrent(m, chair) {
       ctaIcon = ''
       tag = '会后总结'
     } else {
-      ctaLabel = local.fieldEnded ? '会后整理' : (chair ? '进入会议' : '查看会议')
-      ctaIcon = local.fieldEnded ? '📝' : (chair ? '🎙️' : '') // 委员「查看会议」不配图标(0723 用户定,原👀删)
-      tag = '正在开的会'
+      ctaLabel = !timing.started
+        ? '查看会议'
+        : (local.fieldEnded ? '会后整理' : (chair ? '进入会议' : '查看会议'))
+      ctaIcon = !timing.started ? '' : (local.fieldEnded ? '📝' : (chair ? '🎙️' : '')) // 会前仅查看，不显示录音图标
+      tag = timing.tag
     }
   } else {
     // ended：纪要生成中 → 继续生成会议纪要(点回纪要页)；已生成 → 查看会议；未生成 → 整理会议记录
@@ -2134,7 +2160,8 @@ function decorateCurrent(m, chair) {
     location: m.location, timeText: formatMeetingTime(m), locationText: m.location || '地点待定',
     step: step, steps: steps, stage: m.stage, stageText: MEETING_STAGE_TEXT[m.stage] || '未开始',
     ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen, reviewDone: local.reviewDone,
-    preNoticeTip: preNoticeTip
+    preNoticeTip: preNoticeTip,
+    meetingHasStarted: m.stage !== 'ongoing' || meetingTimeStatus(m).started
   }
 }
 
@@ -2185,7 +2212,7 @@ async function goCurrent(cur) {
   }
   // 进行中的会议是关键入口：主任和委员统一整页进入签到/会议流程。
   // 不再经过详情页、RouterLink 和 DOM 延时兜底，避免路由重复或组件切换竞态导致点击无响应。
-  if (cur.stage === 'ongoing') {
+  if (cur.stage === 'ongoing' && cur.meetingHasStarted !== false) {
     // 会后整理已完成（测试期本地标记）→ 直进会议详情页，不再回会议流程页
     if (cur.reviewDone) {
       window.location.assign('/committee-detail?id=' + encodeURIComponent(cur.id) + '&from=committee')
