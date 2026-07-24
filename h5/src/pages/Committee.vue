@@ -1,5 +1,5 @@
 <template>
-  <div class="home" :class="{ 'portal-home': welcomeVisible }">
+  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception' }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
@@ -3817,6 +3817,7 @@ onActivated(show)
 /* 顶栏 */
 /* 顶栏加高（0716 用户定），评分徽章 align-self:center 在栏内垂直居中 */
 .hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2F3D56; }
+.reception-home > .hd { background: #2F3D56; }
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
