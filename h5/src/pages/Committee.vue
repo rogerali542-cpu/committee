@@ -1260,8 +1260,11 @@ watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
 const portalDomains = computed(() => {
   const f = homeFocus.value
+  const overdueCount = overduePeriodRows.value.length
   const committeeChip = f && f.level
-    ? (f.level === 'calm' ? { text: '履职正常', level: 'calm' } : { text: f.kicker, level: f.level })
+    ? (f.level === 'calm'
+        ? { text: '履职正常', level: 'calm' }
+        : { text: f.periodRow && overdueCount ? overdueCount + '次例会逾期' : f.kicker, level: f.level })
     : { text: '履职正常', level: 'calm' }
   const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
   const receptionChip = recPending > 0
