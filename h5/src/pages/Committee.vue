@@ -1,5 +1,5 @@
 <template>
-  <div class="home">
+  <div class="home" :class="{ 'portal-welcome': homeLayout === 'portal' && planTab === 'meeting' }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
@@ -102,27 +102,25 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 欢迎引导页（路线乙）：问候 Hero + 业务线选择卡。
-           配色（0724 深调研后重做）：顶栏橙 → Hero 橙渐变（同源顺流而下，不再灰底断层）→
-           圆角灰底上浮托住白卡；问候语改白字压在橙 Hero 上（原棕字压灰底＝三段割裂的病根）。 -->
+      <!-- 欢迎引导页（路线乙）：问候 + 业务线选择卡。
+           配色（0724 再改，采纳 codex 方向）：顶栏改沉稳深蓝灰、问候语同色相呼应——
+           一个色系读成整体，不再橙头/灰底/彩字割裂；卡片＝单字磁贴 + 左侧色条 + 状态胶囊 + 右箭头。 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
           <div class="welcome-slogan">{{ greeting }}，{{ activeRole.realName || '您好' }}</div>
           <div class="welcome-tip">请选择您要处理的工作</div>
         </div>
-        <div class="welcome-body">
-          <div class="welcome-list">
-            <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
-              <span class="domain-ico">{{ d.icon }}</span>
-              <div class="domain-info">
-                <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
-                <div class="domain-desc">{{ d.desc }}</div>
-              </div>
-              <span class="domain-enter">进入 ›</span>
+        <div class="welcome-list">
+          <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
+            <span class="domain-ico">{{ d.glyph }}</span>
+            <div class="domain-info">
+              <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
+              <div class="domain-desc">{{ d.desc }}</div>
             </div>
+            <span class="domain-enter">›</span>
           </div>
-          <div class="welcome-foot">{{ welcomeFootText }}</div>
         </div>
+        <div class="welcome-foot">{{ welcomeFootText }}</div>
       </div>
 
       <!-- 会议记录列表（路线甲）：开会 tab + tabs 布局。卡头=年份+记录，下方竖排记录列表 -->
@@ -1221,12 +1219,13 @@ const portalDomains = computed(() => {
   const receptionChip = recPending > 0
     ? { text: recPending + ' 件待处理', level: 'urgent' }
     : { text: '暂无待办', level: 'calm' }
+  // glyph=单字磁贴（会/访/学），比 emoji 更统一、更「设计感」（参考 codex 版）
   return [
-    { key: 'committee', icon: '🏛️', title: '业委会会议', desc: '组织例会、表决、公示归档', tone: 'blue', chip: committeeChip,
+    { key: 'committee', glyph: '会', title: '业委会会议', desc: '组织例会、表决和材料归档', tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
-    { key: 'reception', icon: '🤝', title: '业主接待', desc: '接待登记、诉求跟进办理', tone: 'green', chip: receptionChip,
+    { key: 'reception', glyph: '访', title: '业主接待', desc: '登记来访、跟进诉求办理', tone: 'green', chip: receptionChip,
       onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } },
-    { key: 'learning', icon: '📚', title: '学习培训', desc: '政策学习、业务能力提升', tone: 'amber', chip: null,
+    { key: 'learning', glyph: '学', title: '学习培训', desc: '查看政策学习和培训记录', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
 })
@@ -3563,38 +3562,38 @@ onActivated(show)
 .home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
-/* 欢迎引导页（路线乙）：橙 Hero 顺流而下 + 灰底上浮托白卡。
-   负边距抵消 plan-stack 的 -20/24rpx 内缩，让 Hero 与顶栏同宽满铺、无缝衔接；欢迎页隐藏底栏 */
-.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 128rpx); margin: -20rpx -24rpx 0; box-sizing: border-box; }
-/* Hero：从顶栏深橙渐变到品牌橙，底部留白给下方灰底卡片上浮压住 */
-.welcome-hero { flex-shrink: 0; padding: 34rpx 42rpx 68rpx; background: linear-gradient(180deg, var(--c-primary-dark) 0%, var(--c-primary) 100%); }
-/* 问候词：白字压橙 Hero（原棕字压灰底＝割裂病根，已废）；大字更有主角感 */
-.welcome-slogan { font-size: 62rpx; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-tip { margin-top: 16rpx; font-size: 30rpx; color: rgba(255,255,255,0.9); letter-spacing: 1rpx; }
-/* 灰底容器上浮 40rpx 盖住 Hero 底边，圆角顶＝分层托举感；白卡浮在灰底上 */
-.welcome-body { flex: 1; position: relative; z-index: 1; margin-top: -40rpx; padding: 44rpx 30rpx 0; background: var(--c-bg-page); border-radius: 40rpx 40rpx 0 0; display: flex; flex-direction: column; box-sizing: border-box; }
-/* 卡片列表占据卡区到落款之间的全部空间，卡子均匀铺开撑满 */
-.welcome-list { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 28rpx; padding: 4rpx 0 12rpx; }
-.welcome-foot { flex-shrink: 0; text-align: center; padding: 22rpx 0 34rpx; font-size: 23rpx; color: #B8C0C8; letter-spacing: 1rpx; }
-/* 更精美的卡：更大圆角与内边距、双层柔和阴影、图标磁贴带同色描边、顶部一条极淡的状态色渐变 */
-.domain-card { position: relative; display: flex; align-items: center; gap: 26rpx; min-height: 176rpx; background: var(--c-bg-card); border-radius: 28rpx; padding: 38rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(20,42,58,0.05), 0 16rpx 34rpx rgba(20,42,58,0.08); box-sizing: border-box; overflow: hidden; cursor: pointer; }
-.domain-card::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6rpx; }
-.domain-card.blue::after { background: linear-gradient(90deg,#3A6EA5,#7AA6D6); }
-.domain-card.green::after { background: linear-gradient(90deg,#3B7150,#6FA987); }
-.domain-card.amber::after { background: linear-gradient(90deg,#C08A2E,#E0B564); }
-.domain-card:active { transform: translateY(2rpx); box-shadow: 0 2rpx 6rpx rgba(20,42,58,0.05), 0 8rpx 18rpx rgba(20,42,58,0.08); }
-.domain-ico { flex-shrink: 0; width: 128rpx; height: 128rpx; border-radius: 34rpx; display: flex; align-items: center; justify-content: center; font-size: 62rpx; box-sizing: border-box; }
-.domain-card.blue .domain-ico { background: #E9F0FA; border: 2rpx solid #D6E4F3; }
-.domain-card.green .domain-ico { background: #E9F5EC; border: 2rpx solid #D3EBDA; }
-.domain-card.amber .domain-ico { background: #FBF0DC; border: 2rpx solid #F1E0BF; }
+/* 欢迎引导页（路线乙）——采纳 codex 方向：顶栏与问候语同用沉稳深蓝灰，一个色系读成整体，
+   不再橙头/灰底/彩字三段割裂。问候语大字置顶，卡片自然高度居上，落款沉底。 */
+/* 顶栏在欢迎页专用深蓝灰（品牌橙让位给「引导选择」的沉稳基调）；进入业务后复位为橙 */
+.home.portal-welcome .hd { background: #2F3D56; }
+.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
+.welcome-hero { flex-shrink: 0; padding: 44rpx 10rpx 30rpx; }
+/* 问候词：深蓝灰，与顶栏同色相呼应；比棕字/纯黑都更沉稳有设计感 */
+.welcome-slogan { font-size: 60rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
+.welcome-tip { margin-top: 14rpx; font-size: 30rpx; color: #8A94A6; letter-spacing: 1rpx; }
+.welcome-list { display: flex; flex-direction: column; gap: 26rpx; padding: 6rpx 0; }
+/* 落款沉底：margin-top:auto 把它推到最下，卡片留在上方＝上密下疏的呼吸感 */
+.welcome-foot { margin-top: auto; text-align: center; padding: 26rpx 0 30rpx; font-size: 23rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+/* 白卡 + 左侧色条（codex 方向，替代原顶部渐变条）+ 单字磁贴 + 状态胶囊 + 右箭头 */
+.domain-card { position: relative; display: flex; align-items: center; gap: 24rpx; min-height: 168rpx; background: #fff; border-radius: 26rpx; padding: 34rpx 30rpx 34rpx 40rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 14rpx 30rpx rgba(20,33,61,0.07); box-sizing: border-box; overflow: hidden; cursor: pointer; }
+.domain-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 10rpx; }
+.domain-card.blue::before { background: #3E6BA8; }
+.domain-card.green::before { background: #3F7C5A; }
+.domain-card.amber::before { background: #C79A5B; }
+.domain-card:active { transform: translateY(2rpx); box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 6rpx 14rpx rgba(20,33,61,0.07); }
+/* 单字磁贴：同色系浅底 + 深字，比 emoji 更统一 */
+.domain-ico { flex-shrink: 0; width: 110rpx; height: 110rpx; border-radius: 26rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; box-sizing: border-box; }
+.domain-card.blue .domain-ico { background: #E6EDF8; color: #3A5E92; }
+.domain-card.green .domain-ico { background: #E4F0E8; color: #3B7150; }
+.domain-card.amber .domain-ico { background: #F1E8D8; color: #9C6B2E; }
 .domain-info { flex: 1; min-width: 0; }
-.domain-title { font-size: 37rpx; font-weight: 800; color: var(--c-text-strong); display: flex; align-items: center; gap: 14rpx; }
+.domain-title { font-size: 37rpx; font-weight: 800; color: #2A3244; display: flex; align-items: center; gap: 14rpx; }
 .domain-chip { font-size: 21rpx; font-weight: 700; padding: 4rpx 16rpx; border-radius: 999rpx; }
 .domain-chip.active { color: #2E5A6E; background: #E4EEF2; }
-.domain-chip.urgent { color: #A0503F; background: #F8E6E2; }
+.domain-chip.urgent { color: #B4482F; background: #F7E7E2; }
 .domain-chip.calm { color: #3B7150; background: #E7F2EB; }
-.domain-desc { margin-top: 12rpx; font-size: 27rpx; color: var(--c-text-weak); line-height: 1.35; }
-.domain-enter { flex-shrink: 0; font-size: 26rpx; font-weight: 600; color: #9AA6B2; }
+.domain-desc { margin-top: 10rpx; font-size: 27rpx; color: #8A94A6; line-height: 1.35; }
+.domain-enter { flex-shrink: 0; font-size: 40rpx; font-weight: 400; color: #B6BECB; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
 .mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
 .mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
