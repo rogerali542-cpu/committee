@@ -1275,13 +1275,27 @@ function enterReceptionArea() {
   enterWorkArea()
   switchTab('/reception-center')
 }
+function portalMeetingTimeText(meeting) {
+  if (!meeting || !meeting.meetingDate) return ''
+  if (meeting.stage === 'ongoing' && meeting.meetingHasStarted !== false) return '进行中'
+  const day = String(meeting.meetingDate).slice(0, 10)
+  const time = String(meeting.meetingTime || '').slice(0, 5)
+  const suffix = time ? time : ''
+  const now = new Date()
+  if (day === formatLocalDay(now)) return '今日' + suffix
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  if (day === formatLocalDay(tomorrow)) return '明日' + suffix
+  const parts = day.split('-')
+  return parts.length === 3 ? (Number(parts[1]) + '月' + Number(parts[2]) + '日') : '待召开'
+}
 const portalDomains = computed(() => {
   const f = homeFocus.value
   const overdueCount = overduePeriodRows.value.length
+  const meetingChipText = f && f.meeting ? portalMeetingTimeText(f.meeting) : ''
   const committeeChip = f && f.level
     ? (f.level === 'calm'
         ? { text: '履职正常', level: 'calm' }
-        : { text: f.periodRow && overdueCount ? overdueCount + '次例会逾期' : f.kicker, level: f.level })
+        : { text: f.periodRow && overdueCount ? overdueCount + '次例会逾期' : (meetingChipText || f.kicker), level: f.level })
     : { text: '履职正常', level: 'calm' }
   const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
   const receptionChip = recPending > 0
