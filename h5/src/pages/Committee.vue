@@ -2929,7 +2929,11 @@ function realUsePhoto() {
   bindStreamToVideo()
 }
 // 离开页面/组件卸载时务必释放摄像头；顺带复位欢迎页标记，避免离开后底栏一直被隐藏
-onUnmounted(() => { stopRealStream(); homeShell.welcomeVisible = false })
+onUnmounted(() => {
+  stopRealStream()
+  // 开发期热更新会先挂载新页面、再卸载旧页面；同在 /main 时不回写 false，避免驾驶舱底栏误显。
+  if (window.location.pathname !== '/main') homeShell.welcomeVisible = false
+})
 
 // AI 识别完成结果卡（自定义精美弹层，替代通用 showModal）
 const scanResultCard = ref(null)

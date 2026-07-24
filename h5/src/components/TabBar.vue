@@ -33,7 +33,9 @@ const tabs = [
 ]
 const active = computed(() => route.path)
 // 欢迎引导页激活时隐藏底栏（选定业务后由 Committee.vue 复位再显示）
-const isTab = computed(() => tabs.some((t) => t.path === route.path) && !homeShell.welcomeVisible)
+// URL 是驾驶舱时直接判定隐藏，避免开发期热更新中新旧页面卸载/挂载顺序造成底栏短暂误显。
+const routeIsCockpit = computed(() => route.path === '/main' && route.query.home === 'portal')
+const isTab = computed(() => tabs.some((t) => t.path === route.path) && !routeIsCockpit.value && !homeShell.welcomeVisible)
 function go(path) { if (path !== route.path) switchTab(path) }
 function backToCockpit() {
   localStorage.setItem('home_layout', JSON.stringify('portal'))
