@@ -120,7 +120,6 @@
         </div>
 
         <div v-if="cockpitTodos.length" class="ck-section">
-          <div class="ck-sec-title">待处理</div>
           <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
                class="ck-todo" :class="currentCockpitTodo.tone" @click="currentCockpitTodo.onTap()">
             <div class="ck-todo-head">
@@ -1348,7 +1347,7 @@ const cockpitSummaryText = computed(() => {
   const items = cockpitTodos.value
   if (!items.length) return '各项工作井然有序，继续保持 👍'
   const range = items.some(item => item.timeScope === 'today') ? '今天' : '近期'
-  return range + '有 ' + items.length + ' 件事需要您处理'
+  return range + '待办 ' + items.length + ' 项'
 })
 const cockpitDateText = computed(() => {
   const d = new Date()
@@ -3832,6 +3831,7 @@ onActivated(show)
 .welcome-tip i { width: 2rpx; height: 28rpx; background: #CDD4DE; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 .ck-section { margin-top: 34rpx; }
+.welcome-hero + .ck-section { margin-top: 22rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
 .ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 28rpx 30rpx 30rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; cursor: pointer; }
 .ck-todo:last-child { margin-bottom: 0; }
