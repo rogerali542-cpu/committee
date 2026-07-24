@@ -30,6 +30,7 @@ const routes = [
   // 点进去又是一个清单纯属重复。现在首页点某件 → 直接进这条的处理页。原页面见 commit 6745a12。
   { path: '/reception-detail', component: () => import('@/pages/ReceptionDetail.vue'), meta: { title: '接待处理' } },
   { path: '/reception-records', component: () => import('@/pages/ReceptionRecords.vue'), meta: { title: '接待记录' } },
+  { path: '/reception-create', component: () => import('@/pages/ReceptionCreate.vue'), meta: { title: '登记接待' } },
   // 接待日安排：编辑接待时间/地点/接待人 + 导出公告 PDF 去打印（0717）
   { path: '/reception-notice', component: () => import('@/pages/ReceptionNotice.vue'), meta: { title: '接待日安排' } },
   { path: '/reception', redirect: '/reception-center' },

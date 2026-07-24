@@ -1659,10 +1659,7 @@ function currentUserName() {
 
 function openReceptionCreate() {
   if (!canManageReception.value) return
-  Object.assign(recForm, { date: todayStr(), time: defaultReceptionTime(), receiver: currentUserName() })
-  recVisitors.value = [newRecVisitor()]
-  loadCommitteeRoster() // 不 await：名单到了选项自然出现，别让弹窗等网络
-  recCreateOpen.value = true
+  window.location.assign('/reception-create')
 }
 
 async function submitReceptionCreate() {
