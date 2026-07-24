@@ -25,3 +25,11 @@
 - [ ] **/api/auth/dev-roles 关闭**（0723 记）：测试期登录页/个人中心切身份的名单接口，
       免登录暴露委员姓名（SecurityConfig permitAll + AuthController.devRoles）。
       上线换真实登录后必须移除或加鉴权；前端 Login/Profile 的兜底写死名单一并删除。
+- [ ] **地图 Key 上线处理**（0723 记）：现用个人开发者测试 Key（h5/.env.local，
+      高德 VITE_AMAP_KEY/JSCODE + 腾讯 VITE_TXMAP_KEY，二选一 VITE_MAP_PROVIDER）。
+      测试免费合规，正式上线运营需办三件事：
+      ① 账号做**企业认证**（免费，提额度 + 合规；视用量评估是否办高德技术服务许可/腾讯商业授权，
+         小区级通常最低档或走政务/公益免费通道）；
+      ② **域名白名单锁死**到正式域名（高德不带端口 / 腾讯带端口），防 Key 被盗刷；
+      ③ **高德安全密钥（jscode）挪到后端 nginx 代理**（现明文写在前端，上线有暴露风险；
+         腾讯是 iframe 组件无此问题）。
