@@ -112,7 +112,7 @@
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
           <div class="welcome-slogan">{{ greeting }}，{{ salutation }}</div>
-          <div class="welcome-tip">{{ cockpitTodos.length ? ('今天有 ' + cockpitTodos.length + ' 件事需要您处理') : '各项工作井然有序，继续保持 👍' }}</div>
+          <div class="welcome-tip">{{ cockpitSummaryText }}</div>
         </div>
 
         <div v-if="cockpitTodos.length" class="ck-section">
@@ -1273,18 +1273,32 @@ const cockpitTodos = computed(() => {
   const items = []
   const f = homeFocus.value
   if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
+    const todayKey = formatLocalDay(new Date())
+    const meetingDay = f.meeting && f.meeting.meetingDate ? String(f.meeting.meetingDate).slice(0, 10) : ''
     items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
       title: f.title, sub: f.sub, cta: f.cta,
+      timeScope: (f.meeting && f.meeting.stage === 'ongoing') || meetingDay === todayKey ? 'today' : 'recent',
       onDelete: f.meeting && isChair.value ? () => removeCurrent(f.meeting) : null,
       onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
   }
   const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
   if (recPending > 0) {
-    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent',
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent', timeScope: 'recent',
       title: recPending + ' 件来访待跟进办理', sub: '业主诉求请尽快处理', cta: '去处理',
       onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } })
   }
   return items
+})
+function formatLocalDay(value) {
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+const cockpitSummaryText = computed(() => {
+  const items = cockpitTodos.value
+  if (!items.length) return '各项工作井然有序，继续保持 👍'
+  const range = items.some(item => item.timeScope === 'today') ? '今天' : '近期'
+  return range + '有 ' + items.length + ' 件事需要您处理'
 })
 // 欢迎页落款/日期（0724 用户定，极淡）
 const welcomeFootText = computed(() => {
