@@ -3,11 +3,11 @@
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
-        <span class="hd-title">{{ planTab === 'reception' ? '接待中心' : '业委会会议' }}</span>
+        <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '接待中心' : '业委会会议') }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
-      <!-- 综合评分：右上角「业委会综合评分92分」，顶栏内垂直居中；数字按分数高低走红绿灯渐变（0716 用户定） -->
-      <div v-if="isChair && planTab === 'meeting'" class="hd-score">
+      <!-- 综合评分：右上角「业委会综合评分92分」，顶栏内垂直居中；数字按分数高低走红绿灯渐变（0716 用户定）。欢迎页不显示。 -->
+      <div v-if="isChair && planTab === 'meeting' && homeLayout !== 'portal'" class="hd-score">
         <span class="hd-score-label">业委会综合评分</span>
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-unit">分</span>
@@ -25,8 +25,8 @@
          正解是把 compact 态的紧凑值直接写死、不再依赖 has-meeting，那是独立的一次重构。
          现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
     <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'reception-mode': planTab === 'reception', 'has-meeting': planTab === 'meeting' && currents && currents.length }">
-        <!-- 当前重点横幅（0724 领导意见#1：关键信息突出）：开会 tab 顶部，只呈现此刻最要紧的一件事 -->
-        <div v-if="planTab === 'meeting' && homeFocus" class="home-focus" :class="homeFocus.level" @click="homeFocus.onTap && homeFocus.onTap()">
+        <!-- 当前重点横幅（0724 领导意见#1：关键信息突出）：仅记录列表版(甲)显示；欢迎引导页(乙)是业务选择，不放横幅 -->
+        <div v-if="planTab === 'meeting' && homeFocus && homeLayout === 'tabs'" class="home-focus" :class="homeFocus.level" @click="homeFocus.onTap && homeFocus.onTap()">
           <div class="hf-body">
             <div class="hf-kicker"><span class="hf-dot"></span>{{ homeFocus.kicker }}</div>
             <div class="hf-title">{{ homeFocus.title }}</div>
@@ -102,11 +102,21 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 工作台宫格（路线乙）：开会 tab + portal 布局。大图标入口，点进各功能页 -->
-      <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="portal-grid">
-        <div v-for="e in portalEntries" :key="e.key" class="portal-cell" :class="e.tone" @click="e.onTap()">
-          <span class="portal-ico">{{ e.icon }}</span>
-          <span class="portal-label">{{ e.label }}</span>
+      <!-- 欢迎引导页（路线乙）：标语 + 选择要进入的业务线 -->
+      <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
+        <div class="welcome-hero">
+          <div class="welcome-slogan">欢迎使用业委会智能助手</div>
+          <div class="welcome-sub">{{ activeRole.realName ? activeRole.realName + '，' : '' }}请选择要进行的工作</div>
+        </div>
+        <div class="welcome-list">
+          <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
+            <span class="domain-ico">{{ d.icon }}</span>
+            <div class="domain-info">
+              <div class="domain-title">{{ d.title }}<span v-if="d.soon" class="domain-soon">敬请期待</span></div>
+              <div class="domain-desc">{{ d.desc }}</div>
+            </div>
+            <span class="domain-arrow">›</span>
+          </div>
         </div>
       </div>
 
@@ -1184,14 +1194,19 @@ try {
   if (q === 'portal' || q === 'tabs') { homeLayout.value = q; setStorage('home_layout', q) }
   else { const s = getStorage('home_layout', ''); if (s === 'portal' || s === 'tabs') homeLayout.value = s }
 } catch (e) {}
-// 工作台宫格入口（路线乙）：大图标 + 标签，点进各功能页。柔和低饱和配色，避免政务土味。
-const portalEntries = computed(() => ([
-  { key: 'create', icon: '📣', label: '发起会议', tone: 'blue', onTap: () => openNewMeeting() },
-  { key: 'records', icon: '📋', label: '会议记录', tone: 'teal', onTap: () => goLibrary() },
-  { key: 'publish', icon: '📢', label: '事项公示', tone: 'amber', onTap: () => goLibrary() },
-  { key: 'reception', icon: '🤝', label: '接待登记', tone: 'green', onTap: () => openReceptionCreate() },
-  { key: 'recRecords', icon: '📁', label: '接待记录', tone: 'purple', onTap: () => goReceptionRecords() },
-  { key: 'learning', icon: '📚', label: '学习培训', tone: 'rose', onTap: () => navigateTo('/pages/learning/learning') }
+// 欢迎引导页（路线乙）：一句标语 + 选择要进入的业务线（顶层选择，非功能拆分）。
+// 联合接待/三方联席会议是规划中的模块，先占位「敬请期待」。
+const portalDomains = computed(() => ([
+  { key: 'committee', icon: '🏛️', title: '业委会会议', desc: '组织例会、表决、公示归档', tone: 'blue',
+    onTap: () => { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') } },
+  { key: 'reception', icon: '🤝', title: '业主接待', desc: '接待登记、诉求跟进办理', tone: 'green',
+    onTap: () => { planTab.value = 'reception' } },
+  { key: 'learning', icon: '📚', title: '学习培训', desc: '政策学习、业务能力提升', tone: 'amber',
+    onTap: () => navigateTo('/pages/learning/learning') },
+  { key: 'joint-reception', icon: '👥', title: '联合接待', desc: '三驾马车联合接待业主', tone: 'teal', soon: true,
+    onTap: () => toast({ title: '功能开发中，敬请期待', icon: 'none' }) },
+  { key: 'joint-meeting', icon: '🧩', title: '三方联席会议', desc: '业委会 · 居委会 · 物业联席', tone: 'purple', soon: true,
+    onTap: () => toast({ title: '功能开发中，敬请期待', icon: 'none' }) }
 ]))
 const homeFocus = computed(() => {
   if (planTab.value !== 'meeting') return null
@@ -3519,18 +3534,25 @@ onActivated(show)
 .home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
-/* 工作台宫格（路线乙）：2列大图标入口，柔和低饱和配色（图标底浅色块），留白充足避免政务土味 */
-.portal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; margin: 18rpx 24rpx 8rpx; }
-.portal-cell { background: var(--c-bg-card); border-radius: 24rpx; padding: 40rpx 20rpx 34rpx; display: flex; flex-direction: column; align-items: center; gap: 20rpx; box-shadow: 0 6rpx 18rpx rgba(20,42,58,0.06); cursor: pointer; }
-.portal-cell:active { transform: translateY(1rpx); opacity: 0.92; }
-.portal-ico { width: 112rpx; height: 112rpx; border-radius: 30rpx; display: flex; align-items: center; justify-content: center; font-size: 54rpx; }
-.portal-cell.blue .portal-ico { background: #E9F0FA; }
-.portal-cell.teal .portal-ico { background: #E4F2F0; }
-.portal-cell.amber .portal-ico { background: #FBF0DC; }
-.portal-cell.green .portal-ico { background: #E9F5EC; }
-.portal-cell.purple .portal-ico { background: #F0ECF8; }
-.portal-cell.rose .portal-ico { background: #FBECEE; }
-.portal-label { font-size: 31rpx; font-weight: 700; color: var(--c-text-strong); letter-spacing: 1rpx; }
+/* 欢迎引导页（路线乙）：标语 + 业务线选择卡（整行大卡，图标+标题+描述+箭头），柔和低饱和 */
+.welcome { margin: 8rpx 24rpx 12rpx; }
+.welcome-hero { padding: 18rpx 8rpx 26rpx; }
+.welcome-slogan { font-size: 42rpx; font-weight: 800; color: var(--c-text-strong); line-height: 1.3; }
+.welcome-sub { margin-top: 14rpx; font-size: 28rpx; color: var(--c-text-weak); }
+.welcome-list { display: flex; flex-direction: column; gap: 18rpx; }
+.domain-card { display: flex; align-items: center; gap: 22rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 28rpx 24rpx; box-shadow: 0 6rpx 18rpx rgba(20,42,58,0.06); cursor: pointer; }
+.domain-card:active { transform: translateY(1rpx); opacity: 0.93; }
+.domain-ico { flex-shrink: 0; width: 100rpx; height: 100rpx; border-radius: 26rpx; display: flex; align-items: center; justify-content: center; font-size: 50rpx; }
+.domain-card.blue .domain-ico { background: #E9F0FA; }
+.domain-card.green .domain-ico { background: #E9F5EC; }
+.domain-card.amber .domain-ico { background: #FBF0DC; }
+.domain-card.teal .domain-ico { background: #E4F2F0; }
+.domain-card.purple .domain-ico { background: #F0ECF8; }
+.domain-info { flex: 1; min-width: 0; }
+.domain-title { font-size: 33rpx; font-weight: 700; color: var(--c-text-strong); display: flex; align-items: center; gap: 12rpx; }
+.domain-soon { font-size: 21rpx; font-weight: 600; color: #9A6A2E; background: #F6EAD6; padding: 3rpx 14rpx; border-radius: 999rpx; }
+.domain-desc { margin-top: 8rpx; font-size: 26rpx; color: var(--c-text-weak); line-height: 1.3; }
+.domain-arrow { flex-shrink: 0; font-size: 40rpx; color: #C4CBD2; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
 .mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
 .mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
