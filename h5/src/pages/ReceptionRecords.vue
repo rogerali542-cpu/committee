@@ -20,7 +20,7 @@
       </section>
 
       <section class="filter-card">
-        <div class="filter-title">查看月份</div>
+        <div class="filter-title">选择月份</div>
         <div class="select-row">
           <select v-model="yearFilter">
             <option v-for="year in years" :key="year" :value="String(year)">{{ year }}年</option>
