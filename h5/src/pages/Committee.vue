@@ -56,7 +56,7 @@
             </div>
           </div>
           <button v-if="canManageReception" class="rec-notice-primary" type="button" @click="goReceptionNotice">
-            调整接待时间
+            调整接待安排
           </button>
         </div>
 
@@ -4135,8 +4135,9 @@ onActivated(show)
 .rnh-time.none { color: #9A3412; }
 .rnh-place { margin-top: 10rpx; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-notice-primary { display: block; width: 60%; height: 96rpx; margin: 29rpx auto 0; border: 0; border-radius: 18rpx;
-  background: var(--c-primary-dark); color: #fff; font-size: 36rpx; font-weight: 500; letter-spacing: normal; }
+.rec-notice-primary { display: block; width: 60%; height: 82rpx; margin: 29rpx auto 0;
+  border: 2rpx solid #D7AD75; border-radius: 18rpx; background: #FFF9F0;
+  color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }
 .rec-notice-primary:active { opacity: 0.76; }
 .rec-register-card { order: 2; display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
   margin-top: 30rpx; padding: 24rpx 26rpx; text-align: left;
