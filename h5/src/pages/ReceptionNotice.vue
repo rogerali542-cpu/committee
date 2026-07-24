@@ -124,7 +124,7 @@ const loadErr = ref('')
 const exporting = ref(false)
 const exportSuccess = ref(false)
 const saving = ref(false)
-const previewOpen = ref(true)
+const previewOpen = ref(false)
 const orgName = ref('业主委员会')
 // 落款全称（含区划+届别，0723 与会议文书统一）：后端 orgFullName，取不到退 orgName
 const orgFullName = ref('业主委员会')
