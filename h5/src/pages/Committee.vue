@@ -135,7 +135,7 @@
         </div>
 
         <div class="ck-section">
-          <div class="ck-sec-title">全部业务</div>
+          <div class="ck-sec-title">工作板块</div>
           <div class="ck-lines">
             <div v-for="d in portalDomains" :key="d.key" class="ck-line" :class="d.tone" @click="d.onTap()">
               <span class="ck-line-ico" :class="d.tone">{{ d.glyph }}</span>
