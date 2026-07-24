@@ -119,8 +119,8 @@
             <div class="ck-todo-head">
               <span class="ck-todo-tag" :class="currentCockpitTodo.tone">{{ currentCockpitTodo.tag }}</span>
               <div class="ck-todo-head-actions">
-                <button v-if="currentCockpitTodo.onDelete" type="button" class="ck-todo-delete"
-                        @click.stop="currentCockpitTodo.onDelete()">删除会议</button>
+                <button v-if="currentCockpitTodo.meeting && isChair" type="button" class="ck-todo-delete"
+                        @click.stop.prevent="removeCurrent(currentCockpitTodo.meeting)">删除会议</button>
                 <div v-if="cockpitTodos.length > 1" class="ck-todo-pager">
                   <button type="button" @click.stop="showPreviousCockpitTodo">上一项</button>
                   <span>{{ cockpitTodoIndex + 1 }}/{{ cockpitTodos.length }}</span>
@@ -1343,7 +1343,7 @@ const cockpitTodos = computed(() => {
     items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
       title: f.title, sub: f.sub, cta: f.cta,
       timeScope: meetingDay === todayKey ? 'today' : 'recent',
-      onDelete: f.meeting && isChair.value ? () => removeCurrent(f.meeting) : null,
+      meeting: f.meeting || null,
       onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
   }
   const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
@@ -2237,7 +2237,7 @@ async function removeCurrent(cur) {
     await api.committeeRemove(cur.id)
     await discardMeetingRecording(cur.id)
     toast({ title: '已删除', icon: 'success' })
-    loadAll()
+    await loadAll()
   } catch (e) {
     toast({ title: (e && e.message) || '删除失败', icon: 'none' })
   }
