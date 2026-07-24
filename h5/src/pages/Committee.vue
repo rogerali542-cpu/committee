@@ -802,7 +802,7 @@
         </div>
         <div class="cal-grid">
           <span v-for="(cell, i) in calCells" :key="i" class="cal-cell"
-                :class="{ empty: !cell, on: cell && isSelectedDay(cell), today: cell && !isSelectedDay(cell) && isToday(cell) }"
+                :class="{ empty: !cell, disabled: cell && isPastMeetingDay(cell), on: cell && isSelectedDay(cell), today: cell && !isSelectedDay(cell) && isToday(cell) }"
                 @click="cell && pickCalDay(cell)">{{ cell || '' }}</span>
         </div>
         <div class="pp-actions">
@@ -3250,7 +3250,14 @@ function calDateStr(day) {
 }
 function isSelectedDay(day) { return _pickerDate() === calDateStr(day) }
 function isToday(day) { return todayStr() === calDateStr(day) }
+function isPastMeetingDay(day) {
+  return pickerTarget.value === 'meeting' && calDateStr(day) < todayStr()
+}
 function pickCalDay(day) {
+  if (isPastMeetingDay(day)) {
+    toast({ title: '会议日期不能早于今天', icon: 'none' })
+    return
+  }
   if (pickerTarget.value === 'reception') recForm.date = calDateStr(day)
   else createForm.meetingDate = calDateStr(day)
   datePickerOpen.value = false
@@ -3406,6 +3413,17 @@ async function submitNewMeeting() {
     if (missing.includes('会议时间')) fieldErrors.meetingTime = true
     if (missing.includes('会议地点')) fieldErrors.location = true
     if (missing.includes('会议议题')) fieldErrors.topics = true
+    return
+  }
+  // 新发起的会议不得选择今天以前的日期。接待补录和既有历史会议编辑不受此限制。
+  if (!editingMeetingId.value && form.meetingDate < todayStr()) {
+    fieldErrors.meetingDate = true
+    await showModal({
+      title: '会议日期不正确',
+      content: '发起会议时，会议日期不能早于今天，请重新选择。',
+      confirmText: '重新选择',
+      showCancel: false
+    })
     return
   }
   // 编辑模式：更新本会议（不新建），完成后回到该会议的「会议通知」页
@@ -4899,9 +4917,10 @@ onActivated(show)
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6rpx; }
 .cal-cell { height: 78rpx; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #1f2329; border-radius: 12rpx; }
 .cal-cell.empty { visibility: hidden; }
+.cal-cell.disabled { color: #C7CDD5; background: transparent; cursor: not-allowed; }
 .cal-cell.today { color: var(--c-primary-dark); font-weight: 700; }
 .cal-cell.on { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
-.cal-cell:not(.empty):not(.on):active { background: var(--c-primary-soft); }
+.cal-cell:not(.empty):not(.on):not(.disabled):active { background: var(--c-primary-soft); }
 .picker-pop { width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 12rpx 26rpx 48rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
 .tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #1f2329; letter-spacing: 2rpx; margin-bottom: 6rpx; }
