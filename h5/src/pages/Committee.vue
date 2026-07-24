@@ -1324,9 +1324,6 @@ function showNextCockpitTodo() {
   if (cockpitTodos.value.length < 2) return
   cockpitTodoIndex.value = (cockpitTodoIndex.value + 1) % cockpitTodos.value.length
 }
-watch(() => cockpitTodos.value.map(item => item.key).join('|'), () => {
-  if (cockpitTodoIndex.value >= cockpitTodos.value.length) cockpitTodoIndex.value = 0
-})
 function formatLocalDay(value) {
   const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return ''
