@@ -2,6 +2,18 @@
 
 > 测试期为了演示方便留下的临时方案，上线前逐条处理。处理完打勾。
 
+## 待接入的外部接口（等对方就绪，非本项目代码问题）
+
+- [ ] **工单系统对接**：代码已完整（`MeetingTodoTicketService`/`ReceptionTicketService`，
+      按 `external-ticket-api.md` 调 `POST /api/external/v1/tickets`）。差对方凭证——
+      在 `backend/.env` 填三样并重启即通：`EXTERNAL_TICKET_ENABLED=true`、
+      `EXTERNAL_TICKET_UID=<对方分配的UID>`、确认 `EXTERNAL_TICKET_BASE_URL` 与
+      `EXTERNAL_TICKET_COMMUNITY_CODE`。⚠ 对方系统侧也要把该 UID 登记并启用（双向配置才通）。
+- [ ] **可信档案馆对接**（真正公示的最后一步）：线下会议流程与公示 PDF 均已就绪，
+      「确认发布公示」目前只落本系统库。待对方提供档案馆归档/上链接口后，在 `publish()`
+      成功后追加一次归档调用（会议记录/纪要/公示三件 + 材料 + 张贴留痕照片），拿回存证号回填。
+      需要对方给：接口地址、鉴权方式、归档报文字段规范。
+
 - [x] **转写结果落库**（0721 记，0722 已做）：`MeetingRecording` 加了 `asr_json` 列
       （V32 迁移，ddl-auto 自动建列），识别完成即落库；`resultForRecording` / `result()`
       内存未命中时从库恢复。落库之前识别的旧录音没有该值，前端单段查看提供「重新识别」找回。
