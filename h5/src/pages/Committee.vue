@@ -1351,7 +1351,7 @@ const cockpitSummaryText = computed(() => {
   const items = cockpitTodos.value
   if (!items.length) return '各项工作井然有序，继续保持 👍'
   const range = items.some(item => item.timeScope === 'today') ? '今天' : '近期'
-  return range + '待办 ' + items.length + ' 项'
+  return range + '有 ' + items.length + ' 件事需要您处理'
 })
 const cockpitDateText = computed(() => {
   const d = new Date()
