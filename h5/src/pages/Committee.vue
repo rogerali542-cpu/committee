@@ -1365,7 +1365,7 @@ const homeFocus = computed(() => {
     onTap: () => onPlanRow(urg.row) }
   const od = overduePeriodRows.value[0]
   if (od) return { level: 'urgent', kicker: '例会逾期', title: od.monthLabel + '例会逾期未开',
-    sub: '可在本期例会之后补开', cta: isChair.value ? '去补开' : '等待通知',
+    sub: '例会是履职核心，请尽快补开', cta: isChair.value ? '去补开' : '等待通知',
     periodRow: od, onTap: () => onPlanRow(od) }
   // 表扬语（0724 用户定）：无待办时给正向反馈，不再是冷冰冰的"正常"
   const doneCount = (currents.value || []).filter(c => c.stage === 'ended').length
