@@ -32,8 +32,9 @@
             <span><i class="hf-dot"></i>{{ homeFocusItems.length > 1 ? '当前会议' : homeFocusItems[0].kicker }}</span>
             <em v-if="homeFocusItems.length > 1">{{ homeFocusItems.length }}项</em>
           </div>
-          <button v-for="focus in homeFocusItems" :key="focus.key" type="button"
-                  class="hf-item" @click="focus.onTap && focus.onTap()">
+          <button v-for="(focus, focusIndex) in homeFocusItems" :key="focus.key" type="button"
+                  class="hf-item" :class="{ primary: focusIndex === 0, secondary: focusIndex > 0 }"
+                  @click="focus.onTap && focus.onTap()">
             <span class="hf-body">
               <span v-if="homeFocusItems.length > 1" class="hf-item-state">{{ focus.kicker }}</span>
               <strong class="hf-title">{{ focus.title }}</strong>
@@ -3629,6 +3630,14 @@ onActivated(show)
   border: 0; border-bottom: 1rpx solid #edf0f2; align-items: center;
   gap: 18rpx; background: #fff; text-align: left;
 }
+.hf-item.primary {
+  min-height: 126rpx; padding: 24rpx 22rpx;
+  background: linear-gradient(90deg, #f3f8fb 0%, #fff 72%);
+}
+.hf-item.secondary {
+  min-height: 92rpx; padding-top: 15rpx; padding-bottom: 15rpx;
+  background: #fbfcfc;
+}
 .hf-item:last-child { border-bottom: 0; }
 .hf-item:active { background: #f7f9fa; }
 .hf-body { display: flex; flex: 1; min-width: 0; flex-direction: column; }
@@ -3639,10 +3648,14 @@ onActivated(show)
   overflow: hidden; color: #263741; font-size: 29rpx; font-weight: 700;
   line-height: 1.3; text-overflow: ellipsis; white-space: nowrap;
 }
+.hf-item.primary .hf-title { color: #203b4d; font-size: 32rpx; font-weight: 750; }
+.hf-item.secondary .hf-title { color: #52616a; font-size: 25rpx; font-weight: 600; }
 .hf-sub {
   overflow: hidden; margin-top: 7rpx; color: #89949b; font-size: 21rpx;
   line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
 }
+.hf-item.secondary .hf-item-state { margin-bottom: 3rpx; color: #8b969d; font-size: 18rpx; }
+.hf-item.secondary .hf-sub { margin-top: 4rpx; color: #a0a8ad; font-size: 19rpx; }
 .hf-cta {
   display: flex; flex: 0 0 auto; min-width: 116rpx; min-height: 58rpx;
   padding: 0 17rpx; border-radius: 13rpx; align-items: center; justify-content: center;
@@ -3652,6 +3665,12 @@ onActivated(show)
 .home-focus.urgent .hf-cta { background: #a75b4f; }
 .home-focus.calm .hf-cta { background: #537a63; }
 .hf-cta i { margin-left: 7rpx; font-size: 27rpx; font-style: normal; }
+.hf-item.secondary .hf-cta {
+  min-width: auto; min-height: 48rpx; padding: 0 5rpx;
+  background: transparent; color: #71838e; font-size: 20rpx; font-weight: 550;
+}
+.home-focus.urgent .hf-item.secondary .hf-cta,
+.home-focus.calm .hf-item.secondary .hf-cta { background: transparent; color: #71838e; }
 /* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。铺满整屏（0724 用户定：老人大按钮铺满更好点）；欢迎页隐藏底栏 */
 .portal-home { min-height: 100vh; background: linear-gradient(180deg, #f5f7f9 0%, #eef2f5 100%); }
 .portal-home .hd {
