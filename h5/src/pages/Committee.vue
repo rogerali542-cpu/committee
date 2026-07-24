@@ -153,6 +153,7 @@
               <span class="ck-line-ico" :class="d.tone">{{ d.glyph }}</span>
             <div class="ck-line-info">
               <div class="ck-line-title">{{ d.title }}</div>
+              <div v-if="d.detail" class="ck-line-detail">{{ d.detail }}</div>
             </div>
               <span v-if="d.chip" class="ck-chip" :class="d.chip.level">{{ d.chip.text }}</span>
               <span class="ck-line-enter">›</span>
@@ -1286,7 +1287,9 @@ const portalDomains = computed(() => {
   return [
     { key: 'committee', glyph: '会', title: '业委会会议', desc: committeeDesc, tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
-    { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc, tone: 'green', chip: receptionChip,
+    { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc,
+      detail: (recSystem.value && recSystem.value.timeDesc) || '接待时间尚未设置',
+      tone: 'green', chip: receptionChip,
       onTap: enterReceptionArea },
     { key: 'learning', glyph: '学', title: '学习培训', desc: '政策学习与业务培训记录', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
@@ -3937,6 +3940,7 @@ onActivated(show)
 .ck-line-ico.amber { background: #F1E8D8; color: #9C6B2E; }
 .ck-line-info { flex: 1; min-width: 0; }
 .ck-line-title { font-size: 37rpx; font-weight: 800; color: #2A3244; }
+.ck-line-detail { margin-top: 8rpx; font-size: 25rpx; font-weight: 500; color: #708078; line-height: 1.35; }
 .ck-line-desc { margin-top: 8rpx; font-size: 28rpx; color: #8A94A6; line-height: 1.35; }
 .ck-chip { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; }
 .ck-chip.active { color: #2E5A6E; background: #E4EEF2; }
