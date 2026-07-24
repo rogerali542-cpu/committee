@@ -3817,7 +3817,7 @@ onActivated(show)
 .welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
 .welcome-hero { flex-shrink: 0; padding: 20rpx 10rpx 10rpx; }
 .welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-tip { margin-top: 12rpx; font-size: 32rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
+.welcome-tip { margin-top: 12rpx; font-size: 32rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 .ck-section { margin-top: 34rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
