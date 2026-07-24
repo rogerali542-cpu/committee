@@ -67,12 +67,6 @@
           </span>
           <span class="rrc-arrow">›</span>
         </button>
-        <!-- 无人来访一键留档（0723 用户定）：值班高频动作提到一屏可见，不再藏在登记弹窗里 -->
-        <button v-if="planTab === 'reception' && canManageReception" class="rec-no-visit-quick" type="button"
-                :disabled="noVisitSaving" @click="quickNoVisit">
-          {{ noVisitSaving ? '正在留档…' : '今日无人来访，一键留档' }}
-        </button>
-
         <div v-if="planTab === 'reception'" class="rec-recent-card">
           <div class="rec-recent-head">
             <span>最近接待记录</span>
@@ -1669,31 +1663,6 @@ function openReceptionCreate() {
   recVisitors.value = [newRecVisitor()]
   loadCommitteeRoster() // 不 await：名单到了选项自然出现，别让弹窗等网络
   recCreateOpen.value = true
-}
-
-// 无人来访一键留档（0723 用户定，仿真实《日常管理情况》值班流水）：
-// 首页一键完成——今天+接待时段+当前登录人为值班人,确认即留档,不再穿过登记表单
-async function quickNoVisit() {
-  if (!canManageReception.value || noVisitSaving.value) return
-  const me = currentUserName()
-  const res = await showModal({
-    title: '登记无人来访',
-    content: '今天接待日无业主来访，登记一条值班留档？\n值班人：' + (me || '（未识别，请从登记接待里选择）'),
-    confirmText: '确认留档',
-    cancelText: '取消'
-  })
-  if (!res.confirm) return
-  if (!me) { openReceptionCreate(); return } // 识别不到当前人 → 走表单选值班人
-  noVisitSaving.value = true
-  try {
-    await api.receptionCreateSession({ date: todayStr(), time: defaultReceptionTime(), receiver: me, noVisit: true, visitors: [] })
-    toast({ title: '已登记无人来访', icon: 'success' })
-    await loadCalExtras()
-  } catch (e) {
-    toast({ title: (e && e.message) || '登记失败', icon: 'none' })
-  } finally {
-    noVisitSaving.value = false
-  }
 }
 
 async function submitReceptionCreate() {
@@ -5021,12 +4990,6 @@ onActivated(show)
    浅橙底 #FFF3E5 + 深橙字 #A85800、内容居中、去箭头、平底无阴影。与待办按钮的 tinted 降级态同族。
    高度 92rpx=46px，仍在 44px 适老热区之上。 */
 /* .rec-add-card/.rac-* 死样式已删（0723）：模板改用 .rec-register-card/.rrc-* 后零引用 */
-/* 无人来访一键留档：登记卡下方的次级描边按钮（值班高频动作，一屏可见） */
-.rec-no-visit-quick { order: 3; width: 100%; box-sizing: border-box; height: 84rpx;
-  border: 2rpx dashed #B8C4CC; border-radius: 22rpx; background: #fff;
-  color: #4A5560; font-size: 29rpx; font-weight: 600; }
-.rec-no-visit-quick:active { background: #F2F5F7; }
-.rec-no-visit-quick:disabled { opacity: .6; }
 /* z 50→150（0716 修）：底部 TabBar 是 z-index:100，50 会被它骑在头上、盖住「取消/确认登记」；
    150 压过 TabBar，又低于日期/时间选择弹窗的 210——选择器要能开在本弹窗之上 */
 .rec-mask { position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
