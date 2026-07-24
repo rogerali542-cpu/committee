@@ -1041,8 +1041,10 @@ const recentReceptionRecords = computed(() => {
       visitorCount: visitorRecords.length,
       summaryText,
       status,
-      // 状态词全模块统一（0723 用户定）：待处理 / 处理中 / 已办结
-      statusText: status === 'done' ? '已办结' : (status === 'doing' ? '处理中' : '待处理')
+      // 无人来访只是完成值班留档，不属于需要办理的事项。
+      statusText: visitorRecords.length === 0
+        ? '已留档'
+        : (status === 'done' ? '已办结' : (status === 'doing' ? '处理中' : '待处理'))
     }
   }).sort((a, b) =>
     (String(b.date || '') + ' ' + String(b.time || '')).localeCompare(String(a.date || '') + ' ' + String(a.time || ''))
@@ -4133,8 +4135,8 @@ onActivated(show)
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
   color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rnh-time.none { color: #9A3412; }
-.rnh-place { margin-top: 10rpx; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rnh-place { margin-top: 10rpx; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid); }
 .rec-notice-primary { display: block; width: 60%; height: 82rpx; margin: 29rpx auto 0;
   border: 2rpx solid #D7AD75; border-radius: 18rpx; background: #FFF9F0;
   color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }

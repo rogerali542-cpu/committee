@@ -56,7 +56,7 @@
             <span class="day-summary">
               <span class="day-summary-top">
                 <strong>{{ day.noVisit ? '无人来访' : day.visitorSummary }}</strong>
-                <em v-if="day.noVisit" :class="day.status">{{ statusLabel(day.status) }}</em>
+                <em v-if="day.noVisit" :class="day.status">已留档</em>
               </span>
               <span v-if="day.noVisit && day.receiverText" class="day-receiver">接待人：{{ day.receiverText }}</span>
             </span>
