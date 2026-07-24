@@ -13,7 +13,6 @@
             <span>接待日期 *</span>
             <button class="control date-control" type="button" @click="openCalendar">
               <span>{{ displayDate }}</span>
-              <span class="calendar-icon">日</span>
             </button>
           </label>
           <label class="field half">
@@ -314,8 +313,6 @@ onMounted(async () => {
 .control { width: 100%; height: 84rpx; box-sizing: border-box; padding: 0 18rpx; border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833; font-size: 30rpx; outline: none; }
 .date-control { display: flex; align-items: center; justify-content: space-between; text-align: left; }
 .time-control { display: flex; align-items: center; justify-content: space-between; text-align: left; }
-.calendar-icon { display: flex; align-items: center; justify-content: center; width: 42rpx; height: 42rpx;
-  border: 3rpx solid #4775AF; border-radius: 8rpx; color: #4775AF; font-size: 22rpx; font-weight: 800; }
 .clock-icon { position: relative; width: 40rpx; height: 40rpx; box-sizing: border-box;
   border: 3rpx solid #4775AF; border-radius: 50%; }
 .clock-icon::before { content: ""; position: absolute; left: 17rpx; top: 7rpx; width: 3rpx; height: 12rpx; border-radius: 2rpx; background: #4775AF; }
