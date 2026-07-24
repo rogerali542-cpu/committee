@@ -102,23 +102,27 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 欢迎引导页（路线乙）：问候 + 标语 + 选择要进入的业务线 -->
+      <!-- 欢迎引导页（路线乙）：问候 Hero + 业务线选择卡。
+           配色（0724 深调研后重做）：顶栏橙 → Hero 橙渐变（同源顺流而下，不再灰底断层）→
+           圆角灰底上浮托住白卡；问候语改白字压在橙 Hero 上（原棕字压灰底＝三段割裂的病根）。 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
           <div class="welcome-slogan">{{ greeting }}，{{ activeRole.realName || '您好' }}</div>
           <div class="welcome-tip">请选择您要处理的工作</div>
         </div>
-        <div class="welcome-list">
-          <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
-            <span class="domain-ico">{{ d.icon }}</span>
-            <div class="domain-info">
-              <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
-              <div class="domain-desc">{{ d.desc }}</div>
+        <div class="welcome-body">
+          <div class="welcome-list">
+            <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
+              <span class="domain-ico">{{ d.icon }}</span>
+              <div class="domain-info">
+                <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
+                <div class="domain-desc">{{ d.desc }}</div>
+              </div>
+              <span class="domain-enter">进入 ›</span>
             </div>
-            <span class="domain-enter">进入 ›</span>
           </div>
+          <div class="welcome-foot">{{ welcomeFootText }}</div>
         </div>
-        <div class="welcome-foot">{{ welcomeFootText }}</div>
       </div>
 
       <!-- 会议记录列表（路线甲）：开会 tab + tabs 布局。卡头=年份+记录，下方竖排记录列表 -->
@@ -3559,15 +3563,19 @@ onActivated(show)
 .home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
-/* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。铺满整屏（0724 用户定：老人大按钮铺满更好点）；欢迎页隐藏底栏 */
-.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); margin: 8rpx 30rpx 0; box-sizing: border-box; }
-.welcome-hero { flex-shrink: 0; padding: 40rpx 6rpx 30rpx; }
-/* 问候词加大 + 换色：品牌深橙描边色（--c-primary-dark），比黑字更暖更有主角感 */
-.welcome-slogan { font-size: 60rpx; font-weight: 800; color: var(--c-primary-dark); line-height: 1.18; letter-spacing: 1rpx; }
-.welcome-tip { margin-top: 20rpx; font-size: 29rpx; color: var(--c-text-mid); }
-/* 卡片列表占据 hero 与落款之间的全部空间，卡子在其中均匀铺开（space-evenly），撑满整屏 */
-.welcome-list { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 28rpx; padding: 12rpx 0; }
-.welcome-foot { flex-shrink: 0; text-align: center; padding: 26rpx 0 34rpx; font-size: 23rpx; color: #B8C0C8; letter-spacing: 1rpx; }
+/* 欢迎引导页（路线乙）：橙 Hero 顺流而下 + 灰底上浮托白卡。
+   负边距抵消 plan-stack 的 -20/24rpx 内缩，让 Hero 与顶栏同宽满铺、无缝衔接；欢迎页隐藏底栏 */
+.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 128rpx); margin: -20rpx -24rpx 0; box-sizing: border-box; }
+/* Hero：从顶栏深橙渐变到品牌橙，底部留白给下方灰底卡片上浮压住 */
+.welcome-hero { flex-shrink: 0; padding: 34rpx 42rpx 68rpx; background: linear-gradient(180deg, var(--c-primary-dark) 0%, var(--c-primary) 100%); }
+/* 问候词：白字压橙 Hero（原棕字压灰底＝割裂病根，已废）；大字更有主角感 */
+.welcome-slogan { font-size: 62rpx; font-weight: 800; color: #fff; line-height: 1.2; letter-spacing: 1rpx; }
+.welcome-tip { margin-top: 16rpx; font-size: 30rpx; color: rgba(255,255,255,0.9); letter-spacing: 1rpx; }
+/* 灰底容器上浮 40rpx 盖住 Hero 底边，圆角顶＝分层托举感；白卡浮在灰底上 */
+.welcome-body { flex: 1; position: relative; z-index: 1; margin-top: -40rpx; padding: 44rpx 30rpx 0; background: var(--c-bg-page); border-radius: 40rpx 40rpx 0 0; display: flex; flex-direction: column; box-sizing: border-box; }
+/* 卡片列表占据卡区到落款之间的全部空间，卡子均匀铺开撑满 */
+.welcome-list { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 28rpx; padding: 4rpx 0 12rpx; }
+.welcome-foot { flex-shrink: 0; text-align: center; padding: 22rpx 0 34rpx; font-size: 23rpx; color: #B8C0C8; letter-spacing: 1rpx; }
 /* 更精美的卡：更大圆角与内边距、双层柔和阴影、图标磁贴带同色描边、顶部一条极淡的状态色渐变 */
 .domain-card { position: relative; display: flex; align-items: center; gap: 26rpx; min-height: 176rpx; background: var(--c-bg-card); border-radius: 28rpx; padding: 38rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(20,42,58,0.05), 0 16rpx 34rpx rgba(20,42,58,0.08); box-sizing: border-box; overflow: hidden; cursor: pointer; }
 .domain-card::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6rpx; }
