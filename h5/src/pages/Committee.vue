@@ -69,7 +69,7 @@
         </button>
         <div v-if="planTab === 'reception'" class="rec-recent-card">
           <div class="rec-recent-head">
-            <span>最近接待记录</span>
+            <span>接待记录</span>
             <button type="button" @click="goReceptionRecords">查看全部</button>
           </div>
           <div v-if="!recentReceptionRecords.length" class="rec-recent-empty">暂无接待记录</div>
