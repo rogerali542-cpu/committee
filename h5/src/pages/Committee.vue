@@ -49,8 +49,8 @@
           <div class="rec-notice-hero-head">
             <div class="rnh-copy">
               <div class="rnh-kicker">接待安排</div>
-              <div class="rnh-time" :class="{ none: !(recSystem && recSystem.timeDesc) }">
-                {{ (recSystem && recSystem.timeDesc) || '还没设置接待时间' }}
+              <div class="rnh-time" :class="{ none: !receptionTimeText }">
+                {{ receptionTimeText || '还没设置接待时间' }}
               </div>
               <div v-if="recSystem && recSystem.place" class="rnh-place">接待地点：{{ recSystem.place }}</div>
             </div>
@@ -1071,6 +1071,11 @@ function receptionNeedsAction(r) {
 // 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间和地点。
 // 卡上只读，编辑和导出都在 /reception-notice 里
 const recSystem = ref(null)
+const receptionTimeText = computed(() => {
+  return String((recSystem.value && recSystem.value.timeDesc) || '')
+    .replace(/[，,、]?\s*法定节假日暂停.*$/, '')
+    .trim()
+})
 // 卡标题「X月接待安排」用的当前月份。取一次就够：跨月那一刻用户不会正开着页面
 const recMonth = new Date().getMonth() + 1
 function goReceptionNotice() {
@@ -1288,7 +1293,7 @@ const portalDomains = computed(() => {
     { key: 'committee', glyph: '会', title: '业委会会议', desc: committeeDesc, tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
     { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc,
-      detail: (recSystem.value && recSystem.value.timeDesc) || '接待时间尚未设置',
+      detail: receptionTimeText.value || '接待时间尚未设置',
       tone: 'green', chip: receptionChip,
       onTap: enterReceptionArea },
     { key: 'learning', glyph: '学', title: '学习培训', desc: '政策学习与业务培训记录', tone: 'amber', chip: null,

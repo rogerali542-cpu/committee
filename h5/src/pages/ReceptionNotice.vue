@@ -184,6 +184,9 @@ function parseTimeDesc(s) {
 }
 // input[type=time] 只认 HH:MM，「9:00」得补成「09:00」
 function pad(v) { return v.length === 4 ? '0' + v : v }
+function conciseTimeDesc(value) {
+  return String(value || '').replace(/[，,、]?\s*法定节假日暂停.*$/, '').trim()
+}
 
 async function load() {
   canManage.value = perm.can('reception.manage')
@@ -193,7 +196,7 @@ async function load() {
       api.committeeMembers().catch(() => [])
     ])
     committeeRoster.value = members || []
-    saved.timeDesc = (sys && sys.timeDesc) || ''
+    saved.timeDesc = conciseTimeDesc(sys && sys.timeDesc)
     form.place = saved.place = (sys && sys.place) || ''
     form.person = saved.person = (sys && sys.person) || ''
     form.reason = saved.reason = (sys && sys.adjustReason) || ''
