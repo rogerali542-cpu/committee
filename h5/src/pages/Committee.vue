@@ -107,7 +107,7 @@
            配色沿用统一深蓝灰视觉语言，卡片＝白底 + 左侧业务色条 + 单字磁贴 + 状态胶囊。 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
-          <div class="welcome-slogan">{{ greeting }}，{{ activeRole.realName || '您好' }}</div>
+          <div class="welcome-slogan">{{ greeting }}，{{ salutation }}</div>
           <div class="welcome-tip">{{ cockpitTodos.length ? ('今天有 ' + cockpitTodos.length + ' 件事需要您处理') : '各项工作井然有序，继续保持 👍' }}</div>
         </div>
 
@@ -1227,6 +1227,18 @@ try {
 const greeting = computed(() => {
   const h = new Date().getHours()
   return h < 6 ? '夜深了' : h < 11 ? '上午好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
+})
+// 得体称呼（0724 用户定：不直呼全名）：姓 + 职务，如「张主任」「李委员」。
+// 复姓兜底取两字姓，否则单字姓；无职务时退回全名，无名退回「您」。
+const DOUBLE_SURNAMES = ['欧阳', '司马', '诸葛', '上官', '夏侯', '令狐', '慕容', '皇甫', '东方', '尉迟', '长孙', '宇文', '司徒', '司空', '澹台', '公孙', '轩辕', '钟离', '端木', '独孤', '南宫', '万俟', '闻人', '拓跋', '完颜', '赫连', '呼延', '东郭', '西门', '百里']
+const salutation = computed(() => {
+  const r = activeRole.value || {}
+  const name = (r.realName || '').trim()
+  const role = (r.role || '').trim()
+  if (!name) return '您'
+  if (!role) return name
+  const surname = DOUBLE_SURNAMES.indexOf(name.slice(0, 2)) !== -1 ? name.slice(0, 2) : name.slice(0, 1)
+  return surname + role
 })
 // 欢迎引导页当前是否可见（portal 布局 + 开会 tab）→ 隐藏底栏；选定业务后置回，底栏出现
 const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.value === 'meeting')
