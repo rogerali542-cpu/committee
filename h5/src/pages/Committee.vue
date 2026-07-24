@@ -3932,7 +3932,7 @@ onActivated(show)
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
-.ck-lines { display: flex; flex-direction: column; gap: 20rpx; }
+.ck-lines { display: flex; flex-direction: column; gap: 28rpx; }
 .ck-line { position: relative; display: flex; align-items: center; gap: 26rpx; background: #fff; border-radius: 26rpx; padding: 32rpx 30rpx 32rpx 42rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 14rpx 30rpx rgba(20,33,61,0.07); overflow: hidden; cursor: pointer; }
 .ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-line.blue::before { background: #3E6BA8; }
