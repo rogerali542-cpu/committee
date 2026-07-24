@@ -829,14 +829,18 @@
         <div class="tg-cur">{{ String(tpHour).padStart(2, '0') }}:{{ String(tpMinute).padStart(2, '0') }}</div>
         <div class="tg-label">时</div>
         <div class="tg-grid">
-          <span v-for="h in hourOptions" :key="h" class="tg-cell" :class="{ on: h === tpHour }" @click="setTpHour(h)">{{ String(h).padStart(2, '0') }}</span>
+          <span v-for="h in hourOptions" :key="h" class="tg-cell"
+                :class="{ on: h === tpHour, disabled: isPastTimeOption(h, 45) }"
+                @click="setTpHour(h)">{{ String(h).padStart(2, '0') }}</span>
         </div>
         <div class="tg-label">分</div>
         <div class="tg-grid tg-grid-m">
-          <span v-for="m in minuteOptions" :key="m" class="tg-cell" :class="{ on: m === tpMinute }" @click="setTpMinute(m)">{{ String(m).padStart(2, '0') }}</span>
+          <span v-for="m in minuteOptions" :key="m" class="tg-cell"
+                :class="{ on: m === tpMinute, disabled: isPastTimeOption(tpHour, m) }"
+                @click="setTpMinute(m)">{{ String(m).padStart(2, '0') }}</span>
         </div>
         <div class="pp-actions">
-          <button class="btn btn-primary" @click="timePickerOpen = false">确认</button>
+          <button class="btn btn-primary" @click="confirmTime">确认</button>
         </div>
       </div>
     </div>
@@ -3327,12 +3331,39 @@ function openTimePicker(target) {
   const parts = (cur || '09:00').split(':')
   tpHour.value = Math.min(20, Math.max(9, Number(parts[0]) || 9)) // 夹到 9—20 点
   tpMinute.value = (Math.round((Number(parts[1]) || 0) / 15) * 15) % 60
+  if (isPastTimeOption(tpHour.value, tpMinute.value)) {
+    const next = firstAvailableTime()
+    if (!next) {
+      toast({ title: '今天已无可选时间，请选择明天', icon: 'none' })
+      return
+    }
+    tpHour.value = next.hour
+    tpMinute.value = next.minute
+    applyTime()
+  }
   timePickerOpen.value = true
   scrollPickerToSelected()
 }
 function confirmTime() {
+  if (isPastTimeOption(tpHour.value, tpMinute.value)) {
+    toast({ title: '会议时间不能早于当前时间', icon: 'none' })
+    return
+  }
   applyTime()
   timePickerOpen.value = false
+}
+function isPastTimeOption(hour, minute) {
+  if (pickerTarget.value !== 'meeting' || createForm.meetingDate !== todayStr()) return false
+  const now = new Date()
+  return Number(hour) * 60 + Number(minute) <= now.getHours() * 60 + now.getMinutes()
+}
+function firstAvailableTime() {
+  for (const hour of hourOptions) {
+    for (const minute of minuteOptions) {
+      if (!isPastTimeOption(hour, minute)) return { hour, minute }
+    }
+  }
+  return null
 }
 // 大按钮点选：点即更新并实时写入（免"确定"那一步）
 function applyTime() {
@@ -3340,8 +3371,21 @@ function applyTime() {
   if (pickerTarget.value === 'reception') recForm.time = v
   else createForm.meetingTime = v
 }
-function setTpHour(h) { tpHour.value = h; applyTime() }
-function setTpMinute(m) { tpMinute.value = m; applyTime() }
+function setTpHour(h) {
+  if (isPastTimeOption(h, 45)) return
+  tpHour.value = h
+  if (isPastTimeOption(h, tpMinute.value)) {
+    const minute = minuteOptions.find(m => !isPastTimeOption(h, m))
+    if (minute === undefined) return
+    tpMinute.value = minute
+  }
+  applyTime()
+}
+function setTpMinute(m) {
+  if (isPastTimeOption(tpHour.value, m)) return
+  tpMinute.value = m
+  applyTime()
+}
 
 // 打开选择器后把已选项滚到列中部（只滚动列内部，不影响页面）
 function scrollPickerToSelected() {
@@ -3482,6 +3526,22 @@ async function submitNewMeeting() {
       showCancel: false
     })
     return
+  }
+  if (form.meetingDate === todayStr()) {
+    const now = new Date()
+    const nowMinutes = now.getHours() * 60 + now.getMinutes()
+    const timeParts = form.meetingTime.split(':')
+    const meetingMinutes = Number(timeParts[0]) * 60 + Number(timeParts[1])
+    if (meetingMinutes <= nowMinutes) {
+      fieldErrors.meetingTime = true
+      await showModal({
+        title: '会议时间不正确',
+        content: '今天的会议时间不能早于当前时间，请重新选择。',
+        confirmText: '重新选择',
+        showCancel: false
+      })
+      return
+    }
   }
   // 编辑模式：更新本会议（不新建），完成后回到该会议的「会议通知」页
   if (editingMeetingId.value) {
@@ -4995,6 +5055,8 @@ onActivated(show)
 .tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
 .tg-cell.on { background: #E6EDF8; color: #2F5E96; font-weight: 700; box-shadow: inset 0 0 0 3rpx #3E6BA8; }
 .tg-cell:not(.on):active { background: #E6EDF8; }
+.tg-cell.disabled { color: #C4CAD2; background: #F7F8FA; box-shadow: none; cursor: not-allowed; }
+.tg-cell.disabled:active { background: #F7F8FA; }
 .pp-head { text-align: center; font-size: 52rpx; font-weight: 700; color: #1f2329; margin: 0 0 8rpx; }
 .picker-pop > .pop-close { position: absolute; top: 12rpx; right: 12rpx; z-index: 2; margin: 0; }
 .cal-pop > .pop-close { display: flex; justify-content: flex-end; margin-bottom: 4rpx; }
