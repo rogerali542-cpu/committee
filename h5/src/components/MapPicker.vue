@@ -157,7 +157,7 @@ function loadAmapScript() {
   _amapLoadPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script')
     s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(AMAP_KEY)
-      + '&plugin=AMap.Geocoder,AMap.PlaceSearch'
+      + '&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.Geolocation'
     s.onload = () => resolve()
     s.onerror = () => { _amapLoadPromise = null; reject(new Error('高德地图脚本加载失败，请检查网络与 Key')) }
     document.head.appendChild(s)
@@ -174,12 +174,28 @@ async function initAmap() {
     _amap = new window.AMap.Map(amapEl.value, { zoom: 16, resizeEnable: true })
     _geocoder = new window.AMap.Geocoder()
     _placeSearch = new window.AMap.PlaceSearch({ pageSize: 5 })
-    // 浏览器定位失败也无妨：默认落在地图默认视野，用户可搜索
     _amap.on('moveend', regeoCenter)
+    // 尝试定位到当前位置（手机允许定位即生效；电脑/拒绝授权则失败，留默认视野，用户可搜索）
+    locateToCurrent()
     regeoCenter()
   } catch (e) {
     amapError.value = (e && e.message) || '地图初始化失败'
   }
+}
+
+// 定位到当前位置并居中（0723）：AMap.Geolocation 拿到坐标就把地图挪过去，
+// moveend 会自动触发逆地理刷新地址。失败静默（无权限/超时）——保持默认视野，用户搜索选点。
+function locateToCurrent() {
+  if (!_amap || !window.AMap || !window.AMap.Geolocation) return
+  try {
+    const geo = new window.AMap.Geolocation({ enableHighAccuracy: true, timeout: 8000, showButton: false, showMarker: false, showCircle: false, panToLocation: false })
+    _amap.addControl(geo)
+    geo.getCurrentPosition((status, result) => {
+      if (status === 'complete' && result && result.position) {
+        _amap.setCenter([result.position.lng, result.position.lat])
+      }
+    })
+  } catch (e) { /* 定位失败留默认视野 */ }
 }
 
 function regeoCenter() {
