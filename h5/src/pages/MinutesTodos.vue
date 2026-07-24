@@ -4,9 +4,30 @@
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <div v-else-if="emptyText" class="access-card">
-      <div class="access-icon">✓</div>
-      <span class="access-title">暂无待办</span>
+      <div class="access-icon">{{ /待主任确认|加载失败/.test(emptyText) ? '📋' : '✓' }}</div>
+      <span class="access-title">{{ emptyText }}</span>
     </div>
+
+    <!-- 人工判断确认清单（0724 领导意见#4）：AI 只给建议，主任勾选/编辑/增补后才生成正式待办 -->
+    <template v-else-if="reviewMode">
+      <div class="review-intro">
+        <div class="review-title">确认待办事项</div>
+        <div class="review-sub">以下是系统从会议中识别的待办<b>建议</b>，请勾选保留、修改或补充后确认。未勾选的不会加入待办。</div>
+      </div>
+      <div class="review-card" v-for="(r, i) in reviewRows" :key="i" :class="{ off: !r.keep }">
+        <div class="review-head">
+          <label class="review-keep"><input type="checkbox" v-model="r.keep" /><span>保留此项</span></label>
+          <button class="review-del" @click="reviewRows.splice(i, 1)">删除</button>
+        </div>
+        <textarea class="review-input title" v-model="r.title" rows="2" placeholder="待办内容"></textarea>
+        <div class="review-row2">
+          <input class="review-input" v-model="r.owner" placeholder="负责人（选填）" />
+          <input class="review-input" v-model="r.due" placeholder="截止时间（选填）" />
+        </div>
+      </div>
+      <button class="review-add" @click="addReviewRow">＋ 手动添加待办</button>
+      <button class="review-confirm" :disabled="confirming" @click="confirmReview">{{ confirming ? '保存中…' : '确认待办清单' }}</button>
+    </template>
 
     <template v-else>
       <div class="todo-card" v-for="(item, index) in cards" :key="item.id || index">
@@ -66,6 +87,32 @@ import PageNav from '@/components/PageNav.vue'
 // 两者都解析不出时整段原文兜底。
 
 const canPushTicket = perm.isChair()
+const isChair = canPushTicket
+
+// 人工判断（0724 领导意见#4）：AI 判断"是否待办"的边界不准，改为只出建议，
+// 主任勾选保留/编辑/增补后才固化入库，不再静默自动生成待办。
+const reviewMode = ref(false)
+const reviewRows = ref([])
+const confirming = ref(false)
+function addReviewRow() {
+  reviewRows.value.push({ keep: true, title: '', owner: '', due: '', status: '', source: '' })
+}
+async function confirmReview() {
+  const rows = reviewRows.value.filter(r => r.keep && String(r.title || '').trim())
+  if (!rows.length) { toast({ title: '请至少保留或添加一条待办', icon: 'none' }); return }
+  confirming.value = true
+  try {
+    // sourceRef 携带来源议题（仅存档追溯，界面不展示）
+    const payload = rows.map(r => ({ title: r.title.trim(), owner: r.owner, dueText: r.due, status: r.status, sourceRef: r.source }))
+    const items = (await api.committeeTodoInit(meetingId, payload)) || []
+    reviewMode.value = false
+    cards.value = markDueUrgent(items)
+    emptyText.value = items.length ? '' : '本次会议无明确待办事项。'
+    toast({ title: '待办清单已确认', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
+  } finally { confirming.value = false }
+}
 
 function statusLabel(status) {
   return status === 'done' ? '已完成' : status === 'doing' ? '处理中' : '待处理'
@@ -219,13 +266,16 @@ async function load() {
       }
       const parsed = parseTodos(text)
       if (parsed.length) {
-        const payload = parsed.map(c => ({ title: c.title, owner: c.owner, dueText: c.due, status: c.status }))
-        try {
-          items = (await api.committeeTodoInit(meetingId, payload)) || []
-        } catch (e) {
-          // 固化失败：降级展示解析结果（无 id，按钮不可用）
-          items = parsed.map(c => ({ title: c.title, owner: c.owner, dueText: c.due, status: statusKey(c.status) }))
+        // 人工判断（0724）：不再静默自动固化。主任进入确认清单勾选/编辑/增补；委员先看占位。
+        if (isChair) {
+          reviewRows.value = parsed.map(c => ({ keep: true, title: c.title, owner: c.owner, due: c.due, status: c.status, source: c.source }))
+          reviewMode.value = true
+          loading.value = false
+          return
         }
+        loading.value = false; cards.value = []; rawText.value = ''
+        emptyText.value = '待办清单待主任确认整理后查看。'
+        return
       } else {
         loading.value = false; cards.value = []; rawText.value = text; emptyText.value = ''
         return
@@ -329,6 +379,26 @@ onMounted(() => {
 :deep(.page-nav) { background: var(--c-primary-dark); }
 .todos-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 100rpx; box-sizing: border-box; }
 
+/* 人工确认清单（0724）：AI 建议 → 主任勾选/编辑/增补后固化 */
+.review-intro { background: #fff; border-radius: 16px; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.review-title { font-size: 34rpx; font-weight: 700; color: #1f2329; }
+.review-sub { margin-top: 12rpx; font-size: 26rpx; color: #667B88; line-height: 1.5; }
+.review-sub b { color: #C77800; }
+.review-card { background: #fff; border-radius: 16px; padding: 20rpx 22rpx 24rpx; margin-bottom: 18rpx; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.review-card.off { opacity: 0.55; }
+.review-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
+.review-keep { display: flex; align-items: center; gap: 12rpx; font-size: 28rpx; color: #24364B; font-weight: 600; }
+.review-keep input { width: 40rpx; height: 40rpx; }
+.review-del { border: 0; background: transparent; color: #B0463A; font-size: 26rpx; padding: 6rpx 4rpx 6rpx 20rpx; }
+.review-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E2E5E9; border-radius: 12rpx; padding: 16rpx 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
+.review-input.title { font-weight: 600; resize: none; line-height: 1.4; }
+.review-row2 { display: flex; gap: 14rpx; margin-top: 14rpx; }
+.review-row2 .review-input { flex: 1; }
+.review-add { width: 100%; min-height: 84rpx; margin-top: 4rpx; border: 2rpx dashed #C9D0D6; border-radius: 16rpx; background: #F5F6F8; color: #526774; font-size: 29rpx; font-weight: 600; }
+.review-add:active { background: #EAEDF0; }
+.review-confirm { width: 100%; min-height: 92rpx; margin-top: 22rpx; border: 0; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 32rpx; font-weight: 700; }
+.review-confirm:disabled { opacity: 0.6; }
+.review-confirm:active { opacity: 0.9; }
 .todo-card { background: #fff; border-radius: 16px; padding: 22px 20px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .todo-top { display: flex; align-items: flex-start; position: relative; }
 .todo-idx { flex: none; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 50%; background: #1A4A8A; color: #fff; font-size: 18px; font-weight: 700; margin-right: 14px; margin-top: 2px; }
