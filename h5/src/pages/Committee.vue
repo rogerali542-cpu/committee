@@ -7,7 +7,7 @@
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score">
-        <span class="hd-score-label">业委会综合评分</span>
+        <span class="hd-score-label">当前业委会综合评分</span>
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-unit">分</span>
       </div>
