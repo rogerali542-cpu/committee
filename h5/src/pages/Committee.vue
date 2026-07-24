@@ -25,6 +25,17 @@
          正解是把 compact 态的紧凑值直接写死、不再依赖 has-meeting，那是独立的一次重构。
          现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
     <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'reception-mode': planTab === 'reception', 'has-meeting': planTab === 'meeting' && currents && currents.length }">
+        <!-- 当前重点横幅（0724 领导意见#1：关键信息突出）：开会 tab 顶部，只呈现此刻最要紧的一件事 -->
+        <div v-if="planTab === 'meeting' && homeFocus" class="home-focus" :class="homeFocus.level" @click="homeFocus.onTap && homeFocus.onTap()">
+          <div class="hf-body">
+            <div class="hf-kicker"><span class="hf-dot"></span>{{ homeFocus.kicker }}</div>
+            <div class="hf-title">{{ homeFocus.title }}</div>
+            <div v-if="homeFocus.sub" class="hf-sub">{{ homeFocus.sub }}</div>
+          </div>
+          <button v-if="homeFocus.cta" type="button" class="hf-cta" @click.stop="homeFocus.onTap && homeFocus.onTap()">
+            <span v-if="homeFocus.icon" class="hf-cta-ico">{{ homeFocus.icon }}</span>{{ homeFocus.cta }}
+          </button>
+        </div>
         <!-- 登记：接待的入口动作，独立成大按钮（0716 用户定）。委员接待完来访，先用它把事情记进下面的
              清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
@@ -181,7 +192,8 @@
              收起栏，点开能就地展开整张会议卡——现在整条链一起撤：
              收起栏删了，「点开展开」就没了入口，于是 meetCardOpen、「收起▴」也全成死代码，一并清掉。
              代价说明白：接待/培训 tab 从此不再提示「有会正在进行」，要看会得切回开会 tab。 -->
-        <template v-if="currents && currents.length > 0">
+        <!-- 详情大会议卡：0724 改版后并入顶部「当前重点」横幅（HOME_V2），旧卡代码暂留便于回滚 -->
+        <template v-if="currents && currents.length > 0 && !HOME_V2">
           <template v-if="planTab === 'meeting'">
             <div v-for="cur in currents" :key="cur.id" class="meet-card">
               <!-- 卡结构（0716 用户定）：状态从右上角的小胶囊提为左侧标题（进行中的会议/未开始的会议/
@@ -1160,6 +1172,41 @@ const currentPeriodUrgency = computed(() => {
   const daysLeft = Math.floor((end - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000) + 1 // 含今天
   return daysLeft < 10 ? { row: row, daysLeft: Math.max(daysLeft, 0) } : null
 })
+
+// 首页改版（0724 领导意见#1）：顶部「当前重点」横幅——只呈现此刻最要紧的一件事 + 一个直达大按钮，
+// 让关键信息一眼突出；下方日历/待办把已完成、未到期的内容折叠收起。优先级从上到下取第一个命中。
+const HOME_V2 = true // 详情大会议卡并入顶部横幅（旧卡暂留代码，flag 关即回滚）
+const homeFocus = computed(() => {
+  if (planTab.value !== 'meeting') return null
+  const list = currents.value || []
+  const stepText = (c) => {
+    const on = (c.steps || []).filter(s => s.state !== 'done').length
+    const total = (c.steps || []).length
+    return total ? '第 ' + Math.min(total - on + 1, total) + '/' + total + ' 步' : ''
+  }
+  const ongoing = list.find(c => c.stage === 'ongoing' && !c.reviewDone)
+  if (ongoing) return { level: 'active', kicker: ongoing.tag || '正在进行', title: ongoing.title,
+    sub: [ongoing.timeText, ongoing.locationText, stepText(ongoing)].filter(Boolean).join(' · '),
+    cta: ongoing.ctaLabel, icon: ongoing.ctaIcon, onTap: () => goCurrent(ongoing) }
+  // 只把「还需整理/生成纪要」的已结束会议当重点；已生成纪要（按钮=查看会议）算完成，不占焦点
+  const ended = list.find(c => c.stage === 'ended' && c.ctaLabel !== '查看会议')
+  if (ended) return { level: 'active', kicker: ended.minutesGen ? '会议纪要生成中' : '待整理会议记录',
+    title: ended.title, sub: ended.timeText, cta: ended.ctaLabel, icon: ended.ctaIcon, onTap: () => goCurrent(ended) }
+  const urg = viewYear.value === curYear ? currentPeriodUrgency.value : null
+  if (urg) return { level: 'urgent', kicker: '本期例会临期', title: '本期例会还没召开',
+    sub: '距期限只剩 ' + urg.daysLeft + ' 天，请尽快安排会议', cta: isChair.value ? '去通知' : '等待通知',
+    onTap: () => onPlanRow(urg.row) }
+  const od = overduePeriodRows.value[0]
+  if (od) return { level: 'urgent', kicker: '例会逾期', title: od.monthLabel + '例会逾期未开',
+    sub: '例会是履职核心，请尽快补开', cta: isChair.value ? '去补开' : '等待通知', onTap: () => onPlanRow(od) }
+  const prep = list.find(c => c.stage === 'preparing')
+  if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
+    sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
+    onTap: () => goCurrent(prep) }
+  return { level: 'calm', kicker: '履职状态', title: '本期履职正常',
+    sub: '暂无待办会议事项，可从下方发起新的会议', cta: '', onTap: null }
+})
+
 const calAlert = computed(() => {
   if (planTab.value === 'meeting') {
     const rows = overduePeriodRows.value
@@ -3409,6 +3456,25 @@ onActivated(show)
 .hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
+/* 当前重点横幅（0724 首页改版）：整屏第一视觉，色随紧急度——active 品牌深橙 / urgent 红 / calm 中性 */
+.home-focus { margin: 16rpx 24rpx 6rpx; border-radius: 22rpx; padding: 26rpx 26rpx 24rpx; display: flex; flex-direction: column; gap: 18rpx; box-shadow: 0 12rpx 30rpx rgba(20,42,58,0.12); cursor: pointer; }
+.home-focus.active { background: linear-gradient(150deg,#C97C1E,#A85800); }
+.home-focus.urgent { background: linear-gradient(150deg,#E24B3B,#C42718); }
+.home-focus.calm { background: linear-gradient(150deg,#5B6B7E,#3D4C5E); }
+.home-focus:active { opacity: 0.94; }
+.hf-body { min-width: 0; }
+.hf-kicker { display: inline-flex; align-items: center; gap: 10rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.9); letter-spacing: 1rpx; }
+.hf-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #fff; box-shadow: 0 0 0 6rpx rgba(255,255,255,0.22); }
+.home-focus.urgent .hf-dot { animation: hfPulse 1.6s ease-in-out infinite; }
+@keyframes hfPulse { 0%,100% { box-shadow: 0 0 0 4rpx rgba(255,255,255,0.28); } 50% { box-shadow: 0 0 0 12rpx rgba(255,255,255,0.12); } }
+.hf-title { margin-top: 12rpx; font-size: 40rpx; font-weight: 800; color: #fff; line-height: 1.25; }
+.hf-sub { margin-top: 8rpx; font-size: 27rpx; color: rgba(255,255,255,0.88); line-height: 1.4; }
+.hf-cta { align-self: stretch; min-height: 92rpx; border: 0; border-radius: 16rpx; background: #fff; color: #1f2329; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12rpx; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.14); }
+.home-focus.active .hf-cta { color: #A85800; }
+.home-focus.urgent .hf-cta { color: #C42718; }
+.home-focus.calm .hf-cta { color: #3D4C5E; }
+.hf-cta:active { transform: translateY(1rpx); }
+.hf-cta-ico { font-size: 30rpx; }
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
    全删（0717 用户定：会议进行中那一栏撤掉，接待日安排顶上）。
