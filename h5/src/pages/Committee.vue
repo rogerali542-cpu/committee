@@ -3524,7 +3524,9 @@ onActivated(show)
 }
 /* 顶栏 */
 /* 顶栏加高（0716 用户定），评分徽章 align-self:center 在栏内垂直居中 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: var(--c-primary-dark); }
+/* 顶栏底色改沉稳深蓝灰（0724：与路线乙统一视觉语言）——中性深色顶栏 + 橙色行动按钮的经典搭配，
+   比通体橙更耐看、更「产品化」；橙仍是全站的行动强调色（按钮/徽标不变）。 */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2F3D56; }
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
