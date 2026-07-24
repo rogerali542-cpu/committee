@@ -102,24 +102,48 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 欢迎引导页（路线乙）：问候 + 业务线选择卡。
-           配色（0724 再改，采纳 codex 方向）：顶栏改沉稳深蓝灰、问候语同色相呼应——
-           一个色系读成整体，不再橙头/灰底/彩字割裂；卡片＝单字磁贴 + 左侧色条 + 状态胶囊 + 右箭头。 -->
+      <!-- 驾驶舱首页（路线乙 0724 重做）：欢迎语 + 跨条线待办聚合 + 全部业务目录。
+           不再是「选业务的门」——一屏看全业委会/接待今天该处理什么，点条目直达；无待办给正向反馈。
+           配色沿用统一深蓝灰视觉语言，卡片＝白底 + 左侧业务色条 + 单字磁贴 + 状态胶囊。 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
           <div class="welcome-slogan">{{ greeting }}，{{ activeRole.realName || '您好' }}</div>
-          <div class="welcome-tip">请选择您要处理的工作</div>
+          <div class="welcome-tip">{{ cockpitTodos.length ? ('今天有 ' + cockpitTodos.length + ' 件事需要您处理') : '各项工作井然有序，继续保持 👍' }}</div>
         </div>
-        <div class="welcome-list">
-          <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
-            <span class="domain-ico">{{ d.glyph }}</span>
-            <div class="domain-info">
-              <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
-              <div class="domain-desc">{{ d.desc }}</div>
+
+        <!-- 跨条线待办聚合：驾驶舱核心，最醒目 -->
+        <div v-if="cockpitTodos.length" class="ck-section">
+          <div class="ck-sec-title">待处理</div>
+          <div v-for="t in cockpitTodos" :key="t.key" class="ck-todo" :class="t.tone" @click="t.onTap()">
+            <span class="ck-todo-tag" :class="t.tone">{{ t.tag }}</span>
+            <div class="ck-todo-info">
+              <div class="ck-todo-title">{{ t.title }}</div>
+              <div v-if="t.sub" class="ck-todo-sub">{{ t.sub }}</div>
             </div>
-            <span class="domain-enter">›</span>
+            <span class="ck-todo-cta">{{ t.cta }} ›</span>
           </div>
         </div>
+        <div v-else class="ck-calm">
+          <span class="ck-calm-ico">✓</span>
+          <div class="ck-calm-text">本期暂无待办事项<br>各项工作井然有序</div>
+        </div>
+
+        <!-- 全部业务目录：随时进入任意业务（欢迎页隐藏底栏，此处即导航） -->
+        <div class="ck-section">
+          <div class="ck-sec-title">全部业务</div>
+          <div class="ck-lines">
+            <div v-for="d in portalDomains" :key="d.key" class="ck-line" @click="d.onTap()">
+              <span class="ck-line-ico" :class="d.tone">{{ d.glyph }}</span>
+              <div class="ck-line-info">
+                <div class="ck-line-title">{{ d.title }}</div>
+                <div class="ck-line-desc">{{ d.desc }}</div>
+              </div>
+              <span v-if="d.chip" class="ck-chip" :class="d.chip.level">{{ d.chip.text }}</span>
+              <span class="ck-line-enter">›</span>
+            </div>
+          </div>
+        </div>
+
         <div class="welcome-foot">{{ welcomeFootText }}</div>
       </div>
 
@@ -1228,6 +1252,27 @@ const portalDomains = computed(() => {
     { key: 'learning', glyph: '学', title: '学习培训', desc: '查看政策学习和培训记录', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
+})
+// 驾驶舱首页待办聚合（路线乙 0724 重做）：欢迎页从「选业务的门」升级为「一屏看全三条线该干什么」。
+// 跨业委会/接待汇总今日待处理，点条目直达对应业务；无待办则给正向反馈。它作为常驻首页有独立价值。
+const cockpitTodos = computed(() => {
+  const items = []
+  const f = homeFocus.value
+  // 业委会：借用焦点优先级，只有需要行动（active/urgent 且有 cta）才计入；calm/已完成不占待办
+  if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
+    // 点待办先进入业委会业务区（底栏出现、布局转 tabs），再执行焦点动作（如「去补开」），
+    // 不把人留在 portal 壳里孤立操作
+    items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
+      title: f.title, sub: f.sub, cta: f.cta, onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
+  }
+  // 接待：待跟进件数
+  const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
+  if (recPending > 0) {
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent',
+      title: recPending + ' 件来访待跟进办理', sub: '业主诉求请尽快处理', cta: '去处理',
+      onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } })
+  }
+  return items
 })
 // 欢迎页落款/日期（0724 用户定，极淡）
 const welcomeFootText = computed(() => {
@@ -3564,38 +3609,52 @@ onActivated(show)
 .home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
-/* 欢迎引导页（路线乙）——采纳 codex 方向：顶栏与问候语同用沉稳深蓝灰，一个色系读成整体，
-   不再橙头/灰底/彩字三段割裂。问候语大字置顶，卡片自然高度居上，落款沉底。 */
-/* 顶栏在欢迎页专用深蓝灰（品牌橙让位给「引导选择」的沉稳基调）；进入业务后复位为橙 */
-.home.portal-welcome .hd { background: #2F3D56; }
+/* 驾驶舱首页（路线乙 0724 重做）：欢迎语 + 跨条线待办聚合 + 全部业务目录。统一深蓝灰视觉语言。
+   欢迎页从「选业务的门」升级为「一屏看全三条线该干什么」的常驻首页——有独立价值，不再是一次性入口。 */
 .welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
-.welcome-hero { flex-shrink: 0; padding: 44rpx 10rpx 30rpx; }
+.welcome-hero { flex-shrink: 0; padding: 38rpx 10rpx 8rpx; }
 /* 问候词：深蓝灰，与顶栏同色相呼应；比棕字/纯黑都更沉稳有设计感 */
-.welcome-slogan { font-size: 60rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-tip { margin-top: 14rpx; font-size: 30rpx; color: #8A94A6; letter-spacing: 1rpx; }
-.welcome-list { display: flex; flex-direction: column; gap: 26rpx; padding: 6rpx 0; }
-/* 落款沉底：margin-top:auto 把它推到最下，卡片留在上方＝上密下疏的呼吸感 */
-.welcome-foot { margin-top: auto; text-align: center; padding: 26rpx 0 30rpx; font-size: 23rpx; color: #AEB6C2; letter-spacing: 1rpx; }
-/* 白卡 + 左侧色条（codex 方向，替代原顶部渐变条）+ 单字磁贴 + 状态胶囊 + 右箭头 */
-.domain-card { position: relative; display: flex; align-items: center; gap: 24rpx; min-height: 168rpx; background: #fff; border-radius: 26rpx; padding: 34rpx 30rpx 34rpx 40rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 14rpx 30rpx rgba(20,33,61,0.07); box-sizing: border-box; overflow: hidden; cursor: pointer; }
-.domain-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 10rpx; }
-.domain-card.blue::before { background: #3E6BA8; }
-.domain-card.green::before { background: #3F7C5A; }
-.domain-card.amber::before { background: #C79A5B; }
-.domain-card:active { transform: translateY(2rpx); box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 6rpx 14rpx rgba(20,33,61,0.07); }
-/* 单字磁贴：同色系浅底 + 深字，比 emoji 更统一 */
-.domain-ico { flex-shrink: 0; width: 110rpx; height: 110rpx; border-radius: 26rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; box-sizing: border-box; }
-.domain-card.blue .domain-ico { background: #E6EDF8; color: #3A5E92; }
-.domain-card.green .domain-ico { background: #E4F0E8; color: #3B7150; }
-.domain-card.amber .domain-ico { background: #F1E8D8; color: #9C6B2E; }
-.domain-info { flex: 1; min-width: 0; }
-.domain-title { font-size: 37rpx; font-weight: 800; color: #2A3244; display: flex; align-items: center; gap: 14rpx; }
-.domain-chip { font-size: 21rpx; font-weight: 700; padding: 4rpx 16rpx; border-radius: 999rpx; }
-.domain-chip.active { color: #2E5A6E; background: #E4EEF2; }
-.domain-chip.urgent { color: #B4482F; background: #F7E7E2; }
-.domain-chip.calm { color: #3B7150; background: #E7F2EB; }
-.domain-desc { margin-top: 10rpx; font-size: 27rpx; color: #8A94A6; line-height: 1.35; }
-.domain-enter { flex-shrink: 0; font-size: 40rpx; font-weight: 400; color: #B6BECB; }
+.welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
+.welcome-tip { margin-top: 12rpx; font-size: 29rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
+/* 落款沉底：margin-top:auto 把它推到最下 */
+.welcome-foot { margin-top: auto; text-align: center; padding: 30rpx 0 30rpx; font-size: 23rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+.ck-section { margin-top: 26rpx; }
+.ck-sec-title { font-size: 26rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 6rpx 14rpx; }
+/* 待处理聚合条：左侧业务色条 + 业务标签 + 标题/说明 + 去处理（行动橙）。驾驶舱核心、最醒目 */
+.ck-todo { position: relative; display: flex; align-items: center; gap: 20rpx; background: #fff; border-radius: 22rpx; padding: 28rpx 26rpx 28rpx 34rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.08); overflow: hidden; cursor: pointer; }
+.ck-todo:last-child { margin-bottom: 0; }
+.ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 10rpx; }
+.ck-todo.blue::before { background: #3E6BA8; }
+.ck-todo.green::before { background: #3F7C5A; }
+.ck-todo:active { transform: translateY(2rpx); }
+.ck-todo-tag { flex-shrink: 0; align-self: flex-start; margin-top: 4rpx; font-size: 22rpx; font-weight: 700; padding: 6rpx 16rpx; border-radius: 999rpx; }
+.ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
+.ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
+.ck-todo-info { flex: 1; min-width: 0; }
+.ck-todo-title { font-size: 34rpx; font-weight: 800; color: #2A3244; line-height: 1.3; }
+.ck-todo-sub { margin-top: 8rpx; font-size: 26rpx; color: #8A94A6; line-height: 1.35; }
+.ck-todo-cta { flex-shrink: 0; align-self: center; font-size: 27rpx; font-weight: 700; color: #C2410C; }
+/* 无待办的正向反馈 */
+.ck-calm { display: flex; align-items: center; gap: 20rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 22rpx; padding: 30rpx 30rpx; }
+.ck-calm-ico { flex-shrink: 0; width: 64rpx; height: 64rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 38rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.ck-calm-text { font-size: 30rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
+/* 全部业务目录：compact 行，单字磁贴 + 标题/说明 + 状态胶囊 + 右箭头 */
+.ck-lines { background: #fff; border-radius: 22rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.06); overflow: hidden; }
+.ck-line { display: flex; align-items: center; gap: 22rpx; padding: 24rpx 26rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; }
+.ck-line:last-child { border-bottom: none; }
+.ck-line:active { background: #F7F9FB; }
+.ck-line-ico { flex-shrink: 0; width: 80rpx; height: 80rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 800; }
+.ck-line-ico.blue { background: #E6EDF8; color: #3A5E92; }
+.ck-line-ico.green { background: #E4F0E8; color: #3B7150; }
+.ck-line-ico.amber { background: #F1E8D8; color: #9C6B2E; }
+.ck-line-info { flex: 1; min-width: 0; }
+.ck-line-title { font-size: 32rpx; font-weight: 700; color: #2A3244; }
+.ck-line-desc { margin-top: 4rpx; font-size: 24rpx; color: #9AA4B2; line-height: 1.3; }
+.ck-chip { flex-shrink: 0; font-size: 21rpx; font-weight: 700; padding: 4rpx 14rpx; border-radius: 999rpx; }
+.ck-chip.active { color: #2E5A6E; background: #E4EEF2; }
+.ck-chip.urgent { color: #B4482F; background: #F7E7E2; }
+.ck-chip.calm { color: #3B7150; background: #E7F2EB; }
+.ck-line-enter { flex-shrink: 0; font-size: 36rpx; color: #B6BECB; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
 .mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
 .mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
