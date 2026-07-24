@@ -4922,19 +4922,20 @@ onActivated(show)
 .cal-cell.empty { visibility: hidden; }
 .cal-cell.disabled { color: #C7CDD5; background: transparent; cursor: not-allowed; }
 .cal-cell.today { color: var(--c-primary-dark); font-weight: 700; }
-.cal-cell.on { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
-.cal-cell:not(.empty):not(.on):not(.disabled):active { background: var(--c-primary-soft); }
-.picker-pop { width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 12rpx 26rpx 48rpx; box-sizing: border-box; }
+.cal-cell.on { background: #3E6BA8; color: #fff; font-weight: 700; }
+.cal-cell:not(.empty):not(.on):not(.disabled):active { background: #E6EDF8; }
+.picker-pop { position: relative; width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 38rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
 .tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #1f2329; letter-spacing: 2rpx; margin-bottom: 6rpx; }
 .tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
 .tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
-.tg-cell.on { background: var(--c-primary-soft); color: var(--c-primary-dark); font-weight: 700; box-shadow: inset 0 0 0 3rpx var(--c-primary); }
-.tg-cell:not(.on):active { background: var(--c-primary-soft); }
-.pp-head { text-align: center; font-size: 56rpx; font-weight: 700; color: #1f2329; margin: 0 0 12rpx; }
-.pop-close { display: flex; justify-content: flex-end; margin-bottom: 4rpx; }
+.tg-cell.on { background: #E6EDF8; color: #2F5E96; font-weight: 700; box-shadow: inset 0 0 0 3rpx #3E6BA8; }
+.tg-cell:not(.on):active { background: #E6EDF8; }
+.pp-head { text-align: center; font-size: 52rpx; font-weight: 700; color: #1f2329; margin: 0 0 8rpx; }
+.picker-pop > .pop-close { position: absolute; top: 12rpx; right: 12rpx; z-index: 2; margin: 0; }
+.cal-pop > .pop-close { display: flex; justify-content: flex-end; margin-bottom: 4rpx; }
 .pp-cols { display: flex; gap: 16rpx; }
 .pp-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pp-col-label { text-align: center; font-size: 28rpx; color: #666; margin-bottom: 10rpx; }
@@ -4943,6 +4944,7 @@ onActivated(show)
 .pp-item.on { color: #fff; background: #FFA800; font-weight: 700; }
 .pp-actions { display: flex; gap: 18rpx; margin-top: 24rpx; justify-content: center; }
 .pp-actions .btn { flex: 0 0 60%; width: 60%; }
+.picker-pop .pp-actions .btn-primary { background: #3E6BA8; border-color: #3E6BA8; color: #fff; }
 
 
 /* 议题摘要行 */
