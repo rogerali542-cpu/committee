@@ -19,6 +19,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { switchTab } from '@/utils/navigate'
+import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
 const tabs = [
@@ -28,7 +29,8 @@ const tabs = [
   { path: '/profile', icon: '👤', label: '个人中心' }
 ]
 const active = computed(() => route.path)
-const isTab = computed(() => tabs.some((t) => t.path === route.path))
+// 欢迎引导页激活时隐藏底栏（选定业务后由 Committee.vue 复位再显示）
+const isTab = computed(() => tabs.some((t) => t.path === route.path) && !homeShell.welcomeVisible)
 function go(path) { if (path !== route.path) switchTab(path) }
 </script>
 

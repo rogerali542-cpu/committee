@@ -1,13 +1,13 @@
 <template>
-  <div class="home">
+  <div class="home" :class="{ 'portal-home': welcomeVisible }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
-        <span class="hd-title">{{ planTab === 'reception' ? '接待中心' : '业委会会议' }}</span>
+        <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '接待中心' : '业委会会议') }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
-      <!-- 综合评分：右上角「业委会综合评分92分」，顶栏内垂直居中；数字按分数高低走红绿灯渐变（0716 用户定） -->
-      <div v-if="isChair && planTab === 'meeting'" class="hd-score">
+      <!-- 综合评分：右上角「业委会综合评分92分」，顶栏内垂直居中；数字按分数高低走红绿灯渐变（0716 用户定）。欢迎页不显示。 -->
+      <div v-if="isChair && planTab === 'meeting' && homeLayout !== 'portal'" class="hd-score">
         <span class="hd-score-label">业委会综合评分</span>
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-unit">分</span>
@@ -25,6 +25,17 @@
          正解是把 compact 态的紧凑值直接写死、不再依赖 has-meeting，那是独立的一次重构。
          现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
     <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'reception-mode': planTab === 'reception', 'has-meeting': planTab === 'meeting' && currents && currents.length }">
+        <!-- 当前重点横幅（0724 领导意见#1：关键信息突出）：仅记录列表版(甲)显示；欢迎引导页(乙)是业务选择，不放横幅 -->
+        <div v-if="planTab === 'meeting' && homeFocus && homeLayout === 'tabs'" class="home-focus" :class="homeFocus.level" @click="homeFocus.onTap && homeFocus.onTap()">
+          <div class="hf-body">
+            <div class="hf-kicker"><span class="hf-dot"></span>{{ homeFocus.kicker }}</div>
+            <div class="hf-title">{{ homeFocus.title }}</div>
+            <div v-if="homeFocus.sub" class="hf-sub">{{ homeFocus.sub }}</div>
+          </div>
+          <button v-if="homeFocus.cta" type="button" class="hf-cta" @click.stop="homeFocus.onTap && homeFocus.onTap()">
+            <span v-if="homeFocus.icon" class="hf-cta-ico">{{ homeFocus.icon }}</span>{{ homeFocus.cta }}
+          </button>
+        </div>
         <!-- 登记：接待的入口动作，独立成大按钮（0716 用户定）。委员接待完来访，先用它把事情记进下面的
              清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
@@ -91,64 +102,27 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
-      <section v-if="planTab === 'meeting'" class="meeting-agenda-home">
-        <div class="agenda-intro">
-          <div>
-            <span class="agenda-kicker">{{ viewYear }}年会议安排</span>
-            <h2>近期会议</h2>
-          </div>
-          <span class="agenda-summary">已召开 {{ agendaDoneCount }} 场</span>
+      <!-- 欢迎引导页（路线乙）：问候 + 标语 + 选择要进入的业务线 -->
+      <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
+        <div class="welcome-hero">
+          <div class="welcome-slogan">{{ greeting }}，{{ activeRole.realName || '您好' }}</div>
+          <div class="welcome-tip">请选择您要处理的工作</div>
         </div>
-
-        <article v-if="agendaFocus" class="agenda-focus">
-          <div class="agenda-focus-top">
-            <span class="agenda-focus-state" :class="agendaFocus.tone">{{ agendaFocus.stateText }}</span>
-            <span class="agenda-focus-date">{{ agendaFocus.dateText }}</span>
+        <div class="welcome-list">
+          <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
+            <span class="domain-ico">{{ d.icon }}</span>
+            <div class="domain-info">
+              <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
+              <div class="domain-desc">{{ d.desc }}</div>
+            </div>
+            <span class="domain-enter">进入 ›</span>
           </div>
-          <h3>{{ agendaFocus.title }}</h3>
-          <p>{{ agendaFocus.detail }}</p>
-          <button type="button" @click.stop="agendaFocus.onTap()">{{ agendaFocus.actionText }}</button>
-        </article>
-
-        <div class="agenda-list-card">
-          <div class="agenda-list-head">
-            <strong>全年会议记录</strong>
-            <span>按时间查看每次会议</span>
-          </div>
-          <button v-for="item in agendaRows" :key="item.key" type="button"
-                  class="agenda-row" :class="{ focus: agendaFocus && item.key === agendaFocus.key }"
-                  @click="item.onTap()">
-            <span class="agenda-date-box" :class="item.tone">
-              <b>{{ item.dateMain }}</b>
-              <small>{{ item.dateSub }}</small>
-            </span>
-            <span class="agenda-row-copy">
-              <span class="agenda-row-title">{{ item.title }}</span>
-              <span class="agenda-row-detail">{{ item.detail }}</span>
-            </span>
-            <span class="agenda-row-side">
-              <em :class="item.tone">{{ item.stateText }}</em>
-              <i>›</i>
-            </span>
-          </button>
         </div>
+        <div class="welcome-foot">{{ welcomeFootText }}</div>
+      </div>
 
-        <details class="agenda-year-overview">
-          <summary>
-            <span>年度计划概览</span>
-            <small>查看六个双月周期</small>
-          </summary>
-          <div class="agenda-periods">
-            <span v-for="row in yearPlan" :key="row.period" :class="row.status">
-              <b>{{ row.monthLabel }}</b>
-              <small>{{ row.status === 'done' ? '已召开' : (row.status === 'overdue' ? '未召开' : (row.active ? '进行中' : '待安排')) }}</small>
-            </span>
-          </div>
-        </details>
-      </section>
-
-      <div v-if="false && planTab === 'meeting'" class="plan-calendar-card">
+      <!-- 会议记录列表（路线甲）：开会 tab + tabs 布局。卡头=年份+记录，下方竖排记录列表 -->
+      <div v-if="planTab === 'meeting' && homeLayout === 'tabs'" class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
@@ -157,54 +131,44 @@
           <!-- 开会 tab 标题＝「2026年」（0716 定，多轮收敛：履职年历→全年会议→年份本身当标题，
                原右上角的年份标签删了）。年份切换箭头已摘，按年计算的能力全保留，恢复见 0e0d15f。 -->
           <div class="plan-title-wrap">
-            <span v-if="planTab === 'meeting'" class="plan-title">{{ viewYear }}年</span>
+            <span v-if="planTab === 'meeting'" class="plan-title">{{ viewYear }}年会议记录</span>
             <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
-            <!-- 开会图例（0723 用户定加回，放右上角做小图例）：已开/待开/逾期三色对照。
-                 0716 曾整行删掉，这次以「标题行右侧、小字」形态回归——不占日历高度，又给颜色一个说明。 -->
-            <div v-if="planTab === 'meeting'" class="yc-legend">
-              <span><i class="yc-lg-dot done"></i>已开</span>
-              <span><i class="yc-lg-dot current"></i>待开</span>
-              <span><i class="yc-lg-dot overdue"></i>逾期</span>
-            </div>
+            <span v-if="planTab === 'meeting'" class="mr-head-hint">按时间查看每次会议</span>
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
 
-        <!-- 月份日历：首页主视觉。按双月期成组，保留月份，同时让一期两个月有整体感。 -->
-        <div v-if="planTab === 'meeting'" class="yc-period-grid">
-          <div v-for="pair in monthPairs" :key="pair.period" class="yc-period-card" :class="[pair.status, { active: pair.months.some(mc => calMonth === mc.m) }]">
-            <div class="yc-pair-months">
-              <!-- 状态字已去（0723 用户定）：颜色含义由右上角图例承担，格子只留月份坐标 -->
-              <div v-for="mc in pair.months" :key="mc.m" class="yc-cell pair-cell" :class="[mc.status, { sel: calMonth === mc.m }]" @click="onYcMonthTap(pair, mc)">
-                <span v-if="mc.todo" class="yc-corner">{{ mc.todo }}</span>
-                <span class="yc-m">{{ mc.m }}月</span>
-              </div>
+        <!-- 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：待办/待排常驻，已完成折叠 -->
+        <div v-if="planTab === 'meeting'" class="mr-list">
+          <div v-for="row in meetingRecordList.active" :key="row.key" class="mr-row" @click="row.onTap()">
+            <div class="mr-badge" :class="row.statusClass">
+              <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
             </div>
+            <div class="mr-info">
+              <div class="mr-row-title">{{ row.title }}</div>
+              <div class="mr-row-sub">{{ row.sub }}</div>
+            </div>
+            <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
           </div>
-        </div>
-
-        <!-- 点选期次后的反馈区（日历下方）：已开期=该期开会记录；未到期=提前准备会议；逾期/待开点击时提示并定位待办卡 -->
-        <div v-if="planTab === 'meeting' && selPeriodFeedback" class="yc-period-feedback">
-          <template v-if="selPeriodFeedback.kind === 'records'">
-            <!-- 「X-X月开会记录」标题已删（0716 用户定：显示复杂）；已结束会议在名称旁挂绿色「已完成」小标签 -->
-            <div v-if="!selPeriodFeedback.records.length" class="plan-empty">该期没有会议记录</div>
-            <div v-else v-for="r in selPeriodFeedback.records" :key="r.key" class="yc-item" @click="r.onTap()">
-              <div class="yc-item-info">
-                <!-- 「已完成」独立成行、与标题左对齐（0723 用户定，原挂标题尾部换行后缩进不齐） -->
-                <div class="yc-item-title">{{ r.title }}</div>
-                <div v-if="r.status === 'done'" class="ypf-done-tag">已完成</div>
-                <div v-if="r.sub" class="yc-item-sub">{{ r.sub }}</div>
-              </div>
-              <!-- 已开的会议：右侧「查看详情」小按钮进会议详情页；未结束的仍显示状态徽标 -->
-              <span v-if="r.detailTap" class="plan-badge view ypf-view" @click.stop="r.detailTap()">查看详情</span>
-              <span v-else class="plan-badge" :class="r.status">{{ r.badge }}</span>
+          <template v-if="meetingRecordList.done.length">
+            <div class="mr-fold" @click="recDoneOpen = !recDoneOpen">
+              <span>已完成 {{ meetingRecordList.done.length }} 场</span>
+              <span class="mr-fold-chev" :class="{ open: recDoneOpen }">▾</span>
             </div>
-          </template>
-          <!-- 非已开期次：一行常驻「当月状态」提示（0716 用户定，替代一闪而过的 toast；「提前准备会议」按钮已删） -->
-          <template v-else-if="selPeriodFeedback.kind === 'tip'">
-            <div class="ypf-tip" :class="selPeriodFeedback.tone">{{ selPeriodFeedback.tip }}</div>
+            <template v-if="recDoneOpen">
+              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done" @click="row.onTap()">
+                <div class="mr-badge" :class="row.statusClass">
+                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+                </div>
+                <div class="mr-info">
+                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-sub">{{ row.sub }}</div>
+                </div>
+                <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+              </div>
+            </template>
           </template>
         </div>
 
@@ -237,7 +201,8 @@
              收起栏，点开能就地展开整张会议卡——现在整条链一起撤：
              收起栏删了，「点开展开」就没了入口，于是 meetCardOpen、「收起▴」也全成死代码，一并清掉。
              代价说明白：接待/培训 tab 从此不再提示「有会正在进行」，要看会得切回开会 tab。 -->
-        <template v-if="false && currents && currents.length > 0">
+        <!-- 详情大会议卡：0724 改版后并入顶部「当前重点」横幅（HOME_V2），旧卡代码暂留便于回滚 -->
+        <template v-if="currents && currents.length > 0 && !HOME_V2">
           <template v-if="planTab === 'meeting'">
             <div v-for="cur in currents" :key="cur.id" class="meet-card">
               <!-- 卡结构（0716 用户定）：状态从右上角的小胶囊提为左侧标题（进行中的会议/未开始的会议/
@@ -279,8 +244,9 @@
           </template>
         </template>
 
-        <!-- 待办事项：开会类同时展示本期与逾期期次；其他分类展示当前月份待办 -->
-        <div v-if="planTab === 'reception'" class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
+        <!-- 待办事项：开会类同时展示本期与逾期期次；其他分类展示当前月份待办。
+             0724 改版：开会 tab 隐藏——横幅已呈现第一要务、记录列表每行可点即去通知/补开，本卡重复。接待/培训仍需。 -->
+        <div v-if="!(HOME_V2 && planTab === 'meeting')" class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
           <div class="yc-list-head" :class="{ foldable: planTab === 'reception' }"
                @click="planTab === 'reception' ? (receptionTodoOpen = !receptionTodoOpen) : null">
             <span class="yc-head-title">{{ planListTitle }}</span>
@@ -380,7 +346,7 @@
     </div>
 
     <!-- 待发送草稿卡：发起会议填了一半返回，内容自动存草稿，放大成首页主角，突出「继续通知」 -->
-    <div v-if="isChair && hasDraft" class="draft-card">
+    <div v-if="isChair && hasDraft && homeLayout === 'tabs'" class="draft-card">
       <div class="draft-card-top">
         <span class="draft-badge">通知编辑中</span>
       </div>
@@ -394,7 +360,8 @@
     <!-- 「更多功能」三格已删：接待/培训入口收进顶部计划卡横栏；历史记录走计划卡已开期或资料库 -->
 
     <!-- 发起非例会会议：低频功能收在页面底部的入口，仅「开会」tab 显示（接待/培训不需要） -->
-    <div v-if="canCreate && planTab === 'meeting'" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
+    <!-- portal 布局已有「发起会议」宫格入口，底部按钮只在 tabs 布局出现 -->
+    <div v-if="canCreate && planTab === 'meeting' && homeLayout === 'tabs'" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
 
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
       <div class="create-panel" @click.stop>
@@ -862,7 +829,7 @@ import api from '@/api'
 import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 import perm from '@/utils/perm'
 import { showModal, showActionSheet, toast } from '@/utils/ui'
-import { navigateTo, redirectTo } from '@/utils/navigate'
+import { navigateTo, redirectTo, switchTab } from '@/utils/navigate'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import MapPicker from '@/components/MapPicker.vue'
@@ -872,6 +839,7 @@ import { isWecom, chooseWecomImages, isWecomCancel } from '@/utils/wecom'
 import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import { aiTask } from '@/composables/aiTask'
+import { homeShell } from '@/composables/homeShell'
 
 const props = defineProps({
   section: { type: String, default: 'meeting' }
@@ -1216,6 +1184,114 @@ const currentPeriodUrgency = computed(() => {
   const daysLeft = Math.floor((end - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000) + 1 // 含今天
   return daysLeft < 10 ? { row: row, daysLeft: Math.max(daysLeft, 0) } : null
 })
+
+// 首页改版（0724 领导意见#1）：顶部「当前重点」横幅——只呈现此刻最要紧的一件事 + 一个直达大按钮，
+// 让关键信息一眼突出；下方日历/待办把已完成、未到期的内容折叠收起。优先级从上到下取第一个命中。
+const HOME_V2 = true // 详情大会议卡并入顶部横幅（旧卡暂留代码，flag 关即回滚）
+// 首页布局两版并存（0724：给领导选）：tabs=记录列表版（路线甲）｜portal=工作台宫格版（路线乙）。
+// 由 ?home=portal|tabs 或 localStorage 决定，默认 tabs；真机可用 URL 当场切换对比。
+const homeLayout = ref('tabs')
+try {
+  const q = new URL(window.location.href).searchParams.get('home')
+  if (q === 'portal' || q === 'tabs') { homeLayout.value = q; setStorage('home_layout', q) }
+  else { const s = getStorage('home_layout', ''); if (s === 'portal' || s === 'tabs') homeLayout.value = s }
+} catch (e) {}
+// 欢迎引导页（路线乙）：一句标语 + 选择要进入的业务线（顶层选择）。
+// 三方联席会议/联合接待另做独立软件，不纳入本 App，故欢迎页只留三条真实业务线。
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  return h < 6 ? '夜深了' : h < 11 ? '上午好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
+})
+// 欢迎引导页当前是否可见（portal 布局 + 开会 tab）→ 隐藏底栏；选定业务后置回，底栏出现
+const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.value === 'meeting')
+watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
+// 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
+function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
+const portalDomains = computed(() => {
+  // 两张卡都挂状态胶囊（0724 用户定：始终显示，正常时柔和绿不打扰）
+  const f = homeFocus.value
+  const committeeChip = f && f.level
+    ? (f.level === 'calm' ? { text: '履职正常', level: 'calm' } : { text: f.kicker, level: f.level })
+    : { text: '履职正常', level: 'calm' }
+  const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
+  const receptionChip = recPending > 0
+    ? { text: recPending + ' 件待处理', level: 'urgent' }
+    : { text: '暂无待办', level: 'calm' }
+  return [
+    { key: 'committee', icon: '会', title: '业委会会议', desc: '组织例会、表决和材料归档', tone: 'blue', chip: committeeChip,
+      onTap: () => enterWorkArea() },
+    { key: 'reception', icon: '访', title: '业主接待', desc: '登记来访、跟进诉求办理', tone: 'green', chip: receptionChip,
+      onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } },
+    { key: 'learning', icon: '学', title: '学习培训', desc: '查看政策学习和培训记录', tone: 'amber', chip: null,
+      onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
+  ]
+})
+// 欢迎页落款/日期（0724 用户定，极淡）
+const welcomeFootText = computed(() => {
+  const d = new Date()
+  const dateStr = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'
+  const org = activeRole.value && activeRole.value.communityName ? activeRole.value.communityName + '业主委员会' : '业委会智能助手'
+  return org + ' · ' + dateStr
+})
+const homeFocus = computed(() => {
+  if (planTab.value !== 'meeting') return null
+  const list = currents.value || []
+  const ongoing = list.find(c => c.stage === 'ongoing' && !c.reviewDone)
+  if (ongoing) return { level: 'active', kicker: ongoing.tag || '正在进行', title: ongoing.title,
+    sub: [ongoing.timeText, ongoing.locationText].filter(Boolean).join(' · '),
+    cta: ongoing.ctaLabel, icon: ongoing.ctaIcon, onTap: () => goCurrent(ongoing) }
+  // 只把「还需整理/生成纪要」的已结束会议当重点；已生成纪要（按钮=查看会议）算完成，不占焦点
+  const ended = list.find(c => c.stage === 'ended' && c.ctaLabel !== '查看会议')
+  if (ended) return { level: 'active', kicker: ended.minutesGen ? '会议纪要生成中' : '待整理会议记录',
+    title: ended.title, sub: ended.timeText, cta: ended.ctaLabel, icon: ended.ctaIcon, onTap: () => goCurrent(ended) }
+  const urg = viewYear.value === curYear ? currentPeriodUrgency.value : null
+  if (urg) return { level: 'urgent', kicker: '本期例会临期', title: '本期例会还没召开',
+    sub: '距期限只剩 ' + urg.daysLeft + ' 天，请尽快安排会议', cta: isChair.value ? '去通知' : '等待通知',
+    onTap: () => onPlanRow(urg.row) }
+  const od = overduePeriodRows.value[0]
+  if (od) return { level: 'urgent', kicker: '例会逾期', title: od.monthLabel + '例会逾期未开',
+    sub: '例会是履职核心，请尽快补开', cta: isChair.value ? '去补开' : '等待通知', onTap: () => onPlanRow(od) }
+  const prep = list.find(c => c.stage === 'preparing')
+  if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
+    sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
+    onTap: () => goCurrent(prep) }
+  // 表扬语（0724 用户定）：无待办时给正向反馈，不再是冷冰冰的"正常"
+  const doneCount = (currents.value || []).filter(c => c.stage === 'ended').length
+  return { level: 'calm', kicker: '履职状态',
+    title: doneCount ? '例会按时召开，履职规范 👍' : '各项工作井然有序 👍',
+    sub: '本期暂无待办事项，继续保持', cta: '', onTap: null }
+})
+
+// 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
+// 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
+const recDoneOpen = ref(false)
+const meetingRecordList = computed(() => {
+  const rows = yearPlan.value || []
+  const toRow = (r) => {
+    const held = r.meeting
+    if (r.status === 'done' && held) {
+      const d = String(held.meetingDate || '').split('-')
+      return { key: 'mr-' + r.period, done: true,
+        badgeTop: d.length === 3 ? Number(d[2]) + '日' : r.monthLabel,
+        badgeBot: d.length === 3 ? Number(d[1]) + '月' : '',
+        title: held.title || ('第' + r.period + '次业委会例会'),
+        sub: '会议已完成，可查看会议记录',
+        statusLabel: '已完成', statusClass: 'done',
+        onTap: () => openMeetingTap(held) }
+    }
+    const label = r.status === 'current' ? (r.active ? '进行中' : '待召开')
+      : r.status === 'overdue' ? '未召开' : (r.past ? '未召开' : '待排')
+    return { key: 'mr-' + r.period, done: false,
+      badgeTop: String(r.monthLabel || '').replace('月', ''), badgeBot: '月', // 「9-10月」拆两行，徽标里不换行
+      title: '第' + r.period + '次业委会例会',
+      sub: r.sub,
+      statusLabel: label, statusClass: r.status,
+      onTap: () => onPlanRow(r) }
+  }
+  return { active: rows.filter(r => r.status !== 'done').map(toRow),
+           done: rows.filter(r => r.status === 'done').map(toRow) }
+})
+
 const calAlert = computed(() => {
   if (planTab.value === 'meeting') {
     const rows = overduePeriodRows.value
@@ -1588,92 +1664,6 @@ const planTodoList = computed(() => {
     }
   })
 })
-
-function agendaDateParts(date, fallbackPeriod) {
-  const match = String(date || '').match(/^\d{4}-(\d{2})-(\d{2})/)
-  if (match) return { main: Number(match[2]) + '日', sub: Number(match[1]) + '月' }
-  return { main: '待安排', sub: fallbackPeriod || '' }
-}
-
-function agendaState(stage, row) {
-  if (stage === 'ongoing') return { text: '进行中', tone: 'ongoing' }
-  if (stage === 'preparing') return { text: '待召开', tone: 'current' }
-  if (stage === 'ended') return { text: '已完成', tone: 'done' }
-  if (row && row.status === 'overdue') return { text: '未召开', tone: 'overdue' }
-  if (row && row.status === 'current') return { text: '待安排', tone: 'current' }
-  return { text: '待安排', tone: 'upcoming' }
-}
-
-const agendaRows = computed(() => {
-  const meetings = allMeetings.value || []
-  return yearPlan.value.map(row => {
-    const periodMeetings = meetings
-      .filter(m => meetingPeriod(m, viewYear.value) === row.period)
-      .slice()
-      .sort((a, b) => String(b.meetingDate || '').localeCompare(String(a.meetingDate || '')))
-    const meeting = periodMeetings[0] || row.meeting || null
-    const current = meeting && currents.value.find(c => String(c.id) === String(meeting.id))
-    const stage = current ? current.stage : (meeting ? meeting.stage : '')
-    const state = agendaState(stage, row)
-    const date = agendaDateParts(meeting && meeting.meetingDate, row.monthLabel)
-    let detail = row.monthLabel + '例会尚未安排'
-    if (current) {
-      detail = current.timeText + ' · ' + current.locationText
-      if (stage === 'ended') {
-        detail = current.minutesGen
-          ? '会议已结束，会议纪要正在生成'
-          : (current.ctaLabel === '整理会议记录' ? '会议已结束，待整理会议记录' : '会议已结束，可查看会议记录')
-      }
-    } else if (meeting) {
-      detail = formatMeetingTime(meeting) + (meeting.location ? ' · ' + meeting.location : '')
-      if (stage === 'ended') detail = '会议已完成，可查看会议记录'
-    } else if (row.status === 'overdue') {
-      detail = row.monthLabel + '尚无会议记录'
-    }
-    const onTap = current
-      ? () => goCurrent(current)
-      : (meeting ? () => openMeetingTap(meeting) : () => onPlanRow(row))
-    return {
-      key: meeting ? 'agenda-meeting-' + meeting.id : 'agenda-period-' + row.period,
-      period: row.period,
-      title: (meeting && meeting.title) || ('第' + row.period + '次业委会例会'),
-      detail,
-      stateText: state.text,
-      tone: state.tone,
-      dateMain: date.main,
-      dateSub: date.sub,
-      rawDate: (meeting && meeting.meetingDate) || (viewYear.value + '-' + String(row.period * 2 - 1).padStart(2, '0') + '-01'),
-      current,
-      meeting,
-      row,
-      onTap
-    }
-  }).sort((a, b) => {
-    const priority = { ongoing: 0, current: 1, overdue: 2, upcoming: 3, done: 4 }
-    const pa = priority[a.tone] ?? 9
-    const pb = priority[b.tone] ?? 9
-    if (pa !== pb) return pa - pb
-    if (a.tone === 'upcoming') return a.period - b.period
-    return b.rawDate.localeCompare(a.rawDate)
-  })
-})
-
-const agendaFocus = computed(() => {
-  const item = agendaRows.value.find(row => row.current)
-    || agendaRows.value.find(row => row.tone === 'current' || row.tone === 'overdue')
-  if (!item) return null
-  let actionText = '查看会议'
-  if (item.current) actionText = item.current.ctaLabel || '查看会议'
-  else if (isChair.value) actionText = item.tone === 'overdue' ? '安排补开' : '安排会议'
-  else actionText = '查看安排'
-  return Object.assign({}, item, {
-    dateText: item.dateMain === '待安排' ? item.dateSub : (item.dateSub + item.dateMain),
-    actionText
-  })
-})
-
-const agendaDoneCount = computed(() => agendaRows.value.filter(item => item.tone === 'done').length)
-
 const currentStage = ref('preparing')
 const meetings = ref([])
 const pending = ref([])
@@ -2807,8 +2797,8 @@ function realUsePhoto() {
   _realShotFile = null
   bindStreamToVideo()
 }
-// 离开页面/组件卸载时务必释放摄像头
-onUnmounted(() => { stopRealStream() })
+// 离开页面/组件卸载时务必释放摄像头；顺带复位欢迎页标记，避免离开后底栏一直被隐藏
+onUnmounted(() => { stopRealStream(); homeShell.welcomeVisible = false })
 
 // AI 识别完成结果卡（自定义精美弹层，替代通用 showModal）
 const scanResultCard = ref(null)
@@ -3526,103 +3516,6 @@ onActivated(show)
 </script>
 
 <style scoped>
-.meeting-agenda-home { padding: 24rpx 28rpx 10rpx; }
-.agenda-intro {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  margin: 6rpx 4rpx 22rpx;
-}
-.agenda-kicker { display: block; color: #8a7663; font-size: 22rpx; margin-bottom: 5rpx; }
-.agenda-intro h2 { margin: 0; color: #202832; font-size: 38rpx; line-height: 1.2; }
-.agenda-summary { color: #6f7c86; font-size: 23rpx; padding-bottom: 4rpx; }
-.agenda-focus {
-  position: relative; overflow: hidden; padding: 28rpx; margin-bottom: 24rpx;
-  border-radius: 24rpx; background: linear-gradient(145deg, #244f78 0%, #173e66 100%);
-  box-shadow: 0 12rpx 30rpx rgba(24, 62, 101, .16); color: #fff;
-}
-.agenda-focus::after {
-  content: ''; position: absolute; width: 180rpx; height: 180rpx; right: -55rpx;
-  top: -75rpx; border-radius: 50%; background: rgba(255,255,255,.06);
-}
-.agenda-focus-top {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx;
-}
-.agenda-focus-state {
-  padding: 5rpx 15rpx; border-radius: 999rpx; background: rgba(255,255,255,.16); font-size: 22rpx;
-}
-.agenda-focus-date { color: rgba(255,255,255,.72); font-size: 22rpx; }
-.agenda-focus h3 { margin: 0 0 10rpx; font-size: 32rpx; line-height: 1.35; }
-.agenda-focus p {
-  margin: 0 0 24rpx; color: rgba(255,255,255,.74); font-size: 23rpx; line-height: 1.55;
-}
-.agenda-focus button {
-  width: 100%; height: 82rpx; border: 0; border-radius: 16rpx; background: #fff;
-  color: #17456f; font-size: 27rpx; font-weight: 600;
-}
-.agenda-list-card {
-  overflow: hidden; border-radius: 24rpx; background: #fff;
-  box-shadow: 0 5rpx 22rpx rgba(36, 55, 73, .07);
-}
-.agenda-list-head {
-  display: flex; align-items: baseline; justify-content: space-between;
-  padding: 25rpx 26rpx 18rpx; border-bottom: 1rpx solid #edf0f2;
-}
-.agenda-list-head strong { color: #26333e; font-size: 28rpx; }
-.agenda-list-head span { color: #9aa2a8; font-size: 21rpx; }
-.agenda-row {
-  display: flex; align-items: center; width: 100%; min-height: 118rpx;
-  padding: 17rpx 22rpx; border: 0; border-bottom: 1rpx solid #eef1f3;
-  background: #fff; text-align: left;
-}
-.agenda-row:last-child { border-bottom: 0; }
-.agenda-row.focus { background: #f8fafc; }
-.agenda-date-box {
-  display: flex; flex: 0 0 82rpx; height: 76rpx; margin-right: 20rpx;
-  border-radius: 15rpx; background: #f1f3f4; flex-direction: column;
-  align-items: center; justify-content: center; color: #68747d;
-}
-.agenda-date-box b { font-size: 23rpx; line-height: 1.2; }
-.agenda-date-box small { margin-top: 4rpx; font-size: 19rpx; }
-.agenda-date-box.ongoing { background: #e7f2ff; color: #185b97; }
-.agenda-date-box.current { background: #fff1db; color: #9a5a08; }
-.agenda-date-box.done { background: #eaf5ef; color: #39745a; }
-.agenda-date-box.overdue { background: #fbeceb; color: #a84b45; }
-.agenda-row-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; }
-.agenda-row-title {
-  overflow: hidden; color: #26313a; font-size: 26rpx; font-weight: 600;
-  line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
-}
-.agenda-row-detail {
-  overflow: hidden; margin-top: 8rpx; color: #8a949c; font-size: 21rpx;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-.agenda-row-side { display: flex; flex: 0 0 auto; margin-left: 12rpx; align-items: center; }
-.agenda-row-side em { font-size: 21rpx; font-style: normal; color: #8a949c; }
-.agenda-row-side em.ongoing { color: #1b659f; }
-.agenda-row-side em.current { color: #9a641d; }
-.agenda-row-side em.done { color: #4c8065; }
-.agenda-row-side em.overdue { color: #b2534c; }
-.agenda-row-side i {
-  margin-left: 10rpx; color: #b0b7bc; font-size: 32rpx; font-style: normal;
-}
-.agenda-year-overview { margin-top: 20rpx; border-radius: 20rpx; background: rgba(255,255,255,.7); }
-.agenda-year-overview summary {
-  display: flex; padding: 22rpx 24rpx; list-style: none; align-items: center;
-  justify-content: space-between; color: #56636d; font-size: 24rpx;
-}
-.agenda-year-overview summary::-webkit-details-marker { display: none; }
-.agenda-year-overview summary small { color: #a0a8ae; font-size: 20rpx; }
-.agenda-periods {
-  display: grid; padding: 0 20rpx 22rpx; grid-template-columns: repeat(3, 1fr); gap: 12rpx;
-}
-.agenda-periods span {
-  display: flex; min-height: 72rpx; border-radius: 13rpx; background: #f2f4f5;
-  flex-direction: column; align-items: center; justify-content: center; color: #78838b;
-}
-.agenda-periods span.done { background: #eaf5ef; color: #44775e; }
-.agenda-periods span.current { background: #fff1dc; color: #98621d; }
-.agenda-periods span.overdue { background: #fbeceb; color: #a94d47; }
-.agenda-periods b { font-size: 21rpx; }
-.agenda-periods small { margin-top: 3rpx; font-size: 18rpx; }
 .home {
   min-height: 100vh; background: var(--c-bg-page);
   /* 底部留空：清开固定 TabBar(100rpx) 再留一点缝隙；更多功能靠 margin-top:auto 贴底 */
@@ -3648,6 +3541,115 @@ onActivated(show)
 .hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 .hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
 /* 当前会议主卡片 */
+/* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
+   适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
+.home-focus { margin: 16rpx 24rpx 6rpx; border-radius: 22rpx; padding: 26rpx 26rpx 24rpx; display: flex; flex-direction: column; gap: 18rpx; box-shadow: 0 10rpx 26rpx rgba(20,42,58,0.10); cursor: pointer; }
+.home-focus.active { background: #2E5A6E; }
+.home-focus.urgent { background: #A0503F; }
+.home-focus.calm { background: #3B7150; }
+.home-focus:active { opacity: 0.94; }
+.hf-body { min-width: 0; }
+.hf-kicker { display: inline-flex; align-items: center; gap: 10rpx; font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,0.88); letter-spacing: 1rpx; }
+.hf-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(255,255,255,0.85); }
+.hf-title { margin-top: 12rpx; font-size: 40rpx; font-weight: 800; color: #fff; line-height: 1.28; }
+.hf-sub { margin-top: 8rpx; font-size: 27rpx; color: rgba(255,255,255,0.9); line-height: 1.4; }
+.hf-cta { align-self: stretch; min-height: 92rpx; border: 0; border-radius: 16rpx; background: #fff; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 12rpx; box-shadow: 0 6rpx 16rpx rgba(0,0,0,0.12); }
+.home-focus.active .hf-cta { color: #2E5A6E; }
+.home-focus.urgent .hf-cta { color: #A0503F; }
+.home-focus.calm .hf-cta { color: #3B7150; }
+.hf-cta:active { transform: translateY(1rpx); }
+.hf-cta-ico { font-size: 30rpx; }
+/* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。铺满整屏（0724 用户定：老人大按钮铺满更好点）；欢迎页隐藏底栏 */
+.portal-home { min-height: 100vh; background: linear-gradient(180deg, #f5f7f9 0%, #eef2f5 100%); }
+.portal-home .hd {
+  align-items: center;
+  padding: calc(env(safe-area-inset-top) + 18rpx) 34rpx 22rpx;
+  background: #203e5a;
+  box-shadow: 0 6rpx 18rpx rgba(24, 51, 76, .12);
+}
+.portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
+.portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
+.welcome {
+  display: flex; flex-direction: column; min-height: calc(100vh - 150rpx);
+  margin: 0; padding: 0 32rpx; box-sizing: border-box;
+}
+.welcome-hero { flex-shrink: 0; padding: 54rpx 6rpx 34rpx; }
+.welcome-slogan {
+  color: #233b50; font-size: 43rpx; font-weight: 750; line-height: 1.25; letter-spacing: .5rpx;
+}
+.welcome-tip { margin-top: 12rpx; color: #7d8993; font-size: 25rpx; }
+.welcome-list {
+  display: flex; flex-direction: column; flex: 0 0 auto;
+  justify-content: flex-start; gap: 22rpx; padding: 0;
+}
+.welcome-foot {
+  margin-top: auto; flex-shrink: 0; padding: 38rpx 0 34rpx;
+  color: #aeb7be; font-size: 21rpx; letter-spacing: .5rpx; text-align: center;
+}
+.domain-card {
+  position: relative; display: flex; align-items: center; gap: 22rpx;
+  min-height: 138rpx; padding: 24rpx 25rpx; overflow: hidden;
+  border: 1rpx solid rgba(42, 65, 83, .08); border-radius: 22rpx;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 8rpx 24rpx rgba(34, 55, 72, .07);
+  box-sizing: border-box; cursor: pointer;
+}
+.domain-card::after {
+  content: ''; position: absolute; top: 25rpx; bottom: 25rpx; left: 0;
+  width: 6rpx; border-radius: 0 8rpx 8rpx 0;
+}
+.domain-card.blue::after { background: #477ca9; }
+.domain-card.green::after { background: #5b8b70; }
+.domain-card.amber::after { background: #b48a43; }
+.domain-card:active { transform: scale(.99); background: #fafcfd; }
+.domain-ico {
+  display: flex; flex: 0 0 82rpx; width: 82rpx; height: 82rpx;
+  border-radius: 22rpx; align-items: center; justify-content: center;
+  font-family: serif; font-size: 37rpx; font-weight: 700; box-sizing: border-box;
+}
+.domain-card.blue .domain-ico { background: #e8f0f7; color: #386b97; }
+.domain-card.green .domain-ico { background: #e9f3ed; color: #46755a; }
+.domain-card.amber .domain-ico { background: #f7f0e3; color: #9a742f; }
+.domain-info { flex: 1; min-width: 0; }
+.domain-title {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx;
+  color: #273743; font-size: 31rpx; font-weight: 700; line-height: 1.25;
+}
+.domain-chip { padding: 4rpx 12rpx; border-radius: 999rpx; font-size: 19rpx; font-weight: 600; }
+.domain-chip.active { color: #2E5A6E; background: #E4EEF2; }
+.domain-chip.urgent { color: #A0503F; background: #F8E6E2; }
+.domain-chip.calm { color: #3B7150; background: #E7F2EB; }
+.domain-desc { margin-top: 8rpx; color: #85909a; font-size: 23rpx; line-height: 1.35; }
+.domain-enter {
+  flex-shrink: 0; width: 42rpx; overflow: hidden;
+  color: #8e9ba5; font-size: 0; font-weight: 500; white-space: nowrap;
+}
+.domain-enter::after { content: '›'; font-size: 34rpx; }
+/* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
+.mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
+.mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
+.mr-row { display: flex; align-items: center; gap: 20rpx; padding: 20rpx 20rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; }
+.mr-row:last-child { border-bottom: none; }
+.mr-row:active { background: #F7F9FB; }
+.mr-badge { flex-shrink: 0; width: 104rpx; min-height: 88rpx; border-radius: 16rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; padding: 8rpx 4rpx; }
+.mr-badge b { font-size: 29rpx; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+.mr-badge span { font-size: 22rpx; }
+.mr-badge.done { background: #EAF6EE; color: #2E7D50; }
+.mr-badge.current { background: #FDF0DC; color: #B5731A; }
+.mr-badge.overdue { background: #FBE6E2; color: #B0463A; }
+.mr-badge.upcoming { background: #EEF1F4; color: #6B7885; }
+.mr-info { flex: 1; min-width: 0; }
+.mr-row-title { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.3; }
+.mr-row-sub { font-size: 25rpx; color: var(--c-text-weak); margin-top: 6rpx; line-height: 1.3; }
+.mr-status { flex-shrink: 0; font-size: 26rpx; font-weight: 600; }
+.mr-status.done { color: #2E7D50; }
+.mr-status.current { color: #B5731A; }
+.mr-status.overdue { color: #B0463A; }
+.mr-status.upcoming { color: #8A94A0; }
+.mr-fold { display: flex; align-items: center; justify-content: center; gap: 10rpx; padding: 20rpx; margin-top: 4rpx; font-size: 26rpx; color: var(--c-text-mid); border-top: 2rpx solid #F1F3F5; cursor: pointer; }
+.mr-fold:active { opacity: 0.7; }
+.mr-fold-chev { transition: transform 0.2s; }
+.mr-fold-chev.open { transform: rotate(180deg); }
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
    全删（0717 用户定：会议进行中那一栏撤掉，接待日安排顶上）。

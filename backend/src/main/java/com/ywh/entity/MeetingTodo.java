@@ -44,6 +44,14 @@ public class MeetingTodo {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
+    // 来源议题（0724 领导意见#4）：本待办派生自哪条议题的决议，仅存档追溯、前端不展示。
+    // sourceRef=议题标题文本；sourceTopicId=匹配到的议题 id（匹配不到则空）。
+    @Column(name = "source_ref", length = 300)
+    private String sourceRef;
+
+    @Column(name = "source_topic_id")
+    private Long sourceTopicId;
+
     /** 最后更新状态的委员 userRole id，留痕。 */
     @Column(name = "last_actor_id")
     private Long lastActorId;

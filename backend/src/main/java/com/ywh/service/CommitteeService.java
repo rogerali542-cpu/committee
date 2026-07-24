@@ -2208,18 +2208,26 @@ public class CommitteeService {
         meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         LocalDateTime now = LocalDateTime.now();
+        // 来源议题解析用（0724）：把待办的「来源议题」文本匹配到本会议的议题，落 sourceTopicId 追溯
+        List<RecordTopic> topics = recordRepo.findByMeetingId(meetingId)
+                .map(rec -> topicRepo.findByRecordIdOrderBySortOrder(rec.getId()))
+                .orElse(Collections.emptyList());
         List<MeetingTodo> saved = new ArrayList<>();
         int order = 0;
         if (items != null) {
             for (MeetingTodoVO it : items) {
                 String title = it.getTitle() == null ? "" : it.getTitle().trim();
                 if (title.isEmpty()) continue;
+                String sourceRef = blankToNull(it.getSourceRef());
+                Long sourceTopicId = resolveSourceTopicId(sourceRef, topics);
                 MeetingTodo t = MeetingTodo.builder()
                         .meetingId(meetingId)
                         .title(clip(title, 500))
                         .owner(clip(blankToNull(it.getOwner()), 100))
                         .dueText(clip(blankToNull(it.getDueText()), 100))
                         .status(normalizeTodoStatus(it.getStatus()))
+                        .sourceRef(clip(sourceRef, 300))
+                        .sourceTopicId(sourceTopicId)
                         .sortOrder(order++)
                         .createdAt(now)
                         .updatedAt(now)
@@ -2228,6 +2236,17 @@ public class CommitteeService {
             }
         }
         return saved.stream().map(this::toTodoVO).collect(Collectors.toList());
+    }
+
+    /** 把待办的「来源议题」文本匹配到本会议议题（相等或互相包含），拿不到返回 null。仅追溯用。 */
+    private Long resolveSourceTopicId(String sourceRef, List<RecordTopic> topics) {
+        if (sourceRef == null || sourceRef.isBlank() || topics == null || topics.isEmpty()) return null;
+        String ref = sourceRef.trim();
+        for (RecordTopic tp : topics) {
+            String tt = tp.getTitle() == null ? "" : tp.getTitle().trim();
+            if (!tt.isEmpty() && (tt.equals(ref) || tt.contains(ref) || ref.contains(tt))) return tp.getId();
+        }
+        return null;
     }
 
     /** 委员更新某条待办状态，记录操作人与时间。 */

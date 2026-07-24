@@ -14,6 +14,8 @@ public class MeetingTodoVO {
     private String dueText;
     /** todo=待处理/没空，doing=进行中，done=已完成。 */
     private String status;
+    /** 来源议题（0724）：固化入参携带，标明本待办出自哪条议题；仅存档追溯，界面不展示。 */
+    private String sourceRef;
     /** 最后更新状态的委员姓名（留痕展示）。 */
     private String lastActorName;
     /** 最后更新时间，已格式化为 MM-dd HH:mm。 */
