@@ -59,8 +59,8 @@ public class DocumentPrefillService {
     private long demoDelayMs;
 
     // —— 演示预置：材料1_会议通知 抽取出的会议信息（真实大模型也会抽成这些字段）——
-    private static final String DEMO_TITLE = "2026年第3次业主委员会例会";
-    private static final String DEMO_DATE = "2026-06-29";
+    private static final String DEMO_TITLE = "2026年第4次业主委员会例会";
+    private static final String DEMO_DATE = "2026-07-25";
     private static final String DEMO_TIME = "10:00";
     private static final String DEMO_LOCATION = "社区活动室";
     private static final List<String> DEMO_TOPICS = List.of(
