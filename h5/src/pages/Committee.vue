@@ -112,7 +112,11 @@
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
           <div class="welcome-slogan">{{ greeting }}，{{ salutation }}</div>
-          <div class="welcome-tip">{{ cockpitSummaryText }}</div>
+          <div class="welcome-tip">
+            <span class="welcome-date">{{ cockpitDateText }}</span>
+            <i></i>
+            <span>{{ cockpitSummaryText }}</span>
+          </div>
         </div>
 
         <div v-if="cockpitTodos.length" class="ck-section">
@@ -1343,12 +1347,15 @@ const cockpitSummaryText = computed(() => {
   const range = items.some(item => item.timeScope === 'today') ? '今天' : '近期'
   return range + '有 ' + items.length + ' 件事需要您处理'
 })
+const cockpitDateText = computed(() => {
+  const d = new Date()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + weekdays[d.getDay()]
+})
 // 欢迎页落款/日期（0724 用户定，极淡）
 const welcomeFootText = computed(() => {
-  const d = new Date()
-  const dateStr = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'
   const org = activeRole.value && activeRole.value.communityName ? activeRole.value.communityName + '业主委员会' : '业委会智能助手'
-  return org + ' · ' + dateStr
+  return org
 })
 const homeFocus = computed(() => {
   if (planTab.value !== 'meeting') return null
@@ -3817,7 +3824,9 @@ onActivated(show)
 .welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
 .welcome-hero { flex-shrink: 0; padding: 20rpx 10rpx 10rpx; }
 .welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-tip { margin-top: 12rpx; font-size: 32rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
+.welcome-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; font-size: 30rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
+.welcome-tip .welcome-date { color: #53647B; font-weight: 600; }
+.welcome-tip i { width: 2rpx; height: 28rpx; background: #CDD4DE; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 .ck-section { margin-top: 34rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
