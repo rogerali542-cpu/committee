@@ -36,7 +36,17 @@ const active = computed(() => route.path)
 // URL 是驾驶舱时直接判定隐藏，避免开发期热更新中新旧页面卸载/挂载顺序造成底栏短暂误显。
 const routeIsCockpit = computed(() => route.path === '/main' && route.query.home === 'portal')
 const isTab = computed(() => tabs.some((t) => t.path === route.path) && !routeIsCockpit.value && !homeShell.welcomeVisible)
-function go(path) { if (path !== route.path) switchTab(path) }
+function go(path) {
+  if (path === '/main') {
+    // “业委会会议”是工作页入口；驾驶舱只能由单独的“返回驾驶舱”按钮进入。
+    // Committee.vue 在 /main 与 /reception-center 间会复用实例，因此这里显式带 tabs 并刷新，
+    // 避免沿用 localStorage 中的 portal 布局而误入驾驶舱。
+    localStorage.setItem('home_layout', JSON.stringify('tabs'))
+    window.location.assign('/main?home=tabs')
+    return
+  }
+  if (path !== route.path) switchTab(path)
+}
 function backToCockpit() {
   localStorage.setItem('home_layout', JSON.stringify('portal'))
   window.location.assign('/main?home=portal')
