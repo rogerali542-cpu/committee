@@ -20,6 +20,8 @@ public class MeetingDetailVO {
     private LocalDate meetingDate;
     private LocalTime meetingTime;
     private String location;
+    private Double locationLat;  // 地图选点经纬度（0723，可空）：前端导航用精确坐标
+    private Double locationLng;
     private MeetingMethod meetingMethod;
     private String description;
     private MeetingStage stage;

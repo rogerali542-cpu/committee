@@ -37,6 +37,13 @@ public class CommitteeMeeting {
     @Column(length = 100)
     private String location;
 
+    // 地图选点经纬度（0723，腾讯选点组件回传）：有值时详情页导航用精确坐标而非关键字搜索
+    @Column(name = "location_lat")
+    private Double locationLat;
+
+    @Column(name = "location_lng")
+    private Double locationLng;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "meeting_method", nullable = false, length = 10)

@@ -15,6 +15,8 @@ public class CreateMeetingRequest {
     private LocalDate meetingDate;
     private LocalTime meetingTime;
     private String location;
+    private Double locationLat;  // 地图选点经纬度（0723，可空）：导航用精确坐标
+    private Double locationLng;
     private MeetingMethod meetingMethod;
     private String description;
     private List<TopicRequest> topics;

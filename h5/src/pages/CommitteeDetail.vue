@@ -1367,9 +1367,14 @@ function openForward() {
 }
 function closeForward() { forwardVisible.value = false }
 
-// 会议地点地图搜索链接（默认高德；关键词搜索，无需经纬度）。
-// callnative=1：手机上优先直接唤起高德App并定位到该地点，未装App则落到高德H5地图直接显示该地点
+// 会议地点地图链接（默认高德）。地图选点建的会带经纬度 → 精确坐标打点（uri.amap.com/marker）；
+// 手填地点无坐标 → 退回关键词搜索。callnative=1：手机上优先唤起高德App，未装则落H5地图。
 function mapSearchUrl(loc) {
+  const d = detail.value || {}
+  if (d.locationLat != null && d.locationLng != null) {
+    return 'https://uri.amap.com/marker?position=' + d.locationLng + ',' + d.locationLat
+      + '&name=' + encodeURIComponent(loc || d.location || '会议地点') + '&callnative=1'
+  }
   return 'https://uri.amap.com/search?keyword=' + encodeURIComponent(loc || '') + '&callnative=1'
 }
 // 点击会议地点 → 打开高德地图

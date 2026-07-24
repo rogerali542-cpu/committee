@@ -251,6 +251,9 @@
           </template>
         </div>
 
+        <!-- 地图选点（0723 接真实接口）：腾讯 H5 选点组件弹层 -->
+        <MapPicker :open="mapPickerOpen" @close="mapPickerOpen = false" @picked="onMapPicked" />
+
         <!-- 接待登记弹窗（0716 从已删的接待列表页搬来，字段与校验照旧） -->
         <div v-if="recCreateOpen" class="rec-mask" @click="recCreateOpen = false">
           <div class="rec-sheet" @click.stop>
@@ -806,6 +809,7 @@ import { showModal, showActionSheet, toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
+import MapPicker from '@/components/MapPicker.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
 import { pickFiles, humanSize } from '@/utils/upload'
 import { isWecom, chooseWecomImages, isWecomCancel } from '@/utils/wecom'
@@ -1546,7 +1550,16 @@ const createForm = reactive({
   description: '',
   topics: [],
   topicsText: '',
-  juweiWitness: false // 居委会见证：勾选则建会后标记 hasMajorIssue（重大事项需居委会见证）
+  juweiWitness: false, // 居委会见证：勾选则建会后标记 hasMajorIssue（重大事项需居委会见证）
+  locationLat: null,   // 地图选点回传的经纬度（0723）：随建会落库，详情页导航用精确坐标
+  locationLng: null
+})
+// 地点被手填/选常用地点覆盖时，清掉不再匹配的旧坐标（地图选点回填的那次除外）
+let _mapJustSet = false
+watch(() => createForm.location, () => {
+  if (_mapJustSet) { _mapJustSet = false; return }
+  createForm.locationLat = null
+  createForm.locationLng = null
 })
 const materialPrefillOpen = ref(false)
 const materialText = ref('')
@@ -1967,6 +1980,8 @@ async function openNewMeeting(period) {
   createForm.meetingDate = ''
   createForm.meetingTime = ''
   createForm.location = ''
+  createForm.locationLat = null
+  createForm.locationLng = null
   createForm.meetingMethod = 'offline'
   locationPreset.value = ''
   createForm.description = ''
@@ -2908,16 +2923,18 @@ async function openLocPicker() {
   }
 }
 
-// 地图选点（接口预留）：点地图图标 → 选高德/百度 → 真实接入时打开地图 app 选点回传地址。
-// 现为演示桩：未接真实地图，仅模拟从地图选回一个地址，便于测试展示。
-async function pickLocationOnMap() {
-  const res = await showActionSheet({ itemList: ['高德地图', '百度地图'] })
-  if (!res || res.tapIndex == null || res.tapIndex < 0) return
-  const app = res.tapIndex === 0 ? '高德地图' : '百度地图'
-  // TODO 接入真实地图：经 URL scheme / 地图 JS-SDK 打开 app 选点，回传经纬度+地址后回填 createForm.location
+// 地图选点（0723 接真实接口）：腾讯官方 H5 选点组件（MapPicker.vue，iframe+postMessage）。
+// 未配置 VITE_TXMAP_KEY 时组件内给配置指引+演示地点兜底；配置后即真地图搜索/拖点。
+const mapPickerOpen = ref(false)
+function pickLocationOnMap() { mapPickerOpen.value = true }
+function onMapPicked(p) {
   locationPreset.value = '__other__'
-  createForm.location = '阳光家园·活动中心（' + app + '选点·演示）'
-  toast({ title: '已从' + app + '选择地点（演示）', icon: 'none' })
+  // 地点名为主，详细地址跟在括号里；经纬度随建会落库 → 详情页导航用精确坐标
+  _mapJustSet = true
+  createForm.location = p.name ? (p.address ? p.name + '（' + p.address + '）' : p.name) : (p.address || '')
+  createForm.locationLat = p.lat
+  createForm.locationLng = p.lng
+  toast({ title: '已选择地点', icon: 'success' })
 }
 
 // 从"其他/地图选点"切回常用地点下拉
@@ -3158,6 +3175,8 @@ async function submitNewMeeting() {
       meetingDate: form.meetingDate,
       meetingTime: form.meetingTime,
       location: form.location,
+      locationLat: form.locationLat,
+      locationLng: form.locationLng,
       description: form.description,
       topics: topics
     })
