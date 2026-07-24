@@ -55,12 +55,10 @@
             </span>
             <span class="day-summary">
               <span class="day-summary-top">
-                <strong>{{ day.noVisit ? '无人来访' : day.visitorCount + '人来访' }}</strong>
-                <em :class="day.status">{{ statusLabel(day.status) }}</em>
+                <strong>{{ day.noVisit ? '无人来访' : day.visitorSummary }}</strong>
+                <em v-if="day.noVisit" :class="day.status">{{ statusLabel(day.status) }}</em>
               </span>
-              <!-- 收起态摘要（0723 用户定）：不展开也能看出是谁、什么事 -->
-              <span v-if="day.summaryText" class="day-summary-sub">{{ day.summaryText }}</span>
-              <span v-if="day.receiverText" class="day-receiver">接待人：{{ day.receiverText }}</span>
+              <span v-if="day.noVisit && day.receiverText" class="day-receiver">接待人：{{ day.receiverText }}</span>
             </span>
             <span v-if="!day.noVisit" class="fold-text">{{ openDays.has(day.date) ? '收起' : '展开' }}</span>
           </component>
@@ -144,16 +142,11 @@ const monthGroups = computed(() => {
       const statuses = visitorRecords.length ? visitorRecords.map(recordStatus) : ['done']
       const status = statuses.every(s => s === 'done') ? 'done'
         : (statuses.every(s => s !== 'pending') ? 'doing' : 'pending')
-      // 收起态摘要：单条=「姓名：事由」，多条=姓名列表——不展开也知道是谁、什么事
-      let summaryText = ''
-      if (visitorRecords.length === 1) {
-        const r0 = visitorRecords[0]
-        const brief = String(r0.content || '').slice(0, 14)
-        summaryText = (r0.visitorName || '来访业主') + (brief ? '：' + brief + (String(r0.content || '').length > 14 ? '…' : '') : '')
-      } else if (visitorRecords.length > 1) {
-        const names = visitorRecords.map(r => r.visitorName).filter(Boolean)
-        summaryText = names.slice(0, 3).join('、') + (names.length > 3 ? ' 等' : '')
-      }
+      const visitorNames = visitorRecords.map(r => r.visitorName || '来访业主')
+      const visibleNames = visitorNames.slice(0, 2).join('、')
+      const visitorSummary = visitorRecords.length
+        ? `${visitorRecords.length}人来访：${visibleNames}${visitorNames.length > 2 ? '……' : ''}`
+        : ''
       return {
         date,
         time: dayRecords.map(r => r.time).filter(Boolean).sort().reverse()[0] || '',
@@ -161,7 +154,7 @@ const monthGroups = computed(() => {
         records: dayRecords,
         noVisit: visitorRecords.length === 0,
         visitorCount: visitorRecords.length,
-        summaryText,
+        visitorSummary,
         receiverText: Array.from(new Set(dayRecords.map(r => r.receiver).filter(Boolean))).join('、'),
         status
       }
@@ -246,8 +239,8 @@ onMounted(async () => {
 .date-block em { font-size: 26rpx; color: var(--c-text-weak); font-style: normal; }
 .day-summary { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
 .day-summary-top { display: flex; align-items: center; gap: 10rpx; }
-.day-summary-top > strong { font-size: 28rpx; color: var(--c-text-mid); font-weight: 500; }
-.day-summary-sub { font-size: 26rpx; color: var(--c-text-mid); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.day-summary-top > strong { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 28rpx; color: var(--c-text-mid); font-weight: 500; }
 .day-receiver { font-size: 25rpx; color: var(--c-text-weak); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .day-summary em, .record-title i { padding: 5rpx 14rpx; border-radius: 999rpx; font-size: 25rpx; font-style: normal; font-weight: 600; flex-shrink: 0; }
 .day-summary .pending, .record-title .pending { color: #9A5A13; background: #FFF1D8; }
