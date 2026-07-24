@@ -3779,16 +3779,16 @@ onActivated(show)
 .ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
 .ck-todo:active { transform: translateY(2rpx); }
-.ck-todo-head { display: flex; align-items: center; justify-content: space-between; min-height: 44rpx; }
+.ck-todo-head { display: flex; align-items: center; justify-content: space-between; min-height: 44rpx; margin-top: -7rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
 .ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
 .ck-todo-title { margin-top: 15rpx; font-size: 39rpx; font-weight: 800; color: #2A3244; line-height: 1.3; }
 .ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 20rpx; }
 .ck-todo-sub { min-width: 0; font-size: 27rpx; color: #8A94A6; line-height: 1.38; }
-.ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border-radius: 16rpx; background: #C84A12; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(200, 74, 18, .18); }
+.ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border-radius: 16rpx; background: #D86A35; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(216, 106, 53, .16); }
 .ck-todo-cta i { margin-left: 5rpx; font-style: normal; font-size: 33rpx; line-height: 1; }
-.ck-todo-delete { min-height: 42rpx; padding: 0 2rpx; border: 0; background: transparent; color: #9C7373; font-size: 21rpx; font-weight: 500; }
+.ck-todo-delete { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #956B6B; font-size: 24rpx; font-weight: 500; transform: translate(7rpx, -4rpx); }
 .ck-todo-delete:active { color: #C0392B; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
