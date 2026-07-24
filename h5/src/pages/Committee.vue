@@ -4144,7 +4144,7 @@ onActivated(show)
   color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }
 .rec-notice-primary:active { opacity: 0.76; }
 .rec-register-card { order: 2; display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
-  margin-top: 38rpx; padding: 24rpx 26rpx; text-align: left;
+  margin-top: 57rpx; padding: 24rpx 26rpx; text-align: left;
   background: linear-gradient(135deg, #FFF9F0 0%, #FFF2DF 100%); border: 3rpx solid #E7B56F;
   border-radius: 20rpx; box-shadow: 0 10rpx 26rpx rgba(159,92,13,0.12); color: inherit; }
 .rrc-icon { display: flex; align-items: center; justify-content: center; width: 68rpx; height: 68rpx;
@@ -4154,7 +4154,7 @@ onActivated(show)
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx;
   border-radius: 50%; background: #F4D9B5; color: #9A5700; font-size: 40rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
-.rec-recent-card { order: 3; margin-top: 38rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
+.rec-recent-card { order: 3; margin-top: 57rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
   box-shadow: 0 5rpx 18rpx rgba(20,42,58,0.04); }
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
@@ -4192,7 +4192,7 @@ onActivated(show)
 .rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 27rpx; font-style: normal; }
 .rec-recent-empty { padding: 22rpx 0 26rpx; border-top: 2rpx solid #EEF1F3;
   text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
-.plan-stack.reception-mode .plan-todo-card { margin-top: 38rpx; }
+.plan-stack.reception-mode .plan-todo-card { margin-top: 57rpx; }
 .plan-stack.reception-mode .plan-todo-card { padding-bottom: 8rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head { min-height: 72rpx; padding: 10rpx 2rpx 12rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head.foldable { cursor: pointer; }
