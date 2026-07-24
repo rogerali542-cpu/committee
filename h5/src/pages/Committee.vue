@@ -92,7 +92,63 @@
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
       <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
-      <div v-if="planTab === 'meeting'" class="plan-calendar-card">
+      <section v-if="planTab === 'meeting'" class="meeting-agenda-home">
+        <div class="agenda-intro">
+          <div>
+            <span class="agenda-kicker">{{ viewYear }}年会议安排</span>
+            <h2>近期会议</h2>
+          </div>
+          <span class="agenda-summary">已召开 {{ agendaDoneCount }} 场</span>
+        </div>
+
+        <article v-if="agendaFocus" class="agenda-focus">
+          <div class="agenda-focus-top">
+            <span class="agenda-focus-state" :class="agendaFocus.tone">{{ agendaFocus.stateText }}</span>
+            <span class="agenda-focus-date">{{ agendaFocus.dateText }}</span>
+          </div>
+          <h3>{{ agendaFocus.title }}</h3>
+          <p>{{ agendaFocus.detail }}</p>
+          <button type="button" @click.stop="agendaFocus.onTap()">{{ agendaFocus.actionText }}</button>
+        </article>
+
+        <div class="agenda-list-card">
+          <div class="agenda-list-head">
+            <strong>全年会议记录</strong>
+            <span>按时间查看每次会议</span>
+          </div>
+          <button v-for="item in agendaRows" :key="item.key" type="button"
+                  class="agenda-row" :class="{ focus: agendaFocus && item.key === agendaFocus.key }"
+                  @click="item.onTap()">
+            <span class="agenda-date-box" :class="item.tone">
+              <b>{{ item.dateMain }}</b>
+              <small>{{ item.dateSub }}</small>
+            </span>
+            <span class="agenda-row-copy">
+              <span class="agenda-row-title">{{ item.title }}</span>
+              <span class="agenda-row-detail">{{ item.detail }}</span>
+            </span>
+            <span class="agenda-row-side">
+              <em :class="item.tone">{{ item.stateText }}</em>
+              <i>›</i>
+            </span>
+          </button>
+        </div>
+
+        <details class="agenda-year-overview">
+          <summary>
+            <span>年度计划概览</span>
+            <small>查看六个双月周期</small>
+          </summary>
+          <div class="agenda-periods">
+            <span v-for="row in yearPlan" :key="row.period" :class="row.status">
+              <b>{{ row.monthLabel }}</b>
+              <small>{{ row.status === 'done' ? '已召开' : (row.status === 'overdue' ? '未召开' : (row.active ? '进行中' : '待安排')) }}</small>
+            </span>
+          </div>
+        </details>
+      </section>
+
+      <div v-if="false && planTab === 'meeting'" class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
@@ -181,7 +237,7 @@
              收起栏，点开能就地展开整张会议卡——现在整条链一起撤：
              收起栏删了，「点开展开」就没了入口，于是 meetCardOpen、「收起▴」也全成死代码，一并清掉。
              代价说明白：接待/培训 tab 从此不再提示「有会正在进行」，要看会得切回开会 tab。 -->
-        <template v-if="currents && currents.length > 0">
+        <template v-if="false && currents && currents.length > 0">
           <template v-if="planTab === 'meeting'">
             <div v-for="cur in currents" :key="cur.id" class="meet-card">
               <!-- 卡结构（0716 用户定）：状态从右上角的小胶囊提为左侧标题（进行中的会议/未开始的会议/
@@ -224,7 +280,7 @@
         </template>
 
         <!-- 待办事项：开会类同时展示本期与逾期期次；其他分类展示当前月份待办 -->
-        <div class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
+        <div v-if="planTab === 'reception'" class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
           <div class="yc-list-head" :class="{ foldable: planTab === 'reception' }"
                @click="planTab === 'reception' ? (receptionTodoOpen = !receptionTodoOpen) : null">
             <span class="yc-head-title">{{ planListTitle }}</span>
@@ -1532,6 +1588,92 @@ const planTodoList = computed(() => {
     }
   })
 })
+
+function agendaDateParts(date, fallbackPeriod) {
+  const match = String(date || '').match(/^\d{4}-(\d{2})-(\d{2})/)
+  if (match) return { main: Number(match[2]) + '日', sub: Number(match[1]) + '月' }
+  return { main: '待安排', sub: fallbackPeriod || '' }
+}
+
+function agendaState(stage, row) {
+  if (stage === 'ongoing') return { text: '进行中', tone: 'ongoing' }
+  if (stage === 'preparing') return { text: '待召开', tone: 'current' }
+  if (stage === 'ended') return { text: '已完成', tone: 'done' }
+  if (row && row.status === 'overdue') return { text: '未召开', tone: 'overdue' }
+  if (row && row.status === 'current') return { text: '待安排', tone: 'current' }
+  return { text: '待安排', tone: 'upcoming' }
+}
+
+const agendaRows = computed(() => {
+  const meetings = allMeetings.value || []
+  return yearPlan.value.map(row => {
+    const periodMeetings = meetings
+      .filter(m => meetingPeriod(m, viewYear.value) === row.period)
+      .slice()
+      .sort((a, b) => String(b.meetingDate || '').localeCompare(String(a.meetingDate || '')))
+    const meeting = periodMeetings[0] || row.meeting || null
+    const current = meeting && currents.value.find(c => String(c.id) === String(meeting.id))
+    const stage = current ? current.stage : (meeting ? meeting.stage : '')
+    const state = agendaState(stage, row)
+    const date = agendaDateParts(meeting && meeting.meetingDate, row.monthLabel)
+    let detail = row.monthLabel + '例会尚未安排'
+    if (current) {
+      detail = current.timeText + ' · ' + current.locationText
+      if (stage === 'ended') {
+        detail = current.minutesGen
+          ? '会议已结束，会议纪要正在生成'
+          : (current.ctaLabel === '整理会议记录' ? '会议已结束，待整理会议记录' : '会议已结束，可查看会议记录')
+      }
+    } else if (meeting) {
+      detail = formatMeetingTime(meeting) + (meeting.location ? ' · ' + meeting.location : '')
+      if (stage === 'ended') detail = '会议已完成，可查看会议记录'
+    } else if (row.status === 'overdue') {
+      detail = row.monthLabel + '尚无会议记录'
+    }
+    const onTap = current
+      ? () => goCurrent(current)
+      : (meeting ? () => openMeetingTap(meeting) : () => onPlanRow(row))
+    return {
+      key: meeting ? 'agenda-meeting-' + meeting.id : 'agenda-period-' + row.period,
+      period: row.period,
+      title: (meeting && meeting.title) || ('第' + row.period + '次业委会例会'),
+      detail,
+      stateText: state.text,
+      tone: state.tone,
+      dateMain: date.main,
+      dateSub: date.sub,
+      rawDate: (meeting && meeting.meetingDate) || (viewYear.value + '-' + String(row.period * 2 - 1).padStart(2, '0') + '-01'),
+      current,
+      meeting,
+      row,
+      onTap
+    }
+  }).sort((a, b) => {
+    const priority = { ongoing: 0, current: 1, overdue: 2, upcoming: 3, done: 4 }
+    const pa = priority[a.tone] ?? 9
+    const pb = priority[b.tone] ?? 9
+    if (pa !== pb) return pa - pb
+    if (a.tone === 'upcoming') return a.period - b.period
+    return b.rawDate.localeCompare(a.rawDate)
+  })
+})
+
+const agendaFocus = computed(() => {
+  const item = agendaRows.value.find(row => row.current)
+    || agendaRows.value.find(row => row.tone === 'current' || row.tone === 'overdue')
+  if (!item) return null
+  let actionText = '查看会议'
+  if (item.current) actionText = item.current.ctaLabel || '查看会议'
+  else if (isChair.value) actionText = item.tone === 'overdue' ? '安排补开' : '安排会议'
+  else actionText = '查看安排'
+  return Object.assign({}, item, {
+    dateText: item.dateMain === '待安排' ? item.dateSub : (item.dateSub + item.dateMain),
+    actionText
+  })
+})
+
+const agendaDoneCount = computed(() => agendaRows.value.filter(item => item.tone === 'done').length)
+
 const currentStage = ref('preparing')
 const meetings = ref([])
 const pending = ref([])
@@ -3384,6 +3526,103 @@ onActivated(show)
 </script>
 
 <style scoped>
+.meeting-agenda-home { padding: 24rpx 28rpx 10rpx; }
+.agenda-intro {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin: 6rpx 4rpx 22rpx;
+}
+.agenda-kicker { display: block; color: #8a7663; font-size: 22rpx; margin-bottom: 5rpx; }
+.agenda-intro h2 { margin: 0; color: #202832; font-size: 38rpx; line-height: 1.2; }
+.agenda-summary { color: #6f7c86; font-size: 23rpx; padding-bottom: 4rpx; }
+.agenda-focus {
+  position: relative; overflow: hidden; padding: 28rpx; margin-bottom: 24rpx;
+  border-radius: 24rpx; background: linear-gradient(145deg, #244f78 0%, #173e66 100%);
+  box-shadow: 0 12rpx 30rpx rgba(24, 62, 101, .16); color: #fff;
+}
+.agenda-focus::after {
+  content: ''; position: absolute; width: 180rpx; height: 180rpx; right: -55rpx;
+  top: -75rpx; border-radius: 50%; background: rgba(255,255,255,.06);
+}
+.agenda-focus-top {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx;
+}
+.agenda-focus-state {
+  padding: 5rpx 15rpx; border-radius: 999rpx; background: rgba(255,255,255,.16); font-size: 22rpx;
+}
+.agenda-focus-date { color: rgba(255,255,255,.72); font-size: 22rpx; }
+.agenda-focus h3 { margin: 0 0 10rpx; font-size: 32rpx; line-height: 1.35; }
+.agenda-focus p {
+  margin: 0 0 24rpx; color: rgba(255,255,255,.74); font-size: 23rpx; line-height: 1.55;
+}
+.agenda-focus button {
+  width: 100%; height: 82rpx; border: 0; border-radius: 16rpx; background: #fff;
+  color: #17456f; font-size: 27rpx; font-weight: 600;
+}
+.agenda-list-card {
+  overflow: hidden; border-radius: 24rpx; background: #fff;
+  box-shadow: 0 5rpx 22rpx rgba(36, 55, 73, .07);
+}
+.agenda-list-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 25rpx 26rpx 18rpx; border-bottom: 1rpx solid #edf0f2;
+}
+.agenda-list-head strong { color: #26333e; font-size: 28rpx; }
+.agenda-list-head span { color: #9aa2a8; font-size: 21rpx; }
+.agenda-row {
+  display: flex; align-items: center; width: 100%; min-height: 118rpx;
+  padding: 17rpx 22rpx; border: 0; border-bottom: 1rpx solid #eef1f3;
+  background: #fff; text-align: left;
+}
+.agenda-row:last-child { border-bottom: 0; }
+.agenda-row.focus { background: #f8fafc; }
+.agenda-date-box {
+  display: flex; flex: 0 0 82rpx; height: 76rpx; margin-right: 20rpx;
+  border-radius: 15rpx; background: #f1f3f4; flex-direction: column;
+  align-items: center; justify-content: center; color: #68747d;
+}
+.agenda-date-box b { font-size: 23rpx; line-height: 1.2; }
+.agenda-date-box small { margin-top: 4rpx; font-size: 19rpx; }
+.agenda-date-box.ongoing { background: #e7f2ff; color: #185b97; }
+.agenda-date-box.current { background: #fff1db; color: #9a5a08; }
+.agenda-date-box.done { background: #eaf5ef; color: #39745a; }
+.agenda-date-box.overdue { background: #fbeceb; color: #a84b45; }
+.agenda-row-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.agenda-row-title {
+  overflow: hidden; color: #26313a; font-size: 26rpx; font-weight: 600;
+  line-height: 1.35; text-overflow: ellipsis; white-space: nowrap;
+}
+.agenda-row-detail {
+  overflow: hidden; margin-top: 8rpx; color: #8a949c; font-size: 21rpx;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.agenda-row-side { display: flex; flex: 0 0 auto; margin-left: 12rpx; align-items: center; }
+.agenda-row-side em { font-size: 21rpx; font-style: normal; color: #8a949c; }
+.agenda-row-side em.ongoing { color: #1b659f; }
+.agenda-row-side em.current { color: #9a641d; }
+.agenda-row-side em.done { color: #4c8065; }
+.agenda-row-side em.overdue { color: #b2534c; }
+.agenda-row-side i {
+  margin-left: 10rpx; color: #b0b7bc; font-size: 32rpx; font-style: normal;
+}
+.agenda-year-overview { margin-top: 20rpx; border-radius: 20rpx; background: rgba(255,255,255,.7); }
+.agenda-year-overview summary {
+  display: flex; padding: 22rpx 24rpx; list-style: none; align-items: center;
+  justify-content: space-between; color: #56636d; font-size: 24rpx;
+}
+.agenda-year-overview summary::-webkit-details-marker { display: none; }
+.agenda-year-overview summary small { color: #a0a8ae; font-size: 20rpx; }
+.agenda-periods {
+  display: grid; padding: 0 20rpx 22rpx; grid-template-columns: repeat(3, 1fr); gap: 12rpx;
+}
+.agenda-periods span {
+  display: flex; min-height: 72rpx; border-radius: 13rpx; background: #f2f4f5;
+  flex-direction: column; align-items: center; justify-content: center; color: #78838b;
+}
+.agenda-periods span.done { background: #eaf5ef; color: #44775e; }
+.agenda-periods span.current { background: #fff1dc; color: #98621d; }
+.agenda-periods span.overdue { background: #fbeceb; color: #a94d47; }
+.agenda-periods b { font-size: 21rpx; }
+.agenda-periods small { margin-top: 3rpx; font-size: 18rpx; }
 .home {
   min-height: 100vh; background: var(--c-bg-page);
   /* 底部留空：清开固定 TabBar(100rpx) 再留一点缝隙；更多功能靠 margin-top:auto 贴底 */
