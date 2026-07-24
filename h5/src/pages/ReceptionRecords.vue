@@ -42,7 +42,13 @@
         </div>
 
         <article v-for="day in month.days" :key="day.date" class="day-card">
-          <button class="day-head" type="button" @click="toggleDay(day.date)">
+          <component
+            :is="day.noVisit ? 'div' : 'button'"
+            class="day-head"
+            :class="{ static: day.noVisit }"
+            :type="day.noVisit ? undefined : 'button'"
+            @click="toggleDay(day)"
+          >
             <span class="date-block">
               <strong>{{ formatDay(day.date) }}</strong>
               <em>{{ weekday(day.date) }}<template v-if="day.time"> · {{ String(day.time).slice(0, 5) }}</template></em>
@@ -54,11 +60,12 @@
               </span>
               <!-- 收起态摘要（0723 用户定）：不展开也能看出是谁、什么事 -->
               <span v-if="day.summaryText" class="day-summary-sub">{{ day.summaryText }}</span>
+              <span v-if="day.receiverText" class="day-receiver">接待人：{{ day.receiverText }}</span>
             </span>
-            <span class="fold-text">{{ openDays.has(day.date) ? '收起' : '展开' }}</span>
-          </button>
+            <span v-if="!day.noVisit" class="fold-text">{{ openDays.has(day.date) ? '收起' : '展开' }}</span>
+          </component>
 
-          <div v-if="openDays.has(day.date)" class="day-items">
+          <div v-if="!day.noVisit && openDays.has(day.date)" class="day-items">
             <div v-for="record in day.records" :key="record.id" class="record-row" @click="goDetail(record)">
               <div class="record-main">
                 <div class="record-title">
@@ -155,6 +162,7 @@ const monthGroups = computed(() => {
         noVisit: visitorRecords.length === 0,
         visitorCount: visitorRecords.length,
         summaryText,
+        receiverText: Array.from(new Set(dayRecords.map(r => r.receiver).filter(Boolean))).join('、'),
         status
       }
     })
@@ -168,9 +176,10 @@ const monthGroups = computed(() => {
   })
 })
 
-function toggleDay(date) {
-  if (openDays.has(date)) openDays.delete(date)
-  else openDays.add(date)
+function toggleDay(day) {
+  if (day.noVisit) return
+  if (openDays.has(day.date)) openDays.delete(day.date)
+  else openDays.add(day.date)
 }
 function formatDay(date) {
   const parts = String(date || '').split('-')
@@ -231,6 +240,7 @@ onMounted(async () => {
 .day-card { margin-bottom: 16rpx; border: 2rpx solid #E5EAEC; border-radius: 20rpx; background: #fff; overflow: hidden; }
 .day-head { display: flex; align-items: center; gap: 16rpx; width: 100%; padding: 22rpx;
   border: 0; background: #fff; text-align: left; color: inherit; }
+.day-head.static { cursor: default; }
 .date-block { flex-shrink: 0; display: flex; flex-direction: column; gap: 3rpx; }
 .date-block strong { font-size: 30rpx; color: var(--c-text-strong); }
 .date-block em { font-size: 26rpx; color: var(--c-text-weak); font-style: normal; }
@@ -238,6 +248,7 @@ onMounted(async () => {
 .day-summary-top { display: flex; align-items: center; gap: 10rpx; }
 .day-summary-top > strong { font-size: 28rpx; color: var(--c-text-mid); font-weight: 500; }
 .day-summary-sub { font-size: 26rpx; color: var(--c-text-mid); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.day-receiver { font-size: 25rpx; color: var(--c-text-weak); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .day-summary em, .record-title i { padding: 5rpx 14rpx; border-radius: 999rpx; font-size: 25rpx; font-style: normal; font-weight: 600; flex-shrink: 0; }
 .day-summary .pending, .record-title .pending { color: #9A5A13; background: #FFF1D8; }
 .day-summary .doing, .record-title .doing { color: #0F766E; background: #E7F6F3; }
