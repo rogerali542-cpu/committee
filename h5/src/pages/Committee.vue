@@ -1243,13 +1243,21 @@ const portalDomains = computed(() => {
   const receptionChip = recPending > 0
     ? { text: recPending + ' 件待处理', level: 'urgent' }
     : { text: '暂无待办', level: 'calm' }
+  // 模块卡描述改为「一行工作情况」（0724 用户定：不是功能介绍、也不展开成段落）——
+  // 驾驶舱的健康感靠这一行带过，具体行动仍由上方「待处理」承担。
+  // 模块卡描述恒为「稳态工作情况」（今年已开几次例会），紧急事项交给上方「待处理」+ 本卡的状态胶囊，
+  // 避免与顶部待办重复。已开例会数取会议记录里的已完成场次。
+  const doneCount = (meetingRecordList.value && Array.isArray(meetingRecordList.value.done))
+    ? meetingRecordList.value.done.length : 0
+  const committeeDesc = doneCount ? ('本年度已召开 ' + doneCount + ' 次例会') : '本年度例会即将开始'
+  const receptionDesc = recPending > 0 ? (recPending + ' 件来访待跟进办理') : '近期来访均已办结'
   // glyph=单字磁贴（会/访/学），比 emoji 更统一、更「设计感」（参考 codex 版）
   return [
-    { key: 'committee', glyph: '会', title: '业委会会议', desc: '组织例会、表决和材料归档', tone: 'blue', chip: committeeChip,
+    { key: 'committee', glyph: '会', title: '业委会会议', desc: committeeDesc, tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
-    { key: 'reception', glyph: '访', title: '业主接待', desc: '登记来访、跟进诉求办理', tone: 'green', chip: receptionChip,
+    { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc, tone: 'green', chip: receptionChip,
       onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } },
-    { key: 'learning', glyph: '学', title: '学习培训', desc: '查看政策学习和培训记录', tone: 'amber', chip: null,
+    { key: 'learning', glyph: '学', title: '学习培训', desc: '政策学习与业务培训记录', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
 })
@@ -3612,49 +3620,52 @@ onActivated(show)
 /* 驾驶舱首页（路线乙 0724 重做）：欢迎语 + 跨条线待办聚合 + 全部业务目录。统一深蓝灰视觉语言。
    欢迎页从「选业务的门」升级为「一屏看全三条线该干什么」的常驻首页——有独立价值，不再是一次性入口。 */
 .welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
-.welcome-hero { flex-shrink: 0; padding: 38rpx 10rpx 8rpx; }
-/* 问候词：深蓝灰，与顶栏同色相呼应；比棕字/纯黑都更沉稳有设计感 */
-.welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-tip { margin-top: 12rpx; font-size: 29rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
+.welcome-hero { flex-shrink: 0; padding: 44rpx 10rpx 10rpx; }
+/* 问候词：深蓝灰，与顶栏同色相呼应；比棕字/纯黑都更沉稳有设计感。整体放大（0724 用户定：做大一点） */
+.welcome-slogan { font-size: 64rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
+.welcome-tip { margin-top: 16rpx; font-size: 32rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
 /* 落款沉底：margin-top:auto 把它推到最下 */
-.welcome-foot { margin-top: auto; text-align: center; padding: 30rpx 0 30rpx; font-size: 23rpx; color: #AEB6C2; letter-spacing: 1rpx; }
-.ck-section { margin-top: 26rpx; }
-.ck-sec-title { font-size: 26rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 6rpx 14rpx; }
-/* 待处理聚合条：左侧业务色条 + 业务标签 + 标题/说明 + 去处理（行动橙）。驾驶舱核心、最醒目 */
-.ck-todo { position: relative; display: flex; align-items: center; gap: 20rpx; background: #fff; border-radius: 22rpx; padding: 28rpx 26rpx 28rpx 34rpx; margin-bottom: 16rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.08); overflow: hidden; cursor: pointer; }
+.welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+.ck-section { margin-top: 34rpx; }
+.ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
+/* 待处理聚合卡：左侧业务色条 + 业务标签 + 标题/说明 + 去处理（行动橙）。驾驶舱核心、最醒目、最大 */
+.ck-todo { position: relative; display: flex; align-items: center; gap: 24rpx; background: #fff; border-radius: 26rpx; padding: 38rpx 30rpx 38rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; cursor: pointer; }
 .ck-todo:last-child { margin-bottom: 0; }
-.ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 10rpx; }
+.ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
 .ck-todo:active { transform: translateY(2rpx); }
-.ck-todo-tag { flex-shrink: 0; align-self: flex-start; margin-top: 4rpx; font-size: 22rpx; font-weight: 700; padding: 6rpx 16rpx; border-radius: 999rpx; }
+.ck-todo-tag { flex-shrink: 0; align-self: flex-start; margin-top: 6rpx; font-size: 24rpx; font-weight: 700; padding: 8rpx 20rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
 .ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
 .ck-todo-info { flex: 1; min-width: 0; }
-.ck-todo-title { font-size: 34rpx; font-weight: 800; color: #2A3244; line-height: 1.3; }
-.ck-todo-sub { margin-top: 8rpx; font-size: 26rpx; color: #8A94A6; line-height: 1.35; }
-.ck-todo-cta { flex-shrink: 0; align-self: center; font-size: 27rpx; font-weight: 700; color: #C2410C; }
+.ck-todo-title { font-size: 40rpx; font-weight: 800; color: #2A3244; line-height: 1.32; }
+.ck-todo-sub { margin-top: 12rpx; font-size: 29rpx; color: #8A94A6; line-height: 1.4; }
+.ck-todo-cta { flex-shrink: 0; align-self: center; font-size: 31rpx; font-weight: 700; color: #C2410C; }
 /* 无待办的正向反馈 */
-.ck-calm { display: flex; align-items: center; gap: 20rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 22rpx; padding: 30rpx 30rpx; }
-.ck-calm-ico { flex-shrink: 0; width: 64rpx; height: 64rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 38rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-.ck-calm-text { font-size: 30rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
-/* 全部业务目录：compact 行，单字磁贴 + 标题/说明 + 状态胶囊 + 右箭头 */
-.ck-lines { background: #fff; border-radius: 22rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.06); overflow: hidden; }
-.ck-line { display: flex; align-items: center; gap: 22rpx; padding: 24rpx 26rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; }
-.ck-line:last-child { border-bottom: none; }
-.ck-line:active { background: #F7F9FB; }
-.ck-line-ico { flex-shrink: 0; width: 80rpx; height: 80rpx; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: 800; }
+.ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
+.ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
+/* 全部业务：三张独立大卡（含左侧业务色条 + 单字磁贴 + 一行工作情况 + 状态胶囊 + 右箭头） */
+.ck-lines { display: flex; flex-direction: column; gap: 20rpx; }
+.ck-line { position: relative; display: flex; align-items: center; gap: 26rpx; background: #fff; border-radius: 26rpx; padding: 32rpx 30rpx 32rpx 42rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 14rpx 30rpx rgba(20,33,61,0.07); overflow: hidden; cursor: pointer; }
+.ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
+.ck-line.blue::before { background: #3E6BA8; }
+.ck-line.green::before { background: #3F7C5A; }
+.ck-line.amber::before { background: #C79A5B; }
+.ck-line:active { transform: translateY(2rpx); }
+.ck-line-ico { flex-shrink: 0; width: 104rpx; height: 104rpx; border-radius: 26rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; }
 .ck-line-ico.blue { background: #E6EDF8; color: #3A5E92; }
 .ck-line-ico.green { background: #E4F0E8; color: #3B7150; }
 .ck-line-ico.amber { background: #F1E8D8; color: #9C6B2E; }
 .ck-line-info { flex: 1; min-width: 0; }
-.ck-line-title { font-size: 32rpx; font-weight: 700; color: #2A3244; }
-.ck-line-desc { margin-top: 4rpx; font-size: 24rpx; color: #9AA4B2; line-height: 1.3; }
-.ck-chip { flex-shrink: 0; font-size: 21rpx; font-weight: 700; padding: 4rpx 14rpx; border-radius: 999rpx; }
+.ck-line-title { font-size: 37rpx; font-weight: 800; color: #2A3244; }
+.ck-line-desc { margin-top: 8rpx; font-size: 28rpx; color: #8A94A6; line-height: 1.35; }
+.ck-chip { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; }
 .ck-chip.active { color: #2E5A6E; background: #E4EEF2; }
 .ck-chip.urgent { color: #B4482F; background: #F7E7E2; }
 .ck-chip.calm { color: #3B7150; background: #E7F2EB; }
-.ck-line-enter { flex-shrink: 0; font-size: 36rpx; color: #B6BECB; }
+.ck-line-enter { flex-shrink: 0; font-size: 40rpx; color: #B6BECB; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
 .mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
 .mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
