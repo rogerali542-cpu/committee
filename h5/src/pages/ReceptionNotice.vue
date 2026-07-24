@@ -57,11 +57,10 @@
 
         <div class="field">
           <label class="f-label">接待人员</label>
-          <select v-model="form.person" class="f-select" :disabled="!canManage">
-            <option value="">请选择委员</option>
-            <option v-if="form.person && !committeeRoster.some(m => m.name === form.person)" :value="form.person">{{ form.person }}</option>
-            <option v-for="m in committeeRoster" :key="m.id || m.name" :value="m.name">
-              {{ m.name }}<template v-if="m.role">（{{ m.role }}）</template>
+          <select v-model="form.person" class="f-select" :class="{ placeholder: !form.person }" :disabled="!canManage">
+            <option value="" disabled>业委会委员轮值</option>
+            <option v-for="m in receptionMembers" :key="m.id || m.name" :value="m.name">
+              {{ m.name }}
             </option>
           </select>
         </div>
@@ -130,6 +129,9 @@ const orgName = ref('业主委员会')
 // 落款全称（含区划+届别，0723 与会议文书统一）：后端 orgFullName，取不到退 orgName
 const orgFullName = ref('业主委员会')
 const committeeRoster = ref([])
+const receptionMembers = computed(() =>
+  committeeRoster.value.filter(member => String(member.role || '').trim() === '委员')
+)
 
 const HOUR_OPTS = Array.from({ length: 12 }, (_, i) => String(i + 10).padStart(2, '0'))
 const MINUTE_OPTS = ['00', '30']
@@ -227,7 +229,8 @@ async function load() {
     committeeRoster.value = members || []
     saved.timeDesc = conciseTimeDesc(sys && sys.timeDesc)
     form.place = saved.place = (sys && sys.place) || ''
-    form.person = saved.person = (sys && sys.person) || ''
+    // “业委会委员轮值”只作为占位提示，进入页面后由用户选择具体轮值委员。
+    form.person = saved.person = ''
     // 调整原因只针对本次公告，不沿用上一次保存的临时原因。
     form.reason = saved.reason = ''
     parseTimeDesc(saved.timeDesc)
@@ -322,6 +325,7 @@ async function exportPdf() {
 .f-input:disabled { background: #F4F5F7; color: var(--c-text-weak); }
 .f-select { width:100%; box-sizing:border-box; height:88rpx; padding:0 20rpx; border:2rpx solid #E3E8EB;
   border-radius:16rpx; background:#FCFDFD; font-size:30rpx; color:var(--c-text-strong); outline:none; }
+.f-select.placeholder { color: var(--c-text-weak); }
 .f-select:disabled { background:#F4F5F7; color:var(--c-text-weak); }
 .reception-time-line { display: flex; align-items: center; gap: 12rpx; }
 .reception-time-line .day-select { flex: 0 0 29%; min-width: 0; }
