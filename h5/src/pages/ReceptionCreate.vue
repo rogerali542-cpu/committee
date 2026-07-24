@@ -11,7 +11,10 @@
         <div class="form-row">
           <label class="field half">
             <span>接待日期 *</span>
-            <input v-model="form.date" class="control" type="date" />
+            <button class="control date-control" type="button" @click="openCalendar">
+              <span>{{ displayDate }}</span>
+              <span class="calendar-icon">日</span>
+            </button>
           </label>
           <label class="field half">
             <span>接待时间 *</span>
@@ -76,17 +79,52 @@
         {{ saving ? '正在保存…' : '确认登记' }}
       </button>
     </main>
+
+    <div v-if="calendarOpen" class="calendar-mask" @click="calendarOpen = false">
+      <section class="calendar-panel" role="dialog" aria-modal="true" aria-label="选择接待日期" @click.stop>
+        <header class="calendar-head">
+          <button type="button" aria-label="上一个月" @click="changeMonth(-1)">‹</button>
+          <strong>{{ calendarYear }}年{{ calendarMonth }}月</strong>
+          <button type="button" aria-label="下一个月" @click="changeMonth(1)">›</button>
+        </header>
+        <div class="calendar-week">
+          <span v-for="weekday in WEEKDAYS" :key="weekday">{{ weekday }}</span>
+        </div>
+        <div class="calendar-grid">
+          <span v-for="blank in leadingBlankCount" :key="'blank-' + blank" class="calendar-day blank"></span>
+          <button
+            v-for="day in calendarDayCount"
+            :key="day"
+            class="calendar-day"
+            :class="{ selected: isSelectedDate(day), today: isTodayDate(day) }"
+            type="button"
+            @click="selectDate(day)"
+          >
+            {{ day }}
+          </button>
+        </div>
+        <footer class="calendar-actions">
+          <button type="button" @click="goToday">今天</button>
+          <button type="button" @click="calendarOpen = false">取消</button>
+        </footer>
+      </section>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import { getStorage } from '@/utils/storage'
 import { toast } from '@/utils/ui'
 
-const today = new Date().toISOString().slice(0, 10)
+function localDateString(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const today = localDateString()
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 const TIME_OPTIONS = Array.from({ length: 23 }, (_, index) => {
   const minutes = 10 * 60 + index * 30
   return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0')
@@ -107,7 +145,45 @@ const form = reactive({
 const members = ref([])
 const visitors = ref([])
 const saving = ref(false)
+const calendarOpen = ref(false)
+const calendarYear = ref(new Date().getFullYear())
+const calendarMonth = ref(new Date().getMonth() + 1)
 let visitorKey = 0
+
+const displayDate = computed(() => {
+  const [year, month, day] = String(form.date || '').split('-')
+  return year && month && day ? `${year}年${Number(month)}月${Number(day)}日` : '请选择日期'
+})
+const leadingBlankCount = computed(() => new Date(calendarYear.value, calendarMonth.value - 1, 1).getDay())
+const calendarDayCount = computed(() => new Date(calendarYear.value, calendarMonth.value, 0).getDate())
+
+function dateAt(day) {
+  return `${calendarYear.value}-${String(calendarMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+function openCalendar() {
+  const [year, month] = String(form.date || today).split('-').map(Number)
+  calendarYear.value = year || new Date().getFullYear()
+  calendarMonth.value = month || new Date().getMonth() + 1
+  calendarOpen.value = true
+}
+function changeMonth(step) {
+  const date = new Date(calendarYear.value, calendarMonth.value - 1 + step, 1)
+  calendarYear.value = date.getFullYear()
+  calendarMonth.value = date.getMonth() + 1
+}
+function isSelectedDate(day) { return form.date === dateAt(day) }
+function isTodayDate(day) { return today === dateAt(day) }
+function selectDate(day) {
+  form.date = dateAt(day)
+  calendarOpen.value = false
+}
+function goToday() {
+  form.date = today
+  const now = new Date()
+  calendarYear.value = now.getFullYear()
+  calendarMonth.value = now.getMonth() + 1
+  calendarOpen.value = false
+}
 
 function newVisitor() {
   return { key: ++visitorKey, visitorName: '', room: '', category: 'property', content: '' }
@@ -186,6 +262,9 @@ onMounted(async () => {
 .field.half { flex: 1; min-width: 0; }
 .field > span { display: block; margin-bottom: 10rpx; }
 .control { width: 100%; height: 84rpx; box-sizing: border-box; padding: 0 18rpx; border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833; font-size: 30rpx; outline: none; }
+.date-control { display: flex; align-items: center; justify-content: space-between; text-align: left; }
+.calendar-icon { display: flex; align-items: center; justify-content: center; width: 42rpx; height: 42rpx;
+  border: 3rpx solid #4775AF; border-radius: 8rpx; color: #4775AF; font-size: 22rpx; font-weight: 800; }
 .textarea { height: 170rpx; padding-top: 16rpx; resize: none; }
 .no-visit-btn { width: 100%; height: 80rpx; border: 2rpx solid #B9C4CC; border-radius: 18rpx; background: #fff; color: #4A5560; font-size: 29rpx; font-weight: 700; }
 .visitor-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22rpx; color: #202833; font-size: 32rpx; }
@@ -195,5 +274,26 @@ onMounted(async () => {
 .type-row button.active { background: #B96300; color: #fff; font-weight: 700; }
 .add-visitor { width: 100%; height: 78rpx; margin-bottom: 28rpx; border: 2rpx dashed #AAB7C0; border-radius: 18rpx; background: #fff; color: #46515D; font-size: 29rpx; }
 .submit-btn { display: block; width: 68%; height: 88rpx; margin: 0 auto; border: 0; border-radius: 18rpx; background: #B96300; color: #fff; font-size: 32rpx; font-weight: 700; }
+.calendar-mask { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center;
+  padding: 34rpx; box-sizing: border-box; background: rgba(23, 32, 42, .48); }
+.calendar-panel { width: 100%; max-width: 650rpx; padding: 30rpx 26rpx 24rpx; box-sizing: border-box;
+  border-radius: 28rpx; background: #fff; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .24); }
+.calendar-head { display: grid; grid-template-columns: 86rpx 1fr 86rpx; align-items: center; margin-bottom: 22rpx; }
+.calendar-head strong { text-align: center; color: #243247; font-size: 38rpx; }
+.calendar-head button { width: 76rpx; height: 76rpx; border: 0; border-radius: 50%; background: #F0F4F8;
+  color: #376AAB; font-size: 54rpx; line-height: 1; }
+.calendar-week, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7rpx; }
+.calendar-week { margin-bottom: 10rpx; }
+.calendar-week span { padding: 8rpx 0; text-align: center; color: #7C8794; font-size: 27rpx; font-weight: 700; }
+.calendar-day { height: 72rpx; border: 0; border-radius: 14rpx; background: transparent; color: #26313E;
+  font-size: 32rpx; font-weight: 500; }
+.calendar-day.blank { visibility: hidden; }
+.calendar-day.today { color: #376AAB; box-shadow: inset 0 0 0 3rpx #AFC5DF; font-weight: 700; }
+.calendar-day.selected { background: #4775AF; color: #fff; box-shadow: none; font-weight: 800; }
+.calendar-actions { display: flex; justify-content: flex-end; gap: 18rpx; margin-top: 22rpx; padding-top: 20rpx;
+  border-top: 2rpx solid #EDF0F3; }
+.calendar-actions button { min-width: 120rpx; height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 14rpx;
+  background: #EDF3FA; color: #376AAB; font-size: 29rpx; font-weight: 700; }
+.calendar-actions button:last-child { background: #F2F3F5; color: #65707C; }
 button:disabled { opacity: .55; }
 </style>
