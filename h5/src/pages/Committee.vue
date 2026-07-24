@@ -102,8 +102,16 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 日历恒展开：日历是首页主角，折叠头已删（0716 用户定）；开会 tab 卡头=居中年份，不另起名 -->
-      <div v-if="planTab === 'meeting'" class="plan-calendar-card">
+      <!-- 工作台宫格（路线乙）：开会 tab + portal 布局。大图标入口，点进各功能页 -->
+      <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="portal-grid">
+        <div v-for="e in portalEntries" :key="e.key" class="portal-cell" :class="e.tone" @click="e.onTap()">
+          <span class="portal-ico">{{ e.icon }}</span>
+          <span class="portal-label">{{ e.label }}</span>
+        </div>
+      </div>
+
+      <!-- 会议记录列表（路线甲）：开会 tab + tabs 布局。卡头=年份+记录，下方竖排记录列表 -->
+      <div v-if="planTab === 'meeting' && homeLayout === 'tabs'" class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
@@ -341,7 +349,8 @@
     <!-- 「更多功能」三格已删：接待/培训入口收进顶部计划卡横栏；历史记录走计划卡已开期或资料库 -->
 
     <!-- 发起非例会会议：低频功能收在页面底部的入口，仅「开会」tab 显示（接待/培训不需要） -->
-    <div v-if="canCreate && planTab === 'meeting'" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
+    <!-- portal 布局已有「发起会议」宫格入口，底部按钮只在 tabs 布局出现 -->
+    <div v-if="canCreate && planTab === 'meeting' && homeLayout === 'tabs'" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
 
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
       <div class="create-panel" @click.stop>
@@ -1167,6 +1176,23 @@ const currentPeriodUrgency = computed(() => {
 // 首页改版（0724 领导意见#1）：顶部「当前重点」横幅——只呈现此刻最要紧的一件事 + 一个直达大按钮，
 // 让关键信息一眼突出；下方日历/待办把已完成、未到期的内容折叠收起。优先级从上到下取第一个命中。
 const HOME_V2 = true // 详情大会议卡并入顶部横幅（旧卡暂留代码，flag 关即回滚）
+// 首页布局两版并存（0724：给领导选）：tabs=记录列表版（路线甲）｜portal=工作台宫格版（路线乙）。
+// 由 ?home=portal|tabs 或 localStorage 决定，默认 tabs；真机可用 URL 当场切换对比。
+const homeLayout = ref('tabs')
+try {
+  const q = new URL(window.location.href).searchParams.get('home')
+  if (q === 'portal' || q === 'tabs') { homeLayout.value = q; setStorage('home_layout', q) }
+  else { const s = getStorage('home_layout', ''); if (s === 'portal' || s === 'tabs') homeLayout.value = s }
+} catch (e) {}
+// 工作台宫格入口（路线乙）：大图标 + 标签，点进各功能页。柔和低饱和配色，避免政务土味。
+const portalEntries = computed(() => ([
+  { key: 'create', icon: '📣', label: '发起会议', tone: 'blue', onTap: () => openNewMeeting() },
+  { key: 'records', icon: '📋', label: '会议记录', tone: 'teal', onTap: () => goLibrary() },
+  { key: 'publish', icon: '📢', label: '事项公示', tone: 'amber', onTap: () => goLibrary() },
+  { key: 'reception', icon: '🤝', label: '接待登记', tone: 'green', onTap: () => openReceptionCreate() },
+  { key: 'recRecords', icon: '📁', label: '接待记录', tone: 'purple', onTap: () => goReceptionRecords() },
+  { key: 'learning', icon: '📚', label: '学习培训', tone: 'rose', onTap: () => navigateTo('/pages/learning/learning') }
+]))
 const homeFocus = computed(() => {
   if (planTab.value !== 'meeting') return null
   const list = currents.value || []
@@ -3493,6 +3519,18 @@ onActivated(show)
 .home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
+/* 工作台宫格（路线乙）：2列大图标入口，柔和低饱和配色（图标底浅色块），留白充足避免政务土味 */
+.portal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx; margin: 18rpx 24rpx 8rpx; }
+.portal-cell { background: var(--c-bg-card); border-radius: 24rpx; padding: 40rpx 20rpx 34rpx; display: flex; flex-direction: column; align-items: center; gap: 20rpx; box-shadow: 0 6rpx 18rpx rgba(20,42,58,0.06); cursor: pointer; }
+.portal-cell:active { transform: translateY(1rpx); opacity: 0.92; }
+.portal-ico { width: 112rpx; height: 112rpx; border-radius: 30rpx; display: flex; align-items: center; justify-content: center; font-size: 54rpx; }
+.portal-cell.blue .portal-ico { background: #E9F0FA; }
+.portal-cell.teal .portal-ico { background: #E4F2F0; }
+.portal-cell.amber .portal-ico { background: #FBF0DC; }
+.portal-cell.green .portal-ico { background: #E9F5EC; }
+.portal-cell.purple .portal-ico { background: #F0ECF8; }
+.portal-cell.rose .portal-ico { background: #FBECEE; }
+.portal-label { font-size: 31rpx; font-weight: 700; color: var(--c-text-strong); letter-spacing: 1rpx; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
 .mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
 .mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
