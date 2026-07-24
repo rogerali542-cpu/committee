@@ -32,6 +32,9 @@ export default {
   learningSignIn: function (id) {
     return core.request('PUT', '/api/learning/' + id + '/sign-in');
   },
+  learningSetAttendance: function (id, attendedNames) {
+    return core.request('PUT', '/api/learning/' + id + '/attendance', { attendedNames: attendedNames });
+  },
   learningNotifyAll: function (id) {
     return core.request('POST', '/api/learning/' + id + '/notify-all');
   }

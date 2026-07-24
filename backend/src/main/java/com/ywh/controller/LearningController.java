@@ -64,6 +64,12 @@ public class LearningController {
         return Result.ok();
     }
 
+    @PutMapping("/{id}/attendance")
+    public Result<Void> setAttendance(@PathVariable Long id, @RequestBody Map<String, List<String>> req) {
+        service.setAttendance(id, req.get("attendedNames"));
+        return Result.ok();
+    }
+
     // 佐证
     @PostMapping("/{id}/evidences")
     public Result<Map<String, Object>> addEvidence(@PathVariable Long id,

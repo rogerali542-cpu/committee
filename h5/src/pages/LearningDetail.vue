@@ -9,7 +9,7 @@
       <!-- 头部：标题 + 阶段 -->
       <div class="detail-head">
         <span class="dh-title">{{ item.title }}</span>
-        <span class="stage-pill" :class="item.stage">{{ item.stage === 'preparing' ? '待开始' : item.stage === 'ongoing' ? '进行中' : '已结束' }}</span>
+        <span class="stage-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
       </div>
 
       <!-- 基本信息 -->
@@ -20,29 +20,20 @@
         </div>
         <div class="field-row">
           <span class="field-label">时间</span>
-          <span class="field-val">{{ item.date }} {{ item.time }}</span>
+          <span class="field-val">{{ item.date }} {{ formatTime(item.time) }}</span>
         </div>
         <div class="field-row">
           <span class="field-label">地点</span>
           <span class="field-val">{{ item.location || '未填写' }}</span>
         </div>
         <div class="field-row">
-          <span class="field-label">讲师</span>
+          <span class="field-label">组织单位</span>
           <span class="field-val">{{ item.trainer || '未填写' }}</span>
         </div>
         <div class="field-row">
-          <span class="field-label">参加人员</span>
+          <span class="field-label">{{ item.stage === 'preparing' ? '计划参加' : '通知人员' }}</span>
           <span class="field-val">{{ item.attendees || '未填写' }}</span>
         </div>
-      </div>
-
-      <!-- 进度条（非待开阶段） -->
-      <div class="progress-card" v-if="item.stage !== 'preparing'">
-        <div class="pr-head">
-          <span class="pr-label">学习进度</span>
-          <span class="pr-pct">{{ item.progress }}%</span>
-        </div>
-        <div class="pr-bar"><div class="pr-fill" :style="{ width: item.progress + '%' }"></div></div>
       </div>
 
       <!-- 内容说明 -->
@@ -51,10 +42,10 @@
         <span class="cc-text">{{ item.description }}</span>
       </div>
 
-      <!-- 待开阶段：通知 -->
+      <!-- 培训前：通知计划参加人员 -->
       <div class="sign-card" v-if="item.stage === 'preparing' && item._signList.length">
         <div class="sign-head">
-          <span class="sign-title">参训人员</span>
+          <span class="sign-title">计划参加人员</span>
           <span class="sign-stat" :class="item.notified ? 'ok' : ''">{{ item.notified ? '已通知全员' : '待通知' }}</span>
         </div>
         <div class="sign-list">
@@ -67,41 +58,43 @@
         </div>
       </div>
 
-      <!-- 进行中阶段：签到 -->
+      <!-- 培训结束后：由负责人登记实际参加人员，不做现场签到 -->
       <div class="sign-card" v-if="item.stage === 'ongoing' && item._signList.length">
         <div class="sign-head">
-          <span class="sign-title">参训签到</span>
-          <span class="sign-stat">{{ item._signedCount }}/{{ item._totalCount }} 已签到</span>
+          <span class="sign-title">实际参加人员</span>
+          <span class="sign-stat">{{ selectedAttendance.length }}/{{ item._totalCount }} 人</span>
         </div>
+        <span class="attendance-hint">培训结束后，勾选实际参加人员</span>
         <div class="sign-list">
-          <div v-for="s in item._signList" :key="s.name" class="sign-row" :class="s.signed ? 'done' : ''">
+          <div v-for="s in item._signList" :key="s.name" class="sign-row attendance-row"
+               :class="selectedAttendance.includes(s.name) ? 'done' : ''" @click="toggleAttendance(s.name)">
             <span class="sign-name">{{ s.name }}</span>
-            <span class="sign-status" :class="s.signed ? 'ok' : 'wait'">{{ s.signed ? '已签到' : '未签到' }}</span>
+            <span class="attendance-check">{{ selectedAttendance.includes(s.name) ? '✓ 已参加' : '未参加' }}</span>
           </div>
         </div>
-        <div v-if="myName && !item._isMySignIn" class="sign-my">
-          <button class="btn-signin" @click="signIn">签到确认</button>
+        <div v-if="canManage" class="sign-my">
+          <button class="btn-signin" @click="saveAttendance">保存参加情况</button>
         </div>
       </div>
 
-      <!-- 已结束：签到汇总 -->
+      <!-- 已完成：参加人员汇总 -->
       <div class="sign-card" v-if="item.stage === 'ended' && item._signList.length">
         <div class="sign-head">
-          <span class="sign-title">参训签到汇总</span>
-          <span class="sign-stat ok">{{ item._signedCount }}/{{ item._totalCount }} 已签到</span>
+          <span class="sign-title">实际参加人员</span>
+          <span class="sign-stat ok">{{ item._signedCount }}/{{ item._totalCount }} 人参加</span>
         </div>
         <div class="sign-list">
           <div v-for="s in item._signList" :key="s.name" class="sign-row" :class="s.signed ? 'done' : ''">
             <span class="sign-name">{{ s.name }}</span>
-            <span class="sign-status" :class="s.signed ? 'ok' : 'wait'">{{ s.signed ? '已签到' : '缺席' }}</span>
+            <span class="sign-status" :class="s.signed ? 'ok' : 'wait'">{{ s.signed ? '已参加' : '未参加' }}</span>
           </div>
         </div>
       </div>
 
-      <!-- 佐证材料（所有阶段可上传） -->
+      <!-- 通知与留档材料 -->
       <div class="ev-card">
         <div class="ev-head">
-          <span class="ev-title">资料附件（{{ item.evidences ? item.evidences.length : 0 }}）</span>
+          <span class="ev-title">培训材料（{{ item.evidences ? item.evidences.length : 0 }}）</span>
           <span v-if="item.stage !== 'ended' && canManage" class="ev-add" @click="addEvidence">上传</span>
         </div>
         <div v-if="item.evidences && item.evidences.length" class="ev-list">
@@ -113,25 +106,25 @@
           </div>
         </div>
         <span v-else class="ev-empty">
-          <template v-if="item.stage === 'preparing'">上传培训通知、政府文件、学习材料等</template>
-          <template v-else-if="item.stage === 'ongoing'">上传签到表、现场照片、培训证书等</template>
+          <template v-if="item.stage === 'preparing'">可上传培训通知、课件或学习材料</template>
+          <template v-else-if="item.stage === 'ongoing'">可上传培训记录、课件、照片等</template>
           <template v-else>暂无归档资料</template>
         </span>
       </div>
 
-      <!-- 阶段操作 -->
+      <!-- 管理操作 -->
       <div class="action-card" v-if="item.stage !== 'ended' && canManage">
-        <span class="ac-hint">{{ item.stage === 'preparing' ? '准备开始本次学习' : '学习进行中，完成后确认' }}</span>
-        <button v-if="item.stage === 'preparing'" class="btn-primary" @click="startLearn">开始学习</button>
-        <button v-if="item.stage === 'ongoing'" class="btn-primary finish" @click="finishLearn">完成学习</button>
+        <span class="ac-hint">{{ item.stage === 'preparing' ? '培训结束后登记参加情况和材料' : '确认参加情况及材料后完成留档' }}</span>
+        <button v-if="item.stage === 'preparing'" class="btn-primary" @click="startLearn">培训已结束，登记结果</button>
+        <button v-if="item.stage === 'ongoing'" class="btn-primary finish" @click="finishLearn">完成留档</button>
       </div>
 
       <div class="perm-note" v-if="item.stage !== 'ended' && !canManage">
-        <span>仅主任/副主任/记录员可推进学习阶段</span>
+        <span>仅负责人可登记培训结果和完成留档</span>
       </div>
 
       <div class="done-card" v-if="item.stage === 'ended'">
-        <span class="done-text">本次学习已完成归档</span>
+        <span class="done-text">本次学习培训已完成留档</span>
       </div>
 
       <div class="delete-area" v-if="canManage">
@@ -151,13 +144,12 @@ import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { navigateBack } from '@/utils/navigate'
-import { getStorage } from '@/utils/storage'
 import { pickAndUpload } from '@/utils/upload'
 
 const route = useRoute()
 const item = ref(null)
 const canManage = ref(false)   // 可以操作（创建/推进）= 主任/副主任/委员
-const myName = ref('')
+const selectedAttendance = ref([])
 let itemId = null
 
 function loadItem() {
@@ -183,11 +175,7 @@ function applyItem(found) {
   }
   found._signedCount = found._signList.filter(function (s) { return s.signed }).length
   found._totalCount = found._signList.length
-  // 当前用户是否在参训名单中
-  var activeRole = getStorage('activeRole')
-  var mn = (activeRole && activeRole.realName) ? activeRole.realName : ''
-  found._isMySignIn = found._signList.some(function (s) { return s.name === mn && s.signed })
-  myName.value = mn
+  selectedAttendance.value = found._signList.filter(function (s) { return s.signed }).map(function (s) { return s.name })
   item.value = found
 }
 
@@ -200,9 +188,21 @@ async function notifyAll() {
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
-async function signIn() {
+function toggleAttendance(name) {
+  if (!canManage.value) return
+  const index = selectedAttendance.value.indexOf(name)
+  if (index >= 0) selectedAttendance.value.splice(index, 1)
+  else selectedAttendance.value.push(name)
+}
+
+function formatTime(value) {
+  return String(value || '').slice(0, 5)
+}
+
+async function saveAttendance() {
   try {
-    await api.learningSignIn(itemId)
+    await api.learningSetAttendance(itemId, selectedAttendance.value)
+    toast({ title: '参加情况已保存', icon: 'success' })
     loadItem()
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
@@ -214,7 +214,7 @@ async function startLearn() {
   }
   try {
     await api.learningStart(itemId)
-    toast({ title: '已开始', icon: 'success' })
+    toast({ title: '请登记培训结果', icon: 'success' })
     loadItem()
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
@@ -226,7 +226,7 @@ async function finishLearn() {
   }
   try {
     await api.learningFinish(itemId)
-    toast({ title: '已完成', icon: 'success' })
+    toast({ title: '已完成留档', icon: 'success' })
     loadItem()
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
@@ -234,7 +234,7 @@ async function finishLearn() {
 async function addEvidence() {
   if (!canManage.value) return
   try {
-    const r = await pickAndUpload('image/*')
+    const r = await pickAndUpload('image/*,.pdf,.doc,.docx')
     if (!r) return  // 用户取消
     await api.learningAddEvidence(itemId, r.fileName, r.fileType, r.url)
     toast({ title: '已上传', icon: 'success' })
@@ -316,8 +316,13 @@ onMounted(() => {
 .sign-title { font-size: 30rpx; font-weight: 700; color: #1f2329; }
 .sign-stat { font-size: 28rpx; color: #C77800; font-weight: 600; }
 .sign-stat.ok { color: #27AE60; }
+.attendance-hint { display: block; margin: -4rpx 0 14rpx; font-size: 25rpx; color: #8A94A6; }
 .sign-list { display: flex; flex-direction: column; gap: 4rpx; margin-bottom: 10rpx; }
 .sign-row { display: flex; align-items: center; justify-content: space-between; padding: 14rpx; border-radius: 12rpx; }
+.attendance-row { cursor: pointer; background: #F6F7F9; margin-bottom: 6rpx; }
+.attendance-row.done { background: #EAF5EE; }
+.attendance-check { font-size: 26rpx; color: #778292; }
+.attendance-row.done .attendance-check { color: #2E7D50; font-weight: 600; }
 .sign-row.done { background: #f9f9f9; }
 .sign-name { font-size: 30rpx; color: #1f2329; }
 .sign-status { font-size: 28rpx; font-weight: 600; }

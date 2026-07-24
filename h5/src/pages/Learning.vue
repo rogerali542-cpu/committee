@@ -13,40 +13,39 @@
       <div class="type-tab" :class="{ active: learnType == 'training' }" @click="switchType('training')">外部培训</div>
     </div>
 
-    <!-- 年度目标（仅内部学习） -->
-    <div class="learn-target" v-if="learnType == 'internal'">
+    <!-- 年度履职概览：对应评分要求，但不把培训本身做成线上课程 -->
+    <div class="learn-target">
       <div class="lt-head">
-        <span class="lt-title">年度组织学习</span>
-        <span class="lt-badge" :class="done >= target ? 'done' : 'warn'">{{ done >= target ? '已达标' : '还差' + (target - done) + '次' }}</span>
+        <span class="lt-title">年度学习培训情况</span>
+        <span class="lt-year">{{ currentYear }}年</span>
       </div>
-      <div class="lt-body">
-        <div class="lt-ring-wrap">
-          <div class="lt-ring" :style="ringStyle"></div>
-          <div class="lt-ring-center">
-            <span class="lt-ring-num">{{ done }}<span class="lt-ring-unit2">/{{ target }}</span></span>
-            <span class="lt-ring-label">已完成</span>
+      <div class="annual-list">
+        <div class="annual-row">
+          <div class="annual-main">
+            <span class="annual-name">年度学习</span>
+            <span class="annual-desc">内部学习及可计入的外部培训</span>
           </div>
+          <span class="annual-status" :class="annualStudyCount >= target ? 'done' : 'warn'">
+            {{ annualStudyCount }}/{{ target }}次
+          </span>
         </div>
-        <div class="lt-info">
-          <div class="lt-info-row">
-            <div class="lt-dot" style="background:#27AE60;"></div>
-            <span>已结束</span>
-            <div class="lt-bar-wrap"><div class="lt-bar-fill" :style="{ width: (total ? done / total * 100 : 0) + '%', background: '#27AE60' }"></div></div>
-            <span class="lt-num">{{ done }}</span>
+        <div class="annual-row">
+          <div class="annual-main">
+            <span class="annual-name">街镇业务培训</span>
+            <span class="annual-desc">本年度至少参加1次</span>
           </div>
-          <div class="lt-info-row">
-            <div class="lt-dot" style="background:#2980B9;"></div>
-            <span>进行中</span>
-            <div class="lt-bar-wrap"><div class="lt-bar-fill" :style="{ width: (total ? ongoing / total * 100 : 0) + '%', background: '#2980B9' }"></div></div>
-            <span class="lt-num">{{ ongoing }}</span>
+          <span class="annual-status" :class="annualStreetDone ? 'done' : 'warn'">
+            {{ annualStreetDone ? '已参加' : '待参加' }}
+          </span>
+        </div>
+        <div class="annual-row">
+          <div class="annual-main">
+            <span class="annual-name">规定人员专项培训</span>
+            <span class="annual-desc">记录相关职责人员参加情况</span>
           </div>
-          <div class="lt-info-row">
-            <div class="lt-dot" style="background:#E67E22;"></div>
-            <span>待开</span>
-            <div class="lt-bar-wrap"><div class="lt-bar-fill" :style="{ width: (total ? pending / total * 100 : 0) + '%', background: '#E67E22' }"></div></div>
-            <span class="lt-num">{{ pending }}</span>
-          </div>
-          <span class="lt-rule">目标：每年至少{{ target }}次内部学习</span>
+          <span class="annual-status" :class="annualSpecialDone ? 'done' : 'neutral'">
+            {{ annualSpecialDone ? '已有记录' : '暂无记录' }}
+          </span>
         </div>
       </div>
     </div>
@@ -56,22 +55,22 @@
       <div class="tsc-card" :class="{ active: trainSub == 'street' }" @click="switchTrainSub('street')">
         <div class="tsc-icon" style="background:#EBF5FB;">🏛️</div>
         <span class="tsc-title">街镇组织培训</span>
-        <span class="tsc-desc">街镇统一组织 · 全体委员参加</span>
+        <span class="tsc-desc">街镇统一组织 · 按通知参加</span>
         <span class="tsc-badge">{{ streetCount }}</span>
       </div>
       <div class="tsc-card" :class="{ active: trainSub == 'special' }" @click="switchTrainSub('special')">
         <div class="tsc-icon" style="background:#FDF2E9;">🛡️</div>
         <span class="tsc-title">专项业务培训</span>
-        <span class="tsc-desc">市区街道组织 · 指定人员</span>
+        <span class="tsc-desc">市区街道组织 · 相关人员参加</span>
         <span class="tsc-badge">{{ specialCount }}</span>
       </div>
     </div>
 
-    <!-- 阶段筛选 -->
+    <!-- 管理状态：培训在软件外进行，系统负责通知、结果登记和留档 -->
     <div class="filter-tabs">
-      <div class="f-tab" :class="{ active: learnStage == 'preparing' }" @click="switchStage('preparing')">待开 <span class="f-count">{{ counts.pending }}</span></div>
-      <div class="f-tab" :class="{ active: learnStage == 'ongoing' }" @click="switchStage('ongoing')">进行中 <span class="f-count">{{ counts.ongoing }}</span></div>
-      <div class="f-tab" :class="{ active: learnStage == 'ended' }" @click="switchStage('ended')">已结束 <span class="f-count">{{ counts.ended }}</span></div>
+      <div class="f-tab" :class="{ active: learnStage == 'preparing' }" @click="switchStage('preparing')">待参加 <span class="f-count">{{ counts.pending }}</span></div>
+      <div class="f-tab" :class="{ active: learnStage == 'ongoing' }" @click="switchStage('ongoing')">待整理 <span class="f-count">{{ counts.ongoing }}</span></div>
+      <div class="f-tab" :class="{ active: learnStage == 'ended' }" @click="switchStage('ended')">已完成 <span class="f-count">{{ counts.ended }}</span></div>
     </div>
 
     <!-- 学习卡片列表 -->
@@ -80,17 +79,16 @@
         <div class="learn-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
           <div class="lc-header">
             <span class="lc-title">{{ item.title }}</span>
-            <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? '待开' : item.stage === 'ongoing' ? '进行中' : '已结束' }}</span>
+            <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
           </div>
           <div class="lc-meta">
-            <span class="lc-meta-line">📅 {{ item.date }} {{ item.time }}</span>
-            <span class="lc-meta-line">📍 {{ item.location }}</span>
-            <span class="lc-meta-line">👤 {{ item.trainer }}</span>
-            <span class="lc-meta-line" v-if="item.attendees">👥 {{ item.attendees }}</span>
-          </div>
-          <div class="lc-progress" v-if="item.stage !== 'preparing'">
-            <div class="lc-progress-bar"><div class="lc-progress-fill" :style="{ width: item.progress + '%' }"></div></div>
-            <span class="lc-progress-text">{{ item.progress }}%</span>
+            <span class="lc-meta-line">{{ item.date }} · {{ formatTime(item.time) }}</span>
+            <span class="lc-meta-line">{{ item.location }}</span>
+            <span class="lc-meta-line">组织：{{ item.trainer || '未填写' }}</span>
+            <span class="lc-meta-line" v-if="item.attendees">
+              {{ item.stage === 'ended' ? '实际参加' : '计划参加' }}：{{ item.stage === 'ended' ? actualAttendanceCount(item) : attendeeCount(item.attendees) }}人
+            </span>
+            <span class="lc-meta-line" v-if="item.evidences && item.evidences.length">已上传{{ item.evidences.length }}份材料</span>
           </div>
           <div class="lc-arrow">›</div>
         </div>
@@ -133,12 +131,12 @@
         </div>
 
         <div class="form-group">
-          <span class="form-label">组织者/讲师</span>
-          <input class="form-input" v-model="createForm.trainer" placeholder="如 街道办陈主任" />
+          <span class="form-label">组织单位/讲师</span>
+          <input class="form-input" v-model="createForm.trainer" placeholder="如 临汾路街道" />
         </div>
 
         <div class="form-group">
-          <span class="form-label">参与人员（逗号分隔，用于通知和签到）</span>
+          <span class="form-label">计划参加人员（用于发送通知）</span>
           <input class="form-input" v-model="createForm.attendees" placeholder="如 张建国,李秀英,王志强" />
         </div>
 
@@ -171,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onActivated, onUnmounted } from 'vue';
+import { ref, reactive, onMounted, onActivated, onUnmounted } from 'vue';
 import api from '@/api';
 import PageNav from '@/components/PageNav.vue';
 import perm from '@/utils/perm';
@@ -183,13 +181,13 @@ const learnStage = ref('preparing');
 const trainSub = ref('street');
 const items = ref([]);
 const counts = ref({ pending: 0, ongoing: 0, ended: 0 });
-const done = ref(0);
-const ongoing = ref(0);
-const pending = ref(0);
-const total = ref(0);
 const target = ref(2);
 const streetCount = ref(0);
 const specialCount = ref(0);
+const annualStudyCount = ref(0);
+const annualStreetDone = ref(false);
+const annualSpecialDone = ref(false);
+const currentYear = new Date().getFullYear();
 const canCreate = ref(false);
 const undoVisible = ref(false);
 const undoText = ref('');
@@ -202,25 +200,26 @@ const createForm = reactive({
 let undoTimer = null;
 let undoData = null;
 
-// 进度环：已完成 done / 目标 target
-const ringStyle = computed(() => {
-  const pct = target.value ? Math.min(done.value / target.value, 1) * 100 : 0;
-  return {
-    background: `conic-gradient(#FFA800 ${pct}%, #FFE6B8 ${pct}% 100%)`
-  };
-});
-
 function openDetail(item) {
   navigateTo('/pages/learning-detail/learning-detail?id=' + item.id);
 }
 
 async function loadAll() {
   try {
+    const [allInternal, allTraining] = await Promise.all([
+      api.learningList('internal', null).catch(() => []),
+      api.learningList('training', null).catch(() => [])
+    ]);
+    const completedInternal = allInternal.filter(i => i.stage === 'ended').length;
+    const completedExternal = allTraining.filter(i => i.stage === 'ended').length;
+    annualStudyCount.value = completedInternal + completedExternal;
+    annualStreetDone.value = allTraining.some(i => i.type === 'street' && i.stage === 'ended');
+    annualSpecialDone.value = allTraining.some(i => i.type === 'special' && i.stage === 'ended');
     if (learnType.value === 'training') {
       // counts 接口只认 internal/street/special；"training" 是聚合别名会 400。
       // 所以外部培训一次性拉全量(不带 stage)，本地按「子类 + 阶段」切分：
       // 列表只留当前阶段，而阶段角标要跨全部阶段现算——否则非选中阶段永远算成 0。
-      const all = await api.learningList('training', null);
+      const all = allTraining;
       const subAll = all.filter(i => i.type === trainSub.value);
       items.value = subAll.filter(i => i.stage === learnStage.value);
       counts.value = {
@@ -231,19 +230,12 @@ async function loadAll() {
       streetCount.value = all.filter(i => i.type === 'street').length;
       specialCount.value = all.filter(i => i.type === 'special').length;
     } else {
-      const [list, cnts] = await Promise.all([
-        api.learningList('internal', learnStage.value),
-        api.learningCounts('internal').catch(() => ({ pending: 0, ongoing: 0, ended: 0 }))
-      ]);
-      // 全量内部学习用于年度目标环的统计
-      let allItems = list;
-      try { allItems = await api.learningList('internal', null); } catch (e) {}
-      items.value = list;
-      counts.value = cnts;
-      done.value = allItems.filter(i => i.stage === 'ended').length;
-      ongoing.value = allItems.filter(i => i.stage === 'ongoing').length;
-      pending.value = allItems.filter(i => i.stage === 'preparing').length;
-      total.value = allItems.length;
+      items.value = allInternal.filter(i => i.stage === learnStage.value);
+      counts.value = {
+        pending: allInternal.filter(i => i.stage === 'preparing').length,
+        ongoing: allInternal.filter(i => i.stage === 'ongoing').length,
+        ended: allInternal.filter(i => i.stage === 'ended').length
+      };
     }
   } catch (e) {
     items.value = [];
@@ -266,6 +258,19 @@ function switchTrainSub(sub) {
 function switchStage(stage) {
   learnStage.value = stage;
   loadAll();
+}
+
+function attendeeCount(value) {
+  return String(value || '').split(/[,，、\s]+/).filter(Boolean).length;
+}
+
+function actualAttendanceCount(item) {
+  const signs = item && item.signIns ? Object.values(item.signIns) : [];
+  return signs.filter(Boolean).length;
+}
+
+function formatTime(value) {
+  return String(value || '').slice(0, 5);
 }
 
 function showUndo(text, prev) {
@@ -374,6 +379,16 @@ onUnmounted(() => {
 .learn-target { margin: 0 0 20rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .lt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
 .lt-title { font-size: 32rpx; font-weight: 700; color: #1f2329; }
+.lt-year { font-size: 25rpx; color: #8A94A6; }
+.annual-list { display: flex; flex-direction: column; }
+.annual-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-top: 2rpx solid #F0F2F4; }
+.annual-main { min-width: 0; display: flex; flex-direction: column; gap: 7rpx; }
+.annual-name { font-size: 29rpx; font-weight: 700; color: #303747; }
+.annual-desc { font-size: 24rpx; color: #8993A3; line-height: 1.35; }
+.annual-status { flex-shrink: 0; min-width: 106rpx; text-align: center; padding: 7rpx 14rpx; border-radius: 999rpx; font-size: 24rpx; font-weight: 700; }
+.annual-status.done { color: #2E7D50; background: #E8F4EC; }
+.annual-status.warn { color: #A96518; background: #FAEEDC; }
+.annual-status.neutral { color: #657183; background: #EEF1F4; }
 .lt-badge { font-size: 28rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 10rpx; }
 .lt-badge.done { background: #E8F7EE; color: #27AE60; }
 .lt-badge.warn { background: #FFF3E0; color: #E67E22; }

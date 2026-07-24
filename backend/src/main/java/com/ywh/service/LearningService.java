@@ -175,6 +175,22 @@ public class LearningService {
         }
     }
 
+    // 培训结束后由负责人登记实际参加人员，不要求委员在软件内现场签到
+    @Transactional
+    public void setAttendance(Long id, List<String> attendedNames) {
+        Set<String> attended = attendedNames == null
+                ? Collections.emptySet()
+                : attendedNames.stream().filter(Objects::nonNull).map(String::trim)
+                    .filter(s -> !s.isEmpty()).collect(Collectors.toSet());
+        List<LearningSignIn> signs = signInRepo.findByRecordId(id);
+        for (LearningSignIn s : signs) {
+            boolean present = attended.contains(s.getRealName());
+            s.setSignedIn(present);
+            s.setSignedAt(present ? LocalDateTime.now() : null);
+        }
+        signInRepo.saveAll(signs);
+    }
+
     // 佐证
     @Transactional
     public Map<String, Object> addEvidence(Long id, String fileName, String fileType, String fileUrl) {
