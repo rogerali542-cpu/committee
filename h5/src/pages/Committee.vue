@@ -284,7 +284,8 @@
 
         <!-- 待办事项：开会类同时展示本期与逾期期次；其他分类展示当前月份待办。
              0724 改版：开会 tab 隐藏——横幅已呈现第一要务、记录列表每行可点即去通知/补开，本卡重复。接待/培训仍需。 -->
-        <div v-if="!(HOME_V2 && planTab === 'meeting')" class="plan-todo-card yc-list" :class="{ flash: planTodoFlash }">
+        <div v-if="!(HOME_V2 && planTab === 'meeting')" class="plan-todo-card yc-list"
+             :class="{ flash: planTodoFlash, 'empty-compact': planTab === 'reception' && !planTodoList.length }">
           <div class="yc-list-head" :class="{ foldable: planTab === 'reception' }"
                @click="planTab === 'reception' ? (receptionTodoOpen = !receptionTodoOpen) : null">
             <span class="yc-head-title">{{ planListTitle }}</span>
@@ -298,8 +299,8 @@
             <span v-if="planTab === 'reception'" class="rec-todo-chevron" :class="{ open: receptionTodoOpen }">▾</span>
           </div>
           <!-- 本期例会与其他期次同为普通条目（0716 用户定：原实心大按钮太重、与列表风格打架，已拆） -->
-          <template v-if="planTab !== 'reception' || receptionTodoOpen">
-            <div v-if="!planTodoList.length" class="plan-empty">暂无需要处理的{{ planTabLabel }}事项</div>
+          <template v-if="!planTodoList.length || planTab !== 'reception' || receptionTodoOpen">
+            <div v-if="!planTodoList.length" class="plan-empty">{{ planTab === 'reception' ? '暂无待处理事项' : `暂无需要处理的${planTabLabel}事项` }}</div>
             <div v-else v-for="it in planTodoList" :key="it.key" class="yc-item" :class="[planTab === 'meeting' ? it.status : 'todo-plain', it.flag]"
                  @click="it.onTap()">
               <div class="yc-item-info">
@@ -4142,7 +4143,7 @@ onActivated(show)
   color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }
 .rec-notice-primary:active { opacity: 0.76; }
 .rec-register-card { order: 2; display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
-  margin-top: 30rpx; padding: 24rpx 26rpx; text-align: left;
+  margin-top: 38rpx; padding: 24rpx 26rpx; text-align: left;
   background: linear-gradient(135deg, #FFF9F0 0%, #FFF2DF 100%); border: 3rpx solid #E7B56F;
   border-radius: 20rpx; box-shadow: 0 10rpx 26rpx rgba(159,92,13,0.12); color: inherit; }
 .rrc-icon { display: flex; align-items: center; justify-content: center; width: 68rpx; height: 68rpx;
@@ -4152,7 +4153,7 @@ onActivated(show)
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx;
   border-radius: 50%; background: #F4D9B5; color: #9A5700; font-size: 40rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
-.rec-recent-card { order: 3; margin-top: 30rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
+.rec-recent-card { order: 3; margin-top: 38rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
   box-shadow: 0 5rpx 18rpx rgba(20,42,58,0.04); }
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
@@ -4190,7 +4191,7 @@ onActivated(show)
 .rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 27rpx; font-style: normal; }
 .rec-recent-empty { padding: 22rpx 0 26rpx; border-top: 2rpx solid #EEF1F3;
   text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
-.plan-stack.reception-mode .plan-todo-card { margin-top: 30rpx; }
+.plan-stack.reception-mode .plan-todo-card { margin-top: 38rpx; }
 .plan-stack.reception-mode .plan-todo-card { padding-bottom: 8rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head { min-height: 72rpx; padding: 10rpx 2rpx 12rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head.foldable { cursor: pointer; }
@@ -4208,6 +4209,11 @@ onActivated(show)
 .plan-stack.reception-mode .plan-todo-card .yc-item-title { font-size: 34rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 26rpx; }
 .plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
+.plan-stack.reception-mode .plan-todo-card.empty-compact { padding: 0 24rpx; }
+.plan-stack.reception-mode .plan-todo-card.empty-compact .yc-list-head { display: none; }
+.plan-stack.reception-mode .plan-todo-card.empty-compact .plan-empty {
+  padding: 24rpx 0; font-size: 28rpx; line-height: 1.4; color: var(--c-text-weak);
+}
 
 /* 接待日安排入口卡。order 4→1（0717 用户定）：接下原「会议进行中」收起栏的位置，
    即 tab 栏正下方、三数字概览之上。
