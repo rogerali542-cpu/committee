@@ -123,7 +123,10 @@
               <div class="ck-todo-title">{{ t.title }}</div>
               <div v-if="t.sub" class="ck-todo-sub">{{ t.sub }}</div>
             </div>
-            <span class="ck-todo-cta">{{ t.cta }} ›</span>
+            <div class="ck-todo-actions">
+              <span class="ck-todo-cta">{{ t.cta }} ›</span>
+              <button v-if="t.onDelete" type="button" class="ck-todo-delete" @click.stop="t.onDelete()">删除会议</button>
+            </div>
           </div>
         </div>
         <div v-else class="ck-calm">
@@ -1272,6 +1275,7 @@ const cockpitTodos = computed(() => {
   if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
     items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
       title: f.title, sub: f.sub, cta: f.cta,
+      onDelete: f.meeting && isChair.value ? () => removeCurrent(f.meeting) : null,
       onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
   }
   const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
@@ -1295,17 +1299,17 @@ const homeFocus = computed(() => {
   const ongoing = list.find(c => c.stage === 'ongoing' && !c.reviewDone)
   if (ongoing) return { level: 'active', kicker: ongoing.tag || '正在进行', title: ongoing.title,
     sub: [ongoing.timeText, ongoing.locationText].filter(Boolean).join(' · '),
-    cta: ongoing.ctaLabel, icon: ongoing.ctaIcon, onTap: () => goCurrent(ongoing) }
+    cta: ongoing.ctaLabel, icon: ongoing.ctaIcon, meeting: ongoing, onTap: () => goCurrent(ongoing) }
   // 只把「还需整理/生成纪要」的已结束会议当重点；已生成纪要（按钮=查看会议）算完成，不占焦点
   const ended = list.find(c => c.stage === 'ended' && c.ctaLabel !== '查看会议')
   if (ended) return { level: 'active', kicker: ended.minutesGen ? '会议纪要生成中' : '待整理会议记录',
-    title: ended.title, sub: ended.timeText, cta: ended.ctaLabel, icon: ended.ctaIcon, onTap: () => goCurrent(ended) }
+    title: ended.title, sub: ended.timeText, cta: ended.ctaLabel, icon: ended.ctaIcon, meeting: ended, onTap: () => goCurrent(ended) }
   if (hasDraft.value) return { level: 'active', kicker: '通知编辑中', title: draftTitle.value,
     sub: draftSummary.value || '会议通知尚未完成', cta: '继续通知', onTap: () => continueDraft() }
   const prep = list.find(c => c.stage === 'preparing')
   if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
     sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
-    onTap: () => goCurrent(prep) }
+    meeting: prep, onTap: () => goCurrent(prep) }
   const urg = viewYear.value === curYear ? currentPeriodUrgency.value : null
   if (urg) return { level: 'urgent', kicker: '本期例会临期', title: '本期例会还没召开',
     sub: '距期限只剩 ' + urg.daysLeft + ' 天，请尽快安排会议', cta: isChair.value ? '去通知' : '等待通知',
@@ -3749,7 +3753,10 @@ onActivated(show)
 .ck-todo-info { flex: 1; min-width: 0; }
 .ck-todo-title { font-size: 40rpx; font-weight: 800; color: #2A3244; line-height: 1.32; }
 .ck-todo-sub { margin-top: 12rpx; font-size: 29rpx; color: #8A94A6; line-height: 1.4; }
-.ck-todo-cta { flex-shrink: 0; align-self: center; font-size: 31rpx; font-weight: 700; color: #C2410C; }
+.ck-todo-actions { flex-shrink: 0; align-self: stretch; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 18rpx; }
+.ck-todo-cta { font-size: 31rpx; font-weight: 700; color: #C2410C; white-space: nowrap; }
+.ck-todo-delete { min-height: 42rpx; padding: 0 4rpx; border: 0; background: transparent; color: #A36F6F; font-size: 22rpx; font-weight: 500; text-decoration: underline; text-underline-offset: 5rpx; }
+.ck-todo-delete:active { color: #C0392B; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
