@@ -67,7 +67,7 @@
         </div>
 
         <div class="field">
-          <label class="f-label">调整原因（选填，写了公告会带上）</label>
+          <label class="f-label">调整原因（选填）</label>
           <input v-model="form.reason" class="f-input" maxlength="60" :disabled="!canManage" />
         </div>
         <div v-if="!canManage" class="sec-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
@@ -228,7 +228,8 @@ async function load() {
     saved.timeDesc = conciseTimeDesc(sys && sys.timeDesc)
     form.place = saved.place = (sys && sys.place) || ''
     form.person = saved.person = (sys && sys.person) || ''
-    form.reason = saved.reason = (sys && sys.adjustReason) || ''
+    // 调整原因只针对本次公告，不沿用上一次保存的临时原因。
+    form.reason = saved.reason = ''
     parseTimeDesc(saved.timeDesc)
     // 抬头直接用后端算好的整串，不在这儿拼。后端 ReceptionService.noticeOrgName() 是唯一实现，
     // PDF 也调它 —— 预览和印出来的纸因此不可能不一致。
