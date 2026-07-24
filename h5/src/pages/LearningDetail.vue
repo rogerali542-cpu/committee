@@ -4,7 +4,11 @@
          负 margin 让导航条满宽贴顶，与其他页观感一致 -->
     <!-- backTo 显式回首页培训 tab（0717 用户定）：history.back 在硬跳兜底后不可靠，
          且要落回对应 tab 而非默认开会（首页 show() 读 ?tab=） -->
-    <PageNav title="培训详情" back-to="/main?tab=learning" style="margin: -24rpx -24rpx 20rpx" />
+    <PageNav title="培训详情" back-to="/learning" style="margin: -24rpx -24rpx 20rpx">
+      <template #right>
+        <button class="nav-home" @click="goHome">首页</button>
+      </template>
+    </PageNav>
     <div v-if="item">
       <!-- 头部：标题 + 阶段 -->
       <div class="detail-head">
@@ -143,7 +147,7 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
-import { navigateBack } from '@/utils/navigate'
+import { navigateBack, redirectTo } from '@/utils/navigate'
 import { pickAndUpload } from '@/utils/upload'
 
 const route = useRoute()
@@ -197,6 +201,10 @@ function toggleAttendance(name) {
 
 function formatTime(value) {
   return String(value || '').slice(0, 5)
+}
+
+function goHome() {
+  redirectTo('/main?home=portal')
 }
 
 async function saveAttendance() {
@@ -281,6 +289,8 @@ onMounted(() => {
 
 <style scoped>
 .page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 160rpx; box-sizing: border-box; }
+.nav-home { display:inline-flex; align-items:center; height:60rpx; margin-right:18rpx; padding:0 22rpx; border:2rpx solid rgba(255,255,255,.58); border-radius:32rpx; background:rgba(255,255,255,.12); color:#fff; font-size:28rpx; font-weight:600; line-height:1; }
+.nav-home:active { background:rgba(255,255,255,.28); }
 
 /* 头部 */
 .detail-head { background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
