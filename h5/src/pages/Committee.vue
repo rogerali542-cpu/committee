@@ -124,8 +124,11 @@
               <div class="ck-todo-head-actions">
                 <button v-if="currentCockpitTodo.onDelete" type="button" class="ck-todo-delete"
                         @click.stop="currentCockpitTodo.onDelete()">删除会议</button>
-                <button v-if="cockpitTodos.length > 1" type="button" class="ck-todo-next"
-                        @click.stop="showNextCockpitTodo">查看下一项</button>
+                <div v-if="cockpitTodos.length > 1" class="ck-todo-pager">
+                  <button type="button" @click.stop="showPreviousCockpitTodo">上一项</button>
+                  <span>{{ cockpitTodoIndex + 1 }}/{{ cockpitTodos.length }}</span>
+                  <button type="button" @click.stop="showNextCockpitTodo">下一项</button>
+                </div>
               </div>
             </div>
             <div class="ck-todo-title">{{ currentCockpitTodo.title }}</div>
@@ -1323,6 +1326,11 @@ const currentCockpitTodo = computed(() => {
 function showNextCockpitTodo() {
   if (cockpitTodos.value.length < 2) return
   cockpitTodoIndex.value = (cockpitTodoIndex.value + 1) % cockpitTodos.value.length
+}
+function showPreviousCockpitTodo() {
+  const length = cockpitTodos.value.length
+  if (length < 2) return
+  cockpitTodoIndex.value = (cockpitTodoIndex.value - 1 + length) % length
 }
 function formatLocalDay(value) {
   const d = value instanceof Date ? value : new Date(value)
@@ -3831,8 +3839,10 @@ onActivated(show)
 .ck-todo-cta i { margin-left: 5rpx; font-style: normal; font-size: 33rpx; line-height: 1; }
 .ck-todo-delete { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #956B6B; font-size: 24rpx; font-weight: 500; transform: translate(7rpx, -4rpx); }
 .ck-todo-delete:active { color: #C0392B; }
-.ck-todo-next { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #6F7E93; font-size: 23rpx; font-weight: 500; }
-.ck-todo-next:active { color: #3E6BA8; }
+.ck-todo-pager { display: inline-flex; align-items: center; gap: 12rpx; color: #7B8799; }
+.ck-todo-pager button { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #64758D; font-size: 22rpx; font-weight: 500; }
+.ck-todo-pager button:active { color: #3E6BA8; }
+.ck-todo-pager span { min-width: 44rpx; text-align: center; font-size: 21rpx; color: #9AA4B3; font-variant-numeric: tabular-nums; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
