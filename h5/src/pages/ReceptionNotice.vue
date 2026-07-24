@@ -21,19 +21,31 @@
               <option value="">周几</option>
               <option v-for="d in DAYS" :key="d" :value="d">{{ d }}</option>
             </select>
-            <!-- 起止时间不用系统时间控件（会冒 AM/PM），使用半小时一档的下拉。 -->
+            <!-- 小时与分钟分开选择，避免手机端出现过长的时间列表。 -->
             <div class="time-range">
-              <select v-model="form.start" class="f-select t-input" :disabled="!canManage">
-                <option value="">开始</option>
-                <option v-if="form.start && !TIME_OPTS.includes(form.start)" :value="form.start">{{ form.start }}</option>
-                <option v-for="t in TIME_OPTS" :key="t" :value="t">{{ t }}</option>
-              </select>
+              <div class="time-pair">
+                <select v-model="startHour" class="f-select t-part" aria-label="开始小时" :disabled="!canManage">
+                  <option value="">时</option>
+                  <option v-for="h in HOUR_OPTS" :key="'sh-' + h" :value="h">{{ h }}</option>
+                </select>
+                <span class="time-colon">:</span>
+                <select v-model="startMinute" class="f-select t-part minute-part" aria-label="开始分钟" :disabled="!canManage">
+                  <option value="">分</option>
+                  <option v-for="m in MINUTE_OPTS" :key="'sm-' + m" :value="m">{{ m }}</option>
+                </select>
+              </div>
               <span class="tr-sep">至</span>
-              <select v-model="form.end" class="f-select t-input" :disabled="!canManage">
-                <option value="">结束</option>
-                <option v-if="form.end && !TIME_OPTS.includes(form.end)" :value="form.end">{{ form.end }}</option>
-                <option v-for="t in TIME_OPTS" :key="t" :value="t">{{ t }}</option>
-              </select>
+              <div class="time-pair">
+                <select v-model="endHour" class="f-select t-part" aria-label="结束小时" :disabled="!canManage">
+                  <option value="">时</option>
+                  <option v-for="h in HOUR_OPTS" :key="'eh-' + h" :value="h">{{ h }}</option>
+                </select>
+                <span class="time-colon">:</span>
+                <select v-model="endMinute" class="f-select t-part minute-part" aria-label="结束分钟" :disabled="!canManage">
+                  <option value="">分</option>
+                  <option v-for="m in MINUTE_OPTS" :key="'em-' + m" :value="m">{{ m }}</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -119,11 +131,27 @@ const orgName = ref('业主委员会')
 const orgFullName = ref('业主委员会')
 const committeeRoster = ref([])
 
-const TIME_OPTS = Array.from({ length: 25 }, (_, i) => {
-  const minutes = (8 * 60) + i * 30
-  return String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0')
-})
+const HOUR_OPTS = Array.from({ length: 12 }, (_, i) => String(i + 10).padStart(2, '0'))
+const MINUTE_OPTS = ['00', '30']
 const form = reactive({ day: '', start: '', end: '', place: '', person: '', reason: '' })
+function timePart(field, part) {
+  return computed({
+    get: () => {
+      const pieces = String(form[field] || '').split(':')
+      return pieces.length === 2 ? pieces[part] : ''
+    },
+    set: (value) => {
+      const pieces = String(form[field] || '').split(':')
+      const hour = part === 0 ? value : (pieces[0] || '')
+      const minute = part === 1 ? value : (pieces[1] || '')
+      form[field] = hour || minute ? hour + ':' + minute : ''
+    }
+  })
+}
+const startHour = timePart('start', 0)
+const startMinute = timePart('start', 1)
+const endHour = timePart('end', 0)
+const endMinute = timePart('end', 1)
 // saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 
@@ -133,7 +161,8 @@ function backToReception() {
 
 /** 组合后的时间文案，如「每周二 15:00—17:00」；没填齐返回空 */
 const timeText = computed(() => {
-  if (!form.day || !form.start || !form.end) return ''
+  const validTime = value => /^(1\d|20|21):(00|30)$/.test(value)
+  if (!form.day || !validTime(form.start) || !validTime(form.end)) return ''
   return '每' + form.day + ' ' + form.start + '—' + form.end
 })
 
@@ -306,7 +335,10 @@ async function exportPdf() {
 
 /* 起止时间：两个 time 输入并排，中间「至」 */
 .time-range { display: flex; align-items: center; gap: 14rpx; }
-.t-input { flex: 1; min-width: 0; }
+.time-pair { display: flex; flex: 1; min-width: 0; align-items: center; gap: 5rpx; }
+.t-part { flex: 1; min-width: 0; padding: 0 8rpx; text-align: center; }
+.minute-part { flex: 0 0 43%; }
+.time-colon { flex-shrink: 0; color: var(--c-text-mid); font-size: 30rpx; }
 .tr-sep { flex-shrink: 0; font-size: 28rpx; color: var(--c-text-mid); }
 
 /* 0717 用户定：导出按钮缩小 20%（高 96→76）、宽度 60% 居中。
