@@ -6,6 +6,11 @@
         <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '接待中心' : '业委会会议') }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
+      <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score">
+        <span class="hd-score-label">业委会综合评分</span>
+        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
+        <span class="hd-score-unit">分</span>
+      </div>
     </div>
 
     <!-- 履职年历（全员可见）+ 当前会议卡 + 待办：分类横栏 开会（默认）/培训/接待。始终显示；
@@ -107,14 +112,7 @@
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
           <div class="welcome-slogan">{{ greeting }}，{{ salutation }}</div>
-          <div class="welcome-summary">
-            <div class="welcome-tip">{{ cockpitTodos.length ? ('今天有 ' + cockpitTodos.length + ' 件事需要您处理') : '各项工作井然有序，继续保持 👍' }}</div>
-            <div v-if="isChair" class="welcome-score">
-              <span class="welcome-score-label">业委会综合评分</span>
-              <span class="welcome-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
-              <span class="welcome-score-unit">分</span>
-            </div>
-          </div>
+          <div class="welcome-tip">{{ cockpitTodos.length ? ('今天有 ' + cockpitTodos.length + ' 件事需要您处理') : '各项工作井然有序，继续保持 👍' }}</div>
         </div>
 
         <div v-if="cockpitTodos.length" class="ck-section">
@@ -3733,14 +3731,9 @@ onActivated(show)
 .portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
 .welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
-.welcome-hero { flex-shrink: 0; padding: 44rpx 10rpx 10rpx; }
-.welcome-slogan { font-size: 64rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-summary { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 16rpx; }
-.welcome-tip { min-width: 0; font-size: 32rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
-.welcome-score { flex-shrink: 0; display: inline-flex; align-items: baseline; gap: 4rpx; padding-left: 20rpx; border-left: 2rpx solid #D8DEE7; white-space: nowrap; }
-.welcome-score-label { margin-right: 5rpx; font-size: 24rpx; font-weight: 600; color: #6B7686; }
-.welcome-score-num { font-size: 40rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-.welcome-score-unit { font-size: 24rpx; font-weight: 600; color: #6B7686; }
+.welcome-hero { flex-shrink: 0; padding: 20rpx 10rpx 10rpx; }
+.welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
+.welcome-tip { margin-top: 12rpx; font-size: 32rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 .ck-section { margin-top: 34rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
