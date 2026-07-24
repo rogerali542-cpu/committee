@@ -139,10 +139,9 @@
           <div class="ck-lines">
             <div v-for="d in portalDomains" :key="d.key" class="ck-line" :class="d.tone" @click="d.onTap()">
               <span class="ck-line-ico" :class="d.tone">{{ d.glyph }}</span>
-              <div class="ck-line-info">
-                <div class="ck-line-title">{{ d.title }}</div>
-                <div class="ck-line-desc">{{ d.desc }}</div>
-              </div>
+            <div class="ck-line-info">
+              <div class="ck-line-title">{{ d.title }}</div>
+            </div>
               <span v-if="d.chip" class="ck-chip" :class="d.chip.level">{{ d.chip.text }}</span>
               <span class="ck-line-enter">›</span>
             </div>
