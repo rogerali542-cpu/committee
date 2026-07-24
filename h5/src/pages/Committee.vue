@@ -118,6 +118,7 @@
             <span class="domain-enter">进入 ›</span>
           </div>
         </div>
+        <div class="welcome-foot">{{ welcomeFootText }}</div>
       </div>
 
       <!-- 会议记录列表（路线甲）：开会 tab + tabs 布局。卡头=年份+记录，下方竖排记录列表 -->
@@ -1207,17 +1208,30 @@ watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true
 // 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
 const portalDomains = computed(() => {
-  // 业委会卡挂当前状态小胶囊：有紧要事（进行中/临期/逾期）就显示，履职正常不打扰
+  // 两张卡都挂状态胶囊（0724 用户定：始终显示，正常时柔和绿不打扰）
   const f = homeFocus.value
-  const committeeChip = f && f.level && f.level !== 'calm' ? { text: f.kicker, level: f.level } : null
+  const committeeChip = f && f.level
+    ? (f.level === 'calm' ? { text: '履职正常', level: 'calm' } : { text: f.kicker, level: f.level })
+    : { text: '履职正常', level: 'calm' }
+  const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
+  const receptionChip = recPending > 0
+    ? { text: recPending + ' 件待处理', level: 'urgent' }
+    : { text: '暂无待办', level: 'calm' }
   return [
     { key: 'committee', icon: '🏛️', title: '业委会会议', desc: '组织例会、表决、公示归档', tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
-    { key: 'reception', icon: '🤝', title: '业主接待', desc: '接待登记、诉求跟进办理', tone: 'green', chip: null,
+    { key: 'reception', icon: '🤝', title: '业主接待', desc: '接待登记、诉求跟进办理', tone: 'green', chip: receptionChip,
       onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } },
     { key: 'learning', icon: '📚', title: '学习培训', desc: '政策学习、业务能力提升', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
+})
+// 欢迎页落款/日期（0724 用户定，极淡）
+const welcomeFootText = computed(() => {
+  const d = new Date()
+  const dateStr = d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'
+  const org = activeRole.value && activeRole.value.communityName ? activeRole.value.communityName + '业主委员会' : '业委会智能助手'
+  return org + ' · ' + dateStr
 })
 const homeFocus = computed(() => {
   if (planTab.value !== 'meeting') return null
@@ -3545,16 +3559,17 @@ onActivated(show)
 .home-focus.calm .hf-cta { color: #3B7150; }
 .hf-cta:active { transform: translateY(1rpx); }
 .hf-cta-ico { font-size: 30rpx; }
-/* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。精致留白、柔和低饱和；欢迎页隐藏底栏 */
-.welcome { margin: 8rpx 30rpx 24rpx; }
-.welcome-hero { padding: 40rpx 6rpx 40rpx; }
+/* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。铺满整屏（0724 用户定：老人大按钮铺满更好点）；欢迎页隐藏底栏 */
+.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); margin: 8rpx 30rpx 0; box-sizing: border-box; }
+.welcome-hero { flex-shrink: 0; padding: 40rpx 6rpx 30rpx; }
 /* 问候词加大 + 换色：品牌深橙描边色（--c-primary-dark），比黑字更暖更有主角感 */
 .welcome-slogan { font-size: 60rpx; font-weight: 800; color: var(--c-primary-dark); line-height: 1.18; letter-spacing: 1rpx; }
 .welcome-tip { margin-top: 20rpx; font-size: 29rpx; color: var(--c-text-mid); }
-/* 卡间距加大 */
-.welcome-list { display: flex; flex-direction: column; gap: 32rpx; }
+/* 卡片列表占据 hero 与落款之间的全部空间，卡子在其中均匀铺开（space-evenly），撑满整屏 */
+.welcome-list { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 28rpx; padding: 12rpx 0; }
+.welcome-foot { flex-shrink: 0; text-align: center; padding: 26rpx 0 34rpx; font-size: 23rpx; color: #B8C0C8; letter-spacing: 1rpx; }
 /* 更精美的卡：更大圆角与内边距、双层柔和阴影、图标磁贴带同色描边、顶部一条极淡的状态色渐变 */
-.domain-card { position: relative; display: flex; align-items: center; gap: 26rpx; background: var(--c-bg-card); border-radius: 28rpx; padding: 38rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(20,42,58,0.05), 0 16rpx 34rpx rgba(20,42,58,0.08); overflow: hidden; cursor: pointer; }
+.domain-card { position: relative; display: flex; align-items: center; gap: 26rpx; min-height: 176rpx; background: var(--c-bg-card); border-radius: 28rpx; padding: 38rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(20,42,58,0.05), 0 16rpx 34rpx rgba(20,42,58,0.08); box-sizing: border-box; overflow: hidden; cursor: pointer; }
 .domain-card::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 6rpx; }
 .domain-card.blue::after { background: linear-gradient(90deg,#3A6EA5,#7AA6D6); }
 .domain-card.green::after { background: linear-gradient(90deg,#3B7150,#6FA987); }
@@ -3569,6 +3584,7 @@ onActivated(show)
 .domain-chip { font-size: 21rpx; font-weight: 700; padding: 4rpx 16rpx; border-radius: 999rpx; }
 .domain-chip.active { color: #2E5A6E; background: #E4EEF2; }
 .domain-chip.urgent { color: #A0503F; background: #F8E6E2; }
+.domain-chip.calm { color: #3B7150; background: #E7F2EB; }
 .domain-desc { margin-top: 12rpx; font-size: 27rpx; color: var(--c-text-weak); line-height: 1.35; }
 .domain-enter { flex-shrink: 0; font-size: 26rpx; font-weight: 600; color: #9AA6B2; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
