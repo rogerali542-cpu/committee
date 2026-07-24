@@ -814,7 +814,6 @@
     <div v-if="timePickerOpen" class="picker-pop-mask" @click="timePickerOpen = false">
       <div class="picker-pop" @click.stop>
         <div class="pop-close"><span class="close-btn" @click="timePickerOpen = false">×</span></div>
-        <div class="pp-head">{{ pickerTarget === 'reception' ? '接待时间' : '会议时间' }}</div>
         <div class="tg-cur">{{ String(tpHour).padStart(2, '0') }}:{{ String(tpMinute).padStart(2, '0') }}</div>
         <div class="tg-label">时</div>
         <div class="tg-grid">
@@ -4926,7 +4925,7 @@ onActivated(show)
 .cal-cell:not(.empty):not(.on):not(.disabled):active { background: #E6EDF8; }
 .picker-pop { position: relative; width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 38rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
-.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #1f2329; letter-spacing: 2rpx; margin-bottom: 6rpx; }
+.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #8B5E34; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
 .tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
