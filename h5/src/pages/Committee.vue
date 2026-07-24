@@ -121,7 +121,7 @@
 
         <div v-if="cockpitTodos.length" class="ck-section">
           <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
-               class="ck-todo" :class="currentCockpitTodo.tone" @click="currentCockpitTodo.onTap()">
+               class="ck-todo" :class="currentCockpitTodo.tone">
             <div class="ck-todo-head">
               <span class="ck-todo-tag" :class="currentCockpitTodo.tone">{{ currentCockpitTodo.tag }}</span>
               <div class="ck-todo-head-actions">
@@ -137,7 +137,9 @@
             <div class="ck-todo-title">{{ currentCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
               <div v-if="currentCockpitTodo.sub" class="ck-todo-sub">{{ currentCockpitTodo.sub }}</div>
-              <span class="ck-todo-cta">{{ currentCockpitTodo.cta }} <i>›</i></span>
+              <button type="button" class="ck-todo-cta" @click="currentCockpitTodo.onTap()">
+                {{ currentCockpitTodo.cta }} <i>›</i>
+              </button>
             </div>
           </div>
         </div>
@@ -3907,12 +3909,11 @@ onActivated(show)
 .ck-section { margin-top: 34rpx; }
 .welcome-hero + .ck-section { margin-top: 22rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
-.ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 28rpx 30rpx 30rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; cursor: pointer; }
+.ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 28rpx 30rpx 30rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; }
 .ck-todo:last-child { margin-bottom: 0; }
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
-.ck-todo:active { transform: translateY(2rpx); }
 .ck-todo-head { display: flex; align-items: center; justify-content: space-between; min-height: 44rpx; margin-top: -7rpx; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
@@ -3921,7 +3922,8 @@ onActivated(show)
 .ck-todo-title { margin-top: 15rpx; font-size: 39rpx; font-weight: 800; color: #2A3244; line-height: 1.3; }
 .ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 20rpx; }
 .ck-todo-sub { min-width: 0; font-size: 27rpx; color: #8A94A6; line-height: 1.38; }
-.ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border-radius: 16rpx; background: #D86A35; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(216, 106, 53, .16); }
+.ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 16rpx; background: #D86A35; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(216, 106, 53, .16); }
+.ck-todo-cta:active { transform: translateY(2rpx); filter: brightness(.96); }
 .ck-todo-cta i { margin-left: 5rpx; font-style: normal; font-size: 33rpx; line-height: 1; }
 .ck-todo-delete { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #956B6B; font-size: 24rpx; font-weight: 500; transform: translate(7rpx, -4rpx); }
 .ck-todo-delete:active { color: #C0392B; }
