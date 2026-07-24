@@ -1261,6 +1261,12 @@ const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.v
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
 // 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
+function enterReceptionArea() {
+  // 会议与接待复用同一个页面组件。先切业务状态再换路由，避免组件复用时短暂保留会议页。
+  planTab.value = 'reception'
+  enterWorkArea()
+  switchTab('/reception-center')
+}
 const portalDomains = computed(() => {
   const f = homeFocus.value
   const overdueCount = overduePeriodRows.value.length
@@ -1281,7 +1287,7 @@ const portalDomains = computed(() => {
     { key: 'committee', glyph: '会', title: '业委会会议', desc: committeeDesc, tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
     { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc, tone: 'green', chip: receptionChip,
-      onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } },
+      onTap: enterReceptionArea },
     { key: 'learning', glyph: '学', title: '学习培训', desc: '政策学习与业务培训记录', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
@@ -1323,7 +1329,7 @@ const cockpitTodos = computed(() => {
   if (recPending > 0) {
     items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent', timeScope: 'recent',
       title: recPending + ' 件来访待跟进办理', sub: '业主诉求请尽快处理', cta: '去处理',
-      onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } })
+      onTap: enterReceptionArea })
   }
   return items
 })
