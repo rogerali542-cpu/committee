@@ -109,20 +109,41 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 欢迎引导页（路线乙）：问候 + 标语 + 选择要进入的业务线 -->
+      <!-- 驾驶舱首页（路线乙）：欢迎语 + 跨条线待办聚合 + 全部业务目录 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="welcome-hero">
-          <div class="welcome-slogan">{{ greeting }}，{{ activeRole.realName || '您好' }}</div>
-          <div class="welcome-tip">请选择您要处理的工作</div>
+          <div class="welcome-slogan">{{ greeting }}，{{ salutation }}</div>
+          <div class="welcome-tip">{{ cockpitTodos.length ? ('今天有 ' + cockpitTodos.length + ' 件事需要您处理') : '各项工作井然有序，继续保持 👍' }}</div>
         </div>
-        <div class="welcome-list">
-          <div v-for="d in portalDomains" :key="d.key" class="domain-card" :class="d.tone" @click="d.onTap()">
-            <span class="domain-ico">{{ d.icon }}</span>
-            <div class="domain-info">
-              <div class="domain-title">{{ d.title }}<span v-if="d.chip" class="domain-chip" :class="d.chip.level">{{ d.chip.text }}</span></div>
-              <div class="domain-desc">{{ d.desc }}</div>
+
+        <div v-if="cockpitTodos.length" class="ck-section">
+          <div class="ck-sec-title">待处理</div>
+          <div v-for="t in cockpitTodos" :key="t.key" class="ck-todo" :class="t.tone" @click="t.onTap()">
+            <span class="ck-todo-tag" :class="t.tone">{{ t.tag }}</span>
+            <div class="ck-todo-info">
+              <div class="ck-todo-title">{{ t.title }}</div>
+              <div v-if="t.sub" class="ck-todo-sub">{{ t.sub }}</div>
             </div>
-            <span class="domain-enter">进入 ›</span>
+            <span class="ck-todo-cta">{{ t.cta }} ›</span>
+          </div>
+        </div>
+        <div v-else class="ck-calm">
+          <span class="ck-calm-ico">✓</span>
+          <div class="ck-calm-text">本期暂无待办事项<br>各项工作井然有序</div>
+        </div>
+
+        <div class="ck-section">
+          <div class="ck-sec-title">全部业务</div>
+          <div class="ck-lines">
+            <div v-for="d in portalDomains" :key="d.key" class="ck-line" :class="d.tone" @click="d.onTap()">
+              <span class="ck-line-ico" :class="d.tone">{{ d.glyph }}</span>
+              <div class="ck-line-info">
+                <div class="ck-line-title">{{ d.title }}</div>
+                <div class="ck-line-desc">{{ d.desc }}</div>
+              </div>
+              <span v-if="d.chip" class="ck-chip" :class="d.chip.level">{{ d.chip.text }}</span>
+              <span class="ck-line-enter">›</span>
+            </div>
           </div>
         </div>
         <div class="welcome-foot">{{ welcomeFootText }}</div>
@@ -1209,13 +1230,22 @@ const greeting = computed(() => {
   const h = new Date().getHours()
   return h < 6 ? '夜深了' : h < 11 ? '上午好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
 })
+const DOUBLE_SURNAMES = ['欧阳', '司马', '诸葛', '上官', '夏侯', '令狐', '慕容', '皇甫', '东方', '尉迟', '长孙', '宇文', '司徒', '司空', '澹台', '公孙', '轩辕', '钟离', '端木', '独孤', '南宫', '万俟', '闻人', '拓跋', '完颜', '赫连', '呼延', '东郭', '西门', '百里']
+const salutation = computed(() => {
+  const r = activeRole.value || {}
+  const name = (r.realName || '').trim()
+  const role = (r.role || '').trim()
+  if (!name) return '您'
+  if (!role) return name
+  const surname = DOUBLE_SURNAMES.indexOf(name.slice(0, 2)) !== -1 ? name.slice(0, 2) : name.slice(0, 1)
+  return surname + role
+})
 // 欢迎引导页当前是否可见（portal 布局 + 开会 tab）→ 隐藏底栏；选定业务后置回，底栏出现
 const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.value === 'meeting')
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
 // 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
 const portalDomains = computed(() => {
-  // 两张卡都挂状态胶囊（0724 用户定：始终显示，正常时柔和绿不打扰）
   const f = homeFocus.value
   const committeeChip = f && f.level
     ? (f.level === 'calm' ? { text: '履职正常', level: 'calm' } : { text: f.kicker, level: f.level })
@@ -1224,14 +1254,34 @@ const portalDomains = computed(() => {
   const receptionChip = recPending > 0
     ? { text: recPending + ' 件待处理', level: 'urgent' }
     : { text: '暂无待办', level: 'calm' }
+  const doneCount = (meetingRecordList.value && Array.isArray(meetingRecordList.value.done))
+    ? meetingRecordList.value.done.length : 0
+  const committeeDesc = doneCount ? ('本年度已召开 ' + doneCount + ' 次例会') : '本年度例会即将开始'
+  const receptionDesc = recPending > 0 ? (recPending + ' 件来访待跟进办理') : '近期来访均已办结'
   return [
-    { key: 'committee', icon: '会', title: '业委会会议', desc: '组织例会、表决和材料归档', tone: 'blue', chip: committeeChip,
+    { key: 'committee', glyph: '会', title: '业委会会议', desc: committeeDesc, tone: 'blue', chip: committeeChip,
       onTap: () => enterWorkArea() },
-    { key: 'reception', icon: '访', title: '业主接待', desc: '登记来访、跟进诉求办理', tone: 'green', chip: receptionChip,
+    { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc, tone: 'green', chip: receptionChip,
       onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } },
-    { key: 'learning', icon: '学', title: '学习培训', desc: '查看政策学习和培训记录', tone: 'amber', chip: null,
+    { key: 'learning', glyph: '学', title: '学习培训', desc: '政策学习与业务培训记录', tone: 'amber', chip: null,
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
+})
+const cockpitTodos = computed(() => {
+  const items = []
+  const f = homeFocus.value
+  if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
+    items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
+      title: f.title, sub: f.sub, cta: f.cta,
+      onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
+  }
+  const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
+  if (recPending > 0) {
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent',
+      title: recPending + ' 件来访待跟进办理', sub: '业主诉求请尽快处理', cta: '去处理',
+      onTap: () => { enterWorkArea(); switchTab('/pages/reception-center/reception-center') } })
+  }
+  return items
 })
 // 欢迎页落款/日期（0724 用户定，极淡）
 const welcomeFootText = computed(() => {
@@ -3588,7 +3638,7 @@ onActivated(show)
 }
 /* 顶栏 */
 /* 顶栏加高（0716 用户定），评分徽章 align-self:center 在栏内垂直居中 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: var(--c-primary-dark); }
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2F3D56; }
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
@@ -3671,72 +3721,58 @@ onActivated(show)
 }
 .home-focus.urgent .hf-item.secondary .hf-cta,
 .home-focus.calm .hf-item.secondary .hf-cta { background: transparent; color: #71838e; }
-/* 欢迎引导页（路线乙）：大问候 hero + 业务线大卡。铺满整屏（0724 用户定：老人大按钮铺满更好点）；欢迎页隐藏底栏 */
+/* 驾驶舱首页：欢迎语 + 跨条线待办聚合 + 全部业务目录。统一深蓝灰视觉语言 */
 .portal-home { min-height: 100vh; background: linear-gradient(180deg, #f5f7f9 0%, #eef2f5 100%); }
 .portal-home .hd {
   align-items: center;
   padding: calc(env(safe-area-inset-top) + 18rpx) 34rpx 22rpx;
-  background: #203e5a;
+  background: #2F3D56;
   box-shadow: 0 6rpx 18rpx rgba(24, 51, 76, .12);
 }
 .portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
-.welcome {
-  display: flex; flex-direction: column; min-height: calc(100vh - 150rpx);
-  margin: 0; padding: 0 32rpx; box-sizing: border-box;
-}
-.welcome-hero { flex-shrink: 0; padding: 54rpx 6rpx 34rpx; }
-.welcome-slogan {
-  color: #233b50; font-size: 43rpx; font-weight: 750; line-height: 1.25; letter-spacing: .5rpx;
-}
-.welcome-tip { margin-top: 12rpx; color: #7d8993; font-size: 25rpx; }
-.welcome-list {
-  display: flex; flex-direction: column; flex: 0 0 auto;
-  justify-content: flex-start; gap: 22rpx; padding: 0;
-}
-.welcome-foot {
-  margin-top: auto; flex-shrink: 0; padding: 38rpx 0 34rpx;
-  color: #aeb7be; font-size: 21rpx; letter-spacing: .5rpx; text-align: center;
-}
-.domain-card {
-  position: relative; display: flex; align-items: center; gap: 22rpx;
-  min-height: 138rpx; padding: 24rpx 25rpx; overflow: hidden;
-  border: 1rpx solid rgba(42, 65, 83, .08); border-radius: 22rpx;
-  background: rgba(255,255,255,.96);
-  box-shadow: 0 8rpx 24rpx rgba(34, 55, 72, .07);
-  box-sizing: border-box; cursor: pointer;
-}
-.domain-card::after {
-  content: ''; position: absolute; top: 25rpx; bottom: 25rpx; left: 0;
-  width: 6rpx; border-radius: 0 8rpx 8rpx 0;
-}
-.domain-card.blue::after { background: #477ca9; }
-.domain-card.green::after { background: #5b8b70; }
-.domain-card.amber::after { background: #b48a43; }
-.domain-card:active { transform: scale(.99); background: #fafcfd; }
-.domain-ico {
-  display: flex; flex: 0 0 82rpx; width: 82rpx; height: 82rpx;
-  border-radius: 22rpx; align-items: center; justify-content: center;
-  font-family: serif; font-size: 37rpx; font-weight: 700; box-sizing: border-box;
-}
-.domain-card.blue .domain-ico { background: #e8f0f7; color: #386b97; }
-.domain-card.green .domain-ico { background: #e9f3ed; color: #46755a; }
-.domain-card.amber .domain-ico { background: #f7f0e3; color: #9a742f; }
-.domain-info { flex: 1; min-width: 0; }
-.domain-title {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10rpx;
-  color: #273743; font-size: 31rpx; font-weight: 700; line-height: 1.25;
-}
-.domain-chip { padding: 4rpx 12rpx; border-radius: 999rpx; font-size: 19rpx; font-weight: 600; }
-.domain-chip.active { color: #2E5A6E; background: #E4EEF2; }
-.domain-chip.urgent { color: #A0503F; background: #F8E6E2; }
-.domain-chip.calm { color: #3B7150; background: #E7F2EB; }
-.domain-desc { margin-top: 8rpx; color: #85909a; font-size: 23rpx; line-height: 1.35; }
-.domain-enter {
-  flex-shrink: 0; width: 42rpx; overflow: hidden;
-  color: #8e9ba5; font-size: 0; font-weight: 500; white-space: nowrap;
-}
-.domain-enter::after { content: '›'; font-size: 34rpx; }
+.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
+.welcome-hero { flex-shrink: 0; padding: 44rpx 10rpx 10rpx; }
+.welcome-slogan { font-size: 64rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
+.welcome-tip { margin-top: 16rpx; font-size: 32rpx; color: #8A94A6; letter-spacing: 0.5rpx; }
+.welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+.ck-section { margin-top: 34rpx; }
+.ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
+.ck-todo { position: relative; display: flex; align-items: center; gap: 24rpx; background: #fff; border-radius: 26rpx; padding: 38rpx 30rpx 38rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; cursor: pointer; }
+.ck-todo:last-child { margin-bottom: 0; }
+.ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
+.ck-todo.blue::before { background: #3E6BA8; }
+.ck-todo.green::before { background: #3F7C5A; }
+.ck-todo:active { transform: translateY(2rpx); }
+.ck-todo-tag { flex-shrink: 0; align-self: flex-start; margin-top: 6rpx; font-size: 24rpx; font-weight: 700; padding: 8rpx 20rpx; border-radius: 999rpx; }
+.ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
+.ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
+.ck-todo-info { flex: 1; min-width: 0; }
+.ck-todo-title { font-size: 40rpx; font-weight: 800; color: #2A3244; line-height: 1.32; }
+.ck-todo-sub { margin-top: 12rpx; font-size: 29rpx; color: #8A94A6; line-height: 1.4; }
+.ck-todo-cta { flex-shrink: 0; align-self: center; font-size: 31rpx; font-weight: 700; color: #C2410C; }
+.ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
+.ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
+.ck-lines { display: flex; flex-direction: column; gap: 20rpx; }
+.ck-line { position: relative; display: flex; align-items: center; gap: 26rpx; background: #fff; border-radius: 26rpx; padding: 32rpx 30rpx 32rpx 42rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 14rpx 30rpx rgba(20,33,61,0.07); overflow: hidden; cursor: pointer; }
+.ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
+.ck-line.blue::before { background: #3E6BA8; }
+.ck-line.green::before { background: #3F7C5A; }
+.ck-line.amber::before { background: #C79A5B; }
+.ck-line:active { transform: translateY(2rpx); }
+.ck-line-ico { flex-shrink: 0; width: 104rpx; height: 104rpx; border-radius: 26rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; }
+.ck-line-ico.blue { background: #E6EDF8; color: #3A5E92; }
+.ck-line-ico.green { background: #E4F0E8; color: #3B7150; }
+.ck-line-ico.amber { background: #F1E8D8; color: #9C6B2E; }
+.ck-line-info { flex: 1; min-width: 0; }
+.ck-line-title { font-size: 37rpx; font-weight: 800; color: #2A3244; }
+.ck-line-desc { margin-top: 8rpx; font-size: 28rpx; color: #8A94A6; line-height: 1.35; }
+.ck-chip { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; }
+.ck-chip.active { color: #2E5A6E; background: #E4EEF2; }
+.ck-chip.urgent { color: #B4482F; background: #F7E7E2; }
+.ck-chip.calm { color: #3B7150; background: #E7F2EB; }
+.ck-line-enter { flex-shrink: 0; font-size: 40rpx; color: #B6BECB; }
 /* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
 .mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
 .mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
