@@ -11,7 +11,7 @@
         <div class="form-row">
           <label class="field half">
             <span>接待日期 *</span>
-            <input v-model="form.date" class="control" type="date" :min="today" />
+            <input v-model="form.date" class="control" type="date" />
           </label>
           <label class="field half">
             <span>接待时间 *</span>
