@@ -196,60 +196,16 @@
             </div>
             <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
           </div>
-          <template v-if="meetingRecordList.planned.length">
-            <div class="mr-group-title mr-group-plan">后续计划</div>
-            <!-- 计划行整行不可点(0725 用户定,防误触"提前召开"),只有右侧按钮进入 -->
-            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
-              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
-                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-              </div>
-              <div class="mr-info">
-                <div class="mr-row-title">{{ row.title }}</div>
-                <div class="mr-row-sub">{{ row.sub }}</div>
-              </div>
-              <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
-            </div>
-          </template>
-          <!-- 查看月历入口行在列表尾部;月历本体改弹层浮在页面中央(0725 用户定):
-               原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
-          <div class="mr-fold" @click="meetingCalendarOpen = true">
-            <span>查看全年月历</span>
-            <span class="mr-fold-chev">›</span>
+          <!-- 全年月历常驻(0725 用户定,给领导看效果):吸收原「后续计划行/已完成折叠/查看月历弹层」三块——
+               待排格=后续计划、已开✓格=查档入口(点进那场会议)、全年节奏一屏可见,点任意月份下钻 -->
+          <div class="mr-group-title mr-group-cal">全年月历<small>点月份看对应例会</small></div>
+          <div class="mr-calendar-grid mr-calendar-inline">
+            <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
+                    class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
+              <b>{{ mc.m }}月</b>
+              <span>{{ mc.label }}</span>
+            </button>
           </div>
-          <div v-if="meetingCalendarOpen" class="mr-cal-mask" @click.self="meetingCalendarOpen = false">
-            <div class="mr-calendar-sheet">
-              <div class="mr-calendar-panel-title">
-                <span>{{ viewYear }}年月历</span>
-                <small>点击月份查看对应例会</small>
-              </div>
-              <div class="mr-calendar-grid">
-                <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
-                        class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
-                  <b>{{ mc.m }}月</b>
-                  <span>{{ mc.label }}</span>
-                </button>
-              </div>
-              <button type="button" class="mr-calendar-close" @click="meetingCalendarOpen = false">关 闭</button>
-            </div>
-          </div>
-          <template v-if="meetingRecordList.done.length">
-            <div class="mr-fold" @click="recDoneOpen = !recDoneOpen">
-              <span>已完成 {{ meetingRecordList.done.length }} 场</span>
-              <span class="mr-fold-chev" :class="{ open: recDoneOpen }">▾</span>
-            </div>
-            <template v-if="recDoneOpen">
-              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done" @click="row.onTap()">
-                <div class="mr-badge" :class="row.statusClass">
-                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-                </div>
-                <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
-                  <div class="mr-row-sub">{{ row.sub }}</div>
-                </div>
-                <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
-              </div>
-            </template>
-          </template>
         </div>
 
         <!-- 接待/培训 12 月履职宫格：一眼看每月该类状态；点月下钻看当月清单（数据同源 monthCells） -->
@@ -1662,8 +1618,7 @@ const homeFocusItems = computed(() => {
 
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
-const recDoneOpen = ref(false)
-const meetingCalendarOpen = ref(false)
+// recDoneOpen/meetingCalendarOpen 已删(0725):已完成折叠与月历弹层随「月历常驻」改版下线
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
   const toRow = (r) => {
@@ -1742,7 +1697,6 @@ const meetingYearSummary = computed(() => {
 })
 
 function onMeetingCalendarMonth(month) {
-  meetingCalendarOpen.value = false   // 月历是弹层:选完月份先收起,再跳对应期次
   const row = yearPlan.value[Math.ceil(Number(month) / 2) - 1]
   if (row) onPlanRow(row)
 }
@@ -4310,10 +4264,9 @@ onActivated(show)
 .meeting-plan-head .plan-title-wrap { flex-direction: column; align-items: flex-start; gap: 8rpx; }
 .meeting-plan-head .plan-title { font-size: 42rpx !important; }
 .meeting-year-summary { font-size: 27rpx; font-weight: 550; color: #65758A; line-height: 1.35; }
-/* .meeting-calendar-toggle 已删(0725):查看月历改为列表尾部折叠行,复用 .mr-fold */
+/* meeting-calendar-toggle、mr-fold、mr-planned、mr-plan-btn 等样式已删(0725):月历常驻改版后后续计划行与折叠行下线 */
 .mr-list { margin: 0; padding: 0 28rpx 12rpx; }
 .mr-group-title { padding: 26rpx 4rpx 14rpx; color: #53657A; font-size: 28rpx; font-weight: 750; letter-spacing: 1rpx; }
-.mr-group-plan { padding-top: 24rpx; padding-bottom: 6rpx; border-top: 2rpx solid #EEF1F4; color: #8792A0; font-size: 23rpx; font-weight: 600; }
 .mr-row { display: flex; align-items: center; gap: 20rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
@@ -4321,24 +4274,14 @@ onActivated(show)
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
 .mr-featured:active { background: #F0F5F8; }
-.mr-planned { min-height: 88rpx; padding: 12rpx 6rpx; gap: 16rpx; opacity: .78; cursor: default; }
-.mr-planned:active { background: transparent; }   /* 整行不可点,不给按压反馈 */
 /* 计划行右侧改真按钮:描边胶囊,比原纯文字「待排›」更大更明显(0725 用户定) */
-.mr-plan-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
-.mr-plan-btn:active { background: #EEF1F5; }
-.mr-planned .mr-badge { width: 78rpx; min-height: 70rpx; border-radius: 14rpx; }
-.mr-planned .mr-badge b { font-size: 25rpx; }
-.mr-planned .mr-badge span { font-size: 20rpx; }
-.mr-planned .mr-row-title { font-size: 27rpx; font-weight: 650; }
-.mr-planned .mr-row-sub { margin-top: 3rpx; font-size: 23rpx; }
-.mr-planned .mr-status { font-size: 23rpx; font-weight: 500; }
 .mr-badge { flex-shrink: 0; width: 94rpx; min-height: 82rpx; border-radius: 16rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; padding: 8rpx 4rpx; }
 .mr-badge b { font-size: 29rpx; font-weight: 800; line-height: 1.1; white-space: nowrap; }
 .mr-badge span { font-size: 22rpx; }
 /* 期次区间(没定具体日期)徽标:横排胶囊「9-10月」。日历叶(日上月下)只留给有确切日期的会议——
    参照主流日历/出行类App:区间不伪装成日期。定宽 132rpx 使各行标题左缘对齐(容得下「11-12月」)。 */
-.mr-badge.range, .mr-planned .mr-badge.range { width: 132rpx; min-height: 56rpx; padding: 6rpx 8rpx; border-radius: 999rpx; flex-direction: row; }
-.mr-badge.range b, .mr-planned .mr-badge.range b { font-size: 23rpx; letter-spacing: 0; }
+.mr-badge.range { width: 132rpx; min-height: 56rpx; padding: 6rpx 8rpx; border-radius: 999rpx; flex-direction: row; }
+.mr-badge.range b { font-size: 23rpx; letter-spacing: 0; }
 /* 待处理大卡里的期次胶囊稍放大,与 33rpx 标题的比例协调(后续计划小行仍用小号) */
 .mr-featured .mr-badge.range { min-height: 62rpx; }
 .mr-featured .mr-badge.range b { font-size: 25rpx; }
@@ -4356,17 +4299,11 @@ onActivated(show)
 .mr-status.current { color: #345F91; }
 .mr-status.overdue { color: #B0463A; }
 .mr-status.upcoming { color: #8A94A0; }
-.mr-fold { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; min-height: 88rpx; padding: 18rpx 8rpx; margin-top: 10rpx; font-size: 27rpx; font-weight: 600; color: #536175; border-top: 2rpx solid #E8ECEF; cursor: pointer; }
-.mr-fold:active { opacity: 0.7; }
-.mr-fold-chev { transition: transform 0.2s; }
-.mr-fold-chev.open { transform: rotate(180deg); }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
-.mr-cal-mask { position: fixed; inset: 0; z-index: 210; background: rgba(23, 32, 42, .5); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
-.mr-calendar-sheet { width: 100%; max-width: 640rpx; background: #fff; border-radius: 26rpx; padding: 30rpx 26rpx 24rpx; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .28); }
-.mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
-.mr-calendar-panel-title small { color: #8995A4; font-size: 21rpx; font-weight: 500; }
-.mr-calendar-close { width: 100%; margin-top: 22rpx; height: 80rpx; border: none; border-radius: 18rpx; background: #F2F4F6; color: #46515D; font-size: 30rpx; font-weight: 650; }
-.mr-calendar-close:active { background: #E7EAED; }
+/* 月历弹层样式已删(0725):月历改常驻宫格 .mr-calendar-inline */
+.mr-group-cal { display: flex; align-items: baseline; justify-content: space-between; padding-top: 28rpx; border-top: 2rpx solid #EEF1F4; }
+.mr-group-cal small { color: #95A0AC; font-size: 22rpx; font-weight: 500; }
+.mr-calendar-inline { margin: 4rpx 0 22rpx; }
 .mr-calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
 .mr-calendar-month { min-height: 86rpx; padding: 9rpx 4rpx; border: 0; border-radius: 13rpx; background: #EEF1F4; color: #627083; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5rpx; }
 .mr-calendar-month b { font-size: 26rpx; line-height: 1.1; }
