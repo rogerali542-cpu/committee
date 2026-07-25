@@ -178,7 +178,9 @@
           </div>
           <div v-if="opsOpen && topicOpinions(topic.id).length" class="topic-opinions">
             <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
-              <b>{{ op.name }}：</b><span>{{ op.content }}</span>
+              <b>{{ op.name }}</b>
+              <span v-if="opVoteTag(op)" class="op-vote-tag" :class="opVoteClass(op)">{{ opVoteTag(op) }}</span>
+              <span class="op-text">{{ op.content }}</span>
               <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
             </div>
           </div>
@@ -283,6 +285,19 @@ function topicOpinions(topicId) {
 }
 async function loadOpinions() {
   try { opinions.value = (await api.committeeOpinions(props.meetingId)) || [] } catch (e) { /* 下次轮询重试 */ }
+}
+// 意见作者的表决标签(后端 opinionToMap 带出):simple 题给 voteChoice,多选题给所选项 voteLabel
+function opVoteTag(op) {
+  if (op.voteLabel) return op.voteLabel
+  if (op.voteChoice === 'for_vote') return '赞成'
+  if (op.voteChoice === 'against') return '反对'
+  if (op.voteChoice === 'abstain') return '弃权'
+  return ''
+}
+function opVoteClass(op) {
+  if (op.voteChoice === 'for_vote') return 'yes'
+  if (op.voteChoice === 'against') return 'no'
+  return 'ab'
 }
 async function submitOpinion(topic) {
   const text = String(opinionDrafts[topic.id] || '').trim()
@@ -642,8 +657,12 @@ onBeforeUnmount(() => {
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
 .wx-hint{background:#f7f4ec;border-color:#e5dcc4}.wx-hint-title{font-size:30rpx;font-weight:700;color:#6d5a2e}.wx-hint .omf-desc{margin-bottom:0}.wx-hint b{color:#6d5a2e}
 .topic-opinions{margin:18rpx 0 0 52rpx;padding:16rpx 18rpx;border-radius:12rpx;background:#f6f8f9}
-.op-row{display:flex;align-items:flex-start;gap:6rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
-.op-row b{flex:none;font-weight:600}.op-row span{min-width:0;white-space:pre-wrap}
+.op-row{display:flex;align-items:flex-start;gap:10rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
+.op-row b{flex:none;font-weight:600}.op-row .op-text{min-width:0;white-space:pre-wrap}
+.op-vote-tag{flex:none;margin-top:2rpx;padding:1rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;background:#eef1f4;color:#5a6b7a}
+.op-vote-tag.yes{background:#e4f2e9;color:#35714d}
+.op-vote-tag.no{background:#f9e9e6;color:#984a3e}
+.op-vote-tag.ab{background:#eef1f4;color:#5a6b7a}
 .op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
 .vote-submit{display:block;width:calc(100% - 52rpx);margin:18rpx 0 0 52rpx;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
 .vote-submit:disabled{opacity:.5}
