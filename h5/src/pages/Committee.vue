@@ -1714,7 +1714,6 @@ const meetingRecordList = computed(() => {
 
 const meetingYearSummary = computed(() => {
   const rows = yearPlan.value || []
-  const done = rows.filter(row => row.status === 'done').length
   const overdue = rows.filter(row => row.status === 'overdue').length
   const current = rows[curPeriod - 1]
   let currentText = '本期待安排'
@@ -1722,7 +1721,8 @@ const meetingYearSummary = computed(() => {
     if (current.status === 'done') currentText = '本期已完成'
     else if (current.active) currentText = '本期进行中'
   }
-  return ['已完成' + done + '期', overdue ? ('逾期' + overdue + '期') : '无逾期', currentText].join(' · ')
+  // 「已完成N期」不再展示（0725 用户定）：已完成的会议收在下方"已完成N场"折叠里，标题行只说当下要紧的
+  return [overdue ? ('逾期' + overdue + '期') : '无逾期', currentText].join(' · ')
 })
 
 function onMeetingCalendarMonth(month) {
