@@ -198,15 +198,16 @@
         </div>
 
         <div v-if="!topics.length" class="topic-empty">本次会议暂无议题</div>
-      </section>
 
-      <!-- 固定底栏(0725 用户定):翻页 + 结束会议与上方 AI/提交意见拉开,避免误点 -->
-      <div class="omf-vote-footer">
-        <!-- 翻页:没有对应方向的议题就隐藏按钮,不置灰占位;各占半宽 -->
+        <!-- 翻页(0725 用户定:放回卡片内);没有对应方向的议题就隐藏按钮,不置灰占位;各占半宽 -->
         <div v-if="topics.length > 1" class="topic-pager">
           <button v-if="topicIndex > 0" type="button" class="pager-prev" @click="prevTopic">‹ 上一议题</button>
           <button v-if="topicIndex < topics.length - 1" type="button" class="pager-next" @click="nextTopic">下一议题 ›</button>
         </div>
+      </section>
+
+      <!-- 固定底栏(0725 用户定):结束会议与上方内容拉开,避免误点 -->
+      <div class="omf-vote-footer">
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
         <template v-if="isChair && !meetingEnded">
           <button class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
@@ -648,9 +649,9 @@ onBeforeUnmount(() => {
 .topic-head-row{display:flex;align-items:center;justify-content:space-between}
 .topic-pager-ind{color:#84929b;font-size:24rpx}
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
-.omf--has-footer{padding-bottom:230rpx}
+.omf--has-footer{padding-bottom:170rpx}
 .omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
-.topic-pager{display:flex;gap:16rpx;margin-bottom:14rpx}
+.topic-pager{display:flex;gap:16rpx;margin-top:26rpx}
 .topic-pager button{flex:0 0 calc(50% - 8rpx);height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
 .topic-pager button:active{background:#eef3f6}
 .topic-pager .pager-next{margin-left:auto}
