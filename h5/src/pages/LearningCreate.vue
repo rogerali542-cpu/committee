@@ -58,7 +58,8 @@
 
       <div class="create-actions">
         <button class="btn-ghost" type="button" @click="back">取消</button>
-        <button class="btn-primary" type="button" :disabled="saving" @click="submit">{{ saving ? '正在创建…' : '确认创建' }}</button>
+        <!-- 「登记」不是「创建」(0725 用户定):这里是把已完成的学习记录在案,与「登记接待」同一口径 -->
+        <button class="btn-primary" type="button" :disabled="saving" @click="submit">{{ saving ? '正在登记…' : '确认登记' }}</button>
       </div>
     </main>
   </div>
@@ -95,7 +96,7 @@ async function submit() {
   saving.value = true
   try {
     const result = await api.learningCreate({ ...form })
-    toast({ title: '已创建', icon: 'success' })
+    toast({ title: '已登记', icon: 'success' })
     window.location.assign('/learning-detail?id=' + result.id)
   } catch (e) {
     toast({ title: (e && e.message) || '创建失败', icon: 'none' })
