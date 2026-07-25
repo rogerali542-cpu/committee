@@ -141,9 +141,12 @@
                 <button type="button" class="vote-opt no" :class="{ on: isPicked(topic, 'against') }" :disabled="busy" @click="pickVote(topic, 'against')">反对</button>
                 <button type="button" class="vote-opt ab" :class="{ on: isPicked(topic, 'abstain') }" :disabled="busy" @click="pickVote(topic, 'abstain')">弃权</button>
               </div>
-              <button v-if="pendingVotes[topic.id]" type="button" class="vote-submit" :disabled="busy" @click="submitVote(topic)">
-                {{ busy ? '提交中…' : '确认提交' }}
-              </button>
+              <div v-if="pendingVotes[topic.id] || changeVoteOpen[topic.id]" class="vote-actions">
+                <button v-if="pendingVotes[topic.id]" type="button" class="vote-submit" :disabled="busy" @click="submitVote(topic)">
+                  {{ busy ? '提交中…' : '确认提交' }}
+                </button>
+                <button type="button" class="vote-cancel" :disabled="busy" @click="cancelVoteChange(topic)">取消</button>
+              </div>
             </template>
             <div class="vote-progress">
               <span>已填 {{ topic.voted || 0 }}/{{ presentCount }} 人</span>
@@ -366,6 +369,11 @@ async function submitVote(topic) {
   } catch (e) {
     toast({ title: e.message || '投票失败', icon: 'none' })
   } finally { busy.value = false }
+}
+// 取消改票/取消已选未提交:清掉待提交选择,已投的收回到「已投:X」状态
+function cancelVoteChange(topic) {
+  delete pendingVotes[topic.id]
+  changeVoteOpen[topic.id] = false
 }
 async function retractMyVote(topic) {
   const res = await showModal({
@@ -592,8 +600,11 @@ onBeforeUnmount(() => {
 .op-row{display:flex;align-items:flex-start;gap:6rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
 .op-row b{flex:none;font-weight:600}.op-row span{min-width:0;white-space:pre-wrap}
 .op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
-.vote-submit{display:block;width:calc(100% - 52rpx);margin:18rpx 0 0 52rpx;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
+.vote-actions{display:flex;gap:14rpx;margin:18rpx 0 0 52rpx}
+.vote-submit{flex:1;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
 .vote-submit:disabled{opacity:.5}
+.vote-cancel{flex:none;padding:0 34rpx;height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#66788a;font-size:26rpx}
+.vote-cancel:active{background:#eef3f6}.vote-cancel:disabled{opacity:.5}
 .mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
 .mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
 .voted-tag.pending{color:#9a5d2e}
