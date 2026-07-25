@@ -12,6 +12,29 @@
       </div>
     </div>
 
+    <!-- 流程链(0725 用户定):让所有人知道当前到第几步;样式对齐线下会议阶段条 -->
+    <div v-if="!cardMode" class="omf-flow">
+      <div class="omf-flow-step" :class="stepClass(1)">
+        <span class="omf-flow-dot"><template v-if="flowStep > 1">✓</template><template v-else>1</template></span>
+        <span class="omf-flow-label">会议签到</span>
+      </div>
+      <span class="omf-flow-line" :class="{ done: flowStep > 1 }"></span>
+      <div class="omf-flow-step" :class="stepClass(2)">
+        <span class="omf-flow-dot"><template v-if="flowStep > 2">✓</template><template v-else>2</template></span>
+        <span class="omf-flow-label">微信群开会</span>
+      </div>
+      <span class="omf-flow-line" :class="{ done: flowStep > 2 }"></span>
+      <div class="omf-flow-step" :class="stepClass(3)">
+        <span class="omf-flow-dot"><template v-if="flowStep > 3">✓</template><template v-else>3</template></span>
+        <span class="omf-flow-label">表决登记</span>
+      </div>
+      <span class="omf-flow-line" :class="{ done: flowStep > 3 }"></span>
+      <div class="omf-flow-step" :class="stepClass(4)">
+        <span class="omf-flow-dot">4</span>
+        <span class="omf-flow-label">材料整理</span>
+      </div>
+    </div>
+
     <!-- 结果确认卡:仅供分享链接(?card=1)打开时确认/查看,常规流程已不经过这里 -->
     <template v-if="cardMode">
       <section class="omf-card result-card">
@@ -171,6 +194,19 @@ const selfAttendance = computed(() => attendance.value.find(item => item.isSelf)
 const selfPresent = computed(() => !!(selfAttendance.value && selfAttendance.value.signedIn))
 const selfSigned = computed(() => !!(selfAttendance.value && selfAttendance.value.signed))
 const meetingEnded = computed(() => props.detail.stage !== 'ongoing')
+
+// 流程链(0725 用户定):签到→微信群开会→表决登记→材料整理。
+// ②→③没有系统信号(会在微信群里开),以"本人填过任一表决/意见"视为已回来登记。
+const flowStep = computed(() => {
+  if (meetingEnded.value) return 4
+  if (!selfPresent.value) return 1
+  const filled = topics.some(t => t.voteRequired && (t.myVote || t.mySelectedId))
+    || opinions.value.some(op => op.isSelf)
+  return filled ? 3 : 2
+})
+function stepClass(n) {
+  return flowStep.value > n ? 'done' : (flowStep.value === n ? 'on' : '')
+}
 
 // 议题意见:开会期间各委员可按议题补充书面意见,记入会议记录
 const opinions = ref([])
@@ -363,6 +399,18 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
+/* 流程链:样式对齐线下会议阶段条 .lp-flow(紧凑版尺寸) */
+.omf-flow{display:flex;align-items:center;padding:10rpx 24rpx 46rpx;margin:4rpx 8rpx 6rpx}
+.omf-flow-step{position:relative;flex-shrink:0}
+.omf-flow-dot{width:44rpx;height:44rpx;border-radius:50%;background:#E4E6EA;color:#9AA0A6;font-size:23rpx;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.omf-flow-label{position:absolute;top:calc(100% + 7rpx);left:50%;transform:translateX(-50%);font-size:22rpx;color:#9AA0A6;white-space:nowrap}
+.omf-flow-step.on .omf-flow-dot{background:var(--c-primary-dark,#A85800);color:#fff;box-shadow:0 0 0 5rpx rgba(168,88,0,0.18)}
+.omf-flow-step.on .omf-flow-label{color:var(--c-primary-dark,#A85800);font-weight:600}
+.omf-flow-step.done .omf-flow-dot{background:#2E8B57;color:#fff}
+.omf-flow-step.done .omf-flow-label{color:#2E8B57}
+.omf-flow-line{flex:1;height:4rpx;background:#E4E6EA;margin:0 10rpx;border-radius:2rpx}
+.omf-flow-line.done{background:#2E8B57}
+
 /* 参会名单折叠条:配色/行样式对齐线下会议签到页 .si-roster / .signin-roster-row */
 .omf-roster{background:#fff;border:2rpx solid #e0e7eb;border-radius:22rpx;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);padding:0 28rpx;margin-bottom:24rpx}
 .omf-roster-bar{display:flex;align-items:center;gap:14rpx;padding:24rpx 0}
