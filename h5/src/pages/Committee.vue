@@ -4172,12 +4172,12 @@ onActivated(show)
 .ck-reception-actions .ck-reception-cta:active { background: #3E6F53; color: #fff; }
 .ck-reception-actions .ck-reception-cta i { margin-left: 3rpx; font-size: 27rpx; }
 .ck-reception-cta { background: #4C8062; box-shadow: 0 6rpx 14rpx rgba(76,128,98,.16); }
-.ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 44rpx; margin-top: -7rpx; }
+.ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 34rpx; margin-top: -4rpx; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
 .ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
-.ck-todo-title { margin-top: 15rpx; font-size: 39rpx; font-weight: 800; color: #2A3244; line-height: 1.3; text-wrap: balance; }
+.ck-todo-title { margin-top: 6rpx; font-size: 39rpx; font-weight: 800; color: #2A3244; line-height: 1.3; text-wrap: balance; }
 .ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 20rpx; }
 .ck-todo-sub { min-width: 0; font-size: 27rpx; color: #8A94A6; line-height: 1.38; text-wrap: balance; }
 .ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 16rpx; background: #D86A35; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(216, 106, 53, .16); }
