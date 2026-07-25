@@ -115,10 +115,14 @@
     <!-- ③ 表决登记页:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
     <template v-else>
       <section class="omf-card">
-        <h3>{{ meetingEnded ? '议题表决结果' : '议题处理' }}</h3>
-        <div v-for="(topic, index) in topics" :key="topic.id" class="topic-block">
+        <div class="topic-head-row">
+          <h3>{{ meetingEnded ? '议题表决结果' : '议题处理' }}</h3>
+          <span v-if="topics.length" class="topic-pager-ind">第 {{ topicIndex + 1 }}/{{ topics.length }} 题</span>
+        </div>
+        <!-- 每页只显示一个议题(0725 用户定),上一题/下一题翻页 -->
+        <div v-for="topic in (currentTopic ? [currentTopic] : [])" :key="topic.id" class="topic-block">
           <div class="topic-form-head">
-            <span class="topic-no">{{ index + 1 }}</span>
+            <span class="topic-no">{{ topicIndex + 1 }}</span>
             <div class="topic-heading">
               <b>{{ topic.title }}</b>
               <span class="topic-kind" :class="topic.voteRequired ? 'vote' : 'discussion'">
@@ -166,8 +170,13 @@
             <div class="vote-closed-tag" :class="{ pass: topic.passed }">{{ topic.passed ? '已通过' : '未通过' }}</div>
           </template>
 
-          <!-- 意见:所有议题都可补充书面意见,记入会议记录 -->
-          <div v-if="topicOpinions(topic.id).length" class="topic-opinions">
+          <!-- 意见:所有议题都可补充书面意见,记入会议记录;列表收在「查看详情」里(0725 用户定) -->
+          <div v-if="topicOpinions(topic.id).length" class="op-detail-row">
+            <button type="button" class="op-detail-toggle" @click="opsOpen = !opsOpen">
+              {{ opsOpen ? '收起意见 ▲' : '查看详情（' + topicOpinions(topic.id).length + ' 条意见）▾' }}
+            </button>
+          </div>
+          <div v-if="opsOpen && topicOpinions(topic.id).length" class="topic-opinions">
             <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
               <b>{{ op.name }}：</b><span>{{ op.content }}</span>
               <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
@@ -184,6 +193,14 @@
               <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
             </div>
           </div>
+        </div>
+
+        <div v-if="!topics.length" class="topic-empty">本次会议暂无议题</div>
+
+        <!-- 翻页:上一题/下一题 -->
+        <div v-if="topics.length > 1" class="topic-pager">
+          <button type="button" :disabled="topicIndex === 0" @click="prevTopic">‹ 上一题</button>
+          <button type="button" :disabled="topicIndex >= topics.length - 1" @click="nextTopic">下一题 ›</button>
         </div>
 
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
@@ -213,6 +230,12 @@ const emit = defineEmits(['reload'])
 const busy = ref(false)
 const rosterOpen = ref(false)
 
+// ── 议题翻页(0725 用户定):每页只显示一个议题;意见列表收在「查看详情」 ──
+const topicIndex = ref(0)
+const opsOpen = ref(false)
+function prevTopic() { if (topicIndex.value > 0) { topicIndex.value--; opsOpen.value = false } }
+function nextTopic() { if (topicIndex.value < topics.length - 1) { topicIndex.value++; opsOpen.value = false } }
+
 // 页内视图机(0725 用户定):签到页(signin)→线上会议页(main)→表决登记页(vote)。
 // 返回键逐级回退(由宿主页 MeetingLiveQuick 调 handleBack);签到页再返回=离开会议。
 const view = ref('')
@@ -225,6 +248,7 @@ function handleBack() {
 defineExpose({ handleBack })
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
+const currentTopic = computed(() => topics[topicIndex.value] || null)
 const liveAttendance = ref([])
 
 const attendance = computed(() => liveAttendance.value.length
@@ -308,6 +332,7 @@ function applyTopics(raw) {
     voteAgainst: Number(item.agVotes) || 0,
     voteAbstain: Number(item.abVotes) || 0
   })))
+  if (topicIndex.value >= topics.length) topicIndex.value = Math.max(0, topics.length - 1)
 }
 watch(() => props.detail, initFromDetail, { immediate: true })
 
@@ -604,6 +629,14 @@ onBeforeUnmount(() => {
 .signin-count{margin-top:26rpx;color:#7a8894;font-size:26rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
+.topic-head-row{display:flex;align-items:baseline;justify-content:space-between}
+.topic-pager-ind{color:#84929b;font-size:24rpx}
+.topic-pager{display:grid;grid-template-columns:1fr 1fr;gap:16rpx;margin-top:26rpx}
+.topic-pager button{height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
+.topic-pager button:active{background:#eef3f6}.topic-pager button:disabled{opacity:.4}
+.topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
+.op-detail-row{margin:18rpx 0 0 52rpx}
+.op-detail-toggle{border:0;background:none;padding:0;color:#416f8b;font-size:24rpx;font-weight:600}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
 .topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
