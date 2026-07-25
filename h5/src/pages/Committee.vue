@@ -173,7 +173,9 @@
             <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
-            <!-- 「查看月历」已移到列表尾部与「已完成N场」并列(0725 用户定):标题行只留标题+摘要 -->
+            <!-- 「发起会议」高频动作放标题行右上(0725 用户定,参照日历类App新建入口常驻顶部/悬浮,不塞列表尾) -->
+            <button v-if="planTab === 'meeting' && canCreate" type="button" class="plan-create-btn"
+                    @click.stop="openNewMeeting()">＋ 发起会议</button>
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
@@ -208,22 +210,26 @@
               <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
             </div>
           </template>
-          <!-- 查看月历折叠行:与「已完成N场」同式并列收在列表尾部(0725 用户定,参照账单类App视图切换不占标题行) -->
-          <div class="mr-fold" @click="meetingCalendarOpen = !meetingCalendarOpen">
+          <!-- 查看月历入口行在列表尾部;月历本体改弹层浮在页面中央(0725 用户定):
+               原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
+          <div class="mr-fold" @click="meetingCalendarOpen = true">
             <span>查看全年月历</span>
-            <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
+            <span class="mr-fold-chev">›</span>
           </div>
-          <div v-if="meetingCalendarOpen" class="mr-calendar-panel">
-            <div class="mr-calendar-panel-title">
-              <span>{{ viewYear }}年月历</span>
-              <small>点击月份查看对应例会</small>
-            </div>
-            <div class="mr-calendar-grid">
-              <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
-                      class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
-                <b>{{ mc.m }}月</b>
-                <span>{{ mc.label }}</span>
-              </button>
+          <div v-if="meetingCalendarOpen" class="mr-cal-mask" @click.self="meetingCalendarOpen = false">
+            <div class="mr-calendar-sheet">
+              <div class="mr-calendar-panel-title">
+                <span>{{ viewYear }}年月历</span>
+                <small>点击月份查看对应例会</small>
+              </div>
+              <div class="mr-calendar-grid">
+                <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
+                        class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
+                  <b>{{ mc.m }}月</b>
+                  <span>{{ mc.label }}</span>
+                </button>
+              </div>
+              <button type="button" class="mr-calendar-close" @click="meetingCalendarOpen = false">关 闭</button>
             </div>
           </div>
           <template v-if="meetingRecordList.done.length">
@@ -434,9 +440,7 @@
 
     <!-- 「更多功能」三格已删：接待/培训入口收进顶部计划卡横栏；历史记录走计划卡已开期或资料库 -->
 
-    <!-- 发起非例会会议：低频功能收在页面底部的入口，仅「开会」tab 显示（接待/培训不需要） -->
-    <!-- portal 布局已有「发起会议」宫格入口，底部按钮只在 tabs 布局出现 -->
-    <div v-if="canCreate && planTab === 'meeting' && homeLayout === 'tabs'" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
+    <!-- 「发起其他会议」底部虚线入口已删(0725):高频动作升级为会议安排卡右上角「＋发起会议」常驻按钮 -->
 
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
       <div class="create-panel" @click.stop>
@@ -1263,7 +1267,7 @@ const selPeriodFeedback = computed(() => {
     kind: 'tip',
     tone: 'plain',
     tip: canCreate.value
-      ? label + '例会还没到计划时间，想提前开可点页面底部「发起其他会议」'
+      ? label + '例会还没到计划时间，想提前开可点右上角「发起会议」'
       : label + '例会还没到计划时间'
   }
 })
@@ -1734,6 +1738,7 @@ const meetingYearSummary = computed(() => {
 })
 
 function onMeetingCalendarMonth(month) {
+  meetingCalendarOpen.value = false   // 月历是弹层:选完月份先收起,再跳对应期次
   const row = yearPlan.value[Math.ceil(Number(month) / 2) - 1]
   if (row) onPlanRow(row)
 }
@@ -4344,9 +4349,16 @@ onActivated(show)
 .mr-fold:active { opacity: 0.7; }
 .mr-fold-chev { transition: transform 0.2s; }
 .mr-fold-chev.open { transform: rotate(180deg); }
-.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; }
-.mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 14rpx; color: #34465C; font-size: 28rpx; font-weight: 700; }
+/* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
+.mr-cal-mask { position: fixed; inset: 0; z-index: 210; background: rgba(23, 32, 42, .5); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
+.mr-calendar-sheet { width: 100%; max-width: 640rpx; background: #fff; border-radius: 26rpx; padding: 30rpx 26rpx 24rpx; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .28); }
+.mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
 .mr-calendar-panel-title small { color: #8995A4; font-size: 21rpx; font-weight: 500; }
+.mr-calendar-close { width: 100%; margin-top: 22rpx; height: 80rpx; border: none; border-radius: 18rpx; background: #F2F4F6; color: #46515D; font-size: 30rpx; font-weight: 650; }
+.mr-calendar-close:active { background: #E7EAED; }
+/* 标题行右上「＋发起会议」:高频动作常驻顶部(参照日历类App),品牌橙实心示动作 */
+.plan-create-btn { min-height: 60rpx; padding: 0 22rpx; border: none; border-radius: 999rpx; background: var(--c-primary); color: #fff; font-size: 26rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 4rpx 12rpx rgba(232, 140, 20, .25); }
+.plan-create-btn:active { opacity: .85; }
 .mr-calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
 .mr-calendar-month { min-height: 86rpx; padding: 9rpx 4rpx; border: 0; border-radius: 13rpx; background: #EEF1F4; color: #627083; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5rpx; }
 .mr-calendar-month b { font-size: 26rpx; line-height: 1.1; }
@@ -4419,11 +4431,7 @@ onActivated(show)
 .draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-continue { width: 80%; margin: 26rpx auto 0; height: 104rpx; border: none; border-radius: 24rpx; background: var(--c-primary); color: #fff; font-size: 42rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 26rpx rgba(232,140,20,0.28); }
-/* 页面底部「发起其他会议」：低频但有用，收在底部；正常实心大按钮，不再灰虚 */
-/* 0716 终版：中性灰系（橙系与待办徽标抢眼已废）——浅灰底给面积感、深灰字保可读、虚线边留「添加」语义；
-   与「待排/待安排」的中性灰语义一致：备用入口,可找到但不抢戏 */
-.create-misc-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
-.create-misc-entry:active { background: #EAEDF0; }
+/* .create-misc-entry 已删(0725):发起会议升级为会议安排卡右上角常驻按钮 .plan-create-btn */
 .draft-continue:active { background: var(--c-primary-strong); transform: scale(0.99); }
 .draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
 /* 空闲态 */
