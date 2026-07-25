@@ -7,7 +7,8 @@
           <span class="omf-method-tag">线上会议</span>
         </div>
         <!-- 签到名单不再展示(0725 用户定:简单点)——只报本人状态,进度看各题「已填 X/Y 人」 -->
-        <div v-if="!cardMode && selfPresent && !meetingEnded" class="signed-line">
+        <!-- 已签到状态行:议题处理页不显示(0725 用户定) -->
+        <div v-if="!cardMode && selfPresent && !meetingEnded && view !== 'vote'" class="signed-line">
           <span class="signed-tag">✓ 已签到</span>
           <span class="signed-count">{{ presentCount }}/{{ attendance.length }} 人已签到</span>
         </div>
@@ -351,8 +352,9 @@ async function pickVote(topic, choice, option) {
     const curLabel = myVoteLabel(topic)
     if (isPicked(topic, val)) { changeVoteOpen[topic.id] = false; return }
     const res = await showModal({
-      title: '确认改票',
+      title: '',
       content: '把您的表决从「' + curLabel + '」改为「' + label + '」吗？',
+      contentBold: true,
       confirmText: '确认修改', cancelText: '不改了'
     })
     changeVoteOpen[topic.id] = false
