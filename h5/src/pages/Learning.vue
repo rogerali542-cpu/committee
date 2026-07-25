@@ -34,6 +34,13 @@
       </div>
     </div>
 
+    <!-- 登记学习是本页主动作(0725 用户定):大按钮上移到列表前显眼位,与接待页「登记接待」同款 -->
+    <button v-if="canCreate" class="learn-register-card" type="button" @click="openCreate">
+      <span class="lrc-icon">＋</span>
+      <span class="lrc-copy"><strong>新增学习记录</strong></span>
+      <span class="lrc-arrow">›</span>
+    </button>
+
     <div class="records-head">
       <span class="records-title">学习记录</span>
       <span class="records-count">共{{ allItems.length }}条</span>
@@ -78,9 +85,7 @@
       <div v-else class="empty-state"><span>{{ recordFilter === 'all' ? '暂无学习记录' : '当前没有需要显示的记录' }}</span></div>
     </div>
 
-    <!-- 新建入口(0725 用户定):原右下 FAB 压卡片、又和「返回驾驶舱」浮球叠在一起;
-         改为列表尾部虚线入口,与业委会页「发起其他会议」同款 -->
-    <div v-if="canCreate" class="create-learning-entry" @click="openCreate">＋ 新增学习记录</div>
+    <!-- 底部虚线入口已删(0725 用户定):新增是本页主动作,升级为列表上方大按钮 .learn-register-card -->
 
     <!-- 创建表单已迁独立页 /learning-create(0725 用户定:弹层改整页) -->
 
@@ -312,8 +317,18 @@ onUnmounted(() => {
 /* FAB */
 /* bottom 抬到底部 TabBar(100rpx) 之上，否则「+」新建按钮会压在一级 tab 栏上 */
 /* FAB 已删(0725):压卡片、与「返回驾驶舱」浮球冲突;新建入口改列表尾部虚线条 */
-.create-learning-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
-.create-learning-entry:active { background: #EAEDF0; }
+/* 新增学习记录大按钮:与接待页「登记接待」同款(主动作,放列表前) */
+.learn-register-card { display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
+  margin: 26rpx 0 6rpx; padding: 22rpx 26rpx; text-align: left; border: 3rpx solid #E7B56F;
+  background: linear-gradient(135deg, #FFF9F0 0%, #FFF2DF 100%);
+  border-radius: 20rpx; box-shadow: 0 10rpx 26rpx rgba(159, 92, 13, 0.12); color: inherit; }
+.lrc-icon { display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx;
+  border-radius: 16rpx; background: #B96300; color: #fff; font-size: 36rpx; }
+.lrc-copy { flex: 1; }
+.lrc-copy strong { font-size: 36rpx; line-height: 1.35; color: #713E00; font-weight: 650; }
+.lrc-arrow { display: flex; align-items: center; justify-content: center; width: 52rpx; height: 52rpx;
+  border-radius: 50%; background: #F4D9B5; color: #9A5700; font-size: 38rpx; font-weight: 700; }
+.learn-register-card:active { opacity: 0.7; }
 
 /* 创建弹窗样式已删(0725):表单迁独立页 /learning-create */
 </style>
