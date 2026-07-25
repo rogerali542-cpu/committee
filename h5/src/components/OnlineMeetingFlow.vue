@@ -183,7 +183,7 @@
             </div>
           </div>
           <div v-if="!meetingEnded" class="op-input">
-            <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充我的意见（可选）"></textarea>
+            <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充意见（可选）"></textarea>
             <div class="op-btn-row">
               <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
                       :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
