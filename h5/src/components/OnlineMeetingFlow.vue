@@ -4,6 +4,11 @@
       <div>
         <span class="omf-kicker">线上会议</span>
         <h2>{{ detail.title || '本次会议' }}</h2>
+        <!-- 签到名单不再展示(0725 用户定:简单点)——只报本人状态,进度看各题「已填 X/Y 人」 -->
+        <div v-if="!cardMode && selfPresent && !meetingEnded" class="signed-line">
+          <span class="signed-tag">✓ 已签到</span>
+          <span class="signed-count">{{ presentCount }}/{{ attendance.length }} 人已签到</span>
+        </div>
       </div>
     </div>
 
@@ -53,20 +58,6 @@
         <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，填写您对各议题的表决结果和意见，最后由主任结束会议、进入材料整理。</p>
       </section>
 
-      <!-- 签到情况:默认收起成一行(0725 用户定:名单撑满首屏喧宾夺主),点开看名单;只读 -->
-      <section class="omf-card att-card">
-        <button type="button" class="att-toggle" @click="attendanceOpen = !attendanceOpen">
-          <h3 class="attendance-title">签到情况<small class="att-count">{{ presentCount }}/{{ attendance.length }} 人已签到</small></h3>
-          <span class="att-arrow" :class="{ open: attendanceOpen }">⌄</span>
-        </button>
-        <template v-if="attendanceOpen">
-          <div v-for="member in attendance" :key="member.userRoleId" class="member-row">
-            <span class="member-name">{{ member.name }}</span>
-            <span class="member-role">{{ member.role }}</span>
-            <span class="member-state" :class="{ on: member.signedIn }">{{ member.signedIn ? '已签到' : '未签到' }}</span>
-          </div>
-        </template>
-      </section>
 
       <!-- ③ 会后登记:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
       <section class="omf-card">
@@ -150,7 +141,6 @@ const props = defineProps({
 const emit = defineEmits(['reload'])
 
 const busy = ref(false)
-const attendanceOpen = ref(false)
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
 const liveAttendance = ref([])
@@ -357,17 +347,14 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
-.member-row{height:86rpx;display:flex;align-items:center;border-bottom:2rpx solid #eef2f4}.member-row:last-child{border-bottom:0}.member-name{font-size:28rpx}.member-role{margin-left:auto;color:#84929b;font-size:23rpx}.member-state{margin-left:16rpx;padding:3rpx 14rpx;border-radius:999rpx;background:#f0f2f4;color:#8a95a0;font-size:22rpx;font-weight:600}.member-state.on{background:#e4f2e9;color:#43815b}
+.signed-line{display:flex;align-items:center;gap:16rpx;margin-top:14rpx}
+.signed-tag{padding:4rpx 16rpx;border-radius:999rpx;background:#e4f2e9;color:#43815b;font-size:23rpx;font-weight:600}
+.signed-count{color:#84929b;font-size:23rpx}
 .signin-card{text-align:center;padding:56rpx 40rpx 48rpx;margin-top:20rpx}.signin-card h3{font-size:36rpx}.signin-card .omf-desc{margin:18rpx 0 8rpx}
 .signin-badge{width:104rpx;height:104rpx;margin:0 auto 24rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;font-size:46rpx;font-weight:700;line-height:104rpx}
 .signin-meta{margin:10rpx 0 0;color:#798892;font-size:24rpx}
 .signin-card .omf-primary{height:92rpx;font-size:31rpx;margin-top:34rpx;border-radius:18rpx}
 .signin-count{margin-top:24rpx;color:#84929b;font-size:23rpx}
-.attendance-title{display:flex;align-items:baseline;gap:14rpx}.att-count{color:#84929b;font-size:23rpx;font-weight:500}
-.att-card{padding-top:22rpx;padding-bottom:22rpx}
-.att-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:0;border:0;background:none;text-align:left}
-.att-arrow{color:#9aa7b0;font-size:32rpx;line-height:1;position:relative;top:-6rpx;transition:transform .2s}.att-arrow.open{transform:rotate(180deg);top:4rpx}
-.att-card .member-row:first-of-type{margin-top:10rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
 .topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
