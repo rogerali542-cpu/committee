@@ -47,20 +47,25 @@
     </template>
 
     <template v-else>
-      <!-- 签到情况:所有人可见,只读(0725 用户定:主持人也只管自己签到、查看别人) -->
-      <section class="omf-card">
-        <h3 class="attendance-title">签到情况<small class="att-count">{{ presentCount }}/{{ attendance.length }} 人</small></h3>
-        <div v-for="member in attendance" :key="member.userRoleId" class="member-row">
-          <span class="member-name">{{ member.name }}</span>
-          <span class="member-role">{{ member.role }}</span>
-          <span class="member-state" :class="{ on: member.signedIn }">{{ member.signedIn ? '已签到' : '未签到' }}</span>
-        </div>
-      </section>
-
-      <!-- ② 会议本体在微信群(0725 用户定):App 只做签到与会后登记 -->
+      <!-- ② 会议本体在微信群(0725 用户定):App 只做签到与会后登记,当前状态说明置顶 -->
       <section v-if="!meetingEnded" class="omf-card wx-hint">
         <div class="wx-hint-title">会议在微信工作群进行</div>
         <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，填写您对各议题的表决结果和意见，最后由主任结束会议、进入材料整理。</p>
+      </section>
+
+      <!-- 签到情况:默认收起成一行(0725 用户定:名单撑满首屏喧宾夺主),点开看名单;只读 -->
+      <section class="omf-card att-card">
+        <button type="button" class="att-toggle" @click="attendanceOpen = !attendanceOpen">
+          <h3 class="attendance-title">签到情况<small class="att-count">{{ presentCount }}/{{ attendance.length }} 人已签到</small></h3>
+          <span class="att-arrow" :class="{ open: attendanceOpen }">⌄</span>
+        </button>
+        <template v-if="attendanceOpen">
+          <div v-for="member in attendance" :key="member.userRoleId" class="member-row">
+            <span class="member-name">{{ member.name }}</span>
+            <span class="member-role">{{ member.role }}</span>
+            <span class="member-state" :class="{ on: member.signedIn }">{{ member.signedIn ? '已签到' : '未签到' }}</span>
+          </div>
+        </template>
       </section>
 
       <!-- ③ 会后登记:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
@@ -145,6 +150,7 @@ const props = defineProps({
 const emit = defineEmits(['reload'])
 
 const busy = ref(false)
+const attendanceOpen = ref(false)
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
 const liveAttendance = ref([])
@@ -358,6 +364,10 @@ onBeforeUnmount(() => {
 .signin-card .omf-primary{height:92rpx;font-size:31rpx;margin-top:34rpx;border-radius:18rpx}
 .signin-count{margin-top:24rpx;color:#84929b;font-size:23rpx}
 .attendance-title{display:flex;align-items:baseline;gap:14rpx}.att-count{color:#84929b;font-size:23rpx;font-weight:500}
+.att-card{padding-top:22rpx;padding-bottom:22rpx}
+.att-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:0;border:0;background:none;text-align:left}
+.att-arrow{color:#9aa7b0;font-size:32rpx;line-height:1;position:relative;top:-6rpx;transition:transform .2s}.att-arrow.open{transform:rotate(180deg);top:4rpx}
+.att-card .member-row:first-of-type{margin-top:10rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
 .topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
