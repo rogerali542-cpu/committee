@@ -67,9 +67,8 @@
     <!-- ① 签到页:未签到=签到按钮;已签到(返回键退回来看的)=已签到状态+进入会议 -->
     <template v-else-if="view === 'signin'">
       <section class="omf-card signin-card">
-        <div class="signin-badge">签</div>
         <h3>会议签到</h3>
-        <p class="signin-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · 线上召开</p>
+        <p class="signin-meta">{{ detail.meetingDate }} {{ String(detail.meetingTime || '').slice(0, 5) }} · 线上召开</p>
         <template v-if="!selfPresent">
           <p class="omf-desc">本次会议在微信工作群中进行。请先签到确认参会，再回微信群开会；开完会后回来填写表决结果和意见。</p>
           <button class="omf-primary" :disabled="busy" @click="selfSignIn">{{ busy ? '正在签到…' : '我已参会，线上签到' }}</button>
@@ -458,11 +457,11 @@ onBeforeUnmount(() => {
 .signed-line{display:flex;align-items:center;gap:16rpx;margin-top:14rpx}
 .signed-tag{padding:4rpx 16rpx;border-radius:999rpx;background:#e4f2e9;color:#43815b;font-size:23rpx;font-weight:600}
 .signed-count{color:#84929b;font-size:23rpx}
-.signin-card{text-align:center;padding:56rpx 40rpx 48rpx;margin-top:20rpx}.signin-card h3{font-size:36rpx}.signin-card .omf-desc{margin:18rpx 0 8rpx}
-.signin-badge{width:104rpx;height:104rpx;margin:0 auto 24rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;font-size:46rpx;font-weight:700;line-height:104rpx}
-.signin-meta{margin:10rpx 0 0;color:#798892;font-size:24rpx}
-.signin-card .omf-primary{height:92rpx;font-size:31rpx;margin-top:34rpx;border-radius:18rpx}
-.signin-count{margin-top:24rpx;color:#84929b;font-size:23rpx}
+.signin-card{text-align:center;padding:56rpx 40rpx 48rpx;margin-top:20rpx}.signin-card h3{font-size:40rpx}
+.signin-card .omf-desc{margin:20rpx 0 8rpx;font-size:28rpx;color:#5c6b78}
+.signin-meta{margin:14rpx 0 0;color:#6b7a87;font-size:28rpx}
+.signin-card .omf-primary{height:96rpx;font-size:33rpx;font-weight:600;margin-top:36rpx;border-radius:18rpx}
+.signin-count{margin-top:26rpx;color:#7a8894;font-size:26rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
