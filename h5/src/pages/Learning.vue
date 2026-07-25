@@ -51,9 +51,9 @@
       <template v-if="items.length">
         <!-- 手风琴(0725 用户定):默认全部收起只留标题行,点卡片摊开细节;进详情走展开区内的按钮 -->
         <div class="learn-card" v-for="item in items" :key="item.id" :class="{ open: expandedId === item.id }" @click="toggleExpand(item)">
+          <!-- 收起行=标题+状态+箭头(0725 用户定):类型标签不上标题行(丑),挪进展开细节 -->
           <div class="lc-header">
             <div class="lc-title-wrap">
-              <span class="lc-type">{{ learningTypeName(item) }}</span>
               <span class="lc-title">{{ item.title }}</span>
             </div>
             <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
@@ -61,6 +61,7 @@
           </div>
           <template v-if="expandedId === item.id">
             <div class="lc-meta">
+              <span class="lc-meta-line">类型：{{ learningTypeName(item) }}</span>
               <span class="lc-meta-line">{{ item.date }} · {{ formatTime(item.time) }}</span>
               <span class="lc-meta-line">{{ item.location }}</span>
               <span class="lc-meta-line">组织：{{ item.trainer || '未填写' }}</span>
@@ -277,11 +278,11 @@ onUnmounted(() => {
 /* 收起卡压缩到与业委会记录行同级(0725 用户定):内距/字号/标签整体降一档 */
 .learn-card { background: #fff; border-radius: 20rpx; padding: 22rpx 24rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); position: relative; }
 .learn-card:active { background: #fafbfc; }
-.lc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14rpx; }
-.lc-title-wrap { min-width: 0; flex: 1; padding-right: 12rpx; display: block; text-wrap: balance; }  /* 标签+标题行内流排,折行均衡 */
-.lc-type { display: inline-block; vertical-align: 3rpx; margin-right: 10rpx; font-size: 21rpx; color: #5F6E82; background: #EEF2F7; border-radius: 999rpx; padding: 3rpx 12rpx; line-height: 1.3; }
+.lc-header { display: flex; align-items: center; justify-content: space-between; }  /* 状态签/箭头随标题块垂直居中 */
+.lc-title-wrap { min-width: 0; flex: 1; padding-right: 12rpx; text-wrap: balance; }
+/* .lc-type 已删(0725):类型不再上标题行,展开细节里以「类型：」行呈现 */
 .lc-title { font-size: 30rpx; font-weight: 650; color: #1f2329; line-height: 1.5; }  /* 与业委会记录行同级字号 */
-.lc-pill { font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; flex-shrink: 0; white-space: nowrap; align-self: flex-start; }
+.lc-pill { font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; flex-shrink: 0; white-space: nowrap; }
 .lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }
 .lc-pill.ended { background: #F0F0F0; color: #666; }
@@ -295,7 +296,7 @@ onUnmounted(() => {
 .lc-progress-text { font-size: 28rpx; color: #C77800; font-weight: 700; flex-shrink: 0; }
 .lc-footer { display: flex; justify-content: flex-end; gap: 14rpx; margin-top: 16rpx; border-top: 2rpx solid #f5f5f5; padding-top: 16rpx; }
 /* 收起态指示:下箭头,与状态标签同行右侧对齐,展开后旋转 */
-.lc-arrow { flex-shrink: 0; margin-left: 10rpx; margin-top: 4rpx; font-size: 36rpx; line-height: 44rpx; color: #8A94A0; transition: transform .2s; }  /* 与右侧状态标签同行等高对齐 */
+.lc-arrow { flex-shrink: 0; margin-left: 12rpx; font-size: 34rpx; line-height: 1; color: #8A94A0; transition: transform .2s; }  /* 与状态签同排垂直居中 */
 .lc-arrow.open { transform: rotate(180deg); }
 .lc-btn { min-height: 64rpx; line-height: 64rpx; padding: 0 30rpx; border-radius: 20rpx; border: none; font-size: 28rpx; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; }
 .lc-btn.start { background: var(--c-primary-dark); color: #fff; }
