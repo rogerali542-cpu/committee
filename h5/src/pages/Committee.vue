@@ -34,7 +34,8 @@
               <div class="rnh-time" :class="{ none: !receptionTimeText }">
                 {{ receptionTimeText || '还没设置接待时间' }}
               </div>
-              <div v-if="recSystem && recSystem.place" class="rnh-place">接待地点：{{ recSystem.place }}</div>
+              <!-- 地址整体不拆:放不下就整体换到第二行,不从地名中间掰断 -->
+              <div v-if="recSystem && recSystem.place" class="rnh-place">接待地点：<span class="rnh-place-name">{{ recSystem.place }}</span></div>
             </div>
           </div>
           <button v-if="canManageReception" class="rec-notice-primary" type="button" @click="goReceptionNotice">
@@ -190,7 +191,8 @@
             </div>
             <div class="mr-info">
               <div class="mr-row-title">{{ row.title }}</div>
-              <div class="mr-row-sub">{{ row.sub }}</div>
+              <!-- 副标题按「 · 」分段,每段整体折行:避免"党群服务中心"这类地名被从中间掰断 -->
+              <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
             </div>
             <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
           </div>
@@ -2648,6 +2650,7 @@ function snapshotDraft() {
     meetingDate: createForm.meetingDate || '',
     meetingTime: createForm.meetingTime || '',
     location: createForm.location || '',
+    meetingMethod: createForm.meetingMethod || 'offline',   // 0725 修:草稿不存召开方式,线上会议草稿续编时会退回线下
     description: createForm.description || '',
     juweiWitness: !!createForm.juweiWitness,
     topics: JSON.parse(JSON.stringify(createForm.topics || [])),
@@ -2720,6 +2723,7 @@ async function continueDraft() {
   createForm.meetingDate = d.meetingDate || ''
   createForm.meetingTime = d.meetingTime || ''
   createForm.location = d.location || ''
+  createForm.meetingMethod = d.meetingMethod || 'offline'   // 0725 修:草稿还原时带回召开方式
   createForm.description = d.description || ''
   createForm.topics = JSON.parse(JSON.stringify(d.topics || []))
   createForm.juweiWitness = !!d.juweiWitness
@@ -2768,6 +2772,7 @@ async function openMeetingForEdit(id) {
     createForm.meetingDate = d.meetingDate || ''
     createForm.meetingTime = (d.meetingTime || '').slice(0, 5)
     createForm.location = d.location || ''
+    createForm.meetingMethod = d.meetingMethod || 'offline'   // 0725 修:原先编辑线上会议时表单恒显"线下"
     createForm.description = d.description || ''
     createForm.topics = (((d.record && d.record.topics) || d.topics) || []).map((t) => ({
       title: t.title || '',
@@ -3835,7 +3840,8 @@ async function submitNewMeeting() {
     try {
       await api.committeeUpdate(id, {
         title: form.title, meetingDate: form.meetingDate, meetingTime: form.meetingTime,
-        location: form.location, description: form.description, topics: topics
+        location: form.location, meetingMethod: form.meetingMethod || 'offline',   // 0725 修:同创建,编辑时线上/线下切换原先存不进去
+        description: form.description, topics: topics
       })
       // 居委会见证态若有变，翻转标记（toggle 语义：与载入态不同才切）
       if (form.juweiWitness !== editInitialJuwei.value) {
@@ -3861,6 +3867,7 @@ async function submitNewMeeting() {
       location: form.location,
       locationLat: form.locationLat,
       locationLng: form.locationLng,
+      meetingMethod: form.meetingMethod || 'offline',   // 0725 修:原 payload 漏了它,选「线上会议」建出来仍是线下
       description: form.description,
       topics: topics
     })
@@ -4340,6 +4347,8 @@ onActivated(show)
 .mr-info { flex: 1; min-width: 0; }
 .mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: balance; }  /* 折行两行均衡,避免第二行只剩单字 */
 .mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
+.mr-sub-seg { display: inline-block; max-width: 100%; }   /* 段内(日期时间/地点)不拆,只在「·」处折行 */
+.mr-sub-seg i { font-style: normal; }
 .mr-status { flex-shrink: 0; font-size: 28rpx; font-weight: 650; }
 .mr-status.done { color: #2E7D50; }
 .mr-status.current { color: #345F91; }
@@ -4512,6 +4521,7 @@ onActivated(show)
 .rnh-time.none { color: #9A3412; }
 .rnh-place { margin-top: 10rpx; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
   -webkit-line-clamp: 2; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid); }
+.rnh-place-name { display: inline-block; max-width: 100%; }  /* 地名整体折行,不从中间掰断 */
 .rec-notice-primary { display: block; width: 60%; height: 82rpx; margin: 29rpx auto 0;
   border: 2rpx solid #D7AD75; border-radius: 18rpx; background: #FFF9F0;
   color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }
