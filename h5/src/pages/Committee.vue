@@ -4172,7 +4172,10 @@ onActivated(show)
 .ck-reception-actions .ck-reception-cta:active { background: #3E6F53; color: #fff; }
 .ck-reception-actions .ck-reception-cta i { margin-left: 3rpx; font-size: 27rpx; }
 .ck-reception-cta { background: #4C8062; box-shadow: 0 6rpx 14rpx rgba(76,128,98,.16); }
-.ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 34rpx; margin-top: -4rpx; }
+/* 分页/删除浮到卡片右上角(脱离文档流),让标题/副标题上提并在卡内纵向居中 */
+.ck-todo-head { position: absolute; top: 20rpx; right: 30rpx; z-index: 2; display: flex; align-items: center; }
+/* 业委会卡:左侧文字块纵向居中(与右侧「去补开」按钮对齐),不再被分页行压低 */
+.ck-todo.blue:not(.ck-todo-complete) { display: flex; flex-direction: column; justify-content: center; min-height: 150rpx; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
