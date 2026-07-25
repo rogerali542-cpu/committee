@@ -88,7 +88,7 @@
           </div>
         </div>
 
-        <!-- 通知人员：默认展开并全选，可直接调整名单 -->
+        <!-- 通知人员：默认收起(0725 用户定),头部有全选+计数;点头部展开调整名单 -->
         <div class="recipient-card">
           <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
             <span class="recipient-card-title">通知人员</span>
@@ -1036,8 +1036,8 @@ async function loadDetail() {
     if (uv === 'chair' && d.stage === 'preparing') {
       setStorage('meetingView:' + meetingId, 'notice')  // 记住"上次停在会议通知页"，供首页卡片按上次位置重进
       loadRecipients(false)
-      // 通知人员：还没产生通知记录→默认展开；已发过通知(有通知记录)→默认收起
-      recipientOpen.value = !((d.notificationLogs && d.notificationLogs.length) || d.notifiedAt)
+      // 通知人员一律默认收起(0725 用户定:页面拥挤)——头部常驻"全选+已选N/N人",不展开也能确认和全选
+      recipientOpen.value = false
     }
   } catch (e) {
     toast({ title: '加载失败', icon: 'none' })
