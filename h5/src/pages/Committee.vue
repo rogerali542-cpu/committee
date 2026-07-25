@@ -196,7 +196,8 @@
           </div>
           <template v-if="meetingRecordList.planned.length">
             <div class="mr-group-title mr-group-plan">后续计划</div>
-            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned" @click="row.onTap()">
+            <!-- 计划行整行不可点(0725 用户定,防误触"提前召开"),只有右侧按钮进入 -->
+            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
               <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
                 <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
               </div>
@@ -204,7 +205,7 @@
                 <div class="mr-row-title">{{ row.title }}</div>
                 <div class="mr-row-sub">{{ row.sub }}</div>
               </div>
-              <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+              <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
             </div>
           </template>
           <!-- 查看月历折叠行:与「已完成N场」同式并列收在列表尾部(0725 用户定,参照账单类App视图切换不占标题行) -->
@@ -4306,7 +4307,11 @@ onActivated(show)
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
 .mr-featured:active { background: #F0F5F8; }
-.mr-planned { min-height: 88rpx; padding: 12rpx 6rpx; gap: 16rpx; opacity: .78; }
+.mr-planned { min-height: 88rpx; padding: 12rpx 6rpx; gap: 16rpx; opacity: .78; cursor: default; }
+.mr-planned:active { background: transparent; }   /* 整行不可点,不给按压反馈 */
+/* 计划行右侧改真按钮:描边胶囊,比原纯文字「待排›」更大更明显(0725 用户定) */
+.mr-plan-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
+.mr-plan-btn:active { background: #EEF1F5; }
 .mr-planned .mr-badge { width: 78rpx; min-height: 70rpx; border-radius: 14rpx; }
 .mr-planned .mr-badge b { font-size: 25rpx; }
 .mr-planned .mr-badge span { font-size: 20rpx; }
