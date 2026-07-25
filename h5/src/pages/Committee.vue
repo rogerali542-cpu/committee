@@ -1753,7 +1753,8 @@ function toggleMeetingCalendar() {
   if (meetingCalendarOpen.value) {
     nextTick(() => {
       if (calendarPanelEl.value && calendarPanelEl.value.scrollIntoView) {
-        calendarPanelEl.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        // block:'start' 顶到视口上沿(留 scroll-margin 缓冲):nearest 只滚"刚好露头",长内容仍看不全
+        calendarPanelEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     })
   }
@@ -4378,7 +4379,7 @@ onActivated(show)
 .mr-fold-chev.open { transform: rotate(180deg); }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
 /* 弹窗样式(mr-cal-mask/sheet/close)已删(0725):月历改原地展开 .mr-calendar-panel */
-.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 22rpx 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; }
+.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 22rpx 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; scroll-margin-top: 20rpx; }
 /* 弹层内「已完成」清单:宫格下方的档案区,与宫格用分隔线区隔 */
 .mr-cal-done-title { margin-top: 26rpx; padding-top: 22rpx; border-top: 2rpx solid #EEF1F4; color: #53657A; font-size: 27rpx; font-weight: 700; }
 .mr-cal-done-row { padding-left: 2rpx; padding-right: 2rpx; }
