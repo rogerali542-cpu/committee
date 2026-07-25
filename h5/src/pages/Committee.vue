@@ -1683,8 +1683,8 @@ const meetingRecordList = computed(() => {
         key: 'mr-draft-' + r.period, done: false,
         badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true,
         title: draftTitle.value,
-        // 副标题一行放下、状态词收短(0725):原「会议通知尚未完成，点击继续编辑」+「通知编辑中」把中列挤成四行,卡片虚高
-        sub: '通知尚未完成，点击继续',
+        // 副标题从短、状态从简(0725):状态已有右侧「编辑中」,这里不重复;过长会把中列挤成四行,卡片虚高
+        sub: '点击继续编辑通知',
         statusLabel: '编辑中', statusClass: 'current',
         onTap: () => continueDraft()
       }
@@ -4329,7 +4329,7 @@ onActivated(show)
 .mr-badge.upcoming { background: #F0F2F5; color: #707C8B; }
 .mr-info { flex: 1; min-width: 0; }
 .mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: balance; }  /* 折行两行均衡,避免第二行只剩单字 */
-.mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; }
+.mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
 .mr-status { flex-shrink: 0; font-size: 28rpx; font-weight: 650; }
 .mr-status.done { color: #2E7D50; }
 .mr-status.current { color: #345F91; }
