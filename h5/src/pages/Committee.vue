@@ -196,6 +196,8 @@
             </div>
             <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
           </div>
+          <!-- 发起非例会会议:动作跟动作区(待处理卡)挨着,收纳行(计划/一览)沉底(0725 用户定) -->
+          <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
           <!-- 后续计划默认收起(0725 用户定):与「已完成N场」同款折叠行,点开才展 -->
           <template v-if="meetingRecordList.planned.length">
             <div class="mr-fold" @click="planListOpen = !planListOpen">
@@ -253,8 +255,6 @@
               </div>
             </template>
           </div>
-          <!-- 发起非例会会议:收进卡尾,紧跟收纳行(0725 用户定);虚线次要样式不变 -->
-          <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
         </div>
 
         <!-- 接待/培训 12 月履职宫格：一眼看每月该类状态；点月下钻看当月清单（数据同源 monthCells） -->
