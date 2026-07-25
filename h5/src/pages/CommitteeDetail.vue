@@ -1834,7 +1834,7 @@ async function removeMaterial(item) {
 .del-meeting-link { color:#ccc; font-size:12px; border:1px solid #e8e8e8; border-radius:6px; padding:3px 10px; cursor:pointer; }
 .del-meeting-link:active { background:#f5f5f5; }
 /* overflow-x:hidden 兜底（0723）：任何子元素越界都不再把页面撑宽导致真机横向晃动 */
-.detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 280px; display:flex; flex-direction:column; box-sizing:border-box; overflow-x:hidden; }
+.detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 40px; display:flex; flex-direction:column; box-sizing:border-box; overflow-x:hidden; }
 .detail-body { flex:1 0 auto; }
 
 /* Task banner */
@@ -2239,8 +2239,9 @@ async function removeMaterial(item) {
 .action-row.secondary { display:flex; gap:10px; margin-top:4px; }
 
 /* 准备阶段底部固定主操作 */
-.prep-footer { position:fixed; bottom:0; left:0; right:0; z-index:100; box-sizing:border-box; background:#fff; border-top:1px solid #ECECEF; border-radius:18px 18px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,0.10); padding:12px 16px calc(12px + env(safe-area-inset-bottom)); }
-.prep-footer.after-send-footer { background:transparent; border-top:none; border-radius:0; box-shadow:none; padding:0 16px calc(12px + env(safe-area-inset-bottom)); pointer-events:none; }
+/* 0725 用户定:取消固定悬浮(会压住通知记录等内容),改随文档流,滚到底部才出现 */
+.prep-footer { box-sizing:border-box; background:transparent; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
+.prep-footer.after-send-footer { padding:4px 16px calc(16px + env(safe-area-inset-bottom)); }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
 /* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
 .pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; }
@@ -2250,7 +2251,7 @@ async function removeMaterial(item) {
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
 .pf-btn-row .pf-btn { flex:1; min-width:0; height:72rpx; font-size:27rpx; background: var(--c-primary-dark); }
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
-.pf-after-send { display:flex; flex-direction:column; gap:14rpx; pointer-events:auto; }
+.pf-after-send { display:flex; flex-direction:column; gap:14rpx; }
 .after-send-footer .pf-btn-row { padding:0 20rpx; }
 .pf-btn-start-top { align-self:center; width:60%; height:78rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
 .pf-btn-start-top:active { background:#0B5F59; animation:none; }
@@ -2290,13 +2291,13 @@ async function removeMaterial(item) {
 .recipient-card { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; overflow:hidden; }
 .recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:9rpx 18rpx; min-height:96rpx; box-sizing:border-box; }
 .recipient-card-head:active { background:#FAFAFA; }
-.recipient-card-title { display:block; font-size:34rpx; color:#1f2329; font-weight:700; line-height:1.25; }
+.recipient-card-title { display:block; font-size:30rpx; color:#1f2329; font-weight:700; line-height:1.25; }  /* 0725 内容变多,整块字号降一档 */
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
 .recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:14rpx; }
 /* 全选控件挪进头部（替代原摘要）：小圆勾 + 「全选」 + 已选计数，点它切换全选/全不选 */
 .rcp-head-all { display:flex; align-items:center; gap:8rpx; padding:0 10rpx; min-height:80rpx; box-sizing:border-box; }
-.rcp-head-all .rcp-check { width:42rpx; height:42rpx; border-width:3rpx; font-size:26rpx; }
-.rcp-head-all-label { font-size:32rpx; color:#A85800; font-weight:700; white-space:nowrap; }
+.rcp-head-all .rcp-check { width:38rpx; height:38rpx; border-width:3rpx; font-size:24rpx; }
+.rcp-head-all-label { font-size:28rpx; color:#A85800; font-weight:700; white-space:nowrap; }
 .rcp-head-count { font-size:26rpx; color:#8A9099; white-space:nowrap; }
 .recipient-card-arrow { color:#A4A9B0; font-size:32rpx; line-height:1; transform:rotate(90deg); transition:transform .18s ease; }
 .recipient-card-arrow.open { transform:rotate(-90deg); }
@@ -2332,15 +2333,15 @@ async function removeMaterial(item) {
 /* 通知记录：与通知人员同族的白卡容器（0723 修：原先无容器，内容裸贴屏幕左右边缘） */
 .sr-section { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; padding:20rpx 28rpx 22rpx; box-sizing:border-box; }
 .sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:0 0 12rpx; }
-.sr-heading { font-size:32rpx; font-weight:700; color:#1f2329; }
+.sr-heading { font-size:30rpx; font-weight:700; color:#1f2329; }
 /* 清空通知记录：测试用弱化小按钮（灰描边胶囊） */
 .sr-clear-btn { flex-shrink:0; font-size:25rpx; color:#8A9099; padding:5rpx 18rpx; border:2rpx solid #E3E5E9; border-radius:999rpx; line-height:1.3; }
 .sr-clear-btn:active { background:#F2F3F5; color:#6A7480; }
 /* 通知记录：去底色，纯绿色文字、加大一号并加粗 */
 .send-record { display:flex; align-items:center; gap:12rpx; margin:0; padding:8rpx 2rpx; }
 .send-record + .send-record { margin-top:20rpx; }   /* 多条记录之间间隔加大约 10px */
-.sr-ic { color:#2E9E5B; font-weight:700; font-size:32rpx; }
-.sr-text { font-size:32rpx; color:#2E7D46; font-weight:700; }
+.sr-ic { color:#2E9E5B; font-weight:700; font-size:27rpx; }
+.sr-text { font-size:27rpx; color:#2E7D46; font-weight:600; }
 .forward-sheet { position:relative; width:100%; max-width:480px; margin:0 auto; background:#fff; border-radius:24rpx 24rpx 0 0; padding:30rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-sizing:border-box; }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
 .fw-hint { font-size:26rpx; color:#888; text-align:center; margin:10rpx 0 20rpx; line-height:1.5; }
