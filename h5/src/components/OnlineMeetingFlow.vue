@@ -1,9 +1,11 @@
 <template>
   <div class="omf">
     <div class="omf-head">
-      <div>
-        <span class="omf-kicker">线上会议</span>
-        <h2>{{ detail.title || '本次会议' }}</h2>
+      <div class="omf-head-main">
+        <div class="omf-title-row">
+          <h2>{{ detail.title || '本次会议' }}</h2>
+          <span class="omf-method-tag">线上会议</span>
+        </div>
         <!-- 签到名单不再展示(0725 用户定:简单点)——只报本人状态,进度看各题「已填 X/Y 人」 -->
         <div v-if="!cardMode && selfPresent && !meetingEnded" class="signed-line">
           <span class="signed-tag">✓ 已签到</span>
@@ -398,7 +400,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
+.omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-head-main{min-width:0;flex:1}
+.omf-title-row{display:flex;align-items:center;gap:16rpx}.omf-title-row h2{margin:0;font-size:38rpx;min-width:0}
+.omf-method-tag{flex:none;padding:5rpx 16rpx;border-radius:999rpx;background:#EAF2FF;color:#2676D9;font-size:23rpx;font-weight:600}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
 /* 流程链:样式对齐线下会议阶段条 .lp-flow(紧凑版尺寸) */
 .omf-flow{display:flex;align-items:center;padding:10rpx 24rpx 46rpx;margin:4rpx 8rpx 6rpx}
 .omf-flow-step{position:relative;flex-shrink:0}
