@@ -28,7 +28,7 @@
       <span class="omf-flow-line" :class="{ done: flowStep > 2 }"></span>
       <div class="omf-flow-step" :class="stepClass(3)">
         <span class="omf-flow-dot"><template v-if="flowStep > 3">✓</template><template v-else>3</template></span>
-        <span class="omf-flow-label">表决登记</span>
+        <span class="omf-flow-label">议题处理</span>
       </div>
       <span class="omf-flow-line" :class="{ done: flowStep > 3 }"></span>
       <div class="omf-flow-step" :class="stepClass(4)">
@@ -85,7 +85,7 @@
     <template v-else-if="view === 'main'">
       <section v-if="!meetingEnded" class="omf-card wx-hint">
         <div class="wx-hint-title">会议在微信工作群进行</div>
-        <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，进入表决登记填写您的表决结果和意见。</p>
+        <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，进入议题处理填写您的表决结果和意见。</p>
       </section>
 
       <!-- 参会名单:与线下会议签到页同款折叠条(0725 用户定:简化保留),默认收起 -->
@@ -103,19 +103,18 @@
         </div>
       </div>
 
-      <!-- 去表决入口 -->
+      <!-- 议题处理入口 -->
       <section class="omf-card vote-entry">
-        <h3>表决结果与意见登记</h3>
+        <h3>议题处理</h3>
         <p class="omf-desc">{{ meetingEnded ? '会议已结束，表决结果已定稿。' : '开完会后，请各位委员在此填写自己的表决结果和意见。' }}</p>
-        <button class="omf-primary" @click="view = 'vote'">{{ meetingEnded ? '查看表决结果' : '去填写表决与意见' }}</button>
+        <button class="omf-primary" @click="view = 'vote'">{{ meetingEnded ? '查看表决结果' : '进入议题处理' }}</button>
       </section>
     </template>
 
     <!-- ③ 表决登记页:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
     <template v-else>
       <section class="omf-card">
-        <h3>{{ meetingEnded ? '议题表决结果' : '表决结果与意见登记' }}</h3>
-        <p v-if="!meetingEnded" class="omf-desc">开完会后，请各位委员在下方填写自己的表决结果，并可补充书面意见。</p>
+        <h3>{{ meetingEnded ? '议题表决结果' : '议题处理' }}</h3>
         <div v-for="(topic, index) in topics" :key="topic.id" class="topic-block">
           <div class="topic-form-head">
             <span class="topic-no">{{ index + 1 }}</span>
@@ -141,15 +140,11 @@
                 <button type="button" class="vote-opt no" :class="{ on: isPicked(topic, 'against') }" :disabled="busy" @click="pickVote(topic, 'against')">反对</button>
                 <button type="button" class="vote-opt ab" :class="{ on: isPicked(topic, 'abstain') }" :disabled="busy" @click="pickVote(topic, 'abstain')">弃权</button>
               </div>
-              <div v-if="pendingVotes[topic.id] || changeVoteOpen[topic.id]" class="vote-actions">
-                <button v-if="pendingVotes[topic.id]" type="button" class="vote-submit" :disabled="busy" @click="submitVote(topic)">
-                  {{ busy ? '提交中…' : '确认提交' }}
-                </button>
-                <button type="button" class="vote-cancel" :disabled="busy" @click="cancelVoteChange(topic)">取消</button>
-              </div>
+              <button v-if="pendingVotes[topic.id]" type="button" class="vote-submit" :disabled="busy" @click="submitVote(topic)">
+                {{ busy ? '提交中…' : '确认提交' }}
+              </button>
             </template>
             <div class="vote-progress">
-              <span>已填 {{ topic.voted || 0 }}/{{ presentCount }} 人</span>
               <template v-if="voteCollapsed(topic)">
                 <span class="voted-tag">✓ 已投：{{ myVoteLabel(topic) }}</span>
                 <button type="button" class="mini-act" :disabled="busy" @click="changeVoteOpen[topic.id] = true">改票</button>
@@ -348,13 +343,33 @@ function isPicked(topic, val) {
     ? String(topic.mySelectedId) === String(val)
     : topic.myVote === val
 }
-function pickVote(topic, choice, option) {
+async function pickVote(topic, choice, option) {
   const val = option ? option.id : choice
-  // 点已投的同一项且没有待提交的新选择:不动(不算改票)
+  const label = option ? option.label : (choice === 'for_vote' ? '赞成' : choice === 'against' ? '反对' : '弃权')
+  // 改票模式(0725 用户定):点选项直接弹确认,不走待提交按钮;点原选项/取消=不改,收起
+  if (changeVoteOpen[topic.id] && hasMyVote(topic)) {
+    const curLabel = myVoteLabel(topic)
+    if (isPicked(topic, val)) { changeVoteOpen[topic.id] = false; return }
+    const res = await showModal({
+      title: '确认改票',
+      content: '把您的表决从「' + curLabel + '」改为「' + label + '」吗？',
+      confirmText: '确认修改', cancelText: '不改了'
+    })
+    changeVoteOpen[topic.id] = false
+    if (!res.confirm) return
+    busy.value = true
+    try {
+      await api.committeeVote(props.meetingId, topic.id, option ? null : choice, option ? option.id : null)
+      await refreshLive()
+      toast({ title: '已改票', icon: 'success' })
+    } catch (e) {
+      toast({ title: e.message || '改票失败', icon: 'none' })
+    } finally { busy.value = false }
+    return
+  }
+  // 首次投票:先选后交(与线下一致),点「确认提交」才落库
   if (isPicked(topic, val) && !pendingVotes[topic.id]) return
-  pendingVotes[topic.id] = option
-    ? { selectedId: option.id, label: option.label }
-    : { choice, label: choice === 'for_vote' ? '赞成' : choice === 'against' ? '反对' : '弃权' }
+  pendingVotes[topic.id] = option ? { selectedId: option.id, label } : { choice, label }
 }
 async function submitVote(topic) {
   const p = pendingVotes[topic.id]
@@ -369,11 +384,6 @@ async function submitVote(topic) {
   } catch (e) {
     toast({ title: e.message || '投票失败', icon: 'none' })
   } finally { busy.value = false }
-}
-// 取消改票/取消已选未提交:清掉待提交选择,已投的收回到「已投:X」状态
-function cancelVoteChange(topic) {
-  delete pendingVotes[topic.id]
-  changeVoteOpen[topic.id] = false
 }
 async function retractMyVote(topic) {
   const res = await showModal({
@@ -600,11 +610,8 @@ onBeforeUnmount(() => {
 .op-row{display:flex;align-items:flex-start;gap:6rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
 .op-row b{flex:none;font-weight:600}.op-row span{min-width:0;white-space:pre-wrap}
 .op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
-.vote-actions{display:flex;gap:14rpx;margin:18rpx 0 0 52rpx}
-.vote-submit{flex:1;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
+.vote-submit{display:block;width:calc(100% - 52rpx);margin:18rpx 0 0 52rpx;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
 .vote-submit:disabled{opacity:.5}
-.vote-cancel{flex:none;padding:0 34rpx;height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#66788a;font-size:26rpx}
-.vote-cancel:active{background:#eef3f6}.vote-cancel:disabled{opacity:.5}
 .mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
 .mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
 .voted-tag.pending{color:#9a5d2e}
