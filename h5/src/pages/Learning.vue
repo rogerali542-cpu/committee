@@ -57,14 +57,10 @@
             </div>
             <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
           </div>
+          <!-- 卡片只留摘要(0725 用户定:原先组织/参加人数/材料五行全铺开,列表又长又乱);其余细节点进详情看 -->
           <div class="lc-meta">
             <span class="lc-meta-line">{{ item.date }} · {{ formatTime(item.time) }}</span>
             <span class="lc-meta-line">{{ item.location }}</span>
-            <span class="lc-meta-line">组织：{{ item.trainer || '未填写' }}</span>
-            <span class="lc-meta-line" v-if="item.attendees">
-              {{ item.stage === 'ended' ? '实际参加' : '计划参加' }}：{{ item.stage === 'ended' ? actualAttendanceCount(item) : attendeeCount(item.attendees) }}人
-            </span>
-            <span class="lc-meta-line" v-if="item.evidences && item.evidences.length">已上传{{ item.evidences.length }}份材料</span>
           </div>
           <div class="lc-arrow">›</div>
         </div>
@@ -72,10 +68,9 @@
       <div v-else class="empty-state"><span>{{ recordFilter === 'all' ? '暂无学习记录' : '当前没有需要显示的记录' }}</span></div>
     </div>
 
-    <!-- FAB 新建（主任/副主任/记录员可见） -->
-    <div class="fab" v-if="canCreate" @click="openCreate">
-      <span class="fab-icon">+</span>
-    </div>
+    <!-- 新建入口(0725 用户定):原右下 FAB 压卡片、又和「返回驾驶舱」浮球叠在一起;
+         改为列表尾部虚线入口,与业委会页「发起其他会议」同款 -->
+    <div v-if="canCreate" class="create-learning-entry" @click="openCreate">＋ 新增学习记录</div>
 
     <!-- 创建学习记录弹窗 -->
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
@@ -223,14 +218,7 @@ async function loadAll() {
   }
 }
 
-function attendeeCount(value) {
-  return String(value || '').split(/[,，、\s]+/).filter(Boolean).length;
-}
-
-function actualAttendanceCount(item) {
-  const signs = item && item.signIns ? Object.values(item.signIns) : [];
-  return signs.filter(Boolean).length;
-}
+// attendeeCount / actualAttendanceCount 已删(0725):卡片收敛成摘要后无调用方,人数看详情页
 
 function formatTime(value) {
   return String(value || '').slice(0, 5);
@@ -380,7 +368,7 @@ onUnmounted(() => {
 .lc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14rpx; }
 .lc-title-wrap { min-width: 0; flex: 1; padding-right: 12rpx; display: flex; flex-direction: column; gap: 10rpx; }
 .lc-type { align-self: flex-start; font-size: 23rpx; color: #5F6E82; background: #EEF2F7; border-radius: 999rpx; padding: 5rpx 13rpx; line-height: 1.2; }
-.lc-title { font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.35; }
+.lc-title { font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.35; text-wrap: balance; }  /* 折行均衡,第二行不剩单字 */
 .lc-pill { font-size: 28rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 12rpx; flex-shrink: 0; white-space: nowrap; }
 .lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }
@@ -403,8 +391,9 @@ onUnmounted(() => {
 
 /* FAB */
 /* bottom 抬到底部 TabBar(100rpx) 之上，否则「+」新建按钮会压在一级 tab 栏上 */
-.fab { position: fixed; bottom: calc(140rpx + env(safe-area-inset-bottom)); right: 36rpx; width: 104rpx; height: 104rpx; background: var(--c-primary-dark); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 22rpx rgba(255,168,0,0.45); z-index: 30; }
-.fab-icon { font-size: 56rpx; color: #fff; font-weight: 300; }
+/* FAB 已删(0725):压卡片、与「返回驾驶舱」浮球冲突;新建入口改列表尾部虚线条 */
+.create-learning-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
+.create-learning-entry:active { background: #EAEDF0; }
 
 /* 创建弹窗 */
 /* z-index 150 压过底部 TabBar(100)，否则新建弹窗底部会被一级 tab 栏骑住、按钮点不到 */
