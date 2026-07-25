@@ -49,7 +49,8 @@
     <!-- 学习卡片列表 -->
     <div class="learn-list">
       <template v-if="items.length">
-        <div class="learn-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
+        <!-- 手风琴(0725 用户定):默认全部收起只留标题行,点卡片摊开细节;进详情走展开区内的按钮 -->
+        <div class="learn-card" v-for="item in items" :key="item.id" :class="{ open: expandedId === item.id }" @click="toggleExpand(item)">
           <div class="lc-header">
             <div class="lc-title-wrap">
               <span class="lc-type">{{ learningTypeName(item) }}</span>
@@ -57,12 +58,19 @@
             </div>
             <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
           </div>
-          <!-- 卡片只留摘要(0725 用户定:原先组织/参加人数/材料五行全铺开,列表又长又乱);其余细节点进详情看 -->
-          <div class="lc-meta">
-            <span class="lc-meta-line">{{ item.date }} · {{ formatTime(item.time) }}</span>
-            <span class="lc-meta-line">{{ item.location }}</span>
-          </div>
-          <div class="lc-arrow">›</div>
+          <div class="lc-arrow" :class="{ open: expandedId === item.id }">⌄</div>
+          <template v-if="expandedId === item.id">
+            <div class="lc-meta">
+              <span class="lc-meta-line">{{ item.date }} · {{ formatTime(item.time) }}</span>
+              <span class="lc-meta-line">{{ item.location }}</span>
+              <span class="lc-meta-line">组织：{{ item.trainer || '未填写' }}</span>
+              <span class="lc-meta-line" v-if="item.attendees">
+                {{ item.stage === 'ended' ? '实际参加' : '计划参加' }}：{{ item.stage === 'ended' ? actualAttendanceCount(item) : attendeeCount(item.attendees) }}人
+              </span>
+              <span class="lc-meta-line" v-if="item.evidences && item.evidences.length">已上传{{ item.evidences.length }}份材料</span>
+            </div>
+            <button type="button" class="lc-detail-btn" @click.stop="openDetail(item)">查看详情 ›</button>
+          </template>
         </div>
       </template>
       <div v-else class="empty-state"><span>{{ recordFilter === 'all' ? '暂无学习记录' : '当前没有需要显示的记录' }}</span></div>
@@ -218,7 +226,20 @@ async function loadAll() {
   }
 }
 
-// attendeeCount / actualAttendanceCount 已删(0725):卡片收敛成摘要后无调用方,人数看详情页
+// 手风琴展开态(0725):默认全收起;记录当前展开的一条,再点或点别的卡收回
+const expandedId = ref(null)
+function toggleExpand(item) {
+  expandedId.value = expandedId.value === item.id ? null : item.id
+}
+
+function attendeeCount(value) {
+  return String(value || '').split(/[,，、\s]+/).filter(Boolean).length;
+}
+
+function actualAttendanceCount(item) {
+  const signs = item && item.signIns ? Object.values(item.signIns) : [];
+  return signs.filter(Boolean).length;
+}
 
 function formatTime(value) {
   return String(value || '').slice(0, 5);
@@ -373,14 +394,18 @@ onUnmounted(() => {
 .lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }
 .lc-pill.ended { background: #F0F0F0; color: #666; }
-.lc-meta { display: flex; flex-direction: column; gap: 8rpx; margin-bottom: 12rpx; }
+.lc-meta { display: flex; flex-direction: column; gap: 8rpx; margin: 16rpx 0 12rpx; padding-top: 18rpx; border-top: 2rpx solid #F1F3F5; }
+.lc-detail-btn { display: block; width: 56%; height: 72rpx; margin: 8rpx auto 2rpx; border: 2rpx solid #D8C9A8; border-radius: 16rpx; background: #FFFBF2; color: #8B5A1E; font-size: 28rpx; font-weight: 600; }
+.lc-detail-btn:active { background: #F7EFDD; }
 .lc-meta-line { font-size: 30rpx; color: #6b7785; display: flex; align-items: center; gap: 10rpx; }
 .lc-progress { display: flex; align-items: center; gap: 14rpx; margin: 8rpx 0 12rpx; }
 .lc-progress-bar { flex: 1; background: #f0f0f0; border-radius: 8rpx; height: 12rpx; overflow: hidden; }
 .lc-progress-fill { height: 100%; border-radius: 8rpx; background: #FFA800; }
 .lc-progress-text { font-size: 28rpx; color: #C77800; font-weight: 700; flex-shrink: 0; }
 .lc-footer { display: flex; justify-content: flex-end; gap: 14rpx; margin-top: 16rpx; border-top: 2rpx solid #f5f5f5; padding-top: 16rpx; }
-.lc-arrow { position: absolute; right: 24rpx; top: 50%; transform: translateY(-50%); font-size: 44rpx; color: #666; }
+/* 收起态指示:下箭头,展开后旋转;收起卡内容矮,固定在右上区域而非纵向居中 */
+.lc-arrow { position: absolute; right: 26rpx; top: 78rpx; font-size: 40rpx; color: #8A94A0; transition: transform .2s; }
+.lc-arrow.open { transform: rotate(180deg); }
 .lc-btn { min-height: 64rpx; line-height: 64rpx; padding: 0 30rpx; border-radius: 20rpx; border: none; font-size: 28rpx; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; }
 .lc-btn.start { background: var(--c-primary-dark); color: #fff; }
 .lc-btn.finish { background: #5DADE2; color: #fff; }
