@@ -3784,6 +3784,13 @@ function goHome() {
 
 // 顶栏左上返回：录音步(step2)回签到页；签到页不再回到「会议进行中」中间页，直接回首页。
 async function onNavBack() {
+  // 线上会议没有签到/录音步骤机，返回=离开会议页回首页。
+  // 不能回详情页：会议进行中详情页会自动弹回本页，形成循环。
+  if (isOnlineMeeting.value) {
+    redirectTo('/main')
+    setTimeout(() => { if (document.querySelector('.live-page')) window.location.replace('/main') }, 500)
+    return
+  }
   // 议题处理页的返回键只退回录音页，不离开会议，也不改变正在进行的录音。
   if (currentStep.value === 2 && meetingPhase.value === 'voting') {
     returnToRecordingPage()
