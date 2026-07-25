@@ -43,20 +43,19 @@
             <div class="nc-copy-note">请各位委员准时参加。</div>
             <div class="nc-copy-sign">业主委员会</div>
           </div>
+          <!-- 同级低频操作统一一排等宽同款(0725 用户定,参照iOS/微信卡片操作区):
+               危险操作(取消会议)红字区分;重大事项时第三枚「导出业主公告」入列,说明小字在按钮组下方 -->
           <div class="prep-meeting-actions">
-            <button type="button" class="prep-cancel-light" @click="removeMeeting">取消会议</button>
-            <button type="button" class="method-convert-trigger" @click="openMethodConversion">
+            <button type="button" class="pma-btn danger" @click="removeMeeting">取消会议</button>
+            <button type="button" class="pma-btn" @click="openMethodConversion">
               {{ detail.meetingMethod === 'online' ? '转为线下会议' : '转为线上会议' }}
             </button>
-          </div>
-          <!-- 会前公告（0723，《指导规则》第39条）：向全体业主公告，打印张贴公示栏。
-               0723 用户定：仅发起时勾了「含重大事项」的会议显示；显示时再淡化、宽度 50% -->
-          <div v-if="detail.record && detail.record.hasMajorIssue" class="pre-notice-entry">
-            <button type="button" class="pre-notice-btn" :disabled="exportingPreNotice" @click="exportPreNotice">
+            <button v-if="detail.record && detail.record.hasMajorIssue" type="button" class="pma-btn"
+                    :disabled="exportingPreNotice" @click="exportPreNotice">
               {{ exportingPreNotice ? '正在生成…' : '导出业主公告' }}
             </button>
-            <div class="pre-notice-hint">重大事项按规定应提前 7 天张贴，告知业主会议时间和议程</div>
           </div>
+          <div v-if="detail.record && detail.record.hasMajorIssue" class="pre-notice-hint">重大事项按规定应提前 7 天张贴，告知业主会议时间和议程</div>
           <div v-if="methodConvertOpen" class="method-convert-panel">
             <div class="method-convert-title">
               {{ methodConvertForm.meetingMethod === 'online' ? '选择线上平台' : '选择会议地点' }}
@@ -2303,18 +2302,15 @@ async function removeMaterial(item) {
 .recipient-card-arrow.open { transform:rotate(-90deg); }
 .page-rcp-list { margin:0; max-height:329rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
 .page-rcp-item { min-height:76rpx; box-sizing:border-box; padding:14rpx 22rpx; }
-.prep-meeting-actions { width:64%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:28rpx; margin:2rpx auto 14rpx; padding-top:14rpx; border-top:1px solid #EEF0F2; }
-.method-convert-trigger { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #A7C4DD; border-radius:12rpx; background:#EAF3FB; color:#2F5678; font-size:26rpx; font-weight:600; box-shadow:none; }
-.method-convert-trigger:active { background:#DCEBF7; }
-.prep-cancel-light { flex:1; min-width:0; height:58rpx; padding:0 10rpx; border:2rpx solid #CBD0D6; border-radius:12rpx; background:#F1F3F5; color:#5C6672; font-size:26rpx; font-weight:600; }
-.prep-cancel-light:active { background:#E7EAED; color:#3a424b; }
-/* 会前公告入口：通知卡内独立一行，向业主公告用（与给委员的通知区分） */
-/* 会前公告入口：与「取消会议/转线上」同宽档(64%)的描边次按钮，不抢版面 */
-.pre-notice-entry { padding:0 12px 12px; display:flex; flex-direction:column; align-items:center; }
-.pre-notice-btn { width:50%; height:64rpx; border:2rpx solid #C9D8E5; border-radius:12rpx; background:#fff; color:#5A7690; font-size:26rpx; font-weight:500; }
-.pre-notice-btn:active { background:#DCEBF7; }
-.pre-notice-btn:disabled { opacity:.6; }
-.pre-notice-hint { margin-top:8rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
+/* 操作区(0725 用户定):等宽等高同款一排,危险项红字;参照 iOS/微信卡片操作区 */
+.prep-meeting-actions { box-sizing:border-box; display:flex; align-items:center; gap:16rpx; margin:2rpx 24rpx 12rpx; padding-top:16rpx; border-top:1px solid #EEF0F2; }
+.pma-btn { flex:1; min-width:0; height:64rpx; padding:0 8rpx; border:2rpx solid #CBD4DC; border-radius:12rpx; background:#fff; color:#44536A; font-size:26rpx; font-weight:600; white-space:nowrap; }
+.pma-btn:active { background:#F2F5F8; }
+.pma-btn:disabled { opacity:.6; }
+.pma-btn.danger { color:#B0463A; border-color:#DEB4AE; }
+.pma-btn.danger:active { background:#FBF0EE; }
+/* 会前公告并入操作排(0725);说明小字独立在按钮组下方 */
+.pre-notice-hint { margin:0 24rpx 14rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
 .method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
 .method-convert-title { margin-bottom:12rpx; color:#4B5563; font-size:24rpx; }
 .method-convert-select, .method-convert-input { width:100%; box-sizing:border-box; height:72rpx; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; padding:0 18rpx; color:#263746; font-size:27rpx; }
