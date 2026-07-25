@@ -546,11 +546,11 @@ async function endMeeting() {
   const voteTopics = topics.filter(t => t.voteRequired)
   const incomplete = voteTopics.filter(t => (Number(t.voted) || 0) < presentCount.value)
   const warn = incomplete.length
-    ? '还有 ' + incomplete.length + ' 个表决题未收齐全部委员的填报（未填的不计入票数）。'
-    : '各议题表决已收齐。'
+    ? '还有 ' + incomplete.length + ' 题未收齐（未填的不计票）。'
+    : ''
   const res = await showModal({
     title: '结束线上会议',
-    content: warn + '结束后表决即定稿、揭晓票数，随后进入材料整理。确定结束会议吗？',
+    content: warn + '结束后表决定稿、进入材料整理。确定结束？',
     confirmText: '结束会议',
     cancelText: '再等等'
   })
