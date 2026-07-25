@@ -21,7 +21,7 @@
       <span class="omf-flow-line" :class="{ done: flowStep > 1 }"></span>
       <div class="omf-flow-step" :class="stepClass(2)">
         <span class="omf-flow-dot"><template v-if="flowStep > 2">✓</template><template v-else>2</template></span>
-        <span class="omf-flow-label">微信群开会</span>
+        <span class="omf-flow-label">线上会议</span>
       </div>
       <span class="omf-flow-line" :class="{ done: flowStep > 2 }"></span>
       <div class="omf-flow-step" :class="stepClass(3)">
