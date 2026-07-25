@@ -230,7 +230,7 @@ const props = defineProps({
   meetingId: { type: [String, Number], required: true },
   isChair: { type: Boolean, default: false }
 })
-const emit = defineEmits(['reload'])
+const emit = defineEmits(['reload', 'end-review'])
 
 const busy = ref(false)
 const rosterOpen = ref(false)
@@ -557,15 +557,14 @@ async function endMeeting() {
   if (!res.confirm) return
   busy.value = true
   try {
-    // 逐题定稿:冻结投票并揭晓票数,再按最终票数落结果
+    // 逐题定稿:冻结投票并揭晓票数,再按最终票数落结果(会议保持 ongoing,以便会后整理页上传材料)
     for (const t of voteTopics) {
       if (!t.voteClosed) await api.committeeCloseVote(props.meetingId, t.id)
     }
     await refreshLive()
     await api.committeeQuickConfirm(props.meetingId, resultPayload())
-    await api.committeeAdvance(props.meetingId, 'end')
-    // replace:会议已结束,线上会议页不留在历史里,详情页返回=历史上一页时直接回来处
-    location.replace('/committee-detail?id=' + encodeURIComponent(props.meetingId) + '&from=online-meeting')
+    // 进入会后整理页(0725 用户定:线上也要拍照/上传材料/核对结果);advance('end') 推迟到"完成整理"时
+    emit('end-review')
   } catch (e) {
     toast({ title: e.message || '结束会议失败', icon: 'none' })
   } finally { busy.value = false }

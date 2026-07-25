@@ -12,19 +12,7 @@
     </PageNav>
 
     <OnlineMeetingFlow v-if="isOnlineMeeting" ref="onlineFlowEl" :detail="detail" :meeting-id="meetingId"
-                       :is-chair="isChair" @reload="loadDetail" />
-
-    <template v-else>
-    <!-- 方案C：录音开始后收成顶部状态条；暂停后在这里露出继续/上传 -->
-    <div v-if="currentStep === 2 && (recActive || isPaused)" class="top-rec-status" :class="{ paused: isPaused }">
-      <span class="top-rec-dot"></span>
-      <span class="top-rec-main">{{ isPaused ? '录音已暂停' : '录音中' }}</span>
-      <span class="top-rec-time">{{ timeText }}</span>
-    </div>
-
-    <!-- AI 工作中：一个遮罩连续覆盖 转写(asr) → 生成纪要(gen)；全部完成后显"已生成会议纪要"、点击进纪要页 -->
-    <!-- 遮罩只在「生成会议纪要」阶段弹；上传/转写在后台静默进行，靠录音卡下方行内提示 -->
-    <AiWorkingOverlay :active="generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
+                       :is-chair="isChair" @reload="loadDetail" @end-review="enterOnlineEndReview" />
 
     <!-- 结束会议后的会后整理决策页：把“生成纪要/直接结束”从弹窗提升为明确页面 -->
     <div v-if="endReviewVisible" class="end-review-page">
@@ -41,7 +29,7 @@
            全绿后点底部主按钮。替代原「三步引导框 + 平铺区块」的无主次布局 -->
       <div class="end-review-body">
         <div class="end-review-card">
-          <div class="er-lead">现场会议已结束。核对以下事项，然后生成会议纪要。</div>
+          <div class="er-lead">{{ isOnlineMeeting ? '线上会议已结束。核对表决结果、整理会议材料，然后生成会议纪要。' : '现场会议已结束。核对以下事项，然后生成会议纪要。' }}</div>
 
           <div class="er-item">
             <div class="er-item-head" @click="toggleErItem(1)">
@@ -65,7 +53,7 @@
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
               <button v-if="isChair && !observersText" class="er-act" @click="editObservers">登记列席</button>
-              <button class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
+              <button v-if="!isOnlineMeeting" class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
                 {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
               </button>
             </div>
@@ -87,13 +75,13 @@
                 <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
               </div>
             </div>
-            <div v-if="pendingTopicCount" class="er-item-actions">
+            <div v-if="pendingTopicCount && !isOnlineMeeting" class="er-item-actions">
               <button class="er-act warm" @click="continuePendingTopics">继续处理议题</button>
             </div>
             </template>
           </div>
 
-          <div class="er-item">
+          <div v-if="!isOnlineMeeting" class="er-item">
             <div class="er-item-head" @click="toggleErItem(3)">
               <span class="er-item-no">3</span>
               <span class="er-item-title">会议录音</span>
@@ -120,7 +108,7 @@
 
           <div class="er-item">
             <div class="er-item-head" @click="toggleErItem(4)">
-              <span class="er-item-no">4</span>
+              <span class="er-item-no">{{ isOnlineMeeting ? '3' : '4' }}</span>
               <span class="er-item-title">会议材料</span>
               <span class="er-item-state muted">{{ materials.length ? ('共 ' + materials.length + ' 份') : '暂无材料' }}</span>
               <span class="er-item-toggle">{{ erCollapsed[4] ? '▸' : '▾' }}</span>
@@ -155,6 +143,19 @@
         </div>
       </div>
     </div>
+
+
+    <template v-if="!isOnlineMeeting">
+    <!-- 方案C：录音开始后收成顶部状态条；暂停后在这里露出继续/上传 -->
+    <div v-if="currentStep === 2 && (recActive || isPaused)" class="top-rec-status" :class="{ paused: isPaused }">
+      <span class="top-rec-dot"></span>
+      <span class="top-rec-main">{{ isPaused ? '录音已暂停' : '录音中' }}</span>
+      <span class="top-rec-time">{{ timeText }}</span>
+    </div>
+
+    <!-- AI 工作中：一个遮罩连续覆盖 转写(asr) → 生成纪要(gen)；全部完成后显"已生成会议纪要"、点击进纪要页 -->
+    <!-- 遮罩只在「生成会议纪要」阶段弹；上传/转写在后台静默进行，靠录音卡下方行内提示 -->
+    <AiWorkingOverlay :active="generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
 
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
     <!-- 阶段条：签到 → 议题表决 → 会议材料；录音作为会议记录辅助工具常驻 -->
@@ -1194,6 +1195,8 @@ const bgMinutesGenerating = computed(() => aiTask.active && !!aiTask.targetPath 
 // 会中已不生成纪要：原「AI生成纪要」主按钮及 suppMinutes* 计算属性已移除，纪要一律会后在会议详情页生成
 const endReviewHint = computed(() => {
   if (minutesGenerated.value) return '会议纪要已经生成，可直接查看并继续编辑。'
+  // 线上会议无录音,结果已按各委员投票定稿,可直接生成纪要
+  if (isOnlineMeeting.value) return '表决结果已定稿，材料整理完可生成会议纪要。'
   if (canUpload.value) return '本次未上传的录音不会用于自动生成会议纪要。'
   if (uploading.value) return '录音正在上传，完成后会自动识别。'
   if (polling.value || extracting.value) return '录音正在后台识别，你可以停留在本页等待完成。'
@@ -1251,6 +1254,7 @@ const leavingToMinutes = ref(false) // 正在结束会议并跳纪要页的过�
 const endReviewPrimaryText = computed(() => {
   if (leavingToMinutes.value) return '正在生成会议纪要…'
   if (minutesGenerated.value) return '查看纪要'
+  if (isOnlineMeeting.value) return '生成会议纪要'
   if (uploading.value) return '上传中…'
   if (polling.value || extracting.value) return '识别中…'
   if (generated.value && hasSavedRecordings.value) return '生成会议纪要'
@@ -1259,6 +1263,8 @@ const endReviewPrimaryText = computed(() => {
 const endReviewPrimaryDisabled = computed(() => {
   if (minutesGenerated.value) return false
   if (ending.value || generatingMinutes.value) return true
+  // 线上会议无录音,结果已定稿,随时可生成纪要
+  if (isOnlineMeeting.value) return leavingToMinutes.value
   if (uploading.value || polling.value || extracting.value) return true
   return !(generated.value && hasSavedRecordings.value)
 })
@@ -3173,8 +3179,12 @@ const TEST_KEEP_MEETING_OPEN = true
 async function _doEndAndGo(navUrl) {
   ending.value = true
   try {
-    // 把最新(可能刚核对过的)结果再存一次，确保归档与展示一致
-    try { await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload()) } catch (ce) { /* ignore */ }
+    // 把最新(可能刚核对过的)结果再存一次，确保归档与展示一致。
+    // 线上会议跳过:结果由 OnlineMeetingFlow 按真实投票 quickConfirm 过了,这里 buildConfirmPayload
+    // 依赖录音提取的 presetTopics(线上为空),再 confirm 会用空 payload 覆盖掉正确结果。
+    if (!isOnlineMeeting.value) {
+      try { await api.committeeQuickConfirm(meetingId.value, buildConfirmPayload()) } catch (ce) { /* ignore */ }
+    }
     if (TEST_KEEP_MEETING_OPEN) {
       reviewCompleted.value = true // 整理已完成：首页卡片入口切「会议详情」
       persistQuickState() // 保留本地状态：回到本页仍停在会后整理，可继续查看
@@ -3255,6 +3265,13 @@ function openEndReview() {
   fieldMeetingEnded.value = true
   endReviewVisible.value = true
   persistQuickState()
+}
+
+// 线上会议结束(0725 用户定):OnlineMeetingFlow 已 closeVote+quickConfirm,这里刷新数据后进会后整理页。
+// 会议仍 ongoing(未 advance),以便整理页上传材料/拍照;advance('end') 推迟到「完成整理/生成纪要」。
+async function enterOnlineEndReview() {
+  try { await loadDetail() } catch (e) { /* 用已有数据进入,整理页轮询会补 */ }
+  openEndReview()
 }
 
 // 关闭会后整理页也要持久化：否则刷新后 restoreQuickState 会按旧存档把整理页又翻回来
@@ -3353,6 +3370,8 @@ function continuePendingTopics() {
 async function handleEndReviewPrimary() {
   if (!isChair.value) { toast({ title: '仅主任/副主任可操作', icon: 'none' }); return }
   if (minutesGenerated.value) { viewMinutes(); return }
+  // 线上会议:无录音识别环节,直接生成纪要
+  if (isOnlineMeeting.value) { await endAndGenerateMinutes(); return }
   if (uploading.value || polling.value || extracting.value) return
   if (!generated.value) { toast({ title: '录音识别完成后可生成纪要', icon: 'none' }); return }
   await endAndGenerateMinutes()
@@ -3419,6 +3438,8 @@ async function applyAttendance(a, opt) {
 }
 
 async function guardUnvotedBeforeEnd() {
+  // 线上会议:表决已在结束会议时逐题定稿(未填的按不计票),无需代录拦截
+  if (isOnlineMeeting.value) return true
   const t = findUnvotedVoteTopic()
   if (!t) return true
   const missing = (t.total || 0) - (t.voted || 0)
@@ -3434,6 +3455,8 @@ async function guardUnvotedBeforeEnd() {
 
 // 完成会议前的待办拦截：会议结束即锁票（方案A），还有待处理议题时先确认，免得再也补不了
 async function confirmDespitePendingTopics() {
+  // 线上会议:讨论在微信群完成,议题无"待处理"概念,不拦截
+  if (isOnlineMeeting.value) return true
   if (!pendingTopicCount.value) return true
   const res = await showModal({
     title: '',
@@ -3445,7 +3468,8 @@ async function confirmDespitePendingTopics() {
 }
 
 async function endAndGenerateMinutes() {
-  if (!generated.value) { toast({ title: '请先完成录音识别', icon: 'none' }); return }
+  // 线上会议无录音,跳过"录音识别"前置校验;线下仍需识别完成才能生成
+  if (!isOnlineMeeting.value && !generated.value) { toast({ title: '请先完成录音识别', icon: 'none' }); return }
   if (!(await guardUnvotedBeforeEnd())) return
   if (!(await confirmDespitePendingTopics())) return
   // 不提前置 minutesGenerated（纪要其实还没生成，是跳到纪要页才开始生成的）：
