@@ -1400,6 +1400,8 @@ const cockpitTodos = computed(() => {
       summaryLabel: '会议任务',
       daysUntil: null,
       onTap: () => {
+        // 委员点「等待通知」只弹说明框，人留在驾驶舱（不能先切甲再弹框，点完"知道了"人被丢在甲）
+        if (!isChair.value) { onPlanRow(currentRow); return }
         const fromPortal = homeLayout.value === 'portal'
         enterWorkArea()
         onPlanRow(currentRow)
@@ -1435,6 +1437,8 @@ const cockpitTodos = computed(() => {
       periodRow: f.periodRow || null,
       draft: !!f.draft,
       onTap: () => {
+        // 委员点期次类待办（临期/逾期）只弹说明框，留在驾驶舱；会议类动作照常进工作区
+        if (!isChair.value && f.periodRow) { if (f.onTap) f.onTap(); return }
         const fromPortal = homeLayout.value === 'portal'
         enterWorkArea()
         if (f.onTap) f.onTap()
@@ -1452,6 +1456,8 @@ const cockpitTodos = computed(() => {
       cta: isChair.value ? '去补开' : '等待通知',
       timeScope: 'recent', summaryLabel: '会议任务', daysUntil: null, periodRow: row,
       onTap: () => {
+        // 委员点「等待通知」只弹说明框，留在驾驶舱
+        if (!isChair.value) { onPlanRow(row); return }
         const fromPortal = homeLayout.value === 'portal'
         enterWorkArea()
         onPlanRow(row)
