@@ -1683,8 +1683,9 @@ const meetingRecordList = computed(() => {
         key: 'mr-draft-' + r.period, done: false,
         badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true,
         title: draftTitle.value,
-        sub: '会议通知尚未完成，点击继续编辑',
-        statusLabel: '通知编辑中', statusClass: 'current',
+        // 副标题一行放下、状态词收短(0725):原「会议通知尚未完成，点击继续编辑」+「通知编辑中」把中列挤成四行,卡片虚高
+        sub: '通知尚未完成，点击继续',
+        statusLabel: '编辑中', statusClass: 'current',
         onTap: () => continueDraft()
       }
     }
@@ -4301,7 +4302,7 @@ onActivated(show)
 .mr-row { display: flex; align-items: center; gap: 20rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
-.mr-featured { position: relative; margin: 0 0 24rpx; padding: 28rpx 24rpx 28rpx 30rpx; min-height: 154rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
+.mr-featured { position: relative; margin: 0 0 24rpx; padding: 22rpx 22rpx 22rpx 28rpx; min-height: 136rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
 .mr-featured:active { background: #F0F5F8; }
@@ -4319,6 +4320,9 @@ onActivated(show)
    参照主流日历/出行类App:区间不伪装成日期。定宽 132rpx 使各行标题左缘对齐(容得下「11-12月」)。 */
 .mr-badge.range, .mr-planned .mr-badge.range { width: 132rpx; min-height: 56rpx; padding: 6rpx 8rpx; border-radius: 999rpx; flex-direction: row; }
 .mr-badge.range b, .mr-planned .mr-badge.range b { font-size: 23rpx; letter-spacing: 0; }
+/* 待处理大卡里的期次胶囊稍放大,与 33rpx 标题的比例协调(后续计划小行仍用小号) */
+.mr-featured .mr-badge.range { min-height: 62rpx; }
+.mr-featured .mr-badge.range b { font-size: 25rpx; }
 .mr-badge.done { background: #EAF6EE; color: #2E7D50; }
 .mr-badge.current { background: #E6EEF7; color: #345F91; }
 .mr-badge.overdue { background: #FBE6E2; color: #B0463A; }
