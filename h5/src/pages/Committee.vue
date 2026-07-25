@@ -1133,7 +1133,8 @@ async function loadCockpitLearningTasks() {
     api.learningList('internal', null).catch(() => []),
     api.learningList('training', null).catch(() => [])
   ])
-  cockpitLearningTasks.value = [...(internal || []), ...(training || [])]
+  // Array.isArray 防御：接口异常返回对象时不至于让整页崩掉（学习任务缺失可接受，白屏不可接受）
+  cockpitLearningTasks.value = [...(Array.isArray(internal) ? internal : []), ...(Array.isArray(training) ? training : [])]
     .filter(item => item && item.stage !== 'ended')
 }
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
@@ -1373,10 +1374,15 @@ function daysFromToday(value) {
 const cockpitTodos = computed(() => {
   const items = []
   const f = homeFocus.value
+  // 草稿属于哪一期（标题「第N次」或日期推算）：该期的「待安排/去补开」卡由草稿卡（继续通知）代表，不重复出
+  const draftPeriod = hasDraft.value ? meetingPeriod(draft.value || {}, curYear) : 0
+  // 焦点卡（临期/逾期）已指向某一期时，该期不再另出「待安排/去补开」卡，避免同期双卡
+  const focusPeriod = f && f.periodRow ? Number(f.periodRow.period) : 0
   // 当前双月期是持续存在的履职要求，不能随着某条会议记录被删除而消失。
   // 未完成时始终给出安排入口；完成后保留一张轻量肯定卡，明确告诉用户本期已履职。
   const currentRow = thisYearPlan.value[curPeriod - 1]
-  if (currentRow && currentRow.status === 'current' && !currentRow.active) {
+  if (currentRow && currentRow.status === 'current' && !currentRow.active
+      && draftPeriod !== curPeriod && focusPeriod !== curPeriod) {
     items.push({
       key: 'committee-current-period',
       tag: '业委会',
@@ -1428,6 +1434,22 @@ const cockpitTodos = computed(() => {
         if (f.onTap) f.onTap()
         // 若该焦点动作是发起会议(onPlanRow→openNewMeeting 会置回 false 后由此置真),返回切回驾驶舱
         if (fromPortal && createVisible.value) createReturnPortal.value = true
+      } })
+  }
+  // 逾期补开是硬性履职待办，不能被单焦点的草稿/会议卡顶掉：每个逾期期次各出一张「去补开」。
+  // 焦点卡已是该期（无草稿时焦点=首个逾期）或草稿正是该期的补开会议时跳过，避免同期双卡。
+  for (const row of overduePeriodRows.value) {
+    const p = Number(row.period)
+    if (p === focusPeriod || p === draftPeriod) continue
+    items.push({ key: 'committee-overdue-' + p, tag: '业委会', tone: 'blue', level: 'urgent',
+      title: row.monthLabel + '例会逾期未开', sub: '例会是履职核心，请尽快补开',
+      cta: isChair.value ? '去补开' : '等待通知',
+      timeScope: 'recent', summaryLabel: '会议任务', daysUntil: null, periodRow: row,
+      onTap: () => {
+        const fromPortal = homeLayout.value === 'portal'
+        enterWorkArea()
+        onPlanRow(row)
+        if (fromPortal && createVisible.value) createReturnPortal.value = true   // 返回时切回驾驶舱
       } })
   }
   const pendingReceptions = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction)
@@ -1573,7 +1595,7 @@ const homeFocus = computed(() => {
   const urg = viewYear.value === curYear ? currentPeriodUrgency.value : null
   if (urg) return { level: 'urgent', kicker: '本期例会临期', title: '本期例会还没召开',
     sub: '距期限只剩 ' + urg.daysLeft + ' 天，请尽快安排会议', cta: isChair.value ? '去通知' : '等待通知',
-    onTap: () => onPlanRow(urg.row) }
+    periodRow: urg.row, onTap: () => onPlanRow(urg.row) }
   const od = overduePeriodRows.value[0]
   if (od) return { level: 'urgent', kicker: '例会逾期', title: od.monthLabel + '例会逾期未开',
     sub: '例会是履职核心，请尽快补开', cta: isChair.value ? '去补开' : '等待通知',
@@ -2050,6 +2072,9 @@ const roleView = ref({ title: '', intro: '' })
 const createVisible = ref(false)
 // 从驾驶舱(portal)点「去补开/去安排」进发起会议时置真：关闭模态返回时切回驾驶舱而非 tabs(甲)
 const createReturnPortal = ref(false)
+// 「去安排/去补开」进来时自动预填的「第N次例会」标题快照：用户只看一眼没填任何东西就返回，
+// 预填标题不算用户输入，不生成草稿（否则待办区凭空多出一张"继续通知"卡，还顶掉补开卡）
+const prefilledCreateTitle = ref('')
 const createForm = reactive({
   title: '',
   meetingDate: '',
@@ -2528,6 +2553,7 @@ async function openNewMeeting(period) {
   // 快照默认占位值：日期/时间/地点等于这些默认时视为"未填"，不参与冲突判定，可被识别值直接填入
   createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
   suggestedTitle.value = ''
+  prefilledCreateTitle.value = ''
   pendingMaterials.value = []
   scanBusy.value = ''
   lastScanTokens.value = 0
@@ -2535,6 +2561,7 @@ async function openNewMeeting(period) {
   // （不是 ghost 推荐——这是排定的例会，名称已确定；用户仍可点×清空改名）
   if (period >= 1) {
     createForm.title = curYear + '年第' + period + '次业委会例会'
+    prefilledCreateTitle.value = createForm.title
     nextTick(autoGrowTitle)
     return
   }
@@ -2615,6 +2642,13 @@ function draftHasContent(d) {
 function persistDraft() {
   const snap = snapshotDraft()
   if (!draftHasContent(snap)) return
+  // 标题还是进来时自动预填的「第N次例会」原样、且没加议题/材料 → 只是看了一眼，不算草稿
+  const titleUntouched = prefilledCreateTitle.value
+    && String(snap.title || '').trim() === prefilledCreateTitle.value
+  const nothingElse = !(snap.topics && snap.topics.length)
+    && !(snap.pendingMaterials && snap.pendingMaterials.length)
+    && !(snap.materialFiles && snap.materialFiles.length)
+  if (titleUntouched && nothingElse) return
   setStorage(DRAFT_KEY, snap)
   draft.value = snap
   toast({ title: '已保存草稿，可在首页继续', icon: 'none' })
@@ -2667,6 +2701,7 @@ async function continueDraft() {
   pendingMaterials.value = JSON.parse(JSON.stringify(d.pendingMaterials || []))
   materialFiles.value = JSON.parse(JSON.stringify(d.materialFiles || []))
   createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
+  prefilledCreateTitle.value = ''   // 草稿里的标题是用户已确认的内容，返回时照常续存
   scanBusy.value = ''
   lastScanTokens.value = 0
   // 标题推荐：还是给个下一次序号推荐（草稿已填标题时不显示 ghost）
