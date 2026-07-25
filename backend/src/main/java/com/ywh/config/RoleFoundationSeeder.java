@@ -69,6 +69,38 @@ public class RoleFoundationSeeder implements ApplicationRunner {
                     roleRepository.save(secretary);
                 });
 
+        // 演示秘书姓名规范化：与其他委员一致用真实姓名，不再用「职位+小名」。仅在仍叫「秘书小李」时改一次。
+        // （秘书小李只出现在角色定义里，不出现在任何会议材料正文，改名不影响材料一致性。）
+        roleRepository.findAll().stream()
+                .filter(r -> (r.getRole() == UserRole.业委会秘书 || r.getRole() == UserRole.记录员)
+                        && "秘书小李".equals(r.getRealName()))
+                .forEach(secretary -> {
+                    secretary.setRealName("周敏");
+                    roleRepository.save(secretary);
+                });
+
+        // 演示管理员账号：街道/区级先不细分，统一一个「管理员账号」（区级范围看得全）。
+        // 非具体某人，故用账号名而非姓名。只补不存在的账号，不覆盖已有真实配置。
+        User adminUser = userRepository.findByOpenid("demo-region-admin")
+                .orElseGet(() -> userRepository.save(User.builder()
+                        .openid("demo-region-admin")
+                        .nickName("管理员账号")
+                        .build()));
+        boolean adminRoleExists = roleRepository.findByUserId(adminUser.getId()).stream()
+                .anyMatch(r -> r.getRole() == UserRole.区级管理员);
+        if (!adminRoleExists) {
+            roleRepository.save(UserRoleEntity.builder()
+                    .user(adminUser)
+                    .community(fallbackCommunity)
+                    .role(UserRole.区级管理员)
+                    .realName("管理员账号")
+                    .enabled(true)
+                    .scopeLevel(ManagementScopeLevel.DISTRICT)
+                    .scopeRegionCode("310106")
+                    .scopeRegionName("上海市静安区")
+                    .build());
+        }
+
         // 隐藏技术管理员：只补不存在的账号，不进入 dev-roles。
         User technicalUser = userRepository.findByOpenid("internal-technical-admin")
                 .orElseGet(() -> userRepository.save(User.builder()

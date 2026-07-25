@@ -9,7 +9,7 @@
       <div v-for="r in internalRoles" :key="r.id" class="role-item" :class="{ disabled: r.enabled === false }" @click="doLogin(r)">
         <div class="role-avatar">{{ r.realName.slice(0, 1) }}</div>
         <div class="role-info">
-          <div class="role-name">{{ r.realName }} <span class="role-tag">{{ r.role }}</span></div>
+          <div class="role-name">{{ r.realName }} <span class="role-tag">{{ roleTag(r.role) }}</span></div>
           <div class="role-desc">{{ r.enabled === false ? '授权已被主任收回' : r.desc }}</div>
         </div>
         <div class="role-arrow">›</div>
@@ -32,8 +32,8 @@ const ROLE_DESC = {
   '副主任': '协助主任开展工作',
   '委员': '确认参会和参与表决',
   '业委会秘书': '经主任授权协助处理通知、材料和日常工作',
-  '街道管理员': '查看本街道业委会履职情况',
-  '区级管理员': '查看全区业委会履职情况'
+  '街道管理员': '查看业委会履职情况',
+  '区级管理员': '查看业委会履职情况'
 }
 // 兜底名单（后端连不上时可用）——正常情况下 onMounted 会用数据库 user_roles 覆盖，
 // 根治"前端写死名单与库脱节→材料里人名对不上"（0723 测试反馈#1）
@@ -45,7 +45,9 @@ const FALLBACK_ROLES = [
   { id: 5, realName: '刘海涛', role: '委员', desc: ROLE_DESC['委员'] },
   { id: 6, realName: '陈晓梅', role: '委员', desc: ROLE_DESC['委员'] },
   { id: 7, realName: '杨国华', role: '委员', desc: ROLE_DESC['委员'] },
-  { id: 8, realName: '秘书小李', role: '业委会秘书', desc: ROLE_DESC['业委会秘书'], enabled: true }
+  { id: 8, realName: '周敏', role: '业委会秘书', desc: ROLE_DESC['业委会秘书'], enabled: true },
+  // 管理员账号：街道/区级不细分,统一一个账号(区级范围,看得全);非具体某人,故用账号名
+  { id: 9, realName: '管理员账号', role: '区级管理员', desc: ROLE_DESC['区级管理员'], scopeLevel: 'DISTRICT', scopeRegionCode: '310106', scopeRegionName: '上海市静安区' }
 ]
 const internalRoles = ref(FALLBACK_ROLES)
 
@@ -65,6 +67,11 @@ onMounted(async () => {
     }
   } catch (e) { /* 后端未启动：用兜底名单，能进但材料人名可能对不上 */ }
 })
+
+// 管理员账号不细分街道/区级,角色标签统一显示「管理员」(其余角色照常显示)
+function roleTag(role) {
+  return (role === '街道管理员' || role === '区级管理员') ? '管理员' : role
+}
 
 function doLogin(r) {
   if (r.enabled === false) {
