@@ -127,21 +127,32 @@
             </div>
           </div>
 
-          <!-- 表决题·未定稿:本人填表决结果(可改);票数在主任结束会议后统一揭晓 -->
+          <!-- 表决题·未定稿:先选后交(与线下一致)——点选项仅选中,「确认提交」才落库;
+               已投后收起成「已投:X + 改票/撤回」,改票需再点确认提交 -->
           <template v-if="topic.voteRequired && !topic.voteClosed">
-            <div v-if="topic.decisionType === 'multi_choice'" class="vote-options">
-              <button v-for="option in topic.options" :key="option.id" type="button" class="vote-opt"
-                      :class="{ on: topic.mySelectedId === option.id }" :disabled="busy"
-                      @click="castVote(topic, null, option.id)">{{ option.label }}</button>
-            </div>
-            <div v-else class="vote-choice-row">
-              <button type="button" class="vote-opt yes" :class="{ on: topic.myVote === 'for_vote' }" :disabled="busy" @click="castVote(topic, 'for_vote')">赞成</button>
-              <button type="button" class="vote-opt no" :class="{ on: topic.myVote === 'against' }" :disabled="busy" @click="castVote(topic, 'against')">反对</button>
-              <button type="button" class="vote-opt ab" :class="{ on: topic.myVote === 'abstain' }" :disabled="busy" @click="castVote(topic, 'abstain')">弃权</button>
-            </div>
+            <template v-if="!voteCollapsed(topic)">
+              <div v-if="topic.decisionType === 'multi_choice'" class="vote-options">
+                <button v-for="option in topic.options" :key="option.id" type="button" class="vote-opt"
+                        :class="{ on: isPicked(topic, option.id) }" :disabled="busy"
+                        @click="pickVote(topic, null, option)">{{ option.label }}</button>
+              </div>
+              <div v-else class="vote-choice-row">
+                <button type="button" class="vote-opt yes" :class="{ on: isPicked(topic, 'for_vote') }" :disabled="busy" @click="pickVote(topic, 'for_vote')">赞成</button>
+                <button type="button" class="vote-opt no" :class="{ on: isPicked(topic, 'against') }" :disabled="busy" @click="pickVote(topic, 'against')">反对</button>
+                <button type="button" class="vote-opt ab" :class="{ on: isPicked(topic, 'abstain') }" :disabled="busy" @click="pickVote(topic, 'abstain')">弃权</button>
+              </div>
+              <button v-if="pendingVotes[topic.id]" type="button" class="vote-submit" :disabled="busy" @click="submitVote(topic)">
+                {{ busy ? '提交中…' : '确认提交' }}
+              </button>
+            </template>
             <div class="vote-progress">
               <span>已填 {{ topic.voted || 0 }}/{{ presentCount }} 人</span>
-              <span v-if="topic.myVote || topic.mySelectedId" class="voted-tag">已填，可修改</span>
+              <template v-if="voteCollapsed(topic)">
+                <span class="voted-tag">✓ 已投：{{ myVoteLabel(topic) }}</span>
+                <button type="button" class="mini-act" :disabled="busy" @click="changeVoteOpen[topic.id] = true">改票</button>
+                <button type="button" class="mini-act" :disabled="busy" @click="retractMyVote(topic)">撤回</button>
+              </template>
+              <span v-else-if="pendingVotes[topic.id]" class="voted-tag pending">已选「{{ pendingVotes[topic.id].label }}」，点确认提交生效</span>
             </div>
           </template>
 
@@ -165,7 +176,14 @@
           </div>
           <div v-if="!meetingEnded" class="op-input">
             <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充我的意见（可选）"></textarea>
-            <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
+            <div class="op-btn-row">
+              <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
+                      :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
+              <button v-else type="button" class="op-ai-btn"
+                      :disabled="aiBusyMap[topic.id]" @click="helpWriteOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 写作中…' : 'AI 帮写' }}</button>
+              <button v-if="polishUndoMap[topic.id] != null" type="button" class="mini-act" @click="undoPolish(topic)">还原</button>
+              <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
+            </div>
           </div>
         </div>
 
@@ -307,15 +325,117 @@ async function selfSignIn() {
   } finally { busy.value = false }
 }
 
-// 本人投票/改票(表决未揭晓前可改;后端 vote 为覆盖式更新)
-async function castVote(topic, choice, selectedId) {
+// ── 表决:先选后交(操作逻辑对齐线下 TopicSheet) ──
+// 点选项只是选中(pendingVotes),「确认提交」才调后端;已投后收起,「改票」重新展开、仍需确认提交
+const pendingVotes = reactive({})
+const changeVoteOpen = reactive({})
+function hasMyVote(topic) { return !!(topic.myVote || topic.mySelectedId != null) }
+function voteCollapsed(topic) { return hasMyVote(topic) && !changeVoteOpen[topic.id] && !pendingVotes[topic.id] }
+function myVoteLabel(topic) {
+  if (topic.decisionType === 'multi_choice') {
+    const opt = (topic.options || []).find(o => Number(o.id) === Number(topic.mySelectedId))
+    return opt ? opt.label : ''
+  }
+  return topic.myVote === 'for_vote' ? '赞成' : topic.myVote === 'against' ? '反对' : topic.myVote === 'abstain' ? '弃权' : ''
+}
+function isPicked(topic, val) {
+  const p = pendingVotes[topic.id]
+  if (p) return String(p.selectedId != null ? p.selectedId : p.choice) === String(val)
+  return topic.decisionType === 'multi_choice'
+    ? String(topic.mySelectedId) === String(val)
+    : topic.myVote === val
+}
+function pickVote(topic, choice, option) {
+  const val = option ? option.id : choice
+  // 点已投的同一项且没有待提交的新选择:不动(不算改票)
+  if (isPicked(topic, val) && !pendingVotes[topic.id]) return
+  pendingVotes[topic.id] = option
+    ? { selectedId: option.id, label: option.label }
+    : { choice, label: choice === 'for_vote' ? '赞成' : choice === 'against' ? '反对' : '弃权' }
+}
+async function submitVote(topic) {
+  const p = pendingVotes[topic.id]
+  if (!p) return
   busy.value = true
   try {
-    await api.committeeVote(props.meetingId, topic.id, choice, selectedId)
+    await api.committeeVote(props.meetingId, topic.id, p.choice || null, p.selectedId != null ? p.selectedId : null)
+    delete pendingVotes[topic.id]
+    changeVoteOpen[topic.id] = false
     await refreshLive()
+    toast({ title: '表决已提交', icon: 'success' })
   } catch (e) {
     toast({ title: e.message || '投票失败', icon: 'none' })
   } finally { busy.value = false }
+}
+async function retractMyVote(topic) {
+  const res = await showModal({
+    title: '撤回投票',
+    content: '撤回后本议题回到「未投」状态，您可以重新表决。确定撤回吗？',
+    confirmText: '撤回', cancelText: '取消'
+  })
+  if (!res.confirm) return
+  busy.value = true
+  try {
+    await api.committeeRetractVote(props.meetingId, topic.id)
+    delete pendingVotes[topic.id]
+    changeVoteOpen[topic.id] = false
+    await refreshLive()
+    toast({ title: '已撤回', icon: 'success' })
+  } catch (e) {
+    toast({ title: e.message || '撤回失败', icon: 'none' })
+  } finally { busy.value = false }
+}
+
+// ── 意见 AI 助手(操作逻辑对齐线下):草稿为空=AI帮写(已表决按表态代拟),有草稿=AI润色(可还原) ──
+const aiBusyMap = reactive({})
+const polishUndoMap = reactive({})
+function voteStanceSeed(topic) {
+  if (!topic.voteRequired || !hasMyVote(topic)) return ''
+  if (topic.decisionType === 'multi_choice') {
+    const label = myVoteLabel(topic)
+    return label ? ('我在这个议题上选择了「' + label + '」，请据此帮我写一段简短的表态发言。') : ''
+  }
+  if (topic.myVote === 'for_vote') return '我对这个议题投了赞成票，总体认同这个方案，支持通过。'
+  if (topic.myVote === 'against') return '我对这个议题投了反对票，对这个方案还有顾虑，暂不赞成。'
+  if (topic.myVote === 'abstain') return '我对这个议题投了弃权票，还想再多了解一些情况，暂不表态。'
+  return ''
+}
+async function helpWriteOpinion(topic) {
+  if (aiBusyMap[topic.id]) return
+  const seed = voteStanceSeed(topic)
+  if (!seed) {
+    toast({ title: '先在框里写几个字（或先表决），AI 再帮您成文', icon: 'none' })
+    return
+  }
+  aiBusyMap[topic.id] = true
+  try {
+    const res = await api.committeeOpinionAssist(props.meetingId, topic.id, 'draft', seed)
+    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
+    opinionDrafts[topic.id] = res.text
+    polishUndoMap[topic.id] = null
+    showModal({ title: '', content: '已按您的表决态度拟好，可修改', size: 'aicard', showCancel: false, confirmText: '查看' })
+  } catch (e) {
+    toast({ title: e.message || 'AI 助手开小差了，请重试', icon: 'none' })
+  } finally { aiBusyMap[topic.id] = false }
+}
+async function polishOpinion(topic) {
+  const text = String(opinionDrafts[topic.id] || '').trim()
+  if (!text || aiBusyMap[topic.id]) return
+  aiBusyMap[topic.id] = true
+  try {
+    const res = await api.committeeOpinionAssist(props.meetingId, topic.id, 'polish', text)
+    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
+    polishUndoMap[topic.id] = text
+    opinionDrafts[topic.id] = res.text
+    showModal({ title: '', content: '已润色，可继续修改', size: 'aicard', showCancel: false, confirmText: '查看' })
+  } catch (e) {
+    toast({ title: e.message || 'AI 助手开小差了，请重试', icon: 'none' })
+  } finally { aiBusyMap[topic.id] = false }
+}
+function undoPolish(topic) {
+  if (polishUndoMap[topic.id] == null) return
+  opinionDrafts[topic.id] = polishUndoMap[topic.id]
+  polishUndoMap[topic.id] = null
 }
 
 function resultCode(topic) {
@@ -472,9 +592,17 @@ onBeforeUnmount(() => {
 .op-row{display:flex;align-items:flex-start;gap:6rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
 .op-row b{flex:none;font-weight:600}.op-row span{min-width:0;white-space:pre-wrap}
 .op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
+.vote-submit{display:block;width:calc(100% - 52rpx);margin:18rpx 0 0 52rpx;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
+.vote-submit:disabled{opacity:.5}
+.mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
+.mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
+.voted-tag.pending{color:#9a5d2e}
+.op-btn-row{display:flex;align-items:center;gap:14rpx}
+.op-ai-btn{height:56rpx;padding:0 26rpx;border:2rpx solid #e0b98a;border-radius:12rpx;background:#fdf6ec;color:#9a5d2e;font-size:23rpx;font-weight:600}
+.op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
 .op-input{display:flex;flex-direction:column;gap:12rpx;margin:16rpx 0 0 52rpx}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
-.op-submit{align-self:flex-end;height:56rpx;padding:0 28rpx;border:2rpx solid #b9c8d1;border-radius:12rpx;background:#fff;color:#496474;font-size:23rpx;font-weight:600}
+.op-submit{margin-left:auto;height:56rpx;padding:0 28rpx;border:2rpx solid #b9c8d1;border-radius:12rpx;background:#fff;color:#496474;font-size:23rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
 .end-hint{margin-top:14rpx;text-align:center;color:#94a1ab;font-size:22rpx}
 .vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
