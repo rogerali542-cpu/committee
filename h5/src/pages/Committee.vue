@@ -218,8 +218,10 @@
           </template>
           <!-- 查看月历入口行在列表尾部;月历本体改弹层浮在页面中央(0725 用户定):
                原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
+          <!-- 档案抽屉(0725 用户定,方案A):月历与历史会议共用一个入口——两者都是"今年开过哪些会"的
+               低频回看视图;弹层=月历宫格(按时间索引)+已完成清单(按场次索引),原「已完成N场」折叠行删除 -->
           <div class="mr-fold" @click="meetingCalendarOpen = true">
-            <span>查看全年月历</span>
+            <span>全年月历 · 历史会议</span>
             <span class="mr-fold-chev">›</span>
           </div>
           <div v-if="meetingCalendarOpen" class="mr-cal-mask" @click.self="meetingCalendarOpen = false">
@@ -235,27 +237,22 @@
                   <span>{{ mc.label }}</span>
                 </button>
               </div>
+              <template v-if="meetingRecordList.done.length">
+                <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
+                <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row" @click="row.onTap()">
+                  <div class="mr-badge" :class="row.statusClass">
+                    <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+                  </div>
+                  <div class="mr-info">
+                    <div class="mr-row-title">{{ row.title }}</div>
+                    <div class="mr-row-sub">{{ row.sub }}</div>
+                  </div>
+                  <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+                </div>
+              </template>
               <button type="button" class="mr-calendar-close" @click="meetingCalendarOpen = false">关 闭</button>
             </div>
           </div>
-          <template v-if="meetingRecordList.done.length">
-            <div class="mr-fold" @click="recDoneOpen = !recDoneOpen">
-              <span>已完成 {{ meetingRecordList.done.length }} 场</span>
-              <span class="mr-fold-chev" :class="{ open: recDoneOpen }">▾</span>
-            </div>
-            <template v-if="recDoneOpen">
-              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done" @click="row.onTap()">
-                <div class="mr-badge" :class="row.statusClass">
-                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-                </div>
-                <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
-                  <div class="mr-row-sub">{{ row.sub }}</div>
-                </div>
-                <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
-              </div>
-            </template>
-          </template>
         </div>
 
         <!-- 接待/培训 12 月履职宫格：一眼看每月该类状态；点月下钻看当月清单（数据同源 monthCells） -->
@@ -1668,7 +1665,7 @@ const homeFocusItems = computed(() => {
 
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
-const recDoneOpen = ref(false)
+// recDoneOpen 已删(0725 方案A):已完成清单并入月历弹层,不再单独折叠
 const planListOpen = ref(false)   // 后续计划折叠,默认收起(0725 用户定)
 const meetingCalendarOpen = ref(false)
 const meetingRecordList = computed(() => {
@@ -1715,7 +1712,8 @@ const meetingRecordList = computed(() => {
         title: held.title || ('第' + r.period + '次业委会例会'),
         sub: '会议已完成，可查看会议记录',
         statusLabel: '已完成', statusClass: 'done',
-        onTap: () => openMeetingTap(held) }
+        // demoDonePeriods 前端填充的占位会议没有 id,点击进详情会 404,只对有真实记录的放行
+        onTap: () => { if (held.id) openMeetingTap(held) } }
     }
     const label = r.status === 'current' ? (r.active ? '进行中' : '待召开')
       : r.status === 'overdue' ? '未召开' : (r.past ? '未召开' : '待排')
@@ -4369,7 +4367,11 @@ onActivated(show)
 .mr-fold-chev.open { transform: rotate(180deg); }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
 .mr-cal-mask { position: fixed; inset: 0; z-index: 210; background: rgba(23, 32, 42, .5); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
-.mr-calendar-sheet { width: 100%; max-width: 640rpx; background: #fff; border-radius: 26rpx; padding: 30rpx 26rpx 24rpx; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .28); }
+.mr-calendar-sheet { width: 100%; max-width: 640rpx; max-height: 82vh; overflow-y: auto; background: #fff; border-radius: 26rpx; padding: 30rpx 26rpx 24rpx; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .28); }
+/* 弹层内「已完成」清单:宫格下方的档案区,与宫格用分隔线区隔 */
+.mr-cal-done-title { margin-top: 26rpx; padding-top: 22rpx; border-top: 2rpx solid #EEF1F4; color: #53657A; font-size: 27rpx; font-weight: 700; }
+.mr-cal-done-row { padding-left: 2rpx; padding-right: 2rpx; }
+.mr-cal-done-row .mr-row-sub { display: none; }   /* 每行都是同一句"可查看会议记录",抽屉里省掉,行更紧凑 */
 .mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
 .mr-calendar-panel-title small { color: #8995A4; font-size: 21rpx; font-weight: 500; }
 .mr-calendar-close { width: 100%; margin-top: 22rpx; height: 80rpx; border: none; border-radius: 18rpx; background: #F2F4F6; color: #46515D; font-size: 30rpx; font-weight: 650; }
