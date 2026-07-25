@@ -80,65 +80,7 @@
          改为列表尾部虚线入口,与业委会页「发起其他会议」同款 -->
     <div v-if="canCreate" class="create-learning-entry" @click="openCreate">＋ 新增学习记录</div>
 
-    <!-- 创建学习记录弹窗 -->
-    <div v-if="createVisible" class="modal-mask" @click="closeCreate">
-      <div class="form-sheet" @click.stop>
-        <div class="sheet-head">
-          <span class="sheet-title">新增学习记录</span>
-          <span class="sheet-close" @click="closeCreate">×</span>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">学习标题 *</span>
-          <input class="form-input large" v-model="createForm.title" placeholder="如 2026年度第1次业委会学习" />
-        </div>
-
-        <div class="form-row">
-          <div class="form-group half">
-            <span class="form-label">日期 *</span>
-            <input type="date" class="picker-field" :value="createForm.date" @change="onDateChange" />
-          </div>
-          <div class="form-group half">
-            <span class="form-label">时间</span>
-            <input type="time" class="picker-field" :value="createForm.time" @change="onTimeChange" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">地点</span>
-          <input class="form-input" v-model="createForm.location" placeholder="如 社区活动室" />
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">组织单位/讲师</span>
-          <input class="form-input" v-model="createForm.trainer" placeholder="如 临汾路街道" />
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">计划参加人员（用于发送通知）</span>
-          <input class="form-input" v-model="createForm.attendees" placeholder="如 张建国,李秀英,王志强" />
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">学习类型</span>
-          <div class="type-row">
-            <span class="type-chip" :class="{ on: createForm.type === 'internal' }" @click="pickCreateType('internal')">内部学习</span>
-            <span class="type-chip" :class="{ on: createForm.type === 'street' }" @click="pickCreateType('street')">街镇培训</span>
-            <span class="type-chip" :class="{ on: createForm.type === 'special' }" @click="pickCreateType('special')">专项培训</span>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label">学习内容说明</span>
-          <textarea class="form-textarea" v-model="createForm.description" placeholder="简述学习内容和目的" style="min-height:80px;height:80px;"></textarea>
-        </div>
-
-        <div class="sheet-actions weighted-actions">
-          <button class="btn btn-ghost" @click="closeCreate">取消</button>
-          <button class="btn btn-primary" @click="submitCreate">确认创建</button>
-        </div>
-      </div>
-    </div>
+    <!-- 创建表单已迁独立页 /learning-create(0725 用户定:弹层改整页) -->
 
     <div v-if="undoVisible" class="undo-toast">
       <span>{{ undoText }}</span>
@@ -148,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onActivated, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onActivated, onUnmounted } from 'vue';
 import api from '@/api';
 import PageNav from '@/components/PageNav.vue';
 import perm from '@/utils/perm';
@@ -170,11 +112,7 @@ const currentYear = new Date().getFullYear();
 const canCreate = ref(false);
 const undoVisible = ref(false);
 const undoText = ref('');
-const createVisible = ref(false);
-const createForm = reactive({
-  title: '', date: '', time: '14:00', location: '',
-  trainer: '', attendees: '', type: 'internal', description: ''
-});
+// createVisible/createForm 已删(0725):创建表单迁独立页 /learning-create
 
 let undoTimer = null;
 let undoData = null;
@@ -265,57 +203,9 @@ function undoLearning() {
   loadAll();
 }
 
-// ── 创建学习记录 ──
-
+// ── 创建学习记录:表单已迁独立页 /learning-create(0725) ──
 function openCreate() {
-  createVisible.value = true;
-  createForm.title = '';
-  createForm.date = todayStr();
-  createForm.time = '14:00';
-  createForm.location = '社区活动室';
-  createForm.trainer = '';
-  createForm.attendees = '';
-  createForm.type = 'internal';
-  createForm.description = '';
-}
-
-function closeCreate() {
-  createVisible.value = false;
-}
-
-function onDateChange(e) {
-  createForm.date = e.target.value;
-}
-
-function onTimeChange(e) {
-  createForm.time = e.target.value;
-}
-
-function pickCreateType(type) {
-  createForm.type = type;
-}
-
-async function submitCreate() {
-  const form = createForm;
-  if (!form.title || !form.date) {
-    toast({ title: '请补全标题和日期', icon: 'none' });
-    return;
-  }
-  try {
-    const result = await api.learningCreate({ ...form });
-    toast({ title: '已创建', icon: 'success' });
-    createVisible.value = false;
-    loadAll();
-    // 自动跳转到详情页
-    navigateTo('/pages/learning-detail/learning-detail?id=' + result.id);
-  } catch (e) {
-    toast({ title: e.message, icon: 'none' });
-  }
-}
-
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  window.location.assign('/learning-create')   // 硬跳,与驾驶舱各入口一致(软路由偶发不切视图)
 }
 
 let mounted = false;
@@ -420,28 +310,5 @@ onUnmounted(() => {
 .create-learning-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
 .create-learning-entry:active { background: #EAEDF0; }
 
-/* 创建弹窗 */
-/* z-index 150 压过底部 TabBar(100)，否则新建弹窗底部会被一级 tab 栏骑住、按钮点不到 */
-.modal-mask { position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.36); display: flex; align-items: flex-end; }
-.form-sheet { width: 100%; max-height: 88vh; overflow: auto; background: #fff; border-radius: 24rpx 24rpx 0 0; padding: 32rpx 28rpx calc(32rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
-.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
-.sheet-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
-.sheet-close { width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; border-radius: 28rpx; font-size: 40rpx; color: #666; background: #f5f5f5; flex-shrink: 0; }
-.type-row { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 12rpx; }
-.type-chip { min-height: 60rpx; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #666; background: #f5f5f5; padding: 10rpx 24rpx; border-radius: 30rpx; }
-.type-chip.on { color: #fff; background: #FFA800; font-weight: 600; }
-.form-row { display: flex; gap: 16rpx; align-items: flex-start; }
-.form-group { margin-bottom: 20rpx; min-width: 0; }
-.form-group.half { flex: 1; min-width: 0; }
-.form-label { display: block; font-size: 28rpx; color: #777; margin-bottom: 12rpx; line-height: 1.45; }
-.form-input, .form-textarea { width: 100%; box-sizing: border-box; background: #f6f6f8; border-radius: 14rpx; font-size: 32rpx; color: #1f2329; border: none; }
-.form-input { height: 88rpx; min-height: 88rpx; line-height: normal; padding: 0 20rpx; }
-.form-input.large { height: 96rpx; min-height: 96rpx; font-size: 34rpx; font-weight: 600; }
-.form-input::placeholder, .form-textarea::placeholder { color: #666; font-size: 30rpx; }
-.picker-field { width: 100%; min-height: 88rpx; box-sizing: border-box; background: #f6f6f8; border: none; border-radius: 14rpx; padding: 0 20rpx; font-size: 32rpx; color: #1f2329; line-height: normal; display: flex; align-items: center; }
-.form-textarea { min-height: 160rpx; height: 160rpx; line-height: 1.5; padding: 20rpx; }
-.sheet-actions { display: flex; gap: 16rpx; padding-top: 12rpx; }
-.sheet-actions .btn { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; font-size: 32rpx; font-weight: 600; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
-.btn-ghost { color: #777; background: #f5f5f5; }
-.btn-primary { color: #fff; background: var(--c-primary-dark); }
+/* 创建弹窗样式已删(0725):表单迁独立页 /learning-create */
 </style>
