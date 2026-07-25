@@ -40,7 +40,7 @@
         <div class="signin-badge">签</div>
         <h3>会议签到</h3>
         <p class="signin-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · 线上召开</p>
-        <p class="omf-desc">本次会议在微信工作群中进行。请先签到确认参会，签到后进入议题表决页面。</p>
+        <p class="omf-desc">本次会议在微信工作群中进行。请先签到确认参会，再回微信群开会；开完会后回到本页填写表决结果和意见。</p>
         <button class="omf-primary" :disabled="busy" @click="selfSignIn">{{ busy ? '正在签到…' : '我已参会，线上签到' }}</button>
         <div class="signin-count">已有 {{ presentCount }}/{{ attendance.length }} 位委员签到</div>
       </section>
@@ -57,10 +57,16 @@
         </div>
       </section>
 
-      <!-- ② 表决与讨论(0725 用户定):讨论在微信群进行,表决各自在此投票;主持人逐题结束表决揭晓 -->
+      <!-- ② 会议本体在微信群(0725 用户定):App 只做签到与会后登记 -->
+      <section v-if="!meetingEnded" class="omf-card wx-hint">
+        <div class="wx-hint-title">会议在微信工作群进行</div>
+        <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，填写您对各议题的表决结果和意见，最后由主任结束会议、进入材料整理。</p>
+      </section>
+
+      <!-- ③ 会后登记:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
       <section class="omf-card">
-        <h3>议题表决与讨论</h3>
-        <p class="omf-desc">议题讨论请在微信工作群进行；表决议题请各位委员在下方各自投票。</p>
+        <h3>{{ meetingEnded ? '议题表决结果' : '表决结果与意见登记' }}</h3>
+        <p v-if="!meetingEnded" class="omf-desc">开完会后，请各位委员在下方填写自己的表决结果，并可补充书面意见。</p>
         <div v-for="(topic, index) in topics" :key="topic.id" class="topic-block">
           <div class="topic-form-head">
             <span class="topic-no">{{ index + 1 }}</span>
@@ -72,11 +78,8 @@
             </div>
           </div>
 
-          <!-- 非表决题:群里讨论即可 -->
-          <div v-if="!topic.voteRequired" class="topic-discuss-hint">本议题在微信群中讨论，无需在此操作</div>
-
-          <!-- 表决题·进行中:本人投票(可改票);主持人另有「结束表决」 -->
-          <template v-else-if="!topic.voteClosed">
+          <!-- 表决题·未定稿:本人填表决结果(可改);票数在主任结束会议后统一揭晓 -->
+          <template v-if="topic.voteRequired && !topic.voteClosed">
             <div v-if="topic.decisionType === 'multi_choice'" class="vote-options">
               <button v-for="option in topic.options" :key="option.id" type="button" class="vote-opt"
                       :class="{ on: topic.mySelectedId === option.id }" :disabled="busy"
@@ -88,33 +91,41 @@
               <button type="button" class="vote-opt ab" :class="{ on: topic.myVote === 'abstain' }" :disabled="busy" @click="castVote(topic, 'abstain')">弃权</button>
             </div>
             <div class="vote-progress">
-              <span>已表决 {{ topic.voted || 0 }}/{{ presentCount }} 人</span>
-              <span v-if="topic.myVote || topic.mySelectedId" class="voted-tag">已投，可改票</span>
+              <span>已填 {{ topic.voted || 0 }}/{{ presentCount }} 人</span>
+              <span v-if="topic.myVote || topic.mySelectedId" class="voted-tag">已填，可修改</span>
             </div>
-            <button v-if="isChair" type="button" class="close-vote-btn" :disabled="busy" @click="closeVoteTopic(topic)">
-              结束本题表决，揭晓结果
-            </button>
           </template>
 
-          <!-- 表决题·已揭晓:公布票数与结果 -->
-          <template v-else>
+          <!-- 表决题·已定稿(会议结束):公布票数与结果 -->
+          <template v-else-if="topic.voteRequired">
             <div v-if="topic.decisionType === 'multi_choice'" class="result-votes">
               {{ topic.options.map(option => option.label + ' ' + (option.votes || 0) + '票').join(' · ') }}
             </div>
             <div v-else class="result-votes">
               赞成 {{ topic.voteFor }} · 反对 {{ topic.voteAgainst }} · 弃权 {{ topic.voteAbstain }}
             </div>
-            <div class="vote-closed-tag" :class="{ pass: topic.passed }">{{ topic.passed ? '已通过' : '未通过' }} · 表决已结束</div>
+            <div class="vote-closed-tag" :class="{ pass: topic.passed }">{{ topic.passed ? '已通过' : '未通过' }}</div>
           </template>
+
+          <!-- 意见:所有议题都可补充书面意见,记入会议记录 -->
+          <div v-if="topicOpinions(topic.id).length" class="topic-opinions">
+            <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
+              <b>{{ op.name }}：</b><span>{{ op.content }}</span>
+              <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
+            </div>
+          </div>
+          <div v-if="!meetingEnded" class="op-input">
+            <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充我的意见（可选）"></textarea>
+            <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
+          </div>
         </div>
 
-        <!-- 主持人:全部表决题揭晓后可结束会议,进入材料整理 -->
+        <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
         <template v-if="isChair && !meetingEnded">
-          <button class="omf-primary end-to-review" :disabled="busy || !allVotesClosed" @click="endMeeting">
-            {{ allVotesClosed ? '结束会议，进入材料整理' : '请先逐题结束表决' }}
-          </button>
+          <button class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
+          <div class="end-hint">结束后各议题表决即定稿，未填写的委员不再计入</div>
         </template>
-        <div v-else-if="!meetingEnded" class="member-wait-hint">表决完成后请回微信群继续讨论，等待主持人结束会议</div>
+        <div v-else-if="!meetingEnded" class="member-wait-hint">表决和意见填写完成后，等待主任结束会议、进入材料整理</div>
         <button v-else class="omf-primary" @click="endMeeting">查看会议详情</button>
       </section>
     </template>
@@ -148,7 +159,37 @@ const selfAttendance = computed(() => attendance.value.find(item => item.isSelf)
 const selfPresent = computed(() => !!(selfAttendance.value && selfAttendance.value.signedIn))
 const selfSigned = computed(() => !!(selfAttendance.value && selfAttendance.value.signed))
 const meetingEnded = computed(() => props.detail.stage !== 'ongoing')
-const allVotesClosed = computed(() => topics.filter(t => t.voteRequired).every(t => t.voteClosed))
+
+// 议题意见:开会期间各委员可按议题补充书面意见,记入会议记录
+const opinions = ref([])
+const opinionDrafts = reactive({})
+function topicOpinions(topicId) {
+  return opinions.value.filter(op => Number(op.topicId) === Number(topicId))
+}
+async function loadOpinions() {
+  try { opinions.value = (await api.committeeOpinions(props.meetingId)) || [] } catch (e) { /* 下次轮询重试 */ }
+}
+async function submitOpinion(topic) {
+  const text = String(opinionDrafts[topic.id] || '').trim()
+  if (!text) { toast({ title: '请先填写意见内容', icon: 'none' }); return }
+  busy.value = true
+  try {
+    await api.committeeAddOpinion(props.meetingId, topic.id, text, 'text')
+    opinionDrafts[topic.id] = ''
+    await loadOpinions()
+    toast({ title: '意见已提交', icon: 'success' })
+  } catch (e) {
+    toast({ title: e.message || '提交失败', icon: 'none' })
+  } finally { busy.value = false }
+}
+async function removeOpinion(op) {
+  const res = await showModal({ title: '删除意见', content: '删除这条意见吗？', confirmText: '删除', cancelText: '取消' })
+  if (!res.confirm) return
+  try {
+    await api.committeeRemoveOpinion(props.meetingId, op.id)
+    await loadOpinions()
+  } catch (e) { toast({ title: e.message || '删除失败', icon: 'none' }) }
+}
 
 function initFromDetail() {
   liveAttendance.value = ((props.detail.record && props.detail.record.attendances) || []).slice()
@@ -200,23 +241,6 @@ async function castVote(topic, choice, selectedId) {
   } finally { busy.value = false }
 }
 
-// 主持人逐题结束表决:揭晓票数与结果
-async function closeVoteTopic(topic) {
-  const res = await showModal({
-    title: '结束本题表决',
-    content: '「' + topic.title + '」已表决 ' + (topic.voted || 0) + '/' + presentCount.value + ' 人。结束后将揭晓票数，未投的委员不能再投。确定结束？',
-    confirmText: '结束表决', cancelText: '再等等'
-  })
-  if (!res.confirm) return
-  busy.value = true
-  try {
-    await api.committeeCloseVote(props.meetingId, topic.id)
-    await refreshLive()
-  } catch (e) {
-    toast({ title: e.message || '操作失败', icon: 'none' })
-  } finally { busy.value = false }
-}
-
 function resultCode(topic) {
   if (!topic.voteRequired) return 'recorded'
   if (topic.decisionType === 'multi_choice') {
@@ -250,21 +274,32 @@ function resultPayload() {
   }
 }
 
-// 结束会议→材料整理(0725 用户定):表决结果按各自投票自动确认落库,随后进入会议详情整理材料/生成纪要
+// 结束会议→材料整理(0725 用户定):主任结束时各题表决统一定稿(冻结+揭晓),
+// 结果按各委员的真实填报自动落库,随后进入会议详情整理材料/生成纪要(同线下)
 async function endMeeting() {
   if (meetingEnded.value) {
     location.href = '/committee-detail?id=' + encodeURIComponent(props.meetingId)
     return
   }
+  const voteTopics = topics.filter(t => t.voteRequired)
+  const incomplete = voteTopics.filter(t => (Number(t.voted) || 0) < presentCount.value)
+  const warn = incomplete.length
+    ? '还有 ' + incomplete.length + ' 个表决题未收齐全部委员的填报（未填的不计入票数）。'
+    : '各议题表决已收齐。'
   const res = await showModal({
     title: '结束线上会议',
-    content: '各议题表决结果将按各位委员的投票自动记录，随后进入材料整理。确定结束会议吗？',
+    content: warn + '结束后表决即定稿、揭晓票数，随后进入材料整理。确定结束会议吗？',
     confirmText: '结束会议',
-    cancelText: '再检查一下'
+    cancelText: '再等等'
   })
   if (!res.confirm) return
   busy.value = true
   try {
+    // 逐题定稿:冻结投票并揭晓票数,再按最终票数落结果
+    for (const t of voteTopics) {
+      if (!t.voteClosed) await api.committeeCloseVote(props.meetingId, t.id)
+    }
+    await refreshLive()
     await api.committeeQuickConfirm(props.meetingId, resultPayload())
     await api.committeeAdvance(props.meetingId, 'end')
     location.href = '/committee-detail?id=' + encodeURIComponent(props.meetingId) + '&from=online-meeting'
@@ -297,12 +332,14 @@ async function refreshLive() {
     const latest = await api.committeeDetail(props.meetingId)
     liveAttendance.value = ((latest.record && latest.record.attendances) || []).slice()
     applyTopics((latest.record && latest.record.topics) || [])
+    await loadOpinions()
   } catch (e) {
     // 轮询失败不打断当前操作，下次自动重试。
   }
 }
 
 onMounted(() => {
+  loadOpinions()
   progressTimer = window.setInterval(() => { if (!meetingEnded.value || cardMode.value) refreshLive() }, 5000)
 })
 
@@ -324,7 +361,16 @@ onBeforeUnmount(() => {
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
 .topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
-.topic-discuss-hint{margin:14rpx 0 0 52rpx;color:#84929b;font-size:23rpx}
+.wx-hint{background:#f7f4ec;border-color:#e5dcc4}.wx-hint-title{font-size:30rpx;font-weight:700;color:#6d5a2e}.wx-hint .omf-desc{margin-bottom:0}.wx-hint b{color:#6d5a2e}
+.topic-opinions{margin:18rpx 0 0 52rpx;padding:16rpx 18rpx;border-radius:12rpx;background:#f6f8f9}
+.op-row{display:flex;align-items:flex-start;gap:6rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
+.op-row b{flex:none;font-weight:600}.op-row span{min-width:0;white-space:pre-wrap}
+.op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
+.op-input{display:flex;flex-direction:column;gap:12rpx;margin:16rpx 0 0 52rpx}
+.op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
+.op-submit{align-self:flex-end;height:56rpx;padding:0 28rpx;border:2rpx solid #b9c8d1;border-radius:12rpx;background:#fff;color:#496474;font-size:23rpx;font-weight:600}
+.op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
+.end-hint{margin-top:14rpx;text-align:center;color:#94a1ab;font-size:22rpx}
 .vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
 .vote-options{display:flex;flex-direction:column;gap:12rpx;margin:18rpx 0 0 52rpx}
 .vote-opt{height:70rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
@@ -334,8 +380,6 @@ onBeforeUnmount(() => {
 .vote-opt:disabled{opacity:.6}
 .vote-progress{display:flex;align-items:center;gap:16rpx;margin:14rpx 0 0 52rpx;color:#84929b;font-size:22rpx}
 .voted-tag{color:#43815b}
-.close-vote-btn{display:block;margin:16rpx 0 0 52rpx;height:60rpx;padding:0 24rpx;border:2rpx solid #b9c8d1;border-radius:12rpx;background:#fff;color:#496474;font-size:24rpx;font-weight:600}
-.close-vote-btn:active{background:#eef3f6}.close-vote-btn:disabled{opacity:.5}
 .result-votes{margin:14rpx 0 0 52rpx;color:#49718a;font-size:25rpx}
 .vote-closed-tag{margin:10rpx 0 0 52rpx;display:inline-block;padding:3rpx 14rpx;border-radius:999rpx;background:#f0f2f4;color:#8a95a0;font-size:22rpx;font-weight:600}
 .vote-closed-tag.pass{background:#e4f2e9;color:#43815b}
