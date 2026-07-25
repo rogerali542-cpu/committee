@@ -98,8 +98,7 @@
         <div v-if="cockpitTodos.length" class="ck-section">
           <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
                class="ck-todo" :class="[currentCockpitTodo.tone, { 'ck-todo-complete': currentCockpitTodo.complete }]">
-            <div class="ck-todo-head">
-              <span class="ck-todo-tag" :class="currentCockpitTodo.tone">{{ currentCockpitTodo.tag }}</span>
+            <div v-if="(currentCockpitTodo.meeting && isChair) || committeeCockpitTodos.length > 1" class="ck-todo-head">
               <div class="ck-todo-head-actions">
                 <button v-if="currentCockpitTodo.meeting && isChair" type="button" class="ck-todo-delete"
                         @click.stop.prevent="removeCurrent(currentCockpitTodo.meeting)">删除会议</button>
@@ -120,9 +119,6 @@
           </div>
           <div v-if="receptionCockpitTodo" :key="receptionCockpitTodo.key"
                class="ck-todo ck-reception-todo" :class="receptionCockpitTodo.tone">
-            <div class="ck-todo-head">
-              <span class="ck-todo-tag green">{{ receptionCockpitTodo.tag }}</span>
-            </div>
             <div class="ck-todo-title">{{ receptionCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
               <div v-if="receptionCockpitTodo.sub" class="ck-todo-sub">{{ receptionCockpitTodo.sub }}</div>
@@ -4176,7 +4172,7 @@ onActivated(show)
 .ck-reception-actions .ck-reception-cta:active { background: #3E6F53; color: #fff; }
 .ck-reception-actions .ck-reception-cta i { margin-left: 3rpx; font-size: 27rpx; }
 .ck-reception-cta { background: #4C8062; box-shadow: 0 6rpx 14rpx rgba(76,128,98,.16); }
-.ck-todo-head { display: flex; align-items: center; justify-content: space-between; min-height: 44rpx; margin-top: -7rpx; }
+.ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 44rpx; margin-top: -7rpx; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
