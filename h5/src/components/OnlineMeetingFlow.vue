@@ -1,5 +1,5 @@
 <template>
-  <div class="omf">
+  <div class="omf" :class="{ 'omf--has-footer': view === 'vote' && !cardMode }">
     <div class="omf-head">
       <div class="omf-head-main">
         <div class="omf-title-row">
@@ -198,20 +198,22 @@
         </div>
 
         <div v-if="!topics.length" class="topic-empty">本次会议暂无议题</div>
+      </section>
 
-        <!-- 翻页:没有对应方向的议题就隐藏按钮(0725 用户定),不置灰占位 -->
+      <!-- 固定底栏(0725 用户定):翻页 + 结束会议与上方 AI/提交意见拉开,避免误点 -->
+      <div class="omf-vote-footer">
+        <!-- 翻页:没有对应方向的议题就隐藏按钮,不置灰占位;各占半宽 -->
         <div v-if="topics.length > 1" class="topic-pager">
-          <button v-if="topicIndex > 0" type="button" @click="prevTopic">‹ 上一议题</button>
-          <button v-if="topicIndex < topics.length - 1" type="button" @click="nextTopic">下一议题 ›</button>
+          <button v-if="topicIndex > 0" type="button" class="pager-prev" @click="prevTopic">‹ 上一议题</button>
+          <button v-if="topicIndex < topics.length - 1" type="button" class="pager-next" @click="nextTopic">下一议题 ›</button>
         </div>
-
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
         <template v-if="isChair && !meetingEnded">
           <button class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
         </template>
         <div v-else-if="!meetingEnded" class="member-wait-hint">表决和意见填写完成后，等待主任结束会议、进入材料整理</div>
         <button v-else class="omf-primary" @click="endMeeting">查看会议详情</button>
-      </section>
+      </div>
     </template>
   </div>
 </template>
@@ -645,9 +647,15 @@ onBeforeUnmount(() => {
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
 .topic-head-row{display:flex;align-items:center;justify-content:space-between}
 .topic-pager-ind{color:#84929b;font-size:24rpx}
-.topic-pager{display:flex;gap:16rpx;margin-top:26rpx}
-.topic-pager button{flex:1;height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
+/* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
+.omf--has-footer{padding-bottom:230rpx}
+.omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
+.topic-pager{display:flex;gap:16rpx;margin-bottom:14rpx}
+.topic-pager button{flex:0 0 calc(50% - 8rpx);height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
 .topic-pager button:active{background:#eef3f6}
+.topic-pager .pager-next{margin-left:auto}
+.omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
+.omf-vote-footer .member-wait-hint{margin-top:0}
 .topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
 .op-detail-row{margin:18rpx 0 0 52rpx}
 .op-detail-toggle{border:0;background:none;padding:0;color:#416f8b;font-size:24rpx;font-weight:600}
@@ -668,12 +676,12 @@ onBeforeUnmount(() => {
 .mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
 .mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
 .voted-tag.pending{color:#9a5d2e}
-.op-btn-row{display:flex;align-items:center;gap:14rpx}
-.op-ai-btn{height:56rpx;padding:0 26rpx;border:2rpx solid #e0b98a;border-radius:12rpx;background:#fdf6ec;color:#9a5d2e;font-size:23rpx;font-weight:600}
+.op-btn-row{display:flex;align-items:center;gap:16rpx;margin-top:6rpx}
+.op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
 .op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
 .op-input{display:flex;flex-direction:column;gap:12rpx;margin:16rpx 0 0 52rpx}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
-.op-submit{margin-left:auto;height:56rpx;padding:0 28rpx;border:2rpx solid #b9c8d1;border-radius:12rpx;background:#fff;color:#496474;font-size:23rpx;font-weight:600}
+.op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
 .vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
 .vote-options{display:flex;flex-direction:column;gap:12rpx;margin:18rpx 0 0 52rpx}
