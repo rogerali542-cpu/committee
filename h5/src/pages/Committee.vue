@@ -185,7 +185,8 @@
             <!-- 「待处理」(0725 用户定):这组是逾期未开/本期待开/待整理——要办的事,不是"安排";与驾驶舱用词一致 -->
             <div class="mr-group-title">待处理</div>
           </template>
-          <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
+          <!-- 待处理卡整行不可点(0725 用户定):只有右侧按钮进入,与计划行同规则 -->
+          <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured">
             <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
               <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
             </div>
@@ -194,7 +195,7 @@
               <!-- 副标题按「 · 」分段,每段整体折行:避免"党群服务中心"这类地名被从中间掰断 -->
               <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
             </div>
-            <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+            <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
           </div>
           <!-- 发起非例会会议:动作跟动作区(待处理卡)挨着,收纳行(计划/一览)沉底(0725 用户定) -->
           <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
@@ -243,7 +244,7 @@
             </div>
             <template v-if="meetingRecordList.done.length">
               <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
-              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row" @click="row.onTap()">
+              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row">
                 <div class="mr-badge" :class="row.statusClass">
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
@@ -251,7 +252,7 @@
                   <div class="mr-row-title">{{ row.title }}</div>
                   <div class="mr-row-sub">{{ row.sub }}</div>
                 </div>
-                <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+                <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">查看 ›</button>
               </div>
             </template>
           </div>
@@ -1696,8 +1697,8 @@ const meetingRecordList = computed(() => {
         key: 'mr-draft-' + r.period, done: false,
         badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true,
         title: draftTitle.value,
-        // 副标题从短、状态从简(0725):状态已有右侧「编辑中」,这里不重复;过长会把中列挤成四行,卡片虚高
-        sub: '点击继续编辑通知',
+        // 副标题从短(0725):整行已不可点,不再写"点击继续";入口是右侧「编辑中」按钮
+        sub: '会议通知还没写完',
         statusLabel: '编辑中', statusClass: 'current',
         onTap: () => continueDraft()
       }
@@ -4343,6 +4344,18 @@ onActivated(show)
 /* 计划行右侧改真按钮:描边胶囊,比原纯文字「待排›」更大更明显(0725 用户定) */
 .mr-plan-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
 .mr-plan-btn:active { background: #EEF1F5; }
+/* 待处理/已完成行的右侧真按钮(0725 用户定:整行不可点,只按钮进入),描边胶囊按状态配色 */
+.mr-cta-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
+.mr-cta-btn:active { background: #F3F5F7; }
+.mr-cta-btn.overdue { color: #B0463A; border-color: #DFA79F; }
+.mr-cta-btn.current { color: #345F91; border-color: #AFC3DC; }
+.mr-cta-btn.upcoming { color: #345F91; border-color: #AFC3DC; }
+.mr-cta-btn.done { color: #2E7D50; border-color: #A8CDB6; }
+/* 整行不再可点:不给按压反馈 */
+.mr-featured { cursor: default; }
+.mr-featured:active { background: #F8FBFD; }
+.mr-cal-done-row { cursor: default; }
+.mr-cal-done-row:active { background: transparent; }
 .mr-planned .mr-badge { width: 78rpx; min-height: 70rpx; border-radius: 14rpx; }
 .mr-planned .mr-badge b { font-size: 25rpx; }
 .mr-planned .mr-badge span { font-size: 20rpx; }
