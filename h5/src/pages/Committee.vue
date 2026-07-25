@@ -4106,7 +4106,7 @@ onActivated(show)
 .welcome-hero + .ck-section { margin-top: 22rpx; }
 .ck-work-section { margin-top: 48rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
-.ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 28rpx 30rpx 30rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; }
+.ck-todo { position: relative; display: block; background: #fff; border-radius: 30rpx; padding: 40rpx 30rpx 42rpx 42rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; }
 .ck-todo:last-child { margin-bottom: 0; }
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
@@ -4176,7 +4176,7 @@ onActivated(show)
    head 归零后标题不再被压低。若父容器定位，分页会以 head 为参照被压成竖排（已避免）。 */
 .ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 0; }
 /* 业委会卡:文字块纵向居中(与右侧「去补开」按钮对齐),标题上提不留空档 */
-.ck-todo.blue:not(.ck-todo-complete) { display: flex; flex-direction: column; justify-content: center; min-height: 150rpx; }
+.ck-todo.blue:not(.ck-todo-complete) { display: flex; flex-direction: column; justify-content: center; min-height: 270rpx; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
