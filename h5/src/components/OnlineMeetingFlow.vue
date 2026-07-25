@@ -59,6 +59,21 @@
       </section>
 
 
+      <!-- 参会名单:与线下会议签到页同款折叠条(0725 用户定:简化保留),默认收起 -->
+      <div class="omf-roster">
+        <div class="omf-roster-bar" @click="rosterOpen = !rosterOpen">
+          <span class="omf-roster-title">参会名单</span>
+          <span class="omf-roster-summary">已有{{ presentCount }}人签到</span>
+          <span class="omf-roster-caret">{{ rosterOpen ? '收起 ▲' : '展开 ▾' }}</span>
+        </div>
+        <div v-if="rosterOpen" class="omf-roster-body">
+          <div v-for="member in attendance" :key="member.userRoleId" class="omf-roster-row">
+            <span class="orr-name">{{ member.name }}<small class="orr-role">{{ member.role }}</small></span>
+            <span class="orr-state" :class="member.signedIn ? 'on' : 'wait'">{{ member.signedIn ? '已签到' : '未签到' }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- ③ 会后登记:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
       <section class="omf-card">
         <h3>{{ meetingEnded ? '议题表决结果' : '表决结果与意见登记' }}</h3>
@@ -141,6 +156,7 @@ const props = defineProps({
 const emit = defineEmits(['reload'])
 
 const busy = ref(false)
+const rosterOpen = ref(false)
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
 const liveAttendance = ref([])
@@ -347,6 +363,18 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
+/* 参会名单折叠条:配色/行样式对齐线下会议签到页 .si-roster / .signin-roster-row */
+.omf-roster{background:#fff;border:2rpx solid #e0e7eb;border-radius:22rpx;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);padding:0 28rpx;margin-bottom:24rpx}
+.omf-roster-bar{display:flex;align-items:center;gap:14rpx;padding:24rpx 0}
+.omf-roster-title{font-size:29rpx;font-weight:700;color:#1f2329}
+.omf-roster-summary{flex:1;margin-left:8rpx;color:#8A5A2B;font-size:24rpx;font-weight:550}
+.omf-roster-caret{flex-shrink:0;color:#7A4C22;font-size:24rpx;font-weight:600}
+.omf-roster-body{padding-bottom:10rpx;border-top:2rpx solid #F2F2F4}
+.omf-roster-row{display:flex;align-items:center;justify-content:space-between;gap:18rpx;padding:16rpx 0;border-bottom:2rpx solid #F6F6F8}
+.omf-roster-row:last-child{border-bottom:0}
+.orr-name{font-size:28rpx;color:#1f2329;font-weight:600}.orr-role{margin-left:12rpx;color:#84929b;font-size:22rpx;font-weight:400}
+.orr-state{font-size:24rpx;font-weight:600;padding:4rpx 16rpx;border-radius:12rpx;flex-shrink:0}
+.orr-state.on{color:#2E8B57;background:#E8F7EE}.orr-state.wait{color:#6b7078;background:#EDEEF0}
 .signed-line{display:flex;align-items:center;gap:16rpx;margin-top:14rpx}
 .signed-tag{padding:4rpx 16rpx;border-radius:999rpx;background:#e4f2e9;color:#43815b;font-size:23rpx;font-weight:600}
 .signed-count{color:#84929b;font-size:23rpx}
