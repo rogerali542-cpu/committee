@@ -251,6 +251,8 @@
               </div>
             </template>
           </div>
+          <!-- 发起非例会会议:收进卡尾,紧跟收纳行(0725 用户定);虚线次要样式不变 -->
+          <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
         </div>
 
         <!-- 接待/培训 12 月履职宫格：一眼看每月该类状态；点月下钻看当月清单（数据同源 monthCells） -->
@@ -441,9 +443,7 @@
 
     <!-- 「更多功能」三格已删：接待/培训入口收进顶部计划卡横栏；历史记录走计划卡已开期或资料库 -->
 
-    <!-- 发起非例会会议：收在页面底部的入口，仅「开会」tab 显示（接待/培训不需要） -->
-    <!-- portal 布局已有「发起会议」宫格入口，底部按钮只在 tabs 布局出现 -->
-    <div v-if="canCreate && planTab === 'meeting' && homeLayout === 'tabs'" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
+    <!-- 「发起其他会议」已收进会议安排卡尾部(0725 用户定):原悬在卡外像孤儿 -->
 
     <div v-if="createVisible" class="modal-mask" @click="closeCreate">
       <div class="create-panel" @click.stop>
@@ -4455,9 +4455,8 @@ onActivated(show)
 .draft-summary { font-size: 30rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-continue { width: 80%; margin: 26rpx auto 0; height: 104rpx; border: none; border-radius: 24rpx; background: var(--c-primary); color: #fff; font-size: 42rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 26rpx rgba(232,140,20,0.28); }
-/* 页面底部「发起其他会议」（0725 用户定:入口留底部,名字保留"其他"表明是计划外会议）:
-   中性灰系——浅灰底给面积感、深灰字保可读、虚线边留「添加」语义,与「待排/待安排」的中性灰语义一致 */
-.create-misc-entry { width: 64%; margin: 30rpx auto 16rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
+/* 「发起其他会议」收进会议安排卡尾(0725 用户定):中性灰虚线的次要"添加"语义不变 */
+.create-misc-entry { width: 64%; margin: 26rpx auto 14rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
 .create-misc-entry:active { background: #EAEDF0; }
 .draft-continue:active { background: var(--c-primary-strong); transform: scale(0.99); }
 .draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
