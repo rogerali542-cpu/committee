@@ -11,7 +11,7 @@
       </template>
     </PageNav>
 
-    <OnlineMeetingFlow v-if="isOnlineMeeting" :detail="detail" :meeting-id="meetingId"
+    <OnlineMeetingFlow v-if="isOnlineMeeting" ref="onlineFlowEl" :detail="detail" :meeting-id="meetingId"
                        :is-chair="isChair" @reload="loadDetail" />
 
     <template v-else>
@@ -589,6 +589,7 @@ import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import TopicSheet from '@/components/TopicSheet.vue'
 import OnlineMeetingFlow from '@/components/OnlineMeetingFlow.vue'
+const onlineFlowEl = ref(null) // 线上会议组件:返回键先交给它做页内逐级回退
 
 const route = useRoute()
 const isOnlineMeeting = computed(() => detail.value && detail.value.meetingMethod === 'online')
@@ -3783,6 +3784,8 @@ function goHome() {
 // 流程起点(签到页/线上会议页)再按返回=历史上一页,驾驶舱进来的自然落回驾驶舱。
 async function onNavBack() {
   if (isOnlineMeeting.value) {
+    // 页内逐级回退(表决登记→线上会议→签到页);签到页再返回=离开会议回历史上一页
+    if (onlineFlowEl.value && onlineFlowEl.value.handleBack()) return
     navigateBack()
     return
   }

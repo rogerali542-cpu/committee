@@ -64,25 +64,30 @@
       </section>
     </template>
 
-    <!-- ① 签到页:未签到时整页只有签到,签到后才进入签到情况+表决 -->
-    <template v-else-if="!meetingEnded && !selfPresent">
+    <!-- ① 签到页:未签到=签到按钮;已签到(返回键退回来看的)=已签到状态+进入会议 -->
+    <template v-else-if="view === 'signin'">
       <section class="omf-card signin-card">
         <div class="signin-badge">签</div>
         <h3>会议签到</h3>
         <p class="signin-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · 线上召开</p>
-        <p class="omf-desc">本次会议在微信工作群中进行。请先签到确认参会，再回微信群开会；开完会后回到本页填写表决结果和意见。</p>
-        <button class="omf-primary" :disabled="busy" @click="selfSignIn">{{ busy ? '正在签到…' : '我已参会，线上签到' }}</button>
+        <template v-if="!selfPresent">
+          <p class="omf-desc">本次会议在微信工作群中进行。请先签到确认参会，再回微信群开会；开完会后回来填写表决结果和意见。</p>
+          <button class="omf-primary" :disabled="busy" @click="selfSignIn">{{ busy ? '正在签到…' : '我已参会，线上签到' }}</button>
+        </template>
+        <template v-else>
+          <p class="omf-desc">您已完成签到，签到不会因返回本页而取消。</p>
+          <button class="omf-primary" @click="view = 'main'">进入会议</button>
+        </template>
         <div class="signin-count">已有 {{ presentCount }}/{{ attendance.length }} 位委员签到</div>
       </section>
     </template>
 
-    <template v-else>
-      <!-- ② 会议本体在微信群(0725 用户定):App 只做签到与会后登记,当前状态说明置顶 -->
+    <!-- ② 线上会议页:微信群提示+名单+去表决入口(0725 用户定:表决登记放下一页) -->
+    <template v-else-if="view === 'main'">
       <section v-if="!meetingEnded" class="omf-card wx-hint">
         <div class="wx-hint-title">会议在微信工作群进行</div>
-        <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，填写您对各议题的表决结果和意见，最后由主任结束会议、进入材料整理。</p>
+        <p class="omf-desc">请回到微信群参加会议。<b>开完会后</b>回到本页，进入表决登记填写您的表决结果和意见。</p>
       </section>
-
 
       <!-- 参会名单:与线下会议签到页同款折叠条(0725 用户定:简化保留),默认收起 -->
       <div class="omf-roster">
@@ -99,7 +104,16 @@
         </div>
       </div>
 
-      <!-- ③ 会后登记:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
+      <!-- 去表决入口 -->
+      <section class="omf-card vote-entry">
+        <h3>表决结果与意见登记</h3>
+        <p class="omf-desc">{{ meetingEnded ? '会议已结束，表决结果已定稿。' : '开完会后，请各位委员在此填写自己的表决结果和意见。' }}</p>
+        <button class="omf-primary" @click="view = 'vote'">{{ meetingEnded ? '查看表决结果' : '去填写表决与意见' }}</button>
+      </section>
+    </template>
+
+    <!-- ③ 表决登记页:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
+    <template v-else>
       <section class="omf-card">
         <h3>{{ meetingEnded ? '议题表决结果' : '表决结果与意见登记' }}</h3>
         <p v-if="!meetingEnded" class="omf-desc">开完会后，请各位委员在下方填写自己的表决结果，并可补充书面意见。</p>
@@ -182,6 +196,17 @@ const emit = defineEmits(['reload'])
 
 const busy = ref(false)
 const rosterOpen = ref(false)
+
+// 页内视图机(0725 用户定):签到页(signin)→线上会议页(main)→表决登记页(vote)。
+// 返回键逐级回退(由宿主页 MeetingLiveQuick 调 handleBack);签到页再返回=离开会议。
+const view = ref('')
+function handleBack() {
+  if (cardMode.value) return false
+  if (view.value === 'vote') { view.value = 'main'; return true }
+  if (view.value === 'main') { view.value = 'signin'; return true }
+  return false
+}
+defineExpose({ handleBack })
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
 const liveAttendance = ref([])
@@ -244,6 +269,8 @@ async function removeOpinion(op) {
 function initFromDetail() {
   liveAttendance.value = ((props.detail.record && props.detail.record.attendances) || []).slice()
   applyTopics((props.detail.record && props.detail.record.topics) || [])
+  // 首次进入定初始视图:未签到落签到页,已签到直达线上会议页(签过到不重复走签到)
+  if (!view.value) view.value = selfPresent.value || meetingEnded.value ? 'main' : 'signin'
 }
 function applyTopics(raw) {
   topics.splice(0, topics.length, ...raw.map(item => ({
@@ -274,6 +301,7 @@ async function selfSignIn() {
   try {
     await api.committeeSelfAttend(props.meetingId, 'remote', false)
     await emitReload()
+    view.value = 'main'
     toast({ title: '签到成功', icon: 'success' })
   } catch (e) {
     toast({ title: e.message || '签到失败', icon: 'none' })
