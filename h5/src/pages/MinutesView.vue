@@ -1,6 +1,10 @@
 <template>
   <div class="mv-page detail-minutes-view">
-    <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;" />
+    <!-- 顶栏返回与页内「返回」统一走 backFromView(0725 导航审计):
+         原顶栏走历史回退,栈里常残留已结束会议的进行页,会退到签到步 -->
+    <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;">
+      <template #left><div class="nav-back-btn" @click="backFromView">‹</div></template>
+    </PageNav>
 
     <div v-if="loading" class="doc mv-loading">正在加载会议纪要…</div>
 
@@ -25,7 +29,7 @@
         <button class="mv-save" :disabled="saving" @click="saveEdit">{{ saving ? '保存中…' : '确定' }}</button>
       </div>
       <div v-else-if="canEdit" class="mv-editor-actions single">
-        <button class="mv-cancel" @click="backToDetail">返回</button>
+        <button class="mv-cancel" @click="backFromView">返回</button>
       </div>
       <div v-else class="mv-links">
         <span class="mv-link" @click="copyAll">复制全文</span>
@@ -192,6 +196,17 @@ function backToDetail() {
     if (document.querySelector('.detail-minutes-view')) window.location.replace('/committee-detail?' + q)
   }, 300)
 }
+// 统一返回(0725 导航审计):从首页/驾驶舱深链来的(from=committee)回 /main(来处);
+// 其余(会议详情/会议进行页)一律回会议详情——不用历史回退,栈里可能残留已结束会议的进行页
+function backFromView() {
+  const from = new URLSearchParams(window.location.search).get('from')
+  if (from === 'committee' || !meetingId) {
+    redirectTo('/main')
+    setTimeout(() => { if (document.querySelector('.detail-minutes-view')) window.location.replace('/main') }, 300)
+    return
+  }
+  backToDetail()
+}
 
 async function saveEdit() {
   if (!editableBody.value.trim()) { toast({ title: '纪要内容不能为空', icon: 'none' }); return }
@@ -269,4 +284,6 @@ onMounted(() => {
 .mv-empty-ico { font-size: 72rpx; margin-bottom: 16rpx; }
 .mv-empty-title { font-size: 34rpx; font-weight: 700; color: #1a1a1a; margin-bottom: 12rpx; }
 .mv-empty-sub { font-size: 28rpx; color: #888; line-height: 1.7; }
+/* 自定义顶栏返回箭头:与 PageNav 默认样式一致(插槽替换后默认样式不生效) */
+.nav-back-btn { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 66rpx; font-weight: 700; }
 </style>

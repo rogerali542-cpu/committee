@@ -1,5 +1,7 @@
 <template>
   <div class="page" style="overflow-y:auto">
+    <!-- 0725 导航审计:原页面没有任何返回出口(从个人中心进来只能靠系统返回键)。历史返回=回个人中心 -->
+    <PageNav title="通知" />
     <div class="head-bar" v-if="list.length">
       <span class="hb-title">{{ unread > 0 ? '未读 ' + unread + ' 条' : '全部已读' }}</span>
       <span class="hb-action" v-if="unread > 0" @click="markAllRead">全部已读</span>
@@ -36,6 +38,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onMounted, onActivated } from 'vue'
+import PageNav from '@/components/PageNav.vue'
 import api from '@/api'
 import { toast } from '@/utils/ui'
 import { navigateTo } from '@/utils/navigate'

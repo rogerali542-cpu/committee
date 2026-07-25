@@ -1,5 +1,7 @@
 <template>
   <div class="page" v-if="view">
+    <!-- 0725 导航审计:原页面无任何返回出口。历史返回=回资料库列表 -->
+    <PageNav title="归档详情" />
     <div class="hd-card">
       <span class="hd-title">{{ view.title }}</span>
       <span class="hd-sub">{{ view.sub }}</span>
@@ -98,6 +100,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import PageNav from '@/components/PageNav.vue'
 import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'

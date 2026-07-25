@@ -1415,14 +1415,9 @@ const cockpitTodos = computed(() => {
       timeScope: 'recent',
       summaryLabel: '会议任务',
       daysUntil: null,
-      onTap: () => {
-        // 委员点「等待通知」只弹说明框，人留在驾驶舱（不能先切甲再弹框，点完"知道了"人被丢在甲）
-        if (!isChair.value) { onPlanRow(currentRow); return }
-        const fromPortal = homeLayout.value === 'portal'
-        enterWorkArea()
-        onPlanRow(currentRow)
-        if (fromPortal && createVisible.value) createReturnPortal.value = true   // 发起会议模态返回时切回驾驶舱
-      }
+      // 0725 导航审计:不再先 enterWorkArea 切甲——驾驶舱是"来处",布局保持 portal,
+      // 模态关闭后自然回驾驶舱;后续深链页的返回/首页落 /main 时也按存储偏好回驾驶舱
+      onTap: () => onPlanRow(currentRow)
     })
   } else if (currentRow && currentRow.status === 'done') {
     items.push({
@@ -1452,15 +1447,8 @@ const cockpitTodos = computed(() => {
       meeting: f.meeting || null,
       periodRow: f.periodRow || null,
       draft: !!f.draft,
-      onTap: () => {
-        // 委员点期次类待办（临期/逾期）只弹说明框，留在驾驶舱；会议类动作照常进工作区
-        if (!isChair.value && f.periodRow) { if (f.onTap) f.onTap(); return }
-        const fromPortal = homeLayout.value === 'portal'
-        enterWorkArea()
-        if (f.onTap) f.onTap()
-        // 若该焦点动作是发起会议(onPlanRow→openNewMeeting 会置回 false 后由此置真),返回切回驾驶舱
-        if (fromPortal && createVisible.value) createReturnPortal.value = true
-      } })
+      // 0725 导航审计:不再先 enterWorkArea——布局留在 portal,模态关闭/深链页返回都天然回驾驶舱
+      onTap: () => { if (f.onTap) f.onTap() } })
   }
   // 逾期补开是硬性履职待办，不能被单焦点的草稿/会议卡顶掉：每个逾期期次各出一张「去补开」。
   // 焦点卡已是该期（无草稿时焦点=首个逾期）或草稿正是该期的补开会议时跳过，避免同期双卡。
@@ -1471,14 +1459,8 @@ const cockpitTodos = computed(() => {
       title: row.monthLabel + '例会逾期未开', sub: '例会是履职核心，请尽快补开',
       cta: isChair.value ? '去补开' : '等待通知',
       timeScope: 'recent', summaryLabel: '会议任务', daysUntil: null, periodRow: row,
-      onTap: () => {
-        // 委员点「等待通知」只弹说明框，留在驾驶舱
-        if (!isChair.value) { onPlanRow(row); return }
-        const fromPortal = homeLayout.value === 'portal'
-        enterWorkArea()
-        onPlanRow(row)
-        if (fromPortal && createVisible.value) createReturnPortal.value = true   // 返回时切回驾驶舱
-      } })
+      // 0725 导航审计:同上,不再预切甲
+      onTap: () => onPlanRow(row) })
   }
   const pendingReceptions = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction)
   if (pendingReceptions.length > 0) {
@@ -2119,8 +2101,7 @@ const publishScore = ref({ ontime: 0, overdue: 0, pending: 0 })
 const counts = ref({ preparing: 0, ongoing: 0, ended: 0 })
 const roleView = ref({ title: '', intro: '' })
 const createVisible = ref(false)
-// 从驾驶舱(portal)点「去补开/去安排」进发起会议时置真：关闭模态返回时切回驾驶舱而非 tabs(甲)
-const createReturnPortal = ref(false)
+// createReturnPortal 已删(0725 导航审计):驾驶舱入口不再预切甲,布局保持 portal,模态关闭天然回驾驶舱
 // 「去安排/去补开」进来时自动预填的「第N次例会」标题快照：用户只看一眼没填任何东西就返回，
 // 预填标题不算用户输入，不生成草稿（否则待办区凭空多出一张"继续通知"卡，还顶掉补开卡）
 const prefilledCreateTitle = ref('')
@@ -2576,7 +2557,6 @@ function openMinutes(id) {
 }
 
 async function openNewMeeting(period) {
-  createReturnPortal.value = false   // 默认不返回驾驶舱;驾驶舱入口在 onPlanRow 返回后再置真
   createVisible.value = true
   createTab.value = 'manual'      // 每次进来默认手动填写面板
   editingMeetingId.value = null   // 全新会议：非编辑模式
@@ -2645,12 +2625,6 @@ function closeCreate() {
   if (editingMeetingId.value) editingMeetingId.value = null
   else persistDraft()
   createVisible.value = false
-  // 从驾驶舱进来的：返回时切回驾驶舱(而非露出 tabs 甲)
-  if (createReturnPortal.value) {
-    homeLayout.value = 'portal'
-    setStorage('home_layout', 'portal')
-  }
-  createReturnPortal.value = false
   topicDialogOpen.value = false
   timePickerOpen.value = false
   datePickerOpen.value = false

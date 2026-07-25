@@ -204,7 +204,9 @@ function formatTime(value) {
 }
 
 function goHome() {
-  redirectTo('/main?home=portal')
+  // 不带 home 参数(0725 导航审计):/main 会按用户存的布局偏好落驾驶舱或甲;
+  // 原先硬编码 portal,把甲用户也强制送进驾驶舱
+  redirectTo('/main')
 }
 
 async function saveAttendance() {

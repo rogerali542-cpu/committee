@@ -138,10 +138,11 @@ async function download() {
 }
 
 function goBack() {
-  if (!meetingId) { navigateBack(); return }
-  redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId + '&from=doc-preview')
+  // 历史优先(0725 导航审计):本页由会议详情或公示材料页进入,历史回退天然回来处;
+  // 原先硬编码回详情,从公示页进来的会被跳过一层。软跳失败仍兜底硬跳详情。
+  navigateBack()
   setTimeout(() => {
-    if (document.querySelector('.docp-page')) window.location.replace('/committee-detail?id=' + meetingId + '&from=doc-preview')
+    if (document.querySelector('.docp-page') && meetingId) window.location.replace('/committee-detail?id=' + meetingId + '&from=doc-preview')
   }, 400)
 }
 function goHome() {
