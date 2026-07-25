@@ -51,10 +51,11 @@
       <template v-if="items.length">
         <!-- 手风琴(0725 用户定):默认全部收起只留标题行,点卡片摊开细节;进详情走展开区内的按钮 -->
         <div class="learn-card" v-for="item in items" :key="item.id" :class="{ open: expandedId === item.id }" @click="toggleExpand(item)">
-          <!-- 收起行=标题+状态+箭头(0725 用户定):类型标签不上标题行(丑),挪进展开细节 -->
+          <!-- 收起行=标题+浅灰摘要两行(0725 用户定,参照主流列表行:主行中等字重+副行弱化),类型在展开细节 -->
           <div class="lc-header">
             <div class="lc-title-wrap">
               <span class="lc-title">{{ item.title }}</span>
+              <span class="lc-sub">{{ item.date }} · {{ formatTime(item.time) }}<template v-if="item.location"> · {{ item.location }}</template></span>
             </div>
             <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
             <span class="lc-arrow" :class="{ open: expandedId === item.id }">⌄</span>
@@ -281,7 +282,8 @@ onUnmounted(() => {
 .lc-header { display: flex; align-items: center; justify-content: space-between; }  /* 状态签/箭头随标题块垂直居中 */
 .lc-title-wrap { min-width: 0; flex: 1; padding-right: 12rpx; text-wrap: balance; }
 /* .lc-type 已删(0725):类型不再上标题行,展开细节里以「类型：」行呈现 */
-.lc-title { font-size: 30rpx; font-weight: 650; color: #1f2329; line-height: 1.5; }  /* 与业委会记录行同级字号 */
+.lc-title { display: block; font-size: 30rpx; font-weight: 560; color: #1f2329; line-height: 1.45; }  /* 中等字重,别用大黑体压场 */
+.lc-sub { display: block; margin-top: 6rpx; font-size: 24rpx; color: #808C99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 副行一行截断,超长省略 */
 .lc-pill { font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; flex-shrink: 0; white-space: nowrap; }
 .lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }
@@ -296,7 +298,8 @@ onUnmounted(() => {
 .lc-progress-text { font-size: 28rpx; color: #C77800; font-weight: 700; flex-shrink: 0; }
 .lc-footer { display: flex; justify-content: flex-end; gap: 14rpx; margin-top: 16rpx; border-top: 2rpx solid #f5f5f5; padding-top: 16rpx; }
 /* 收起态指示:下箭头,与状态标签同行右侧对齐,展开后旋转 */
-.lc-arrow { flex-shrink: 0; margin-left: 12rpx; font-size: 34rpx; line-height: 1; color: #8A94A0; transition: transform .2s; }  /* 与状态签同排垂直居中 */
+/* ⌄ 字形墨迹偏字框下部,flex 居中后视觉仍偏低:用 top 光学上抬(不占 transform,旋转正常) */
+.lc-arrow { flex-shrink: 0; margin-left: 12rpx; font-size: 34rpx; line-height: 1; color: #8A94A0; transition: transform .2s; position: relative; top: -8rpx; }
 .lc-arrow.open { transform: rotate(180deg); }
 .lc-btn { min-height: 64rpx; line-height: 64rpx; padding: 0 30rpx; border-radius: 20rpx; border: none; font-size: 28rpx; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; }
 .lc-btn.start { background: var(--c-primary-dark); color: #fff; }
