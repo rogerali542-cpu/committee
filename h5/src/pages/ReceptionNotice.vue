@@ -157,8 +157,10 @@ const endMinute = timePart('end', 1)
 // saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 
+// 从驾驶舱「修改安排」直达进来的(?from=portal)：返回回驾驶舱，不落在接待中心
 function backToReception() {
-  window.location.replace('/reception-center')
+  const fromPortal = new URLSearchParams(window.location.search).get('from') === 'portal'
+  window.location.replace(fromPortal ? '/main?home=portal' : '/reception-center')
 }
 
 /** 组合后的时间文案，如「每周二 15:00—17:00」；没填齐返回空 */

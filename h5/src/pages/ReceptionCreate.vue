@@ -238,7 +238,11 @@ function newVisitor() {
 }
 function addVisitor() { visitors.value.push(newVisitor()) }
 function removeVisitor(index) { visitors.value.splice(index, 1) }
-function back() { window.location.assign('/reception-center') }
+// 从驾驶舱「登记接待」直达进来的(?from=portal)：返回/提交完成回驾驶舱，不落在接待中心
+function back() {
+  const fromPortal = new URLSearchParams(window.location.search).get('from') === 'portal'
+  window.location.assign(fromPortal ? '/main?home=portal' : '/reception-center')
+}
 
 function validateBase() {
   if (!form.date || !form.time) {

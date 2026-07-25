@@ -98,10 +98,13 @@
         <div v-if="cockpitTodos.length" class="ck-section">
           <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
                class="ck-todo" :class="[currentCockpitTodo.tone, { 'ck-todo-complete': currentCockpitTodo.complete }]">
-            <div v-if="(currentCockpitTodo.meeting && isChair) || committeeCockpitTodos.length > 1" class="ck-todo-head">
+            <div v-if="(currentCockpitTodo.meeting && isChair) || currentCockpitTodo.draft || committeeCockpitTodos.length > 1" class="ck-todo-head">
               <div class="ck-todo-head-actions">
                 <button v-if="currentCockpitTodo.meeting && isChair" type="button" class="ck-todo-delete"
                         @click.stop.prevent="removeCurrent(currentCockpitTodo.meeting)">删除会议</button>
+                <!-- 草稿卡的撤销出口：与「删除会议」同位同式，远离右下主按钮避免误点；点击走确认弹窗 -->
+                <button v-else-if="currentCockpitTodo.draft" type="button" class="ck-todo-delete"
+                        @click.stop.prevent="discardDraft">放弃草稿</button>
                 <div v-if="committeeCockpitTodos.length > 1" class="ck-todo-pager">
                   <button type="button" @click.stop="showPreviousCockpitTodo">上一项</button>
                   <span>{{ cockpitTodoIndex + 1 }}/{{ committeeCockpitTodos.length }}</span>
@@ -1108,9 +1111,11 @@ const receptionTimeText = computed(() => {
 // 卡标题「X月接待安排」用的当前月份。取一次就够：跨月那一刻用户不会正开着页面
 const recMonth = new Date().getMonth() + 1
 function goReceptionNotice() {
-  navigateTo('/pages/reception-notice/reception-notice')
+  // 从驾驶舱「修改安排」直达时带来源标记：该页返回按钮回驾驶舱，而不是接待中心
+  const q = homeLayout.value === 'portal' ? '?from=portal' : ''
+  navigateTo('/pages/reception-notice/reception-notice' + q)
   // 哨兵 .recep-notice 挂在目标页根上，进页即有、不等接口（同 goReceptionDetail 的兜底）
-  setTimeout(() => { if (!document.querySelector('.recep-notice')) window.location.href = '/reception-notice' }, 300)
+  setTimeout(() => { if (!document.querySelector('.recep-notice')) window.location.href = '/reception-notice' + q }, 300)
 }
 
 function goReceptionRecords() {
@@ -1428,6 +1433,7 @@ const cockpitTodos = computed(() => {
       daysUntil: meetingDays === null ? null : Math.max(0, meetingDays),
       meeting: f.meeting || null,
       periodRow: f.periodRow || null,
+      draft: !!f.draft,
       onTap: () => {
         const fromPortal = homeLayout.value === 'portal'
         enterWorkArea()
@@ -1588,7 +1594,7 @@ const homeFocus = computed(() => {
   if (ended) return { level: 'active', kicker: ended.minutesGen ? '会议纪要生成中' : '待整理会议记录',
     title: ended.title, sub: ended.timeText, cta: ended.ctaLabel, icon: ended.ctaIcon, meeting: ended, onTap: () => goCurrent(ended) }
   if (hasDraft.value) return { level: 'active', kicker: '通知编辑中', title: draftTitle.value,
-    sub: draftSummary.value || '会议通知尚未完成', cta: '继续通知', onTap: () => continueDraft() }
+    sub: draftSummary.value || '会议通知尚未完成', cta: '继续通知', draft: true, onTap: () => continueDraft() }
   const prep = list.find(c => c.stage === 'preparing')
   if (prep) return { level: 'active', kicker: '会议通知', title: prep.title,
     sub: [prep.timeText, prep.locationText].filter(Boolean).join(' · '), cta: prep.ctaLabel, icon: prep.ctaIcon,
@@ -1873,7 +1879,8 @@ function currentUserName() {
 
 function openReceptionCreate() {
   if (!canManageReception.value) return
-  window.location.assign('/reception-create')
+  // 从驾驶舱进来的带上来源标记：登记页返回/提交完成回驾驶舱，而不是接待中心
+  window.location.assign(homeLayout.value === 'portal' ? '/reception-create?from=portal' : '/reception-create')
 }
 
 async function submitReceptionCreate() {
