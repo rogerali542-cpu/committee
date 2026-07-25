@@ -208,7 +208,6 @@
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
         <template v-if="isChair && !meetingEnded">
           <button class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
-          <div class="end-hint">结束后各议题表决即定稿，未填写的委员不再计入</div>
         </template>
         <div v-else-if="!meetingEnded" class="member-wait-hint">表决和意见填写完成后，等待主任结束会议、进入材料整理</div>
         <button v-else class="omf-primary" @click="endMeeting">查看会议详情</button>
@@ -676,7 +675,6 @@ onBeforeUnmount(() => {
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
 .op-submit{margin-left:auto;height:56rpx;padding:0 28rpx;border:2rpx solid #b9c8d1;border-radius:12rpx;background:#fff;color:#496474;font-size:23rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
-.end-hint{margin-top:14rpx;text-align:center;color:#94a1ab;font-size:22rpx}
 .vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
 .vote-options{display:flex;flex-direction:column;gap:12rpx;margin:18rpx 0 0 52rpx}
 .vote-opt{height:70rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
