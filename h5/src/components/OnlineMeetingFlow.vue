@@ -444,7 +444,7 @@ onBeforeUnmount(() => {
 .omf-flow-line.done{background:#2E8B57}
 
 /* 参会名单折叠条:配色/行样式对齐线下会议签到页 .si-roster / .signin-roster-row */
-.omf-roster{background:#fff;border:2rpx solid #e0e7eb;border-radius:22rpx;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);padding:0 28rpx;margin-bottom:24rpx}
+.omf-roster{background:#fff;border:2rpx solid #e0e7eb;border-radius:22rpx;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);padding:0 28rpx;margin-bottom:36rpx}
 .omf-roster-bar{display:flex;align-items:center;gap:14rpx;padding:24rpx 0}
 .omf-roster-title{font-size:29rpx;font-weight:700;color:#1f2329}
 .omf-roster-summary{flex:1;margin-left:8rpx;color:#8A5A2B;font-size:24rpx;font-weight:550}
