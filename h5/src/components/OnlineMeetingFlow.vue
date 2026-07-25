@@ -430,7 +430,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-head-main{min-width:0;flex:1}
 .omf-title-row{display:flex;align-items:center;gap:16rpx}.omf-title-row h2{margin:0;font-size:38rpx;min-width:0}
-.omf-method-tag{flex:none;padding:5rpx 16rpx;border-radius:999rpx;background:#EAF2FF;color:#2676D9;font-size:23rpx;font-weight:600}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
+.omf-method-tag{flex:none;padding:5rpx 16rpx;border-radius:999rpx;background:#EAF2FF;color:#2676D9;font-size:23rpx;font-weight:600}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:36rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
 /* 流程链:样式对齐线下会议阶段条 .lp-flow(紧凑版尺寸) */
 .omf-flow{display:flex;align-items:center;padding:10rpx 24rpx 46rpx;margin:4rpx 8rpx 6rpx}
 .omf-flow-step{position:relative;flex-shrink:0}
@@ -464,6 +464,7 @@ onBeforeUnmount(() => {
 .signin-card .omf-primary{height:92rpx;font-size:31rpx;margin-top:34rpx;border-radius:18rpx}
 .signin-count{margin-top:24rpx;color:#84929b;font-size:23rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
+.vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
 .topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
