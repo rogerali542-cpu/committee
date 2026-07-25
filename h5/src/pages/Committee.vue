@@ -4528,16 +4528,18 @@ onActivated(show)
   border: 2rpx solid #D7AD75; border-radius: 18rpx; background: #FFF9F0;
   color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }
 .rec-notice-primary:active { opacity: 0.76; }
-.rec-register-card { order: 2; display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
-  margin-top: 57rpx; padding: 24rpx 26rpx; text-align: left;
-  background: linear-gradient(135deg, #FFF9F0 0%, #FFF2DF 100%); border: 3rpx solid #E7B56F;
-  border-radius: 20rpx; box-shadow: 0 10rpx 26rpx rgba(159,92,13,0.12); color: inherit; }
-.rrc-icon { display: flex; align-items: center; justify-content: center; width: 68rpx; height: 68rpx;
-  border-radius: 17rpx; background: #B96300; color: #fff; font-size: 38rpx; font-weight: 500; }
+/* 与学习页「新增学习记录」同款(0725 用户定):短20%居中、配色减淡、外圈柔光 */
+.rec-register-card { order: 2; display: flex; align-items: center; gap: 16rpx; width: 80%; box-sizing: border-box;
+  margin: 57rpx auto 0; padding: 20rpx 24rpx; text-align: left;
+  background: linear-gradient(135deg, #FFFDF8 0%, #FFF7EA 100%); border: 2rpx solid #EFD4A8;
+  border-radius: 20rpx; color: inherit;
+  box-shadow: 0 0 22rpx rgba(233, 168, 74, 0.35), 0 6rpx 20rpx rgba(159, 92, 13, 0.08); }
+.rrc-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx;
+  border-radius: 15rpx; background: #C97B1D; color: #fff; font-size: 34rpx; font-weight: 500; }
 .rrc-copy { flex: 1; display: flex; flex-direction: column; gap: 3rpx; }
-.rrc-copy strong { font-size: 38rpx; line-height: 1.35; color: #713E00; font-weight: 650; }
-.rrc-arrow { display: flex; align-items: center; justify-content: center; width: 54rpx; height: 54rpx;
-  border-radius: 50%; background: #F4D9B5; color: #9A5700; font-size: 40rpx; font-weight: 700; }
+.rrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #8A5A17; font-weight: 650; }
+.rrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
+  border-radius: 50%; background: #F8E5C6; color: #A97018; font-size: 36rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
 .rec-recent-card { order: 3; margin-top: 57rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
