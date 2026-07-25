@@ -2714,7 +2714,7 @@ public class CommitteeService {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
         UserRoleEntity operator = SecurityUtils.getCurrentUserRole();
-        if (operator == null || !operator.getRole().isChair()) {
+        if (operator == null || !operator.getRole().isCommitteeOperator()) {
             throw new IllegalArgumentException("仅主任/副主任可代录");
         }
         if (meeting.getStage() != MeetingStage.ongoing) {
@@ -3603,7 +3603,8 @@ public class CommitteeService {
     }
 
     private static boolean isChair(UserRoleEntity ur) {
-        return ur.getRole().isChair();
+        // 这里表示“使用主任日常业务工作台”，并非法律身份判断。
+        return ur.getRole().isCommitteeOperator();
     }
     private static boolean isRecorder(UserRoleEntity ur) {
         return ur.getRole().isRecorder();

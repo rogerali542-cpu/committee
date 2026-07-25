@@ -55,6 +55,8 @@ public class ReceptionTicketService {
     public MeetingTodoTicketVO push(Long recordId) {
         validateConfig();
         ReceptionRecord r = recordRepo.findById(recordId)
+                .filter(record -> record.getCommunity() != null
+                        && SecurityUtils.getCurrentCommunityId().equals(record.getCommunity().getId()))
                 .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
 
         // 幂等键：同一条接待重复点「派发工单」不会重复建单，对方按 uid+externalTicketNo 返回已有工单。

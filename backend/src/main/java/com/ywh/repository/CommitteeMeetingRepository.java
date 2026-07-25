@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface CommitteeMeetingRepository extends JpaRepository<CommitteeMeeting, Long> {
+    boolean existsByIdAndCommunityId(Long id, Long communityId);
     List<CommitteeMeeting> findByCommunityIdAndStageOrderByCreatedAtDesc(Long communityId, MeetingStage stage);
     List<CommitteeMeeting> findByCommunityIdAndStageAndComplianceNotOrderByCreatedAtDesc(Long communityId, MeetingStage stage, ComplianceStatus compliance);
     List<CommitteeMeeting> findByCommunityIdOrderByCreatedAtDesc(Long communityId);

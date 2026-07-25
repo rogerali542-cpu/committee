@@ -293,7 +293,7 @@
               </div>
               <div class="arp-actions">
                 <span class="ar-skip" @click="viewMinutesRevisions">版本历史</span>
-                <span class="ar-skip danger" @click="withdrawPublish">撤回公示</span>
+                <span v-if="perm.can('formal.archive.revoke')" class="ar-skip danger" @click="withdrawPublish">撤回公示</span>
               </div>
             </div>
             <div v-else-if="detail.publish && detail.publish.withdrawn">
@@ -308,7 +308,7 @@
               <span class="arp-check">✓</span><span style="font-size:15px;color:#1E8E4E;">已归档（未公示）</span>
               <div class="arp-actions">
                 <span class="ar-skip" @click="addArchiveExtra">补充材料</span>
-                <span class="ar-skip danger" @click="revokeArchive">撤销归档</span>
+                <span v-if="perm.can('formal.archive.revoke')" class="ar-skip danger" @click="revokeArchive">撤销归档</span>
               </div>
             </div>
             <template v-else>

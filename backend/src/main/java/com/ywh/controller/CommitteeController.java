@@ -1,6 +1,8 @@
 package com.ywh.controller;
 
 import com.ywh.annotation.RequireRole;
+import com.ywh.annotation.RequirePermission;
+import com.ywh.enums.SystemPermission;
 import com.ywh.dto.CreateMeetingRequest;
 import com.ywh.dto.DeliverySendRequest;
 import com.ywh.dto.MeetingDetailVO;
@@ -46,6 +48,7 @@ public class CommitteeController {
     private final AudioStorageService audioStorage;
 
     @GetMapping
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<Map<String, Object>>> list(
             @RequestParam(required = false) String stage,
             @RequestParam(required = false) Boolean archived) {
@@ -63,17 +66,20 @@ public class CommitteeController {
     /** 撤销归档（仅误归档用，原因必填；已公示需先撤回公示） */
     @PostMapping("/{id}/archive/revoke")
     @RequireRole({"主任", "副主任"})
+    @RequirePermission(SystemPermission.FORMAL_ARCHIVE_REVOKE)
     public Result<Void> revokeArchive(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> req) {
         service.revokeArchive(id, req == null ? null : (String) req.get("reason"));
         return Result.ok();
     }
 
     @GetMapping("/members")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<MeetingDetailVO.MemberSummaryVO>> members() {
         return Result.ok(service.listCommitteeMembers());
     }
 
     @GetMapping("/{id}")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<MeetingDetailVO> detail(@PathVariable Long id) {
         return Result.ok(service.getDetail(id));
     }
@@ -434,6 +440,7 @@ public class CommitteeController {
     // ===== 议题意见 =====
 
     @GetMapping("/{id}/opinions")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<Map<String, Object>>> listOpinions(@PathVariable Long id) {
         return Result.ok(service.listOpinions(id));
     }
@@ -580,12 +587,14 @@ public class CommitteeController {
 
     @PostMapping("/{id}/publish/withdraw")
     @RequireRole({"主任", "副主任"})
+    @RequirePermission(SystemPermission.FORMAL_ARCHIVE_REVOKE)
     public Result<Void> withdrawPublish(@PathVariable Long id, @RequestBody Map<String, Object> req) {
         service.withdrawPublish(id, req == null ? null : (String) req.get("reason"));
         return Result.ok();
     }
 
     @GetMapping("/{id}/minutes")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<String> minutes(@PathVariable Long id) {
         return Result.ok(service.generateMinutes(id));
     }
@@ -623,11 +632,13 @@ public class CommitteeController {
     }
 
     @GetMapping("/stats")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Map<String, Object>> stats() {
         return Result.ok(service.getStats());
     }
 
     @GetMapping("/publish-score")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<MeetingDetailVO.PublishScoreVO> publishScore() {
         return Result.ok(service.getPublishScore());
     }

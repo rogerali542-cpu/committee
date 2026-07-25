@@ -50,7 +50,7 @@
           class="menu-row"
           v-for="item in recordsList"
           :key="item.label"
-          @click="item.action === 'admin' ? goAdmin() : showWip()"
+          @click="item.action === 'secretary' ? goSecretaryManagement() : showWip()"
         >
           <div class="menu-icon" :style="{ background: item.bg }">{{ item.icon }}</div>
           <span class="menu-label">{{ item.label }}</span>
@@ -106,27 +106,27 @@ function refresh() {
 
   // 切换身份名单：优先用后端 user_roles（onMounted 拉取，根治写死名单与库脱节），兜底旧写死名单
   const allIdentities = serverIdentities.value || [
-    { id: 99, realName: '系统管理员', role: '管理员', roleClass: 'chair' },
     { id: 1, realName: '张建国', role: '主任', roleClass: 'chair' },
     { id: 2, realName: '李秀英', role: '副主任', roleClass: 'chair' },
     { id: 3, realName: '王志强', role: '委员', roleClass: 'member' },
     { id: 4, realName: '赵丽娟', role: '委员', roleClass: 'member' },
     { id: 5, realName: '刘海涛', role: '委员', roleClass: 'member' },
     { id: 6, realName: '陈晓梅', role: '委员', roleClass: 'member' },
-    { id: 7, realName: '杨国华', role: '委员', roleClass: 'member' }
+    { id: 7, realName: '杨国华', role: '委员', roleClass: 'member' },
+    { id: 8, realName: '秘书小李', role: '业委会秘书', roleClass: 'secretary', enabled: true }
   ]
 
   const gradMap = {
     '主任': 'linear-gradient(160deg,#FFCC44,#FFA800)',
     '副主任': 'linear-gradient(160deg,#FFCC44,#FFA800)',
     '委员': 'linear-gradient(160deg,#FFCC44,#FFA800)',
-    '管理员': 'linear-gradient(160deg,#5D6D7E,#2C3E50)'
+    '业委会秘书': 'linear-gradient(160deg,#7895B6,#4E6F94)'
   }
   const descMap = {
     '主任': '负责召集主持会议，具有最高操作权限',
     '副主任': '协助主任开展工作，享有同等会议权限',
     '委员': '确认参会，参与表决，查看会议资料',
-    '管理员': '系统权限管理与配置'
+    '业委会秘书': '经主任授权，协助处理通知、材料与日常工作'
   }
   const roleClassMap = {
     '主任': '', '副主任': '', '委员': ''
@@ -137,10 +137,10 @@ function refresh() {
   // Records menu by role
   let rTitle = ''
   let rList = []
-  if (role.role === '管理员') {
-    rTitle = '系统管理'
+  if (role.role === '主任') {
+    rTitle = '人员与授权'
     rList = [
-      { icon: '⚙️', bg: '#F5EEF8', label: '权限管理', action: 'admin' }
+      { icon: '秘', bg: '#E8EEF8', label: '秘书授权管理', action: 'secretary' }
     ]
   }
 
@@ -155,7 +155,7 @@ function refresh() {
   stats.value = s
   recordsTitle.value = rTitle
   recordsList.value = rList
-  internalRoles.value = allIdentities.filter(i => ['主任', '副主任', '委员', '管理员'].includes(i.role))
+  internalRoles.value = allIdentities.filter(i => ['主任', '副主任', '委员', '业委会秘书'].includes(i.role))
 
   loadUnread()
 }
@@ -173,12 +173,20 @@ function openNotifications() {
 
 async function switchRole(item) {
   if (item.id === activeRole.value.id) return
+  if (item.enabled === false) {
+    toast({ title: '该秘书授权已被主任收回', icon: 'none' })
+    return
+  }
   const newRole = {
     id: parseInt(item.id),
     role: item.role,
     realName: item.realName,
     communityId: item.communityId || 1,
-    communityName: item.communityName || '阳光家园'
+    communityName: item.communityName || '阳光家园',
+    enabled: item.enabled !== false,
+    scopeLevel: item.scopeLevel,
+    scopeRegionCode: item.scopeRegionCode,
+    scopeRegionName: item.scopeRegionName
   }
   if (meetingRecordingSession.meetingId) {
     await discardMeetingRecording(meetingRecordingSession.meetingId)
@@ -190,7 +198,7 @@ async function switchRole(item) {
   setTimeout(() => window.location.reload(), 600)
 }
 
-function goAdmin() { navigateTo('/pages/admin/admin') }
+function goSecretaryManagement() { navigateTo('/secretary-management') }
 function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 async function doLogout() {
   if (meetingRecordingSession.meetingId) {
@@ -206,12 +214,13 @@ async function loadServerIdentities() {
   try {
     const list = await api.devRoles()
     if (Array.isArray(list) && list.length) {
-      serverIdentities.value = [{ id: 99, realName: '系统管理员', role: '管理员', roleClass: 'chair' }]
-        .concat(list.map(r => ({
+      serverIdentities.value = list.map(r => ({
           id: r.id, realName: r.realName, role: r.role,
-          roleClass: r.role === '委员' ? 'member' : 'chair',
-          communityId: r.communityId, communityName: r.communityName
-        })))
+          roleClass: r.role === '委员' ? 'member' : r.role === '业委会秘书' ? 'secretary' : 'chair',
+          communityId: r.communityId, communityName: r.communityName,
+          enabled: r.enabled !== false,
+          scopeLevel: r.scopeLevel, scopeRegionCode: r.scopeRegionCode, scopeRegionName: r.scopeRegionName
+        }))
       refresh()
     }
   } catch (e) { /* 后端未启动：走兜底名单 */ }

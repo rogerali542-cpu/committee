@@ -1,5 +1,6 @@
 package com.ywh.controller;
 
+import com.ywh.annotation.RequireRole;
 import com.ywh.dto.MeetingTodoTicketVO;
 import com.ywh.entity.ReceptionRecord;
 import com.ywh.service.ReceptionNoticePdfService;
@@ -34,11 +35,13 @@ public class ReceptionController {
     private final ReceptionNoticePdfService noticePdfService;
 
     @GetMapping("/system")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Map<String, Object>> getSystem() {
         return Result.ok(service.getSystem());
     }
 
     @PutMapping("/system")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> updateSystem(@RequestBody Map<String, Object> req) {
         service.updateSystem(req);
         return Result.ok();
@@ -50,6 +53,7 @@ public class ReceptionController {
      * 生成同时留痕，见 ReceptionNoticePdfService.generateAndRecord。
      */
     @GetMapping("/notice.pdf")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public ResponseEntity<byte[]> exportNotice() {
         ReceptionNoticePdfService.PdfFile file = noticePdfService.generateAndRecord();
         String encoded = URLEncoder.encode(file.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
@@ -62,33 +66,39 @@ public class ReceptionController {
 
     /** 导出留痕：谁、什么时候、导出的是哪个时间安排（快照）。 */
     @GetMapping("/notice-exports")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<Map<String, Object>>> noticeExports() {
         return Result.ok(service.listNoticeExports());
     }
 
     @GetMapping("/records")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<Map<String, Object>>> list(@RequestParam(defaultValue = "all") String filter) {
         return Result.ok(service.listRecords(filter));
     }
 
     /** 单条详情：新的「单条处理页」进来就拉这个。 */
     @GetMapping("/records/{id}")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Map<String, Object>> get(@PathVariable Long id) {
         return Result.ok(service.getRecord(id));
     }
 
     @PostMapping("/records")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<ReceptionRecord> create(@RequestBody Map<String, Object> req) {
         return Result.ok(service.create(req));
     }
 
     @PostMapping("/records/sessions")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<ReceptionRecord>> createSession(@RequestBody Map<String, Object> req) {
         return Result.ok(service.createSession(req));
     }
 
     /** 填写处理结果 —— 这就是办结动作（done 以它为准）。 */
     @PutMapping("/records/{id}/resolution")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Void> updateResolution(@PathVariable Long id, @RequestParam String resolution) {
         service.updateResolution(id, resolution);
         return Result.ok();
@@ -96,29 +106,34 @@ public class ReceptionController {
 
     /** 派发到外部工单系统。幂等：重复调用返回对方已有工单，不会重复建单。 */
     @PostMapping("/records/{id}/ticket")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<MeetingTodoTicketVO> pushTicket(@PathVariable Long id) {
         return Result.ok(ticketService.push(id));
     }
 
     /** 转物业：只在本系统打标记、不发任何外部请求（与上面的 /ticket 是两条路）。不参与办结判定。 */
     @PutMapping("/records/{id}/property-transfer")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Void> setPropertyTransferred(@PathVariable Long id, @RequestParam boolean transferred) {
         service.setPropertyTransferred(id, transferred);
         return Result.ok();
     }
 
     @DeleteMapping("/records/{id}")
+    @RequireRole({"主任"})
     public Result<Void> remove(@PathVariable Long id) {
         service.remove(id);
         return Result.ok();
     }
 
     @GetMapping("/stats")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Map<String, Object>> stats() {
         return Result.ok(service.getStats());
     }
 
     @PostMapping("/records/{id}/evidences")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Map<String, Object>> addEvidence(@PathVariable Long id,
                                                     @RequestParam String fileName,
                                                     @RequestParam String fileType,
@@ -127,6 +142,7 @@ public class ReceptionController {
     }
 
     @DeleteMapping("/records/{id}/evidences/{evId}")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Void> removeEvidence(@PathVariable Long id, @PathVariable Long evId) {
         service.removeEvidence(id, evId);
         return Result.ok();

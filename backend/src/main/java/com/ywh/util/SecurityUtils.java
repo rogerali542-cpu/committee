@@ -23,6 +23,11 @@ public class SecurityUtils {
         return ur != null && ur.getRole().isChair();
     }
 
+    public static boolean isCommitteeOperator() {
+        UserRoleEntity ur = getCurrentUserRole();
+        return ur != null && ur.getRole().isCommitteeOperator() && Boolean.TRUE.equals(ur.getEnabled());
+    }
+
     public static boolean isRecorder() {
         UserRoleEntity ur = getCurrentUserRole();
         return ur != null && ur.getRole().isRecorder();

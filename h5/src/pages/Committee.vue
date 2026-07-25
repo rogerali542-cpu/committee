@@ -24,24 +24,6 @@
          正解是把 compact 态的紧凑值直接写死、不再依赖 has-meeting，那是独立的一次重构。
          现状的实际毛病：会议一结束，接待 tab 会毫无理由地长高 67px。 -->
     <div class="plan-stack" :class="{ compact: planTab !== 'meeting', 'reception-mode': planTab === 'reception', 'has-meeting': planTab === 'meeting' && currents && currents.length }">
-        <!-- 当前重点横幅（0724 领导意见#1：关键信息突出）：仅记录列表版(甲)显示；欢迎引导页(乙)是业务选择，不放横幅 -->
-        <div v-if="planTab === 'meeting' && homeFocusItems.length && homeLayout === 'tabs'"
-             class="home-focus" :class="[homeFocusItems[0].level, { multi: homeFocusItems.length > 1 }]">
-          <div class="hf-section-head">
-            <span><i class="hf-dot"></i>{{ homeFocusItems.length > 1 ? '当前会议' : homeFocusItems[0].kicker }}</span>
-            <em v-if="homeFocusItems.length > 1">{{ homeFocusItems.length }}项</em>
-          </div>
-          <button v-for="(focus, focusIndex) in homeFocusItems" :key="focus.key" type="button"
-                  class="hf-item" :class="{ primary: focusIndex === 0, secondary: focusIndex > 0 }"
-                  @click="focus.onTap && focus.onTap()">
-            <span class="hf-body">
-              <span v-if="homeFocusItems.length > 1" class="hf-item-state">{{ focus.kicker }}</span>
-              <strong class="hf-title">{{ focus.title }}</strong>
-              <span v-if="focus.sub" class="hf-sub">{{ focus.sub }}</span>
-            </span>
-            <span v-if="focus.cta" class="hf-cta">{{ focus.cta }}<i>›</i></span>
-          </button>
-        </div>
         <!-- 登记：接待的入口动作，独立成大按钮（0716 用户定）。委员接待完来访，先用它把事情记进下面的
              清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
@@ -115,15 +97,15 @@
 
         <div v-if="cockpitTodos.length" class="ck-section">
           <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
-               class="ck-todo" :class="currentCockpitTodo.tone">
+               class="ck-todo" :class="[currentCockpitTodo.tone, { 'ck-todo-complete': currentCockpitTodo.complete }]">
             <div class="ck-todo-head">
               <span class="ck-todo-tag" :class="currentCockpitTodo.tone">{{ currentCockpitTodo.tag }}</span>
               <div class="ck-todo-head-actions">
                 <button v-if="currentCockpitTodo.meeting && isChair" type="button" class="ck-todo-delete"
                         @click.stop.prevent="removeCurrent(currentCockpitTodo.meeting)">删除会议</button>
-                <div v-if="cockpitTodos.length > 1" class="ck-todo-pager">
+                <div v-if="committeeCockpitTodos.length > 1" class="ck-todo-pager">
                   <button type="button" @click.stop="showPreviousCockpitTodo">上一项</button>
-                  <span>{{ cockpitTodoIndex + 1 }}/{{ cockpitTodos.length }}</span>
+                  <span>{{ cockpitTodoIndex + 1 }}/{{ committeeCockpitTodos.length }}</span>
                   <button type="button" @click.stop="showNextCockpitTodo">下一项</button>
                 </div>
               </div>
@@ -131,9 +113,28 @@
             <div class="ck-todo-title">{{ currentCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
               <div v-if="currentCockpitTodo.sub" class="ck-todo-sub">{{ currentCockpitTodo.sub }}</div>
-              <button type="button" class="ck-todo-cta" @click="currentCockpitTodo.onTap()">
+              <button v-if="currentCockpitTodo.cta" type="button" class="ck-todo-cta" @click="currentCockpitTodo.onTap()">
                 {{ currentCockpitTodo.cta }} <i>›</i>
               </button>
+            </div>
+          </div>
+          <div v-if="receptionCockpitTodo" :key="receptionCockpitTodo.key"
+               class="ck-todo ck-reception-todo" :class="receptionCockpitTodo.tone">
+            <div class="ck-todo-head">
+              <span class="ck-todo-tag green">{{ receptionCockpitTodo.tag }}</span>
+            </div>
+            <div class="ck-todo-title">{{ receptionCockpitTodo.title }}</div>
+            <div class="ck-todo-foot">
+              <div v-if="receptionCockpitTodo.sub" class="ck-todo-sub">{{ receptionCockpitTodo.sub }}</div>
+              <div class="ck-reception-actions">
+                <button v-if="receptionCockpitTodo.secondaryCta" type="button"
+                        class="ck-reception-secondary" @click="receptionCockpitTodo.onSecondaryTap()">
+                  {{ receptionCockpitTodo.secondaryCta }}
+                </button>
+                <button type="button" class="ck-todo-cta ck-reception-cta" @click="receptionCockpitTodo.onTap()">
+                  {{ receptionCockpitTodo.cta }} <i>›</i>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -142,7 +143,7 @@
           <div class="ck-calm-text">本期暂无待办事项<br>各项工作井然有序</div>
         </div>
 
-        <div class="ck-section">
+        <div class="ck-section ck-work-section">
           <div class="ck-sec-title">工作板块</div>
           <div class="ck-lines">
             <div v-for="d in portalDomains" :key="d.key" class="ck-line" :class="d.tone" @click="d.onTap()">
@@ -151,7 +152,6 @@
               <div class="ck-line-title">{{ d.title }}</div>
               <div v-if="d.detail" class="ck-line-detail">{{ d.detail }}</div>
             </div>
-              <span v-if="d.chip" class="ck-chip" :class="d.chip.level">{{ d.chip.text }}</span>
               <span class="ck-line-enter">›</span>
             </div>
           </div>
@@ -159,28 +159,35 @@
         <div class="welcome-foot">{{ welcomeFootText }}</div>
       </div>
 
-      <!-- 会议记录列表（路线甲）：开会 tab + tabs 布局。卡头=年份+记录，下方竖排记录列表 -->
+      <!-- 会议工作页：驾驶舱负责提醒和直达，这里只保留近期安排与年度记录，避免同一场会议重复出现。 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'tabs'" class="plan-calendar-card">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
-        <div class="plan-head" :class="{ foldable: planTab !== 'meeting' }"
+        <div class="plan-head" :class="{ foldable: planTab !== 'meeting', 'meeting-plan-head': planTab === 'meeting' }"
              @click="planTab !== 'meeting' ? (ovGridFold = !ovGridFold) : null">
           <!-- 开会 tab 标题＝「2026年」（0716 定，多轮收敛：履职年历→全年会议→年份本身当标题，
                原右上角的年份标签删了）。年份切换箭头已摘，按年计算的能力全保留，恢复见 0e0d15f。 -->
           <div class="plan-title-wrap">
-            <span v-if="planTab === 'meeting'" class="plan-title">{{ viewYear }}年会议记录</span>
+            <span v-if="planTab === 'meeting'" class="plan-title">会议安排</span>
+            <span v-if="planTab === 'meeting'" class="meeting-year-summary">{{ viewYear }}年 · {{ meetingYearSummary }}</span>
             <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
-            <span v-if="planTab === 'meeting'" class="mr-head-hint">按时间查看每次会议</span>
+            <button v-if="planTab === 'meeting'" type="button" class="meeting-calendar-toggle"
+                    @click.stop="meetingCalendarOpen = !meetingCalendarOpen">
+              {{ meetingCalendarOpen ? '收起月历' : '查看月历' }}
+            </button>
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
 
-        <!-- 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：待办/待排常驻，已完成折叠 -->
+        <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
-          <div v-for="row in meetingRecordList.active" :key="row.key" class="mr-row" @click="row.onTap()">
+          <template v-if="meetingRecordList.immediate.length">
+            <div class="mr-group-title">近期安排</div>
+          </template>
+          <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
             <div class="mr-badge" :class="row.statusClass">
               <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
             </div>
@@ -190,6 +197,32 @@
             </div>
             <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
           </div>
+          <div v-if="meetingCalendarOpen" class="mr-calendar-panel">
+            <div class="mr-calendar-panel-title">
+              <span>{{ viewYear }}年月历</span>
+              <small>点击月份查看对应例会</small>
+            </div>
+            <div class="mr-calendar-grid">
+              <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
+                      class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
+                <b>{{ mc.m }}月</b>
+                <span>{{ mc.label }}</span>
+              </button>
+            </div>
+          </div>
+          <template v-if="meetingRecordList.planned.length">
+            <div class="mr-group-title mr-group-plan">后续计划</div>
+            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned" @click="row.onTap()">
+              <div class="mr-badge" :class="row.statusClass">
+                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+              </div>
+              <div class="mr-info">
+                <div class="mr-row-title">{{ row.title }}</div>
+                <div class="mr-row-sub">{{ row.sub }}</div>
+              </div>
+              <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+            </div>
+          </template>
           <template v-if="meetingRecordList.done.length">
             <div class="mr-fold" @click="recDoneOpen = !recDoneOpen">
               <span>已完成 {{ meetingRecordList.done.length }} 场</span>
@@ -1070,6 +1103,7 @@ function receptionNeedsAction(r) {
 // 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间和地点。
 // 卡上只读，编辑和导出都在 /reception-notice 里
 const recSystem = ref(null)
+const cockpitLearningTasks = ref([])
 const receptionTimeText = computed(() => {
   return String((recSystem.value && recSystem.value.timeDesc) || '')
     .replace(/[，,、]?\s*法定节假日暂停.*$/, '')
@@ -1097,6 +1131,14 @@ async function loadCalExtras() {
   ])
   calRecs.value = recs || []
   recSystem.value = sys || null
+}
+async function loadCockpitLearningTasks() {
+  const [internal, training] = await Promise.all([
+    api.learningList('internal', null).catch(() => []),
+    api.learningList('training', null).catch(() => [])
+  ])
+  cockpitLearningTasks.value = [...(internal || []), ...(training || [])]
+    .filter(item => item && item.stage !== 'ended')
 }
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
 // 开会=该月所在双月期例会状态（已开绿✓/本期橙/逾期红!/待排灰）
@@ -1266,6 +1308,12 @@ const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.v
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
 // 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
+function enterCommitteeArea() {
+  // 驾驶舱 URL 仍带 home=portal 时，TabBar 会据此继续隐藏。
+  // 明确进入会议工作页并同步 URL，保证底栏和“返回驾驶舱”稳定出现。
+  setStorage('home_layout', 'tabs')
+  window.location.assign('/main?home=tabs')
+}
 function enterReceptionArea() {
   // 会议与接待复用同一个页面组件。先切业务状态再换路由，避免组件复用时短暂保留会议页。
   planTab.value = 'reception'
@@ -1286,86 +1334,162 @@ function portalMeetingTimeText(meeting) {
   return parts.length === 3 ? (Number(parts[1]) + '月' + Number(parts[2]) + '日') : '待召开'
 }
 const portalDomains = computed(() => {
-  const f = homeFocus.value
-  const overdueCount = overduePeriodRows.value.length
-  const meetingChipText = f && f.meeting ? portalMeetingTimeText(f.meeting) : ''
-  const committeeChip = f && f.level
-    ? (f.level === 'calm'
-        ? { text: '履职正常', level: 'calm' }
-        : { text: f.periodRow && overdueCount ? overdueCount + '次例会逾期' : (meetingChipText || f.kicker), level: f.level })
-    : { text: '履职正常', level: 'calm' }
-  const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
-  const receptionChip = recPending > 0
-    ? { text: recPending + ' 件待处理', level: 'urgent' }
-    : { text: '暂无待办', level: 'calm' }
-  const doneCount = (meetingRecordList.value && Array.isArray(meetingRecordList.value.done))
-    ? meetingRecordList.value.done.length : 0
-  const committeeDesc = doneCount ? ('本年度已召开 ' + doneCount + ' 次例会') : '本年度例会即将开始'
-  const receptionDesc = recPending > 0 ? (recPending + ' 件来访待跟进办理') : '近期来访均已办结'
   return [
-    { key: 'committee', glyph: '会', title: '业委会会议', desc: committeeDesc, tone: 'blue', chip: committeeChip,
-      onTap: () => enterWorkArea() },
-    { key: 'reception', glyph: '访', title: '业主接待', desc: receptionDesc,
-      detail: receptionTimeText.value || '接待时间尚未设置',
-      tone: 'green', chip: receptionChip,
+    { key: 'committee', glyph: '会', title: '业委会会议', tone: 'blue',
+      onTap: enterCommitteeArea },
+    { key: 'reception', glyph: '访', title: '业主接待', tone: 'green',
       onTap: enterReceptionArea },
-    { key: 'learning', glyph: '学', title: '学习培训', desc: '政策学习与业务培训记录', tone: 'amber', chip: null,
+    { key: 'learning', glyph: '学', title: '学习培训', tone: 'amber',
       onTap: () => { enterWorkArea(); navigateTo('/pages/learning/learning') } }
   ]
 })
+
+function nextReceptionInfo() {
+  const now = new Date()
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  let days = (4 - now.getDay() + 7) % 7
+  const rangeMatch = String(receptionTimeText.value || '').match(/(\d{1,2}:\d{2})\s*[—–-]\s*(\d{1,2}:\d{2})/)
+  const startTime = rangeMatch ? rangeMatch[1] : '19:00'
+  const endTime = rangeMatch ? rangeMatch[2] : '20:00'
+  if (days === 0) {
+    const endParts = endTime.split(':').map(Number)
+    const endAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endParts[0] || 20, endParts[1] || 0)
+    if (now > endAt) days = 7
+  }
+  target.setDate(target.getDate() + days)
+  const dateText = (target.getMonth() + 1) + '月' + target.getDate() + '日 周四'
+  const shortDateText = (target.getMonth() + 1) + '月' + target.getDate() + '日'
+  const reminder = days === 0 ? '今天' : (days === 1 ? '明天' : '还有' + days + '天')
+  return { dateText, shortDateText, startTime, range: startTime + '—' + endTime, reminder, days }
+}
+
+function daysFromToday(value) {
+  if (!value) return null
+  const text = String(value).slice(0, 10)
+  const parts = text.split('-').map(Number)
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return null
+  const today = new Date()
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const target = new Date(parts[0], parts[1] - 1, parts[2])
+  return Math.round((target.getTime() - start.getTime()) / 86400000)
+}
+
 const cockpitTodos = computed(() => {
   const items = []
   const f = homeFocus.value
-  // 逾期例会只是需要补齐的历史欠项，不能挡住当前双月期的正常召开入口。
-  // 当首页焦点落在逾期期次时，同时把本期例会放在前面，两个期次分别办理。
-  if (f && f.periodRow && f.periodRow.status === 'overdue') {
-    const currentRow = thisYearPlan.value[curPeriod - 1]
-    if (currentRow && currentRow.status === 'current' && !currentRow.active) {
-      items.push({
-        key: 'committee-current-period',
-        tag: '业委会',
-        tone: 'blue',
-        level: 'active',
-        title: currentRow.monthLabel + '例会待召开',
-        sub: '按本期计划安排会议',
-        cta: isChair.value ? '去发起' : '等待通知',
-        timeScope: 'recent',
-        onTap: () => {
-          enterWorkArea()
-          onPlanRow(currentRow)
-        }
-      })
-    }
+  // 当前双月期是持续存在的履职要求，不能随着某条会议记录被删除而消失。
+  // 未完成时始终给出安排入口；完成后保留一张轻量肯定卡，明确告诉用户本期已履职。
+  const currentRow = thisYearPlan.value[curPeriod - 1]
+  if (currentRow && currentRow.status === 'current' && !currentRow.active) {
+    items.push({
+      key: 'committee-current-period',
+      tag: '业委会',
+      tone: 'blue',
+      level: 'active',
+      title: currentRow.monthLabel + '例会待安排',
+      sub: '请安排本期业委会例会',
+      cta: isChair.value ? '去安排' : '等待通知',
+      timeScope: 'recent',
+      summaryLabel: '会议任务',
+      daysUntil: null,
+      onTap: () => {
+        enterWorkArea()
+        onPlanRow(currentRow)
+      }
+    })
+  } else if (currentRow && currentRow.status === 'done') {
+    items.push({
+      key: 'committee-current-period-done',
+      tag: '业委会',
+      tone: 'blue',
+      level: 'calm',
+      title: currentRow.monthLabel + '例会已完成',
+      sub: '本期按时履职，继续保持',
+      cta: '',
+      actionable: false,
+      complete: true,
+      timeScope: 'recent',
+      daysUntil: null,
+      onTap: enterCommitteeArea
+    })
   }
   if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
     const todayKey = formatLocalDay(new Date())
     const meetingDay = f.meeting && f.meeting.meetingDate ? String(f.meeting.meetingDate).slice(0, 10) : ''
+    const meetingDays = daysFromToday(meetingDay)
     items.push({ key: 'committee', tag: '业委会', tone: 'blue', level: f.level,
       title: f.title, sub: f.sub, cta: f.cta,
       timeScope: meetingDay === todayKey ? 'today' : 'recent',
+      summaryLabel: meetingDays === null ? '会议任务' : '会议',
+      daysUntil: meetingDays === null ? null : Math.max(0, meetingDays),
       meeting: f.meeting || null,
+      periodRow: f.periodRow || null,
       onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
   }
-  const recPending = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction).length
-  if (recPending > 0) {
+  const pendingReceptions = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction)
+  if (pendingReceptions.length > 0) {
+    const first = pendingReceptions[0] || {}
+    const detail = first.content || first.visitorName || '业主诉求尚未完成办理'
     items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent', timeScope: 'recent',
-      title: recPending + ' 件来访待跟进办理', sub: '业主诉求请尽快处理', cta: '去处理',
+      title: pendingReceptions.length + '件接待事项待处理', sub: detail, cta: '去处理', actionable: true,
+      summaryLabel: '接待任务', daysUntil: 0,
       onTap: enterReceptionArea })
+  } else if (receptionTimeText.value) {
+    const next = nextReceptionInfo()
+    const place = String((recSystem.value && recSystem.value.place) || '').trim()
+    const communityName = String((activeRole.value && activeRole.value.communityName) || '').trim()
+    const compactPlace = communityName && place.startsWith(communityName)
+      ? place.slice(communityName.length).trim()
+      : place
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'calm', timeScope: 'recent',
+      title: '下一次业主接待',
+      sub: [next.shortDateText + ' ' + next.startTime, compactPlace, next.reminder].filter(Boolean).join(' · '),
+      cta: canManageReception.value ? '登记接待' : '查看安排',
+      secondaryCta: canManageReception.value ? '修改安排' : '',
+      actionable: false,
+      summaryLabel: '业主接待', daysUntil: next.days,
+      onTap: canManageReception.value ? openReceptionCreate : enterReceptionArea,
+      onSecondaryTap: enterReceptionArea })
+  } else {
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent', timeScope: 'recent',
+      title: '接待安排尚未设置', sub: '请先设置固定接待时间和地点',
+      summaryLabel: '接待安排任务', daysUntil: null,
+      cta: isChair.value ? '去设置' : '查看', actionable: true, onTap: enterReceptionArea })
   }
   return items
 })
+const committeeCockpitTodos = computed(() => {
+  return cockpitTodos.value
+    .filter(item => item.key !== 'reception')
+    .map((item, index) => {
+      if (item.periodRow && Number(item.periodRow.period)) {
+        return { item, index, order: Number(item.periodRow.period) }
+      }
+      if (item.meeting && item.meeting.meetingDate) {
+        const month = Number(String(item.meeting.meetingDate).slice(5, 7))
+        return { item, index, order: month ? Math.ceil(month / 2) : 99 }
+      }
+      if (item.key === 'committee-current-period' || item.key === 'committee-current-period-done') {
+        return { item, index, order: curPeriod }
+      }
+      return { item, index, order: 99 }
+    })
+    .sort((a, b) => a.order - b.order || a.index - b.index)
+    .map(entry => entry.item)
+})
+const receptionCockpitTodo = computed(() => cockpitTodos.value.find(item => item.key === 'reception') || null)
 const cockpitTodoIndex = ref(0)
 const currentCockpitTodo = computed(() => {
-  const items = cockpitTodos.value
+  const items = committeeCockpitTodos.value
   if (!items.length) return null
   return items[cockpitTodoIndex.value % items.length]
 })
 function showNextCockpitTodo() {
-  if (cockpitTodos.value.length < 2) return
-  cockpitTodoIndex.value = (cockpitTodoIndex.value + 1) % cockpitTodos.value.length
+  if (committeeCockpitTodos.value.length < 2) return
+  cockpitTodoIndex.value = (cockpitTodoIndex.value + 1) % committeeCockpitTodos.value.length
 }
 function showPreviousCockpitTodo() {
-  const length = cockpitTodos.value.length
+  const length = committeeCockpitTodos.value.length
   if (length < 2) return
   cockpitTodoIndex.value = (cockpitTodoIndex.value - 1 + length) % length
 }
@@ -1375,10 +1499,45 @@ function formatLocalDay(value) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 const cockpitSummaryText = computed(() => {
-  const items = cockpitTodos.value
-  if (!items.length) return '各项工作井然有序，继续保持 👍'
-  const range = items.some(item => item.timeScope === 'today') ? '今天' : '近期'
-  return range + '有 ' + items.length + ' 件事需要您处理'
+  const candidates = cockpitTodos.value
+    .filter(item => item.summaryLabel)
+    .map(item => ({ label: item.summaryLabel, days: item.daysUntil, actionable: item.actionable !== false }))
+
+  for (const item of cockpitLearningTasks.value) {
+    const rawDays = daysFromToday(item.date || item.trainingDate || item.startDate)
+    candidates.push({
+      label: '学习培训任务',
+      days: rawDays === null ? null : Math.max(0, rawDays),
+      actionable: true
+    })
+  }
+
+  const timedActionable = candidates
+    .filter(item => item.actionable && typeof item.days === 'number' && item.days >= 0)
+    .sort((a, b) => a.days - b.days)
+  if (timedActionable.length) {
+    const nearestDays = timedActionable[0].days
+    const labels = [...new Set(timedActionable.filter(item => item.days === nearestDays).map(item => item.label))]
+    const when = nearestDays === 0 ? '今天' : (nearestDays === 1 ? '明天' : nearestDays + '天后')
+    return when + '有' + labels.join('、')
+  }
+
+  const undatedPending = candidates.filter(item => item.actionable && item.days === null)
+  if (undatedPending.length) {
+    const labels = [...new Set(undatedPending.map(item => item.label))]
+    return '近期有' + labels.join('、') + '需要处理'
+  }
+
+  const timed = candidates
+    .filter(item => typeof item.days === 'number' && item.days >= 0)
+    .sort((a, b) => a.days - b.days)
+  if (timed.length) {
+    const nearestDays = timed[0].days
+    const labels = [...new Set(timed.filter(item => item.days === nearestDays).map(item => item.label))]
+    const when = nearestDays === 0 ? '今天' : (nearestDays === 1 ? '明天' : nearestDays + '天后')
+    return when + '有' + labels.join('、')
+  }
+  return '近期暂无工作安排'
 })
 const cockpitDateText = computed(() => {
   const d = new Date()
@@ -1453,13 +1612,15 @@ const homeFocusItems = computed(() => {
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
 const recDoneOpen = ref(false)
+const meetingCalendarOpen = ref(false)
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
   const toRow = (r) => {
     const current = (currents.value || []).find(c => meetingPeriod(c, viewYear.value) === r.period)
     const draftMatch = hasDraft.value && meetingPeriod(draft.value || {}, viewYear.value) === r.period
     if (current) {
-      const state = current.stage === 'ongoing' ? '进行中'
+      const ongoingStarted = current.stage !== 'ongoing' || current.meetingHasStarted !== false
+      const state = current.stage === 'ongoing' ? (ongoingStarted ? '进行中' : (current.tag || '待召开'))
         : current.stage === 'preparing' ? '待召开'
           : (current.minutesGen ? '纪要生成中' : (current.ctaLabel === '查看会议' ? '已完成' : '待整理'))
       return {
@@ -1469,7 +1630,7 @@ const meetingRecordList = computed(() => {
         title: current.title || ('第' + r.period + '次业委会例会'),
         sub: [current.timeText, current.locationText].filter(Boolean).join(' · '),
         statusLabel: state,
-        statusClass: current.stage === 'ongoing' ? 'current' : (current.stage === 'ended' ? 'done' : 'upcoming'),
+        statusClass: current.stage === 'ongoing' ? (ongoingStarted ? 'current' : 'upcoming') : (current.stage === 'ended' ? 'done' : 'upcoming'),
         onTap: () => goCurrent(current)
       }
     }
@@ -1503,9 +1664,32 @@ const meetingRecordList = computed(() => {
       statusLabel: label, statusClass: r.status,
       onTap: () => onPlanRow(r) }
   }
-  return { active: rows.filter(r => r.status !== 'done').map(toRow),
-           done: rows.filter(r => r.status === 'done').map(toRow) }
+  const active = rows.filter(r => r.status !== 'done').map(toRow)
+  return {
+    active,
+    immediate: active.filter(row => row.statusClass !== 'upcoming' || row.key.indexOf('mr-current-') === 0),
+    planned: active.filter(row => row.statusClass === 'upcoming' && row.key.indexOf('mr-current-') !== 0),
+    done: rows.filter(r => r.status === 'done').map(toRow)
+  }
 })
+
+const meetingYearSummary = computed(() => {
+  const rows = yearPlan.value || []
+  const done = rows.filter(row => row.status === 'done').length
+  const overdue = rows.filter(row => row.status === 'overdue').length
+  const current = rows[curPeriod - 1]
+  let currentText = '本期待安排'
+  if (current) {
+    if (current.status === 'done') currentText = '本期已完成'
+    else if (current.active) currentText = '本期进行中'
+  }
+  return ['已完成' + done + '期', overdue ? ('逾期' + overdue + '期') : '无逾期', currentText].join(' · ')
+})
+
+function onMeetingCalendarMonth(month) {
+  const row = yearPlan.value[Math.ceil(Number(month) / 2) - 1]
+  if (row) onPlanRow(row)
+}
 
 const calAlert = computed(() => {
   if (planTab.value === 'meeting') {
@@ -1974,6 +2158,7 @@ function show() {
   loadUnread()
   loadAll()
   loadCalExtras() // 履职年历：接待数据（月格角标与当月清单用）
+  loadCockpitLearningTasks()
   loadDraft()
   // 从「会议通知」页左箭头返回：以编辑模式打开该会议（一次性交接，用完即清）
   const _editId = getStorage('editMeetingId', null)
@@ -2017,7 +2202,7 @@ async function loadAll() {
       //   演示里会议多因签到不过半判 invalid，一公示/结束回首页卡片就消失。测试期去掉该条，无效会议也保留。
       // 上线前复原：删掉 HISTORY_ONLY_TITLES 排除；按产品要求再决定是否加回 && m.compliance !== 'invalid'
       //   与 && (!m.publish || !m.publish.published)。
-      const HISTORY_ONLY_TITLES = ['2026年第1次业委会例会', '2026年第2次业委会例会']
+      const HISTORY_ONLY_TITLES = ['2026年第1次业委会例会', '2026年第2次业委会例会', '2026年第3次业委会例会']
       const pend = all.filter((m) => m.stage === 'ended'
         && !HISTORY_ONLY_TITLES.includes(m.title))
       actives = [...actives, ...pend]
@@ -3901,7 +4086,11 @@ onActivated(show)
 .home-focus.urgent .hf-item.secondary .hf-cta,
 .home-focus.calm .hf-item.secondary .hf-cta { background: transparent; color: #71838e; }
 /* 驾驶舱首页：欢迎语 + 跨条线待办聚合 + 全部业务目录。统一深蓝灰视觉语言 */
-.portal-home { min-height: 100vh; background: linear-gradient(180deg, #f5f7f9 0%, #eef2f5 100%); }
+.portal-home {
+  min-height: 100dvh;
+  padding-bottom: 0;
+  background: linear-gradient(180deg, #f5f7f9 0%, #eef2f5 100%);
+}
 .portal-home .hd {
   align-items: center;
   padding: calc(env(safe-area-inset-top) + 18rpx) 34rpx 22rpx;
@@ -3910,21 +4099,83 @@ onActivated(show)
 }
 .portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
-.welcome { display: flex; flex-direction: column; min-height: calc(100vh - 172rpx); box-sizing: border-box; }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; }
 .welcome-hero { flex-shrink: 0; padding: 20rpx 10rpx 10rpx; }
 .welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
 .welcome-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; font-size: 30rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
 .welcome-tip .welcome-date { color: #53647B; font-weight: 600; }
 .welcome-tip i { width: 2rpx; height: 28rpx; background: #CDD4DE; }
-.welcome-foot { margin-top: auto; text-align: center; padding: 34rpx 0 30rpx; font-size: 24rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+.welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 21rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 .ck-section { margin-top: 34rpx; }
 .welcome-hero + .ck-section { margin-top: 22rpx; }
+.ck-work-section { margin-top: 48rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
 .ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 28rpx 30rpx 30rpx 42rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; }
 .ck-todo:last-child { margin-bottom: 0; }
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
+.ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
+.ck-todo.blue:not(.ck-todo-complete) .ck-todo-title,
+.ck-todo.blue:not(.ck-todo-complete) .ck-todo-sub { max-width: 330rpx; }
+.ck-todo.blue:not(.ck-todo-complete) .ck-todo-cta {
+  position: absolute;
+  right: 30rpx;
+  top: 50%;
+  width: 174rpx;
+  min-height: 64rpx;
+  padding: 0 14rpx;
+  transform: translateY(-50%);
+  font-size: 30rpx;
+}
+.ck-todo.blue:not(.ck-todo-complete) .ck-todo-cta:active { transform: translateY(calc(-50% + 2rpx)); }
+.ck-todo-complete { padding-top: 22rpx; padding-bottom: 22rpx; background: #F8FBF9; box-shadow: 0 2rpx 5rpx rgba(20,33,61,.035), 0 8rpx 20rpx rgba(20,33,61,.05); }
+.ck-todo-complete::before { background: #68A27C !important; }
+.ck-todo-complete .ck-todo-tag { color: #39704E !important; background: #E4F1E8 !important; }
+.ck-todo-complete .ck-todo-title { margin-top: 10rpx; font-size: 34rpx; }
+.ck-todo-complete .ck-todo-foot { margin-top: 9rpx; }
+.ck-todo-complete .ck-todo-sub { color: #668170; font-size: 25rpx; }
+.ck-reception-todo { padding-right: 224rpx; }
+.ck-reception-todo .ck-todo-title { max-width: 330rpx; font-size: 35rpx; }
+.ck-reception-todo .ck-todo-sub {
+  display: -webkit-box;
+  max-width: 320rpx;
+  overflow: hidden;
+  color: #748477;
+  font-size: 24rpx;
+  line-height: 1.42;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.ck-reception-actions {
+  position: absolute;
+  right: 30rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 34rpx;
+  width: 174rpx;
+}
+.ck-reception-actions .ck-reception-secondary,
+.ck-reception-actions .ck-reception-cta {
+  width: 100%;
+  min-height: 64rpx;
+  padding: 0 14rpx;
+  border: 0;
+  border-radius: 13rpx;
+  background: #4C8062;
+  color: #fff;
+  box-shadow: 0 4rpx 10rpx rgba(76, 128, 98, .14);
+  font-size: 30rpx;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ck-reception-actions .ck-reception-secondary:active,
+.ck-reception-actions .ck-reception-cta:active { background: #3E6F53; color: #fff; }
+.ck-reception-actions .ck-reception-cta i { margin-left: 3rpx; font-size: 27rpx; }
+.ck-reception-cta { background: #4C8062; box-shadow: 0 6rpx 14rpx rgba(76,128,98,.16); }
 .ck-todo-head { display: flex; align-items: center; justify-content: space-between; min-height: 44rpx; margin-top: -7rpx; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
@@ -3934,62 +4185,92 @@ onActivated(show)
 .ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 20rpx; }
 .ck-todo-sub { min-width: 0; font-size: 27rpx; color: #8A94A6; line-height: 1.38; }
 .ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 16rpx; background: #D86A35; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(216, 106, 53, .16); }
+.ck-todo.blue .ck-todo-cta { background: #35647D; box-shadow: 0 6rpx 14rpx rgba(53, 100, 125, .16); }
 .ck-todo-cta:active { transform: translateY(2rpx); filter: brightness(.96); }
 .ck-todo-cta i { margin-left: 5rpx; font-style: normal; font-size: 33rpx; line-height: 1; }
 .ck-todo-delete { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #956B6B; font-size: 24rpx; font-weight: 500; transform: translate(7rpx, -4rpx); }
 .ck-todo-delete:active { color: #C0392B; }
-.ck-todo-pager { display: inline-flex; align-items: center; gap: 12rpx; color: #7B8799; }
+.ck-todo-pager { position: absolute; top: 20rpx; right: 26rpx; display: inline-flex; align-items: center; gap: 12rpx; color: #7B8799; }
 .ck-todo-pager button { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #64758D; font-size: 22rpx; font-weight: 500; }
 .ck-todo-pager button:active { color: #3E6BA8; }
 .ck-todo-pager span { min-width: 44rpx; text-align: center; font-size: 21rpx; color: #9AA4B3; font-variant-numeric: tabular-nums; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
-.ck-lines { display: flex; flex-direction: column; gap: 28rpx; }
-.ck-line { position: relative; display: flex; align-items: center; gap: 26rpx; background: #fff; border-radius: 26rpx; padding: 32rpx 30rpx 32rpx 42rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 14rpx 30rpx rgba(20,33,61,0.07); overflow: hidden; cursor: pointer; }
+.ck-lines { display: flex; flex-direction: column; gap: 20rpx; }
+.ck-line { position: relative; display: flex; align-items: center; gap: 22rpx; min-height: 116rpx; background: #fff; border-radius: 22rpx; padding: 20rpx 26rpx 20rpx 38rpx; box-shadow: 0 2rpx 5rpx rgba(20,33,61,0.04), 0 9rpx 22rpx rgba(20,33,61,0.055); overflow: hidden; cursor: pointer; box-sizing: border-box; }
 .ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-line.blue::before { background: #3E6BA8; }
 .ck-line.green::before { background: #3F7C5A; }
 .ck-line.amber::before { background: #C79A5B; }
 .ck-line:active { transform: translateY(2rpx); }
-.ck-line-ico { flex-shrink: 0; width: 104rpx; height: 104rpx; border-radius: 26rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; font-weight: 800; }
+.ck-line-ico { flex-shrink: 0; width: 82rpx; height: 82rpx; border-radius: 21rpx; display: flex; align-items: center; justify-content: center; font-size: 43rpx; font-weight: 800; }
 .ck-line-ico.blue { background: #E6EDF8; color: #3A5E92; }
 .ck-line-ico.green { background: #E4F0E8; color: #3B7150; }
 .ck-line-ico.amber { background: #F1E8D8; color: #9C6B2E; }
 .ck-line-info { flex: 1; min-width: 0; }
-.ck-line-title { font-size: 37rpx; font-weight: 800; color: #2A3244; }
+.ck-line-title { font-size: 32rpx; font-weight: 750; color: #2A3244; }
 .ck-line-detail { margin-top: 8rpx; font-size: 25rpx; font-weight: 500; color: #708078; line-height: 1.35; }
 .ck-line-desc { margin-top: 8rpx; font-size: 28rpx; color: #8A94A6; line-height: 1.35; }
 .ck-chip { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; }
 .ck-chip.active { color: #2E5A6E; background: #E4EEF2; }
 .ck-chip.urgent { color: #B4482F; background: #F7E7E2; }
 .ck-chip.calm { color: #3B7150; background: #E7F2EB; }
-.ck-line-enter { flex-shrink: 0; font-size: 40rpx; color: #B6BECB; }
-/* 会议记录列表（0724 领导意见#1：月历宫格→竖排记录）：日期徽标 + 标题/状态 + 右侧状态，已完成折叠 */
-.mr-head-hint { font-size: 24rpx; color: var(--c-text-weak); }
-.mr-list { margin: 6rpx 24rpx 4rpx; padding: 4rpx 6rpx; }
-.mr-row { display: flex; align-items: center; gap: 20rpx; padding: 20rpx 20rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; }
+.ck-line-enter { flex-shrink: 0; font-size: 34rpx; color: #C1C7D0; }
+/* 会议工作页：驾驶舱管提醒，这里按“近期安排 / 后续计划 / 已完成”组织，避免重复主卡。 */
+.meeting-plan-head { padding: 30rpx 30rpx 24rpx !important; border-bottom: 2rpx solid #E8EDF2; align-items: center; }
+.meeting-plan-head .plan-title-wrap { flex-direction: column; align-items: flex-start; gap: 8rpx; }
+.meeting-plan-head .plan-title { font-size: 42rpx !important; }
+.meeting-year-summary { font-size: 27rpx; font-weight: 550; color: #65758A; line-height: 1.35; }
+.meeting-calendar-toggle { min-height: 58rpx; padding: 0 20rpx; border: 2rpx solid #B8CADE; border-radius: 999rpx; background: #EEF4FA; color: #345F91; font-size: 25rpx; font-weight: 700; white-space: nowrap; }
+.meeting-calendar-toggle:active { background: #E3EDF7; }
+.mr-list { margin: 0; padding: 0 28rpx 12rpx; }
+.mr-group-title { padding: 26rpx 4rpx 14rpx; color: #53657A; font-size: 28rpx; font-weight: 750; letter-spacing: 1rpx; }
+.mr-group-plan { padding-top: 24rpx; padding-bottom: 6rpx; border-top: 2rpx solid #EEF1F4; color: #8792A0; font-size: 23rpx; font-weight: 600; }
+.mr-row { display: flex; align-items: center; gap: 20rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
-.mr-badge { flex-shrink: 0; width: 104rpx; min-height: 88rpx; border-radius: 16rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; padding: 8rpx 4rpx; }
+.mr-featured { position: relative; margin: 0 0 24rpx; padding: 28rpx 24rpx 28rpx 30rpx; min-height: 154rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
+.mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
+.mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
+.mr-featured:active { background: #F0F5F8; }
+.mr-planned { min-height: 88rpx; padding: 12rpx 6rpx; gap: 16rpx; opacity: .78; }
+.mr-planned .mr-badge { width: 78rpx; min-height: 70rpx; border-radius: 14rpx; }
+.mr-planned .mr-badge b { font-size: 25rpx; }
+.mr-planned .mr-badge span { font-size: 20rpx; }
+.mr-planned .mr-row-title { font-size: 27rpx; font-weight: 650; }
+.mr-planned .mr-row-sub { margin-top: 3rpx; font-size: 23rpx; }
+.mr-planned .mr-status { font-size: 23rpx; font-weight: 500; }
+.mr-badge { flex-shrink: 0; width: 94rpx; min-height: 82rpx; border-radius: 16rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; padding: 8rpx 4rpx; }
 .mr-badge b { font-size: 29rpx; font-weight: 800; line-height: 1.1; white-space: nowrap; }
 .mr-badge span { font-size: 22rpx; }
 .mr-badge.done { background: #EAF6EE; color: #2E7D50; }
-.mr-badge.current { background: #FDF0DC; color: #B5731A; }
+.mr-badge.current { background: #E6EEF7; color: #345F91; }
 .mr-badge.overdue { background: #FBE6E2; color: #B0463A; }
-.mr-badge.upcoming { background: #EEF1F4; color: #6B7885; }
+.mr-badge.upcoming { background: #F0F2F5; color: #707C8B; }
 .mr-info { flex: 1; min-width: 0; }
-.mr-row-title { font-size: 30rpx; font-weight: 700; color: var(--c-text-strong); line-height: 1.3; }
-.mr-row-sub { font-size: 25rpx; color: var(--c-text-weak); margin-top: 6rpx; line-height: 1.3; }
-.mr-status { flex-shrink: 0; font-size: 26rpx; font-weight: 600; }
+.mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; }
+.mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; }
+.mr-status { flex-shrink: 0; font-size: 28rpx; font-weight: 650; }
 .mr-status.done { color: #2E7D50; }
-.mr-status.current { color: #B5731A; }
+.mr-status.current { color: #345F91; }
 .mr-status.overdue { color: #B0463A; }
 .mr-status.upcoming { color: #8A94A0; }
-.mr-fold { display: flex; align-items: center; justify-content: center; gap: 10rpx; padding: 20rpx; margin-top: 4rpx; font-size: 26rpx; color: var(--c-text-mid); border-top: 2rpx solid #F1F3F5; cursor: pointer; }
+.mr-fold { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; min-height: 88rpx; padding: 18rpx 8rpx; margin-top: 10rpx; font-size: 27rpx; font-weight: 600; color: #536175; border-top: 2rpx solid #E8ECEF; cursor: pointer; }
 .mr-fold:active { opacity: 0.7; }
 .mr-fold-chev { transition: transform 0.2s; }
 .mr-fold-chev.open { transform: rotate(180deg); }
+.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; }
+.mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 14rpx; color: #34465C; font-size: 28rpx; font-weight: 700; }
+.mr-calendar-panel-title small { color: #8995A4; font-size: 21rpx; font-weight: 500; }
+.mr-calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
+.mr-calendar-month { min-height: 86rpx; padding: 9rpx 4rpx; border: 0; border-radius: 13rpx; background: #EEF1F4; color: #627083; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5rpx; }
+.mr-calendar-month b { font-size: 26rpx; line-height: 1.1; }
+.mr-calendar-month span { font-size: 21rpx; line-height: 1.1; }
+.mr-calendar-month.done { background: #EDF6F0; color: #397356; }
+.mr-calendar-month.overdue { background: #FAEBE8; color: #A94B40; }
+.mr-calendar-month.current { background: #EAF0F7; color: #3B6593; }
+.mr-calendar-month:active { filter: brightness(.96); }
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
    全删（0717 用户定：会议进行中那一栏撤掉，接待日安排顶上）。

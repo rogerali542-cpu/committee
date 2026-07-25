@@ -3,6 +3,7 @@ package com.ywh.config;
 import com.ywh.entity.UserRoleEntity;
 import com.ywh.repository.UserRoleRepository;
 import com.ywh.util.JwtUtil;
+import com.ywh.service.AccessControlService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.List;
@@ -24,6 +26,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRoleRepository userRoleRepository;
+    private final AccessControlService accessControlService;
+
+    @Value("${app.dev-auth-enabled:false}")
+    private boolean devAuthEnabled;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -35,8 +41,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             // Dev mode: token is "dev-token-<roleId>"
             if (token.startsWith("dev-token-")) {
-                Long roleId = Long.valueOf(token.substring("dev-token-".length()));
-                activeRole = userRoleRepository.findById(roleId).orElse(null);
+                if (devAuthEnabled) {
+                    try {
+                        Long roleId = Long.valueOf(token.substring("dev-token-".length()));
+                        activeRole = userRoleRepository.findById(roleId)
+                                .filter(accessControlService::isDevLoginAllowed)
+                                .orElse(null);
+                    } catch (NumberFormatException ignored) {
+                        activeRole = null;
+                    }
+                }
             }
             // Production: JWT token
             else if (jwtUtil.validateToken(token)) {
@@ -56,7 +70,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
 
-            if (activeRole != null) {
+            if (activeRole != null && accessControlService.isRoleActive(activeRole)) {
                 List<SimpleGrantedAuthority> authorities = List.of(
                         new SimpleGrantedAuthority("ROLE_" + activeRole.getRole().name())
                 );

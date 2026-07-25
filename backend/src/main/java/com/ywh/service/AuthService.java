@@ -16,6 +16,8 @@ import com.ywh.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
+    @Value("${app.dev-auth-enabled:false}")
+    private boolean devAuthEnabled;
 
     private final WxMaService wxMaService;
     private final JwtUtil jwtUtil;
@@ -67,6 +71,10 @@ public class AuthService {
                         .realName(r.getRealName())
                         .communityId(r.getCommunity().getId())
                         .communityName(r.getCommunity().getName())
+                        .enabled(r.getEnabled())
+                        .scopeLevel(r.getScopeLevel().name())
+                        .scopeRegionCode(r.getScopeRegionCode())
+                        .scopeRegionName(r.getScopeRegionName())
                         .build())
                 .collect(Collectors.toList());
 
@@ -81,12 +89,16 @@ public class AuthService {
                 .build();
     }
 
-    /** 测试期身份名单：库里业委会侧角色（主任/副主任/委员），按 id 排序。名单唯一事实源=user_roles。 */
+    /** 测试期身份名单：普通业务身份；隐藏技术管理员永不下发到客户端。 */
     public List<java.util.Map<String, Object>> listDevRoles() {
+        if (!devAuthEnabled) {
+            throw new AccessDeniedException("测试身份登录未启用");
+        }
         return userRoleRepo.findAll().stream()
                 .filter(r -> {
                     String n = r.getRole() == null ? "" : r.getRole().name();
-                    return "主任".equals(n) || "副主任".equals(n) || "委员".equals(n);
+                    return "主任".equals(n) || "副主任".equals(n) || "委员".equals(n)
+                            || "业委会秘书".equals(n) || "街道管理员".equals(n) || "区级管理员".equals(n);
                 })
                 .sorted(java.util.Comparator.comparing(UserRoleEntity::getId))
                 .map(r -> {
@@ -96,6 +108,10 @@ public class AuthService {
                     m.put("role", r.getRole().name());
                     m.put("communityId", r.getCommunity() != null ? r.getCommunity().getId() : null);
                     m.put("communityName", r.getCommunity() != null ? r.getCommunity().getName() : null);
+                    m.put("enabled", r.getEnabled());
+                    m.put("scopeLevel", r.getScopeLevel().name());
+                    m.put("scopeRegionCode", r.getScopeRegionCode());
+                    m.put("scopeRegionName", r.getScopeRegionName());
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -113,6 +129,10 @@ public class AuthService {
                         .realName(r.getRealName())
                         .communityId(r.getCommunity().getId())
                         .communityName(r.getCommunity().getName())
+                        .enabled(r.getEnabled())
+                        .scopeLevel(r.getScopeLevel().name())
+                        .scopeRegionCode(r.getScopeRegionCode())
+                        .scopeRegionName(r.getScopeRegionName())
                         .build())
                 .collect(Collectors.toList());
 

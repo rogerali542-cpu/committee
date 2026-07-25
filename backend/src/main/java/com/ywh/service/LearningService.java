@@ -131,12 +131,13 @@ public class LearningService {
 
     @Transactional
     public void remove(Long id) {
-        repo.deleteById(id);
+        LearningRecord record = requireCurrentCommunityRecord(id);
+        repo.delete(record);
     }
 
     @Transactional
     public void startLearning(Long id) {
-        LearningRecord r = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
+        LearningRecord r = requireCurrentCommunityRecord(id);
         r.setStage(MeetingStage.ongoing);
         r.setProgress(10);
         // 重置签到状态
@@ -148,7 +149,7 @@ public class LearningService {
 
     @Transactional
     public void finishLearning(Long id) {
-        LearningRecord r = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
+        LearningRecord r = requireCurrentCommunityRecord(id);
         r.setStage(MeetingStage.ended);
         r.setProgress(100);
         repo.save(r);
@@ -157,7 +158,7 @@ public class LearningService {
     // 通知全员
     @Transactional
     public void notifyAll(Long id) {
-        LearningRecord r = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
+        LearningRecord r = requireCurrentCommunityRecord(id);
         r.setNotified(true);
         repo.save(r);
     }
@@ -165,6 +166,7 @@ public class LearningService {
     // 签到
     @Transactional
     public void signIn(Long id) {
+        requireCurrentCommunityRecord(id);
         UserRoleEntity currentUser = SecurityUtils.getCurrentUserRole();
         String realName = currentUser.getRealName();
         LearningSignIn si = signInRepo.findByRecordIdAndRealName(id, realName).orElse(null);
@@ -178,6 +180,7 @@ public class LearningService {
     // 培训结束后由负责人登记实际参加人员，不要求委员在软件内现场签到
     @Transactional
     public void setAttendance(Long id, List<String> attendedNames) {
+        requireCurrentCommunityRecord(id);
         Set<String> attended = attendedNames == null
                 ? Collections.emptySet()
                 : attendedNames.stream().filter(Objects::nonNull).map(String::trim)
@@ -194,6 +197,7 @@ public class LearningService {
     // 佐证
     @Transactional
     public Map<String, Object> addEvidence(Long id, String fileName, String fileType, String fileUrl) {
+        requireCurrentCommunityRecord(id);
         LearningEvidence ev = LearningEvidence.builder()
                 .recordId(id).fileName(fileName).fileType(fileType).fileUrl(fileUrl).build();
         ev = evRepo.save(ev);
@@ -207,6 +211,19 @@ public class LearningService {
 
     @Transactional
     public void removeEvidence(Long id, Long evId) {
-        evRepo.deleteById(evId);
+        requireCurrentCommunityRecord(id);
+        LearningEvidence evidence = evRepo.findById(evId)
+                .filter(ev -> id.equals(ev.getRecordId()))
+                .orElseThrow(() -> new IllegalArgumentException("学习材料不存在"));
+        evRepo.delete(evidence);
+    }
+
+    private LearningRecord requireCurrentCommunityRecord(Long id) {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        return repo.findById(id)
+                .filter(record -> record.getCommunity() != null
+                        && communityId.equals(record.getCommunity().getId()))
+                // 对跨小区请求统一返回“不存在”，避免泄露其他小区是否有该编号。
+                .orElseThrow(() -> new IllegalArgumentException("学习记录不存在"));
     }
 }

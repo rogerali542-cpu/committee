@@ -126,8 +126,7 @@ public class ReceptionService {
 
     /** 单条详情：新的「单条处理页」进来就拉这个。 */
     public Map<String, Object> getRecord(Long id) {
-        ReceptionRecord r = recordRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
+        ReceptionRecord r = requireCurrentCommunityRecord(id);
         return toVO(r);
     }
 
@@ -215,8 +214,7 @@ public class ReceptionService {
     /** 填写处理结果 —— 这就是办结动作（isDone 以它为准）。 */
     @Transactional
     public void updateResolution(Long id, String resolution) {
-        ReceptionRecord r = recordRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
+        ReceptionRecord r = requireCurrentCommunityRecord(id);
         r.setResolution(resolution != null ? resolution.trim() : "");
         recordRepo.save(r);
     }
@@ -229,15 +227,15 @@ public class ReceptionService {
      */
     @Transactional
     public void setPropertyTransferred(Long id, boolean transferred) {
-        ReceptionRecord r = recordRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
+        ReceptionRecord r = requireCurrentCommunityRecord(id);
         r.setPropertyTransferredAt(transferred ? LocalDateTime.now() : null);
         recordRepo.save(r);
     }
 
     @Transactional
     public void remove(Long id) {
-        recordRepo.deleteById(id);
+        ReceptionRecord record = requireCurrentCommunityRecord(id);
+        recordRepo.delete(record);
     }
 
     public Map<String, Object> getStats() {
@@ -269,6 +267,7 @@ public class ReceptionService {
     // ── 佐证 ──
 
     public List<Map<String, Object>> getEvidences(Long recordId) {
+        requireCurrentCommunityRecord(recordId);
         return evRepo.findByRecordId(recordId).stream().map(ev -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", ev.getId());
@@ -281,6 +280,7 @@ public class ReceptionService {
 
     @Transactional
     public Map<String, Object> addEvidence(Long recordId, String fileName, String fileType, String fileUrl) {
+        requireCurrentCommunityRecord(recordId);
         ReceptionEvidence ev = ReceptionEvidence.builder()
                 .recordId(recordId).fileName(fileName).fileType(fileType).fileUrl(fileUrl).build();
         ev = evRepo.save(ev);
@@ -294,7 +294,19 @@ public class ReceptionService {
 
     @Transactional
     public void removeEvidence(Long recordId, Long evId) {
-        evRepo.deleteById(evId);
+        requireCurrentCommunityRecord(recordId);
+        ReceptionEvidence evidence = evRepo.findById(evId)
+                .filter(ev -> recordId.equals(ev.getRecordId()))
+                .orElseThrow(() -> new IllegalArgumentException("接待材料不存在"));
+        evRepo.delete(evidence);
+    }
+
+    private ReceptionRecord requireCurrentCommunityRecord(Long id) {
+        Long communityId = SecurityUtils.getCurrentCommunityId();
+        return recordRepo.findById(id)
+                .filter(record -> record.getCommunity() != null
+                        && communityId.equals(record.getCommunity().getId()))
+                .orElseThrow(() -> new IllegalArgumentException("记录不存在"));
     }
 
     private LocalDate parseDate(String s) { return s != null ? LocalDate.parse(s) : null; }

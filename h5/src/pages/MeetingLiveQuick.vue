@@ -1702,7 +1702,7 @@ async function loadDetail() {
     selfAttendance.value = self
     signedIn.value = isSigned
     isChair.value = d.userView === 'chair'
-    isHost.value = !!(role && role.role === '主任')
+    isHost.value = !!(role && (role.role === '主任' || role.role === '业委会秘书'))
     myRoleId.value = roleId
     recordings.value = recs
     reconcilePickedIds(recs)

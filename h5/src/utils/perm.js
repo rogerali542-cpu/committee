@@ -4,12 +4,15 @@ import { getStorage } from '@/utils/storage'
 import { ROLE } from '@/utils/constants'
 
 const roleDefaultPerms = {
-  '主任': ['committee.*', 'reception.*', 'learning.*', 'view.*'],
+  '主任': ['committee.*', 'reception.*', 'learning.*', 'view.*', 'secretary.manage', 'member.permission.manage', 'formal.archive.revoke'],
   '副主任': ['committee.*', 'reception.*', 'learning.*', 'view.*'],
+  '业委会秘书': ['committee.*', 'reception.*', 'learning.*', 'view.*'],
   '委员': ['committee.sign_in', 'committee.sign', 'committee.vote', 'committee.evidence', 'committee.topic', 'committee.sign_all', 'reception.manage', 'learning.view', 'view.internal', 'view.public'],
   '业主': ['view.public'],
   '物业': ['view.public', 'reception.property_feedback'],
-  '管理员': ['*']
+  '街道管理员': ['management.overview'],
+  '区级管理员': ['management.overview'],
+  '技术管理员': ['*']
 }
 
 const ALL_PERMS = [
@@ -19,14 +22,16 @@ const ALL_PERMS = [
   'committee.sign_all', 'committee.publish',
   'reception.manage', 'reception.property_feedback',
   'learning.create', 'learning.advance', 'learning.view',
-  'view.internal', 'view.public'
+  'view.internal', 'view.public',
+  'secretary.manage', 'member.permission.manage', 'formal.archive.revoke',
+  'management.overview'
 ]
 
 function activeRole() { return getStorage('activeRole', null) }
 
 function getEffectivePerms() {
   const role = activeRole()
-  if (!role) return []
+  if (!role || role.enabled === false) return []
   const defaults = roleDefaultPerms[role.role] || []
   const result = new Set()
   if (defaults.includes('*')) {
@@ -53,11 +58,20 @@ export function canAll(codes) { return codes.every((c) => can(c)) }
 
 export function isChair() {
   const r = activeRole()
-  return !!(r && (r.role === ROLE.CHAIR || r.role === ROLE.VICE_CHAIR || r.role === ROLE.ADMIN))
+  // 兼容旧页面中的“主任操作视图”：已授权秘书使用同一套日常业务界面。
+  return !!(r && r.enabled !== false && (r.role === ROLE.CHAIR || r.role === ROLE.VICE_CHAIR || r.role === ROLE.SECRETARY || r.role === ROLE.TECHNICAL_ADMIN))
+}
+export function isLegalChair() {
+  const r = activeRole()
+  return !!(r && r.enabled !== false && r.role === ROLE.CHAIR)
+}
+export function isGovernmentManager() {
+  const r = activeRole()
+  return !!(r && r.enabled !== false && (r.role === ROLE.STREET_MANAGER || r.role === ROLE.DISTRICT_MANAGER))
 }
 export function isRecorder() { return can('committee.delivery') && !isChair() }
 export function isCommitteeMember() { return can('committee.sign_in') }
 export function isExternal() { return !can('view.internal') && can('view.public') }
 export function isManager() { return isChair() || isRecorder() }
 
-export default { can, canAny, canAll, isChair, isRecorder, isCommitteeMember, isExternal, isManager, getEffectivePerms }
+export default { can, canAny, canAll, isChair, isLegalChair, isGovernmentManager, isRecorder, isCommitteeMember, isExternal, isManager, getEffectivePerms }

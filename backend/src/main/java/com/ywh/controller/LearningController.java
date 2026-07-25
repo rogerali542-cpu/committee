@@ -1,5 +1,6 @@
 package com.ywh.controller;
 
+import com.ywh.annotation.RequireRole;
 import com.ywh.service.LearningService;
 import com.ywh.util.Result;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class LearningController {
     private final LearningService service;
 
     @GetMapping
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<List<Map<String, Object>>> list(
             @RequestParam(defaultValue = "internal") String type,
             @RequestParam(required = false) String stage) {
@@ -23,28 +25,33 @@ public class LearningController {
     }
 
     @GetMapping("/counts")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Map<String, Object>> counts(@RequestParam(defaultValue = "internal") String type) {
         return Result.ok(service.getCounts(type));
     }
 
     @PostMapping
+    @RequireRole({"主任", "副主任"})
     public Result<Map<String, Object>> create(@RequestBody Map<String, Object> req) {
         return Result.ok(service.create(req));
     }
 
     @DeleteMapping("/{id}")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> remove(@PathVariable Long id) {
         service.remove(id);
         return Result.ok();
     }
 
     @PutMapping("/{id}/start")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> start(@PathVariable Long id) {
         service.startLearning(id);
         return Result.ok();
     }
 
     @PutMapping("/{id}/finish")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> finish(@PathVariable Long id) {
         service.finishLearning(id);
         return Result.ok();
@@ -52,6 +59,7 @@ public class LearningController {
 
     // 通知全员
     @PostMapping("/{id}/notify-all")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> notifyAll(@PathVariable Long id) {
         service.notifyAll(id);
         return Result.ok();
@@ -59,12 +67,14 @@ public class LearningController {
 
     // 签到
     @PutMapping("/{id}/sign-in")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
     public Result<Void> signIn(@PathVariable Long id) {
         service.signIn(id);
         return Result.ok();
     }
 
     @PutMapping("/{id}/attendance")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> setAttendance(@PathVariable Long id, @RequestBody Map<String, List<String>> req) {
         service.setAttendance(id, req.get("attendedNames"));
         return Result.ok();
@@ -72,6 +82,7 @@ public class LearningController {
 
     // 佐证
     @PostMapping("/{id}/evidences")
+    @RequireRole({"主任", "副主任"})
     public Result<Map<String, Object>> addEvidence(@PathVariable Long id,
                                                     @RequestParam String fileName,
                                                     @RequestParam String fileType,
@@ -80,6 +91,7 @@ public class LearningController {
     }
 
     @DeleteMapping("/{id}/evidences/{evId}")
+    @RequireRole({"主任", "副主任"})
     public Result<Void> removeEvidence(@PathVariable Long id, @PathVariable Long evId) {
         service.removeEvidence(id, evId);
         return Result.ok();

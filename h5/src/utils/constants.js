@@ -17,8 +17,10 @@ export const RECEPTION_CATEGORY = { PROPERTY: 'property', PUBLIC_AFFAIRS: 'publi
 export const RECEPTION_CATEGORY_LABELS = { property: '物业类', public_affairs: '公共事务', neighbor: '邻里纠纷', other: '其他' }
 
 export const ROLE = {
-  CHAIR: '主任', VICE_CHAIR: '副主任', COMMITTEE: '委员', RECORDER: '记录员',
-  OWNER: '业主', PROPERTY: '物业', ADMIN: '管理员'
+  CHAIR: '主任', VICE_CHAIR: '副主任', COMMITTEE: '委员', SECRETARY: '业委会秘书',
+  RECORDER: '记录员', OWNER: '业主', PROPERTY: '物业',
+  STREET_MANAGER: '街道管理员', DISTRICT_MANAGER: '区级管理员',
+  TECHNICAL_ADMIN: '技术管理员'
 }
 
 export const USER_VIEW = { CHAIR: 'chair', MEMBER: 'member', RECORDER: 'recorder', OWNER: 'owner', PROPERTY: 'property' }

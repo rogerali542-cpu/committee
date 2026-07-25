@@ -20,5 +20,9 @@ public class LoginResponse {
         private String realName;
         private Long communityId;
         private String communityName;
+        private Boolean enabled;
+        private String scopeLevel;
+        private String scopeRegionCode;
+        private String scopeRegionName;
     }
 }

@@ -7,70 +7,43 @@
       <template #left><div class="nav-left-spacer"></div></template>
     </PageNav>
 
-    <!-- 类型切换: 内部学习 / 外部培训 -->
-    <div class="type-tabs">
-      <div class="type-tab" :class="{ active: learnType == 'internal' }" @click="switchType('internal')">内部学习</div>
-      <div class="type-tab" :class="{ active: learnType == 'training' }" @click="switchType('training')">外部培训</div>
-    </div>
-
-    <!-- 年度履职概览：对应评分要求，但不把培训本身做成线上课程 -->
+    <!-- 年度履职摘要：只保留成员需要确认的两项 -->
     <div class="learn-target">
       <div class="lt-head">
-        <span class="lt-title">年度学习培训情况</span>
-        <span class="lt-year">{{ currentYear }}年</span>
+        <span class="lt-title">{{ currentYear }}年学习情况</span>
       </div>
       <div class="annual-list">
         <div class="annual-row">
           <div class="annual-main">
             <span class="annual-name">年度学习</span>
-            <span class="annual-desc">内部学习及可计入的外部培训</span>
+            <span class="annual-desc">年度要求至少完成{{ target }}次</span>
           </div>
           <span class="annual-status" :class="annualStudyCount >= target ? 'done' : 'warn'">
-            {{ annualStudyCount }}/{{ target }}次
+            已完成 {{ annualStudyCount }}/{{ target }}次
           </span>
         </div>
         <div class="annual-row">
           <div class="annual-main">
-            <span class="annual-name">街镇业务培训</span>
-            <span class="annual-desc">本年度至少参加1次</span>
+            <span class="annual-name">街镇培训</span>
+            <span class="annual-desc">年度要求至少参加1次</span>
           </div>
           <span class="annual-status" :class="annualStreetDone ? 'done' : 'warn'">
             {{ annualStreetDone ? '已参加' : '待参加' }}
           </span>
         </div>
-        <div class="annual-row">
-          <div class="annual-main">
-            <span class="annual-name">规定人员专项培训</span>
-            <span class="annual-desc">记录相关职责人员参加情况</span>
-          </div>
-          <span class="annual-status" :class="annualSpecialDone ? 'done' : 'neutral'">
-            {{ annualSpecialDone ? '已有记录' : '暂无记录' }}
-          </span>
-        </div>
       </div>
     </div>
 
-    <!-- 培训子分类（仅外部培训） -->
-    <div class="train-sub-tabs" v-if="learnType == 'training'">
-      <div class="tsc-card" :class="{ active: trainSub == 'street' }" @click="switchTrainSub('street')">
-        <div class="tsc-icon" style="background:#EBF5FB;">🏛️</div>
-        <span class="tsc-title">街镇组织培训</span>
-        <span class="tsc-desc">街镇统一组织 · 按通知参加</span>
-        <span class="tsc-badge">{{ streetCount }}</span>
-      </div>
-      <div class="tsc-card" :class="{ active: trainSub == 'special' }" @click="switchTrainSub('special')">
-        <div class="tsc-icon" style="background:#FDF2E9;">🛡️</div>
-        <span class="tsc-title">专项业务培训</span>
-        <span class="tsc-desc">市区街道组织 · 相关人员参加</span>
-        <span class="tsc-badge">{{ specialCount }}</span>
-      </div>
+    <div class="records-head">
+      <span class="records-title">学习记录</span>
+      <span class="records-count">共{{ allItems.length }}条</span>
     </div>
 
-    <!-- 管理状态：培训在软件外进行，系统负责通知、结果登记和留档 -->
+    <!-- 单层筛选，不再要求用户理解内外部与培训子分类 -->
     <div class="filter-tabs">
-      <div class="f-tab" :class="{ active: learnStage == 'preparing' }" @click="switchStage('preparing')">待参加 <span class="f-count">{{ counts.pending }}</span></div>
-      <div class="f-tab" :class="{ active: learnStage == 'ongoing' }" @click="switchStage('ongoing')">待整理 <span class="f-count">{{ counts.ongoing }}</span></div>
-      <div class="f-tab" :class="{ active: learnStage == 'ended' }" @click="switchStage('ended')">已完成 <span class="f-count">{{ counts.ended }}</span></div>
+      <div class="f-tab" :class="{ active: recordFilter == 'all' }" @click="switchFilter('all')">全部 {{ recordCounts.all }}</div>
+      <div class="f-tab" :class="{ active: recordFilter == 'pending' }" @click="switchFilter('pending')">待处理 {{ recordCounts.pending }}</div>
+      <div class="f-tab" :class="{ active: recordFilter == 'ended' }" @click="switchFilter('ended')">已完成 {{ recordCounts.ended }}</div>
     </div>
 
     <!-- 学习卡片列表 -->
@@ -78,7 +51,10 @@
       <template v-if="items.length">
         <div class="learn-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
           <div class="lc-header">
-            <span class="lc-title">{{ item.title }}</span>
+            <div class="lc-title-wrap">
+              <span class="lc-type">{{ learningTypeName(item) }}</span>
+              <span class="lc-title">{{ item.title }}</span>
+            </div>
             <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
           </div>
           <div class="lc-meta">
@@ -93,7 +69,7 @@
           <div class="lc-arrow">›</div>
         </div>
       </template>
-      <div v-else class="empty-state"><span>暂无学习记录</span></div>
+      <div v-else class="empty-state"><span>{{ recordFilter === 'all' ? '暂无学习记录' : '当前没有需要显示的记录' }}</span></div>
     </div>
 
     <!-- FAB 新建（主任/副主任/记录员可见） -->
@@ -169,24 +145,24 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onActivated, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onActivated, onUnmounted } from 'vue';
 import api from '@/api';
 import PageNav from '@/components/PageNav.vue';
 import perm from '@/utils/perm';
 import { toast } from '@/utils/ui';
 import { navigateTo } from '@/utils/navigate';
 
-const learnType = ref('internal');
-const learnStage = ref('preparing');
-const trainSub = ref('street');
+const recordFilter = ref('all');
+const allItems = ref([]);
 const items = ref([]);
-const counts = ref({ pending: 0, ongoing: 0, ended: 0 });
+const recordCounts = computed(() => ({
+  all: allItems.value.length,
+  pending: allItems.value.filter(item => item.stage !== 'ended').length,
+  ended: allItems.value.filter(item => item.stage === 'ended').length
+}));
 const target = ref(2);
-const streetCount = ref(0);
-const specialCount = ref(0);
 const annualStudyCount = ref(0);
 const annualStreetDone = ref(false);
-const annualSpecialDone = ref(false);
 const currentYear = new Date().getFullYear();
 const canCreate = ref(false);
 const undoVisible = ref(false);
@@ -199,10 +175,29 @@ const createForm = reactive({
 
 let undoTimer = null;
 let undoData = null;
-let initialViewResolved = false;
-
 function openDetail(item) {
   navigateTo('/pages/learning-detail/learning-detail?id=' + item.id);
+}
+
+function learningTypeName(item) {
+  if (item.type === 'street') return '街镇培训';
+  if (item.type === 'special') return '专项培训';
+  return '内部学习';
+}
+
+function applyRecordFilter() {
+  if (recordFilter.value === 'ended') {
+    items.value = allItems.value.filter(i => i.stage === 'ended');
+  } else if (recordFilter.value === 'pending') {
+    items.value = allItems.value.filter(i => i.stage !== 'ended');
+  } else {
+    items.value = [...allItems.value];
+  }
+}
+
+function switchFilter(filter) {
+  recordFilter.value = filter;
+  applyRecordFilter();
 }
 
 async function loadAll() {
@@ -215,68 +210,17 @@ async function loadAll() {
     const completedExternal = allTraining.filter(i => i.stage === 'ended').length;
     annualStudyCount.value = completedInternal + completedExternal;
     annualStreetDone.value = allTraining.some(i => i.type === 'street' && i.stage === 'ended');
-    annualSpecialDone.value = allTraining.some(i => i.type === 'special' && i.stage === 'ended');
-
-    // 首次进入不固定停在一个空的“内部学习·待参加”筛选上。
-    // 优先展示有待办的数据；没有待办时展示实际存在的完成记录，避免上方显示已完成、下方却说暂无记录。
-    if (!initialViewResolved) {
-      initialViewResolved = true;
-      if (!allInternal.length && allTraining.length) {
-        learnType.value = 'training';
-        const streetRecords = allTraining.filter(i => i.type === 'street');
-        trainSub.value = streetRecords.length ? 'street' : 'special';
-      }
-      const initialRecords = learnType.value === 'training'
-        ? allTraining.filter(i => i.type === trainSub.value)
-        : allInternal;
-      if (!initialRecords.some(i => i.stage === 'preparing')) {
-        learnStage.value = initialRecords.some(i => i.stage === 'ongoing') ? 'ongoing' : 'ended';
-      }
-    }
-
-    if (learnType.value === 'training') {
-      // counts 接口只认 internal/street/special；"training" 是聚合别名会 400。
-      // 所以外部培训一次性拉全量(不带 stage)，本地按「子类 + 阶段」切分：
-      // 列表只留当前阶段，而阶段角标要跨全部阶段现算——否则非选中阶段永远算成 0。
-      const all = allTraining;
-      const subAll = all.filter(i => i.type === trainSub.value);
-      items.value = subAll.filter(i => i.stage === learnStage.value);
-      counts.value = {
-        pending: subAll.filter(i => i.stage === 'preparing').length,
-        ongoing: subAll.filter(i => i.stage === 'ongoing').length,
-        ended: subAll.filter(i => i.stage === 'ended').length
-      };
-      streetCount.value = all.filter(i => i.type === 'street').length;
-      specialCount.value = all.filter(i => i.type === 'special').length;
-    } else {
-      items.value = allInternal.filter(i => i.stage === learnStage.value);
-      counts.value = {
-        pending: allInternal.filter(i => i.stage === 'preparing').length,
-        ongoing: allInternal.filter(i => i.stage === 'ongoing').length,
-        ended: allInternal.filter(i => i.stage === 'ended').length
-      };
-    }
+    allItems.value = [...allInternal, ...allTraining].sort((a, b) => {
+      const stageOrder = { preparing: 0, ongoing: 1, ended: 2 };
+      const stageDiff = (stageOrder[a.stage] ?? 9) - (stageOrder[b.stage] ?? 9);
+      if (stageDiff) return stageDiff;
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+    applyRecordFilter();
   } catch (e) {
+    allItems.value = [];
     items.value = [];
-    counts.value = { pending: 0, ongoing: 0, ended: 0 };
   }
-}
-
-function switchType(type) {
-  learnType.value = type;
-  learnStage.value = 'preparing';
-  loadAll();
-}
-
-function switchTrainSub(sub) {
-  trainSub.value = sub;
-  learnStage.value = 'preparing';
-  loadAll();
-}
-
-function switchStage(stage) {
-  learnStage.value = stage;
-  loadAll();
 }
 
 function attendeeCount(value) {
@@ -322,9 +266,7 @@ function openCreate() {
   createForm.location = '社区活动室';
   createForm.trainer = '';
   createForm.attendees = '';
-  // 'training' 是街镇+专项的聚合别名、不是真实类型：在外部培训 tab 新建时默认取当前子分类，
-  // 否则会带着 'training' 提交→后端 valueOf 失败静默落成 internal，记录从培训列表消失。
-  createForm.type = learnType.value === 'training' ? trainSub.value : 'internal';
+  createForm.type = 'internal';
   createForm.description = '';
 }
 
@@ -389,13 +331,8 @@ onUnmounted(() => {
 /* tab 根页面：左侧占位与 PageNav 右侧 96rpx 占位对齐，标题保持居中 */
 .nav-left-spacer { width: 96rpx; }
 
-/* 类型标签 */
-.type-tabs { display: flex; gap: 16rpx; margin: 20rpx 0; }
-.type-tab { flex: 1; padding: 20rpx; text-align: center; background: #fff; border-radius: 18rpx; font-size: 30rpx; color: #666; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); font-weight: 500; }
-.type-tab.active { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
-
 /* 年度目标 */
-.learn-target { margin: 0 0 20rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
+.learn-target { margin: 20rpx 0 24rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .lt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
 .lt-title { font-size: 32rpx; font-weight: 700; color: #1f2329; }
 .lt-year { font-size: 25rpx; color: #8A94A6; }
@@ -404,7 +341,7 @@ onUnmounted(() => {
 .annual-main { min-width: 0; display: flex; flex-direction: column; gap: 7rpx; }
 .annual-name { font-size: 29rpx; font-weight: 700; color: #303747; }
 .annual-desc { font-size: 24rpx; color: #8993A3; line-height: 1.35; }
-.annual-status { flex-shrink: 0; min-width: 106rpx; text-align: center; padding: 7rpx 14rpx; border-radius: 999rpx; font-size: 24rpx; font-weight: 700; }
+.annual-status { flex-shrink: 0; min-width: 106rpx; text-align: center; padding: 7rpx 14rpx; border-radius: 999rpx; font-size: 24rpx; font-weight: 650; }
 .annual-status.done { color: #2E7D50; background: #E8F4EC; }
 .annual-status.warn { color: #A96518; background: #FAEEDC; }
 .annual-status.neutral { color: #657183; background: #EEF1F4; }
@@ -426,14 +363,9 @@ onUnmounted(() => {
 .lt-num { font-weight: 700; color: #1f2329; font-size: 28rpx; }
 .lt-rule { font-size: 28rpx; color: #777; margin-top: 8rpx; display: block; }
 
-/* 培训子分类卡片 */
-.train-sub-tabs { display: flex; gap: 16rpx; margin-bottom: 20rpx; }
-.tsc-card { flex: 1; background: #fff; border-radius: 24rpx; padding: 26rpx 22rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); border: 3rpx solid transparent; position: relative; }
-.tsc-card.active { border-color: #FFA800; background: #FFFBF2; }
-.tsc-icon { width: 72rpx; height: 72rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; margin-bottom: 14rpx; font-size: 38rpx; }
-.tsc-title { font-size: 30rpx; font-weight: 700; color: #1f2329; display: block; margin-bottom: 6rpx; }
-.tsc-desc { font-size: 28rpx; color: #666; line-height: 1.4; display: block; }
-.tsc-badge { position: absolute; top: 16rpx; right: 16rpx; font-size: 28rpx; font-weight: 700; background: #FFF3DC; color: #C77800; min-width: 36rpx; height: 36rpx; padding: 0 10rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; }
+.records-head { display: flex; align-items: center; justify-content: space-between; margin: 0 4rpx 14rpx; }
+.records-title { font-size: 32rpx; font-weight: 700; color: #303747; }
+.records-count { font-size: 24rpx; color: #8A94A6; }
 
 /* 筛选标签 */
 .filter-tabs { display: flex; gap: 0; margin-bottom: 20rpx; background: #fff; border-radius: 18rpx; padding: 8rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); }
@@ -446,7 +378,9 @@ onUnmounted(() => {
 .learn-card { background: #fff; border-radius: 24rpx; padding: 34rpx; padding-right: 60rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); position: relative; }
 .learn-card:active { background: #fafbfc; }
 .lc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14rpx; }
-.lc-title { font-size: 40rpx; font-weight: 700; color: #1f2329; flex: 1; padding-right: 12rpx; line-height: 1.4; }
+.lc-title-wrap { min-width: 0; flex: 1; padding-right: 12rpx; display: flex; flex-direction: column; gap: 10rpx; }
+.lc-type { align-self: flex-start; font-size: 23rpx; color: #5F6E82; background: #EEF2F7; border-radius: 999rpx; padding: 5rpx 13rpx; line-height: 1.2; }
+.lc-title { font-size: 34rpx; font-weight: 700; color: #1f2329; line-height: 1.35; }
 .lc-pill { font-size: 28rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 12rpx; flex-shrink: 0; white-space: nowrap; }
 .lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }

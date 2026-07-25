@@ -77,10 +77,10 @@
       <span class="life-hint" v-if="view.published">已公示会议如需撤出，请先撤回公示，再撤销归档。</span>
 
       <div class="life-actions">
-        <button v-if="view.published" class="btn btn-outline" @click="withdrawPublish">撤回公示</button>
+        <button v-if="view.published && perm.can('formal.archive.revoke')" class="btn btn-outline" @click="withdrawPublish">撤回公示</button>
         <button v-if="view.withdrawn" class="btn btn-outline" @click="rePublish">修订后重新公示</button>
         <button class="btn btn-outline" @click="viewMinutesRevisions">修订历史{{ view.minutesRevisionCount ? '（' + view.minutesRevisionCount + '）' : '' }}</button>
-        <button v-if="!view.published" class="btn btn-danger" @click="revokeArchive">撤销归档</button>
+        <button v-if="!view.published && perm.can('formal.archive.revoke')" class="btn btn-danger" @click="revokeArchive">撤销归档</button>
       </div>
 
       <div class="life-log" v-if="view.archiveLog.length">

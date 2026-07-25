@@ -12,9 +12,9 @@ export const useAuthStore = defineStore('auth', {
     realName: (s) => (s.activeRole ? s.activeRole.realName : ''),
     isChair: (s) => {
       const r = s.activeRole && s.activeRole.role
-      return r === ROLE.CHAIR || r === ROLE.VICE_CHAIR || r === ROLE.ADMIN
+      return r === ROLE.CHAIR || r === ROLE.VICE_CHAIR || r === ROLE.SECRETARY || r === ROLE.TECHNICAL_ADMIN
     },
-    isAdmin: (s) => !!(s.activeRole && s.activeRole.role === ROLE.ADMIN)
+    isAdmin: (s) => !!(s.activeRole && s.activeRole.role === ROLE.TECHNICAL_ADMIN)
   },
   actions: {
     // 从 localStorage 恢复（app 启动时调）

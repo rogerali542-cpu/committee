@@ -42,6 +42,8 @@ const routes = [
   // 物业侧工作台 0716 随内部派单流下线：物业以后只在外部工单系统里干活。见 commit 6745a12。
   { path: '/archive-detail', component: () => import('@/pages/ArchiveDetail.vue'), meta: { title: '归档详情' } },
   { path: '/admin', component: () => import('@/pages/Admin.vue'), meta: { title: '管理后台' } },
+  { path: '/secretary-management', component: () => import('@/pages/SecretaryManagement.vue'), meta: { title: '秘书授权管理' } },
+  { path: '/management', component: () => import('@/pages/ManagementOverview.vue'), meta: { title: '履职管理' } },
   { path: '/nav-stats', component: () => import('@/pages/NavStats.vue'), meta: { title: '软路由诊断' } },
 
   { path: '/:pathMatch(.*)*', redirect: '/main' }
@@ -59,6 +61,10 @@ router.beforeEach((to) => {
   const activeRole = getStorage('activeRole', null)
   const logged = !!(token || (activeRole && activeRole.id))
   if (!logged) return { path: '/login' }
+  if (activeRole && activeRole.enabled === false) return { path: '/login' }
+  const governmentManager = activeRole && (activeRole.role === '街道管理员' || activeRole.role === '区级管理员')
+  if (governmentManager && to.path !== '/management' && to.path !== '/login') return { path: '/management' }
+  if (!governmentManager && to.path === '/management') return { path: '/main' }
   return true
 })
 

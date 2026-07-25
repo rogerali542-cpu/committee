@@ -7,6 +7,7 @@ import learning from '@/api/learning'
 import publicInfo from '@/api/public-info'
 import notice from '@/api/notice'
 import notifications from '@/api/notifications'
+import roleManagement from '@/api/role-management'
 
 export default {
   // 便捷方法
@@ -21,5 +22,6 @@ export default {
   ...learning,
   ...publicInfo,
   ...notice,
-  ...notifications
+  ...notifications,
+  ...roleManagement
 }
