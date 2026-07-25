@@ -117,7 +117,7 @@
       <section class="omf-card">
         <div class="topic-head-row">
           <h3>{{ meetingEnded ? '议题表决结果' : '议题处理' }}</h3>
-          <span v-if="topics.length" class="topic-pager-ind">第 {{ topicIndex + 1 }}/{{ topics.length }} 题</span>
+          <span v-if="topics.length" class="topic-pager-ind">议题 {{ topicIndex + 1 }}/{{ topics.length }}</span>
         </div>
         <!-- 每页只显示一个议题(0725 用户定),上一题/下一题翻页 -->
         <div v-for="topic in (currentTopic ? [currentTopic] : [])" :key="topic.id" class="topic-block">
@@ -644,7 +644,7 @@ onBeforeUnmount(() => {
 .signin-count{margin-top:26rpx;color:#7a8894;font-size:26rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
-.topic-head-row{display:flex;align-items:baseline;justify-content:space-between}
+.topic-head-row{display:flex;align-items:center;justify-content:space-between}
 .topic-pager-ind{color:#84929b;font-size:24rpx}
 .topic-pager{display:flex;gap:16rpx;margin-top:26rpx}
 .topic-pager button{flex:1;height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
