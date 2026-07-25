@@ -712,8 +712,9 @@ public class CommitteeService {
     public void selfAttend(Long meetingId, String mode, boolean authorizeProxySign) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        // 线上会议也各自签到（0725 用户定）：个人签到一律记远程参会；主持人的统一登记仅作未签到者的兜底代录
         if (meeting.getMeetingMethod() == com.ywh.enums.MeetingMethod.online) {
-            throw new IllegalArgumentException("纯线上会议请使用原参会登记流程");
+            mode = "remote";
         }
         if (!"onsite".equals(mode) && !"remote".equals(mode)) {
             throw new IllegalArgumentException("参会方式不正确");

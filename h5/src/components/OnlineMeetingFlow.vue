@@ -7,7 +7,16 @@
       </div>
     </div>
 
-    <template v-if="cardMode || !isChair">
+    <!-- 委员端·会议进行中且本人未签到:先各自签到(0725 用户定),签到后才进入结果确认 -->
+    <template v-if="!isChair && !meetingEnded && !selfPresent">
+      <section class="omf-card signin-card">
+        <h3>会议签到</h3>
+        <p class="omf-desc">本次会议以线上方式召开，请确认您正在参加本次会议。</p>
+        <button class="omf-primary" :disabled="busy" @click="selfSignIn">{{ busy ? '正在签到…' : '我已参会，线上签到' }}</button>
+      </section>
+    </template>
+
+    <template v-else-if="cardMode || !isChair">
       <section class="omf-card result-card">
         <div class="result-seal">会议结果确认卡</div>
         <div class="result-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · 线上召开</div>
@@ -43,11 +52,14 @@
         <span :class="{ on: step === 3 }">3 结果确认</span>
       </div>
 
+      <!-- 主持人第一步=签到情况(0725 用户定:委员各自签到,这里实时显示;未签到的可代为登记) -->
       <section v-if="step === 1" class="omf-card">
-        <h3 class="attendance-title">确认参会人员</h3>
+        <h3 class="attendance-title">签到情况</h3>
+        <p class="omf-desc">委员在各自手机上签到后会自动打勾；没签到的委员可由您代为登记。</p>
         <label v-for="member in attendance" :key="member.userRoleId" class="member-row">
           <span class="member-check" :class="{ checked: selectedMembers.includes(Number(member.userRoleId)) }">✓</span>
           <span class="member-name">{{ member.name }}</span>
+          <span v-if="member.signedIn" class="member-self-signed">已签到</span>
           <span class="member-role">{{ member.role }}</span>
           <input v-model="selectedMembers" type="checkbox" :value="Number(member.userRoleId)" />
         </label>
@@ -191,6 +203,18 @@ function initFromDetail() {
   if (meetingEnded.value || cardMode.value) step.value = 3
 }
 watch(() => props.detail, initFromDetail, { immediate: true })
+
+// 委员各自签到(0725 用户定):线上会议记远程参会;签到后进入结果确认卡
+async function selfSignIn() {
+  busy.value = true
+  try {
+    await api.committeeSelfAttend(props.meetingId, 'remote', false)
+    await emitReload()
+    toast({ title: '签到成功', icon: 'success' })
+  } catch (e) {
+    toast({ title: e.message || '签到失败', icon: 'none' })
+  } finally { busy.value = false }
+}
 
 async function saveAttendance() {
   busy.value = true
@@ -389,10 +413,18 @@ async function emitReload() {
 
 let progressTimer = null
 async function refreshConfirmProgress() {
-  if (!props.meetingId || (!cardMode.value && step.value !== 3)) return
+  // 第1步(主持人看签到进度)与第3步(确认进度)都轮询;第2步填写中不打扰
+  if (!props.meetingId || (!cardMode.value && step.value !== 3 && step.value !== 1)) return
   try {
     const latest = await api.committeeDetail(props.meetingId)
     liveAttendance.value = ((latest.record && latest.record.attendances) || []).slice()
+    if (step.value === 1) {
+      // 新自签到的委员自动并入勾选(只增不减:主持人手动取消过的不强行勾回)
+      const signed = liveAttendance.value.filter(a => a.signedIn).map(a => Number(a.userRoleId))
+      const merged = new Set(selectedMembers.value)
+      signed.forEach(id => merged.add(id))
+      selectedMembers.value = Array.from(merged)
+    }
   } catch (e) {
     // 进度轮询失败不打断用户当前操作，下次自动重试。
   }
@@ -410,7 +442,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-platform{padding:8rpx 16rpx;border-radius:999rpx;background:#edf4f8;color:#52748d;font-size:22rpx}.omf-steps{display:flex;align-items:center;margin:0 8rpx 24rpx}.omf-steps span{font-size:23rpx;color:#96a3ad;white-space:nowrap}.omf-steps span.on{color:#315f7d;font-weight:700}.omf-steps span.done{color:#5d8b72}.omf-steps i{height:2rpx;flex:1;margin:0 12rpx;background:#dce4e9}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07)}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 24rpx;color:#71808b;font-size:24rpx;line-height:1.65}.member-row{height:86rpx;display:flex;align-items:center;border-bottom:2rpx solid #eef2f4}.member-row input{display:none}.member-check{width:38rpx;height:38rpx;margin-right:18rpx;border:2rpx solid #cbd6dd;border-radius:10rpx;color:transparent;text-align:center;line-height:36rpx}.member-check.checked{background:#5f879f;border-color:#5f879f;color:#fff}.member-name{font-size:28rpx}.member-role{margin-left:auto;color:#84929b;font-size:23rpx}.omf-primary,.omf-secondary,.omf-end{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx}.omf-primary{width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}.omf-secondary{background:#edf2f5;color:#5b6d78}.omf-actions{display:flex;gap:16rpx}.omf-actions .omf-secondary{width:30%;margin-top:28rpx}.omf-actions .omf-primary{width:70%}.topic-form{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-form:first-of-type{border-top:0}.topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx}.topic-form-head b{display:block;font-size:27rpx}.topic-form-head small{display:block;margin-top:6rpx;color:#8a98a1}.topic-input-wrap{position:relative;margin-top:18rpx}.topic-input-wrap textarea{box-sizing:border-box;width:100%;padding:18rpx 18rpx 86rpx;border:2rpx solid #d9e2e7;border-radius:14rpx;font-size:26rpx;line-height:1.55;resize:none}.voice-fill{position:absolute;right:12rpx;bottom:12rpx;min-width:176rpx;height:62rpx;padding:0 24rpx;border:2rpx solid #bdd0dc;border-radius:14rpx;background:#dfeef6;color:#315f7a;font-size:25rpx;font-weight:600;box-shadow:0 4rpx 12rpx rgba(62,103,128,.13)}.voice-fill-icon{margin-right:8rpx}.voice-fill.recording{background:#f6dfdf;border-color:#e3bcbc;color:#a74343}.vote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx;margin-top:16rpx}.vote-grid label{display:flex;align-items:center;padding:10rpx 12rpx;border-radius:12rpx;background:#f5f7f8}.vote-grid span{font-size:22rpx;color:#687984}.vote-grid input{width:50rpx;margin-left:auto;border:0;background:transparent;text-align:center;font-size:27rpx}.share-card{text-align:center}.share-icon{width:76rpx;height:76rpx;margin:0 auto 18rpx;border-radius:50%;background:#e4f2e9;color:#4d8a65;font-size:40rpx;line-height:76rpx}.full{width:100%;margin-top:14rpx}.confirm-progress{display:flex;justify-content:space-between;margin:28rpx 0 16rpx;padding:20rpx;border-radius:14rpx;background:#f5f7f8}.omf-end{width:100%;background:#fff;border:2rpx solid #8b9ba5;color:#485e6b}.omf-link{margin-top:20rpx;border:0;background:transparent;color:#6b8291}.result-card{text-align:left}.result-seal{text-align:center;font-size:34rpx;font-weight:700;color:#274c63}.result-meta{text-align:center;margin:10rpx 0 26rpx;color:#798892;font-size:23rpx}.result-attendance{padding:18rpx;border-radius:12rpx;background:#f4f7f8}.result-attendance b{display:block;margin-bottom:8rpx}.result-topic{padding:22rpx 0;border-bottom:2rpx solid #edf1f3}.result-topic-title{font-weight:700}.result-topic-text{margin-top:10rpx;color:#526570;line-height:1.65;white-space:pre-wrap}.result-votes{margin-top:10rpx;color:#49718a}.result-note{margin:24rpx 0 0;color:#75858f;font-size:23rpx}.result-confirmed{margin-top:26rpx;padding:20rpx;border-radius:14rpx;background:#e9f5ed;color:#43815b;text-align:center}
+.omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-platform{padding:8rpx 16rpx;border-radius:999rpx;background:#edf4f8;color:#52748d;font-size:22rpx}.omf-steps{display:flex;align-items:center;margin:0 8rpx 24rpx}.omf-steps span{font-size:23rpx;color:#96a3ad;white-space:nowrap}.omf-steps span.on{color:#315f7d;font-weight:700}.omf-steps span.done{color:#5d8b72}.omf-steps i{height:2rpx;flex:1;margin:0 12rpx;background:#dce4e9}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07)}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 24rpx;color:#71808b;font-size:24rpx;line-height:1.65}.member-row{height:86rpx;display:flex;align-items:center;border-bottom:2rpx solid #eef2f4}.member-row input{display:none}.member-check{width:38rpx;height:38rpx;margin-right:18rpx;border:2rpx solid #cbd6dd;border-radius:10rpx;color:transparent;text-align:center;line-height:36rpx}.member-check.checked{background:#5f879f;border-color:#5f879f;color:#fff}.member-name{font-size:28rpx}.member-role{margin-left:auto;color:#84929b;font-size:23rpx}.member-self-signed{margin-left:14rpx;padding:2rpx 12rpx;border-radius:999rpx;background:#e4f2e9;color:#43815b;font-size:21rpx;font-weight:600}.signin-card{text-align:center}.signin-card .omf-desc{margin:14rpx 0 6rpx}.omf-primary,.omf-secondary,.omf-end{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx}.omf-primary{width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}.omf-secondary{background:#edf2f5;color:#5b6d78}.omf-actions{display:flex;gap:16rpx}.omf-actions .omf-secondary{width:30%;margin-top:28rpx}.omf-actions .omf-primary{width:70%}.topic-form{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-form:first-of-type{border-top:0}.topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx}.topic-form-head b{display:block;font-size:27rpx}.topic-form-head small{display:block;margin-top:6rpx;color:#8a98a1}.topic-input-wrap{position:relative;margin-top:18rpx}.topic-input-wrap textarea{box-sizing:border-box;width:100%;padding:18rpx 18rpx 86rpx;border:2rpx solid #d9e2e7;border-radius:14rpx;font-size:26rpx;line-height:1.55;resize:none}.voice-fill{position:absolute;right:12rpx;bottom:12rpx;min-width:176rpx;height:62rpx;padding:0 24rpx;border:2rpx solid #bdd0dc;border-radius:14rpx;background:#dfeef6;color:#315f7a;font-size:25rpx;font-weight:600;box-shadow:0 4rpx 12rpx rgba(62,103,128,.13)}.voice-fill-icon{margin-right:8rpx}.voice-fill.recording{background:#f6dfdf;border-color:#e3bcbc;color:#a74343}.vote-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx;margin-top:16rpx}.vote-grid label{display:flex;align-items:center;padding:10rpx 12rpx;border-radius:12rpx;background:#f5f7f8}.vote-grid span{font-size:22rpx;color:#687984}.vote-grid input{width:50rpx;margin-left:auto;border:0;background:transparent;text-align:center;font-size:27rpx}.share-card{text-align:center}.share-icon{width:76rpx;height:76rpx;margin:0 auto 18rpx;border-radius:50%;background:#e4f2e9;color:#4d8a65;font-size:40rpx;line-height:76rpx}.full{width:100%;margin-top:14rpx}.confirm-progress{display:flex;justify-content:space-between;margin:28rpx 0 16rpx;padding:20rpx;border-radius:14rpx;background:#f5f7f8}.omf-end{width:100%;background:#fff;border:2rpx solid #8b9ba5;color:#485e6b}.omf-link{margin-top:20rpx;border:0;background:transparent;color:#6b8291}.result-card{text-align:left}.result-seal{text-align:center;font-size:34rpx;font-weight:700;color:#274c63}.result-meta{text-align:center;margin:10rpx 0 26rpx;color:#798892;font-size:23rpx}.result-attendance{padding:18rpx;border-radius:12rpx;background:#f4f7f8}.result-attendance b{display:block;margin-bottom:8rpx}.result-topic{padding:22rpx 0;border-bottom:2rpx solid #edf1f3}.result-topic-title{font-weight:700}.result-topic-text{margin-top:10rpx;color:#526570;line-height:1.65;white-space:pre-wrap}.result-votes{margin-top:10rpx;color:#49718a}.result-note{margin:24rpx 0 0;color:#75858f;font-size:23rpx}.result-confirmed{margin-top:26rpx;padding:20rpx;border-radius:14rpx;background:#e9f5ed;color:#43815b;text-align:center}
 .option-vote-list{display:flex;flex-direction:column;gap:10rpx;margin-top:16rpx}.option-vote-list label{display:flex;align-items:center;padding:14rpx;border-radius:12rpx;background:#f5f7f8}.option-vote-list span{flex:1;font-size:24rpx}.option-vote-list input{width:74rpx;border:0;background:#fff;text-align:center;font-size:27rpx}.option-vote-list em{margin-left:8rpx;color:#7a8992;font-style:normal;font-size:22rpx}
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.notice{background:#eee8f6;color:#715692}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
 .result-card .omf-primary{display:block;width:70%;margin-left:auto;margin-right:auto}.result-edit-btn{display:block;width:70%;height:76rpx;margin:16rpx auto 0;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx}
