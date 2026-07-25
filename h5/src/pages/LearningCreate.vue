@@ -26,17 +26,18 @@
         </div>
 
         <div class="form-group">
-          <span class="form-label">地点</span>
+          <span class="form-label">地点 *</span>
           <input class="form-input" v-model="form.location" />
         </div>
 
         <div class="form-group">
-          <span class="form-label">组织单位/讲师</span>
+          <span class="form-label">组织单位/讲师 *</span>
           <input class="form-input" v-model="form.trainer" />
         </div>
 
+        <!-- 学习记录登记的是已完成的学习(0725 用户定):填实际参加的人,不是"计划+发通知" -->
         <div class="form-group">
-          <span class="form-label">计划参加人员（用于发送通知）</span>
+          <span class="form-label">参加人员</span>
           <input class="form-input" v-model="form.attendees" />
         </div>
 
@@ -69,15 +70,25 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import { toast } from '@/utils/ui'
 
-// 表单默认全空（0725 用户定）：不再预填今天/14:00/社区活动室，由用户如实填写
-const form = reactive({ title: '', date: '', time: '', location: '', trainer: '', attendees: '', type: 'internal', description: '' })
+// 文本字段默认全空（0725 用户定）；日期/时间给默认值（今天/14:00，0725 用户定：原生控件的 mm/dd/yyyy 空态难看又难填）
+function todayStr() {
+  const d = new Date()
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', type: 'internal', description: '' })
 const saving = ref(false)
 
 function back() { window.location.assign('/learning') }
 
 async function submit() {
-  if (!form.title || !form.date) {
-    toast({ title: '请补全标题和日期', icon: 'none' })
+  // 必填:标题/日期/地点/组织单位(0725 用户定,地点与组织也是记录要件)
+  const missing = []
+  if (!String(form.title).trim()) missing.push('标题')
+  if (!form.date) missing.push('日期')
+  if (!String(form.location).trim()) missing.push('地点')
+  if (!String(form.trainer).trim()) missing.push('组织单位/讲师')
+  if (missing.length) {
+    toast({ title: '请补全：' + missing.join('、'), icon: 'none' })
     return
   }
   if (saving.value) return
