@@ -4555,9 +4555,12 @@ onActivated(show)
 .rnh-place { margin-top: 10rpx; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
   -webkit-line-clamp: 2; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid); }
 .rnh-place-name { display: inline-block; max-width: 100%; }  /* 地名整体折行,不从中间掰断 */
-.rec-notice-primary { display: block; width: 60%; height: 82rpx; margin: 29rpx auto 0;
-  border: 2rpx solid #D7AD75; border-radius: 18rpx; background: #FFF9F0;
-  color: #8B5A1E; font-size: 32rpx; font-weight: 500; letter-spacing: normal; }
+/* 白底+深描边+投影(0725 用户定:原奶油底和卡片底融在一起,不像按钮) */
+.rec-notice-primary { display: block; width: 60%; height: 84rpx; margin: 29rpx auto 0;
+  border: 2rpx solid #D89A4A; border-radius: 18rpx; background: #fff;
+  color: #8B5A1E; font-size: 32rpx; font-weight: 650; letter-spacing: normal;
+  box-shadow: 0 4rpx 12rpx rgba(159, 92, 13, 0.16); }
+.rec-notice-primary:active { background: #FDF3E3; }
 .rec-notice-primary:active { opacity: 0.76; }
 /* 与学习页「新增学习记录」同款(0725 用户定):短20%居中、配色减淡、外圈柔光 */
 .rec-register-card { order: 2; display: flex; align-items: center; gap: 16rpx; width: 80%; box-sizing: border-box;
