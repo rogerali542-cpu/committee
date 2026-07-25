@@ -1475,7 +1475,8 @@ const cockpitTodos = computed(() => {
       actionable: false,
       summaryLabel: '业主接待', daysUntil: next.days,
       onTap: canManageReception.value ? openReceptionCreate : enterReceptionArea,
-      onSecondaryTap: enterReceptionArea })
+      // 「修改安排」=快速直达调整接待安排页(/reception-notice)，不是进接待首页再找一遍按钮
+      onSecondaryTap: goReceptionNotice })
   } else {
     items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent', timeScope: 'recent',
       title: '接待安排尚未设置', sub: '请先设置固定接待时间和地点',
