@@ -196,19 +196,25 @@
             </div>
             <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
           </div>
+          <!-- 后续计划默认收起(0725 用户定):与「已完成N场」同款折叠行,点开才展 -->
           <template v-if="meetingRecordList.planned.length">
-            <div class="mr-group-title mr-group-plan">后续计划</div>
-            <!-- 计划行整行不可点(0725 用户定,防误触"提前召开"),只有右侧按钮进入 -->
-            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
-              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
-                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-              </div>
-              <div class="mr-info">
-                <div class="mr-row-title">{{ row.title }}</div>
-                <div class="mr-row-sub">{{ row.sub }}</div>
-              </div>
-              <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
+            <div class="mr-fold" @click="planListOpen = !planListOpen">
+              <span>后续计划 {{ meetingRecordList.planned.length }} 期</span>
+              <span class="mr-fold-chev" :class="{ open: planListOpen }">▾</span>
             </div>
+            <template v-if="planListOpen">
+              <!-- 计划行整行不可点(0725 用户定,防误触"提前召开"),只有右侧按钮进入 -->
+              <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
+                <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
+                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+                </div>
+                <div class="mr-info">
+                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-sub">{{ row.sub }}</div>
+                </div>
+                <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
+              </div>
+            </template>
           </template>
           <!-- 查看月历入口行在列表尾部;月历本体改弹层浮在页面中央(0725 用户定):
                原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
@@ -1663,6 +1669,7 @@ const homeFocusItems = computed(() => {
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
 const recDoneOpen = ref(false)
+const planListOpen = ref(false)   // 后续计划折叠,默认收起(0725 用户定)
 const meetingCalendarOpen = ref(false)
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
