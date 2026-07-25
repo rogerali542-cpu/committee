@@ -34,14 +34,19 @@
       </section>
     </template>
 
-    <template v-else>
-      <!-- ① 签到:本人未签到先签到(0725 用户定:线上会议各自签到,含主持人) -->
-      <section v-if="!meetingEnded && !selfPresent" class="omf-card signin-card">
+    <!-- ① 签到页:未签到时整页只有签到,签到后才进入签到情况+表决 -->
+    <template v-else-if="!meetingEnded && !selfPresent">
+      <section class="omf-card signin-card">
+        <div class="signin-badge">签</div>
         <h3>会议签到</h3>
-        <p class="omf-desc">本次会议以线上方式召开，请确认您正在参加本次会议。</p>
+        <p class="signin-meta">{{ detail.meetingDate }} {{ detail.meetingTime }} · 线上召开</p>
+        <p class="omf-desc">本次会议在微信工作群中进行。请先签到确认参会，签到后进入议题表决页面。</p>
         <button class="omf-primary" :disabled="busy" @click="selfSignIn">{{ busy ? '正在签到…' : '我已参会，线上签到' }}</button>
+        <div class="signin-count">已有 {{ presentCount }}/{{ attendance.length }} 位委员签到</div>
       </section>
+    </template>
 
+    <template v-else>
       <!-- 签到情况:所有人可见,只读(0725 用户定:主持人也只管自己签到、查看别人) -->
       <section class="omf-card">
         <h3 class="attendance-title">签到情况<small class="att-count">{{ presentCount }}/{{ attendance.length }} 人</small></h3>
@@ -53,7 +58,7 @@
       </section>
 
       <!-- ② 表决与讨论(0725 用户定):讨论在微信群进行,表决各自在此投票;主持人逐题结束表决揭晓 -->
-      <section v-if="selfPresent || meetingEnded" class="omf-card">
+      <section class="omf-card">
         <h3>议题表决与讨论</h3>
         <p class="omf-desc">议题讨论请在微信工作群进行；表决议题请各位委员在下方各自投票。</p>
         <div v-for="(topic, index) in topics" :key="topic.id" class="topic-block">
@@ -309,7 +314,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .omf{padding:24rpx 8rpx 60rpx;color:#243746}.omf-head{display:flex;justify-content:space-between;align-items:flex-start;margin:12rpx 8rpx 26rpx}.omf-kicker{font-size:27rpx;color:#62788a}.omf-head h2{margin:8rpx 0 0;font-size:38rpx}.omf-card{padding:30rpx 28rpx;border:2rpx solid #e0e7eb;border-radius:22rpx;background:#fff;box-shadow:0 8rpx 28rpx rgba(45,66,80,.07);margin-bottom:24rpx}.omf-card h3{margin:0;font-size:31rpx}.omf-desc{margin:12rpx 0 20rpx;color:#71808b;font-size:24rpx;line-height:1.65}
 .member-row{height:86rpx;display:flex;align-items:center;border-bottom:2rpx solid #eef2f4}.member-row:last-child{border-bottom:0}.member-name{font-size:28rpx}.member-role{margin-left:auto;color:#84929b;font-size:23rpx}.member-state{margin-left:16rpx;padding:3rpx 14rpx;border-radius:999rpx;background:#f0f2f4;color:#8a95a0;font-size:22rpx;font-weight:600}.member-state.on{background:#e4f2e9;color:#43815b}
-.signin-card{text-align:center}.signin-card .omf-desc{margin:14rpx 0 6rpx}
+.signin-card{text-align:center;padding:56rpx 40rpx 48rpx;margin-top:20rpx}.signin-card h3{font-size:36rpx}.signin-card .omf-desc{margin:18rpx 0 8rpx}
+.signin-badge{width:104rpx;height:104rpx;margin:0 auto 24rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;font-size:46rpx;font-weight:700;line-height:104rpx}
+.signin-meta{margin:10rpx 0 0;color:#798892;font-size:24rpx}
+.signin-card .omf-primary{height:92rpx;font-size:31rpx;margin-top:34rpx;border-radius:18rpx}
+.signin-count{margin-top:24rpx;color:#84929b;font-size:23rpx}
 .attendance-title{display:flex;align-items:baseline;gap:14rpx}.att-count{color:#84929b;font-size:23rpx;font-weight:500}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
