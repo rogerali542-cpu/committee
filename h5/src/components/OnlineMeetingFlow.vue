@@ -184,7 +184,11 @@
               <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
             </div>
           </div>
-          <div v-if="!meetingEnded" class="op-input">
+          <!-- 表决题:先投票才能填意见(0725 用户定),意见带作者表决标签 -->
+          <div v-if="!meetingEnded && topic.voteRequired && !hasMyVote(topic)" class="op-need-vote">
+            请先完成上方表决，再补充意见
+          </div>
+          <div v-else-if="!meetingEnded" class="op-input">
             <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充意见（可选）"></textarea>
             <div class="op-btn-row">
               <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
@@ -302,6 +306,8 @@ function opVoteClass(op) {
   return 'ab'
 }
 async function submitOpinion(topic) {
+  // 表决题必须先投票(0725 用户定):意见须带作者表决标签
+  if (topic.voteRequired && !hasMyVote(topic)) { toast({ title: '请先完成表决，再提交意见', icon: 'none' }); return }
   const text = String(opinionDrafts[topic.id] || '').trim()
   if (!text) { toast({ title: '请先填写意见内容', icon: 'none' }); return }
   busy.value = true
@@ -680,6 +686,7 @@ onBeforeUnmount(() => {
 .op-btn-row{display:flex;align-items:center;gap:16rpx;margin-top:6rpx}
 .op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
 .op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
+.op-need-vote{margin:16rpx 0 0 52rpx;padding:18rpx 22rpx;border-radius:12rpx;background:#f7f4ec;border:2rpx dashed #dfd2b4;color:#8a6d35;font-size:24rpx;line-height:1.6}
 .op-input{display:flex;flex-direction:column;gap:12rpx;margin:16rpx 0 0 52rpx}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
 .op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
