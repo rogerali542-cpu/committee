@@ -220,38 +220,36 @@
                原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
           <!-- 档案抽屉(0725 用户定,方案A):月历与历史会议共用一个入口——两者都是"今年开过哪些会"的
                低频回看视图;弹层=月历宫格(按时间索引)+已完成清单(按场次索引),原「已完成N场」折叠行删除 -->
-          <div class="mr-fold" @click="meetingCalendarOpen = true">
+          <!-- 原地展开(0725 用户定,替代弹窗):展开时自动滚到月历——当初否掉原地展开的痛点就是"不自动滚、看不全" -->
+          <div class="mr-fold" @click="toggleMeetingCalendar">
             <span>全年月历 · 历史会议</span>
-            <span class="mr-fold-chev">›</span>
+            <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
           </div>
-          <div v-if="meetingCalendarOpen" class="mr-cal-mask" @click.self="meetingCalendarOpen = false">
-            <div class="mr-calendar-sheet">
-              <div class="mr-calendar-panel-title">
-                <span>{{ viewYear }}年月历</span>
-                <small>点击月份查看对应例会</small>
-              </div>
-              <div class="mr-calendar-grid">
-                <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
-                        class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
-                  <b>{{ mc.m }}月</b>
-                  <span>{{ mc.label }}</span>
-                </button>
-              </div>
-              <template v-if="meetingRecordList.done.length">
-                <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
-                <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row" @click="row.onTap()">
-                  <div class="mr-badge" :class="row.statusClass">
-                    <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-                  </div>
-                  <div class="mr-info">
-                    <div class="mr-row-title">{{ row.title }}</div>
-                    <div class="mr-row-sub">{{ row.sub }}</div>
-                  </div>
-                  <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
-                </div>
-              </template>
-              <button type="button" class="mr-calendar-close" @click="meetingCalendarOpen = false">关 闭</button>
+          <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
+            <div class="mr-calendar-panel-title">
+              <span>{{ viewYear }}年月历</span>
+              <small>点击月份查看对应例会</small>
             </div>
+            <div class="mr-calendar-grid">
+              <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
+                      class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
+                <b>{{ mc.m }}月</b>
+                <span>{{ mc.label }}</span>
+              </button>
+            </div>
+            <template v-if="meetingRecordList.done.length">
+              <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
+              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row" @click="row.onTap()">
+                <div class="mr-badge" :class="row.statusClass">
+                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+                </div>
+                <div class="mr-info">
+                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-sub">{{ row.sub }}</div>
+                </div>
+                <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -1746,8 +1744,19 @@ const meetingYearSummary = computed(() => {
   return [overdue ? ('逾期' + overdue + '期') : '无逾期', currentText].join(' · ')
 })
 
+// 原地展开 + 自动滚到月历(0725 用户定):当初否掉原地展开的痛点是"展开在视野外、看不全"
+const calendarPanelEl = ref(null)
+function toggleMeetingCalendar() {
+  meetingCalendarOpen.value = !meetingCalendarOpen.value
+  if (meetingCalendarOpen.value) {
+    nextTick(() => {
+      if (calendarPanelEl.value && calendarPanelEl.value.scrollIntoView) {
+        calendarPanelEl.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    })
+  }
+}
 function onMeetingCalendarMonth(month) {
-  meetingCalendarOpen.value = false   // 月历是弹层:选完月份先收起,再跳对应期次
   const row = yearPlan.value[Math.ceil(Number(month) / 2) - 1]
   if (row) onPlanRow(row)
 }
@@ -4366,16 +4375,14 @@ onActivated(show)
 .mr-fold-chev { transition: transform 0.2s; }
 .mr-fold-chev.open { transform: rotate(180deg); }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
-.mr-cal-mask { position: fixed; inset: 0; z-index: 210; background: rgba(23, 32, 42, .5); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
-.mr-calendar-sheet { width: 100%; max-width: 640rpx; max-height: 82vh; overflow-y: auto; background: #fff; border-radius: 26rpx; padding: 30rpx 26rpx 24rpx; box-shadow: 0 24rpx 70rpx rgba(10, 20, 30, .28); }
+/* 弹窗样式(mr-cal-mask/sheet/close)已删(0725):月历改原地展开 .mr-calendar-panel */
+.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 22rpx 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; }
 /* 弹层内「已完成」清单:宫格下方的档案区,与宫格用分隔线区隔 */
 .mr-cal-done-title { margin-top: 26rpx; padding-top: 22rpx; border-top: 2rpx solid #EEF1F4; color: #53657A; font-size: 27rpx; font-weight: 700; }
 .mr-cal-done-row { padding-left: 2rpx; padding-right: 2rpx; }
 .mr-cal-done-row .mr-row-sub { display: none; }   /* 每行都是同一句"可查看会议记录",抽屉里省掉,行更紧凑 */
 .mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
 .mr-calendar-panel-title small { color: #8995A4; font-size: 21rpx; font-weight: 500; }
-.mr-calendar-close { width: 100%; margin-top: 22rpx; height: 80rpx; border: none; border-radius: 18rpx; background: #F2F4F6; color: #46515D; font-size: 30rpx; font-weight: 650; }
-.mr-calendar-close:active { background: #E7EAED; }
 .mr-calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
 .mr-calendar-month { min-height: 86rpx; padding: 9rpx 4rpx; border: 0; border-radius: 13rpx; background: #EEF1F4; color: #627083; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5rpx; }
 .mr-calendar-month b { font-size: 26rpx; line-height: 1.1; }
