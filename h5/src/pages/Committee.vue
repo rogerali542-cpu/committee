@@ -1389,8 +1389,10 @@ const cockpitTodos = computed(() => {
       summaryLabel: '会议任务',
       daysUntil: null,
       onTap: () => {
+        const fromPortal = homeLayout.value === 'portal'
         enterWorkArea()
         onPlanRow(currentRow)
+        if (fromPortal && createVisible.value) createReturnPortal.value = true   // 发起会议模态返回时切回驾驶舱
       }
     })
   } else if (currentRow && currentRow.status === 'done') {
@@ -1420,7 +1422,13 @@ const cockpitTodos = computed(() => {
       daysUntil: meetingDays === null ? null : Math.max(0, meetingDays),
       meeting: f.meeting || null,
       periodRow: f.periodRow || null,
-      onTap: () => { enterWorkArea(); if (f.onTap) f.onTap() } })
+      onTap: () => {
+        const fromPortal = homeLayout.value === 'portal'
+        enterWorkArea()
+        if (f.onTap) f.onTap()
+        // 若该焦点动作是发起会议(onPlanRow→openNewMeeting 会置回 false 后由此置真),返回切回驾驶舱
+        if (fromPortal && createVisible.value) createReturnPortal.value = true
+      } })
   }
   const pendingReceptions = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction)
   if (pendingReceptions.length > 0) {
@@ -2040,6 +2048,8 @@ const publishScore = ref({ ontime: 0, overdue: 0, pending: 0 })
 const counts = ref({ preparing: 0, ongoing: 0, ended: 0 })
 const roleView = ref({ title: '', intro: '' })
 const createVisible = ref(false)
+// 从驾驶舱(portal)点「去补开/去安排」进发起会议时置真：关闭模态返回时切回驾驶舱而非 tabs(甲)
+const createReturnPortal = ref(false)
 const createForm = reactive({
   title: '',
   meetingDate: '',
@@ -2492,6 +2502,7 @@ function openMinutes(id) {
 }
 
 async function openNewMeeting(period) {
+  createReturnPortal.value = false   // 默认不返回驾驶舱;驾驶舱入口在 onPlanRow 返回后再置真
   createVisible.value = true
   createTab.value = 'manual'      // 每次进来默认手动填写面板
   editingMeetingId.value = null   // 全新会议：非编辑模式
@@ -2558,6 +2569,12 @@ function closeCreate() {
   if (editingMeetingId.value) editingMeetingId.value = null
   else persistDraft()
   createVisible.value = false
+  // 从驾驶舱进来的：返回时切回驾驶舱(而非露出 tabs 甲)
+  if (createReturnPortal.value) {
+    homeLayout.value = 'portal'
+    setStorage('home_layout', 'portal')
+  }
+  createReturnPortal.value = false
   topicDialogOpen.value = false
   timePickerOpen.value = false
   datePickerOpen.value = false
