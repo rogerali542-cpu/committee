@@ -149,13 +149,10 @@
                 {{ busy ? '提交中…' : '确认提交' }}
               </button>
             </template>
-            <div class="vote-progress">
-              <template v-if="voteCollapsed(topic)">
-                <span class="voted-tag">✓ 已投：{{ myVoteLabel(topic) }}</span>
-                <button type="button" class="mini-act" :disabled="busy" @click="changeVoteOpen[topic.id] = true">改票</button>
-                <button type="button" class="mini-act" :disabled="busy" @click="retractMyVote(topic)">撤回</button>
-              </template>
-              <span v-else-if="pendingVotes[topic.id]" class="voted-tag pending">已选「{{ pendingVotes[topic.id].label }}」，点确认提交生效</span>
+            <div v-if="voteCollapsed(topic)" class="vote-progress">
+              <span class="voted-tag">✓ 已投：{{ myVoteLabel(topic) }}</span>
+              <button type="button" class="mini-act" :disabled="busy" @click="changeVoteOpen[topic.id] = true">改票</button>
+              <button type="button" class="mini-act" :disabled="busy" @click="retractMyVote(topic)">撤回</button>
             </div>
           </template>
 
@@ -682,7 +679,6 @@ onBeforeUnmount(() => {
 .vote-submit:disabled{opacity:.5}
 .mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
 .mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
-.voted-tag.pending{color:#9a5d2e}
 .op-btn-row{display:flex;align-items:center;gap:16rpx;margin-top:6rpx}
 .op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
 .op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
