@@ -197,10 +197,10 @@
 
         <div v-if="!topics.length" class="topic-empty">本次会议暂无议题</div>
 
-        <!-- 翻页:上一题/下一题 -->
+        <!-- 翻页:没有对应方向的议题就隐藏按钮(0725 用户定),不置灰占位 -->
         <div v-if="topics.length > 1" class="topic-pager">
-          <button type="button" :disabled="topicIndex === 0" @click="prevTopic">‹ 上一题</button>
-          <button type="button" :disabled="topicIndex >= topics.length - 1" @click="nextTopic">下一题 ›</button>
+          <button v-if="topicIndex > 0" type="button" @click="prevTopic">‹ 上一议题</button>
+          <button v-if="topicIndex < topics.length - 1" type="button" @click="nextTopic">下一议题 ›</button>
         </div>
 
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
@@ -631,9 +631,9 @@ onBeforeUnmount(() => {
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
 .topic-head-row{display:flex;align-items:baseline;justify-content:space-between}
 .topic-pager-ind{color:#84929b;font-size:24rpx}
-.topic-pager{display:grid;grid-template-columns:1fr 1fr;gap:16rpx;margin-top:26rpx}
-.topic-pager button{height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
-.topic-pager button:active{background:#eef3f6}.topic-pager button:disabled{opacity:.4}
+.topic-pager{display:flex;gap:16rpx;margin-top:26rpx}
+.topic-pager button{flex:1;height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
+.topic-pager button:active{background:#eef3f6}
 .topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
 .op-detail-row{margin:18rpx 0 0 52rpx}
 .op-detail-toggle{border:0;background:none;padding:0;color:#416f8b;font-size:24rpx;font-weight:600}
