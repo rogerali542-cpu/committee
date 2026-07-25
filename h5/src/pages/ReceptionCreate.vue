@@ -2,8 +2,9 @@
   <div class="page reception-create">
     <PageNav title="登记接待">
       <template #left>
-        <button class="back-btn" type="button" aria-label="返回接待中心" @click="back">‹</button>
+        <button class="back-btn" type="button" aria-label="返回上一页" @click="back">‹</button>
       </template>
+      <template #right><button class="nav-home-btn" @click="goModuleHome('reception')">首页</button></template>
     </PageNav>
 
     <main class="create-body">
@@ -153,6 +154,7 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import { getStorage } from '@/utils/storage'
 import { toast } from '@/utils/ui'
+import { navigateBack, goModuleHome } from '@/utils/navigate'
 
 function localDateString(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -238,10 +240,11 @@ function newVisitor() {
 }
 function addVisitor() { visitors.value.push(newVisitor()) }
 function removeVisitor(index) { visitors.value.splice(index, 1) }
-// 从驾驶舱「登记接待」直达进来的(?from=portal)：返回/提交完成回驾驶舱，不落在接待中心
+
+// 导航新规(0725 用户定):返回=历史上一页(驾驶舱/接待首页 push 进入,回退天然回来处);
+// 登记成功后也走这里=回到来处继续
 function back() {
-  const fromPortal = new URLSearchParams(window.location.search).get('from') === 'portal'
-  window.location.assign(fromPortal ? '/main?home=portal' : '/reception-center')
+  navigateBack()
 }
 
 function validateBase() {
@@ -307,6 +310,8 @@ onMounted(async () => {
 <style scoped>
 .reception-create { min-height: 100vh; background: #F3F5F7; overflow-y: auto; }
 .back-btn { width: 64rpx; height: 64rpx; border: 0; background: transparent; color: #fff; font-size: 54rpx; }
+.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
+.nav-home-btn:active { background: rgba(255,255,255,0.28); }
 .create-body { padding: 24rpx 22rpx 80rpx; }
 .form-card, .visitor-card { margin-bottom: 22rpx; padding: 26rpx; border-radius: 24rpx; background: #fff; box-shadow: 0 6rpx 18rpx rgba(31,45,61,.06); }
 .form-row { display: flex; gap: 18rpx; }

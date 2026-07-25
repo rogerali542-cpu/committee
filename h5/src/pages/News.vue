@@ -57,7 +57,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast } from '@/utils/ui'
-import { redirectTo } from '@/utils/navigate'
+import { goModuleHome } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
@@ -169,8 +169,7 @@ function onClose() { aiTask.overlayShown = false }
 
 // 回到首页（业委会主页 /main）：硬导航兜底，避免软路由偶发不切换
 function goHome() {
-  try { redirectTo('/main') } catch (e) {}
-  setTimeout(() => { if (!location.pathname.startsWith('/main')) location.href = '/main' }, 300)
+  goModuleHome('meeting')
 }
 
 function copyAll() {

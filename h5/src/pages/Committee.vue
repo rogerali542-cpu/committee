@@ -1125,11 +1125,10 @@ const receptionTimeText = computed(() => {
 // 卡标题「X月接待安排」用的当前月份。取一次就够：跨月那一刻用户不会正开着页面
 const recMonth = new Date().getMonth() + 1
 function goReceptionNotice() {
-  // 从驾驶舱「修改安排」直达时带来源标记：该页返回按钮回驾驶舱，而不是接待中心
-  const q = homeLayout.value === 'portal' ? '?from=portal' : ''
-  navigateTo('/pages/reception-notice/reception-notice' + q)
+  // 导航新规(0725):push 进入,目标页返回=历史上一页,驾驶舱/接待首页来的都天然回来处
+  navigateTo('/pages/reception-notice/reception-notice')
   // 哨兵 .recep-notice 挂在目标页根上，进页即有、不等接口（同 goReceptionDetail 的兜底）
-  setTimeout(() => { if (!document.querySelector('.recep-notice')) window.location.href = '/reception-notice' + q }, 300)
+  setTimeout(() => { if (!document.querySelector('.recep-notice')) window.location.href = '/reception-notice' }, 300)
 }
 
 function goReceptionRecords() {
@@ -1902,8 +1901,8 @@ function currentUserName() {
 
 function openReceptionCreate() {
   if (!canManageReception.value) return
-  // 从驾驶舱进来的带上来源标记：登记页返回/提交完成回驾驶舱，而不是接待中心
-  window.location.assign(homeLayout.value === 'portal' ? '/reception-create?from=portal' : '/reception-create')
+  // 导航新规(0725):push 进入,登记页返回/提交完成走历史回退,驾驶舱/接待首页来的都天然回来处
+  window.location.assign('/reception-create')
 }
 
 async function submitReceptionCreate() {

@@ -2,8 +2,9 @@
   <div class="page reception-records">
     <PageNav title="接待记录">
       <template #left>
-        <button class="nav-back" type="button" aria-label="返回接待中心" @click="backToCenter">‹</button>
+        <button class="nav-back" type="button" aria-label="返回上一页" @click="backToCenter">‹</button>
       </template>
+      <template #right><button class="nav-home-btn" @click="goModuleHome('reception')">首页</button></template>
     </PageNav>
 
     <main class="records-body">
@@ -87,7 +88,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
-import { navigateTo } from '@/utils/navigate'
+import { navigateTo, navigateBack, goModuleHome } from '@/utils/navigate'
 
 const records = ref([])
 const loading = ref(true)
@@ -188,8 +189,9 @@ function goDetail(record) {
     if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + record.id + '&from=records'
   }, 300)
 }
+// 导航新规(0725 用户定):返回=历史上一页(接待首页 push 进入)
 function backToCenter() {
-  window.location.replace('/reception-center')
+  navigateBack()
 }
 
 onMounted(async () => {
@@ -213,6 +215,8 @@ onMounted(async () => {
 .page { min-height: 100vh; background: var(--c-bg-page); }
 .nav-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
   padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
+.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
+.nav-home-btn:active { background: rgba(255,255,255,0.28); }
 .records-body { padding: 22rpx 24rpx 70rpx; }
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
 .summary-card { min-width: 0; padding: 20rpx 8rpx; border: 2rpx solid #E6EAEC; border-radius: 18rpx;

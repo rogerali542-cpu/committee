@@ -576,7 +576,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onActivated, onUnm
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
-import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack, goModuleHome } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import { useRecorder } from '@/composables/useRecorder'
@@ -3202,13 +3202,14 @@ async function _doEndAndGo(navUrl) {
 
 function goAfterEnd(navUrl) {
   redirectTo(navUrl)
+  // 兜底与软跳同为 replace:进行页不留在历史里,落地页返回=历史上一页时不会退回本页(0725 导航新规)
   setTimeout(() => {
     if (!document.querySelector('.live-page')) return
     if (String(navUrl).indexOf('/pages/committee-detail/committee-detail') === 0) {
-      window.location.href = '/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick'
+      window.location.replace('/committee-detail?id=' + meetingId.value + '&from=meeting-live-quick')
       return
     }
-    window.location.href = navUrl.replace(/^\/pages\/([^/]+)\/[^?]+/, '/$1')
+    window.location.replace(navUrl.replace(/^\/pages\/([^/]+)\/[^?]+/, '/$1'))
   }, 500)
 }
 
@@ -3773,22 +3774,16 @@ function exitLive() {
   navigateBack()
 }
 
-// 顶栏右上「首页」：回业委会主页
+// 顶栏右上「首页」：回业委会首页(0725 用户定,统一出口)
 function goHome() {
-  redirectTo('/main')
-  // 软路由偶发不切换（URL 变了却停在录音页）→ 500ms 后仍在本页则硬导航兜底
-  setTimeout(() => {
-    if (document.querySelector('.live-page')) window.location.replace('/main')
-  }, 500)
+  goModuleHome('meeting')
 }
 
-// 顶栏左上返回：录音步(step2)回签到页；签到页不再回到「会议进行中」中间页，直接回首页。
+// 顶栏左上返回(0725 导航新规)：流程内逐级回退(议题处理→录音页→签到页)；
+// 流程起点(签到页/线上会议页)再按返回=历史上一页,驾驶舱进来的自然落回驾驶舱。
 async function onNavBack() {
-  // 线上会议没有签到/录音步骤机，返回=离开会议页回首页。
-  // 不能回详情页：会议进行中详情页会自动弹回本页，形成循环。
   if (isOnlineMeeting.value) {
-    redirectTo('/main')
-    setTimeout(() => { if (document.querySelector('.live-page')) window.location.replace('/main') }, 500)
+    navigateBack()
     return
   }
   // 议题处理页的返回键只退回录音页，不离开会议，也不改变正在进行的录音。
@@ -3804,9 +3799,7 @@ async function onNavBack() {
     persistQuickState()
     refreshAttendance()   // 只刷新名单/进度，不动步骤机
   } else {
-    const url = '/main'
-    redirectTo(url)
-    setTimeout(() => { if (document.querySelector('.live-page')) window.location.replace(url) }, 500)
+    navigateBack()
   }
 }
 

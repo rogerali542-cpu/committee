@@ -3,8 +3,8 @@
        挂在根上，进页即有、不等接口 -->
   <div class="page recep-notice" style="overflow-y:auto;">
     <PageNav title="接待安排">
-      <!-- replace 不把接待安排页留在历史栈里，之后从处理页返回不会误入这里。 -->
-      <template #left><button class="notice-back" type="button" aria-label="返回接待中心" @click="backToReception">‹</button></template>
+      <template #left><button class="notice-back" type="button" aria-label="返回上一页" @click="backToReception">‹</button></template>
+      <template #right><button class="nav-home-btn" @click="goModuleHome('reception')">首页</button></template>
     </PageNav>
 
     <div v-if="loadErr" class="page-empty">{{ loadErr }}</div>
@@ -116,6 +116,7 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast } from '@/utils/ui'
+import { navigateBack, goModuleHome } from '@/utils/navigate'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -157,10 +158,10 @@ const endMinute = timePart('end', 1)
 // saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 
-// 从驾驶舱「修改安排」直达进来的(?from=portal)：返回回驾驶舱，不落在接待中心
+
+// 导航新规(0725 用户定):返回=历史上一页(驾驶舱「修改安排」/接待首页 push 进入,回退天然回来处)
 function backToReception() {
-  const fromPortal = new URLSearchParams(window.location.search).get('from') === 'portal'
-  window.location.replace(fromPortal ? '/main?home=portal' : '/reception-center')
+  navigateBack()
 }
 
 /** 组合后的时间文案，如「每周二 15:00—17:00」；没填齐返回空 */
@@ -306,6 +307,8 @@ async function exportPdf() {
 .page { background: var(--c-bg-page); min-height: 100vh; }
 .notice-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
   padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
+.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
+.nav-home-btn:active { background: rgba(255,255,255,0.28); }
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
 /* 本页字号一律 ≥28rpx(14px)，跟接待处理页同口径 */
 .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);

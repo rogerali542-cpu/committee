@@ -3,7 +3,8 @@
        Committee.vue / Todo.vue 的跳转检查同步改了）。挂在根上比原来更稳：进页即有，不等接口返回 -->
   <div class="page recep-detail" style="overflow-y:auto;">
     <PageNav title="接待处理">
-      <template #left><button class="detail-back" type="button" aria-label="返回接待中心" @click="goBack">‹</button></template>
+      <template #left><button class="detail-back" type="button" aria-label="返回上一页" @click="goBack">‹</button></template>
+      <template #right><button class="nav-home-btn" @click="goModuleHome('reception')">首页</button></template>
     </PageNav>
     <div v-if="rec">
       <!-- 自有页头已删（0716 用户定：与 PageNav 两条顶栏重复）。状态胶囊挪进信息卡首行右侧 -->
@@ -139,6 +140,7 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
+import { navigateBack, goModuleHome } from '@/utils/navigate'
 import { pickAndUpload } from '@/utils/upload'
 
 const canManage = ref(false)
@@ -305,9 +307,9 @@ async function removeRecord() {
 }
 
 // 固定回接待中心并替换当前历史项，避免浏览器后退误入接待安排页。
+// 导航新规(0725 用户定):返回=历史上一页(接待首页/接待记录/待办 push 进入,回退天然回来处)
 function goBack() {
-  const from = new URLSearchParams(window.location.search).get('from')
-  window.location.replace(from === 'records' ? '/reception-records' : '/reception-center')
+  navigateBack()
 }
 </script>
 
@@ -315,6 +317,8 @@ function goBack() {
 .page { background: var(--c-bg-page); min-height: 100vh; }
 .detail-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
   padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
+.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
+.nav-home-btn:active { background: rgba(255,255,255,0.28); }
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
 
 /* .detail-head/.dh-title 已删（0716 用户定：与 PageNav 重复）。状态胶囊挪进信息卡首行。 */

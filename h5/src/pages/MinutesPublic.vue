@@ -62,7 +62,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
-import { redirectTo, navigateBack } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
 import PublishNav from '@/components/PublishNav.vue'
 import { uploadAttachment, humanSize } from '@/utils/upload'
 
@@ -246,10 +246,11 @@ async function onPostPhotoChange(e) {
   } finally { photoUploading.value = false }
 }
 
-// 附件「会议纪要」→ 独立预览页（页内预览+导出PDF），带硬导航兜底
+// 附件「会议纪要」→ 独立预览页（页内预览+导出PDF），带硬导航兜底。
+// push 进入(0725 导航新规):预览页返回=历史上一页,能退回本页
 function viewMinutesDoc() {
   const target = '/doc-preview?meetingId=' + meetingId + '&kind=minutes'
-  redirectTo('/pages/doc-preview/doc-preview?meetingId=' + meetingId + '&kind=minutes')
+  navigateTo('/pages/doc-preview/doc-preview?meetingId=' + meetingId + '&kind=minutes')
   setTimeout(() => { if (document.querySelector('.minutes-public-page')) window.location.href = target }, 400)
 }
 

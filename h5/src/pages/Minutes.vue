@@ -115,7 +115,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, hideToast, showModal, showLoading, hideLoading } from '@/utils/ui'
-import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack, goModuleHome } from '@/utils/navigate'
 import AiWorkingOverlay from '@/components/AiWorkingOverlay.vue'
 import PageNav from '@/components/PageNav.vue'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
@@ -171,7 +171,6 @@ const accessText = ref('')
 
 // 非响应式实例状态
 let meetingId = null
-let entryFrom = ''
 let genAi = false
 let resumeAi = false
 let viewFirst = false
@@ -185,7 +184,6 @@ onMounted(() => {
   console.log('[minutes] onLoad 构建标记=BUILD-B（结束按钮已修），options=', options)
   const id = parseInt(options.meetingId)
   const from = options.from || ''
-  entryFrom = from
   const owner = from === 'owner' || from === 'owner-detail'
   const external = perm.isExternal()
   isChair.value = perm.isChair() || perm.can('committee.publish')
@@ -221,16 +219,9 @@ onUnmounted(() => {
 })
 
 function backFromMinutes() {
+  // 导航新规(0725 用户定):返回=上一页,来处分支交给浏览器历史
   aiTask.overlayShown = false
-  if (entryFrom === 'committee-detail') {
-    redirectTo('/pages/committee-detail/committee-detail?id=' + meetingId + '&from=minutes')
-  } else if (entryFrom === 'meeting-live-quick') {
-    redirectTo('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId)
-  } else if (entryFrom === 'committee') {
-    redirectTo('/pages/committee/committee')
-  } else {
-    navigateBack()
-  }
+  navigateBack()
 }
 
 // 轮询后端 AI 纪要：结束/一键生成后大模型在后台跑，跑完自动把正文换成 AI 版本
@@ -744,11 +735,7 @@ function viewInternalTopicReport() {
 
 // 右上角「首页」：直接回业委会主页（redirectTo 硬替换，避免返回栈残留在纪要页）
 function goHome() {
-  redirectTo('/main')
-  // 软路由偶发不切换（URL 变了却停在纪要页）→ 500ms 后仍在本页则硬导航兜底
-  setTimeout(() => {
-    if (document.querySelector('.minutes-page')) window.location.replace('/main')
-  }, 500)
+  goModuleHome('meeting')
 }
 
 function viewTodoList() {

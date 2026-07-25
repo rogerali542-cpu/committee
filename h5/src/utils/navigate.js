@@ -27,4 +27,11 @@ export function navigateBack() {
   else router.replace('/main') // 无上一页兜底回业委会主页（对齐 page-nav 兜底）
 }
 
-export default { navigateTo, redirectTo, switchTab, navigateBack, toRoute }
+// 首页按钮统一出口(0725 用户定):回业委会首页或接待首页的工作台版式。
+// 硬导航保证必达;replace 不在历史里叠一层,首页落地后按返回是离开前的上一页。
+export function goModuleHome(section) {
+  try { localStorage.setItem('home_layout', JSON.stringify('tabs')) } catch (e) { /* 无痕模式等场景忽略 */ }
+  window.location.replace(section === 'reception' ? '/reception-center' : '/main?home=tabs')
+}
+
+export default { navigateTo, redirectTo, switchTab, navigateBack, goModuleHome, toRoute }

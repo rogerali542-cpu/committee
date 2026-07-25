@@ -302,7 +302,8 @@ async function endMeeting() {
     await refreshLive()
     await api.committeeQuickConfirm(props.meetingId, resultPayload())
     await api.committeeAdvance(props.meetingId, 'end')
-    location.href = '/committee-detail?id=' + encodeURIComponent(props.meetingId) + '&from=online-meeting'
+    // replace:会议已结束,线上会议页不留在历史里,详情页返回=历史上一页时直接回来处
+    location.replace('/committee-detail?id=' + encodeURIComponent(props.meetingId) + '&from=online-meeting')
   } catch (e) {
     toast({ title: e.message || '结束会议失败', icon: 'none' })
   } finally { busy.value = false }

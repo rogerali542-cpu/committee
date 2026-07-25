@@ -70,6 +70,7 @@ import { reactive, ref } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import { toast } from '@/utils/ui'
+import { navigateBack } from '@/utils/navigate'
 
 // 文本字段默认全空（0725 用户定）；日期/时间给默认值（今天/14:00，0725 用户定：原生控件的 mm/dd/yyyy 空态难看又难填）
 function todayStr() {
@@ -79,7 +80,8 @@ function todayStr() {
 const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', type: 'internal', description: '' })
 const saving = ref(false)
 
-function back() { window.location.assign('/learning') }
+// 导航新规(0725 用户定):返回=历史上一页(本页只从学习列表 push 进入)
+function back() { navigateBack() }
 
 async function submit() {
   // 必填:标题/日期/地点/组织单位(0725 用户定,地点与组织也是记录要件)
@@ -97,7 +99,8 @@ async function submit() {
   try {
     const result = await api.learningCreate({ ...form })
     toast({ title: '已登记', icon: 'success' })
-    window.location.assign('/learning-detail?id=' + result.id)
+    // replace:不把已提交的表单页留在历史里,详情页按返回直接回学习列表
+    window.location.replace('/learning-detail?id=' + result.id)
   } catch (e) {
     toast({ title: (e && e.message) || '创建失败', icon: 'none' })
     saving.value = false

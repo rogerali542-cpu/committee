@@ -397,7 +397,7 @@ import api from '@/api'
 import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 import perm from '@/utils/perm'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
-import { navigateTo, redirectTo, navigateBack } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack, goModuleHome } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
 import { pickAndUpload, uploadAttachment, humanSize } from '@/utils/upload'
@@ -1169,28 +1169,8 @@ function handleDetailBack() {
     backToEditInfo()
     return
   }
-  const source = String(route.query.from || '')
-  // from=minutes 是「纪要页保存/返回后落到详情」的标记——纪要那边已经办完事了，
-  // 再跳回纪要页会形成 详情↔纪要 互踢死循环（真机踩过），返回一律出到首页。
-  if (source === 'meeting-live-quick') {
-    // 会议已结束时进行页只会渲染成无意义的签到步，回首页；进行中才回进行页
-    if (detail.value && detail.value.stage === 'ongoing') {
-      backWithFallback('/pages/meeting-live-quick/meeting-live-quick?type=committee&meetingId=' + meetingId,
-        '/meeting-live-quick?type=committee&meetingId=' + meetingId)
-      return
-    }
-    backWithFallback('/main', '/main')
-    return
-  }
-  if (source === 'todo') {
-    backWithFallback('/pages/todo/todo', '/todo')
-    return
-  }
-  if (route.query.fromNotice === '1' || source === 'notifications') {
-    backWithFallback('/pages/notifications/notifications', '/notifications')
-    return
-  }
-  // 普通详情优先回到用户刚才所在的会议列表位置；只有没有历史记录时才由 navigateBack 兜底首页。
+  // 导航新规(0725 用户定):返回=上一页。原 from=todo/notifications/meeting-live-quick 分支删除——
+  // 待办/通知进详情是 push,历史回退天然回来处;会议进行页跳详情都是 replace,历史里没有会形成死循环的中间页。
   navigateBack()
 }
 function backToEditInfo() {
@@ -1198,7 +1178,7 @@ function backToEditInfo() {
   // 软路由偶发不切换（真机「点了没反应」）→ 硬导航兜底；硬刷后 localStorage 里 editMeetingId 仍在，/main 照样进编辑态
   backWithFallback('/main', '/main')
 }
-function goHome() { redirectTo('/main') }
+function goHome() { goModuleHome('meeting') }
 
 // ——— 发送通知：接收对象前置到会议通知页（默认收起、全体委员默认全选） ———
 const recipientOpen = ref(false)

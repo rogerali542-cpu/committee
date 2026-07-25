@@ -37,7 +37,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast } from '@/utils/ui'
-import { redirectTo, navigateBack } from '@/utils/navigate'
+import { navigateBack, goModuleHome } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 
 const route = useRoute()
@@ -146,8 +146,7 @@ function goBack() {
   }, 400)
 }
 function goHome() {
-  redirectTo('/main')
-  setTimeout(() => { if (document.querySelector('.docp-page')) window.location.replace('/main') }, 500)
+  goModuleHome('meeting')
 }
 
 onMounted(() => {

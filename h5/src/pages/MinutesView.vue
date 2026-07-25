@@ -1,9 +1,8 @@
 <template>
   <div class="mv-page detail-minutes-view">
-    <!-- 顶栏返回与页内「返回」统一走 backFromView(0725 导航审计):
-         原顶栏走历史回退,栈里常残留已结束会议的进行页,会退到签到步 -->
     <PageNav title="会议纪要" style="margin:-24rpx -24rpx 0;">
       <template #left><div class="nav-back-btn" @click="backFromView">‹</div></template>
+      <template #right><button class="nav-home-btn" @click="goModuleHome('meeting')">首页</button></template>
     </PageNav>
 
     <div v-if="loading" class="doc mv-loading">正在加载会议纪要…</div>
@@ -52,7 +51,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import perm from '@/utils/perm'
 import { toast } from '@/utils/ui'
-import { navigateTo, redirectTo } from '@/utils/navigate'
+import { navigateTo, redirectTo, navigateBack, goModuleHome } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 
 const route = useRoute()
@@ -196,16 +195,10 @@ function backToDetail() {
     if (document.querySelector('.detail-minutes-view')) window.location.replace('/committee-detail?' + q)
   }, 300)
 }
-// 统一返回(0725 导航审计):从首页/驾驶舱深链来的(from=committee)回 /main(来处);
-// 其余(会议详情/会议进行页)一律回会议详情——不用历史回退,栈里可能残留已结束会议的进行页
+// 导航新规(0725 用户定):返回=历史上一页(驾驶舱/首页/详情/进行页进来的都天然回来处);
+// 保存成功后的自动跳详情(saveEdit)是流程前进,保持定向不变
 function backFromView() {
-  const from = new URLSearchParams(window.location.search).get('from')
-  if (from === 'committee' || !meetingId) {
-    redirectTo('/main')
-    setTimeout(() => { if (document.querySelector('.detail-minutes-view')) window.location.replace('/main') }, 300)
-    return
-  }
-  backToDetail()
+  navigateBack()
 }
 
 async function saveEdit() {
@@ -286,4 +279,6 @@ onMounted(() => {
 .mv-empty-sub { font-size: 28rpx; color: #888; line-height: 1.7; }
 /* 自定义顶栏返回箭头:与 PageNav 默认样式一致(插槽替换后默认样式不生效) */
 .nav-back-btn { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 66rpx; font-weight: 700; }
+.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
+.nav-home-btn:active { background: rgba(255,255,255,0.28); }
 </style>

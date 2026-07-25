@@ -1,10 +1,7 @@
 <template>
   <div class="page" style="overflow-y:auto;">
-    <!-- 回退（0717 用户指出：这页原来没有返回首页的出口）。.page 有 24rpx 横向内边距，
-         负 margin 让导航条满宽贴顶，与其他页观感一致 -->
-    <!-- backTo 显式回首页培训 tab（0717 用户定）：history.back 在硬跳兜底后不可靠，
-         且要落回对应 tab 而非默认开会（首页 show() 读 ?tab=） -->
-    <PageNav title="培训详情" back-to="/learning" style="margin: -24rpx -24rpx 20rpx">
+    <!-- 导航新规(0725 用户定):返回=历史上一页(学习列表 push 进入,新建成功是 replace 落进来,回退都到列表) -->
+    <PageNav title="培训详情" style="margin: -24rpx -24rpx 20rpx">
       <template #right>
         <button class="nav-home" @click="goHome">首页</button>
       </template>
@@ -147,7 +144,7 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
-import { navigateBack, redirectTo } from '@/utils/navigate'
+import { navigateBack, goModuleHome } from '@/utils/navigate'
 import { pickAndUpload } from '@/utils/upload'
 
 const route = useRoute()
@@ -204,9 +201,7 @@ function formatTime(value) {
 }
 
 function goHome() {
-  // 不带 home 参数(0725 导航审计):/main 会按用户存的布局偏好落驾驶舱或甲;
-  // 原先硬编码 portal,把甲用户也强制送进驾驶舱
-  redirectTo('/main')
+  goModuleHome('meeting')
 }
 
 async function saveAttendance() {

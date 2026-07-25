@@ -1,6 +1,8 @@
 <template>
   <div class="mm" :class="{ 'mm--with-footer': stage === 'preparing' }">
-    <PageNav title="会议通知" style="margin:-12px -12px 0;" />
+    <PageNav title="会议通知" style="margin:-12px -12px 0;">
+      <template #right><button class="nav-home-btn" @click="goModuleHome('meeting')">首页</button></template>
+    </PageNav>
     <!-- 会议通知：准备阶段用完整通知卡（与主任通知页一致），其余阶段用简要信息卡 -->
     <div v-if="stage === 'preparing'" class="notice-card">
       <div class="nc-title">{{ title }}</div>
@@ -126,7 +128,7 @@ import { onMounted, onActivated, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
-import { navigateTo, redirectTo } from '@/utils/navigate'
+import { navigateTo, redirectTo, goModuleHome } from '@/utils/navigate'
 import { pickFile } from '@/utils/upload'
 import { useRecorder } from '@/composables/useRecorder'
 import { openMaterialViewer } from '@/composables/materialViewer'
@@ -564,4 +566,6 @@ onUnmounted(() => {
   font-size: 34rpx; color: #3a434d; line-height: 1.4;
   word-break: break-all;
 }
+.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
+.nav-home-btn:active { background: rgba(255,255,255,0.28); }
 </style>
