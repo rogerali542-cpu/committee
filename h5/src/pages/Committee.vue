@@ -173,10 +173,7 @@
             <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
-            <button v-if="planTab === 'meeting'" type="button" class="meeting-calendar-toggle"
-                    @click.stop="meetingCalendarOpen = !meetingCalendarOpen">
-              {{ meetingCalendarOpen ? '收起月历' : '查看月历' }}
-            </button>
+            <!-- 「查看月历」已移到列表尾部与「已完成N场」并列(0725 用户定):标题行只留标题+摘要 -->
             <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
@@ -184,10 +181,11 @@
         <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
           <template v-if="meetingRecordList.immediate.length">
-            <div class="mr-group-title">近期安排</div>
+            <!-- 「待处理」(0725 用户定):这组是逾期未开/本期待开/待整理——要办的事,不是"安排";与驾驶舱用词一致 -->
+            <div class="mr-group-title">待处理</div>
           </template>
           <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
-            <div class="mr-badge" :class="row.statusClass">
+            <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
               <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
             </div>
             <div class="mr-info">
@@ -195,6 +193,24 @@
               <div class="mr-row-sub">{{ row.sub }}</div>
             </div>
             <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+          </div>
+          <template v-if="meetingRecordList.planned.length">
+            <div class="mr-group-title mr-group-plan">后续计划</div>
+            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned" @click="row.onTap()">
+              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
+                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+              </div>
+              <div class="mr-info">
+                <div class="mr-row-title">{{ row.title }}</div>
+                <div class="mr-row-sub">{{ row.sub }}</div>
+              </div>
+              <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
+            </div>
+          </template>
+          <!-- 查看月历折叠行:与「已完成N场」同式并列收在列表尾部(0725 用户定,参照账单类App视图切换不占标题行) -->
+          <div class="mr-fold" @click="meetingCalendarOpen = !meetingCalendarOpen">
+            <span>查看全年月历</span>
+            <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
           </div>
           <div v-if="meetingCalendarOpen" class="mr-calendar-panel">
             <div class="mr-calendar-panel-title">
@@ -209,19 +225,6 @@
               </button>
             </div>
           </div>
-          <template v-if="meetingRecordList.planned.length">
-            <div class="mr-group-title mr-group-plan">后续计划</div>
-            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned" @click="row.onTap()">
-              <div class="mr-badge" :class="row.statusClass">
-                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-              </div>
-              <div class="mr-info">
-                <div class="mr-row-title">{{ row.title }}</div>
-                <div class="mr-row-sub">{{ row.sub }}</div>
-              </div>
-              <span class="mr-status" :class="row.statusClass">{{ row.statusLabel }} ›</span>
-            </div>
-          </template>
           <template v-if="meetingRecordList.done.length">
             <div class="mr-fold" @click="recDoneOpen = !recDoneOpen">
               <span>已完成 {{ meetingRecordList.done.length }} 场</span>
@@ -1664,8 +1667,10 @@ const meetingRecordList = computed(() => {
           : (current.minutesGen ? '纪要生成中' : (current.ctaLabel === '查看会议' ? '已完成' : '待整理'))
       return {
         key: 'mr-current-' + current.id, done: current.stage === 'ended' && current.ctaLabel === '查看会议',
-        badgeTop: current.meetingDate ? Number(String(current.meetingDate).split('-')[2]) + '日' : String(r.monthLabel || '').replace('月', ''),
-        badgeBot: current.meetingDate ? Number(String(current.meetingDate).split('-')[1]) + '月' : '月',
+        // 日历叶(日上月下)只给有确切日期的会议;没定日期的显示期次横排胶囊(range)
+        badgeTop: current.meetingDate ? Number(String(current.meetingDate).split('-')[2]) + '日' : String(r.monthLabel || ''),
+        badgeBot: current.meetingDate ? Number(String(current.meetingDate).split('-')[1]) + '月' : '',
+        range: !current.meetingDate,
         title: current.title || ('第' + r.period + '次业委会例会'),
         sub: [current.timeText, current.locationText].filter(Boolean).join(' · '),
         statusLabel: state,
@@ -1676,7 +1681,7 @@ const meetingRecordList = computed(() => {
     if (draftMatch) {
       return {
         key: 'mr-draft-' + r.period, done: false,
-        badgeTop: String(r.monthLabel || '').replace('月', ''), badgeBot: '月',
+        badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true,
         title: draftTitle.value,
         sub: '会议通知尚未完成，点击继续编辑',
         statusLabel: '通知编辑中', statusClass: 'current',
@@ -1689,6 +1694,7 @@ const meetingRecordList = computed(() => {
       return { key: 'mr-' + r.period, done: true,
         badgeTop: d.length === 3 ? Number(d[2]) + '日' : r.monthLabel,
         badgeBot: d.length === 3 ? Number(d[1]) + '月' : '',
+        range: d.length !== 3,
         title: held.title || ('第' + r.period + '次业委会例会'),
         sub: '会议已完成，可查看会议记录',
         statusLabel: '已完成', statusClass: 'done',
@@ -1697,7 +1703,7 @@ const meetingRecordList = computed(() => {
     const label = r.status === 'current' ? (r.active ? '进行中' : '待召开')
       : r.status === 'overdue' ? '未召开' : (r.past ? '未召开' : '待排')
     return { key: 'mr-' + r.period, done: false,
-      badgeTop: String(r.monthLabel || '').replace('月', ''), badgeBot: '月', // 「9-10月」拆两行，徽标里不换行
+      badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true, // 期次区间横排胶囊「9-10月」,不再伪装成日期叶
       title: '第' + r.period + '次业委会例会',
       sub: r.sub,
       statusLabel: label, statusClass: r.status,
@@ -4288,8 +4294,7 @@ onActivated(show)
 .meeting-plan-head .plan-title-wrap { flex-direction: column; align-items: flex-start; gap: 8rpx; }
 .meeting-plan-head .plan-title { font-size: 42rpx !important; }
 .meeting-year-summary { font-size: 27rpx; font-weight: 550; color: #65758A; line-height: 1.35; }
-.meeting-calendar-toggle { min-height: 58rpx; padding: 0 20rpx; border: 2rpx solid #B8CADE; border-radius: 999rpx; background: #EEF4FA; color: #345F91; font-size: 25rpx; font-weight: 700; white-space: nowrap; }
-.meeting-calendar-toggle:active { background: #E3EDF7; }
+/* .meeting-calendar-toggle 已删(0725):查看月历改为列表尾部折叠行,复用 .mr-fold */
 .mr-list { margin: 0; padding: 0 28rpx 12rpx; }
 .mr-group-title { padding: 26rpx 4rpx 14rpx; color: #53657A; font-size: 28rpx; font-weight: 750; letter-spacing: 1rpx; }
 .mr-group-plan { padding-top: 24rpx; padding-bottom: 6rpx; border-top: 2rpx solid #EEF1F4; color: #8792A0; font-size: 23rpx; font-weight: 600; }
@@ -4310,12 +4315,16 @@ onActivated(show)
 .mr-badge { flex-shrink: 0; width: 94rpx; min-height: 82rpx; border-radius: 16rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; padding: 8rpx 4rpx; }
 .mr-badge b { font-size: 29rpx; font-weight: 800; line-height: 1.1; white-space: nowrap; }
 .mr-badge span { font-size: 22rpx; }
+/* 期次区间(没定具体日期)徽标:横排胶囊「9-10月」。日历叶(日上月下)只留给有确切日期的会议——
+   参照主流日历/出行类App:区间不伪装成日期。定宽 132rpx 使各行标题左缘对齐(容得下「11-12月」)。 */
+.mr-badge.range, .mr-planned .mr-badge.range { width: 132rpx; min-height: 56rpx; padding: 6rpx 8rpx; border-radius: 999rpx; flex-direction: row; }
+.mr-badge.range b, .mr-planned .mr-badge.range b { font-size: 23rpx; letter-spacing: 0; }
 .mr-badge.done { background: #EAF6EE; color: #2E7D50; }
 .mr-badge.current { background: #E6EEF7; color: #345F91; }
 .mr-badge.overdue { background: #FBE6E2; color: #B0463A; }
 .mr-badge.upcoming { background: #F0F2F5; color: #707C8B; }
 .mr-info { flex: 1; min-width: 0; }
-.mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; }
+.mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: balance; }  /* 折行两行均衡,避免第二行只剩单字 */
 .mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; }
 .mr-status { flex-shrink: 0; font-size: 28rpx; font-weight: 650; }
 .mr-status.done { color: #2E7D50; }
