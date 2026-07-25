@@ -221,8 +221,10 @@
           <!-- 档案抽屉(0725 用户定,方案A):月历与历史会议共用一个入口——两者都是"今年开过哪些会"的
                低频回看视图;弹层=月历宫格(按时间索引)+已完成清单(按场次索引),原「已完成N场」折叠行删除 -->
           <!-- 原地展开(0725 用户定,替代弹窗):展开时自动滚到月历——当初否掉原地展开的痛点就是"不自动滚、看不全" -->
+          <!-- 门牌用一个上位概念(0725 用户定:「全年月历·历史会议」两名硬拼违和);
+               展开区内部自带「2026年月历」「已完成N场」分区标题,内容自解释 -->
           <div class="mr-fold" @click="toggleMeetingCalendar">
-            <span>全年月历 · 历史会议</span>
+            <span>全年会议一览</span>
             <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
           </div>
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
