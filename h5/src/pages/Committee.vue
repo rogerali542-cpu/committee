@@ -1723,7 +1723,7 @@ const meetingRecordList = computed(() => {
         onTap: () => { if (held.id) openMeetingTap(held) } }
     }
     const label = r.status === 'current' ? (r.active ? '进行中' : '去召开')
-      : r.status === 'overdue' ? '未召开' : (r.past ? '未召开' : '待排')
+      : r.status === 'overdue' ? '去补开' : (r.past ? '未召开' : '待排')
     return { key: 'mr-' + r.period, done: false,
       badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true, // 期次区间横排胶囊「9-10月」,不再伪装成日期叶
       title: '第' + r.period + '次业委会例会',
