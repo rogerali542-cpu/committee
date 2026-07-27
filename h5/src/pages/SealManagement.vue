@@ -54,12 +54,15 @@
             已驳回<template v-if="r.rejectReason">：{{ r.rejectReason }}</template>
           </div>
 
-          <!-- 保管人（主任/副主任）对待确认项：确认 / 驳回 -->
-          <div v-if="r.status === 'pending' && canConfirm" class="sr-actions">
-            <button type="button" class="sr-btn ghost" @click="openReject(r)">驳回</button>
-            <button type="button" class="sr-btn primary" @click="confirmUse(r)">确认用印</button>
+          <!-- 底部操作行：删除（仅主任，靠左）｜ 保管人确认/驳回（靠右），避免与右上角状态胶囊重叠 -->
+          <div v-if="canRemove || (r.status === 'pending' && canConfirm)" class="sr-foot">
+            <button v-if="canRemove" type="button" class="sr-del" @click="removeRecord(r)">删除</button>
+            <span v-else class="sr-foot-sp"></span>
+            <div v-if="r.status === 'pending' && canConfirm" class="sr-actions">
+              <button type="button" class="sr-btn ghost" @click="openReject(r)">驳回</button>
+              <button type="button" class="sr-btn primary" @click="confirmUse(r)">确认用印</button>
+            </div>
           </div>
-          <button v-if="canRemove" type="button" class="sr-del" @click="removeRecord(r)">删除</button>
         </div>
       </template>
       <div v-else class="empty-state"><span>{{ filter === 'all' ? '暂无用印记录' : '当前没有需要显示的记录' }}</span></div>
@@ -291,18 +294,19 @@ onActivated(load);
 .sr-confirmed { color: #3B7150; }
 .sr-rejected { color: #9A3F33; }
 
-.sr-actions { display: flex; justify-content: flex-end; gap: 18rpx; margin-top: 20rpx; }
+.sr-foot { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 20rpx; }
+.sr-foot-sp { flex: 1; }
+.sr-actions { display: flex; align-items: center; gap: 18rpx; }
 .sr-btn {
   min-height: 64rpx; padding: 0 30rpx; border: 0; border-radius: 14rpx;
-  font-size: 28rpx; font-weight: 650; white-space: nowrap;
+  font-size: 28rpx; font-weight: 650; white-space: nowrap; display: inline-flex; align-items: center;
 }
 .sr-btn.ghost { background: #fff; border: 2rpx solid #C9D0D6; color: #4E6076; }
 .sr-btn.ghost:active { background: #F1F3F5; }
 .sr-btn.primary { background: #B0772E; color: #fff; box-shadow: 0 4rpx 12rpx rgba(120, 88, 34, 0.16); }
 .sr-btn.primary:active { filter: brightness(0.96); }
 .sr-del {
-  position: absolute; top: 20rpx; right: 22rpx; min-height: 0; padding: 6rpx 8rpx;
-  border: 0; background: transparent; color: #9AA4B0; font-size: 24rpx; font-weight: 500;
+  padding: 12rpx 6rpx; border: 0; background: transparent; color: #9AA4B0; font-size: 26rpx; font-weight: 500;
 }
 .sr-del:active { color: #C0392B; }
 
