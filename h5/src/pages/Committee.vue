@@ -237,7 +237,6 @@
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
             <div class="mr-calendar-panel-title">
               <span>{{ viewYear }}年月历</span>
-              <small>点击月份查看对应例会</small>
             </div>
             <div class="mr-calendar-grid">
               <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
@@ -4411,7 +4410,6 @@ onActivated(show)
 .mr-cal-done-row { padding-left: 2rpx; padding-right: 2rpx; }
 .mr-cal-done-row .mr-row-sub { display: none; }   /* 每行都是同一句"可查看会议记录",抽屉里省掉,行更紧凑 */
 .mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
-.mr-calendar-panel-title small { color: #8995A4; font-size: 21rpx; font-weight: 500; }
 .mr-calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
 .mr-calendar-month { min-height: 86rpx; padding: 9rpx 4rpx; border: 0; border-radius: 13rpx; background: #EEF1F4; color: #627083; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5rpx; }
 .mr-calendar-month b { font-size: 26rpx; line-height: 1.1; }
