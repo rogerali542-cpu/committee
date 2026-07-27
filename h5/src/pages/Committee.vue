@@ -249,7 +249,7 @@
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
                 <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-title">{{ row.title }}<span v-if="row.makeup" class="mr-makeup-tag">补开</span></div>
                   <div class="mr-row-sub">{{ row.sub }}</div>
                 </div>
                 <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">查看 ›</button>
@@ -1660,6 +1660,13 @@ function _persistFold(key, val) {
 }
 watch(meetingCalendarOpen, (v) => _persistFold('mr_calendar_open', v))
 watch(planListOpen, (v) => _persistFold('mr_planlist_open', v))
+// 补开判定(0725 用户定):某期例会实际召开月份晚于该期双月窗口末月(period*2),即逾期后补开。
+// d = meetingDate.split('-'); period 覆盖月份 [period*2-1, period*2]。
+function isMakeupHeld(d, period) {
+  if (!Array.isArray(d) || d.length !== 3) return false
+  const mm = Number(d[1])
+  return mm > 0 && mm > period * 2
+}
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
   const toRow = (r) => {
@@ -1677,6 +1684,7 @@ const meetingRecordList = computed(() => {
         badgeBot: current.meetingDate ? Number(String(current.meetingDate).split('-')[1]) + '月' : '',
         range: !current.meetingDate,
         title: current.title || ('第' + r.period + '次业委会例会'),
+        makeup: isMakeupHeld(String(current.meetingDate || '').split('-'), r.period),
         sub: [current.timeText, current.locationText].filter(Boolean).join(' · '),
         statusLabel: state,
         statusClass: current.stage === 'ongoing' ? (ongoingStarted ? 'current' : 'upcoming') : (current.stage === 'ended' ? 'done' : 'upcoming'),
@@ -1702,6 +1710,8 @@ const meetingRecordList = computed(() => {
         badgeBot: d.length === 3 ? Number(d[1]) + '月' : '',
         range: d.length !== 3,
         title: held.title || ('第' + r.period + '次业委会例会'),
+        // 补开(0725 用户定):实际召开月份晚于本期双月窗口 = 逾期后补开的,标注出来
+        makeup: isMakeupHeld(d, r.period),
         sub: '会议已完成，可查看会议记录',
         statusLabel: '已完成', statusClass: 'done',
         // demoDonePeriods 前端填充的占位会议没有 id,点击进详情会 404,只对有真实记录的放行
@@ -4375,6 +4385,7 @@ onActivated(show)
 .mr-badge.upcoming { background: #F0F2F5; color: #707C8B; }
 .mr-info { flex: 1; min-width: 0; }
 .mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: balance; }  /* 折行两行均衡,避免第二行只剩单字 */
+.mr-makeup-tag { display: inline-block; margin-left: 12rpx; padding: 2rpx 14rpx; border-radius: 999rpx; background: #FBEBD9; color: #A85800; font-size: 22rpx; font-weight: 600; vertical-align: middle; white-space: nowrap; }
 .mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
 .mr-sub-seg { display: inline-block; max-width: 100%; }   /* 段内(日期时间/地点)不拆,只在「·」处折行 */
 .mr-sub-seg i { font-style: normal; }
