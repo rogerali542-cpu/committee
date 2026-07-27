@@ -1650,6 +1650,16 @@ const homeFocusItems = computed(() => {
 // recDoneOpen 已删(0725 方案A):已完成清单并入月历弹层,不再单独折叠
 const planListOpen = ref(false)   // 后续计划折叠,默认收起(0725 用户定)
 const meetingCalendarOpen = ref(false)
+// 展开态在会话内保持(0725 用户定:展开后进详情再返回,应保持展开而非重置)。
+// 用 sessionStorage:同一会话内导航保持,冷启动仍默认收起。
+function _restoreFold(key, target) {
+  try { if (window.sessionStorage.getItem(key) === '1') target.value = true } catch (e) { /* 无痕等场景忽略 */ }
+}
+function _persistFold(key, val) {
+  try { val ? window.sessionStorage.setItem(key, '1') : window.sessionStorage.removeItem(key) } catch (e) { /* 忽略 */ }
+}
+watch(meetingCalendarOpen, (v) => _persistFold('mr_calendar_open', v))
+watch(planListOpen, (v) => _persistFold('mr_planlist_open', v))
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
   const toRow = (r) => {
@@ -2208,6 +2218,9 @@ function show() {
   // 优先 ?tab= 显式指定，其次会话内最后停留的 tab（sessionStorage：微信杀会话即清，
   // 新打开仍默认开会——开会是核心价值，冷启动不动它）。
   planTab.value = props.section === 'reception' ? 'reception' : 'meeting'
+  // 恢复会话内的展开态(0725 用户定:进详情返回后保持展开)
+  _restoreFold('mr_calendar_open', meetingCalendarOpen)
+  _restoreFold('mr_planlist_open', planListOpen)
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
