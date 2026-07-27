@@ -1013,7 +1013,9 @@ async function loadDetail() {
     const qMode = d.stage === 'ongoing' && d.meetingMode === 'quick'
 
     if ((d.stage === 'ended' || fieldEndedLocal.value) && !endedDetailInitialized.value) {
-      endedDetailOpen.value = !!d.minutesReady
+      // 议题默认展开(0725 用户定):会后视图页面短、空间足,议题结果是核心信息,进来就该看到;
+      // 原来仅在已生成纪要时展开,导致无纪要的会议进去一片空,还得手点「查看议题」
+      endedDetailOpen.value = true
       endedDetailInitialized.value = true
     }
 
