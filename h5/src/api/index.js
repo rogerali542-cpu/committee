@@ -8,6 +8,7 @@ import publicInfo from '@/api/public-info'
 import notice from '@/api/notice'
 import notifications from '@/api/notifications'
 import roleManagement from '@/api/role-management'
+import seal from '@/api/seal'
 
 export default {
   // 便捷方法
@@ -23,5 +24,6 @@ export default {
   ...publicInfo,
   ...notice,
   ...notifications,
-  ...roleManagement
+  ...roleManagement,
+  ...seal
 }

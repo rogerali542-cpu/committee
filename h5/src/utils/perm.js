@@ -4,10 +4,10 @@ import { getStorage } from '@/utils/storage'
 import { ROLE } from '@/utils/constants'
 
 const roleDefaultPerms = {
-  '主任': ['committee.*', 'reception.*', 'learning.*', 'view.*', 'secretary.manage', 'member.permission.manage', 'formal.archive.revoke'],
-  '副主任': ['committee.*', 'reception.*', 'learning.*', 'view.*'],
-  '业委会秘书': ['committee.*', 'reception.*', 'learning.*', 'view.*'],
-  '委员': ['committee.sign_in', 'committee.sign', 'committee.vote', 'committee.evidence', 'committee.topic', 'committee.sign_all', 'reception.manage', 'learning.view', 'view.internal', 'view.public'],
+  '主任': ['committee.*', 'reception.*', 'learning.*', 'seal.*', 'view.*', 'secretary.manage', 'member.permission.manage', 'formal.archive.revoke'],
+  '副主任': ['committee.*', 'reception.*', 'learning.*', 'seal.*', 'view.*'],
+  '业委会秘书': ['committee.*', 'reception.*', 'learning.*', 'seal.*', 'view.*'],
+  '委员': ['committee.sign_in', 'committee.sign', 'committee.vote', 'committee.evidence', 'committee.topic', 'committee.sign_all', 'reception.manage', 'learning.view', 'seal.apply', 'seal.view', 'view.internal', 'view.public'],
   '业主': ['view.public'],
   '物业': ['view.public', 'reception.property_feedback'],
   '街道管理员': ['management.overview'],
@@ -22,6 +22,7 @@ const ALL_PERMS = [
   'committee.sign_all', 'committee.publish',
   'reception.manage', 'reception.property_feedback',
   'learning.create', 'learning.advance', 'learning.view',
+  'seal.apply', 'seal.approve', 'seal.view',
   'view.internal', 'view.public',
   'secretary.manage', 'member.permission.manage', 'formal.archive.revoke',
   'management.overview'

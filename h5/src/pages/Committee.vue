@@ -1367,7 +1367,10 @@ const portalDomains = computed(() => {
     { key: 'learning', glyph: '学', title: '学习培训', tone: 'amber',
       // 硬跳(0725 修):原 enterWorkArea+软跳,软路由偶发不切视图,人被留在刚切出来的甲页;
       // 与 enterCommitteeArea 同款做法——写回 tabs 布局后整页跳转,必达
-      onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') } }
+      onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') } },
+    { key: 'seal', glyph: '章', title: '印章管理', tone: 'amber',
+      // 印章管理独立页 /seal（用印申请 + 用印台账），同款硬跳保证必达
+      onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/seal') } }
   ]
 })
 
