@@ -1169,6 +1169,12 @@ function handleDetailBack() {
     backToEditInfo()
     return
   }
+  // 从业委会首页「全年会议一览」查看进来的(from=committee):确定性回业委会首页。
+  // 不走历史回退——真机 webview 里 tab 切换可能残留旧历史,历史回退会窜到接待首页(用户报的 bug)。
+  if (String(route.query.from) === 'committee') {
+    backWithFallback('/main?home=tabs', '/main?home=tabs')
+    return
+  }
   // 导航新规(0725 用户定):返回=上一页。原 from=todo/notifications/meeting-live-quick 分支删除——
   // 待办/通知进详情是 push,历史回退天然回来处;会议进行页跳详情都是 replace,历史里没有会形成死循环的中间页。
   navigateBack()

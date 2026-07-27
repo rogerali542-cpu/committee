@@ -195,9 +195,15 @@ function backToDetail() {
     if (document.querySelector('.detail-minutes-view')) window.location.replace('/committee-detail?' + q)
   }, 300)
 }
-// 导航新规(0725 用户定):返回=历史上一页(驾驶舱/首页/详情/进行页进来的都天然回来处);
-// 保存成功后的自动跳详情(saveEdit)是流程前进,保持定向不变
+// 导航新规(0725 用户定):返回=历史上一页(详情/进行页进来的都天然回来处);
+// from=committee(首页查看进来)确定性回业委会首页——真机残留历史会让历史回退窜到接待首页(用户报的 bug)
 function backFromView() {
+  const from = new URLSearchParams(window.location.search).get('from')
+  if (from === 'committee') {
+    redirectTo('/main?home=tabs')
+    setTimeout(() => { if (document.querySelector('.detail-minutes-view')) window.location.replace('/main?home=tabs') }, 300)
+    return
+  }
   navigateBack()
 }
 

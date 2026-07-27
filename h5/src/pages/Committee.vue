@@ -2545,9 +2545,10 @@ async function openDetail(id) {
     await loadAll()
     return
   }
+  // from=committee:标记从业委会首页进入,详情页返回时确定性回首页(不依赖历史栈,避免真机残留历史窜接待)
   // 硬导航兜底：软路由偶发"URL变了却不切换视图"，500ms 后目标页未挂载则 location 硬跳（对齐其它关键跳转做法）
-  const browserUrl = '/committee-detail?id=' + id
-  try { await navigateTo('/pages/committee-detail/committee-detail?id=' + id) } catch (navErr) { console.error('[进详情] 软跳 reject：', navErr) }
+  const browserUrl = '/committee-detail?id=' + id + '&from=committee'
+  try { await navigateTo('/pages/committee-detail/committee-detail?id=' + id + '&from=committee') } catch (navErr) { console.error('[进详情] 软跳 reject：', navErr) }
   setTimeout(() => { if (!document.querySelector('.detail-page')) window.location.href = browserUrl }, 500)
 }
 
@@ -2565,7 +2566,8 @@ function openMeetingTap(item) {
 }
 
 function openMinutes(id) {
-  navigateTo('/pages/minutes-view/minutes-view?meetingId=' + id)
+  // from=committee:从首页进入,纪要页返回时确定性回首页(同 openDetail)
+  navigateTo('/pages/minutes-view/minutes-view?meetingId=' + id + '&from=committee')
 }
 
 async function openNewMeeting(period) {
