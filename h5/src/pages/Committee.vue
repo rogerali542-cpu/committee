@@ -1680,7 +1680,7 @@ const meetingRecordList = computed(() => {
     if (current) {
       const ongoingStarted = current.stage !== 'ongoing' || current.meetingHasStarted !== false
       const state = current.stage === 'ongoing' ? (ongoingStarted ? '进行中' : (current.tag || '待召开'))
-        : current.stage === 'preparing' ? '待召开'
+        : current.stage === 'preparing' ? '去召开'
           : (current.minutesGen ? '纪要生成中' : (current.ctaLabel === '查看会议' ? '已完成' : '待整理'))
       return {
         key: 'mr-current-' + current.id, done: current.stage === 'ended' && current.ctaLabel === '查看会议',
@@ -1722,7 +1722,7 @@ const meetingRecordList = computed(() => {
         // demoDonePeriods 前端填充的占位会议没有 id,点击进详情会 404,只对有真实记录的放行
         onTap: () => { if (held.id) openMeetingTap(held) } }
     }
-    const label = r.status === 'current' ? (r.active ? '进行中' : '待召开')
+    const label = r.status === 'current' ? (r.active ? '进行中' : '去召开')
       : r.status === 'overdue' ? '未召开' : (r.past ? '未召开' : '待排')
     return { key: 'mr-' + r.period, done: false,
       badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true, // 期次区间横排胶囊「9-10月」,不再伪装成日期叶
@@ -4401,7 +4401,7 @@ onActivated(show)
 .mr-fold-chev.open { transform: rotate(180deg); }
 /* 「查看」组(0727 用户定):后续计划 + 全年会议一览 与上方动作区(待处理卡 + 发起其他会议)拉开一段
    明显更大的间距,让「开会」和「查看」读成两块。组内首行不再叠加 10rpx 行距,组间距全由本容器承担。 */
-.mr-lookup { margin-top: 44rpx; }
+.mr-lookup { margin-top: 80rpx; }
 .mr-lookup > .mr-fold:first-child { margin-top: 0; }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
 /* 弹窗样式(mr-cal-mask/sheet/close)已删(0725):月历改原地展开 .mr-calendar-panel */
