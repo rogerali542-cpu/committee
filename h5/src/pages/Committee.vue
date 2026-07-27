@@ -4282,8 +4282,10 @@ onActivated(show)
 /* head 不占高度、不定位:其中的分页/删除各自已绝对定位相对整张卡浮在右上角，
    head 归零后标题不再被压低。若父容器定位，分页会以 head 为参照被压成竖排（已避免）。 */
 .ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 0; }
-/* 业委会卡:文字块纵向居中(与右侧「去补开」按钮对齐),标题上提不留空档 */
-.ck-todo.blue:not(.ck-todo-complete) { display: flex; flex-direction: column; justify-content: center; min-height: 270rpx; }
+/* 业委会卡:高度随内容自适应。原 min-height:270rpx 把只有「标题+一行副标题」的卡
+   (内容仅约196rpx)硬撑高、再 justify-content:center 把多出的空档平摊到上下,
+   就是大片无意义空白的来源,已去掉。右侧「去安排」按钮绝对定位垂直居中,天然与文字块对齐。 */
+.ck-todo.blue:not(.ck-todo-complete) { display: flex; flex-direction: column; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
 .ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
