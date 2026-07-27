@@ -199,6 +199,10 @@
           </div>
           <!-- 发起非例会会议:动作跟动作区(待处理卡)挨着,收纳行(计划/一览)沉底(0725 用户定) -->
           <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
+          <!-- 「查看」组(0727 用户定):后续计划 + 全年会议一览 是回看/查阅,与上方「待处理卡 + 发起其他会议」
+               这组"要动手办的事"拉开明显更大的间距,让「开会」和「查看」读成两块。间距由 .mr-lookup 承担,
+               组内行距不变;不另起文字标题——「后续计划」是将来要开的,叫"历史"名不副实,用留白分区更干净。 -->
+          <div class="mr-lookup">
           <!-- 后续计划默认收起(0725 用户定):与「已完成N场」同款折叠行,点开才展 -->
           <template v-if="meetingRecordList.planned.length">
             <div class="mr-fold" @click="planListOpen = !planListOpen">
@@ -255,6 +259,7 @@
                 <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">查看 ›</button>
               </div>
             </template>
+          </div>
           </div>
         </div>
 
@@ -4394,6 +4399,10 @@ onActivated(show)
 .mr-fold:active { opacity: 0.7; }
 .mr-fold-chev { transition: transform 0.2s; }
 .mr-fold-chev.open { transform: rotate(180deg); }
+/* 「查看」组(0727 用户定):后续计划 + 全年会议一览 与上方动作区(待处理卡 + 发起其他会议)拉开一段
+   明显更大的间距,让「开会」和「查看」读成两块。组内首行不再叠加 10rpx 行距,组间距全由本容器承担。 */
+.mr-lookup { margin-top: 44rpx; }
+.mr-lookup > .mr-fold:first-child { margin-top: 0; }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
 /* 弹窗样式(mr-cal-mask/sheet/close)已删(0725):月历改原地展开 .mr-calendar-panel */
 .mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 22rpx 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; scroll-margin-top: 20rpx; }
