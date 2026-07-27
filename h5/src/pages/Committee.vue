@@ -4557,11 +4557,11 @@ onActivated(show)
 
 /* 接待页按真实使用频率分级：通知维护最醒目，登记来访其次，处理清单随后。 */
 .rec-notice-hero { order: 1; box-sizing: border-box; padding: 34rpx;
-  background: linear-gradient(145deg, #FFFDF9 0%, #FFF7EA 100%);
-  border: 2rpx solid #F1D6AE; border-radius: 26rpx; box-shadow: 0 12rpx 34rpx rgba(153,85,12,0.09); }
+  background: linear-gradient(145deg, #FFFEFC 0%, #FAF4EB 100%);
+  border: 2rpx solid #E7DAC6; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(96,72,40,0.08); }
 .rec-notice-hero-head { display: flex; align-items: flex-start; gap: 26rpx; }
 .rnh-copy { flex: 1; min-width: 0; }
-.rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #9A5A00; }
+.rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #8A5A1E; }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
   color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rnh-time.none { color: #9A3412; }
@@ -4570,23 +4570,23 @@ onActivated(show)
 .rnh-place-name { display: inline-block; max-width: 100%; }  /* 地名整体折行,不从中间掰断 */
 /* 白底+深描边+投影(0725 用户定:原奶油底和卡片底融在一起,不像按钮) */
 .rec-notice-primary { display: block; width: 60%; height: 84rpx; margin: 29rpx auto 0;
-  border: 2rpx solid #D89A4A; border-radius: 18rpx; background: #fff;
-  color: #8B5A1E; font-size: 32rpx; font-weight: 650; letter-spacing: normal;
-  box-shadow: 0 4rpx 12rpx rgba(159, 92, 13, 0.16); }
+  border: 2rpx solid #CFA971; border-radius: 18rpx; background: #fff;
+  color: #7C551F; font-size: 32rpx; font-weight: 650; letter-spacing: normal;
+  box-shadow: 0 4rpx 12rpx rgba(120, 88, 34, 0.12); }
 .rec-notice-primary:active { background: #FDF3E3; }
 .rec-notice-primary:active { opacity: 0.76; }
 /* 与学习页「新增学习记录」同款(0725 用户定):短20%居中、配色减淡、外圈柔光 */
 .rec-register-card { order: 2; display: flex; align-items: center; gap: 16rpx; width: 80%; box-sizing: border-box;
   margin: 57rpx auto 0; padding: 20rpx 24rpx; text-align: left;
-  background: linear-gradient(135deg, #FFFDF8 0%, #FFF7EA 100%); border: 2rpx solid #EFD4A8;
+  background: linear-gradient(135deg, #FFFEFC 0%, #FAF4EB 100%); border: 2rpx solid #E6D7BF;
   border-radius: 20rpx; color: inherit;
-  box-shadow: 0 0 22rpx rgba(233, 168, 74, 0.35), 0 6rpx 20rpx rgba(159, 92, 13, 0.08); }
+  box-shadow: 0 6rpx 18rpx rgba(96, 72, 40, 0.10); }
 .rrc-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx;
-  border-radius: 15rpx; background: #C97B1D; color: #fff; font-size: 34rpx; font-weight: 500; }
+  border-radius: 15rpx; background: #B0772E; color: #fff; font-size: 34rpx; font-weight: 500; }
 .rrc-copy { flex: 1; display: flex; flex-direction: column; gap: 3rpx; }
-.rrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #8A5A17; font-weight: 650; }
+.rrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #7E571C; font-weight: 650; }
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
-  border-radius: 50%; background: #F8E5C6; color: #A97018; font-size: 36rpx; font-weight: 700; }
+  border-radius: 50%; background: #F0E6D2; color: #916619; font-size: 36rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
 .rec-recent-card { order: 3; margin-top: 57rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;

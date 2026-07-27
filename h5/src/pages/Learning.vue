@@ -320,16 +320,16 @@ onUnmounted(() => {
 /* FAB 已删(0725):压卡片、与「返回驾驶舱」浮球冲突;新建入口改列表尾部虚线条 */
 /* 新增学习记录大按钮(0725 用户定:短 20% 居中、配色减淡、周边柔光) */
 .learn-register-card { display: flex; align-items: center; gap: 16rpx; width: 80%; box-sizing: border-box;
-  margin: 34rpx auto 38rpx; padding: 20rpx 24rpx; text-align: left; border: 2rpx solid #EFD4A8;
-  background: linear-gradient(135deg, #FFFDF8 0%, #FFF7EA 100%);
+  margin: 34rpx auto 38rpx; padding: 20rpx 24rpx; text-align: left; border: 2rpx solid #E6D7BF;
+  background: linear-gradient(135deg, #FFFEFC 0%, #FAF4EB 100%);
   border-radius: 20rpx; color: inherit;
-  box-shadow: 0 0 22rpx rgba(233, 168, 74, 0.35), 0 6rpx 20rpx rgba(159, 92, 13, 0.08); }  /* 外圈柔光 */
+  box-shadow: 0 6rpx 18rpx rgba(96, 72, 40, 0.10); }  /* 柔和中性投影(降饱和、去橙光晕),与接待页同步 */
 .lrc-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx;
-  border-radius: 15rpx; background: #C97B1D; color: #fff; font-size: 34rpx; }
+  border-radius: 15rpx; background: #B0772E; color: #fff; font-size: 34rpx; }
 .lrc-copy { flex: 1; }
-.lrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #8A5A17; font-weight: 650; }
+.lrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #7E571C; font-weight: 650; }
 .lrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
-  border-radius: 50%; background: #F8E5C6; color: #A97018; font-size: 36rpx; font-weight: 700; }
+  border-radius: 50%; background: #F0E6D2; color: #916619; font-size: 36rpx; font-weight: 700; }
 .learn-register-card:active { opacity: 0.7; }
 
 /* 创建弹窗样式已删(0725):表单迁独立页 /learning-create */
