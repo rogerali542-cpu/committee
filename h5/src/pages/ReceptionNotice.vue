@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
@@ -155,6 +155,19 @@ const startHour = timePart('start', 0)
 const startMinute = timePart('start', 1)
 const endHour = timePart('end', 0)
 const endMinute = timePart('end', 1)
+
+// 接待默认时长 1 小时(0725 用户定):改起始时间自动把结束设为起始+1小时,
+// 特殊时长用户之后手动改结束即可。初始加载已存数据时不覆盖(formLoaded 守卫)。
+let formLoaded = false
+watch(() => form.start, (val) => {
+  if (!formLoaded) return
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(val || ''))
+  if (!m) return
+  let hh = Number(m[1]) + 1
+  const maxHour = Number(HOUR_OPTS[HOUR_OPTS.length - 1]) // 21
+  if (hh > maxHour) hh = maxHour                          // 越界则夹到最晚,避免出现无效结束时间
+  form.end = String(hh).padStart(2, '0') + ':' + m[2]
+})
 // saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 
@@ -245,6 +258,9 @@ async function load() {
     orgFullName.value = (sys && sys.orgFullName) || orgName.value
   } catch (e) {
     loadErr.value = (e && e.message) || '接待安排加载失败'
+  } finally {
+    // 数据回填完成后再启用"改起始自动调结束",避免加载已存时长时被 1 小时覆盖
+    nextTick(() => { formLoaded = true })
   }
 }
 onMounted(load)
