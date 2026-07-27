@@ -2127,8 +2127,9 @@ async function removeMaterial(item) {
 .arclog-reason { font-size: 28rpx; color:#666; width:100%; }
 
 /* 公示（卡内主操作区） */
-/* 底部固定操作栏 */
-.arc-bottom-action { position:fixed; bottom:0; left:0; right:0; background:#f4f5f7; box-shadow:0 -6px 16px rgba(0,0,0,0.06); padding:12px 20px calc(14px + env(safe-area-inset-bottom,0px)); z-index:20; }
+/* 操作栏(0725 用户定):不再固定底部——固定会遮住上方「会议记录/会议纪要」等内容,
+   改为静态排在内容之后,下拉即可看到,内容完整可见 */
+.arc-bottom-action { margin-top:16px; background:#f4f5f7; border-top:2rpx solid #e6e8eb; padding:14px 20px calc(20px + env(safe-area-inset-bottom,0px)); }
 /* 结束页三个按钮统一成一组（方案A）：同宽同高同字号；公示=实心主操作，查看纪要/AI新闻=描边辅助 */
 .ended-btn-row { display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:8px; }
 /* 查看会议纪要：描边橙（辅助） */

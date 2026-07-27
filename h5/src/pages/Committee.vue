@@ -2221,6 +2221,15 @@ function show() {
   // 恢复会话内的展开态(0725 用户定:进详情返回后保持展开)
   _restoreFold('mr_calendar_open', meetingCalendarOpen)
   _restoreFold('mr_planlist_open', planListOpen)
+  // 返回首页时视角落到日历/历史位置(0725 用户定):月历已展开(=之前看过)则滚动过去,
+  // 盖过路由默认的置顶,免得用户每次回来都要重新下拉找日历
+  if (meetingCalendarOpen.value && planTab.value === 'meeting') {
+    setTimeout(() => {
+      if (calendarPanelEl.value && calendarPanelEl.value.scrollIntoView) {
+        calendarPanelEl.value.scrollIntoView({ behavior: 'auto', block: 'start' })
+      }
+    }, 180)
+  }
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
