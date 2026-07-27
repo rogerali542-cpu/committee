@@ -2625,30 +2625,9 @@ async function openNewMeeting(period) {
     nextTick(autoGrowTitle)
     return
   }
-  // 「发起其他会议」入口（无 period）：名称留空占位，基于历史推荐一个 ghost 供点填
-  try {
-    const all = await api.committeeList(null)
-    const sug = computeSuggestedTitle(all || [])
-    suggestedTitle.value = sug // 不自动填入标题框，仅在下方作为推荐展示，点"用这个"才填入
-  } catch (e) { /* 推荐失败则留空手填 */ }
-}
-
-// 从历史标题里找最大的"第N次"，推荐 N+1
-function computeSuggestedTitle(list) {
-  const year = new Date().getFullYear()
-  let maxN = 0
-  ;(list || []).forEach(function (m) {
-    const t = (m && m.title) || ''
-    const ym = t.match(/(\d{4})\s*年第\s*(\d+)\s*次/)
-    if (ym) {
-      const y = Number(ym[1]), n = Number(ym[2])
-      if (y === year && n > maxN) maxN = n
-    } else {
-      const nm = t.match(/第\s*(\d+)\s*次/)
-      if (nm) { const n = Number(nm[1]); if (n > maxN) maxN = n }
-    }
-  })
-  return year + '年第' + (maxN + 1) + '次业委会例会'
+  // 「发起其他会议」入口（无 period）：这是非例会（专题/临时/联席等），不推荐「第N次业委会例会」——
+  // 那是例会专用名，放这里会误导；名称留空，只显示占位符「请输入会议名称」由用户手填。
+  suggestedTitle.value = ''
 }
 
 function closeCreate() {
@@ -2760,11 +2739,9 @@ async function continueDraft() {
   prefilledCreateTitle.value = ''   // 草稿里的标题是用户已确认的内容，返回时照常续存
   scanBusy.value = ''
   lastScanTokens.value = 0
-  // 标题推荐：还是给个下一次序号推荐（草稿已填标题时不显示 ghost）
-  try {
-    const all = await api.committeeList(null)
-    suggestedTitle.value = computeSuggestedTitle(all || [])
-  } catch (e) { suggestedTitle.value = '' }
+  // 草稿是「发起其他会议」的半成品，非例会：不再推荐「第N次业委会例会」。
+  // 草稿已填标题的照常带回（上面已还原 createForm.title），未填则留空手填。
+  suggestedTitle.value = ''
 }
 
 // 「放弃草稿」：确认后清除
