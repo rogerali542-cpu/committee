@@ -2036,7 +2036,8 @@ async function removeMaterial(item) {
 
 /* 主任归档卡片 */
 /* 底部留白盖过固定操作栏（3按钮+小链接约230px），滚到底时会议纪要行不被压住 */
-.ar-card { background:#fff; border-radius:16px; margin:12px 12px 260px; box-shadow:0 2px 10px rgba(0,0,0,0.06); overflow:hidden; }
+/* 底边距改回正常(0725):260px 是操作栏固定底部时预留的空位,操作栏已改静态,不再需要,否则卡片与按钮间空一大截 */
+.ar-card { background:#fff; border-radius:16px; margin:12px 12px 16px; box-shadow:0 2px 10px rgba(0,0,0,0.06); overflow:hidden; }
 .arc-minutes-link { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-top:1px solid #f0f0f0; cursor:pointer; }
 .arc-minutes-link span:first-child { font-size:18px; font-weight:700; color:var(--c-primary-dark); }
 .arc-minutes-arrow { font-size:22px; color:var(--c-primary-dark); }
