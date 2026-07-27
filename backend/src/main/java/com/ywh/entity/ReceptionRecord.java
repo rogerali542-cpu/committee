@@ -67,6 +67,11 @@ public class ReceptionRecord {
     @Column(name = "property_transferred_at")
     private LocalDateTime propertyTransferredAt;
 
+    // 办结时间（0727）：填写处理结果=办结时记一次。有来访的接待办结满一个月后，
+    // 由「公示中」转「已留档」；无人来访登记即办结（直接留档）。⚠ 不参与 isDone。
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

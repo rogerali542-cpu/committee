@@ -144,6 +144,8 @@ public class ReceptionService {
         m.put("content", r.getContent());
         m.put("resolution", r.getResolution());
         m.put("done", isDone(r));
+        // 办结时间：前端据此判断有来访的接待是否已办结满一个月（公示中 → 已留档）。
+        m.put("resolvedAt", r.getResolvedAt() != null ? r.getResolvedAt().toString() : null);
         // 外部工单
         m.put("ticketNo", r.getTicketNo());
         m.put("ticketPushed", r.getTicketPushedAt() != null);
@@ -175,6 +177,8 @@ public class ReceptionService {
                 .content(noVisit ? "本次接待无居民来访" : (String) req.get("content"))
                 // 无人来访只需留档，不产生需要后续处理的事项。
                 .resolution(noVisit ? "无需处理" : "")
+                // 无人来访登记即办结、直接留档；有来访的待填处理结果时（updateResolution）再记办结时间。
+                .resolvedAt(noVisit ? LocalDateTime.now() : null)
                 .build());
     }
 
@@ -215,7 +219,12 @@ public class ReceptionService {
     @Transactional
     public void updateResolution(Long id, String resolution) {
         ReceptionRecord r = requireCurrentCommunityRecord(id);
-        r.setResolution(resolution != null ? resolution.trim() : "");
+        String v = resolution != null ? resolution.trim() : "";
+        r.setResolution(v);
+        // 办结时间：填了处理结果=办结，记一次时间（办结满一个月后由「公示中」转「已留档」）；
+        // 结果被清空=撤销办结，一并清掉。已有时间的不覆盖，避免每次编辑刷新公示起点。
+        if (v.isEmpty()) r.setResolvedAt(null);
+        else if (r.getResolvedAt() == null) r.setResolvedAt(LocalDateTime.now());
         recordRepo.save(r);
     }
 

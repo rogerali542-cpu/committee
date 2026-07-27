@@ -1075,6 +1075,12 @@ const recentReceptionRecords = computed(() => {
     const status = unresolved.length === 0
       ? 'done'
       : (unresolved.every(r => r.propertyTransferred || r.ticketPushed) ? 'doing' : 'pending')
+    // 办结满一个月后由「公示中」转「已留档」：取本场次最晚的办结时间为公示起点。
+    const resolvedTs = session.records
+      .map(r => (r.resolvedAt ? new Date(r.resolvedAt).getTime() : 0))
+      .reduce((a, b) => Math.max(a, b), 0)
+    let archived = false
+    if (resolvedTs > 0) { const dd = new Date(resolvedTs); dd.setMonth(dd.getMonth() + 1); archived = Date.now() >= dd.getTime() }
     // 收起态摘要（0723 用户定）：不点开也知道是谁、什么事
     let summaryText = ''
     if (visitorRecords.length === 1) {
@@ -1092,10 +1098,10 @@ const recentReceptionRecords = computed(() => {
       visitorCount: visitorRecords.length,
       summaryText,
       status,
-      // 无人来访只是完成值班留档，不属于需要办理的事项。
+      // 无人来访=登记即留档；有来访的：待处理→处理中→已办结后公示一个月→已留档。
       statusText: visitorRecords.length === 0
         ? '已留档'
-        : (status === 'done' ? '已办结' : (status === 'doing' ? '处理中' : '待处理'))
+        : (status === 'done' ? (archived ? '已留档' : '公示中') : (status === 'doing' ? '处理中' : '待处理'))
     }
   }).sort((a, b) =>
     (String(b.date || '') + ' ' + String(b.time || '')).localeCompare(String(a.date || '') + ' ' + String(a.time || ''))
