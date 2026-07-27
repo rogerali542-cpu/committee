@@ -2572,10 +2572,8 @@ async function openDetail(id) {
 }
 
 function openMeetingTap(item) {
-  if (item.compliance === 'invalid') {
-    openMinutes(item.id)
-    return
-  }
+  // 无效会议原来直接跳纪要页,没纪要时是一张空页(0725 用户反馈)。改为统一进详情页「会议结果与公示」——
+  // 详情页对无效/无纪要都有完整布局(议题结果、会议记录、公示状态等),不再出现"点进去什么都没有"。
   // 准备阶段：按"上次停留位置"重进——上次在发起/编辑页就回发起页，否则进会议通知页
   if (item.stage === 'preparing' && getStorage('meetingView:' + item.id, '') === 'edit') {
     openMeetingForEdit(item.id)
@@ -2584,10 +2582,6 @@ function openMeetingTap(item) {
   openDetail(item.id)
 }
 
-function openMinutes(id) {
-  // from=committee:从首页进入,纪要页返回时确定性回首页(同 openDetail)
-  navigateTo('/pages/minutes-view/minutes-view?meetingId=' + id + '&from=committee')
-}
 
 async function openNewMeeting(period) {
   createVisible.value = true
