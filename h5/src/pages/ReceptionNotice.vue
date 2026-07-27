@@ -58,9 +58,10 @@
         <div class="field">
           <label class="f-label">接待人员</label>
           <select v-model="form.person" class="f-select" :class="{ placeholder: !form.person }" :disabled="!canManage">
-            <option value="" disabled>业委会委员轮值</option>
+            <!-- hidden:仅作占位提示,不出现在下拉列表里(0725 用户定) -->
+            <option value="" disabled hidden>请选择接待人员</option>
             <option v-for="m in receptionMembers" :key="m.id || m.name" :value="m.name">
-              {{ m.name }}
+              {{ m.name }}<template v-if="m.role"> · {{ m.role }}</template>
             </option>
           </select>
         </div>
@@ -130,8 +131,10 @@ const orgName = ref('业主委员会')
 // 落款全称（含区划+届别，0723 与会议文书统一）：后端 orgFullName，取不到退 orgName
 const orgFullName = ref('业主委员会')
 const committeeRoster = ref([])
+// 接待人员=业委会成员(0725 用户定:主任/副主任/委员都算,不只委员),排除秘书等非成员岗
+const RECEPTION_ROLES = ['主任', '副主任', '委员']
 const receptionMembers = computed(() =>
-  committeeRoster.value.filter(member => String(member.role || '').trim() === '委员')
+  committeeRoster.value.filter(member => RECEPTION_ROLES.includes(String(member.role || '').trim()))
 )
 
 const HOUR_OPTS = Array.from({ length: 12 }, (_, i) => String(i + 10).padStart(2, '0'))
