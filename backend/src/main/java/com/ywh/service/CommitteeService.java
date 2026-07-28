@@ -3613,14 +3613,19 @@ public class CommitteeService {
 
     private boolean isRelevantToMember(CommitteeMeeting m, UserRoleEntity ur) {
         if (m.getStage() == MeetingStage.preparing) {
-            return deliveryRepo.findByMeetingIdAndUserRoleId(m.getId(), ur.getId()).isPresent();
+            // App 内送达过我，或本会议有微信通知留痕（0728：微信群发即全员被通知，不建送达记录）
+            if (deliveryRepo.findByMeetingIdAndUserRoleId(m.getId(), ur.getId()).isPresent()) return true;
+            return notificationLogRepo.findByMeetingIdOrderBySentAtAsc(m.getId()).stream()
+                    .anyMatch(l -> l != null && "wechat".equals(l.getChannel()));
         }
         if (m.getStage() == MeetingStage.ongoing) {
             MeetingRecord record = recordRepo.findByMeetingId(m.getId()).orElse(null);
             if (record == null) return false;
             return attendanceRepo.findByRecordIdAndUserRoleId(record.getId(), ur.getId()).isPresent();
         }
-        return m.getStage() == MeetingStage.ended && m.getCompliance() != ComplianceStatus.invalid;
+        // ended 不再排除无效会议（0728）：委员端首页按「该期有没有开过会」判逾期，无效会议被藏掉会
+        // 让已补开的期次一直挂着「去补开」催办；与主任端 0723「测试期无效会议保留可见」的决定对齐。
+        return m.getStage() == MeetingStage.ended;
     }
 
     private static boolean isChair(UserRoleEntity ur) {
