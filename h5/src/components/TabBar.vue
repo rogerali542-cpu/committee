@@ -10,10 +10,7 @@
       :class="{ active: active === t.path }"
       @click="go(t.path)"
     >
-      <div class="tab-icon">
-        {{ t.icon }}
-      </div>
-      <div class="tab-label">{{ t.label }}</div>
+      <span class="tab-label">{{ t.label }}</span>
     </div>
   </nav>
 </template>
@@ -25,12 +22,13 @@ import { redirectTo } from '@/utils/navigate'
 import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
+// 纯文字底栏(0728 用户定:去图标)：标签统一 2 字，选中项加浅主色圆角底
 const tabs = [
-  { path: '/main', icon: '📋', label: '业委会会议' },
-  { path: '/reception-center', icon: '🤝', label: '接待中心' },
-  { path: '/learning', icon: '📚', label: '学习培训' },
-  { path: '/seal', icon: '🖋️', label: '印章' },
-  { path: '/profile', icon: '👤', label: '个人中心' }
+  { path: '/main', label: '会议' },
+  { path: '/reception-center', label: '接待' },
+  { path: '/learning', label: '学习' },
+  { path: '/seal', label: '印章' },
+  { path: '/profile', label: '我的' }
 ]
 const active = computed(() => route.path)
 // 欢迎引导页激活时隐藏底栏（选定业务后由 Committee.vue 复位再显示）
@@ -81,8 +79,13 @@ function backToCockpit() {
   padding-bottom: env(safe-area-inset-bottom);
   height: calc(100rpx + env(safe-area-inset-bottom));
 }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; color: #666; }
-.tab.active { color: var(--c-primary); }
-.tab-icon { position: relative; font-size: 44rpx; line-height: 1; }
-.tab-label { font-size: 26rpx; }
+.tab { flex: 1; display: flex; align-items: center; justify-content: center; }
+/* 纯文字：选中项=深主色加粗字 + 极浅主色圆角底(--c-primary-soft)，无图标 */
+.tab-label {
+  font-size: 30rpx; font-weight: 500; color: var(--c-text-weak); line-height: 1;
+  padding: 12rpx 26rpx; border-radius: 16rpx;
+  transition: color .15s, background .15s;
+}
+.tab.active .tab-label { color: var(--c-primary-dark); font-weight: 700; background: var(--c-primary-soft); }
+.tab:active .tab-label { opacity: .65; }
 </style>
