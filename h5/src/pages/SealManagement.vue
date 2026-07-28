@@ -7,11 +7,11 @@
     </PageNav>
     <GovSubTabs active="seal" />
 
-    <!-- 印章保管：制度口径——三枚印章由主任、副主任分人保管 -->
+    <!-- 印章保管（0728 用户定口径：不带行政区、保管人直说业委会秘书；确认/驳回权限仍按主任/副主任走） -->
     <div class="seal-info-card">
       <div class="sic-head">
         <span class="sic-title">印章保管</span>
-        <span class="sic-note">静安区阳光花园现有印章三枚，由主任、副主任分人保管</span>
+        <span class="sic-note">阳光花园小区现有印章三枚，由业委会秘书保管</span>
       </div>
       <div class="seal-chip-row">
         <div v-for="s in seals" :key="s.type" class="seal-chip">
