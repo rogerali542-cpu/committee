@@ -15,7 +15,7 @@ export default {
   sealStats: function () {
     return core.request('GET', '/api/seals/stats');
   },
-  // 申请用印：{ sealType, purpose, attachments: [{url,name,type,size}] }（0728 起文件名并入用途，附件另传）
+  // 申请用印：{ sealType, useDate:'yyyy-MM-dd', purpose, attachments: [{url,name,type,size}] }（0728：文件名并入用途，附件另传）
   sealApply: function (data) {
     return core.request('POST', '/api/seals/records', data);
   },

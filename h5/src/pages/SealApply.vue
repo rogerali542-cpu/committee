@@ -15,6 +15,12 @@
           </div>
         </div>
 
+        <!-- 用印时间：只填日期，最早今天（不可选过去）；big gap 放在这组之后，与事由文本区拉开 -->
+        <div class="form-group section-gap">
+          <span class="form-label">用印时间 *</span>
+          <input type="date" class="form-input" :value="form.useDate" :min="todayStr()" @change="form.useDate = $event.target.value" />
+        </div>
+
         <div class="form-group">
           <span class="form-label">用印事由 / 用途 *</span>
           <!-- 0728 用户定：不再单独填「关联文件」，文件名直接写进事由里；提示语放框下方（手机上更易注意到，也符合 iOS/Material 惯例） -->
@@ -68,7 +74,12 @@ const DEFAULT_SEALS = [
   { type: 'general_assembly', label: '业主大会章' }
 ]
 const seals = ref(DEFAULT_SEALS.slice())
-const form = reactive({ sealType: DEFAULT_SEALS[0].type, purpose: '' })
+// 用印时间默认今天，且日期控件 min=今天，不能选到过去
+function todayStr() {
+  const d = new Date()
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+const form = reactive({ sealType: DEFAULT_SEALS[0].type, useDate: todayStr(), purpose: '' })
 const saving = ref(false)
 
 // 附件（盖章文件/签字登记表照片、PDF）：选一件传一件，提交时随申请入库
@@ -106,6 +117,8 @@ onMounted(async () => {
 
 async function submit() {
   if (!form.sealType) { toast({ title: '请选择印章', icon: 'none' }); return }
+  if (!form.useDate) { toast({ title: '请选择用印时间', icon: 'none' }); return }
+  if (form.useDate < todayStr()) { toast({ title: '用印时间不能早于今天', icon: 'none' }); return }
   if (!String(form.purpose).trim()) { toast({ title: '请填写用印用途', icon: 'none' }); return }
   if (uploading.value) { toast({ title: '附件上传中，请稍候', icon: 'none' }); return }
   if (saving.value) return
@@ -113,6 +126,7 @@ async function submit() {
   try {
     await api.sealApply({
       sealType: form.sealType,
+      useDate: form.useDate,
       purpose: form.purpose.trim(),
       attachments: atts.value
     })
@@ -131,7 +145,7 @@ async function submit() {
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
-.form-card .form-group:first-child { margin-bottom: 56rpx; }  /* 0728 用户定：印章下拉与事由标题之间的间隔加大一倍 */
+.form-card .section-gap { margin-bottom: 56rpx; }  /* 0728 用户定：选择区（印章/时间）与事由文本区之间的间隔加大一倍 */
 /* 0728 用户定：三个分组标题加大两号、字重 +200 */
 .form-label { display: block; margin-bottom: 14rpx; font-size: 32rpx; color: #4a5560; font-weight: 800; }
 .form-hint { display: block; margin: 12rpx 4rpx 0; font-size: 25rpx; line-height: 1.5; color: #98A2AD; }

@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,9 +73,14 @@ public class SealService {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         SealType type = SealType.valueOf((String) req.get("sealType"));
         var ur = SecurityUtils.getCurrentUserRole();
+        LocalDate useDate = parseDate(req.get("useDate"));
+        if (useDate != null && useDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("用印时间不能早于今天");
+        }
         return repo.save(SealUseRecord.builder()
                 .community(Community.builder().id(communityId).build())
                 .sealType(type)
+                .useDate(useDate)
                 .purpose(str(req.get("purpose")))
                 .attachments(serializeAttachments(req.get("attachments")))
                 .applicantName(ur != null ? ur.getRealName() : null)
@@ -150,6 +156,7 @@ public class SealService {
         m.put("id", r.getId());
         m.put("sealType", r.getSealType().name());
         m.put("sealLabel", r.getSealType().getLabel());
+        m.put("useDate", r.getUseDate() != null ? r.getUseDate().toString() : null);
         m.put("purpose", r.getPurpose());
         m.put("documentName", r.getDocumentName());
         m.put("attachments", parseAttachments(r.getAttachments()));
@@ -168,5 +175,13 @@ public class SealService {
         if (o == null) return null;
         String s = String.valueOf(o).trim();
         return s.isEmpty() ? null : s;
+    }
+
+    /** 解析前端传来的日期字符串（yyyy-MM-dd）；空或非法返回 null。 */
+    private static LocalDate parseDate(Object o) {
+        String s = str(o);
+        if (s == null) return null;
+        try { return LocalDate.parse(s.length() > 10 ? s.substring(0, 10) : s); }
+        catch (Exception e) { return null; }
     }
 }

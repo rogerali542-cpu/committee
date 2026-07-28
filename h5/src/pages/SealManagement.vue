@@ -150,10 +150,17 @@ function fmtTime(s) {
   const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
   return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : String(s);
 }
+// 2026-08-06 → 2026年8月6日
+function fmtDate(s) {
+  if (!s) return '';
+  const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? (Number(m[1]) + '年' + Number(m[2]) + '月' + Number(m[3]) + '日') : String(s);
+}
 
 // ── 台账登记项文案（按制度：用印时间、用途/事项、文件、申请人、保管人确认、附件）──
-// 用印时间＝保管人确认盖章的时间；申请中还没盖章显示「待用印」
+// 用印时间＝申请人填写的计划用印日期（0728 起）；老记录无此字段时回退到保管人确认盖章时间
 function useTimeText(r) {
+  if (r.useDate) return fmtDate(r.useDate);
   if (r.status === 'approved') return fmtTime(r.confirmedAt) || '—';
   return r.status === 'pending' ? '待用印' : '—';
 }
@@ -170,7 +177,7 @@ function applicantText(r) {
   return s;
 }
 function custodianText(r) {
-  if (r.status === 'approved') return '已由 ' + (r.custodianName || '保管人') + ' 确认用印';
+  if (r.status === 'approved') return '已由 ' + (r.custodianName || '保管人') + ' 确认用印' + (r.confirmedAt ? ' · ' + fmtTime(r.confirmedAt) : '');
   if (r.status === 'rejected') return '已驳回' + (r.rejectReason ? '：' + r.rejectReason : '');
   return '处理中，待保管人确认';
 }

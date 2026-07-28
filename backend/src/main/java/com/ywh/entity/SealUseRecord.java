@@ -4,6 +4,7 @@ import com.ywh.enums.SealType;
 import com.ywh.enums.SealUseStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -29,6 +30,10 @@ public class SealUseRecord {
     @Enumerated(EnumType.STRING)
     @Column(name = "seal_type", nullable = false, length = 20)
     private SealType sealType;
+
+    /** 计划用印日期（申请人填写，0728 新增；不早于当天）。 */
+    @Column(name = "use_date")
+    private LocalDate useDate;
 
     /** 用印事由 / 用途。 */
     @Column(columnDefinition = "TEXT")
