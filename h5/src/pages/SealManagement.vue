@@ -72,51 +72,6 @@
       <div v-else class="empty-state"><span>{{ filter === 'all' ? '暂无用印记录' : '当前没有需要显示的记录' }}</span></div>
     </div>
 
-    <!-- 申请用印弹层 -->
-    <div v-if="applyOpen" class="seal-mask" @click="applyOpen = false">
-      <div class="seal-sheet" @click.stop>
-        <div class="sheet-head">
-          <span class="sheet-title">申请用印</span>
-          <span class="sheet-close" @click="applyOpen = false">×</span>
-        </div>
-        <div class="form-group">
-          <span class="form-label">选择印章 *</span>
-          <div class="seal-pick-row">
-            <span v-for="s in seals" :key="s.type" class="seal-pick" :class="{ on: applyForm.sealType === s.type }" @click="applyForm.sealType = s.type">{{ s.label }}</span>
-          </div>
-        </div>
-        <div class="form-group">
-          <span class="form-label">用印事由 / 用途 *</span>
-          <textarea class="form-textarea" v-model="applyForm.purpose" placeholder="例如：业委会决议公示盖章"></textarea>
-        </div>
-        <div class="form-group">
-          <span class="form-label">关联文件（选填）</span>
-          <input class="form-input" v-model="applyForm.documentName" placeholder="例如：第3次业委会会议决议" />
-        </div>
-        <div class="sheet-actions">
-          <button class="btn btn-ghost" @click="applyOpen = false">取消</button>
-          <button class="btn btn-primary" :disabled="applying" @click="submitApply">{{ applying ? '提交中…' : '提交申请' }}</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 驳回弹层 -->
-    <div v-if="rejectOpen" class="seal-mask" @click="rejectOpen = false">
-      <div class="seal-sheet" @click.stop>
-        <div class="sheet-head">
-          <span class="sheet-title">驳回用印申请</span>
-          <span class="sheet-close" @click="rejectOpen = false">×</span>
-        </div>
-        <div class="form-group">
-          <span class="form-label">驳回理由（选填）</span>
-          <textarea class="form-textarea" v-model="rejectReason" placeholder="说明驳回原因，便于申请人修改后再申请"></textarea>
-        </div>
-        <div class="sheet-actions">
-          <button class="btn btn-ghost" @click="rejectOpen = false">取消</button>
-          <button class="btn btn-primary" @click="submitReject">确认驳回</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -130,14 +85,6 @@ import { toast, showModal } from '@/utils/ui';
 const seals = ref([]);
 const allRecords = ref([]);
 const filter = ref('all');
-
-const applyOpen = ref(false);
-const applying = ref(false);
-const applyForm = ref({ sealType: '', purpose: '', documentName: '' });
-
-const rejectOpen = ref(false);
-const rejectReason = ref('');
-const rejectTarget = ref(null);
 
 // 申请：委员及以上；确认/驳回：保管人（主任/副主任）；删除：仅主任
 const canApply = computed(() => perm.can('seal.apply'));
@@ -163,26 +110,9 @@ async function load() {
   } catch (e) { /* 网络异常已由 core 统一提示 */ }
 }
 
+// 申请用印改为独立页（0728 用户定：统一不用弹层）；返回台账时 onActivated 会重新拉取
 function openApply() {
-  applyForm.value = { sealType: (seals.value[0] && seals.value[0].type) || '', purpose: '', documentName: '' };
-  applyOpen.value = true;
-}
-async function submitApply() {
-  if (!applyForm.value.sealType) { toast({ title: '请选择印章', icon: 'none' }); return; }
-  if (!applyForm.value.purpose || !applyForm.value.purpose.trim()) { toast({ title: '请填写用印用途', icon: 'none' }); return; }
-  applying.value = true;
-  try {
-    await api.sealApply({
-      sealType: applyForm.value.sealType,
-      purpose: applyForm.value.purpose.trim(),
-      documentName: (applyForm.value.documentName || '').trim()
-    });
-    toast({ title: '已提交用印申请', icon: 'success' });
-    applyOpen.value = false;
-    await load();
-  } catch (e) { /* */ } finally {
-    applying.value = false;
-  }
+  window.location.assign('/seal-apply');
 }
 
 async function confirmUse(r) {
@@ -193,19 +123,12 @@ async function confirmUse(r) {
   } catch (e) { /* */ }
 }
 
+// 驳回改为独立页；带上印章名/用途，便于页内确认是哪条申请
 function openReject(r) {
-  rejectTarget.value = r;
-  rejectReason.value = '';
-  rejectOpen.value = true;
-}
-async function submitReject() {
-  if (!rejectTarget.value) return;
-  try {
-    await api.sealReject(rejectTarget.value.id, (rejectReason.value || '').trim());
-    toast({ title: '已驳回', icon: 'none' });
-    rejectOpen.value = false;
-    await load();
-  } catch (e) { /* */ }
+  const q = 'id=' + r.id
+    + '&seal=' + encodeURIComponent(r.sealLabel || '')
+    + '&purpose=' + encodeURIComponent(r.purpose || '');
+  window.location.assign('/seal-reject?' + q);
 }
 
 async function removeRecord(r) {
@@ -319,36 +242,4 @@ onActivated(load);
 .sr-del:active { color: #C0392B; }
 
 .empty-state { padding: 70rpx 0; text-align: center; color: var(--c-text-weak); font-size: 28rpx; }
-
-/* 弹层 */
-.seal-mask {
-  position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end;
-  background: rgba(20, 28, 40, 0.42);
-}
-.seal-sheet {
-  width: 100%; box-sizing: border-box; padding: 30rpx 30rpx calc(34rpx + env(safe-area-inset-bottom));
-  background: var(--c-bg-card); border-radius: 28rpx 28rpx 0 0;
-}
-.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
-.sheet-title { font-size: 34rpx; font-weight: 750; color: var(--c-text-strong); }
-.sheet-close { font-size: 44rpx; line-height: 1; color: #9AA4B0; padding: 0 8rpx; }
-.form-group { margin-top: 22rpx; }
-.form-label { display: block; margin-bottom: 12rpx; font-size: 28rpx; font-weight: 600; color: var(--c-text-mid); }
-.form-input, .form-textarea {
-  width: 100%; box-sizing: border-box; padding: 20rpx 22rpx;
-  border: 2rpx solid #DCE1E6; border-radius: 14rpx; background: #fff;
-  font-size: 30rpx; color: var(--c-text-strong);
-}
-.form-textarea { min-height: 132rpx; resize: none; line-height: 1.5; }
-.seal-pick-row { display: flex; flex-wrap: wrap; gap: 14rpx; }
-.seal-pick {
-  padding: 16rpx 26rpx; border: 2rpx solid #DCE1E6; border-radius: 14rpx;
-  background: #fff; font-size: 29rpx; color: #4E6076; font-weight: 600;
-}
-.seal-pick.on { border-color: #B0772E; background: #FBF4EB; color: #7E571C; }
-.sheet-actions { display: flex; gap: 20rpx; margin-top: 32rpx; }
-.sheet-actions .btn { flex: 1; min-height: 84rpx; border-radius: 16rpx; font-size: 32rpx; font-weight: 700; border: 0; }
-.btn-ghost { background: #EEF0F3; color: #4E6076; }
-.btn-primary { background: #B0772E; color: #fff; }
-.btn-primary:disabled { opacity: 0.6; }
 </style>

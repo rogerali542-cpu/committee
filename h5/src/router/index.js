@@ -41,6 +41,8 @@ const routes = [
   { path: '/todo', component: () => import('@/pages/Todo.vue'), meta: { title: '待办' } },
   { path: '/library', component: () => import('@/pages/Library.vue'), meta: { title: '资料库' } },
   { path: '/seal', component: () => import('@/pages/SealManagement.vue'), meta: { title: '印章管理', tab: true } },
+  { path: '/seal-apply', component: () => import('@/pages/SealApply.vue'), meta: { title: '申请用印' } },
+  { path: '/seal-reject', component: () => import('@/pages/SealReject.vue'), meta: { title: '驳回用印申请' } },
   // 物业侧工作台 0716 随内部派单流下线：物业以后只在外部工单系统里干活。见 commit 6745a12。
   { path: '/archive-detail', component: () => import('@/pages/ArchiveDetail.vue'), meta: { title: '归档详情' } },
   { path: '/admin', component: () => import('@/pages/Admin.vue'), meta: { title: '管理后台' } },
