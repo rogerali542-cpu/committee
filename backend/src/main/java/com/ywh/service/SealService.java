@@ -54,7 +54,9 @@ public class SealService {
         } else if ("approved".equals(filter)) {
             records = records.stream().filter(r -> r.getStatus() == SealUseStatus.approved).collect(Collectors.toList());
         }
-        return records.stream().map(this::toVO).collect(Collectors.toList());
+        var ur = SecurityUtils.getCurrentUserRole();
+        Long currentUrId = ur != null ? ur.getId() : null;
+        return records.stream().map(r -> toVO(r, currentUrId)).collect(Collectors.toList());
     }
 
     public Map<String, Object> getStats() {
@@ -85,8 +87,24 @@ public class SealService {
                 .attachments(serializeAttachments(req.get("attachments")))
                 .applicantName(ur != null ? ur.getRealName() : null)
                 .applicantRole(ur != null && ur.getRole() != null ? ur.getRole().name() : null)
+                .applicantUserRoleId(ur != null ? ur.getId() : null)
                 .status(SealUseStatus.pending)
                 .build());
+    }
+
+    /** 申请人撤回本人的用印申请（0728）：仅本人、仅「处理中(pending)」可撤回，撤回即删除记录。 */
+    @Transactional
+    public void withdraw(Long id) {
+        SealUseRecord r = requireRecord(id);   // 同社区校验
+        var ur = SecurityUtils.getCurrentUserRole();
+        Long uid = ur != null ? ur.getId() : null;
+        if (uid == null || !uid.equals(r.getApplicantUserRoleId())) {
+            throw new IllegalArgumentException("只能撤回本人提交的用印申请");
+        }
+        if (r.getStatus() != SealUseStatus.pending) {
+            throw new IllegalArgumentException("该申请已处理，无法撤回");
+        }
+        repo.delete(r);
     }
 
     /** 附件入库：只留 url/name/type/size 四个字段，最多 9 件，序列化为 JSON 存 TEXT 列。 */
@@ -151,7 +169,7 @@ public class SealService {
         return r;
     }
 
-    private Map<String, Object> toVO(SealUseRecord r) {
+    private Map<String, Object> toVO(SealUseRecord r, Long currentUrId) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", r.getId());
         m.put("sealType", r.getSealType().name());
@@ -162,6 +180,11 @@ public class SealService {
         m.put("attachments", parseAttachments(r.getAttachments()));
         m.put("applicantName", r.getApplicantName());
         m.put("applicantRole", r.getApplicantRole());
+        m.put("applicantUserRoleId", r.getApplicantUserRoleId());
+        // 本人 + 处理中 → 前端展示「撤回申请」按钮（鉴权在 withdraw() 再兜一次）
+        m.put("canWithdraw", currentUrId != null
+                && currentUrId.equals(r.getApplicantUserRoleId())
+                && r.getStatus() == SealUseStatus.pending);
         m.put("status", r.getStatus().name());
         m.put("statusLabel", r.getStatus().getLabel());
         m.put("custodianName", r.getCustodianName());

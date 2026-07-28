@@ -27,6 +27,10 @@ export default {
   sealReject: function (id, reason) {
     return core.request('PUT', '/api/seals/records/' + id + '/reject' + (reason ? '?reason=' + encodeURIComponent(reason) : ''));
   },
+  // 申请人撤回本人「处理中」的申请
+  sealWithdraw: function (id) {
+    return core.request('PUT', '/api/seals/records/' + id + '/withdraw');
+  },
   sealRemove: function (id) {
     return core.request('DELETE', '/api/seals/records/' + id);
   }

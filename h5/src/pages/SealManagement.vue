@@ -63,13 +63,16 @@
             </div>
           </div>
 
-          <!-- 底部操作行：删除（仅主任，靠左）｜ 保管人确认/驳回（靠右），避免与右上角状态胶囊重叠 -->
-          <div v-if="canRemove || (r.status === 'pending' && canConfirm)" class="sr-foot">
+          <!-- 底部操作行：删除（仅主任，靠左）｜ 撤回（本人处理中）/保管人确认/驳回（靠右） -->
+          <div v-if="canRemove || (r.status === 'pending' && canConfirm) || r.canWithdraw" class="sr-foot">
             <button v-if="canRemove" type="button" class="sr-del" @click="removeRecord(r)">删除</button>
             <span v-else class="sr-foot-sp"></span>
-            <div v-if="r.status === 'pending' && canConfirm" class="sr-actions">
-              <button type="button" class="sr-btn ghost" @click="openReject(r)">驳回</button>
-              <button type="button" class="sr-btn primary" @click="confirmUse(r)">确认用印</button>
+            <div class="sr-actions">
+              <button v-if="r.canWithdraw" type="button" class="sr-btn ghost" @click="withdrawRecord(r)">撤回申请</button>
+              <template v-if="r.status === 'pending' && canConfirm">
+                <button type="button" class="sr-btn ghost" @click="openReject(r)">驳回</button>
+                <button type="button" class="sr-btn primary" @click="confirmUse(r)">确认用印</button>
+              </template>
             </div>
           </div>
         </div>
@@ -124,6 +127,17 @@ async function confirmUse(r) {
     toast({ title: '已确认用印', icon: 'success' });
     await load();
   } catch (e) { /* */ }
+}
+
+// 申请人撤回本人「处理中」的申请：确认后删除记录（撤回=取消这次申请，需要时可重新提交）
+async function withdrawRecord(r) {
+  const res = await showModal({ title: '撤回用印申请', content: '撤回后该申请将被移除，需要时可重新提交。确定撤回？', showCancel: true, confirmText: '撤回' });
+  if (!res || !res.confirm) return;
+  try {
+    await api.sealWithdraw(r.id);
+    toast({ title: '已撤回申请', icon: 'none' });
+    await load();
+  } catch (e) { toast({ title: (e && e.message) || '撤回失败', icon: 'none' }); }
 }
 
 // 驳回改为独立页；带上印章名/用途，便于页内确认是哪条申请

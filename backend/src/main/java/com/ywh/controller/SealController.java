@@ -66,6 +66,14 @@ public class SealController {
         return Result.ok();
     }
 
+    /** 申请人撤回本人「处理中」的用印申请。可申请者均可调用，能否撤回由 service 按「本人+待处理」判定。 */
+    @PutMapping("/records/{id}/withdraw")
+    @RequireRole({"主任", "副主任", "委员", "记录员"})
+    public Result<Void> withdraw(@PathVariable Long id) {
+        service.withdraw(id);
+        return Result.ok();
+    }
+
     @DeleteMapping("/records/{id}")
     @RequireRole({"主任"})
     public Result<Void> remove(@PathVariable Long id) {

@@ -54,6 +54,10 @@ public class SealUseRecord {
     @Column(name = "applicant_role", length = 20)
     private String applicantRole;
 
+    /** 申请人 userRole id（0728 新增，用于「本人撤回」鉴权；老记录为空，不可撤回）。 */
+    @Column(name = "applicant_user_role_id")
+    private Long applicantUserRoleId;
+
     /** 状态：待确认 / 已用印 / 已驳回。 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
