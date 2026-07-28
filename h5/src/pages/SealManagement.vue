@@ -10,7 +10,7 @@
     <div class="seal-info-card">
       <div class="sic-head">
         <span class="sic-title">印章保管</span>
-        <span class="sic-note">三枚印章，由主任、副主任分人保管</span>
+        <span class="sic-note">静安区阳光花园现有印章三枚，由主任、副主任分人保管</span>
       </div>
       <div class="seal-chip-row">
         <div v-for="s in seals" :key="s.type" class="seal-chip">
