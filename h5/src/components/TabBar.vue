@@ -25,9 +25,9 @@ const route = useRoute()
 // 纯文字底栏(0728 用户定:去图标)。印章并入「业委会」(见 GovSubTabs 二级切换)，回到 4 格
 const tabs = [
   { path: '/main', label: '业委会' },
-  { path: '/reception-center', label: '接待' },
-  { path: '/learning', label: '学习' },
-  { path: '/profile', label: '我的' }
+  { path: '/reception-center', label: '业主接待' },
+  { path: '/learning', label: '学习培训' },
+  { path: '/profile', label: '个人中心' }
 ]
 // /seal 是「业委会」下的二级视图：印章页仍显示底栏、并高亮业委会
 const active = computed(() => route.path === '/seal' ? '/main' : route.path)
@@ -80,14 +80,17 @@ function backToCockpit() {
   height: calc(100rpx + env(safe-area-inset-bottom));
 }
 .tab { flex: 1; display: flex; align-items: center; justify-content: center; }
-/* 纯文字底栏：字号/字重按纯文字放大加重；未选中=中性灰常规字 */
+/* 纯文字底栏：未选中=中性灰常规字（4 字标签，字号收到 30rpx 留出胶囊空间） */
 .tab-label {
-  font-size: 32rpx; font-weight: 500; color: var(--c-text-weak); line-height: 1;
-  padding: 13rpx 28rpx; border-radius: 14rpx;
-  transition: color .15s, background .15s;
+  font-size: 30rpx; font-weight: 500; color: var(--c-text-weak); line-height: 1;
+  padding: 12rpx 20rpx; border-radius: 16rpx;
+  transition: color .15s, background .15s, box-shadow .15s;
 }
-/* 选中项：深主色加粗字 + 看得清的浅琥珀圆角底。
-   不用 --c-primary-soft(#FFF3E0)——它铺在纯白底栏上过浅，像残留白块。 */
-.tab.active .tab-label { color: var(--c-primary-dark); font-weight: 700; background: #F6E3BF; }
-.tab:active .tab-label { opacity: .65; }
+/* 选中：品牌蓝渐变胶囊 + 一点边缘发光（同类政务/社区 App 惯用蓝，稳重可信、加强设计感） */
+.tab.active .tab-label {
+  color: #fff; font-weight: 700;
+  background: linear-gradient(135deg, #3B79F0 0%, #2E6CE6 100%);
+  box-shadow: 0 0 16rpx rgba(46, 108, 230, 0.5), 0 6rpx 14rpx rgba(46, 108, 230, 0.28);
+}
+.tab:active .tab-label { opacity: .8; }
 </style>
