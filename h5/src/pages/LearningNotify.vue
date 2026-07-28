@@ -10,14 +10,31 @@
         <div class="nc-sign">业主委员会</div>
       </section>
 
-      <!-- 计划参加人员 -->
-      <section class="who-card" v-if="planNames.length">
-        <div class="who-head">
-          <span class="who-title">计划参加人员</span>
-          <span class="who-stat" :class="{ ok: item.notified }">{{ item.notified ? '已通知全员' : ('共 ' + planNames.length + ' 人') }}</span>
-        </div>
-        <div class="who-list">
-          <span v-for="n in planNames" :key="n" class="who-chip">{{ n }}</span>
+      <!-- 计划参加人员：业委会成员，默认全选，展开可单独勾选；通知时选定名单一并落库（0728 用户定：选择从发起页移到此处） -->
+      <section class="member-section" v-if="!item.notified">
+        <div class="ms-label">计划参加人员</div>
+        <div class="member-card">
+          <div class="member-head" @click="membersOpen = !membersOpen">
+            <span class="member-title">业委会成员</span>
+            <div class="member-right">
+              <div class="mc-all" @click.stop="toggleAll">
+                <div class="mc-check" :class="{ on: allChecked }">{{ allChecked ? '✓' : '' }}</div>
+                <span class="mc-all-label">全选</span>
+                <span class="mc-count">已选 {{ selectedCount }}/{{ members.length }} 人</span>
+              </div>
+              <span class="member-toggle" :class="{ open: membersOpen }">{{ membersOpen ? '收起' : '展开' }}<span class="mt-arr"></span></span>
+            </div>
+          </div>
+          <div v-if="membersOpen" class="mc-list">
+            <div v-for="m in members" :key="m.userRoleId" class="mc-item" @click="toggleMember(m.userRoleId)">
+              <div class="mc-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
+              <div class="mc-person">
+                <span class="mc-name">{{ m.name }}</span>
+                <span v-if="m.role" class="mc-role">{{ m.role }}</span>
+              </div>
+            </div>
+            <div v-if="!members.length" class="mc-empty">暂无业委会成员</div>
+          </div>
         </div>
       </section>
 
@@ -60,20 +77,41 @@ const notifiedText = computed(() => planNames.value.length
   ? ('已通知 ' + planNames.value.length + ' 位委员，学习结束后可在详情登记参加情况')
   : '通知已发出，学习结束后可在详情登记参加情况')
 
+// 参加人员选择（业委会成员，默认全选，可展开单独勾选）——通知时随通知落库
+const members = ref([])          // [{ userRoleId, name, role, checked }]
+const membersOpen = ref(false)
+const selectedCount = computed(() => members.value.filter(m => m.checked).length)
+const allChecked = computed(() => members.value.length > 0 && members.value.every(m => m.checked))
+function toggleAll() { const t = !allChecked.value; members.value.forEach(m => { m.checked = t }) }
+function toggleMember(mid) { const m = members.value.find(x => x.userRoleId === mid); if (m) m.checked = !m.checked }
+function selectedNames() { return members.value.filter(m => m.checked).map(m => m.name) }
+async function loadMembers() {
+  try {
+    const list = await api.committeeMembers()
+    // 已有计划名单（如返回本页）则按其预勾选，否则默认全选
+    const planned = new Set(planNames.value)
+    members.value = (list || [])
+      .map(m => ({ userRoleId: Number(m.userRoleId), name: m.name || '委员', role: m.role || '', checked: planned.size ? planned.has(m.name || '委员') : true }))
+      .filter(m => m.userRoleId)
+  } catch (e) { members.value = [] }
+}
+
 function load() {
   api.learningList('internal', null).then((list) => {
     const found = (list || []).find((i) => i.id === id)
-    if (found) item.value = found
+    if (found) { item.value = found; if (!item.value.notified) loadMembers() }
     else toast({ title: '学习记录不存在', icon: 'none' })
   }).catch(() => toast({ title: '加载失败', icon: 'none' }))
 }
 
 async function notifyApp() {
   if (busy.value) return
+  const names = selectedNames()
+  if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   busy.value = true
   try {
-    await api.learningNotifyAll(id)
-    toast({ title: '已在 App 内通知全员', icon: 'success' })
+    await api.learningNotifyAll(id, names)
+    toast({ title: '已在 App 内通知', icon: 'success' })
     load()
   } catch (e) {
     toast({ title: (e && e.message) || '通知失败', icon: 'none' })
@@ -82,10 +120,12 @@ async function notifyApp() {
 
 async function notifyWechat() {
   if (busy.value) return
+  const names = selectedNames()
+  if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   busy.value = true
   try {
     await copyText(noticePlainText())
-    await api.learningNotifyAll(id)
+    await api.learningNotifyAll(id, names)
     toast({ title: '通知已复制，去微信群粘贴发送', icon: 'none' })
     load()
   } catch (e) {
@@ -137,13 +177,30 @@ onMounted(load)
 .nc-para { font-size: 30rpx; line-height: 1.75; color: #2b323b; text-indent: 2em; }
 .nc-sign { margin-top: 16rpx; text-align: right; font-size: 29rpx; color: #33373d; }
 
-.who-card { margin-top: 20rpx; background: #fff; border-radius: 22rpx; padding: 24rpx 26rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
-.who-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
-.who-title { font-size: 30rpx; font-weight: 700; color: #1f2329; }
-.who-stat { font-size: 26rpx; color: #C77800; font-weight: 600; }
-.who-stat.ok { color: #2E9E5B; }
-.who-list { display: flex; flex-wrap: wrap; gap: 12rpx; }
-.who-chip { padding: 8rpx 20rpx; border-radius: 999rpx; background: #F1F3F5; color: #4E6076; font-size: 27rpx; }
+/* 参加人员选择卡（业委会成员，默认全选、可展开勾选） */
+.member-section { margin-top: 20rpx; }
+.ms-label { margin: 0 4rpx 12rpx; font-size: 28rpx; color: #4a5560; font-weight: 600; }
+.member-card { border: 2rpx solid #E4E8EC; border-radius: 16rpx; background: #fff; overflow: hidden; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
+.member-head { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; padding: 0 18rpx; min-height: 88rpx; box-sizing: border-box; }
+.member-head:active { background: #FAFAFA; }
+.member-title { font-size: 29rpx; color: #1f2329; font-weight: 700; }
+.member-right { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; }
+.mc-all { display: flex; align-items: center; gap: 8rpx; padding: 0 6rpx; }
+.mc-all-label { font-size: 27rpx; color: #A85800; font-weight: 700; white-space: nowrap; }
+.mc-count { font-size: 25rpx; color: #8A9099; white-space: nowrap; }
+.member-toggle { flex-shrink: 0; display: inline-flex; align-items: center; gap: 10rpx; padding: 8rpx 18rpx; border-radius: 999rpx; background: var(--c-primary-soft); color: var(--c-primary-dark); font-size: 25rpx; font-weight: 700; }
+.mt-arr { display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .18s ease, top .18s ease; }
+.member-toggle.open .mt-arr { transform: rotate(-135deg); top: 2rpx; }
+.mc-list { border-top: 2rpx solid #F0F2F4; }
+.mc-item { display: flex; align-items: center; gap: 14rpx; padding: 16rpx 20rpx; border-bottom: 1px solid #f0f0f2; }
+.mc-item:last-child { border-bottom: none; }
+.mc-item:active { background: #fafafa; }
+.mc-check { flex-shrink: 0; width: 38rpx; height: 38rpx; border-radius: 50%; border: 3rpx solid #cfd4da; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24rpx; font-weight: 700; box-sizing: border-box; }
+.mc-check.on { background: var(--c-primary); border-color: var(--c-primary); }
+.mc-person { display: flex; flex-direction: column; gap: 2rpx; }
+.mc-name { font-size: 28rpx; color: #1f2329; font-weight: 600; }
+.mc-role { font-size: 20rpx; color: #9aa0a6; }
+.mc-empty { text-align: center; color: #9aa0a6; font-size: 24rpx; padding: 28rpx 0; }
 
 .done-tip { margin-top: 20rpx; display: flex; align-items: center; gap: 12rpx; padding: 20rpx 24rpx; background: #E8F5EE; border-radius: 18rpx; }
 .dt-ic { color: #2E9E5B; font-weight: 700; font-size: 30rpx; }

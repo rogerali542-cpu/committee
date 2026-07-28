@@ -178,10 +178,22 @@ public class LearningService {
         repo.save(r);
     }
 
-    // 通知全员
+    // 通知全员；names 非空且处于准备阶段时，把通知页选定的参加人员落库（更新 attendees + 重建签到名单）
     @Transactional
-    public void notifyAll(Long id) {
+    public void notifyAll(Long id, List<String> names) {
         LearningRecord r = requireCurrentCommunityRecord(id);
+        if (names != null && !names.isEmpty() && r.getStage() == MeetingStage.preparing) {
+            Set<String> clean = names.stream()
+                    .filter(Objects::nonNull).map(String::trim).filter(s -> !s.isEmpty())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (!clean.isEmpty()) {
+                r.setAttendees(String.join("、", clean));
+                signInRepo.deleteAll(signInRepo.findByRecordId(id));
+                for (String n : clean) {
+                    signInRepo.save(LearningSignIn.builder().recordId(id).realName(n).signedIn(false).build());
+                }
+            }
+        }
         r.setNotified(true);
         repo.save(r);
     }

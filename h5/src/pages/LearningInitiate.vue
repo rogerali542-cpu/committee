@@ -33,34 +33,7 @@
           <span class="form-label">学习内容 *</span>
           <textarea class="form-textarea" v-model="form.description"></textarea>
         </div>
-
-        <div class="form-group">
-          <span class="form-label">计划参加人员</span>
-          <!-- 内部学习只涉及业委会成员：默认全选，展开可单独勾选（与会议通知页同款） -->
-          <div class="member-card">
-            <div class="member-head" @click="membersOpen = !membersOpen">
-              <span class="member-title">业委会成员</span>
-              <div class="member-right">
-                <div class="mc-all" @click.stop="toggleAll">
-                  <div class="mc-check" :class="{ on: allChecked }">{{ allChecked ? '✓' : '' }}</div>
-                  <span class="mc-all-label">全选</span>
-                  <span class="mc-count">已选 {{ selectedCount }}/{{ members.length }} 人</span>
-                </div>
-                <span class="member-toggle" :class="{ open: membersOpen }">{{ membersOpen ? '收起' : '展开' }}<span class="mt-arr"></span></span>
-              </div>
-            </div>
-            <div v-if="membersOpen" class="mc-list">
-              <div v-for="m in members" :key="m.userRoleId" class="mc-item" @click="toggleMember(m.userRoleId)">
-                <div class="mc-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
-                <div class="mc-person">
-                  <span class="mc-name">{{ m.name }}</span>
-                  <span v-if="m.role" class="mc-role">{{ m.role }}</span>
-                </div>
-              </div>
-              <div v-if="!members.length" class="mc-empty">暂无业委会成员</div>
-            </div>
-          </div>
-        </div>
+        <!-- 计划参加人员改到通知页选择（0728 用户定：与发起会议一致，通知页选通知对象） -->
       </section>
 
       <div class="create-actions">
@@ -72,7 +45,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import PlanDateTimeField from '@/components/PlanDateTimeField.vue'
@@ -98,31 +71,6 @@ async function openLocPicker() {
   else { locationPreset.value = '__other__'; form.location = '' }
 }
 
-// 计划参加人员：业委会成员，默认全选，可展开单独勾选
-const members = ref([])          // [{ userRoleId, name, role, checked }]
-const membersOpen = ref(false)
-const selectedCount = computed(() => members.value.filter(m => m.checked).length)
-const allChecked = computed(() => members.value.length > 0 && members.value.every(m => m.checked))
-function toggleAll() {
-  const target = !allChecked.value
-  members.value.forEach(m => { m.checked = target })
-}
-function toggleMember(id) {
-  const m = members.value.find(x => x.userRoleId === id)
-  if (m) m.checked = !m.checked
-}
-async function loadMembers() {
-  try {
-    const list = await api.committeeMembers()
-    members.value = (list || [])
-      .map(m => ({ userRoleId: Number(m.userRoleId), name: m.name || '委员', role: m.role || '', checked: true }))
-      .filter(m => m.userRoleId)
-  } catch (e) { members.value = [] }
-}
-function selectedNames() {
-  return members.value.filter(m => m.checked).map(m => m.name).join('、')
-}
-
 function back() { navigateBack() }
 
 async function submit() {
@@ -143,7 +91,6 @@ async function submit() {
       time: form.time || '14:00',
       location: form.location.trim(),
       description: form.description.trim(),
-      attendees: selectedNames(),
       type: 'internal',
       category: 'internal'
     })
@@ -154,8 +101,6 @@ async function submit() {
     saving.value = false
   }
 }
-
-onMounted(loadMembers)
 </script>
 
 <style scoped>
@@ -177,30 +122,6 @@ onMounted(loadMembers)
 .loc-arrow { flex-shrink: 0; color: #c4c8cd; font-size: 30rpx; line-height: 1; }
 .loc-other { display: flex; flex-direction: column; gap: 12rpx; }
 .loc-switch { align-self: flex-start; font-size: 25rpx; color: var(--c-primary-dark); }
-
-/* 计划参加人员：业委会成员卡（默认全选、可展开勾选），与会议通知页同款 */
-.member-card { border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #fff; overflow: hidden; }
-.member-head { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; padding: 0 18rpx; min-height: 88rpx; box-sizing: border-box; }
-.member-head:active { background: #FAFAFA; }
-.member-title { font-size: 29rpx; color: #1f2329; font-weight: 700; }
-.member-right { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; }
-.mc-all { display: flex; align-items: center; gap: 8rpx; padding: 0 6rpx; }
-.mc-all-label { font-size: 27rpx; color: #A85800; font-weight: 700; white-space: nowrap; }
-.mc-count { font-size: 25rpx; color: #8A9099; white-space: nowrap; }
-/* 展开入口：品牌色胶囊 + 边框画的箭头（字符 ⌄ 基线偏低难居中，改 CSS 绘制精确对齐），0728 用户定 */
-.member-toggle { flex-shrink: 0; display: inline-flex; align-items: center; gap: 10rpx; padding: 8rpx 18rpx; border-radius: 999rpx; background: var(--c-primary-soft); color: var(--c-primary-dark); font-size: 25rpx; font-weight: 700; }
-.mt-arr { display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .18s ease, top .18s ease; }
-.member-toggle.open .mt-arr { transform: rotate(-135deg); top: 2rpx; }
-.mc-list { border-top: 2rpx solid #F0F2F4; }
-.mc-item { display: flex; align-items: center; gap: 14rpx; padding: 16rpx 20rpx; border-bottom: 1px solid #f0f0f2; }
-.mc-item:last-child { border-bottom: none; }
-.mc-item:active { background: #fafafa; }
-.mc-check { flex-shrink: 0; width: 38rpx; height: 38rpx; border-radius: 50%; border: 3rpx solid #cfd4da; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24rpx; font-weight: 700; box-sizing: border-box; }
-.mc-check.on { background: var(--c-primary); border-color: var(--c-primary); }
-.mc-person { display: flex; flex-direction: column; gap: 2rpx; }
-.mc-name { font-size: 28rpx; color: #1f2329; font-weight: 600; }
-.mc-role { font-size: 20rpx; color: #9aa0a6; }
-.mc-empty { text-align: center; color: #9aa0a6; font-size: 24rpx; padding: 28rpx 0; }
 
 .create-actions { display: flex; gap: 20rpx; margin-top: 32rpx; }
 .btn-ghost { flex: 1; height: 92rpx; border: 2rpx solid #C9D0D6; border-radius: 20rpx; background: #fff; color: #5B6570; font-size: 32rpx; }
