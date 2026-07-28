@@ -988,17 +988,20 @@ async function loadDetail() {
     if (uv === 'chair' && d.stage === 'preparing') {
       const del = d.delivery || {}
       const allDone = !!del.allDone
-      let cur = allDone ? 2 : 1
+      // 微信通知留痕也算已通知（0728 用户定）：不必先 App 内群发才能开始会议
+      const wechatNotified = (d.notificationLogs || []).some(function (l) { return l && l.channel === 'wechat' })
+      const notified = allDone || wechatNotified
+      let cur = notified ? 2 : 1
       const st = (i, done) => done ? 'done' : (cur === i ? 'current' : 'todo')
       pSteps = [
         { label: '编辑会议', state: 'done' },
-        { label: '会议通知', state: st(1, allDone) },
+        { label: '会议通知', state: st(1, notified) },
         { label: '参会确认', state: cur === 2 ? 'current' : 'todo' }
       ]
-      pMode = allDone ? 'start' : 'send'
+      pMode = notified ? 'start' : 'send'
       pHint = allDone
         ? '已送达 ' + (del.total || 0) + ' 位委员，可以开始会议'
-        : ''
+        : (wechatNotified ? '已通过微信通知，可以开始会议' : '')
     }
     // 主任在准备阶段始终用上方卡片流（含会议材料卡+上传按钮），不切到「已送达」通知包；
     // 否则上传第一份材料后 materials 由空变有，会让此包从隐藏翻转为显示，准备卡片流连同
