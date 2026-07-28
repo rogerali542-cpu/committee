@@ -21,7 +21,7 @@
         <div class="form-group">
           <span class="form-label">用印事由 / 用途 *</span>
           <!-- 0728 用户定：不再单独填「关联文件」，文件名直接写进事由里 -->
-          <span class="form-hint">请写清楚为哪份文件用印、用于什么事项，文件名称建议写全</span>
+          <span class="form-hint">请写清楚为哪份文件用印、用于什么事项，文件名称必须写全名</span>
           <textarea class="form-textarea" v-model="form.purpose"></textarea>
         </div>
 
@@ -133,7 +133,8 @@ async function submit() {
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
-.form-label { display: block; margin-bottom: 14rpx; font-size: 28rpx; color: #4a5560; font-weight: 600; }
+/* 0728 用户定：三个分组标题加大两号、字重 +200 */
+.form-label { display: block; margin-bottom: 14rpx; font-size: 32rpx; color: #4a5560; font-weight: 800; }
 .form-hint { display: block; margin: -6rpx 0 14rpx; font-size: 25rpx; line-height: 1.5; color: #98A2AD; }
 .form-input, .form-textarea {
   width: 100%; box-sizing: border-box; border: 2rpx solid #DFE5E9; border-radius: 16rpx;
