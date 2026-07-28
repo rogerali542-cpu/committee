@@ -29,7 +29,8 @@ function go(which) {
   background: #EEF0F3; color: #5B6675; font-size: 28rpx; font-weight: 600; line-height: 1.4;
 }
 /* 选中色随所在页主题走，避免深棕压在蓝色会议页上突兀 */
-.gov-subtabs.meeting .gst.on { background: #3E6BA8; color: #fff; }  /* 会议＝业委会蓝（与页面同系，显眼不抢眼） */
-.gov-subtabs.seal .gst.on { background: #B0772E; color: #fff; }     /* 印章＝暖琥珀（与印章页橙系一致） */
+/* 选中＝品牌色胶囊 + 一点边缘发光（与底栏同款设计语言） */
+.gov-subtabs.meeting .gst.on { background: #3E6BA8; color: #fff; box-shadow: 0 0 14rpx rgba(62, 107, 168, 0.5), 0 4rpx 12rpx rgba(62, 107, 168, 0.28); }  /* 会议＝业委会蓝 */
+.gov-subtabs.seal .gst.on { background: #B0772E; color: #fff; box-shadow: 0 0 14rpx rgba(176, 119, 46, 0.5), 0 4rpx 12rpx rgba(176, 119, 46, 0.28); }     /* 印章＝暖琥珀 */
 .gst:active { opacity: 0.75; }
 </style>
