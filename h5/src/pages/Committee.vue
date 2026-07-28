@@ -626,13 +626,16 @@
           <!-- 居委会见证（说明式开关卡片）：初始就显示，仅标记 hasMajorIssue，不自动通知。
                0723 用户定：主标题只留「含重大事项」，两条制度要求（提前 7 天公告、居委会到场见证）小字补充 -->
           <!-- 只点右侧开关才切换（0723 用户定）：整行可点容易误触 -->
-          <div class="juwei-card">
+          <div class="juwei-card" :class="{ disabled: createForm.meetingMethod === 'online' }">
             <div class="juwei-text">
               <div class="juwei-title">含重大事项</div>
-              <div class="juwei-sub">需提前 7 天向业主公告，并请居委会到场见证</div>
+              <div class="juwei-sub">{{ createForm.meetingMethod === 'online'
+                ? '线上会议不支持重大事项（须线下提前 7 天公告并请居委会到场见证）'
+                : '需提前 7 天向业主公告，并请居委会到场见证' }}</div>
             </div>
-            <span class="juwei-switch" :class="{ on: createForm.juweiWitness }" role="switch" :aria-checked="createForm.juweiWitness"
-                  @click="createForm.juweiWitness = !createForm.juweiWitness"></span>
+            <span class="juwei-switch" :class="{ on: createForm.juweiWitness, disabled: createForm.meetingMethod === 'online' }"
+                  role="switch" :aria-checked="createForm.juweiWitness" :aria-disabled="createForm.meetingMethod === 'online'"
+                  @click="createForm.meetingMethod !== 'online' && (createForm.juweiWitness = !createForm.juweiWitness)"></span>
           </div>
 
           <!-- 会议材料：拍照/上传识别出材料后才在底部出现（建会后自动挂到会议供委员传阅） -->
@@ -2174,6 +2177,8 @@ const commonLocations = ['社区活动室', '社区会议室']
 const locationPreset = ref('社区活动室')
 function setMeetingMethod(method) {
   createForm.meetingMethod = method
+  // 线上会议不支持重大事项（须线下公告 + 居委会到场见证），切到线上时强制取消勾选
+  if (method === 'online') createForm.juweiWitness = false
   if (method === 'online' && (!createForm.location || commonLocations.includes(createForm.location))) {
     createForm.location = '微信工作群'
     locationPreset.value = '__other__'
@@ -5698,4 +5703,7 @@ onActivated(show)
 .create-panel .fl-part .fl-value { text-align: left; }
 /* 重大事项(居委会见证)开关：打开后为绿色 */
 .create-panel .juwei-switch.on { background: #2E8B57; }
+/* 线上会议不支持重大事项：整卡置灰、开关不可点 */
+.create-panel .juwei-card.disabled { opacity: 0.6; }
+.create-panel .juwei-switch.disabled { pointer-events: none; }
 </style>
