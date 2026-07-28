@@ -61,11 +61,11 @@
           </div>
 
           <!-- 底部操作行：删除（仅主任，靠左）｜ 撤回（本人处理中）/保管人确认/驳回（靠右） -->
-          <div v-if="canRemove || (r.status === 'pending' && canConfirm) || r.canWithdraw" class="sr-foot">
+          <div v-if="canRemove || (r.status === 'pending' && canConfirm) || canWithdrawRecord(r)" class="sr-foot">
             <button v-if="canRemove" type="button" class="sr-del" @click="removeRecord(r)">删除</button>
             <span v-else class="sr-foot-sp"></span>
             <div class="sr-actions">
-              <button v-if="r.canWithdraw" type="button" class="sr-btn ghost" @click="withdrawRecord(r)">撤回申请</button>
+              <button v-if="canWithdrawRecord(r)" type="button" class="sr-btn ghost" @click="withdrawRecord(r)">撤回申请</button>
               <template v-if="r.status === 'pending' && canConfirm">
                 <button type="button" class="sr-btn ghost" @click="openReject(r)">驳回</button>
                 <button type="button" class="sr-btn primary" @click="confirmUse(r)">确认用印</button>
@@ -87,6 +87,7 @@ import PageNav from '@/components/PageNav.vue';
 import GovSubTabs from '@/components/GovSubTabs.vue';
 import perm from '@/utils/perm';
 import { toast, showModal } from '@/utils/ui';
+import { getStorage } from '@/utils/storage';
 
 const allRecords = ref([]);
 const filter = ref('all');
@@ -95,6 +96,16 @@ const filter = ref('all');
 const canApply = computed(() => perm.can('seal.apply'));
 const canConfirm = computed(() => perm.can('seal.approve'));
 const canRemove = computed(() => perm.isLegalChair());
+
+// 撤回按钮是否显示：后端 canWithdraw 优先；后端未返回（旧版本没部署该字段）时，
+// 前端按当前登录身份兜底判「本人 + 处理中」。真正的撤回鉴权仍在后端 withdraw()，前端只决定按钮出不出现。
+function canWithdrawRecord(r) {
+  if (!r || r.status !== 'pending') return false;
+  if (r.canWithdraw) return true;
+  const me = getStorage('activeRole', null) || {};
+  if (r.applicantUserRoleId != null && me.id != null) return String(r.applicantUserRoleId) === String(me.id);
+  return !!(me.realName && r.applicantName && me.realName === r.applicantName);
+}
 
 const counts = computed(() => {
   const pending = allRecords.value.filter(r => r.status === 'pending').length;
