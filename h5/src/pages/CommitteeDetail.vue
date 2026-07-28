@@ -1311,10 +1311,19 @@ async function doSend(ids, options) {
 // ——— 通知卡片数据 + 发送记录 ———
 const noticeTopicsText = computed(() => {
   const ts = (detail.value && detail.value.record && detail.value.record.topics) || []
-  const titles = ts.map((t) => (t && t.title) || '').filter(Boolean)
+  const titles = ts.map((t) => ((t && t.title) || '').trim()).filter(Boolean)
   if (!titles.length) return '（待定）'
-  if (titles.length <= 2) return titles.join('、')
-  return titles.slice(0, 2).join('、') + ' 等'
+  // 短就全显示、充分利用通知卡空间；累计长度超过约两行的字数预算才截断并用「等」（0728 用户定）
+  const BUDGET = 36
+  const kept = []
+  let used = 0
+  for (const t of titles) {
+    const add = t.length + (kept.length ? 1 : 0) // 顿号计 1 字
+    if (kept.length && used + add > BUDGET) break
+    kept.push(t)
+    used += add
+  }
+  return kept.length === titles.length ? kept.join('、') : kept.join('、') + ' 等'
 })
 const noticeSent = computed(() => {
   const d = detail.value || {}
