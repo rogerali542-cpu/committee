@@ -20,9 +20,9 @@
 
         <div class="form-group">
           <span class="form-label">用印事由 / 用途 *</span>
-          <!-- 0728 用户定：不再单独填「关联文件」，文件名直接写进事由里 -->
-          <span class="form-hint">请写清楚为哪份文件用印、用于什么事项，文件名称必须写全名</span>
+          <!-- 0728 用户定：不再单独填「关联文件」，文件名直接写进事由里；提示语放框下方（手机上更易注意到，也符合 iOS/Material 惯例） -->
           <textarea class="form-textarea" v-model="form.purpose"></textarea>
+          <span class="form-hint">请写清楚为哪份文件用印、用于什么事项，文件名称必须写全名</span>
         </div>
 
         <!-- 附件为选填佐证（0728 用户定：整体弱化——无提示语、小按钮、标签降级，不与必填项抢视觉） -->
@@ -138,7 +138,7 @@ async function submit() {
 .form-card .form-group:first-child { margin-bottom: 56rpx; }  /* 0728 用户定：印章下拉与事由标题之间的间隔加大一倍 */
 /* 0728 用户定：三个分组标题加大两号、字重 +200 */
 .form-label { display: block; margin-bottom: 14rpx; font-size: 32rpx; color: #4a5560; font-weight: 800; }
-.form-hint { display: block; margin: -6rpx 0 14rpx; font-size: 25rpx; line-height: 1.5; color: #98A2AD; }
+.form-hint { display: block; margin: 12rpx 4rpx 0; font-size: 25rpx; line-height: 1.5; color: #98A2AD; }
 .form-input, .form-textarea {
   width: 100%; box-sizing: border-box; border: 2rpx solid #DFE5E9; border-radius: 16rpx;
   background: #FCFDFD; color: #202833; font-size: 30rpx; padding: 0 18rpx; height: 84rpx; outline: none;
