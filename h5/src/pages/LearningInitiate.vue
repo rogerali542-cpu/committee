@@ -32,7 +32,6 @@
         <div class="form-group">
           <span class="form-label">学习内容 *</span>
           <textarea class="form-textarea" v-model="form.description"></textarea>
-          <span class="form-hint">写清楚本次内部学习的主要内容 / 学习材料</span>
         </div>
 
         <div class="form-group">
