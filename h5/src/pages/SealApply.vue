@@ -157,9 +157,10 @@ async function submit() {
   color: #8A94A0; font-size: 32rpx; line-height: 1; pointer-events: none;
 }
 /* 附件上传（弱化态）：标签+小按钮一行，列表在下 */
-.att-group { margin-top: 6rpx; }
+/* 提示语移到框下方后（0728）：附件标签加深与灰色提示区分，块间距同步拉开 */
+.att-group { margin-top: 24rpx; }
 .att-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.att-label { font-size: 27rpx; color: #8A94A0; font-weight: 500; }
+.att-label { font-size: 27rpx; color: #4A5560; font-weight: 600; }
 .att-list { display: flex; flex-direction: column; gap: 14rpx; margin-top: 16rpx; }
 .att-item {
   display: flex; align-items: center; gap: 16rpx; padding: 12rpx 16rpx;
