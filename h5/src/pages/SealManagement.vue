@@ -29,9 +29,9 @@
       <span class="records-count">共{{ allRecords.length }}条</span>
     </div>
     <div class="filter-tabs">
-      <div class="f-tab" :class="{ active: filter === 'all' }" @click="filter = 'all'">全部 {{ counts.all }}</div>
       <div class="f-tab" :class="{ active: filter === 'pending' }" @click="filter = 'pending'">处理中 {{ counts.pending }}</div>
-      <div class="f-tab" :class="{ active: filter === 'approved' }" @click="filter = 'approved'">已用印 {{ counts.approved }}</div>
+      <div class="f-tab" :class="{ active: filter === 'all' }" @click="filter = 'all'">全部 {{ counts.all }}</div>
+      <div class="f-tab" :class="{ active: filter === 'done' }" @click="filter = 'done'">已完成 {{ counts.done }}</div>
     </div>
 
     <div class="seal-list">
@@ -41,25 +41,22 @@
             <span class="sr-seal">{{ r.sealLabel }}</span>
             <span class="sr-status" :class="r.status">{{ r.statusLabel }}</span>
           </div>
-          <!-- 台账正文按重要度排（0728 用户定）：申请人 → 用印时间 → 用途 → 保管人确认 → 文件 → 附件 -->
+          <!-- 台账正文（0728 用户定）：内联「标签：值」，按重要度排 申请人→用印时间→用途→保管人确认→文件→附件 -->
           <div class="sr-rows">
-            <div class="sr-row"><span class="sr-k">申请人</span><span class="sr-v">{{ applicantText(r) }}</span></div>
-            <div class="sr-row"><span class="sr-k">用印时间</span><span class="sr-v">{{ useTimeText(r) }}</span></div>
-            <div class="sr-row"><span class="sr-k">用途/事项</span><span class="sr-v sr-v-strong">{{ r.purpose || '（未填）' }}</span></div>
+            <div class="sr-row"><span class="sr-k">申请人：</span>{{ applicantText(r) }}</div>
+            <div class="sr-row"><span class="sr-k">用印时间：</span>{{ useTimeText(r) }}</div>
+            <div class="sr-row"><span class="sr-k">用途/事项：</span><span class="sr-strong">{{ r.purpose || '（未填）' }}</span></div>
+            <div class="sr-row"><span class="sr-k">保管人确认：</span><span :class="{ 'sr-confirmed': r.status === 'approved', 'sr-rejected': r.status === 'rejected' }">{{ custodianText(r) }}</span></div>
+            <div class="sr-row"><span class="sr-k">文件：</span>{{ fileText(r) }}</div>
             <div class="sr-row">
-              <span class="sr-k">保管人确认</span>
-              <span class="sr-v" :class="{ 'sr-confirmed': r.status === 'approved', 'sr-rejected': r.status === 'rejected' }">{{ custodianText(r) }}</span>
-            </div>
-            <div class="sr-row"><span class="sr-k">文件</span><span class="sr-v">{{ fileText(r) }}</span></div>
-            <div class="sr-row">
-              <span class="sr-k">附件</span>
-              <span v-if="!(r.attachments && r.attachments.length)" class="sr-v">无</span>
-              <div v-else class="sr-atts">
+              <span class="sr-k">附件：</span>
+              <span v-if="!(r.attachments && r.attachments.length)">无</span>
+              <span v-else class="sr-atts">
                 <template v-for="(a, i) in r.attachments" :key="i">
                   <img v-if="isImg(a)" class="sr-att-thumb" :src="a.url" alt="" @click="viewAtt(a)" />
                   <span v-else class="sr-att-file" @click="viewAtt(a)">📄 {{ a.name || '附件' }}</span>
                 </template>
-              </div>
+              </span>
             </div>
           </div>
 
@@ -99,14 +96,17 @@ const canApply = computed(() => perm.can('seal.apply'));
 const canConfirm = computed(() => perm.can('seal.approve'));
 const canRemove = computed(() => perm.isLegalChair());
 
-const counts = computed(() => ({
-  all: allRecords.value.length,
-  pending: allRecords.value.filter(r => r.status === 'pending').length,
-  approved: allRecords.value.filter(r => r.status === 'approved').length
-}));
+const counts = computed(() => {
+  const pending = allRecords.value.filter(r => r.status === 'pending').length;
+  return {
+    all: allRecords.value.length,
+    pending,
+    done: allRecords.value.length - pending   // 已完成＝已用印＋已驳回（非处理中）
+  };
+});
 const records = computed(() => {
   if (filter.value === 'pending') return allRecords.value.filter(r => r.status === 'pending');
-  if (filter.value === 'approved') return allRecords.value.filter(r => r.status === 'approved');
+  if (filter.value === 'done') return allRecords.value.filter(r => r.status !== 'pending');
   return allRecords.value;
 });
 
@@ -164,11 +164,11 @@ function fmtTime(s) {
   const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
   return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : String(s);
 }
-// 2026-08-06 → 2026年8月6日
+// 2026-08-06 → 8月6日（0728 用户定：用印时间只到月日）
 function fmtDate(s) {
   if (!s) return '';
   const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
-  return m ? (Number(m[1]) + '年' + Number(m[2]) + '月' + Number(m[3]) + '日') : String(s);
+  return m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : String(s);
 }
 
 // ── 台账登记项文案（按制度：用印时间、用途/事项、文件、申请人、保管人确认、附件）──
@@ -184,16 +184,18 @@ function fileText(r) {
   if (names.length) return names.join('、');
   return r.documentName || '见用途说明';
 }
+// 申请人：只显示姓名（角色），不带提交时间（0728 用户定）
 function applicantText(r) {
   let s = r.applicantName || '—';
   if (r.applicantRole) s += '（' + r.applicantRole + '）';
-  if (r.createdAt) s += ' · ' + fmtTime(r.createdAt) + ' 提交';
   return s;
 }
+// 保管人＝会议秘书周敏（0728 用户定，固定口径）；文案随保管端状态：待确认 / 已确认 / 已驳回
+const CUSTODIAN = '周敏（秘书）';
 function custodianText(r) {
-  if (r.status === 'approved') return '已由 ' + (r.custodianName || '保管人') + ' 确认用印' + (r.confirmedAt ? ' · ' + fmtTime(r.confirmedAt) : '');
-  if (r.status === 'rejected') return '已驳回' + (r.rejectReason ? '：' + r.rejectReason : '');
-  return '处理中，待保管人确认';
+  if (r.status === 'approved') return CUSTODIAN + '，已确认';
+  if (r.status === 'rejected') return CUSTODIAN + '，已驳回' + (r.rejectReason ? '：' + r.rejectReason : '');
+  return CUSTODIAN + '，待确认';
 }
 function isImg(a) {
   const s = (((a && a.type) || '') + ' ' + ((a && a.url) || '')).toLowerCase();
@@ -263,14 +265,14 @@ onActivated(load);
 .sr-status.approved { color: #287653; background: #E8F5EE; }
 .sr-status.rejected { color: #9A3F33; background: #FBE9E6; }
 /* 台账登记行：左侧固定宽标签 + 右侧值，对齐成登记表样式 */
-.sr-rows { margin-top: 16rpx; display: flex; flex-direction: column; gap: 12rpx; }
-.sr-row { display: flex; align-items: flex-start; gap: 16rpx; }
-.sr-k { flex-shrink: 0; width: 150rpx; font-size: 26rpx; line-height: 1.5; color: var(--c-text-weak); }
-.sr-v { flex: 1; min-width: 0; font-size: 27rpx; line-height: 1.5; color: var(--c-text-mid); word-break: break-all; }
-.sr-v-strong { color: var(--c-text-strong); font-weight: 600; }
+/* 台账正文：内联「标签：值」，标签弱色、值随内容强调（0728 用户定） */
+.sr-rows { margin-top: 14rpx; display: flex; flex-direction: column; gap: 10rpx; }
+.sr-row { font-size: 27rpx; line-height: 1.55; color: var(--c-text-mid); word-break: break-all; }
+.sr-k { color: var(--c-text-weak); }
+.sr-strong { color: var(--c-text-strong); font-weight: 600; }
 .sr-confirmed { color: #3B7150; }
 .sr-rejected { color: #9A3F33; }
-.sr-atts { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 12rpx; }
+.sr-atts { display: inline-flex; flex-wrap: wrap; gap: 12rpx; vertical-align: top; }
 .sr-att-thumb { width: 108rpx; height: 108rpx; border-radius: 10rpx; object-fit: cover; background: #EEE; border: 2rpx solid #E6E9EC; }
 .sr-att-file {
   display: inline-flex; align-items: center; max-width: 100%; padding: 8rpx 16rpx;

@@ -56,7 +56,8 @@ public class SealService {
         }
         var ur = SecurityUtils.getCurrentUserRole();
         Long currentUrId = ur != null ? ur.getId() : null;
-        return records.stream().map(r -> toVO(r, currentUrId)).collect(Collectors.toList());
+        String currentName = ur != null ? ur.getRealName() : null;
+        return records.stream().map(r -> toVO(r, currentUrId, currentName)).collect(Collectors.toList());
     }
 
     public Map<String, Object> getStats() {
@@ -98,13 +99,22 @@ public class SealService {
         SealUseRecord r = requireRecord(id);   // 同社区校验
         var ur = SecurityUtils.getCurrentUserRole();
         Long uid = ur != null ? ur.getId() : null;
-        if (uid == null || !uid.equals(r.getApplicantUserRoleId())) {
+        String uname = ur != null ? ur.getRealName() : null;
+        if (!isApplicant(r, uid, uname)) {
             throw new IllegalArgumentException("只能撤回本人提交的用印申请");
         }
         if (r.getStatus() != SealUseStatus.pending) {
             throw new IllegalArgumentException("该申请已处理，无法撤回");
         }
         repo.delete(r);
+    }
+
+    /** 是否当前用户提交：优先按 applicantUserRoleId 精确匹配；老记录无该字段时回退姓名匹配（本项目各身份姓名唯一）。 */
+    private boolean isApplicant(SealUseRecord r, Long currentUrId, String currentName) {
+        if (r.getApplicantUserRoleId() != null) {
+            return currentUrId != null && currentUrId.equals(r.getApplicantUserRoleId());
+        }
+        return currentName != null && !currentName.isBlank() && currentName.equals(r.getApplicantName());
     }
 
     /** 附件入库：只留 url/name/type/size 四个字段，最多 9 件，序列化为 JSON 存 TEXT 列。 */
@@ -169,7 +179,7 @@ public class SealService {
         return r;
     }
 
-    private Map<String, Object> toVO(SealUseRecord r, Long currentUrId) {
+    private Map<String, Object> toVO(SealUseRecord r, Long currentUrId, String currentName) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", r.getId());
         m.put("sealType", r.getSealType().name());
@@ -181,9 +191,8 @@ public class SealService {
         m.put("applicantName", r.getApplicantName());
         m.put("applicantRole", r.getApplicantRole());
         m.put("applicantUserRoleId", r.getApplicantUserRoleId());
-        // 本人 + 处理中 → 前端展示「撤回申请」按钮（鉴权在 withdraw() 再兜一次）
-        m.put("canWithdraw", currentUrId != null
-                && currentUrId.equals(r.getApplicantUserRoleId())
+        // 本人 + 处理中 → 前端展示「撤回申请」按钮（鉴权在 withdraw() 再兜一次）；老记录无 id 时按姓名兜底
+        m.put("canWithdraw", isApplicant(r, currentUrId, currentName)
                 && r.getStatus() == SealUseStatus.pending);
         m.put("status", r.getStatus().name());
         m.put("statusLabel", r.getStatus().getLabel());
