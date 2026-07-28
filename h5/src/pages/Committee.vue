@@ -635,7 +635,7 @@
             </div>
             <span class="juwei-switch" :class="{ on: createForm.juweiWitness, disabled: createForm.meetingMethod === 'online' }"
                   role="switch" :aria-checked="createForm.juweiWitness" :aria-disabled="createForm.meetingMethod === 'online'"
-                  @click="createForm.meetingMethod !== 'online' && (createForm.juweiWitness = !createForm.juweiWitness)"></span>
+                  @click="onJuweiToggle"></span>
           </div>
 
           <!-- 会议材料：拍照/上传识别出材料后才在底部出现（建会后自动挂到会议供委员传阅） -->
@@ -2187,6 +2187,14 @@ function setMeetingMethod(method) {
     locationPreset.value = '社区活动室'
   }
   clearFieldError('location')
+}
+// 含重大事项开关：线上会议锁定；点击时弹提示说明原因，否则用户不知为何点不了
+function onJuweiToggle() {
+  if (createForm.meetingMethod === 'online') {
+    toast({ title: '线上会议不支持重大事项，须线下提前 7 天公告并请居委会到场见证', icon: 'none' })
+    return
+  }
+  createForm.juweiWitness = !createForm.juweiWitness
 }
 // 自定义日期选择器（年/月/日 三列）
 const datePickerOpen = ref(false)
@@ -5703,7 +5711,6 @@ onActivated(show)
 .create-panel .fl-part .fl-value { text-align: left; }
 /* 重大事项(居委会见证)开关：打开后为绿色 */
 .create-panel .juwei-switch.on { background: #2E8B57; }
-/* 线上会议不支持重大事项：整卡置灰、开关不可点 */
+/* 线上会议不支持重大事项：整卡置灰（开关仍可点——点了弹提示说明原因） */
 .create-panel .juwei-card.disabled { opacity: 0.6; }
-.create-panel .juwei-switch.disabled { pointer-events: none; }
 </style>
