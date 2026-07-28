@@ -38,11 +38,12 @@
       <template v-if="records.length">
         <div v-for="r in records" :key="r.id" class="seal-record">
           <div class="sr-top">
-            <span class="sr-seal">{{ r.sealLabel }}</span>
+            <span class="sr-seal">用章申请</span>
             <span class="sr-status" :class="r.status">{{ r.statusLabel }}</span>
           </div>
-          <!-- 台账正文（0728 用户定）：内联「标签：值」，按重要度排 申请人→用印时间→用途→保管人确认→文件→附件 -->
+          <!-- 台账正文（0728 用户定）：内联「标签：值」，使用印章→申请人/用印时间→用途→保管人确认→附件 -->
           <div class="sr-rows">
+            <div class="sr-row"><span class="sr-k">使用印章：</span><span class="sr-strong">{{ r.sealLabel }}</span></div>
             <div class="sr-row">
               <span class="sr-seg"><span class="sr-k">申请人：</span>{{ applicantText(r) }}</span>
               <span class="sr-seg"><span class="sr-k">用印时间：</span>{{ useTimeText(r) }}</span>
@@ -66,7 +67,7 @@
             <button v-if="canRemove" type="button" class="sr-del" @click="removeRecord(r)">删除</button>
             <span v-else class="sr-foot-sp"></span>
             <div class="sr-actions">
-              <button v-if="canWithdrawRecord(r)" type="button" class="sr-btn ghost" @click="withdrawRecord(r)">撤回申请</button>
+              <button v-if="canWithdrawRecord(r)" type="button" class="sr-btn ghost sm" @click="withdrawRecord(r)">撤回申请</button>
               <template v-if="r.status === 'pending' && canConfirm">
                 <button type="button" class="sr-btn ghost" @click="openReject(r)">驳回</button>
                 <button type="button" class="sr-btn primary" @click="confirmUse(r)">确认用印</button>
@@ -298,6 +299,8 @@ onActivated(load);
 .sr-btn.ghost:active { background: #F1F3F5; }
 .sr-btn.primary { background: #B0772E; color: #fff; box-shadow: 0 4rpx 12rpx rgba(120, 88, 34, 0.16); }
 .sr-btn.primary:active { filter: brightness(0.96); }
+/* 撤回申请：较普通操作按钮小一号（约 70%），0728 用户定 */
+.sr-btn.sm { min-height: 46rpx; padding: 0 22rpx; font-size: 20rpx; border-radius: 11rpx; font-weight: 600; }
 .sr-del {
   padding: 12rpx 6rpx; border: 0; background: transparent; color: #9AA4B0; font-size: 26rpx; font-weight: 500;
 }
