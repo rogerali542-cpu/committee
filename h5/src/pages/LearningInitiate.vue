@@ -10,15 +10,10 @@
           <input class="form-input large" v-model="form.title" />
         </div>
 
-        <div class="form-row">
-          <div class="form-group half">
-            <span class="form-label">日期 *</span>
-            <input type="date" class="picker-field" :value="form.date" :min="todayStr()" @change="form.date = $event.target.value" />
-          </div>
-          <div class="form-group half">
-            <span class="form-label">时间</span>
-            <input type="time" class="picker-field" :value="form.time" @change="form.time = $event.target.value" />
-          </div>
+        <div class="form-group">
+          <span class="form-label">日期与时间 *</span>
+          <!-- 与发起会议同款日历/时间选择器（中文、点选即定） -->
+          <PlanDateTimeField v-model:date="form.date" v-model:time="form.time" :min-today="true" />
         </div>
 
         <div class="form-group">
@@ -51,6 +46,7 @@
 import { reactive, ref } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
+import PlanDateTimeField from '@/components/PlanDateTimeField.vue'
 import { toast } from '@/utils/ui'
 import { navigateBack } from '@/utils/navigate'
 
