@@ -224,11 +224,11 @@
             <template v-if="!(detail.publish && detail.publish.published)">
               <!-- 「查看会议纪要」独立大按钮已删（0722 用户定）：入口并入下方「会议纪要」行 -->
               <template v-if="!detail.minutesReady">
-              <div class="minutes-basis">
+              <!-- 线上会议无录音依据，这块只剩一句提示，纯空框（0728 用户定：删）；
+                   非线上仍显示（下面带录音/转写行，提示有上下文） -->
+              <div class="minutes-basis" v-if="detail.meetingMethod !== 'online'">
                 <div class="mb-head">
-                  <span class="mb-sub">{{ detail.meetingMethod === 'online'
-                    ? '将根据线上会议录入结果自动整理'
-                    : '将综合以下会议记录自动整理' }}</span>
+                  <span class="mb-sub">将综合以下会议记录自动整理</span>
                 </div>
                 <!-- 录音的「试听」和「看转写」合成一行两个动作，不再出现两行同名「会议录音」 -->
                 <div v-if="detail.meetingMethod !== 'online'" class="mb-row mb-row-static">
