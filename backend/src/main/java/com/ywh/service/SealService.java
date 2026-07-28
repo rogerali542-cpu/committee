@@ -1,5 +1,7 @@
 package com.ywh.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ywh.entity.Community;
 import com.ywh.entity.SealUseRecord;
 import com.ywh.enums.SealType;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,7 @@ import java.util.stream.Collectors;
 public class SealService {
 
     private final SealUseRecordRepository repo;
+    private final ObjectMapper objectMapper;
 
     /** 印章清单（固定三枚），供申请表选择与页面展示。 */
     public List<Map<String, Object>> listSeals() {
@@ -62,7 +66,7 @@ public class SealService {
         return m;
     }
 
-    /** 申请用印：登记印章、用途、关联文件，申请人取当前登录身份。 */
+    /** 申请用印：登记印章、用途、附件（0728 起文件信息写进用途+附件，不再单独填文件名），申请人取当前登录身份。 */
     @Transactional
     public SealUseRecord apply(Map<String, Object> req) {
         Long communityId = SecurityUtils.getCurrentCommunityId();
@@ -72,11 +76,37 @@ public class SealService {
                 .community(Community.builder().id(communityId).build())
                 .sealType(type)
                 .purpose(str(req.get("purpose")))
-                .documentName(str(req.get("documentName")))
+                .attachments(serializeAttachments(req.get("attachments")))
                 .applicantName(ur != null ? ur.getRealName() : null)
                 .applicantRole(ur != null && ur.getRole() != null ? ur.getRole().name() : null)
                 .status(SealUseStatus.pending)
                 .build());
+    }
+
+    /** 附件入库：只留 url/name/type/size 四个字段，最多 9 件，序列化为 JSON 存 TEXT 列。 */
+    private String serializeAttachments(Object raw) {
+        if (!(raw instanceof List<?> list) || list.isEmpty()) return null;
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Object o : list) {
+            if (!(o instanceof Map<?, ?> m)) continue;
+            String url = str(m.get("url"));
+            if (url == null) continue;
+            Map<String, Object> a = new HashMap<>();
+            a.put("url", url);
+            a.put("name", str(m.get("name")));
+            a.put("type", str(m.get("type")));
+            a.put("size", m.get("size"));
+            out.add(a);
+            if (out.size() >= 9) break;
+        }
+        if (out.isEmpty()) return null;
+        try { return objectMapper.writeValueAsString(out); } catch (Exception e) { return null; }
+    }
+
+    private List<Map<String, Object>> parseAttachments(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyList();
+        try { return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {}); }
+        catch (Exception e) { return Collections.emptyList(); }
     }
 
     /** 保管人确认用印（盖章）：状态转已用印，记确认人与时间——即台账留档时间。 */
@@ -122,6 +152,7 @@ public class SealService {
         m.put("sealLabel", r.getSealType().getLabel());
         m.put("purpose", r.getPurpose());
         m.put("documentName", r.getDocumentName());
+        m.put("attachments", parseAttachments(r.getAttachments()));
         m.put("applicantName", r.getApplicantName());
         m.put("applicantRole", r.getApplicantRole());
         m.put("status", r.getStatus().name());

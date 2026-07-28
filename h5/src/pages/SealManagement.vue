@@ -35,7 +35,7 @@
     </div>
     <div class="filter-tabs">
       <div class="f-tab" :class="{ active: filter === 'all' }" @click="filter = 'all'">全部 {{ counts.all }}</div>
-      <div class="f-tab" :class="{ active: filter === 'pending' }" @click="filter = 'pending'">待确认 {{ counts.pending }}</div>
+      <div class="f-tab" :class="{ active: filter === 'pending' }" @click="filter = 'pending'">处理中 {{ counts.pending }}</div>
       <div class="f-tab" :class="{ active: filter === 'approved' }" @click="filter = 'approved'">已用印 {{ counts.approved }}</div>
     </div>
 
@@ -46,17 +46,26 @@
             <span class="sr-seal">{{ r.sealLabel }}</span>
             <span class="sr-status" :class="r.status">{{ r.statusLabel }}</span>
           </div>
-          <div class="sr-purpose">{{ r.purpose || '（未填用途）' }}</div>
-          <div v-if="r.documentName" class="sr-doc">关联文件：{{ r.documentName }}</div>
-          <div class="sr-meta">
-            申请人：{{ r.applicantName || '—' }}<template v-if="r.applicantRole">（{{ r.applicantRole }}）</template>
-            · {{ fmtTime(r.createdAt) }}
-          </div>
-          <div v-if="r.status === 'approved'" class="sr-meta sr-confirmed">
-            已由 {{ r.custodianName || '保管人' }} 确认用印 · {{ fmtTime(r.confirmedAt) }}
-          </div>
-          <div v-if="r.status === 'rejected'" class="sr-meta sr-rejected">
-            已驳回<template v-if="r.rejectReason">：{{ r.rejectReason }}</template>
+          <!-- 台账正文按《印章管理制度》登记项展示：用印时间、用途/事项、文件、申请人、保管人确认、附件 -->
+          <div class="sr-rows">
+            <div class="sr-row"><span class="sr-k">用印时间</span><span class="sr-v">{{ useTimeText(r) }}</span></div>
+            <div class="sr-row"><span class="sr-k">用途/事项</span><span class="sr-v sr-v-strong">{{ r.purpose || '（未填）' }}</span></div>
+            <div class="sr-row"><span class="sr-k">文件</span><span class="sr-v">{{ fileText(r) }}</span></div>
+            <div class="sr-row"><span class="sr-k">申请人</span><span class="sr-v">{{ applicantText(r) }}</span></div>
+            <div class="sr-row">
+              <span class="sr-k">保管人确认</span>
+              <span class="sr-v" :class="{ 'sr-confirmed': r.status === 'approved', 'sr-rejected': r.status === 'rejected' }">{{ custodianText(r) }}</span>
+            </div>
+            <div class="sr-row">
+              <span class="sr-k">附件</span>
+              <span v-if="!(r.attachments && r.attachments.length)" class="sr-v">无</span>
+              <div v-else class="sr-atts">
+                <template v-for="(a, i) in r.attachments" :key="i">
+                  <img v-if="isImg(a)" class="sr-att-thumb" :src="a.url" alt="" @click="viewAtt(a)" />
+                  <span v-else class="sr-att-file" @click="viewAtt(a)">📄 {{ a.name || '附件' }}</span>
+                </template>
+              </div>
+            </div>
           </div>
 
           <!-- 底部操作行：删除（仅主任，靠左）｜ 保管人确认/驳回（靠右），避免与右上角状态胶囊重叠 -->
@@ -150,6 +159,35 @@ function fmtTime(s) {
   return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : String(s);
 }
 
+// ── 台账登记项文案（按制度：用印时间、用途/事项、文件、申请人、保管人确认、附件）──
+// 用印时间＝保管人确认盖章的时间；申请中还没盖章显示「待用印」
+function useTimeText(r) {
+  if (r.status === 'approved') return fmtTime(r.confirmedAt) || '—';
+  return r.status === 'pending' ? '待用印' : '—';
+}
+// 文件名：新申请从附件名取；老记录兼容展示原「关联文件」字段；都没有则提示见用途
+function fileText(r) {
+  const names = (r.attachments || []).map(a => a && a.name).filter(Boolean);
+  if (names.length) return names.join('、');
+  return r.documentName || '见用途说明';
+}
+function applicantText(r) {
+  let s = r.applicantName || '—';
+  if (r.applicantRole) s += '（' + r.applicantRole + '）';
+  if (r.createdAt) s += ' · ' + fmtTime(r.createdAt) + ' 提交';
+  return s;
+}
+function custodianText(r) {
+  if (r.status === 'approved') return '已由 ' + (r.custodianName || '保管人') + ' 确认用印';
+  if (r.status === 'rejected') return '已驳回' + (r.rejectReason ? '：' + r.rejectReason : '');
+  return '处理中，待保管人确认';
+}
+function isImg(a) {
+  const s = (((a && a.type) || '') + ' ' + ((a && a.url) || '')).toLowerCase();
+  return s.indexOf('image') >= 0 || /\.(jpg|jpeg|png|gif|webp)(\?|$)/.test(s);
+}
+function viewAtt(a) { if (a && a.url) window.open(a.url, '_blank'); }
+
 onMounted(load);
 onActivated(load);
 </script>
@@ -221,11 +259,21 @@ onActivated(load);
 .sr-status.pending { color: #9A5A13; background: #FFF1D8; }
 .sr-status.approved { color: #287653; background: #E8F5EE; }
 .sr-status.rejected { color: #9A3F33; background: #FBE9E6; }
-.sr-purpose { margin-top: 14rpx; font-size: 30rpx; line-height: 1.45; color: var(--c-text-strong); }
-.sr-doc { margin-top: 8rpx; font-size: 27rpx; line-height: 1.45; color: var(--c-text-mid); }
-.sr-meta { margin-top: 10rpx; font-size: 26rpx; line-height: 1.5; color: var(--c-text-weak); }
+/* 台账登记行：左侧固定宽标签 + 右侧值，对齐成登记表样式 */
+.sr-rows { margin-top: 16rpx; display: flex; flex-direction: column; gap: 12rpx; }
+.sr-row { display: flex; align-items: flex-start; gap: 16rpx; }
+.sr-k { flex-shrink: 0; width: 150rpx; font-size: 26rpx; line-height: 1.5; color: var(--c-text-weak); }
+.sr-v { flex: 1; min-width: 0; font-size: 27rpx; line-height: 1.5; color: var(--c-text-mid); word-break: break-all; }
+.sr-v-strong { color: var(--c-text-strong); font-weight: 600; }
 .sr-confirmed { color: #3B7150; }
 .sr-rejected { color: #9A3F33; }
+.sr-atts { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 12rpx; }
+.sr-att-thumb { width: 108rpx; height: 108rpx; border-radius: 10rpx; object-fit: cover; background: #EEE; border: 2rpx solid #E6E9EC; }
+.sr-att-file {
+  display: inline-flex; align-items: center; max-width: 100%; padding: 8rpx 16rpx;
+  border: 2rpx solid #E3E6E9; border-radius: 10rpx; background: #F7F8FA;
+  font-size: 25rpx; color: #4E6076; word-break: break-all;
+}
 
 .sr-foot { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 20rpx; }
 .sr-foot-sp { flex: 1; }

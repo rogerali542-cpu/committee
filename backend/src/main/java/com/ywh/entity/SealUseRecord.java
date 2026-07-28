@@ -34,9 +34,13 @@ public class SealUseRecord {
     @Column(columnDefinition = "TEXT")
     private String purpose;
 
-    /** 关联文件名称（选填）。 */
+    /** 关联文件名称（旧字段，0728 起表单不再单独填写，老记录展示兼容保留）。 */
     @Column(name = "document_name", length = 200)
     private String documentName;
+
+    /** 附件（盖章文件 / 签字登记表照片等）：JSON 数组 [{url,name,type,size}]，选填。 */
+    @Column(columnDefinition = "TEXT")
+    private String attachments;
 
     /** 申请人姓名与角色（登记时的当前用户，作为台账留痕）。 */
     @Column(name = "applicant_name", length = 30)
