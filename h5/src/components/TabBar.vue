@@ -80,12 +80,14 @@ function backToCockpit() {
   height: calc(100rpx + env(safe-area-inset-bottom));
 }
 .tab { flex: 1; display: flex; align-items: center; justify-content: center; }
-/* 纯文字：选中项=深主色加粗字 + 极浅主色圆角底(--c-primary-soft)，无图标 */
+/* 纯文字底栏：字号/字重按纯文字放大加重；未选中=中性灰常规字 */
 .tab-label {
-  font-size: 30rpx; font-weight: 500; color: var(--c-text-weak); line-height: 1;
-  padding: 12rpx 26rpx; border-radius: 16rpx;
+  font-size: 32rpx; font-weight: 500; color: var(--c-text-weak); line-height: 1;
+  padding: 13rpx 28rpx; border-radius: 14rpx;
   transition: color .15s, background .15s;
 }
-.tab.active .tab-label { color: var(--c-primary-dark); font-weight: 700; background: var(--c-primary-soft); }
+/* 选中项：深主色加粗字 + 看得清的浅琥珀圆角底。
+   不用 --c-primary-soft(#FFF3E0)——它铺在纯白底栏上过浅，像残留白块。 */
+.tab.active .tab-label { color: var(--c-primary-dark); font-weight: 700; background: #F6E3BF; }
 .tab:active .tab-label { opacity: .65; }
 </style>
