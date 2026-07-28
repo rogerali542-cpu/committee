@@ -41,16 +41,16 @@
             <span class="sr-seal">{{ r.sealLabel }}</span>
             <span class="sr-status" :class="r.status">{{ r.statusLabel }}</span>
           </div>
-          <!-- 台账正文按《印章管理制度》登记项展示：用印时间、用途/事项、文件、申请人、保管人确认、附件 -->
+          <!-- 台账正文按重要度排（0728 用户定）：申请人 → 用印时间 → 用途 → 保管人确认 → 文件 → 附件 -->
           <div class="sr-rows">
+            <div class="sr-row"><span class="sr-k">申请人</span><span class="sr-v">{{ applicantText(r) }}</span></div>
             <div class="sr-row"><span class="sr-k">用印时间</span><span class="sr-v">{{ useTimeText(r) }}</span></div>
             <div class="sr-row"><span class="sr-k">用途/事项</span><span class="sr-v sr-v-strong">{{ r.purpose || '（未填）' }}</span></div>
-            <div class="sr-row"><span class="sr-k">文件</span><span class="sr-v">{{ fileText(r) }}</span></div>
-            <div class="sr-row"><span class="sr-k">申请人</span><span class="sr-v">{{ applicantText(r) }}</span></div>
             <div class="sr-row">
               <span class="sr-k">保管人确认</span>
               <span class="sr-v" :class="{ 'sr-confirmed': r.status === 'approved', 'sr-rejected': r.status === 'rejected' }">{{ custodianText(r) }}</span>
             </div>
+            <div class="sr-row"><span class="sr-k">文件</span><span class="sr-v">{{ fileText(r) }}</span></div>
             <div class="sr-row">
               <span class="sr-k">附件</span>
               <span v-if="!(r.attachments && r.attachments.length)" class="sr-v">无</span>
