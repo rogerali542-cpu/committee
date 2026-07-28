@@ -29,6 +29,7 @@ const tabs = [
   { path: '/main', icon: '📋', label: '业委会会议' },
   { path: '/reception-center', icon: '🤝', label: '接待中心' },
   { path: '/learning', icon: '📚', label: '学习培训' },
+  { path: '/seal', icon: '🖋️', label: '印章' },
   { path: '/profile', icon: '👤', label: '个人中心' }
 ]
 const active = computed(() => route.path)

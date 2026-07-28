@@ -1,6 +1,10 @@
 <template>
   <div class="page" style="overflow-y:auto">
-    <PageNav title="印章管理" backTo="/main" />
+    <!-- 印章为底部一级 Tab（0728 用户定：入底栏）：作为根页面不挂返回箭头，
+         用空的 #left 占位保持标题居中，与其它 tab 页头部一致 -->
+    <PageNav title="印章管理">
+      <template #left><div class="nav-left-spacer"></div></template>
+    </PageNav>
 
     <!-- 印章保管：制度口径——三枚印章由主任、副主任分人保管 -->
     <div class="seal-info-card">
@@ -226,6 +230,9 @@ onActivated(load);
 </script>
 
 <style scoped>
+/* tab 根页：左侧占位与 PageNav 右侧 96rpx 占位对齐，标题居中（无返回箭头） */
+.nav-left-spacer { width: 96rpx; }
+
 .seal-info-card {
   margin: 20rpx 24rpx 0; padding: 26rpx 28rpx; box-sizing: border-box;
   background: linear-gradient(145deg, #FFFEFC 0%, #FAF4EB 100%);
@@ -276,7 +283,8 @@ onActivated(load);
 }
 .f-tab.active { background: #B0772E; color: #fff; }
 
-.seal-list { padding: 12rpx 24rpx 60rpx; }
+/* 底部留白避开固定底栏（100rpx + 安全区），否则台账最后一条会被 tab 栏遮住 */
+.seal-list { padding: 12rpx 24rpx calc(140rpx + env(safe-area-inset-bottom)); }
 .seal-record {
   position: relative; margin-top: 20rpx; padding: 24rpx 26rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #EBEEF1; border-radius: 20rpx;
