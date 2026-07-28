@@ -595,10 +595,10 @@
               <div class="form-group tie-inline-row">
                 <span class="form-label">议题类型</span>
                 <div class="type-row">
-                  <!-- 0717 用户定：「通知」并入「讨论」，对外只剩 通知和讨论/表决 两类。
-                       底层 notice/discussion 两个枚举值都保留：填了通知正文存 notice（通报正文+已读进度机制原样生效），
-                       没填存 discussion（见 confirmTopic 的映射）。旧数据/旧草稿里的 notice 议题落在同一枚 chip 上。 -->
-                  <span class="type-chip" :class="{ on: topicDraft.type !== 'decision' }" @click="draftPickType('discussion')">讨论</span>
+                  <!-- 0728 用户定：事项分三类——通知 / 讨论 / 表决。通知与讨论操作一致（均不表决、只需宣读/记录），
+                       仅分类不同；只有表决需要投票。底层枚举 notice / discussion / decision 一一对应。 -->
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'notice' }" @click="draftPickType('notice')">通知</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'discussion' }" @click="draftPickType('discussion')">讨论</span>
                   <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决</span>
                 </div>
               </div>
@@ -3717,7 +3717,8 @@ function removeCreateTopic(idx) {
 
 function topicTypeLabel(t) {
   if (!t) return ''
-  if (t.type === 'notice' || t.type === 'discussion') return '讨论'
+  if (t.type === 'notice') return '通知'
+  if (t.type === 'discussion') return '讨论'
   if (t.type === 'decision') return '表决'
   return ''
 }
@@ -3778,15 +3779,14 @@ function confirmTopic() {
     const valid = (topicDraft.options || []).filter(function (o) { return o.label.trim() })
     if (valid.length < 2) { toast({ title: '多选一议题至少需要两个选项', icon: 'none' }); return }
   }
-  // 合并类型的落库映射（0717）：非表决类按「有无通知正文」定 notice/discussion——
-  // 通报正文+已读进度机制只认 notice，这里是唯一分流点，别在别处再判
-  const mergedContent = topicDraft.type !== 'decision' ? (topicDraft.content || '').trim() : ''
+  // 0728：三类显式落库（通知/讨论/表决），不再按有无正文自动分流；通知正文（如有）随 notice 带上
+  const noticeContent = topicDraft.type === 'notice' ? (topicDraft.content || '').trim() : ''
   const nt = {
     title: topicDraft.title.trim(),
-    type: topicDraft.type === 'decision' ? 'decision' : (mergedContent ? 'notice' : 'discussion'),
+    type: topicDraft.type,
     decisionType: topicDraft.decisionType,
     options: (topicDraft.options || []).map(function (o) { return { id: o.id, label: o.label } }),
-    content: mergedContent
+    content: noticeContent
   }
   if (topicEditIdx.value >= 0) {
     const arr = createForm.topics.slice()
