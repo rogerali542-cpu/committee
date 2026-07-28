@@ -1,10 +1,7 @@
 <template>
   <div class="page seal-reject">
-    <PageNav title="驳回用印申请">
-      <template #left>
-        <button class="back-btn" type="button" aria-label="返回印章管理" @click="back">‹</button>
-      </template>
-    </PageNav>
+    <!-- 返回键用 PageNav 默认款（满高、居中），与全站一致；back() 仍给「取消」按钮用 -->
+    <PageNav title="驳回用印申请" />
 
     <main class="create-body">
       <!-- 确认正在驳回哪条申请（信息由台账卡片带入，避免误驳） -->
@@ -64,7 +61,6 @@ async function submit() {
 
 <style scoped>
 .seal-reject { min-height: 100vh; background: #f5f5f7; }
-.back-btn { width: 64rpx; height: 64rpx; border: 0; background: transparent; color: #fff; font-size: 54rpx; }
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .target-card {
   display: flex; flex-direction: column; gap: 8rpx;

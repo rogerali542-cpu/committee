@@ -1,10 +1,7 @@
 <template>
   <div class="page seal-apply">
-    <PageNav title="申请用印">
-      <template #left>
-        <button class="back-btn" type="button" aria-label="返回印章管理" @click="back">‹</button>
-      </template>
-    </PageNav>
+    <!-- 返回键用 PageNav 默认款（满高、居中），与全站一致；back() 仍给「取消」按钮用 -->
+    <PageNav title="申请用印" />
 
     <main class="create-body">
       <section class="form-card">
@@ -131,7 +128,6 @@ async function submit() {
 
 <style scoped>
 .seal-apply { min-height: 100vh; background: #f5f5f7; }
-.back-btn { width: 64rpx; height: 64rpx; border: 0; background: transparent; color: #fff; font-size: 54rpx; }
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
