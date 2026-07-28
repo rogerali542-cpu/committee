@@ -22,19 +22,19 @@ import { redirectTo } from '@/utils/navigate'
 import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
-// 纯文字底栏(0728 用户定:去图标)：标签统一 2 字，选中项加浅主色圆角底
+// 纯文字底栏(0728 用户定:去图标)。印章并入「业委会」(见 GovSubTabs 二级切换)，回到 4 格
 const tabs = [
-  { path: '/main', label: '会议' },
+  { path: '/main', label: '业委会' },
   { path: '/reception-center', label: '接待' },
   { path: '/learning', label: '学习' },
-  { path: '/seal', label: '印章' },
   { path: '/profile', label: '我的' }
 ]
-const active = computed(() => route.path)
+// /seal 是「业委会」下的二级视图：印章页仍显示底栏、并高亮业委会
+const active = computed(() => route.path === '/seal' ? '/main' : route.path)
 // 欢迎引导页激活时隐藏底栏（选定业务后由 Committee.vue 复位再显示）
 // URL 是驾驶舱时直接判定隐藏，避免开发期热更新中新旧页面卸载/挂载顺序造成底栏短暂误显。
 const routeIsCockpit = computed(() => route.path === '/main' && route.query.home === 'portal')
-const isTab = computed(() => tabs.some((t) => t.path === route.path) && !routeIsCockpit.value && !homeShell.welcomeVisible)
+const isTab = computed(() => (tabs.some((t) => t.path === route.path) || route.path === '/seal') && !routeIsCockpit.value && !homeShell.welcomeVisible)
 // 标签切换用 replace(0725 用户报的 bug):底部四个 tab 是平级页,不应堆进历史。
 // 原来用 push/location.assign,历史会累积「接待中心→业委会→详情页」,从详情页逐级返回时
 // 会穿过 /main 再退回接待中心(用户遇到的"返回错误进入接待页面")。改 replace 后 tab 不占历史栈。

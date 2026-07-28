@@ -1,10 +1,11 @@
 <template>
   <div class="page" style="overflow-y:auto">
-    <!-- 印章为底部一级 Tab（0728 用户定：入底栏）：作为根页面不挂返回箭头，
-         用空的 #left 占位保持标题居中，与其它 tab 页头部一致 -->
+    <!-- 印章为「业委会」tab 下的二级视图（0728 用户定：并入业委会，不单独占底栏）。
+         作为 tab 级视图不挂返回箭头、标题居中；下方二级切换可回会议 -->
     <PageNav title="印章管理">
       <template #left><div class="nav-left-spacer"></div></template>
     </PageNav>
+    <GovSubTabs active="seal" />
 
     <!-- 印章保管：制度口径——三枚印章由主任、副主任分人保管 -->
     <div class="seal-info-card">
@@ -79,6 +80,7 @@
 import { ref, computed, onMounted, onActivated } from 'vue';
 import api from '@/api';
 import PageNav from '@/components/PageNav.vue';
+import GovSubTabs from '@/components/GovSubTabs.vue';
 import perm from '@/utils/perm';
 import { toast, showModal } from '@/utils/ui';
 
