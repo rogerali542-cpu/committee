@@ -9,15 +9,10 @@
 
     <!-- 印章保管（0728 用户定口径：不带行政区、保管人直说业委会秘书；确认/驳回权限仍按主任/副主任走） -->
     <div class="seal-info-card">
+      <!-- 说明卡只留标题+保管口径；三枚印章名与「现有印章三枚」重复，且申请页下拉已可选，故不再罗列 chips -->
       <div class="sic-head">
         <span class="sic-title">印章保管</span>
         <span class="sic-note">阳光花园小区现有印章三枚，由业委会秘书保管</span>
-      </div>
-      <div class="seal-chip-row">
-        <div v-for="s in seals" :key="s.type" class="seal-chip">
-          <span class="seal-chip-ico">印</span>
-          <span class="seal-chip-name">{{ s.label }}</span>
-        </div>
       </div>
     </div>
 
@@ -93,7 +88,6 @@ import GovSubTabs from '@/components/GovSubTabs.vue';
 import perm from '@/utils/perm';
 import { toast, showModal } from '@/utils/ui';
 
-const seals = ref([]);
 const allRecords = ref([]);
 const filter = ref('all');
 
@@ -115,9 +109,7 @@ const records = computed(() => {
 
 async function load() {
   try {
-    const [s, recs] = await Promise.all([api.sealList(), api.sealRecords('all')]);
-    seals.value = s || [];
-    allRecords.value = recs || [];
+    allRecords.value = (await api.sealRecords('all')) || [];
   } catch (e) { /* 网络异常已由 core 统一提示 */ }
 }
 
@@ -205,16 +197,6 @@ onActivated(load);
 .sic-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 16rpx; }
 .sic-title { font-size: 34rpx; font-weight: 750; color: #7E571C; }
 .sic-note { font-size: 26rpx; color: #9A8A72; }
-.seal-chip-row { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 22rpx; }
-.seal-chip {
-  display: flex; align-items: center; gap: 12rpx; padding: 12rpx 20rpx 12rpx 12rpx;
-  background: #fff; border: 2rpx solid #EAD9C0; border-radius: 16rpx;
-}
-.seal-chip-ico {
-  display: flex; align-items: center; justify-content: center; width: 46rpx; height: 46rpx;
-  border-radius: 10rpx; background: #B0772E; color: #fff; font-size: 28rpx; font-weight: 700;
-}
-.seal-chip-name { font-size: 28rpx; font-weight: 600; color: #5A4A34; }
 
 /* 申请用印大按钮：暖橙、去光晕（与接待/学习登记卡同款克制配色） */
 .seal-apply-card {
