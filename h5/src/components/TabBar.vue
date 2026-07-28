@@ -81,7 +81,7 @@ function backToCockpit() {
   height: calc(100rpx + env(safe-area-inset-bottom));
 }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; color: #666; }
-.tab.active { color: #FFA800; }
+.tab.active { color: var(--c-primary); }
 .tab-icon { position: relative; font-size: 44rpx; line-height: 1; }
 .tab-label { font-size: 26rpx; }
 </style>

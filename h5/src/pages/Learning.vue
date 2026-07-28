@@ -10,12 +10,12 @@
     <!-- 年度履职摘要：只保留成员需要确认的两项 -->
     <div class="learn-target">
       <div class="lt-head">
-        <span class="lt-title">{{ currentYear }}年学习情况</span>
+        <span class="lt-title">{{ currentYear }}年度学习情况</span>
       </div>
       <div class="annual-list">
         <div class="annual-row">
           <div class="annual-main">
-            <span class="annual-name">年度学习</span>
+            <span class="annual-name">内部学习</span>
             <span class="annual-desc">年度要求至少完成{{ target }}次</span>
           </div>
           <span class="annual-status" :class="annualStudyCount >= target ? 'done' : 'warn'">
@@ -24,11 +24,11 @@
         </div>
         <div class="annual-row">
           <div class="annual-main">
-            <span class="annual-name">街镇培训</span>
+            <span class="annual-name">外部培训</span>
             <span class="annual-desc">年度要求至少参加1次</span>
           </div>
-          <span class="annual-status" :class="annualStreetDone ? 'done' : 'warn'">
-            {{ annualStreetDone ? '已参加' : '待参加' }}
+          <span class="annual-status" :class="annualExternalDone ? 'done' : 'warn'">
+            {{ annualExternalDone ? '已参加' : '待参加' }}
           </span>
         </div>
       </div>
@@ -115,7 +115,7 @@ const recordCounts = computed(() => ({
 }));
 const target = ref(2);
 const annualStudyCount = ref(0);
-const annualStreetDone = ref(false);
+const annualExternalDone = ref(false);
 const currentYear = new Date().getFullYear();
 const canCreate = ref(false);
 const undoVisible = ref(false);
@@ -125,7 +125,7 @@ const undoText = ref('');
 let undoTimer = null;
 let undoData = null;
 function openDetail(item) {
-  navigateTo('/pages/learning-detail/learning-detail?id=' + item.id);
+  navigateTo('/learning-detail?id=' + item.id);
 }
 
 function learningTypeName(item) {
@@ -157,8 +157,9 @@ async function loadAll() {
     ]);
     const completedInternal = allInternal.filter(i => i.stage === 'ended').length;
     const completedExternal = allTraining.filter(i => i.stage === 'ended').length;
-    annualStudyCount.value = completedInternal + completedExternal;
-    annualStreetDone.value = allTraining.some(i => i.type === 'street' && i.stage === 'ended');
+    // 内部学习只计内部自行组织学习(制度口径),外部培训按参加任一次即达标
+    annualStudyCount.value = completedInternal;
+    annualExternalDone.value = completedExternal > 0;
     allItems.value = [...allInternal, ...allTraining].sort((a, b) => {
       const stageOrder = { preparing: 0, ongoing: 1, ended: 2 };
       const stageDiff = (stageOrder[a.stage] ?? 9) - (stageOrder[b.stage] ?? 9);
@@ -242,7 +243,6 @@ onUnmounted(() => {
 .learn-target { margin: 20rpx 0 24rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .lt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
 .lt-title { font-size: 32rpx; font-weight: 700; color: #1f2329; }
-.lt-year { font-size: 25rpx; color: #8A94A6; }
 .annual-list { display: flex; flex-direction: column; }
 .annual-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-top: 2rpx solid #F0F2F4; }
 .annual-main { min-width: 0; display: flex; flex-direction: column; gap: 7rpx; }
@@ -252,23 +252,6 @@ onUnmounted(() => {
 .annual-status.done { color: #2E7D50; background: #E8F4EC; }
 .annual-status.warn { color: #A96518; background: #FAEEDC; }
 .annual-status.neutral { color: #657183; background: #EEF1F4; }
-.lt-badge { font-size: 28rpx; font-weight: 600; padding: 4rpx 16rpx; border-radius: 10rpx; }
-.lt-badge.done { background: #E8F7EE; color: #27AE60; }
-.lt-badge.warn { background: #FFF3E0; color: #E67E22; }
-.lt-body { display: flex; align-items: center; gap: 28rpx; }
-.lt-ring-wrap { position: relative; width: 184rpx; height: 184rpx; flex-shrink: 0; border-radius: 50%; background: #FFF3DC; display: flex; align-items: center; justify-content: center; }
-.lt-ring { width: 184rpx; height: 184rpx; position: absolute; inset: 0; border-radius: 50%; -webkit-mask: radial-gradient(circle, transparent 66%, #000 67%); mask: radial-gradient(circle, transparent 66%, #000 67%); }
-.lt-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.lt-ring-num { font-size: 50rpx; font-weight: 700; color: #C77800; line-height: 1.1; }
-.lt-ring-unit2 { font-size: 26rpx; font-weight: 400; color: #d6a64a; }
-.lt-ring-label { font-size: 26rpx; color: #C8A05A; }
-.lt-info { flex: 1; }
-.lt-info-row { display: flex; align-items: center; gap: 12rpx; font-size: 28rpx; color: #6b7785; margin-bottom: 12rpx; }
-.lt-dot { width: 16rpx; height: 16rpx; border-radius: 50%; flex-shrink: 0; }
-.lt-bar-wrap { flex: 1; background: #f0f0f0; border-radius: 6rpx; height: 14rpx; overflow: hidden; }
-.lt-bar-fill { height: 100%; border-radius: 6rpx; }
-.lt-num { font-weight: 700; color: #1f2329; font-size: 28rpx; }
-.lt-rule { font-size: 28rpx; color: #777; margin-top: 8rpx; display: block; }
 
 .records-head { display: flex; align-items: center; justify-content: space-between; margin: 0 4rpx 14rpx; }
 .records-title { font-size: 32rpx; font-weight: 700; color: #303747; }
@@ -278,7 +261,6 @@ onUnmounted(() => {
 .filter-tabs { display: flex; gap: 0; margin-bottom: 20rpx; background: #fff; border-radius: 18rpx; padding: 8rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.04); }
 .f-tab { flex: 1; padding: 16rpx 8rpx; text-align: center; font-size: 28rpx; color: #666; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; gap: 8rpx; }
 .f-tab.active { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
-.f-count { font-size: 28rpx; opacity: 0.85; }
 
 /* 学习卡片 */
 .learn-list { display: flex; flex-direction: column; gap: 16rpx; }
@@ -298,18 +280,10 @@ onUnmounted(() => {
 .lc-detail-btn { display: block; width: 56%; height: 72rpx; margin: 8rpx auto 2rpx; border: 2rpx solid #D8C9A8; border-radius: 16rpx; background: #FFFBF2; color: #8B5A1E; font-size: 28rpx; font-weight: 600; }
 .lc-detail-btn:active { background: #F7EFDD; }
 .lc-meta-line { font-size: 30rpx; color: #6b7785; display: flex; align-items: center; gap: 10rpx; }
-.lc-progress { display: flex; align-items: center; gap: 14rpx; margin: 8rpx 0 12rpx; }
-.lc-progress-bar { flex: 1; background: #f0f0f0; border-radius: 8rpx; height: 12rpx; overflow: hidden; }
-.lc-progress-fill { height: 100%; border-radius: 8rpx; background: #FFA800; }
-.lc-progress-text { font-size: 28rpx; color: #C77800; font-weight: 700; flex-shrink: 0; }
-.lc-footer { display: flex; justify-content: flex-end; gap: 14rpx; margin-top: 16rpx; border-top: 2rpx solid #f5f5f5; padding-top: 16rpx; }
 /* 收起态指示:下箭头,与状态标签同行右侧对齐,展开后旋转 */
 /* ⌄ 字形墨迹偏字框下部,flex 居中后视觉仍偏低:用 top 光学上抬(不占 transform,旋转正常) */
 .lc-arrow { flex-shrink: 0; margin-left: 12rpx; font-size: 34rpx; line-height: 1; color: #8A94A0; transition: transform .2s; position: relative; top: -8rpx; }
 .lc-arrow.open { transform: rotate(180deg); }
-.lc-btn { min-height: 64rpx; line-height: 64rpx; padding: 0 30rpx; border-radius: 20rpx; border: none; font-size: 28rpx; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; }
-.lc-btn.start { background: var(--c-primary-dark); color: #fff; }
-.lc-btn.finish { background: #5DADE2; color: #fff; }
 
 /* bottom 抬到底部 TabBar(100rpx) 之上，否则撤销条会被一级 tab 栏挡住 */
 .undo-toast { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(120rpx + env(safe-area-inset-bottom)); z-index: 40; background: rgba(45,45,45,0.94); color: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.2); }
