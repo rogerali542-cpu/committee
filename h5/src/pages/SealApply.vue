@@ -135,6 +135,7 @@ async function submit() {
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
+.form-card .form-group:first-child { margin-bottom: 56rpx; }  /* 0728 用户定：印章下拉与事由标题之间的间隔加大一倍 */
 /* 0728 用户定：三个分组标题加大两号、字重 +200 */
 .form-label { display: block; margin-bottom: 14rpx; font-size: 32rpx; color: #4a5560; font-weight: 800; }
 .form-hint { display: block; margin: -6rpx 0 14rpx; font-size: 25rpx; line-height: 1.5; color: #98A2AD; }
