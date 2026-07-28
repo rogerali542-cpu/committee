@@ -10,14 +10,11 @@
       <section class="form-card">
         <div class="form-group">
           <span class="form-label">选择印章 *</span>
-          <div class="seal-pick-row">
-            <span
-              v-for="s in seals"
-              :key="s.type"
-              class="seal-pick"
-              :class="{ on: form.sealType === s.type }"
-              @click="form.sealType = s.type"
-            >{{ s.label }}</span>
+          <div class="seal-select-wrap">
+            <select class="seal-select" v-model="form.sealType">
+              <option v-for="s in seals" :key="s.type" :value="s.type">{{ s.label }}</option>
+            </select>
+            <span class="seal-select-arr">⌄</span>
           </div>
         </div>
 
@@ -47,11 +44,17 @@ import PageNav from '@/components/PageNav.vue'
 import { toast } from '@/utils/ui'
 import { navigateBack } from '@/utils/navigate'
 
-// 印章固定三枚（依据《印章管理制度》）：本地兜底保证选择栏必齐，再以后端返回为准
+// 印章固定三枚（依据《印章管理制度》）：本地兜底保证选择栏必齐，再以后端返回为准。
+// 0728 用户定：下拉按使用频率排——业委会章、财务章常用在前，业主大会章频率低放最后，默认选业委会章。
+const SEAL_ORDER = ['committee', 'finance', 'general_assembly']
+function sortSeals(list) {
+  const rank = (t) => { const i = SEAL_ORDER.indexOf(t); return i < 0 ? SEAL_ORDER.length : i }
+  return [...list].sort((a, b) => rank(a.type) - rank(b.type))
+}
 const DEFAULT_SEALS = [
-  { type: 'general_assembly', label: '业主大会章' },
   { type: 'committee', label: '业委会章' },
-  { type: 'finance', label: '财务专用章' }
+  { type: 'finance', label: '财务专用章' },
+  { type: 'general_assembly', label: '业主大会章' }
 ]
 const seals = ref(DEFAULT_SEALS.slice())
 const form = reactive({ sealType: DEFAULT_SEALS[0].type, purpose: '', documentName: '' })
@@ -63,8 +66,8 @@ function back() { navigateBack() }
 onMounted(async () => {
   try {
     const s = await api.sealList()
-    if (Array.isArray(s) && s.length) seals.value = s   // 后端返回则以其为准，否则保留三枚兜底
-    if (!form.sealType && seals.value.length) form.sealType = seals.value[0].type
+    if (Array.isArray(s) && s.length) seals.value = sortSeals(s)   // 后端返回则以其为准（重排常用在前），否则保留三枚兜底
+    if (!seals.value.some((x) => x.type === form.sealType)) form.sealType = seals.value[0].type
   } catch (e) { /* 拉取失败保留本地兜底，选择栏仍完整 */ }
 })
 
@@ -101,12 +104,18 @@ async function submit() {
   background: #FCFDFD; color: #202833; font-size: 30rpx; padding: 0 18rpx; height: 84rpx; outline: none;
 }
 .form-textarea { padding: 16rpx 18rpx; min-height: 180rpx; height: 180rpx; resize: none; line-height: 1.5; }
-.seal-pick-row { display: flex; flex-wrap: wrap; gap: 16rpx; }
-.seal-pick {
-  min-height: 60rpx; display: inline-flex; align-items: center; padding: 0 26rpx; border-radius: 999rpx;
-  border: 2rpx solid #DCE1E6; background: #fff; color: #4E6076; font-size: 28rpx; font-weight: 600;
+/* 选印章下拉：原生 select（系统选择器，无自制弹层），外观与其余输入框同族，右侧自绘箭头 */
+.seal-select-wrap { position: relative; }
+.seal-select {
+  width: 100%; box-sizing: border-box; appearance: none; -webkit-appearance: none;
+  border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833;
+  font-size: 30rpx; font-weight: 600; padding: 0 64rpx 0 18rpx; height: 84rpx; outline: none;
 }
-.seal-pick.on { border-color: #B0772E; background: #FBF4EB; color: #7E571C; }
+.seal-select:focus { border-color: #B0772E; }
+.seal-select-arr {
+  position: absolute; right: 22rpx; top: 50%; transform: translateY(-62%);
+  color: #8A94A0; font-size: 32rpx; line-height: 1; pointer-events: none;
+}
 .create-actions { display: flex; gap: 20rpx; margin-top: 32rpx; }
 .btn-ghost { flex: 1; height: 92rpx; border: 2rpx solid #C9D0D6; border-radius: 20rpx; background: #fff; color: #5B6570; font-size: 32rpx; }
 .btn-primary { flex: 2; height: 92rpx; border: 0; border-radius: 20rpx; background: #B0772E; color: #fff; font-size: 32rpx; font-weight: 700; }
