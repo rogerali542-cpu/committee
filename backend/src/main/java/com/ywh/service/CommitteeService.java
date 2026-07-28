@@ -375,16 +375,36 @@ public class CommitteeService {
                 throw new IllegalArgumentException("请先设置会议日期");
             }
             List<MeetingDelivery> deliveries = deliveryRepo.findByMeetingId(meetingId);
+            // 0728 用户定：微信通知留痕后也可开始会议，与前端解锁条件一致（送达全体 或 有微信留痕）。
+            // 微信路径只写通知日志、不建送达记录，原先这里必查送达记录导致微信通知后开会报错。
+            boolean wechatNotified = notificationLogRepo.findByMeetingIdOrderBySentAtAsc(meetingId).stream()
+                    .anyMatch(l -> l != null && "wechat".equals(l.getChannel()));
             if (deliveries.isEmpty()) {
-                throw new IllegalArgumentException("请先选择应参会人员并发送会议通知");
-            }
-            boolean allNoticesDone = deliveries.stream().allMatch(MeetingDelivery::getNoticeDelivered);
-            boolean allMaterialsDone = deliveries.stream().allMatch(MeetingDelivery::getMaterialDelivered);
-            if (!allNoticesDone || !allMaterialsDone) {
-                throw new IllegalArgumentException("通知和材料尚未全部送达，不可开始会议");
+                if (!wechatNotified) {
+                    throw new IllegalArgumentException("请先选择应参会人员并发送会议通知");
+                }
+            } else {
+                boolean allNoticesDone = deliveries.stream().allMatch(MeetingDelivery::getNoticeDelivered);
+                boolean allMaterialsDone = deliveries.stream().allMatch(MeetingDelivery::getMaterialDelivered);
+                if ((!allNoticesDone || !allMaterialsDone) && !wechatNotified) {
+                    throw new IllegalArgumentException("通知和材料尚未全部送达，不可开始会议");
+                }
             }
             // Initialize record
             MeetingRecord record = initRecord(m);
+            // 仅微信通知（无送达记录）时，参会名单从送达记录生成不出来，兜底补齐为全体委员——
+            // 微信群发即全员可见；否则签到名单为空，结束判定 0/0 会直接判会议不成立。
+            if (deliveries.isEmpty()) {
+                List<Long> rosterIds = attendanceRepo.findByRecordId(record.getId()).stream()
+                        .map(a -> a.getUserRole().getId())
+                        .toList();
+                for (UserRoleEntity member : findCommitteeMembers(m.getCommunity().getId())) {
+                    if (!rosterIds.contains(member.getId())) {
+                        attendanceRepo.save(RecordAttendance.builder()
+                                .record(record).userRole(member).signedIn(false).signed(false).build());
+                    }
+                }
+            }
             if (topicRepo.findByRecordIdOrderBySortOrder(record.getId()).isEmpty()) {
                 throw new IllegalArgumentException("请先补充会议议题；快速模式需要围绕预设议题进行录音识别");
             }

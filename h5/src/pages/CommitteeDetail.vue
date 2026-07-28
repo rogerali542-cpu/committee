@@ -347,7 +347,7 @@
     <!-- 准备阶段（主任）：底部固定主操作 -->
     <div class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
       <div class="pf-after-send">
-        <!-- 通知已送达全体后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
+        <!-- 已通知（App送达全体 或 微信留痕）后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
         <button v-if="prepareMode !== 'send'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
         <div class="pf-btn-row">
           <button class="pf-btn" @click="sendAppNoticeOnly">App内通知</button>
