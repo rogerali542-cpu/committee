@@ -46,7 +46,7 @@
                   <span class="mc-all-label">全选</span>
                   <span class="mc-count">已选 {{ selectedCount }}/{{ members.length }} 人</span>
                 </div>
-                <span class="member-arrow" :class="{ open: membersOpen }">›</span>
+                <span class="member-toggle" :class="{ open: membersOpen }">{{ membersOpen ? '收起' : '展开' }}<span class="mt-arr">⌄</span></span>
               </div>
             </div>
             <div v-if="membersOpen" class="mc-list">
@@ -187,8 +187,10 @@ onMounted(loadMembers)
 .mc-all { display: flex; align-items: center; gap: 8rpx; padding: 0 6rpx; }
 .mc-all-label { font-size: 27rpx; color: #A85800; font-weight: 700; white-space: nowrap; }
 .mc-count { font-size: 25rpx; color: #8A9099; white-space: nowrap; }
-.member-arrow { color: #A4A9B0; font-size: 30rpx; line-height: 1; transform: rotate(90deg); transition: transform .18s ease; }
-.member-arrow.open { transform: rotate(-90deg); }
+/* 展开入口：品牌色胶囊 +「展开/收起 ⌄」，比原来的裸箭头明显得多（0728 用户定） */
+.member-toggle { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6rpx; padding: 8rpx 18rpx; border-radius: 999rpx; background: var(--c-primary-soft); color: var(--c-primary-dark); font-size: 25rpx; font-weight: 700; }
+.mt-arr { font-size: 26rpx; line-height: 1; transition: transform .18s ease; position: relative; top: -1rpx; }
+.member-toggle.open .mt-arr { transform: rotate(180deg); }
 .mc-list { border-top: 2rpx solid #F0F2F4; }
 .mc-item { display: flex; align-items: center; gap: 14rpx; padding: 16rpx 20rpx; border-bottom: 1px solid #f0f0f2; }
 .mc-item:last-child { border-bottom: none; }
