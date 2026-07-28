@@ -57,6 +57,14 @@ public class LearningController {
         return Result.ok();
     }
 
+    // 修改分类：内部学习 / 外部培训
+    @PutMapping("/{id}/category")
+    @RequireRole({"主任", "副主任"})
+    public Result<Void> setCategory(@PathVariable Long id, @RequestParam String category) {
+        service.setCategory(id, category);
+        return Result.ok();
+    }
+
     // 通知全员
     @PostMapping("/{id}/notify-all")
     @RequireRole({"主任", "副主任"})

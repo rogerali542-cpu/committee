@@ -16,8 +16,13 @@
       <!-- 基本信息 -->
       <div class="info-card">
         <div class="field-row">
-          <span class="field-label">类型</span>
-          <span class="field-val tag" :class="item.type">{{ item.type === 'internal' ? '内部学习' : item.type === 'street' ? '街镇培训' : '专项培训' }}</span>
+          <span class="field-label">分类</span>
+          <!-- 显式分类，主任/副主任可在此改（纠正误分类）；其他人只读展示 -->
+          <div v-if="canManage" class="cat-seg">
+            <span class="cat-opt" :class="{ on: currentCategory === 'internal' }" @click="setCategory('internal')">内部学习</span>
+            <span class="cat-opt" :class="{ on: currentCategory === 'external' }" @click="setCategory('external')">外部培训</span>
+          </div>
+          <span v-else class="field-val tag" :class="'cat-' + currentCategory">{{ currentCategory === 'external' ? '外部培训' : '内部学习' }}</span>
         </div>
         <div class="field-row">
           <span class="field-label">时间</span>
@@ -138,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
@@ -151,6 +156,8 @@ const route = useRoute()
 const item = ref(null)
 const canManage = ref(false)   // 可以操作（创建/推进）= 主任/副主任/委员
 const selectedAttendance = ref([])
+// 显式分类（内部学习/外部培训），空值按内部兜底展示
+const currentCategory = computed(() => (item.value && item.value.category === 'external') ? 'external' : 'internal')
 let itemId = null
 
 function loadItem() {
@@ -236,6 +243,17 @@ async function finishLearn() {
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
+// 详情内改分类（内部学习/外部培训），用于纠正误分类；乐观更新本地
+async function setCategory(cat) {
+  if (!canManage.value) return
+  if (currentCategory.value === cat) return
+  try {
+    await api.learningSetCategory(itemId, cat)
+    if (item.value) item.value.category = cat
+    toast({ title: cat === 'internal' ? '已设为内部学习' : '已设为外部培训', icon: 'success' })
+  } catch (e) { toast({ title: (e && e.message) || '修改失败', icon: 'none' }) }
+}
+
 async function addEvidence() {
   if (!canManage.value) return
   try {
@@ -300,9 +318,13 @@ onMounted(() => {
 .field-label { font-size: 28rpx; color: #666; width: 140rpx; flex-shrink: 0; line-height: 1.5; }
 .field-val { font-size: 30rpx; color: #1f2329; flex: 1; line-height: 1.5; }
 .field-val.tag { font-size: 28rpx; font-weight: 600; padding: 4rpx 18rpx; border-radius: 10rpx; display: inline-block; width: auto; flex: none; }
-.field-val.tag.internal { background: #FFF3DC; color: #C77800; }
-.field-val.tag.street { background: #EBF5FB; color: #2980B9; }
-.field-val.tag.special { background: #FDF2E9; color: #E67E22; }
+.field-val.tag.cat-internal { background: #FFF3DC; color: #C77800; }
+.field-val.tag.cat-external { background: #EBF5FB; color: #2980B9; }
+/* 分类可编辑段控（主任/副主任在详情里改内部/外部） */
+.cat-seg { display: inline-flex; border: 2rpx solid #E3E5E9; border-radius: 12rpx; overflow: hidden; }
+.cat-opt { padding: 8rpx 22rpx; font-size: 28rpx; color: #5C6672; background: #fff; }
+.cat-opt.on { background: var(--c-primary-soft); color: var(--c-primary-dark); font-weight: 700; }
+.cat-opt + .cat-opt { border-left: 2rpx solid #E3E5E9; }
 
 /* 进度卡片 */
 .progress-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }

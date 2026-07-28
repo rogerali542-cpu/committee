@@ -1,6 +1,7 @@
 package com.ywh.service;
 
 import com.ywh.entity.*;
+import com.ywh.enums.LearningCategory;
 import com.ywh.enums.LearningType;
 import com.ywh.enums.MeetingStage;
 import com.ywh.repository.*;
@@ -54,6 +55,8 @@ public class LearningService {
             m.put("trainer", r.getTrainer());
             m.put("description", r.getDescription());
             m.put("type", r.getType().name());
+            m.put("category", r.getCategory() != null ? r.getCategory().name() : "internal");
+            m.put("categoryLabel", r.getCategory() != null ? r.getCategory().getLabel() : "内部学习");
             m.put("stage", r.getStage().name());
             m.put("progress", r.getProgress());
             m.put("attendees", r.getAttendees());
@@ -95,6 +98,16 @@ public class LearningService {
         LearningType lType = LearningType.internal;
         try { lType = LearningType.valueOf(typeStr); } catch (Exception ignored) {}
 
+        // 分类以显式 category 为准；旧客户端未传时按 type 推断（internal→内部，其余→外部）
+        String catStr = (String) req.get("category");
+        LearningCategory lCategory;
+        if (catStr != null) {
+            try { lCategory = LearningCategory.valueOf(catStr); }
+            catch (Exception e) { lCategory = LearningCategory.internal; }
+        } else {
+            lCategory = lType == LearningType.internal ? LearningCategory.internal : LearningCategory.external;
+        }
+
         LearningRecord r = LearningRecord.builder()
                 .community(Community.builder().id(communityId).build())
                 .title((String) req.getOrDefault("title", "新建学习"))
@@ -105,6 +118,7 @@ public class LearningService {
                 .description((String) req.getOrDefault("description", ""))
                 .attendees((String) req.getOrDefault("attendees", ""))
                 .type(lType)
+                .category(lCategory)
                 .stage(MeetingStage.preparing)
                 .progress(0)
                 .notified(false)
@@ -152,6 +166,15 @@ public class LearningService {
         LearningRecord r = requireCurrentCommunityRecord(id);
         r.setStage(MeetingStage.ended);
         r.setProgress(100);
+        repo.save(r);
+    }
+
+    // 修改分类（内部学习 / 外部培训）：详情页可改，用于纠正误分类
+    @Transactional
+    public void setCategory(Long id, String category) {
+        LearningRecord r = requireCurrentCommunityRecord(id);
+        try { r.setCategory(LearningCategory.valueOf(category)); }
+        catch (Exception e) { throw new IllegalArgumentException("分类无效"); }
         repo.save(r);
     }
 

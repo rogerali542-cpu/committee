@@ -42,11 +42,10 @@
         </div>
 
         <div class="form-group">
-          <span class="form-label">学习类型</span>
+          <span class="form-label">学习分类</span>
           <div class="type-row">
-            <span class="type-chip" :class="{ on: form.type === 'internal' }" @click="form.type = 'internal'">内部学习</span>
-            <span class="type-chip" :class="{ on: form.type === 'street' }" @click="form.type = 'street'">街镇培训</span>
-            <span class="type-chip" :class="{ on: form.type === 'special' }" @click="form.type = 'special'">专项培训</span>
+            <span class="type-chip" :class="{ on: form.category === 'internal' }" @click="form.category = 'internal'">内部学习</span>
+            <span class="type-chip" :class="{ on: form.category === 'external' }" @click="form.category = 'external'">外部培训</span>
           </div>
         </div>
 
@@ -77,7 +76,7 @@ function todayStr() {
   const d = new Date()
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
-const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', type: 'internal', description: '' })
+const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', category: 'internal', description: '' })
 const saving = ref(false)
 
 // 导航新规(0725 用户定):返回=历史上一页(本页只从学习列表 push 进入)
@@ -97,7 +96,8 @@ async function submit() {
   if (saving.value) return
   saving.value = true
   try {
-    const result = await api.learningCreate({ ...form })
+    // type 由 category 派生以兼容按 type 拉取的列表：内部→internal，外部→street
+    const result = await api.learningCreate({ ...form, type: form.category === 'internal' ? 'internal' : 'street' })
     toast({ title: '已登记', icon: 'success' })
     // replace:不把已提交的表单页留在历史里,详情页按返回直接回学习列表
     window.location.replace('/learning-detail?id=' + result.id)

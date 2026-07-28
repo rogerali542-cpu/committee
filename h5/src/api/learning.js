@@ -17,6 +17,10 @@ export default {
   learningFinish: function (id) {
     return core.request('PUT', '/api/learning/' + id + '/finish');
   },
+  // 修改分类：内部学习(internal) / 外部培训(external)
+  learningSetCategory: function (id, category) {
+    return core.request('PUT', '/api/learning/' + id + '/category?category=' + category);
+  },
   learningCreate: function (data) {
     return core.request('POST', '/api/learning', data);
   },

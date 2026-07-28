@@ -61,16 +61,19 @@
           <!-- 收起行=标题+浅灰摘要两行(0725 用户定,参照主流列表行:主行中等字重+副行弱化),类型在展开细节 -->
           <div class="lc-header">
             <div class="lc-title-wrap">
-              <span class="lc-title">{{ item.title }}</span>
+              <!-- 状态签移到标题旁(0728 用户定),右侧空间留给「详情」入口 -->
+              <div class="lc-title-line">
+                <span class="lc-title">{{ item.title }}</span>
+                <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
+              </div>
               <!-- 副行只留日期时间(0725 用户定):地点太长必截断,反成噪音,展开细节里看全 -->
               <span class="lc-sub">{{ item.date }} · {{ formatTime(item.time) }}</span>
             </div>
-            <span class="lc-pill" :class="item.stage">{{ item.stage === 'preparing' ? (item.notified ? '已通知' : '待通知') : item.stage === 'ongoing' ? '待整理' : '已完成' }}</span>
-            <span class="lc-arrow" :class="{ open: expandedId === item.id }">⌄</span>
+            <span class="lc-more" :class="{ open: expandedId === item.id }">{{ expandedId === item.id ? '收起' : '详情' }}<span class="lc-more-arr">⌄</span></span>
           </div>
           <template v-if="expandedId === item.id">
             <div class="lc-meta">
-              <span class="lc-meta-line">类型：{{ learningTypeName(item) }}</span>
+              <span class="lc-meta-line">分类：{{ item.categoryLabel || (item.category === 'external' ? '外部培训' : '内部学习') }}</span>
               <span class="lc-meta-line">{{ item.date }} · {{ formatTime(item.time) }}</span>
               <span class="lc-meta-line">{{ item.location }}</span>
               <span class="lc-meta-line">组织：{{ item.trainer || '未填写' }}</span>
@@ -128,12 +131,6 @@ function openDetail(item) {
   navigateTo('/learning-detail?id=' + item.id);
 }
 
-function learningTypeName(item) {
-  if (item.type === 'street') return '街镇培训';
-  if (item.type === 'special') return '专项培训';
-  return '内部学习';
-}
-
 function applyRecordFilter() {
   if (recordFilter.value === 'ended') {
     items.value = allItems.value.filter(i => i.stage === 'ended');
@@ -155,12 +152,11 @@ async function loadAll() {
       api.learningList('internal', null).catch(() => []),
       api.learningList('training', null).catch(() => [])
     ]);
-    const completedInternal = allInternal.filter(i => i.stage === 'ended').length;
-    const completedExternal = allTraining.filter(i => i.stage === 'ended').length;
-    // 内部学习只计内部自行组织学习(制度口径),外部培训按参加任一次即达标
-    annualStudyCount.value = completedInternal;
-    annualExternalDone.value = completedExternal > 0;
-    allItems.value = [...allInternal, ...allTraining].sort((a, b) => {
+    const merged = [...allInternal, ...allTraining];
+    // 年度计数按显式分类 category（不再靠 type/接口拆分推断）
+    annualStudyCount.value = merged.filter(i => i.category === 'internal' && i.stage === 'ended').length;
+    annualExternalDone.value = merged.some(i => i.category === 'external' && i.stage === 'ended');
+    allItems.value = merged.sort((a, b) => {
       const stageOrder = { preparing: 0, ongoing: 1, ended: 2 };
       const stageDiff = (stageOrder[a.stage] ?? 9) - (stageOrder[b.stage] ?? 9);
       if (stageDiff) return stageDiff;
@@ -267,12 +263,13 @@ onUnmounted(() => {
 /* 收起卡压缩到与业委会记录行同级(0725 用户定):内距/字号/标签整体降一档 */
 .learn-card { background: #fff; border-radius: 20rpx; padding: 22rpx 24rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); position: relative; }
 .learn-card:active { background: #fafbfc; }
-.lc-header { display: flex; align-items: center; justify-content: space-between; }  /* 状态签/箭头随标题块垂直居中 */
-.lc-title-wrap { min-width: 0; flex: 1; padding-right: 12rpx; text-wrap: balance; }
-/* .lc-type 已删(0725):类型不再上标题行,展开细节里以「类型：」行呈现 */
-.lc-title { display: block; font-size: 30rpx; font-weight: 560; color: #1f2329; line-height: 1.45; }  /* 中等字重,别用大黑体压场 */
-.lc-sub { display: block; margin-top: 6rpx; font-size: 24rpx; color: #808C99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 副行一行截断,超长省略 */
-.lc-pill { font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; flex-shrink: 0; white-space: nowrap; }
+.lc-header { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.lc-title-wrap { min-width: 0; flex: 1; }
+/* 标题行=标题+状态签并排(0728 用户定:状态签移到标题旁,腾出右侧给「详情」) */
+.lc-title-line { display: flex; align-items: flex-start; gap: 12rpx; }
+.lc-title { min-width: 0; font-size: 30rpx; font-weight: 560; color: #1f2329; line-height: 1.4; }  /* 中等字重,别用大黑体压场 */
+.lc-sub { display: block; margin-top: 8rpx; font-size: 24rpx; color: #808C99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 副行一行截断,超长省略 */
+.lc-pill { flex-shrink: 0; margin-top: 2rpx; font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; white-space: nowrap; }
 .lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
 .lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }
 .lc-pill.ended { background: #F0F0F0; color: #666; }
@@ -280,10 +277,10 @@ onUnmounted(() => {
 .lc-detail-btn { display: block; width: 56%; height: 72rpx; margin: 8rpx auto 2rpx; border: 2rpx solid #D8C9A8; border-radius: 16rpx; background: #FFFBF2; color: #8B5A1E; font-size: 28rpx; font-weight: 600; }
 .lc-detail-btn:active { background: #F7EFDD; }
 .lc-meta-line { font-size: 30rpx; color: #6b7785; display: flex; align-items: center; gap: 10rpx; }
-/* 收起态指示:下箭头,与状态标签同行右侧对齐,展开后旋转 */
-/* ⌄ 字形墨迹偏字框下部,flex 居中后视觉仍偏低:用 top 光学上抬(不占 transform,旋转正常) */
-.lc-arrow { flex-shrink: 0; margin-left: 12rpx; font-size: 34rpx; line-height: 1; color: #8A94A0; transition: transform .2s; position: relative; top: -8rpx; }
-.lc-arrow.open { transform: rotate(180deg); }
+/* 展开入口：文字「详情/收起」+ 旋转箭头(0728 用户定:替代原裸箭头,更明确好点) */
+.lc-more { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4rpx; color: #8A94A0; font-size: 26rpx; white-space: nowrap; }
+.lc-more-arr { font-size: 28rpx; line-height: 1; transition: transform .2s; position: relative; top: -1rpx; }
+.lc-more.open .lc-more-arr { transform: rotate(180deg); }
 
 /* bottom 抬到底部 TabBar(100rpx) 之上，否则撤销条会被一级 tab 栏挡住 */
 .undo-toast { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(120rpx + env(safe-area-inset-bottom)); z-index: 40; background: rgba(45,45,45,0.94); color: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.2); }

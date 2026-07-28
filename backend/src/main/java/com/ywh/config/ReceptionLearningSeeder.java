@@ -3,6 +3,7 @@ package com.ywh.config;
 import com.ywh.entity.Community;
 import com.ywh.entity.LearningRecord;
 import com.ywh.entity.ReceptionRecord;
+import com.ywh.enums.LearningCategory;
 import com.ywh.enums.LearningType;
 import com.ywh.enums.MeetingStage;
 import com.ywh.enums.ReceptionCategory;
@@ -113,7 +114,7 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
                 .community(c).title("消防安全与应急疏散专题学习")
                 .date(LocalDate.parse("2026-06-28")).time(LocalTime.parse("14:00"))
                 .location("物业培训室").trainer("消防大队·李教官")
-                .type(LearningType.internal).stage(MeetingStage.preparing).progress(0)
+                .type(LearningType.internal).category(LearningCategory.internal).stage(MeetingStage.preparing).progress(0)
                 .attendees("全体委员").notified(false)
                 .build());
         // 2) 内部学习，已结束（计入年度已完成，进度环非空）
@@ -121,7 +122,7 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
                 .community(c).title("老旧小区加装电梯政策宣讲")
                 .date(LocalDate.parse("2026-05-10")).time(LocalTime.parse("10:00"))
                 .location("小区会议室").trainer("区住建委·钱主任")
-                .type(LearningType.internal).stage(MeetingStage.ended).progress(100)
+                .type(LearningType.internal).category(LearningCategory.internal).stage(MeetingStage.ended).progress(100)
                 .attendees("全体委员").notified(true)
                 .build());
         // 3) 街镇培训，待开（默认「外部培训」标签即可见）
@@ -129,7 +130,7 @@ public class ReceptionLearningSeeder implements CommandLineRunner {
                 .community(c).title("街道业委会规范化运作培训")
                 .date(LocalDate.parse("2026-06-22")).time(LocalTime.parse("09:30"))
                 .location("街道办事处会议室").trainer("街道物管科·周老师")
-                .type(LearningType.street).stage(MeetingStage.preparing).progress(0)
+                .type(LearningType.street).category(LearningCategory.external).stage(MeetingStage.preparing).progress(0)
                 .attendees("主任、副主任").notified(false)
                 .build());
         log.info("[ReceptionLearningSeeder] 已为小区 {} (id={}) 预置 3 条示例学习培训", c.getName(), c.getId());
