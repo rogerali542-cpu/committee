@@ -43,11 +43,12 @@
           </div>
           <!-- 台账正文（0728 用户定）：内联「标签：值」，按重要度排 申请人→用印时间→用途→保管人确认→文件→附件 -->
           <div class="sr-rows">
-            <div class="sr-row"><span class="sr-k">申请人：</span>{{ applicantText(r) }}</div>
-            <div class="sr-row"><span class="sr-k">用印时间：</span>{{ useTimeText(r) }}</div>
+            <div class="sr-row">
+              <span class="sr-seg"><span class="sr-k">申请人：</span>{{ applicantText(r) }}</span>
+              <span class="sr-seg"><span class="sr-k">用印时间：</span>{{ useTimeText(r) }}</span>
+            </div>
             <div class="sr-row"><span class="sr-k">用途/事项：</span><span class="sr-strong">{{ r.purpose || '（未填）' }}</span></div>
             <div class="sr-row"><span class="sr-k">保管人确认：</span><span :class="{ 'sr-confirmed': r.status === 'approved', 'sr-rejected': r.status === 'rejected' }">{{ custodianText(r) }}</span></div>
-            <div class="sr-row"><span class="sr-k">文件：</span>{{ fileText(r) }}</div>
             <div class="sr-row">
               <span class="sr-k">附件：</span>
               <span v-if="!(r.attachments && r.attachments.length)">无</span>
@@ -189,12 +190,6 @@ function useTimeText(r) {
   if (r.status === 'approved') return fmtTime(r.confirmedAt) || '—';
   return r.status === 'pending' ? '待用印' : '—';
 }
-// 文件名：新申请从附件名取；老记录兼容展示原「关联文件」字段；都没有则提示见用途
-function fileText(r) {
-  const names = (r.attachments || []).map(a => a && a.name).filter(Boolean);
-  if (names.length) return names.join('、');
-  return r.documentName || '见用途说明';
-}
 // 申请人：只显示姓名（角色），不带提交时间（0728 用户定）
 function applicantText(r) {
   let s = r.applicantName || '—';
@@ -279,6 +274,7 @@ onActivated(load);
 /* 台账正文：内联「标签：值」，标签弱色、值随内容强调（0728 用户定） */
 .sr-rows { margin-top: 14rpx; display: flex; flex-direction: column; gap: 10rpx; }
 .sr-row { font-size: 27rpx; line-height: 1.55; color: var(--c-text-mid); word-break: break-all; }
+.sr-seg:not(:last-child) { margin-right: 40rpx; }   /* 申请人 / 用印时间 同行分段 */
 .sr-k { color: var(--c-text-weak); }
 .sr-strong { color: var(--c-text-strong); font-weight: 600; }
 .sr-confirmed { color: #3B7150; }
