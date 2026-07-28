@@ -213,7 +213,7 @@ public class CommitteeController {
         return Result.ok();
     }
 
-    // 清空通知记录（测试用）：删通知历史+送达记录、重置为未通知。通知留痕正式环境一般应保留，见 service 注释。
+    // 清空通知记录：删通知历史+送达记录、重置为未通知（0728 用户定为正式功能，见 service 注释）。
     @PostMapping("/{id}/delivery/clear")
     @RequireRole({"主任", "副主任"})
     public Result<Void> clearNotifications(@PathVariable Long id) {

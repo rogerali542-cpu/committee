@@ -50,7 +50,7 @@ export default {
   committeeMarkWechatNotified: function (id) {
     return core.request('POST', '/api/committees/' + id + '/delivery/wechat-mark');
   },
-  // 清空通知记录（测试用）：删本会议全部通知历史+送达、重置为未通知
+  // 清空通知记录：删本会议全部通知历史+送达、重置为未通知（0728 用户定为正式功能）
   committeeClearNotifications: function (id) {
     return core.request('POST', '/api/committees/' + id + '/delivery/clear');
   },

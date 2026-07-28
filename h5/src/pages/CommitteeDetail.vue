@@ -1581,11 +1581,11 @@ async function removeMeeting() {
   }
 }
 
-// 清空通知记录（测试用）：确认后删本会议全部通知历史+送达、重置为「未通知」，再刷新详情
+// 清空通知记录（0728 用户定为正式功能）：确认后删本会议全部通知历史+送达、重置为「未通知」，再刷新详情
 async function clearNotices() {
   const res = await showModal({
     title: '清空通知记录',
-    content: '仅供测试：将删除本会议的全部通知记录，并重置为「未通知」。确定清空？'
+    content: '将删除本会议的全部通知记录，会议恢复为「未通知」状态，需要重新发送会议通知。确定清空？'
   })
   if (!res.confirm) return
   try {
@@ -2242,7 +2242,7 @@ async function removeMaterial(item) {
 /* 准备阶段底部固定主操作 */
 /* 0725 用户定:取消固定悬浮(会压住通知记录等内容),改随文档流,滚到底部才出现 */
 .prep-footer { box-sizing:border-box; background:transparent; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
-.prep-footer.after-send-footer { padding:4px 16px calc(16px + env(safe-area-inset-bottom)); }
+.prep-footer.after-send-footer { padding:28px 16px calc(16px + env(safe-area-inset-bottom)); }  /* 0728 用户定：按钮组整体下移一点，与上方内容拉开 */
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
 /* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
 .pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; }
@@ -2332,7 +2332,7 @@ async function removeMaterial(item) {
 .sr-section { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; padding:20rpx 28rpx 22rpx; box-sizing:border-box; }
 .sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:0 0 12rpx; }
 .sr-heading { font-size:30rpx; font-weight:700; color:#1f2329; }
-/* 清空通知记录：测试用弱化小按钮（灰描边胶囊） */
+/* 清空通知记录：弱化小按钮（灰描边胶囊），不与主操作抢视觉 */
 .sr-clear-btn { flex-shrink:0; font-size:25rpx; color:#8A9099; padding:5rpx 18rpx; border:2rpx solid #E3E5E9; border-radius:999rpx; line-height:1.3; }
 .sr-clear-btn:active { background:#F2F3F5; color:#6A7480; }
 /* 通知记录：去底色，纯绿色文字、加大一号并加粗 */

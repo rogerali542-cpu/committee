@@ -563,8 +563,8 @@ public class CommitteeService {
                 .build());
     }
 
-    /** 清空会议通知记录（测试用）：删通知历史 + 送达记录，重置 notifiedAt/notifiedByName，回到"未通知"状态。
-     *  说明：通知记录是"谁何时通知了委员"的留痕，正式环境一般应保留（问责/审计），此方法主要供测试重置。 */
+    /** 清空会议通知记录：删通知历史 + 送达记录，重置 notifiedAt/notifiedByName，回到"未通知"状态。
+     *  0728 用户定为正式功能（通知内容有误需重发时用）；因会一并清掉"谁何时通知了委员"的留痕，前端确认弹窗须明确提示后果。 */
     @Transactional
     public void clearNotifications(Long meetingId) {
         CommitteeMeeting m = meetingRepo.findById(meetingId)
