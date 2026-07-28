@@ -23,12 +23,12 @@
 
         <div class="form-group">
           <span class="form-label">用印事由 / 用途 *</span>
-          <textarea class="form-textarea" v-model="form.purpose" placeholder="例如：业委会决议公示盖章"></textarea>
+          <textarea class="form-textarea" v-model="form.purpose"></textarea>
         </div>
 
         <div class="form-group">
           <span class="form-label">关联文件（选填）</span>
-          <input class="form-input" v-model="form.documentName" placeholder="例如：第3次业委会会议决议" />
+          <input class="form-input" v-model="form.documentName" />
         </div>
       </section>
 
@@ -47,8 +47,14 @@ import PageNav from '@/components/PageNav.vue'
 import { toast } from '@/utils/ui'
 import { navigateBack } from '@/utils/navigate'
 
-const seals = ref([])
-const form = reactive({ sealType: '', purpose: '', documentName: '' })
+// 印章固定三枚（依据《印章管理制度》）：本地兜底保证选择栏必齐，再以后端返回为准
+const DEFAULT_SEALS = [
+  { type: 'general_assembly', label: '业主大会章' },
+  { type: 'committee', label: '业委会章' },
+  { type: 'finance', label: '财务专用章' }
+]
+const seals = ref(DEFAULT_SEALS.slice())
+const form = reactive({ sealType: DEFAULT_SEALS[0].type, purpose: '', documentName: '' })
 const saving = ref(false)
 
 // 导航新规(与学习/接待登记页一致)：返回=历史上一页（本页只从印章台账进入）
@@ -57,9 +63,9 @@ function back() { navigateBack() }
 onMounted(async () => {
   try {
     const s = await api.sealList()
-    seals.value = s || []
-    if (seals.value.length && !form.sealType) form.sealType = seals.value[0].type
-  } catch (e) { /* 网络异常已由 core 统一提示 */ }
+    if (Array.isArray(s) && s.length) seals.value = s   // 后端返回则以其为准，否则保留三枚兜底
+    if (!form.sealType && seals.value.length) form.sealType = seals.value[0].type
+  } catch (e) { /* 拉取失败保留本地兜底，选择栏仍完整 */ }
 })
 
 async function submit() {
