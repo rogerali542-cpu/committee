@@ -25,9 +25,12 @@
           <textarea class="form-textarea" v-model="form.purpose"></textarea>
         </div>
 
-        <div class="form-group">
-          <span class="form-label">上传附件（选填）</span>
-          <span class="form-hint">盖章文件或签字登记表的照片 / PDF，供保管人核对并留档台账</span>
+        <!-- 附件为选填佐证（0728 用户定：整体弱化——无提示语、小按钮、标签降级，不与必填项抢视觉） -->
+        <div class="form-group att-group">
+          <div class="att-head">
+            <span class="att-label">上传附件（选填）</span>
+            <button type="button" class="att-add" :disabled="uploading" @click="addAtt">{{ uploading ? '上传中…' : '＋ 添加附件' }}</button>
+          </div>
           <div v-if="atts.length" class="att-list">
             <div v-for="(a, i) in atts" :key="a.url" class="att-item">
               <img v-if="isImg(a)" class="att-thumb" :src="a.url" alt="" @click="viewAtt(a)" />
@@ -36,7 +39,6 @@
               <button type="button" class="att-del" aria-label="移除附件" @click="removeAtt(i)">×</button>
             </div>
           </div>
-          <button type="button" class="att-add" :disabled="uploading" @click="addAtt">{{ uploading ? '上传中…' : '＋ 添加附件' }}</button>
         </div>
       </section>
 
@@ -153,8 +155,11 @@ async function submit() {
   position: absolute; right: 22rpx; top: 50%; transform: translateY(-62%);
   color: #8A94A0; font-size: 32rpx; line-height: 1; pointer-events: none;
 }
-/* 附件上传：已传列表（缩略图/文件图标 + 名称 + 移除）+ 虚线添加按钮 */
-.att-list { display: flex; flex-direction: column; gap: 14rpx; margin-bottom: 16rpx; }
+/* 附件上传（弱化态）：标签+小按钮一行，列表在下 */
+.att-group { margin-top: 6rpx; }
+.att-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.att-label { font-size: 27rpx; color: #8A94A0; font-weight: 500; }
+.att-list { display: flex; flex-direction: column; gap: 14rpx; margin-top: 16rpx; }
 .att-item {
   display: flex; align-items: center; gap: 16rpx; padding: 12rpx 16rpx;
   border: 2rpx solid #EAE2D4; border-radius: 14rpx; background: #FCFAF6;
@@ -171,8 +176,8 @@ async function submit() {
 }
 .att-del:active { background: #E4E7EA; color: #C0392B; }
 .att-add {
-  width: 100%; height: 80rpx; border: 2rpx dashed #CFBD9E; border-radius: 14rpx;
-  background: #FDFBF7; color: #8A6B36; font-size: 28rpx; font-weight: 600;
+  flex-shrink: 0; height: 56rpx; padding: 0 22rpx; border: 2rpx dashed #D7CBB2; border-radius: 999rpx;
+  background: transparent; color: #9A835D; font-size: 25rpx; font-weight: 500;
 }
 .att-add:active { background: #F5EFE3; }
 .att-add:disabled { opacity: .6; }
