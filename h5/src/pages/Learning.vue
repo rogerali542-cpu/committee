@@ -36,14 +36,12 @@
 
     <!-- 两个入口（0728 用户定）：发起内部学习＝事前计划+通知；登记学习记录＝事后补录（含外部培训） -->
     <div v-if="canCreate" class="learn-actions">
-      <button class="la-card primary" type="button" @click="openInitiate">
-        <span class="la-icon">📣</span>
-        <span class="la-copy"><strong>发起内部学习</strong><em>组织学习并通知参加人员</em></span>
+      <button class="la-card" type="button" @click="openInitiate">
+        <span class="la-copy"><strong>发起内部学习</strong><em>组织学习、通知参加</em></span>
         <span class="la-arrow">›</span>
       </button>
       <button class="la-card" type="button" @click="openCreate">
-        <span class="la-icon light">＋</span>
-        <span class="la-copy"><strong>登记学习记录</strong><em>补录已完成的学习或外部培训</em></span>
+        <span class="la-copy"><strong>登记学习记录</strong><em>补录已完成的学习</em></span>
         <span class="la-arrow">›</span>
       </button>
     </div>
@@ -300,20 +298,16 @@ onUnmounted(() => {
 /* FAB */
 /* bottom 抬到底部 TabBar(100rpx) 之上，否则「+」新建按钮会压在一级 tab 栏上 */
 /* FAB 已删(0725):压卡片、与「返回驾驶舱」浮球冲突;新建入口改列表尾部虚线条 */
-/* 两个入口卡（0728 用户定）：发起内部学习为主（暖橙实心图标+副标题），登记学习记录为次（浅色图标） */
+/* 两个入口卡（0728 用户定：去图标、精简副标题，简单明了的两行按钮） */
 .learn-actions { display: flex; flex-direction: column; gap: 16rpx; margin: 30rpx 0 34rpx; }
-.la-card { display: flex; align-items: center; gap: 18rpx; width: 100%; box-sizing: border-box;
-  padding: 22rpx 24rpx; text-align: left; border: 2rpx solid #E6D7BF; border-radius: 20rpx; color: inherit;
+.la-card { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; width: 100%; box-sizing: border-box;
+  padding: 24rpx 28rpx; text-align: left; border: 2rpx solid #E6D7BF; border-radius: 20rpx; color: inherit;
   background: linear-gradient(135deg, #FFFEFC 0%, #FAF4EB 100%); box-shadow: 0 6rpx 18rpx rgba(96, 72, 40, 0.10); }
 .la-card:active { opacity: 0.7; }
-.la-icon { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 64rpx; height: 64rpx;
-  border-radius: 16rpx; background: #B0772E; color: #fff; font-size: 34rpx; }
-.la-icon.light { background: #F0E6D2; color: #916619; }
 .la-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .la-copy strong { font-size: 32rpx; line-height: 1.3; color: #7E571C; font-weight: 700; }
 .la-copy em { font-size: 24rpx; line-height: 1.35; color: #A08A6A; font-style: normal; }
-.la-arrow { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 46rpx; height: 46rpx;
-  border-radius: 50%; background: #F0E6D2; color: #916619; font-size: 34rpx; font-weight: 700; }
+.la-arrow { flex-shrink: 0; color: #B79A6A; font-size: 38rpx; font-weight: 700; }
 
 /* 创建弹窗样式已删(0725):表单迁独立页 /learning-create */
 </style>
