@@ -710,7 +710,7 @@ const cardSizeClass = computed(() => {
 
 // 结束页会议卡：已生成纪要时默认展开；未生成纪要直接结束时默认收起，避免议题抢占页面。
 // 只在首次加载时决定默认值，后续刷新数据不覆盖用户手动展开/收起的选择。
-const endedDetailOpen = ref(true)
+const endedDetailOpen = ref(false) // 会后视图议题卡默认收起（0729 用户定，页面已丰富）
 const endedDetailInitialized = ref(false)
 // "10:00:00" → "10:00"
 function shortTime(t) { return (t || '').slice(0, 5) }
@@ -1008,9 +1008,10 @@ async function loadDetail() {
     const qMode = d.stage === 'ongoing' && d.meetingMode === 'quick'
 
     if ((d.stage === 'ended' || fieldEndedLocal.value) && !endedDetailInitialized.value) {
-      // 议题默认展开(0725 用户定):会后视图页面短、空间足,议题结果是核心信息,进来就该看到;
-      // 原来仅在已生成纪要时展开,导致无纪要的会议进去一片空,还得手点「查看议题」
-      endedDetailOpen.value = true
+      // 议题默认收起(0729 用户定):会后视图已很丰富(记录/纪要/录音/返回整理等),
+      // 进来先给概览、议题收起,想看再点「查看议题」展开(结果标签在收起态的行尾仍可见)。
+      // 原为默认展开(0725),那时页面还很空;现内容多了改回收起更清爽。
+      endedDetailOpen.value = false
       endedDetailInitialized.value = true
     }
 
