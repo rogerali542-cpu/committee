@@ -311,8 +311,9 @@ onMounted(() => {
 .dh-title { font-size: 38rpx; font-weight: 700; color: #1f2329; line-height: 1.4; flex: 1; }
 
 /* 信息卡片 */
-.info-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
-.field-row { display: flex; align-items: flex-start; gap: 20rpx; padding: 18rpx 0; border-bottom: 2rpx solid #f5f5f5; }
+.info-card { background: #fff; border-radius: 24rpx; padding: 14rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
+/* 居中对齐：分类标签(带内边距)与左侧标签同高不再下坠；行内距收紧 */
+.field-row { display: flex; align-items: center; gap: 20rpx; padding: 13rpx 0; border-bottom: 2rpx solid #f5f5f5; }
 .field-row:last-child { border-bottom: none; }
 .field-label { font-size: 28rpx; color: #666; width: 140rpx; flex-shrink: 0; line-height: 1.5; }
 .field-val { font-size: 30rpx; color: #1f2329; flex: 1; line-height: 1.5; }
