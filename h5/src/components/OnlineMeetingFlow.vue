@@ -7,8 +7,8 @@
           <span class="omf-method-tag">线上会议</span>
         </div>
         <!-- 签到名单不再展示(0725 用户定:简单点)——只报本人状态,进度看各题「已填 X/Y 人」 -->
-        <!-- 已签到状态行:议题处理页不显示(0725 用户定) -->
-        <div v-if="!cardMode && selfPresent && !meetingEnded && view !== 'vote'" class="signed-line">
+        <!-- 已签到状态行:只在线上会议页显示(签到页卡内已有同信息,议题处理页 0725 用户定不显示) -->
+        <div v-if="!cardMode && selfPresent && !meetingEnded && view === 'main'" class="signed-line">
           <span class="signed-tag">✓ 已签到</span>
           <span class="signed-count">{{ presentCount }}/{{ attendance.length }} 人已签到</span>
         </div>
@@ -125,7 +125,11 @@
             <span class="core-topic-no">{{ index + 1 }}</span>
             <div class="core-topic-main">
               <span class="core-topic-title">{{ item.title }}</span>
-              <span class="core-topic-type" :class="topicActionType(item)">{{ topicActionName(item) }}</span>
+              <div class="core-topic-tags">
+                <span class="core-topic-type" :class="topicActionType(item)">{{ topicActionName(item) }}</span>
+                <!-- 本人进度小标:列表上直接看出"我投过/发过言没",不用逐条点开确认 -->
+                <span v-if="myMarkText(item)" class="core-topic-mine">✓ {{ myMarkText(item) }}</span>
+              </div>
             </div>
             <button type="button" class="core-topic-btn" :class="[topicActionType(item), { done: topicRowDone(item) }]" @click="openTopicSheet(item)">
               {{ topicActionButton(item) }}
@@ -174,12 +178,6 @@ const emit = defineEmits(['reload', 'end-review'])
 const busy = ref(false)
 const rosterOpen = ref(false)
 
-// ── 议题翻页(0725 用户定):每页只显示一个议题;意见列表收在「查看详情」 ──
-const topicIndex = ref(0)
-const opsOpen = ref(false)
-function prevTopic() { if (topicIndex.value > 0) { topicIndex.value--; opsOpen.value = false } }
-function nextTopic() { if (topicIndex.value < topics.length - 1) { topicIndex.value++; opsOpen.value = false } }
-
 // 页内视图机(0725 用户定):签到页(signin)→线上会议页(main)→表决登记页(vote)。
 // 返回键逐级回退(由宿主页 MeetingLiveQuick 调 handleBack);签到页再返回=离开会议。
 const view = ref('')
@@ -192,10 +190,6 @@ function handleBack() {
 defineExpose({ handleBack })
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
-const currentTopic = computed(() => topics[topicIndex.value] || null)
-// 结束会议按钮的醒目程度:还没翻到最后一条议题(仍有「下一议题」)时降级为幽灵小链接,
-// 引导先把议题逐条过完;到最后一条(或单条/无议题)才升为主按钮(0729 用户定)
-const onLastTopic = computed(() => topics.length <= 1 || topicIndex.value >= topics.length - 1)
 const liveAttendance = ref([])
 
 const attendance = computed(() => liveAttendance.value.length
@@ -214,6 +208,7 @@ const meetingEnded = computed(() => props.detail.stage !== 'ongoing')
 const flowStep = computed(() => {
   if (meetingEnded.value) return 4
   if (!selfPresent.value) return 1
+  if (view.value === 'vote') return 3   // 人已在议题处理页,步骤条直接亮第3步,不再等"填过才算"
   const filled = topics.some(t => t.voteRequired && (t.myVote || t.mySelectedId))
     || opinions.value.some(op => op.isSelf)
   return filled ? 3 : 2
@@ -222,73 +217,10 @@ function stepClass(n) {
   return flowStep.value > n ? 'done' : (flowStep.value === n ? 'on' : '')
 }
 
-// 议题意见:开会期间各委员可按议题补充书面意见,记入会议记录
+// 议题意见:仅用于流程链"已回来登记"判定与列表「我已发言」小标;提交/删除/AI 助手都在 TopicSheet 内完成
 const opinions = ref([])
-const opinionDrafts = reactive({})
-function topicOpinions(topicId) {
-  return opinions.value.filter(op => Number(op.topicId) === Number(topicId))
-}
 async function loadOpinions() {
   try { opinions.value = (await api.committeeOpinions(props.meetingId)) || [] } catch (e) { /* 下次轮询重试 */ }
-}
-// 意见作者的表决标签(后端 opinionToMap 带出):simple 题给 voteChoice,多选题给所选项 voteLabel
-function opVoteTag(op) {
-  if (op.voteLabel) return op.voteLabel
-  if (op.voteChoice === 'for_vote') return '赞成'
-  if (op.voteChoice === 'against') return '反对'
-  if (op.voteChoice === 'abstain') return '弃权'
-  return ''
-}
-function opVoteClass(op) {
-  if (op.voteChoice === 'for_vote') return 'yes'
-  if (op.voteChoice === 'against') return 'no'
-  return 'ab'
-}
-async function submitOpinion(topic) {
-  // 表决题必须先投票(0725 用户定):意见须带作者表决标签
-  if (topic.voteRequired && !hasMyVote(topic)) { toast({ title: '请先完成表决，再提交意见', icon: 'none' }); return }
-  const text = String(opinionDrafts[topic.id] || '').trim()
-  if (!text) { toast({ title: '请先填写意见内容', icon: 'none' }); return }
-  busy.value = true
-  try {
-    await api.committeeAddOpinion(props.meetingId, topic.id, text, 'text')
-    opinionDrafts[topic.id] = ''
-    await loadOpinions()
-    toast({ title: '意见已提交', icon: 'success' })
-  } catch (e) {
-    toast({ title: e.message || '提交失败', icon: 'none' })
-  } finally { busy.value = false }
-}
-async function removeOpinion(op) {
-  const res = await showModal({ title: '删除意见', content: '删除这条意见吗？', confirmText: '删除', cancelText: '取消' })
-  if (!res.confirm) return
-  try {
-    await api.committeeRemoveOpinion(props.meetingId, op.id)
-    await loadOpinions()
-  } catch (e) { toast({ title: e.message || '删除失败', icon: 'none' }) }
-}
-
-// 通知类议题(0729 用户定重做):其他人接到点「我已收到」即可,不参与讨论
-async function markNoticeReceived(topic) {
-  if (!topic || topic.viewedByMe || busy.value) return
-  busy.value = true
-  try {
-    await api.committeeNoticeView(props.meetingId, topic.id)
-    await emitReload()
-    toast({ title: '已确认收到', icon: 'success' })
-  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) } finally { busy.value = false }
-}
-// 责任人(主任/副主任/秘书)一键确认已通知全体,本议题即完成,无需逐个等待
-async function confirmNoticeAll(topic) {
-  if (!topic) return
-  const res = await showModal({ title: '确认已通知全体', content: '确认已把本通知传达到全体委员？确认后本议题即完成，无需逐个等待。', confirmText: '确认已通知', cancelText: '再等等' })
-  if (!res.confirm) return
-  busy.value = true
-  try {
-    await api.committeeNoticeRead(props.meetingId, topic.id)
-    await emitReload()
-    toast({ title: '已确认通知全体', icon: 'success' })
-  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) } finally { busy.value = false }
 }
 
 // ── 0729 用户定「学一学线下」:线上表决改用线下同款「议题列表 → 点去表决/去讨论 → TopicSheet」模式 ──
@@ -330,6 +262,15 @@ function topicActionButton(item) {
 // 结束会议由弱转强:主任把每条议题都点开过(过完一遍)才升为主按钮
 const allTopicsDone = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(t => visitedIds.value.includes(t.id)))
 
+// 本人进度小标(0729):表决题「我已表决」、讨论题「我已发言」;会议结束后不再显示(行进入结束态)
+const myOpinionTopicIds = computed(() => new Set(opinions.value.filter(op => op.isSelf).map(op => Number(op.topicId))))
+function myMarkText(item) {
+  if (meetingEnded.value) return ''
+  if (item.voteRequired) return (item.myVote || item.mySelectedId != null) ? '我已表决' : ''
+  if (item.type === 'notice') return ''
+  return myOpinionTopicIds.value.has(Number(item.id)) ? '我已发言' : ''
+}
+
 function initFromDetail() {
   liveAttendance.value = ((props.detail.record && props.detail.record.attendances) || []).slice()
   applyTopics((props.detail.record && props.detail.record.topics) || [])
@@ -359,7 +300,6 @@ function applyTopics(raw) {
     voteAgainst: Number(item.agVotes) || 0,
     voteAbstain: Number(item.abVotes) || 0
   })))
-  if (topicIndex.value >= topics.length) topicIndex.value = Math.max(0, topics.length - 1)
 }
 watch(() => props.detail, initFromDetail, { immediate: true })
 
@@ -376,139 +316,7 @@ async function selfSignIn() {
   } finally { busy.value = false }
 }
 
-// ── 表决:先选后交(操作逻辑对齐线下 TopicSheet) ──
-// 点选项只是选中(pendingVotes),「确认提交」才调后端;已投后收起,「改票」重新展开、仍需确认提交
-const pendingVotes = reactive({})
-const changeVoteOpen = reactive({})
-function hasMyVote(topic) { return !!(topic.myVote || topic.mySelectedId != null) }
-function voteCollapsed(topic) { return hasMyVote(topic) && !changeVoteOpen[topic.id] && !pendingVotes[topic.id] }
-function myVoteLabel(topic) {
-  if (topic.decisionType === 'multi_choice') {
-    const opt = (topic.options || []).find(o => Number(o.id) === Number(topic.mySelectedId))
-    return opt ? opt.label : ''
-  }
-  return topic.myVote === 'for_vote' ? '赞成' : topic.myVote === 'against' ? '反对' : topic.myVote === 'abstain' ? '弃权' : ''
-}
-function isPicked(topic, val) {
-  const p = pendingVotes[topic.id]
-  if (p) return String(p.selectedId != null ? p.selectedId : p.choice) === String(val)
-  return topic.decisionType === 'multi_choice'
-    ? String(topic.mySelectedId) === String(val)
-    : topic.myVote === val
-}
-async function pickVote(topic, choice, option) {
-  const val = option ? option.id : choice
-  const label = option ? option.label : (choice === 'for_vote' ? '赞成' : choice === 'against' ? '反对' : '弃权')
-  // 改票模式(0725 用户定):点选项直接弹确认,不走待提交按钮;点原选项/取消=不改,收起
-  if (changeVoteOpen[topic.id] && hasMyVote(topic)) {
-    const curLabel = myVoteLabel(topic)
-    if (isPicked(topic, val)) { changeVoteOpen[topic.id] = false; return }
-    const res = await showModal({
-      title: '',
-      content: '把您的表决从「' + curLabel + '」改为「' + label + '」吗？',
-      contentBold: true,
-      confirmText: '确认修改', cancelText: '不改了'
-    })
-    changeVoteOpen[topic.id] = false
-    if (!res.confirm) return
-    busy.value = true
-    try {
-      await api.committeeVote(props.meetingId, topic.id, option ? null : choice, option ? option.id : null)
-      await refreshLive()
-      toast({ title: '已改票', icon: 'success' })
-    } catch (e) {
-      toast({ title: e.message || '改票失败', icon: 'none' })
-    } finally { busy.value = false }
-    return
-  }
-  // 首次投票:先选后交(与线下一致),点「确认提交」才落库
-  if (isPicked(topic, val) && !pendingVotes[topic.id]) return
-  pendingVotes[topic.id] = option ? { selectedId: option.id, label } : { choice, label }
-}
-async function submitVote(topic) {
-  const p = pendingVotes[topic.id]
-  if (!p) return
-  busy.value = true
-  try {
-    await api.committeeVote(props.meetingId, topic.id, p.choice || null, p.selectedId != null ? p.selectedId : null)
-    delete pendingVotes[topic.id]
-    changeVoteOpen[topic.id] = false
-    await refreshLive()
-    toast({ title: '表决已提交', icon: 'success' })
-  } catch (e) {
-    toast({ title: e.message || '投票失败', icon: 'none' })
-  } finally { busy.value = false }
-}
-async function retractMyVote(topic) {
-  const res = await showModal({
-    title: '撤回投票',
-    content: '撤回后本议题回到「未投」状态，您可以重新表决。确定撤回吗？',
-    confirmText: '撤回', cancelText: '取消'
-  })
-  if (!res.confirm) return
-  busy.value = true
-  try {
-    await api.committeeRetractVote(props.meetingId, topic.id)
-    delete pendingVotes[topic.id]
-    changeVoteOpen[topic.id] = false
-    await refreshLive()
-    toast({ title: '已撤回', icon: 'success' })
-  } catch (e) {
-    toast({ title: e.message || '撤回失败', icon: 'none' })
-  } finally { busy.value = false }
-}
-
-// ── 意见 AI 助手(操作逻辑对齐线下):草稿为空=AI帮写(已表决按表态代拟),有草稿=AI润色(可还原) ──
-const aiBusyMap = reactive({})
-const polishUndoMap = reactive({})
-function voteStanceSeed(topic) {
-  if (!topic.voteRequired || !hasMyVote(topic)) return ''
-  if (topic.decisionType === 'multi_choice') {
-    const label = myVoteLabel(topic)
-    return label ? ('我在这个议题上选择了「' + label + '」，请据此帮我写一段简短的表态发言。') : ''
-  }
-  if (topic.myVote === 'for_vote') return '我对这个议题投了赞成票，总体认同这个方案，支持通过。'
-  if (topic.myVote === 'against') return '我对这个议题投了反对票，对这个方案还有顾虑，暂不赞成。'
-  if (topic.myVote === 'abstain') return '我对这个议题投了弃权票，还想再多了解一些情况，暂不表态。'
-  return ''
-}
-async function helpWriteOpinion(topic) {
-  if (aiBusyMap[topic.id]) return
-  const seed = voteStanceSeed(topic)
-  if (!seed) {
-    toast({ title: '先在框里写几个字（或先表决），AI 再帮您成文', icon: 'none' })
-    return
-  }
-  aiBusyMap[topic.id] = true
-  try {
-    const res = await api.committeeOpinionAssist(props.meetingId, topic.id, 'draft', seed)
-    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
-    opinionDrafts[topic.id] = res.text
-    polishUndoMap[topic.id] = null
-    showModal({ title: '', content: '已按您的表决态度拟好，可修改', size: 'aicard', showCancel: false, confirmText: '查看' })
-  } catch (e) {
-    toast({ title: e.message || 'AI 助手开小差了，请重试', icon: 'none' })
-  } finally { aiBusyMap[topic.id] = false }
-}
-async function polishOpinion(topic) {
-  const text = String(opinionDrafts[topic.id] || '').trim()
-  if (!text || aiBusyMap[topic.id]) return
-  aiBusyMap[topic.id] = true
-  try {
-    const res = await api.committeeOpinionAssist(props.meetingId, topic.id, 'polish', text)
-    if (!res || !res.text) { toast({ title: 'AI 没写出来，请重试', icon: 'none' }); return }
-    polishUndoMap[topic.id] = text
-    opinionDrafts[topic.id] = res.text
-    showModal({ title: '', content: '已润色，可继续修改', size: 'aicard', showCancel: false, confirmText: '查看' })
-  } catch (e) {
-    toast({ title: e.message || 'AI 助手开小差了，请重试', icon: 'none' })
-  } finally { aiBusyMap[topic.id] = false }
-}
-function undoPolish(topic) {
-  if (polishUndoMap[topic.id] == null) return
-  opinionDrafts[topic.id] = polishUndoMap[topic.id]
-  polishUndoMap[topic.id] = null
-}
+// （旧页内翻页式的 表决/意见/通知/AI助手 代码已删：0729 改为「议题列表 → TopicSheet」后全部由弹层承接）
 
 function resultCode(topic) {
   if (!topic.voteRequired) return 'recorded'
@@ -655,8 +463,6 @@ onBeforeUnmount(() => {
 .signin-count{margin-top:26rpx;color:#7a8894;font-size:26rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
-.topic-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:22rpx}
-.topic-pager-ind{flex:none;background:#e7f0f5;color:#35647D;font-size:25rpx;font-weight:700;padding:5rpx 18rpx;border-radius:999rpx}
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
 .omf--has-footer{padding-bottom:170rpx}
 .omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
@@ -664,16 +470,8 @@ onBeforeUnmount(() => {
 .omf-vote-footer.quiet{background:transparent;border-top:0;backdrop-filter:none;padding-top:6rpx;text-align:center}
 .omf-end-ghost{display:inline-block;border:0;background:transparent;color:#9aa4ad;font-size:24rpx;font-weight:500;padding:10rpx 26rpx;text-decoration:underline;text-underline-offset:4rpx}
 .omf-end-ghost:active{color:#6b7680}.omf-end-ghost:disabled{opacity:.5}
-.topic-pager{display:flex;gap:16rpx;margin-top:28rpx}
-/* 步骤流层级(0729 重做):下一议题=主按钮(实心蓝),上一议题=次级(描边灰) */
-.topic-pager button{flex:0 0 calc(50% - 8rpx);height:78rpx;border-radius:14rpx;font-size:27rpx;font-weight:600}
-.topic-pager .pager-prev{border:2rpx solid #dbe2e8;background:#fff;color:#5a6a78}
-.topic-pager .pager-prev:active{background:#eef3f6}
-.topic-pager .pager-next{margin-left:auto;border:0;background:#3E6BA8;color:#fff}
-.topic-pager .pager-next:active{background:#35647D}
 .omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
 .omf-vote-footer .member-wait-hint{margin-top:0}
-.topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
 /* 0729 用户定「学一学线下」:议题列表(与线下 .core-* 同款) */
 .core-head{display:flex;align-items:center;justify-content:space-between;gap:18rpx;margin-bottom:22rpx}
 .core-title{font-size:34rpx;font-weight:700;color:#1F2024;line-height:1.35}
@@ -689,74 +487,18 @@ onBeforeUnmount(() => {
 .core-topic-type.notice{background:#E6F4FB;color:#1677B8}
 .core-topic-type.vote{background:#FFF0E5;color:#D56A16}
 .core-topic-type.discuss{background:#EAF6EE;color:#2E8B57}
+.core-topic-tags{display:flex;align-items:center;gap:10rpx;flex-wrap:wrap}
+/* 本人进度小标:绿底轻量,提示"这条我处理过了" */
+.core-topic-mine{font-size:23rpx;font-weight:700;color:#2E7D32;background:#E8F6EC;border-radius:8rpx;padding:4rpx 12rpx;line-height:1.4}
 .core-topic-btn{flex-shrink:0;min-width:128rpx;min-height:80rpx;display:inline-flex;align-items:center;justify-content:center;border-radius:999rpx;padding:8rpx 24rpx;font-size:28rpx;font-weight:800;border:0;color:#fff;font-family:inherit}
 .core-topic-btn.notice{background:#1677B8}
 .core-topic-btn.vote{background:#D56A16}
 .core-topic-btn.discuss{background:#2E8B57}
 .core-topic-btn.done{background:#E8F6EC;color:#2E7D32;border:2rpx solid #BFE0B2}
 .core-empty{text-align:center;color:#8A8F98;font-size:30rpx;padding:36rpx 0}
-/* 区一「大家的意见」:醒目胶囊条 + 数量徽标 + CSS 箭头(不用字符,遵项目约定) */
-.op-view-bar{display:inline-flex;align-items:center;gap:12rpx;margin:16rpx 0 0 52rpx;padding:12rpx 22rpx;background:#eaf1fb;border:2rpx solid #cfe0f2;border-radius:999rpx;color:#2f5e96;font-size:26rpx;font-weight:700}
-.op-view-bar:active{background:#dfeafa}
-.op-view-count{display:inline-flex;align-items:center;justify-content:center;min-width:34rpx;height:34rpx;padding:0 10rpx;border-radius:999rpx;background:#3E6BA8;color:#fff;font-size:22rpx;font-weight:700}
-.op-view-arr{width:12rpx;height:12rpx;border-right:3rpx solid currentColor;border-bottom:3rpx solid currentColor;transform:rotate(45deg);position:relative;top:-2rpx;transition:transform .2s ease,top .2s ease}
-.op-view-arr.open{transform:rotate(-135deg);top:2rpx}
-.topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
-.topic-form-head{display:flex;gap:14rpx;align-items:center}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
-.topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
 .wx-hint{background:#f7f4ec;border-color:#e5dcc4}.wx-hint-title{font-size:30rpx;font-weight:700;color:#6d5a2e}.wx-hint .omf-desc{margin-bottom:0}.wx-hint b{color:#6d5a2e}
-.topic-opinions{margin:18rpx 0 0 52rpx;padding:16rpx 18rpx;border-radius:12rpx;background:#f6f8f9}
-.op-row{display:flex;align-items:flex-start;gap:10rpx;padding:8rpx 0;font-size:24rpx;line-height:1.6;color:#44586a}
-.op-row b{flex:none;font-weight:600}.op-row .op-text{min-width:0;white-space:pre-wrap}
-.op-vote-tag{flex:none;margin-top:2rpx;padding:1rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;background:#eef1f4;color:#5a6b7a}
-.op-vote-tag.yes{background:#e4f2e9;color:#35714d}
-.op-vote-tag.no{background:#f9e9e6;color:#984a3e}
-.op-vote-tag.ab{background:#eef1f4;color:#5a6b7a}
-.op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
-.vote-submit{display:block;width:60%;margin:18rpx auto 0;height:72rpx;border:0;border-radius:14rpx;background:#A85800;color:#fff;font-size:27rpx;font-weight:700}
-.vote-submit:active{background:#8F4A06}.vote-submit:disabled{opacity:.5}
-/* 次要操作(改票/撤回/还原)=文字链,不再描边小框,减少"按钮堆"(0729 重做) */
-.mini-act{border:0;background:none;color:#3E6BA8;font-size:23rpx;font-weight:600;padding:2rpx 8rpx;line-height:1.5}
-.mini-act:active{opacity:.6}.mini-act:disabled{opacity:.4}
-.op-btn-row{display:flex;align-items:center;gap:16rpx;margin-top:6rpx}
-/* AI润色=文字链(辅助功能),不与「提交意见」抢眼(0729 重做) */
-.op-ai-btn{border:0;background:none;color:#A85800;font-size:25rpx;font-weight:600;padding:2rpx 4rpx}
-.op-ai-btn:active{opacity:.6}.op-ai-btn:disabled{opacity:.5}
-.op-input{display:flex;flex-direction:column;gap:10rpx;margin:16rpx 0 0 52rpx}
-/* 区二「补充意见」有上方意见时用分隔线与之分开 */
-.op-input.divided{border-top:2rpx solid #e9edf1;margin-top:22rpx;padding-top:20rpx}
-.op-label{font-size:25rpx;color:#5a6672;font-weight:600}
-.op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
-/* 提交意见=次级操作:蓝字描边(与主按钮同色系,层级更低) */
-.op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #aebfce;border-radius:14rpx;background:#fff;color:#35647D;font-size:27rpx;font-weight:700}
-.op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
-/* 通知类议题(0729 重做):正文卡 + 责任人「确认已通知全体」/ 其他人「我已收到」,与标题左对齐(52rpx) */
-/* 通知正文=只读展示:去掉输入框式描边,改浅底callout+字段标签,左对齐读稿(0729 重做) */
-.omf-notice-content{margin:14rpx 0 0 52rpx;background:#FBF6EC;border-radius:12rpx;padding:16rpx 20rpx}
-.omf-notice-label{font-size:23rpx;color:#a98b52;font-weight:600;margin-bottom:6rpx}
-.omf-notice-text{font-size:29rpx;color:#2b2f36;line-height:1.7;white-space:pre-wrap}
-.omf-notice-none{margin:14rpx 0 0 52rpx;font-size:24rpx;color:#9aa4ad}
-.omf-notice-done{display:flex;align-items:center;gap:10rpx;margin:16rpx 0 0 52rpx;font-size:27rpx;font-weight:700;color:#2E7D32}
-.omf-notice-done-mark{display:inline-flex;align-items:center;justify-content:center;width:32rpx;height:32rpx;border-radius:50%;background:#2E8B57;color:#fff;font-size:20rpx}
-.omf-notice-act{display:flex;align-items:center;justify-content:center;gap:14rpx;margin:20rpx 0 4rpx}
-.omf-notice-confirm{flex-shrink:0;border:none;background:#A85800;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 56rpx}
-.omf-notice-confirm:active{background:#8F4A06}.omf-notice-confirm:disabled{opacity:.5}
-.omf-notice-received{flex-shrink:0;border:none;background:#2E8B57;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 48rpx}
-.omf-notice-received:active{background:#256F45}.omf-notice-received:disabled{opacity:.5}
-.omf-notice-mine{font-size:26rpx;font-weight:700;color:#2E7D32}
-.omf-notice-status{font-size:26rpx;color:#9AA0A6;font-weight:600}
-.vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
-.vote-options{display:flex;flex-direction:column;gap:12rpx;margin:18rpx 0 0 52rpx}
-.vote-opt{height:70rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
-.vote-opt.on{border-color:#416f8b;background:#e7f0f5;color:#28556f;font-weight:700}
-.vote-opt.yes.on{border-color:#4d8a65;background:#e4f2e9;color:#35714d}
-.vote-opt.no.on{border-color:#b45b4e;background:#f9e9e6;color:#984a3e}
-.vote-opt:disabled{opacity:.6}
-.vote-progress{display:flex;align-items:center;gap:16rpx;margin:14rpx 0 0 52rpx;color:#84929b;font-size:22rpx}
-.voted-tag{color:#43815b}
+/* （旧页内表决/意见/通知 UI 的样式已随死代码一并清除,交互都在 TopicSheet 内） */
 .result-votes{margin:14rpx 0 0 52rpx;color:#49718a;font-size:25rpx}
-.vote-closed-tag{margin:10rpx 0 0 52rpx;display:inline-block;padding:3rpx 14rpx;border-radius:999rpx;background:#f0f2f4;color:#8a95a0;font-size:22rpx;font-weight:600}
-.vote-closed-tag.pass{background:#e4f2e9;color:#43815b}
 .end-to-review{margin-top:30rpx;background:#A85800}.end-to-review:active{background:#8F4A06}
 .member-wait-hint{margin-top:26rpx;text-align:center;color:#84929b;font-size:23rpx}
 .result-card{text-align:left}.result-seal{text-align:center;font-size:34rpx;font-weight:700;color:#274c63}.result-meta{text-align:center;margin:10rpx 0 26rpx;color:#798892;font-size:23rpx}.result-attendance{padding:18rpx;border-radius:12rpx;background:#f4f7f8}.result-attendance b{display:block;margin-bottom:8rpx}.result-topic{padding:22rpx 0;border-bottom:2rpx solid #edf1f3}.result-topic-title{font-weight:700}.result-topic-text{margin-top:10rpx;color:#526570;line-height:1.65;white-space:pre-wrap}.result-note{margin:24rpx 0 0;color:#75858f;font-size:23rpx}.result-confirmed{margin-top:26rpx;padding:20rpx;border-radius:14rpx;background:#e9f5ed;color:#43815b;text-align:center}
