@@ -1361,6 +1361,7 @@ public class CommitteeService {
                         .signInOperatorName(a.getOperator() != null ? a.getOperator().getRealName() : null)
                         .proofUrl(a.getProofUrl())
                         .votedTopicIds(getVotedTopicIds(record, a.getUserRole().getId()))
+                        .proxyVotes(getProxyVotes(record, a.getUserRole().getId()))
                         .build())
                 .collect(Collectors.toList());
     }
@@ -2769,6 +2770,22 @@ public class CommitteeService {
                 .collect(Collectors.toList());
     }
 
+    /** 该委员"由主任代投"的票：topicId → 当前票值（simple=choice 名；multi=选项 id）。供代投面板"改投"用。
+     *  仅 isProxy 的票在此——本人自投的不列入，避免被代投悄悄改掉。 */
+    private Map<Long, String> getProxyVotes(MeetingRecord record, Long userRoleId) {
+        Map<Long, String> map = new LinkedHashMap<>();
+        for (RecordTopic topic : topicRepo.findByRecordIdOrderBySortOrder(record.getId())) {
+            voteRepo.findByTopicIdAndUserRoleId(topic.getId(), userRoleId).ifPresent(v -> {
+                if (Boolean.TRUE.equals(v.getIsProxy())) {
+                    String raw = v.getSelectedId() != null ? String.valueOf(v.getSelectedId())
+                            : (v.getChoice() != null ? v.getChoice().name() : null);
+                    if (raw != null) map.put(topic.getId(), raw);
+                }
+            });
+        }
+        return map;
+    }
+
     private void proxySignIn(MeetingRecord record, ProxyActionRequest req, UserRoleEntity operator) {
         LocalDateTime now = LocalDateTime.now();
         List<String> duplicated = new ArrayList<>();
@@ -2813,19 +2830,23 @@ public class CommitteeService {
                 invalid.add(attendance.getUserRole().getRealName() + "未确认参会");
                 continue;
             }
-            if (voteRepo.findByTopicIdAndUserRoleId(topic.getId(), memberId).isPresent()) {
-                invalid.add(attendance.getUserRole().getRealName() + "已投票");
+            // 已有投票：之前"代投"的允许覆盖更新（主任改正代投错的票）；委员本人自投的不许被代改
+            TopicVote existing = voteRepo.findByTopicIdAndUserRoleId(topic.getId(), memberId).orElse(null);
+            if (existing != null && !Boolean.TRUE.equals(existing.getIsProxy())) {
+                invalid.add(attendance.getUserRole().getRealName() + "本人已投票，不能代改");
                 continue;
             }
-
-            TopicVote vote = TopicVote.builder()
+            TopicVote vote = (existing != null) ? existing : TopicVote.builder()
                     .topic(topic)
                     .userRole(attendance.getUserRole())
-                    .operator(operator)
-                    .isProxy(true)
-                    .proofUrl(req.getProofUrl())
-                    .operatedAt(now)
                     .build();
+            vote.setOperator(operator);
+            vote.setIsProxy(true);
+            vote.setProofUrl(req.getProofUrl());
+            vote.setOperatedAt(now);
+            // 改投时先清另一种存储，避免 simple/multi 切换后残留旧值
+            vote.setChoice(null);
+            vote.setSelectedId(null);
             if (req.getSelectedId() != null) {
                 vote.setSelectedId(req.getSelectedId());
             } else {

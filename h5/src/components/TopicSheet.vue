@@ -99,9 +99,9 @@
             <div v-if="isChair && interactive && allowProxy" class="ts-proxy">
               <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">代委员投票</button>
               <div v-else class="ts-proxy-panel" @click="proxyMenuOpen = false">
-                <div class="ts-proxy-title">代投对象（已签到、未投票）<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
+                <div class="ts-proxy-title">代委员投票 · 可改代投错的<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
-                <div v-else-if="!proxyTargets.length" class="ts-empty">没有已签到且未投票的委员</div>
+                <div v-else-if="!proxyTargets.length" class="ts-empty">没有可代投/可改投的委员</div>
                 <template v-else>
                   <!-- 委员选择：与签到状态同款 ▾ 悬浮下拉（0722 用户定），单选、选完自动收起 -->
                   <div class="ts-proxy-pick" @click.stop="proxyMenuOpen = !proxyMenuOpen">
@@ -110,7 +110,7 @@
                     <div v-if="proxyMenuOpen" class="ts-proxy-menu">
                       <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-menu-item"
                            :class="{ cur: proxySelected.has(p.memberId) }"
-                           @click.stop="toggleProxyMember(p.memberId)">{{ p.name }}</div>
+                           @click.stop="toggleProxyMember(p.memberId)"><span class="ts-proxy-menu-name">{{ p.name }}</span><span v-if="p.proxyDone" class="ts-proxy-menu-cur">已代投 {{ p.curLabel }} · 改</span></div>
                     </div>
                   </div>
                   <div class="ts-proxy-choices">
@@ -1000,27 +1000,47 @@ async function retractVote() {
   } finally { voteSubmitting.value = false }
 }
 
+// 代投票值 → 可读文案（simple: 同意/不同意/弃权；multi: 选项名）
+function proxyLabelOf(raw) {
+  if (raw == null || raw === '') return ''
+  const t = props.topic
+  if (t && (t.decisionType || 'simple') === 'multi_choice') {
+    const opt = (t.options || []).find(o => String(o.id) === String(raw))
+    return opt ? opt.label : '已代投'
+  }
+  return VOTE_LABELS[raw] || '已代投'
+}
 async function openProxy() {
   const t = props.topic
   if (!t || proxyLoading.value) return
-  // 先查名单再决定是否展开面板（0729 用户定）：若已签到委员都投完了，直接提示"均已完成投票"，
-  // 不再弹出一个空的代投面板（原来会先弹面板、加载完显示"没有未投委员"，观感像出错）。
+  // 先查名单再决定是否展开面板（0729 用户定）：面板同时容纳「未投→代投」与「已代投→改投」两类；
+  // 若两类都为空（已签到委员都自己投完了）才提示"均已完成投票"，不弹空面板。
   proxyLoading.value = true
   try {
     const list = await api.committeeProxyTargets(props.meetingId)
     const me = getStorage('activeRole', null) || {}
-    const targets = (list || []).filter(p =>
-      p.signedIn
-      && !(p.votedTopicIds || []).some(id => String(id) === String(t.id))
-      && String(p.memberId) !== String(me.id || ''))
-    if (!targets.length) {
+    const mine = String(me.id || '')
+    const tid = String(t.id)
+    const unvoted = [], correctable = []
+    for (const p of (list || [])) {
+      if (!p.signedIn || String(p.memberId) === mine) continue
+      const votedThis = (p.votedTopicIds || []).some(id => String(id) === tid)
+      const raw = p.proxyVotes ? (p.proxyVotes[tid] != null ? p.proxyVotes[tid] : p.proxyVotes[t.id]) : null
+      if (!votedThis) {
+        unvoted.push({ ...p, proxyDone: false })
+      } else if (raw != null) {
+        // 之前由主任代投的票 → 可改投（本人自投的不列入，不能代改）
+        correctable.push({ ...p, proxyDone: true, curRaw: String(raw), curLabel: proxyLabelOf(String(raw)) })
+      }
+    }
+    if (!unvoted.length && !correctable.length) {
       toast({ title: '已签到委员均已完成投票，无需代投', icon: 'none' })
       return
     }
-    proxyTargets.value = targets
+    proxyTargets.value = [...unvoted, ...correctable]
     proxyOpen.value = true
-    // 流水线代投（0723 用户定）：打开就自动选中第一个未投的人，少一次点选
-    selectProxyMember(targets[0].memberId)
+    // 流水线代投（0723 用户定）：打开就自动选中第一个，少一次点选
+    selectProxyMember(proxyTargets.value[0].memberId)
   } catch (e) {
     toast({ title: (e && e.message) || '名单加载失败', icon: 'none' })
   } finally { proxyLoading.value = false }
@@ -1034,9 +1054,24 @@ function toggleProxyMember(id) {
 // 少数不同意/弃权再手动改；换人时重置为默认，避免把上一个人改过的选项带给下一个人。
 function selectProxyMember(id) {
   proxySelected.value = new Set([id])
-  const isMulti = (props.topic && (props.topic.decisionType || 'simple') === 'multi_choice')
-  proxyChoice.value = isMulti ? null : 'for_vote'
-  proxyOptId.value = null
+  const t = props.topic
+  const isMulti = t && (t.decisionType || 'simple') === 'multi_choice'
+  const tgt = (proxyTargets.value || []).find(p => String(p.memberId) === String(id))
+  if (tgt && tgt.proxyDone && tgt.curRaw) {
+    // 改投：默认落在该委员当前的代投结果上，主任在此基础上改（一眼看清现在投的是什么）
+    if (isMulti) {
+      const opt = (t.options || []).find(o => String(o.id) === String(tgt.curRaw))
+      proxyOptId.value = opt ? opt.id : null
+      proxyChoice.value = null
+    } else {
+      proxyChoice.value = tgt.curRaw
+      proxyOptId.value = null
+    }
+  } else {
+    // 新代投：简单表决默认「同意」（多数如此），少数再手动改
+    proxyChoice.value = isMulti ? null : 'for_vote'
+    proxyOptId.value = null
+  }
 }
 function pickProxyProof() {
   if (!_proxyProofInput) {
@@ -1065,7 +1100,9 @@ async function onProxyProofChange(e) {
 async function submitProxy() {
   const t = props.topic
   if (!t || !canSubmitProxy.value || proxySubmitting.value) return
-  const names = proxyTargets.value.filter(p => proxySelected.value.has(p.memberId)).map(p => p.name).join('、')
+  const selected = proxyTargets.value.filter(p => proxySelected.value.has(p.memberId))
+  const names = selected.map(p => p.name).join('、')
+  const wasFix = selected.some(p => p.proxyDone) // 选中的是"已代投"→本次是改投
   const isMulti = (t.decisionType || 'simple') === 'multi_choice'
   const label = isMulti
     ? (((t.options || []).find(o => String(o.id) === String(proxyOptId.value)) || {}).label || '')
@@ -1081,7 +1118,7 @@ async function submitProxy() {
       selectedId: isMulti ? proxyOptId.value : null,
       proofUrl: proxyProofUrl.value || null
     })
-    toast({ title: '已代 ' + names + ' 投「' + label + '」', icon: 'success' })
+    toast({ title: (wasFix ? '已把 ' + names + ' 的代投改为「' : '已代 ' + names + ' 投「') + label + '」', icon: 'success' })
     // 流水线代投（0723 用户定）：投完一个自动跳到下一个未投的委员（仍默认「同意」），
     // 不再整个面板重置；全部投完才收起。凭证是每人一张，跳人时清空。
     const votedIds = new Set(proxySelected.value)
@@ -1376,10 +1413,13 @@ async function removeOpinion(op) {
 .ts-proxy-pick-label.ph { color:#A0A5AD; font-weight:500; }
 .ts-proxy-pick-arrow { flex-shrink:0; width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:10rpx; color:#A0A5AD; font-size:24rpx; background:#F4F5F7; }
 .ts-proxy-pick-arrow.on { background:#E8EAED; color:#5F6673; }
-.ts-proxy-menu { position:absolute; right:0; top:calc(100% + 4rpx); z-index:40; display:flex; flex-direction:column; min-width:184rpx; padding:8rpx; background:#fff; border:2rpx solid #E8EAED; border-radius:14rpx; box-shadow:0 10rpx 28rpx rgba(31,35,41,0.16); }
-.ts-proxy-menu-item { padding:14rpx 22rpx; font-size:25rpx; font-weight:600; color:#42464D; border-radius:10rpx; line-height:1.3; }
+.ts-proxy-menu { position:absolute; right:0; top:calc(100% + 4rpx); z-index:40; display:flex; flex-direction:column; min-width:260rpx; padding:8rpx; background:#fff; border:2rpx solid #E8EAED; border-radius:14rpx; box-shadow:0 10rpx 28rpx rgba(31,35,41,0.16); }
+.ts-proxy-menu-item { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:14rpx 22rpx; font-size:25rpx; font-weight:600; color:#42464D; border-radius:10rpx; line-height:1.3; }
 .ts-proxy-menu-item:active { background:#F1F2F4; }
 .ts-proxy-menu-item.cur { color:#0F766E; background:#EFF6F5; }
+.ts-proxy-menu-name { min-width:0; }
+/* 已代投委员：菜单里带一枚"已代投 X · 改"小标，一眼看清当前投的是什么、点它去改 */
+.ts-proxy-menu-cur { flex-shrink:0; font-size:22rpx; font-weight:600; color:#A85800; background:#FBEFDD; padding:2rpx 12rpx; border-radius:8rpx; white-space:nowrap; }
 .ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
 .ts-proxy-choice { padding:10rpx 24rpx; border-radius:12rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
 .ts-proxy-choice.on { border-color:#B26A19; background:#FFF6E8; color:#B26A19; }
