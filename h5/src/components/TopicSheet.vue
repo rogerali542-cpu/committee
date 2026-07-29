@@ -97,20 +97,20 @@
             <!-- 代委员投票（仅主持人、会后整理阶段）：现场会议结束后，主任为忘投/不会用手机的委员补录并留凭证审计。
                  现场会议进行中不出现——委员应本人投票（0723 用户定） -->
             <div v-if="isChair && interactive && allowProxy" class="ts-proxy">
-              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">代委员投票</button>
-              <div v-else class="ts-proxy-panel" @click="proxyMenuOpen = false">
-                <div class="ts-proxy-title">代委员投票 · 可改代投错的<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
+              <!-- 都投完了 → 入口变「改票」（只剩修改代投）；还有人没投 → 「代委员投票」（0729 用户定） -->
+              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">{{ notVoted === 0 ? '改票（修改代投）' : '代委员投票' }}</button>
+              <div v-else class="ts-proxy-panel">
+                <div class="ts-proxy-title">{{ notVoted === 0 ? '修改代投票' : '代委员投票' }}<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
-                <div v-else-if="!proxyTargets.length" class="ts-empty">没有可代投/可改投的委员</div>
+                <div v-else-if="!proxyTargets.length" class="ts-empty">没有可代投/可改的委员</div>
                 <template v-else>
-                  <!-- 委员选择：与签到状态同款 ▾ 悬浮下拉（0722 用户定），单选、选完自动收起 -->
-                  <div class="ts-proxy-pick" @click.stop="proxyMenuOpen = !proxyMenuOpen">
-                    <span class="ts-proxy-pick-label" :class="{ ph: !proxySelected.size }">{{ proxySelectedNames || '选择委员' }}</span>
-                    <span class="ts-proxy-pick-arrow" :class="{ on: proxyMenuOpen }">▾</span>
-                    <div v-if="proxyMenuOpen" class="ts-proxy-menu">
-                      <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-menu-item"
-                           :class="{ cur: proxySelected.has(p.memberId) }"
-                           @click.stop="toggleProxyMember(p.memberId)"><span class="ts-proxy-menu-name">{{ p.name }}</span><span v-if="p.proxyDone" class="ts-proxy-menu-cur">已代投 {{ p.curLabel }} · 改</span></div>
+                  <!-- 委员列表：一行一人、名字常显；点选后下方选票值。已代投的显示当前票，未投的标「未投票」 -->
+                  <div class="ts-proxy-list">
+                    <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-mrow"
+                         :class="{ on: proxySelected.has(p.memberId) }" @click="toggleProxyMember(p.memberId)">
+                      <span class="ts-proxy-mrow-name">{{ p.name }}</span>
+                      <span v-if="p.proxyDone" class="ts-proxy-mrow-cur">已代投：{{ p.curLabel }}</span>
+                      <span v-else class="ts-proxy-mrow-tag">未投票</span>
                     </div>
                   </div>
                   <div class="ts-proxy-choices">
@@ -130,7 +130,7 @@
                     <span class="ts-proxy-proof-tip">纸质表决单或聊天记录截图</span>
                   </div>
                   <button class="ts-proxy-submit" :disabled="!canSubmitProxy || proxySubmitting" @click="submitProxy">
-                    {{ proxySubmitting ? '提交中…' : '确认代投' }}
+                    {{ proxySubmitting ? '提交中…' : (proxySelectedIsFix ? '确认修改' : '确认代投') }}
                   </button>
                 </template>
               </div>
@@ -580,6 +580,9 @@ const canSubmitProxy = computed(() =>
   && !proxyUploading.value)
 const proxySelectedNames = computed(() =>
   proxyTargets.value.filter(p => proxySelected.value.has(p.memberId)).map(p => p.name).join('、'))
+// 选中的委员是否为"已代投"（决定提交按钮显示「确认修改」还是「确认代投」）
+const proxySelectedIsFix = computed(() =>
+  proxyTargets.value.some(p => proxySelected.value.has(p.memberId) && p.proxyDone))
 function resetProxy() {
   proxyOpen.value = false; proxyLoading.value = false; proxyTargets.value = []
   proxyMenuOpen.value = false
@@ -1420,6 +1423,13 @@ async function removeOpinion(op) {
 .ts-proxy-menu-name { min-width:0; }
 /* 已代投委员：菜单里带一枚"已代投 X · 改"小标，一眼看清当前投的是什么、点它去改 */
 .ts-proxy-menu-cur { flex-shrink:0; font-size:22rpx; font-weight:600; color:#A85800; background:#FBEFDD; padding:2rpx 12rpx; border-radius:8rpx; white-space:nowrap; }
+/* 代投委员列表（0729 用户定，替代原下拉）：一行一人、名字常显、点选高亮；已代投显示当前票 */
+.ts-proxy-list { margin-top:14rpx; display:flex; flex-direction:column; gap:8rpx; max-height:360rpx; overflow-y:auto; }
+.ts-proxy-mrow { display:flex; align-items:center; gap:14rpx; padding:16rpx 18rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; }
+.ts-proxy-mrow.on { border-color:#7FB5AE; background:#EAF5F3; }
+.ts-proxy-mrow-name { flex:1; min-width:0; font-size:27rpx; font-weight:700; color:#1F2329; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ts-proxy-mrow-cur { flex-shrink:0; font-size:23rpx; font-weight:600; color:#A85800; background:#FBEFDD; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
+.ts-proxy-mrow-tag { flex-shrink:0; font-size:23rpx; font-weight:600; color:#8A9099; background:#F1F2F4; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
 .ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
 .ts-proxy-choice { padding:10rpx 24rpx; border-radius:12rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
 .ts-proxy-choice.on { border-color:#B26A19; background:#FFF6E8; color:#B26A19; }
