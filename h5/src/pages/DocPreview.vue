@@ -164,7 +164,8 @@ onMounted(() => {
 .docp-scroll { flex:1; overflow-y:auto; padding:20rpx 18rpx 30rpx; background:#F0F1F4; }
 .docp-paper { background:#fff; border-radius:14rpx; box-shadow:0 6rpx 24rpx rgba(40,45,60,.08); padding:48rpx 36rpx 60rpx; }
 .docp-title { text-align:center; font-size:38rpx; font-weight:800; color:#1E2430; margin:0 0 12rpx; line-height:1.5; }
-.docp-ln { margin:0; font-size:30rpx; line-height:1.9; color:#333A45; white-space:pre-wrap; word-break:break-all; }
+/* overflow-wrap:anywhere（不用 word-break:break-all）：中文按字自然换行、长英文/数字(日期时间)只在放不下时才断，不再在「时/间」「2026-07-/31」字中间硬断 */
+.docp-ln { margin:0; font-size:30rpx; line-height:1.9; color:#333A45; white-space:pre-wrap; overflow-wrap:anywhere; }
 .docp-ln.center { text-align:center; color:#555C68; font-size:27rpx; }
 .docp-ln.head { font-weight:700; color:#1E2430; margin-top:18rpx; }
 .docp-ln.sign { text-align:right; padding-right:30rpx; margin-top:6rpx; }

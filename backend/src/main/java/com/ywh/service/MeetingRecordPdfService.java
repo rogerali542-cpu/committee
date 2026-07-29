@@ -2,6 +2,10 @@ package com.ywh.service;
 
 import com.ywh.entity.*;
 import com.ywh.enums.MeetingStage;
+import com.ywh.enums.VoteChoice;
+import com.ywh.dto.quick.QuickConfirmRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.ywh.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.*;
@@ -25,6 +29,7 @@ public class MeetingRecordPdfService {
     private final TopicOpinionRepository opinionRepo;
     private final TopicVoteRepository voteRepo;
     private final MeetingPublishRepository publishRepo;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public PdfFile generate(Long meetingId) {
@@ -74,6 +79,33 @@ public class MeetingRecordPdfService {
     private static final String[] CN_NUM = {"", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"};
     private static String cnNum(int i) { return i >= 1 && i <= 10 ? CN_NUM[i] : String.valueOf(i); }
 
+    /** 现场汇总票数（会后整理确认的票数，与逐人投票并存）：topicId → 结果。解析失败按无汇总处理。 */
+    private Map<Long, QuickConfirmRequest.TopicResult> quickConfirmMap(MeetingRecord record) {
+        Map<Long, QuickConfirmRequest.TopicResult> map = new HashMap<>();
+        if (record == null || record.getQuickConfirmJson() == null || record.getQuickConfirmJson().isBlank()) return map;
+        try {
+            QuickConfirmRequest req = objectMapper.readValue(record.getQuickConfirmJson(), QuickConfirmRequest.class);
+            if (req.getTopics() != null)
+                for (QuickConfirmRequest.TopicResult t : req.getTopics())
+                    if (t != null && t.getTopicId() != null) map.putIfAbsent(t.getTopicId(), t);
+        } catch (Exception e) { /* 容错：无/坏 JSON 时按无现场汇总处理 */ }
+        return map;
+    }
+
+    /** 多选议题的选项列表（[{id,label}, ...]）：解析失败返回空。 */
+    private List<Map<String, Object>> parseOptions(RecordTopic topic) {
+        if (topic.getOptionsJson() == null || topic.getOptionsJson().isBlank()) return new ArrayList<>();
+        try {
+            return objectMapper.readValue(topic.getOptionsJson(), new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) { return new ArrayList<>(); }
+    }
+
+    private static Long toLong(Object o) {
+        if (o == null) return null;
+        if (o instanceof Number) return ((Number) o).longValue();
+        try { return Long.parseLong(String.valueOf(o).trim()); } catch (Exception e) { return null; }
+    }
+
     private RecordContent buildRecordContent(RecordData d) {
         CommitteeMeeting meeting = d.meeting();
         List<RecordAttendance> attendances = d.attendances();
@@ -116,41 +148,89 @@ public class MeetingRecordPdfService {
         for (RecordTopic topic : d.topics()) {
             c.content.add(ti++ + ". " + value(topic.getTitle()) + "【" + mergedTypeLabel(topic) + "】");
             if (usable(topic.getContent())) c.content.add("议题说明：" + topic.getContent());
-            List<TopicOpinion> opinions = opinionRepo.findByTopicId(topic.getId());
-            for (TopicOpinion o : opinions) {
-                String speaker = o.getUserRole() != null ? o.getUserRole().getRealName() : o.getSpeakerName();
-                // 项目符号用中点「·」：西文 •(U+2022) 在 SimHei 等中文字体里没有字形，会整份导出报错
-                c.content.add("· " + value(speaker) + "：" + value(o.getContent()));
+            // 只有「讨论」类议题才逐条记录发言；「表决」类的结论在下方"决定及表决结果"用票数概括，
+            // 不再把每人的投票附言（多是"我同意…"）重复列进会议内容——避免同一人同一态度写两三遍。
+            boolean isDiscussion = topic.getType() != null && "discussion".equals(topic.getType().name());
+            if (isDiscussion) {
+                List<TopicOpinion> opinions = opinionRepo.findByTopicId(topic.getId());
+                for (TopicOpinion o : opinions) {
+                    String speaker = o.getUserRole() != null ? o.getUserRole().getRealName() : o.getSpeakerName();
+                    // 项目符号用中点「·」：西文 •(U+2022) 在 SimHei 等中文字体里没有字形，会整份导出报错
+                    c.content.add("· " + value(speaker) + "：" + value(o.getContent()));
+                }
             }
         }
 
-        // ── 会议有关决定及表决结果：主表写票数概要，逐题详细（同意/不同意/弃权委员名单）另附《会议结果》一页 ──
+        // ── 会议有关决定及表决结果：主表逐题写"同意/反对/弃权"票数与表决结果；委员名单另附《会议结果》一页 ──
+        // 票数口径与 App 的议题详情完全一致：逐人投票(含代委员投票)与"现场汇总票数"(quickConfirmJson)逐桶取大，
+        // 过半数(应到/2+1)即通过。此前只数逐人票、且附页按错误的"同意"标签取名单(实际标签是"赞成")，导致名单恒为空。
+        // 表决过半口径与 App 议题详情完全一致：按"实到（已签到）人数"过半，而非应到——
+        // 否则记录写的通过/未通过会与 App 里议题卡显示的结果打架。
+        int need = present.size() / 2 + 1;
+        Map<Long, QuickConfirmRequest.TopicResult> quickMap = quickConfirmMap(d.record());
         int di = 1;
         boolean anyVote = false;
         for (RecordTopic topic : d.topics()) {
             String title = value(topic.getTitle());
             List<TopicVote> votes = voteRepo.findByTopicId(topic.getId());
-            if (!votes.isEmpty()) {
+            QuickConfirmRequest.TopicResult qr = quickMap.get(topic.getId());
+            boolean multi = "multi_choice".equals(topic.getDecisionType());
+            boolean qrHasSimple = qr != null && (qr.getForVotes() != null || qr.getAgVotes() != null || qr.getAbVotes() != null);
+            boolean qrHasMulti = qr != null && qr.getOptionVotes() != null && !qr.getOptionVotes().isEmpty();
+            boolean hasVotes = !votes.isEmpty() || qrHasSimple || qrHasMulti;
+
+            if (hasVotes && multi) {
                 anyVote = true;
-                Map<String, Integer> counts = new LinkedHashMap<>();
-                Map<String, List<String>> byChoice = new LinkedHashMap<>();
-                for (TopicVote v : votes) {
-                    String choice = v.getChoice() == null ? "未表决" : v.getChoice().getLabel();
-                    counts.merge(choice, 1, Integer::sum);
-                    byChoice.computeIfAbsent(choice, k -> new ArrayList<>())
-                            .add(v.getUserRole() == null ? "未知委员" : v.getUserRole().getRealName());
+                // 多选表决：逐人 selectedId 与现场汇总 optionVotes 逐桶取大，得票最多的选项过半即通过
+                Map<Long, Integer> counts = new HashMap<>();
+                for (TopicVote v : votes) if (v.getSelectedId() != null) counts.merge(v.getSelectedId(), 1, Integer::sum);
+                if (qr != null && qr.getOptionVotes() != null)
+                    qr.getOptionVotes().forEach((oid, cnt) -> counts.merge(oid, cnt == null ? 0 : cnt, Math::max));
+                int leading = 0; String leadingLabel = "";
+                List<String> parts = new ArrayList<>();
+                for (Map<String, Object> op : parseOptions(topic)) {
+                    Long oid = toLong(op.get("id"));
+                    int cnt = oid == null ? 0 : counts.getOrDefault(oid, 0);
+                    String label = value(String.valueOf(op.get("label")));
+                    parts.add(label + " " + cnt + " 票");
+                    if (cnt > leading) { leading = cnt; leadingLabel = label; }
                 }
-                String tally = counts.entrySet().stream()
-                        .map(e -> e.getKey() + e.getValue() + "票").reduce((a, b) -> a + "，" + b).orElse("无");
-                // 主表：票数概要一行
-                c.decisions.add(di + ". " + title + "：" + tally + "。");
-                // 附页：逐题详细表决明细
+                String tally = parts.isEmpty() ? "（无选项）" : String.join("、", parts);
+                String resultText = leading >= need ? ("表决通过：" + leadingLabel) : "表决未通过";
+                c.decisions.add(di + ". " + title + "：" + tally + "，" + resultText + "。");
                 c.resultAppendix.add(cnNum(di) + "、" + title + "【" + mergedTypeLabel(topic) + "】");
-                c.resultAppendix.add("　　表决情况：" + tally + "。");
-                c.resultAppendix.add("　　同意的委员：" + String.join("、", byChoice.getOrDefault("同意", List.of("（无）"))) + "。");
-                c.resultAppendix.add("　　不同意的委员：" + String.join("、", byChoice.getOrDefault("反对", List.of("（无）"))) + "。");
-                if (byChoice.containsKey("弃权"))
-                    c.resultAppendix.add("　　弃权的委员：" + String.join("、", byChoice.get("弃权")) + "。");
+                c.resultAppendix.add("　　各选项票数：" + tally + "，" + resultText + "。");
+            } else if (hasVotes) {
+                anyVote = true;
+                int forV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.for_vote).count();
+                int agV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.against).count();
+                int abV = (int) votes.stream().filter(v -> v.getChoice() == VoteChoice.abstain).count();
+                if (qr != null) {
+                    if (qr.getForVotes() != null) forV = Math.max(forV, qr.getForVotes());
+                    if (qr.getAgVotes() != null) agV = Math.max(agV, qr.getAgVotes());
+                    if (qr.getAbVotes() != null) abV = Math.max(abV, qr.getAbVotes());
+                }
+                String tally = "同意 " + forV + " 票、反对 " + agV + " 票、弃权 " + abV + " 票";
+                String resultText = forV >= need ? "表决通过" : "表决未通过";
+                c.decisions.add(di + ". " + title + "：" + tally + "，" + resultText + "。");
+                // 附页：逐题委员名单（按实际 choice 分组；标签取自枚举，不再硬编码字符串）
+                c.resultAppendix.add(cnNum(di) + "、" + title + "【" + mergedTypeLabel(topic) + "】");
+                c.resultAppendix.add("　　表决情况：" + tally + "，" + resultText + "。");
+                if (votes.isEmpty()) {
+                    c.resultAppendix.add("　　（现场汇总表决，未逐人记名）");
+                } else {
+                    List<String> forNames = new ArrayList<>(), agNames = new ArrayList<>(), abNames = new ArrayList<>();
+                    for (TopicVote v : votes) {
+                        String nm = v.getUserRole() == null ? "未知委员" : v.getUserRole().getRealName();
+                        if (v.getChoice() == VoteChoice.for_vote) forNames.add(nm);
+                        else if (v.getChoice() == VoteChoice.against) agNames.add(nm);
+                        else if (v.getChoice() == VoteChoice.abstain) abNames.add(nm);
+                    }
+                    c.resultAppendix.add("　　同意的委员：" + (forNames.isEmpty() ? "（无）" : String.join("、", forNames)) + "。");
+                    c.resultAppendix.add("　　反对的委员：" + (agNames.isEmpty() ? "（无）" : String.join("、", agNames)) + "。");
+                    if (!abNames.isEmpty())
+                        c.resultAppendix.add("　　弃权的委员：" + String.join("、", abNames) + "。");
+                }
             } else if (topic.getType() == null
                     || "notice".equals(topic.getType().name()) || "discussion".equals(topic.getType().name())) {
                 String kind = topic.getType() != null && "discussion".equals(topic.getType().name())
@@ -225,10 +305,11 @@ public class MeetingRecordPdfService {
     private String renderRecordText(RecordContent c) {
         StringBuilder sb = new StringBuilder();
         sb.append("业主委员会会议记录\n").append(c.org).append("\n\n");
+        // 表头逐项一行（0729 用户定）：原先把「议题/时间/主持人…」多项挤一行用空格分隔，
+        // 手机窄屏 + break-all 会在字中间断行，排版全乱。改成每项独占一行，清爽不折断。
         for (String[] row : c.infoRows) {
-            List<String> pairs = new ArrayList<>();
-            for (int i = 0; i + 1 < row.length; i += 2) pairs.add(row[i].replace("  ", "") + "：" + row[i + 1]);
-            sb.append(String.join("    ", pairs)).append('\n');
+            for (int i = 0; i + 1 < row.length; i += 2)
+                sb.append(row[i].replace("  ", "")).append('：').append(row[i + 1]).append('\n');
         }
         sb.append("\n会议内容：\n");
         for (String s : c.content) sb.append(s).append('\n');
