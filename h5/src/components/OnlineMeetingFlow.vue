@@ -676,7 +676,8 @@ onBeforeUnmount(() => {
 .core-list{border:2rpx solid #EEF1F3;border-radius:20rpx;padding:4rpx 22rpx;background:#FAFBFC}
 .core-topic{display:flex;align-items:center;gap:16rpx;padding:20rpx 0;border-top:2rpx solid rgba(31,36,42,0.06)}
 .core-topic:first-child{border-top:0}
-.core-topic-no{flex-shrink:0;width:44rpx;height:44rpx;border-radius:50%;background:#FDF3D6;color:#B26A19;border:2rpx solid #EBD08A;display:flex;align-items:center;justify-content:center;font-size:26rpx;font-weight:700}
+/* 序号改深蓝但不抢眼（0729 用户定）：浅蓝底 + 委员会深蓝字（slate #43546F）+ 淡蓝描边，替代原橙色 */
+.core-topic-no{flex-shrink:0;width:44rpx;height:44rpx;border-radius:50%;background:#EEF2F8;color:#43546F;border:2rpx solid #D3DCEA;display:flex;align-items:center;justify-content:center;font-size:26rpx;font-weight:700}
 .core-topic-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6rpx}
 .core-topic-title{flex:1;min-width:0;color:#1F2024;font-size:31rpx;line-height:1.45;word-break:break-all;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .core-topic-type{align-self:flex-start;font-size:25rpx;font-weight:700;border-radius:8rpx;padding:4rpx 13rpx;line-height:1.4}
