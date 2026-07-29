@@ -137,7 +137,7 @@
                   <div class="ts-proxy-acts">
                     <button v-if="proxySelectedIsSelf" class="ts-proxy-retract" :disabled="proxySubmitting" @click="retractSelfInPanel">撤回我的投票</button>
                     <button class="ts-proxy-submit" :disabled="!canSubmitProxy || proxySubmitting" @click="submitProxy">
-                      {{ proxySubmitting ? '提交中…' : (proxySelectedIsSelf || proxySelectedIsFix ? '确认修改' : '确认代投') }}
+                      {{ proxySubmitting ? '提交中…' : (proxyNoChange ? '未改动' : (proxySelectedIsSelf || proxySelectedIsFix ? '确认修改' : '确认代投')) }}
                     </button>
                   </div>
                 </template>
@@ -597,9 +597,21 @@ const proxyUploading = ref(false)
 const proxySubmitting = ref(false)
 let _proxyProofInput = null
 // 凭证测试期选填（0722 用户定，上线前再定是否必填——见 docs/上线前TODO.md）
+// 面板选中的委员行 / 选中的票值 / 是否"没改动"（改我的票或改代投时，选的和当前一样=没改动，禁用确认）
+const proxySelectedRow = computed(() => proxyTargets.value.find(p => proxySelected.value.has(p.memberId)) || null)
+const proxyPickedRaw = computed(() => {
+  const isMulti = props.topic && (props.topic.decisionType || 'simple') === 'multi_choice'
+  return isMulti ? (proxyOptId.value != null ? String(proxyOptId.value) : '') : (proxyChoice.value || '')
+})
+const proxyNoChange = computed(() => {
+  const row = proxySelectedRow.value
+  if (!row || !(row.isSelf || row.proxyDone)) return false // 未投→代投：总算改动
+  return !!row.curRaw && proxyPickedRaw.value === String(row.curRaw)
+})
 const canSubmitProxy = computed(() =>
   proxySelected.value.size > 0
   && ((props.topic && (props.topic.decisionType || 'simple') === 'multi_choice') ? proxyOptId.value != null : !!proxyChoice.value)
+  && !proxyNoChange.value // 改票/改代投时没改动 → 不给确认
   && !proxyUploading.value)
 const proxySelectedNames = computed(() =>
   proxyTargets.value.filter(p => proxySelected.value.has(p.memberId)).map(p => p.name).join('、'))
@@ -1064,10 +1076,12 @@ async function openProxy() {
         correctable.push({ ...p, proxyDone: true, curRaw: String(raw), curLabel: proxyLabelOf(String(raw)) })
       }
     }
-    // 我自己的票也纳入「修改投票」：可改、可撤回（放最前）
+    // 我自己的票也纳入面板：可改、可撤回。名字用「真实姓名（我）」格式（不是纯"我"）
     const myV = committedVote.value
+    const meEntry = (list || []).find(p => String(p.memberId) === mine)
+    const myName = (meEntry && meEntry.name) || me.realName || me.name || '我'
     const selfRow = myV != null ? [{
-      memberId: me.id, name: '我', isSelf: true, proxyDone: true,
+      memberId: me.id, name: myName + '（我）', isSelf: true, proxyDone: true,
       curRaw: String(myV), curLabel: proxyLabelOf(String(myV))
     }] : []
     if (!selfRow.length && !unvoted.length && !correctable.length) {
