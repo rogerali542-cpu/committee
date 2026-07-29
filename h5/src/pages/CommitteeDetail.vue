@@ -237,15 +237,7 @@
             <!-- 签到表行已删（0722 用户定）：会后整理页已有「打印签到表」，不重复。
                  记录/纪要统一只留「查看」→ PDF 预览弹层，导出按钮在预览里（0722 用户定） -->
             <!-- 灰色说明小字已删（0722 用户定）：标题自明；查看=进独立预览页(页内预览+导出PDF) -->
-            <div class="attendance-sheet-entry">
-              <div class="ase-copy"><b>会议记录</b></div>
-              <button class="ase-btn primary" @click="viewDoc('record')">查看</button>
-            </div>
-            <div class="attendance-sheet-entry" v-if="detail.minutesReady">
-              <div class="ase-copy"><b>会议纪要</b></div>
-              <button class="ase-btn primary" @click="viewDoc('minutes')">查看</button>
-            </div>
-            <!-- 会议录音（0729 用户定：页顶存档卡删了，入口保留在卡片里）：查看详情=连播全部录音 + 转写全文。
+            <!-- 会议录音放到记录/纪要上方（0729 用户定）：查看详情=连播全部录音 + 转写全文。
                  纪要生成前录音入口已在上方 minutes-basis 行，这里只补生成后的常驻入口，避免重复。 -->
             <template v-if="hasRecordings && detail.minutesReady">
               <div class="attendance-sheet-entry rec-entry">
@@ -260,6 +252,14 @@
                 <div class="rec-transcript">{{ basisLoading ? '加载中…' : (basisTranscript || '暂无转写内容') }}</div>
               </div>
             </template>
+            <div class="attendance-sheet-entry">
+              <div class="ase-copy"><b>会议记录</b></div>
+              <button class="ase-btn primary" @click="viewDoc('record')">查看</button>
+            </div>
+            <div class="attendance-sheet-entry" v-if="detail.minutesReady">
+              <div class="ase-copy"><b>会议纪要</b></div>
+              <button class="ase-btn primary" @click="viewDoc('minutes')">查看</button>
+            </div>
             <!-- 返回会后整理（0729 用户定）：老人误进"会议结果与公示"也有明确回退入口，可回整理页改议题/记录/纪要，
                  避免"进来就无法挽回"。仅本机走过会后整理(fieldEndedLocal，restore 才能恢复整理视图)且未公示/归档时出现。 -->
             <div class="attendance-sheet-entry review-back-entry" v-if="isFreshEnded && fieldEndedLocal">
