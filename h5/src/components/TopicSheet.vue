@@ -189,17 +189,17 @@
         <!-- 已通知：清爽一行了事 -->
         <div v-if="topic.notified" class="ts-notice-done"><span class="ts-notice-done-mark">✓</span>已通知全体</div>
         <template v-else>
-          <!-- 责任人（主任/副主任/秘书）：负责把通知传达到位，确认后本议题即完成 -->
-          <div v-if="isChair && interactive" class="ts-notice-act">
-            <button class="ts-notice-forceall" @click="markNoticeRead">确认通知</button>
-          </div>
-          <!-- 其他人：接到了点一下即可，不参与讨论 -->
-          <div v-else-if="interactive && signedIn" class="ts-notice-act">
+          <!-- 0729 用户定（现实模型）：通知由每个人自己进来点「我已收到」逐人确认，全员确认后后端自动转「已通知全体」 -->
+          <div v-if="interactive && signedIn" class="ts-notice-act">
             <button v-if="!topic.viewedByMe" class="ts-notice-read" @click="markMyRead">我已收到</button>
-            <span v-else class="ts-notice-mine">✓ 已收到，待通知人确认</span>
+            <span v-else class="ts-notice-mine">✓ 已收到{{ topic.viewedCount ? '（已有 ' + topic.viewedCount + ' 人确认）' : '' }}</span>
           </div>
           <!-- 未签到 / 只读：仅查看内容 -->
-          <div v-else class="ts-notice-act"><span class="ts-notice-status">待通知人确认</span></div>
+          <div v-else class="ts-notice-act"><span class="ts-notice-status">待各委员确认收到</span></div>
+          <!-- 责任人兜底：现场已口头传达/有委员不便操作时，可代全体确认，不必逐人等待 -->
+          <div v-if="isChair && interactive" class="ts-notice-forceall-row">
+            <button class="ts-notice-forceall-link" @click="markNoticeRead">一键确认已通知全体</button>
+          </div>
         </template>
       </div>
 
@@ -412,7 +412,8 @@ const guideText = computed(() => {
   if (!t) return ''
   if (t.type === 'notice') {
     if (t.notified) return '本通知已全体知悉'
-    return props.isChair ? '请向大家通报以下内容，通报到位后点「确认已通知全体」' : '以下为通知事项，接到后点「我已收到」即可'
+    if (t.viewedByMe) return '您已确认收到，等待其他委员确认'
+    return '以下为通知事项，请阅读后点「我已收到」'
   }
   if (t.voteRequired) {
     // 已揭晓（主任已结束表决 / 会议已结束）：给白话结论
@@ -1348,7 +1349,7 @@ async function removeOpinion(op) {
 /* 指令条（研究快赢①）：左侧粗色条 + 浅色底，一句话说清此刻该做什么，按议题类型变色 */
 .ts-guide { flex-shrink: 0; margin: -4rpx 0 18rpx; padding: 16rpx 20rpx; border-radius: 12rpx; font-size: 27rpx; font-weight: 600; line-height: 1.45; border-left: 8rpx solid #9AA0A6; background: #F3F4F6; color: #4A515A; }
 .ts-guide.vote { border-left-color: #C76A00; background: #FFF4E8; color: #9A5200; }
-.ts-guide.notice { border-left-color: #7C5CC4; background: #F4F0FC; color: #5B3FA8; }
+.ts-guide.notice { border-left-color: #1677B8; background: #E6F4FB; color: #12639B; } /* 0729 用户定：紫色太突兀，换「通知」标签同款蓝 */
 .ts-guide.discuss { border-left-color: #1F6FB2; background: #EFF6FC; color: #1A5C93; }
 /* 三类议题各一专属色（浅底彩字，方案A）——讨论蓝 / 表决橙 / 通报紫，刻意避开绿(=同意票色) */
 .ts-tag.discuss { background: #EAF6EE; color: #2E8B57; }
@@ -1536,10 +1537,11 @@ async function removeOpinion(op) {
 /* 已通知：清爽一行绿字（0729 重做——通知是一次性传达，完成即一行了事，不再堆已读进度） */
 .ts-notice-done { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; font-size: 28rpx; font-weight: 700; color: #2E7D32; }
 .ts-notice-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 34rpx; height: 34rpx; border-radius: 50%; background: #2E8B57; color: #fff; font-size: 22rpx; }
-/* 动作区：责任人「确认已通知全体」/ 其他人「我已收到」——单枚按钮居中 */
+/* 动作区：每个人「我已收到」——单枚按钮居中；主任另有兜底文字链 */
 .ts-notice-act { display: flex; align-items: center; justify-content: center; gap: 14rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
-.ts-notice-forceall { flex-shrink: 0; border: none; background: #A85800; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 56rpx; }
-.ts-notice-forceall:active { background: #8F4A06; }
+.ts-notice-forceall-row { text-align: center; margin-top: 12rpx; }
+.ts-notice-forceall-link { border: 0; background: none; color: #9AA0A6; font-size: 23rpx; font-weight: 500; text-decoration: underline; text-underline-offset: 4rpx; padding: 6rpx 16rpx; }
+.ts-notice-forceall-link:active { color: #6b7680; }
 .ts-notice-read { flex-shrink: 0; border: none; background: #2E8B57; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 48rpx; }
 .ts-notice-read:active { background: #256F45; }
 .ts-notice-mine { font-size: 26rpx; font-weight: 700; color: #2E7D32; }
