@@ -1,11 +1,14 @@
 <template>
   <div class="page" style="overflow-y:auto">
 
-    <!-- 学习培训现为底部一级 Tab（0721 用户定：加回第4个 tab）：作为根页面不挂返回箭头，
-         用空的 #left 占位保持标题居中，视觉与其它 tab 页的自定义头部一致。 -->
-    <PageNav title="学习培训" style="margin: 0 -3.2vw 0">
-      <template #left><div class="nav-left-spacer"></div></template>
-    </PageNav>
+    <!-- 顶栏统一为业委会首页同款（0729 用户定：深青灰底 + 左对齐标题 + 身份副标）。
+         .page 有 24rpx 横向内边距，.hd 用负边距抵消让顶栏满宽 -->
+    <div class="hd">
+      <div class="hd-left">
+        <span class="hd-title">学习培训</span>
+        <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
+      </div>
+    </div>
 
     <!-- 年度履职摘要：只保留成员需要确认的两项 -->
     <div class="learn-target">
@@ -124,10 +127,13 @@
 <script setup>
 import { ref, computed, onMounted, onActivated, onUnmounted } from 'vue';
 import api from '@/api';
-import PageNav from '@/components/PageNav.vue';
 import perm from '@/utils/perm';
 import { toast } from '@/utils/ui';
 import { navigateTo } from '@/utils/navigate';
+import { getStorage } from '@/utils/storage';
+
+// 顶栏身份副标（业委会首页同款）：realName · role
+const activeRole = ref(getStorage('activeRole', {}) || {});
 
 const recordFilter = ref('all');
 const allItems = ref([]);
@@ -274,8 +280,11 @@ onUnmounted(() => {
 <style scoped>
 .page { min-height: 100vh; background: #f4f5f7; padding: 0 24rpx 160rpx; box-sizing: border-box; }
 
-/* tab 根页面：左侧占位与 PageNav 右侧 96rpx 占位对齐，标题保持居中 */
-.nav-left-spacer { width: 96rpx; }
+/* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 有 24rpx 横向内边距，负边距抵消让顶栏满宽 */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
+.hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
+.hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
+.hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
 
 /* 年度目标 */
 .learn-target { margin: 20rpx 0 24rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }

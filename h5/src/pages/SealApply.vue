@@ -142,6 +142,8 @@ async function submit() {
 
 <style scoped>
 .seal-apply { min-height: 100vh; background: #f5f5f7; }
+/* 顶栏统一为业委会首页同款深青灰（0729 用户定：印章模块整体走蓝/青灰） */
+:deep(.page-nav) { background: #43546F; }
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
@@ -161,7 +163,7 @@ async function submit() {
   border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833;
   font-size: 30rpx; font-weight: 600; padding: 0 64rpx 0 18rpx; height: 84rpx; outline: none;
 }
-.seal-select:focus { border-color: #B0772E; }
+.seal-select:focus { border-color: #3E6BA8; }
 .seal-select-arr {
   position: absolute; right: 22rpx; top: 50%; transform: translateY(-62%);
   color: #8A94A0; font-size: 32rpx; line-height: 1; pointer-events: none;
@@ -174,11 +176,11 @@ async function submit() {
 .att-list { display: flex; flex-direction: column; gap: 14rpx; margin-top: 16rpx; }
 .att-item {
   display: flex; align-items: center; gap: 16rpx; padding: 12rpx 16rpx;
-  border: 2rpx solid #EAE2D4; border-radius: 14rpx; background: #FCFAF6;
+  border: 2rpx solid #E1E7EE; border-radius: 14rpx; background: #F7F9FB;
 }
 .att-thumb { width: 88rpx; height: 88rpx; border-radius: 10rpx; object-fit: cover; flex-shrink: 0; background: #EEE; }
 .att-fileico {
-  width: 88rpx; height: 88rpx; border-radius: 10rpx; background: #F3EDE2; flex-shrink: 0;
+  width: 88rpx; height: 88rpx; border-radius: 10rpx; background: #EAEFF5; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center; font-size: 40rpx;
 }
 .att-name { flex: 1; min-width: 0; font-size: 27rpx; color: #4A5560; word-break: break-all; }
@@ -188,13 +190,13 @@ async function submit() {
 }
 .att-del:active { background: #E4E7EA; color: #C0392B; }
 .att-add {
-  flex-shrink: 0; height: 56rpx; padding: 0 22rpx; border: 2rpx dashed #D7CBB2; border-radius: 999rpx;
-  background: transparent; color: #9A835D; font-size: 25rpx; font-weight: 500;
+  flex-shrink: 0; height: 56rpx; padding: 0 22rpx; border: 2rpx dashed #BFCEDD; border-radius: 999rpx;
+  background: transparent; color: #5F7488; font-size: 25rpx; font-weight: 500;
 }
-.att-add:active { background: #F5EFE3; }
+.att-add:active { background: #EEF3FA; }
 .att-add:disabled { opacity: .6; }
 .create-actions { display: flex; gap: 20rpx; margin-top: 32rpx; }
 .btn-ghost { flex: 1; height: 92rpx; border: 2rpx solid #C9D0D6; border-radius: 20rpx; background: #fff; color: #5B6570; font-size: 32rpx; }
-.btn-primary { flex: 2; height: 92rpx; border: 0; border-radius: 20rpx; background: #B0772E; color: #fff; font-size: 32rpx; font-weight: 700; }
+.btn-primary { flex: 2; height: 92rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; font-size: 32rpx; font-weight: 700; }
 .btn-primary:disabled { opacity: .6; }
 </style>

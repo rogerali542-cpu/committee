@@ -1,10 +1,13 @@
 <template>
   <div class="page" style="overflow-y:auto">
-    <!-- 印章为「业委会」tab 下的二级视图（0728 用户定：并入业委会，不单独占底栏）。
-         作为 tab 级视图不挂返回箭头、标题居中；下方二级切换可回会议 -->
-    <PageNav title="印章管理">
-      <template #left><div class="nav-left-spacer"></div></template>
-    </PageNav>
+    <!-- 印章为「业委会」tab 下的二级视图（0728：并入业委会）。顶栏统一为业委会首页同款
+         （0729 用户定：深青灰底 + 左对齐标题 + 身份副标），下方二级切换可回会议 -->
+    <div class="hd">
+      <div class="hd-left">
+        <span class="hd-title">印章管理</span>
+        <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
+      </div>
+    </div>
     <GovSubTabs active="seal" />
 
     <!-- 印章保管（0728 用户定口径：不带行政区、保管人直说业委会秘书；确认/驳回权限仍按主任/副主任走） -->
@@ -85,7 +88,6 @@
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue';
 import api from '@/api';
-import PageNav from '@/components/PageNav.vue';
 import GovSubTabs from '@/components/GovSubTabs.vue';
 import perm from '@/utils/perm';
 import { toast, showModal } from '@/utils/ui';
@@ -93,6 +95,8 @@ import { getStorage } from '@/utils/storage';
 
 const allRecords = ref([]);
 const filter = ref('all');
+// 顶栏身份副标（业委会首页同款）：realName · role
+const activeRole = ref(getStorage('activeRole', {}) || {});
 
 // 申请：委员及以上；确认/驳回：保管人（主任/副主任）；删除：仅主任
 const canApply = computed(() => perm.can('seal.apply'));
@@ -215,36 +219,39 @@ onActivated(load);
 </script>
 
 <style scoped>
-/* tab 根页：左侧占位与 PageNav 右侧 96rpx 占位对齐，标题居中（无返回箭头） */
-.nav-left-spacer { width: 96rpx; }
+/* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 无横向内边距，天然满宽 */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
+.hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
+.hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
+.hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
 
 .seal-info-card {
   margin: 20rpx 24rpx 0; padding: 26rpx 28rpx; box-sizing: border-box;
-  background: linear-gradient(145deg, #FFFEFC 0%, #FAF4EB 100%);
-  border: 2rpx solid #E7DAC6; border-radius: 24rpx;
-  box-shadow: 0 8rpx 22rpx rgba(96, 72, 40, 0.07);
+  background: linear-gradient(145deg, #FFFFFF 0%, #EEF3FA 100%);
+  border: 2rpx solid #D8E2EF; border-radius: 24rpx;
+  box-shadow: 0 8rpx 22rpx rgba(40, 60, 96, 0.07);
 }
 .sic-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 16rpx; }
-.sic-title { font-size: 34rpx; font-weight: 750; color: #7E571C; }
-.sic-note { font-size: 26rpx; color: #9A8A72; }
+.sic-title { font-size: 34rpx; font-weight: 750; color: #35647D; }
+.sic-note { font-size: 26rpx; color: #8592A3; }
 
-/* 申请用印大按钮：暖橙、去光晕（与接待/学习登记卡同款克制配色） */
+/* 申请用印大按钮：业委会蓝、去光晕（与会议卡同款克制配色） */
 .seal-apply-card {
   display: flex; align-items: center; gap: 16rpx; width: 92%; box-sizing: border-box;
   margin: 30rpx auto 8rpx; padding: 22rpx 26rpx; text-align: left;
-  background: linear-gradient(135deg, #FFFEFC 0%, #FAF4EB 100%); border: 2rpx solid #E6D7BF;
-  border-radius: 20rpx; box-shadow: 0 6rpx 18rpx rgba(96, 72, 40, 0.10);
+  background: linear-gradient(135deg, #FFFFFF 0%, #EEF3FA 100%); border: 2rpx solid #D8E2EF;
+  border-radius: 20rpx; box-shadow: 0 6rpx 18rpx rgba(40, 60, 96, 0.10);
 }
 .seal-apply-card:active { opacity: 0.72; }
 .sac-icon {
   display: flex; align-items: center; justify-content: center; width: 62rpx; height: 62rpx;
-  border-radius: 15rpx; background: #B0772E; color: #fff; font-size: 36rpx; font-weight: 500;
+  border-radius: 15rpx; background: #3E6BA8; color: #fff; font-size: 36rpx; font-weight: 500;
 }
 .sac-copy { flex: 1; }
-.sac-copy strong { font-size: 34rpx; font-weight: 700; color: #7E571C; }
+.sac-copy strong { font-size: 34rpx; font-weight: 700; color: #35647D; }
 .sac-arrow {
   display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
-  border-radius: 50%; background: #F0E6D2; color: #916619; font-size: 36rpx; font-weight: 700;
+  border-radius: 50%; background: #E3ECF6; color: #3E6BA8; font-size: 36rpx; font-weight: 700;
 }
 
 .records-head { display: flex; align-items: baseline; justify-content: space-between; margin: 34rpx 30rpx 0; }
@@ -256,7 +263,7 @@ onActivated(load);
   flex: 1; text-align: center; padding: 16rpx 0; border-radius: 14rpx;
   background: #EEF0F3; color: #5B6675; font-size: 28rpx; font-weight: 600;
 }
-.f-tab.active { background: #B0772E; color: #fff; }
+.f-tab.active { background: #3E6BA8; color: #fff; }
 
 /* 底部留白避开固定底栏（100rpx + 安全区），否则台账最后一条会被 tab 栏遮住 */
 .seal-list { padding: 12rpx 24rpx calc(140rpx + env(safe-area-inset-bottom)); }
@@ -268,7 +275,7 @@ onActivated(load);
 .sr-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
 .sr-seal { font-size: 32rpx; font-weight: 750; color: var(--c-text-strong); }
 .sr-status { flex-shrink: 0; padding: 6rpx 18rpx; border-radius: 999rpx; font-size: 25rpx; font-weight: 600; }
-.sr-status.pending { color: #9A5A13; background: #FFF1D8; }
+.sr-status.pending { color: #2F5E96; background: #E8F0FA; }
 .sr-status.approved { color: #287653; background: #E8F5EE; }
 .sr-status.rejected { color: #9A3F33; background: #FBE9E6; }
 /* 台账登记行：左侧固定宽标签 + 右侧值，对齐成登记表样式 */
@@ -297,7 +304,7 @@ onActivated(load);
 }
 .sr-btn.ghost { background: #fff; border: 2rpx solid #C9D0D6; color: #4E6076; }
 .sr-btn.ghost:active { background: #F1F3F5; }
-.sr-btn.primary { background: #B0772E; color: #fff; box-shadow: 0 4rpx 12rpx rgba(120, 88, 34, 0.16); }
+.sr-btn.primary { background: #3E6BA8; color: #fff; box-shadow: 0 4rpx 12rpx rgba(40, 70, 120, 0.18); }
 .sr-btn.primary:active { filter: brightness(0.96); }
 /* 撤回申请：较普通操作按钮小一号（约 70%），0728 用户定 */
 .sr-btn.sm { min-height: 46rpx; padding: 0 22rpx; font-size: 20rpx; border-radius: 11rpx; font-weight: 600; }
