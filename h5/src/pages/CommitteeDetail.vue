@@ -454,9 +454,8 @@ const MeetingTopicsCard = {
           }, '查看议题 ▾') : null)
         ]),
         ...(props.expanded ? topics.map((item, index) => h('div', {
-          class: ['mtc-topic', props.onSelect ? 'tappable' : ''],
-          key: item.id,
-          onClick: () => { if (props.onSelect) props.onSelect(item) }
+          class: 'mtc-topic',
+          key: item.id
         }, [
           h('span', { class: 'mtc-no' }, index + 1),
           h('div', { class: 'mtc-body' }, [
@@ -470,7 +469,8 @@ const MeetingTopicsCard = {
               item.source === 'live' ? h('span', { class: 'mtc-chip live' }, '现场新增') : null
             ])
           ]),
-          props.onSelect ? h('span', { class: 'mtc-arrow' }, '›') : null
+          // 只有「查看详情」按钮进详情页（0729 用户定：整行可点易误触；结论标签移到标题旁）
+          props.onSelect ? h('button', { class: 'mtc-detail-btn', onClick: () => props.onSelect(item) }, '查看详情') : null
         ])) : [])
       ])
     }
@@ -2705,26 +2705,23 @@ async function removeMaterial(item) {
 }
 .mtc-body { flex:1; min-width:0; }
 .mtc-title-row {
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:8px;
+  display:block;
 }
 .mtc-topic-title {
-  flex:1;
-  min-width:0;
   font-size:20px;
   font-weight:600;
   color:#333;
   line-height:1.45;
   word-break:break-all;
 }
+/* 结论标签跟在标题后按行内流排版：标题短→紧挨标题；标题长→自然折到第二行 */
 .mtc-status {
-  flex-shrink:0;
+  display:inline-block;
+  margin-left:10px;
   font-size:19px;
   font-weight:600; /* 0722 用户定：状态文字字重再+100（500→600） */
   line-height:1.35;
-  padding-top:2px;
+  white-space:nowrap;
 }
 .mtc-status.passed,
 .mtc-status.recorded { color:#27AE60; }
@@ -2753,8 +2750,8 @@ async function removeMaterial(item) {
 .mtc-chip.realname { color:#2980B9; background:#EAF2F8; }
 .mtc-chip.live { color:#B96F12; background:#FEF4E2; }
 .mtc-chip.opinions { color:#C77700; background:#FFF3E0; }
-.mtc-arrow { flex-shrink:0; font-size:22px; color:#C2C6CC; align-self:center; }
-.mtc-topic.tappable:active { background:#FAFAFA; }
+.mtc-detail-btn { flex-shrink:0; align-self:center; height:36px; padding:0 16px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:15px; font-weight:700; white-space:nowrap; }
+.mtc-detail-btn:active { background:#EAF2FB; }
 .mtc-summary {
   display:block;
   margin-top:10px;
