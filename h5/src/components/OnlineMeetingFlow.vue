@@ -206,12 +206,12 @@
               请先完成上方表决，再补充意见
             </div>
             <div v-else-if="!meetingEnded" class="op-input">
-              <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充意见（可选）"></textarea>
-              <div class="op-btn-row">
-                <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
+              <div class="op-label">补充意见（可选）</div>
+              <textarea v-model="opinionDrafts[topic.id]" rows="2"></textarea>
+              <!-- 有内容才出现操作按钮:AI润色 + 提交意见;空态只留输入框+翻页,不拥挤(0729 用户定) -->
+              <div v-if="String(opinionDrafts[topic.id] || '').trim()" class="op-btn-row">
+                <button type="button" class="op-ai-btn"
                         :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
-                <button v-else type="button" class="op-ai-btn"
-                        :disabled="aiBusyMap[topic.id]" @click="helpWriteOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 写作中…' : 'AI 帮写' }}</button>
                 <button v-if="polishUndoMap[topic.id] != null" type="button" class="mini-act" @click="undoPolish(topic)">还原</button>
                 <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
               </div>
@@ -703,7 +703,7 @@ onBeforeUnmount(() => {
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
 .topic-head-row{display:flex;align-items:center;justify-content:space-between}
-.topic-pager-ind{color:#84929b;font-size:24rpx}
+.topic-pager-ind{flex:none;background:#e7f0f5;color:#35647D;font-size:25rpx;font-weight:700;padding:5rpx 18rpx;border-radius:999rpx}
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
 .omf--has-footer{padding-bottom:170rpx}
 .omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
@@ -721,7 +721,7 @@ onBeforeUnmount(() => {
 .op-detail-row{margin:18rpx 0 0 52rpx}
 .op-detail-toggle{border:0;background:none;padding:0;color:#416f8b;font-size:24rpx;font-weight:600}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
-.topic-form-head{display:flex;gap:14rpx;align-items:flex-start}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
+.topic-form-head{display:flex;gap:14rpx;align-items:center}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
 .wx-hint{background:#f7f4ec;border-color:#e5dcc4}.wx-hint-title{font-size:30rpx;font-weight:700;color:#6d5a2e}.wx-hint .omf-desc{margin-bottom:0}.wx-hint b{color:#6d5a2e}
 .topic-opinions{margin:18rpx 0 0 52rpx;padding:16rpx 18rpx;border-radius:12rpx;background:#f6f8f9}
@@ -740,7 +740,8 @@ onBeforeUnmount(() => {
 .op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
 .op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
 .op-need-vote{margin:16rpx 0 0 52rpx;padding:18rpx 22rpx;border-radius:12rpx;background:#f7f4ec;border:2rpx dashed #dfd2b4;color:#8a6d35;font-size:24rpx;line-height:1.6}
-.op-input{display:flex;flex-direction:column;gap:12rpx;margin:16rpx 0 0 52rpx}
+.op-input{display:flex;flex-direction:column;gap:10rpx;margin:16rpx 0 0 52rpx}
+.op-label{font-size:24rpx;color:#7a8894;font-weight:500}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
 .op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
