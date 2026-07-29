@@ -132,9 +132,9 @@ const recordFilter = ref('all');
 const allItems = ref([]);
 const items = ref([]);
 const recordCounts = computed(() => ({
-  all: allItems.value.length,
-  pending: allItems.value.filter(item => item.stage !== 'ended').length,
-  ended: allItems.value.filter(item => item.stage === 'ended').length
+  all: listItems.value.length,
+  pending: listItems.value.filter(item => item.stage !== 'ended').length,
+  ended: listItems.value.filter(item => item.stage === 'ended').length
 }));
 const target = ref(2);
 const annualStudyCount = ref(0);
@@ -152,12 +152,13 @@ function openDetail(item) {
 }
 
 function applyRecordFilter() {
+  const src = listItems.value;   // 已排除"进行中"卡里的项（管理者视角）
   if (recordFilter.value === 'ended') {
-    items.value = allItems.value.filter(i => i.stage === 'ended');
+    items.value = src.filter(i => i.stage === 'ended');
   } else if (recordFilter.value === 'pending') {
-    items.value = allItems.value.filter(i => i.stage !== 'ended');
+    items.value = src.filter(i => i.stage !== 'ended');
   } else {
-    items.value = [...allItems.value];
+    items.value = [...src];
   }
 }
 
@@ -238,6 +239,11 @@ function openInitiate() {
 }
 // 进行中：已通知但未完成登记的内部学习（notified 且未结束）；点卡片进登记页
 const ongoingItems = computed(() => allItems.value.filter(i => i.notified && i.stage !== 'ended'))
+// 记录列表数据源：管理者视角下，"进行中"卡里的项(已通知未结束)不再重复列进下方记录；
+// 非管理者无"进行中"卡，记录照常全列，避免看不到。
+const listItems = computed(() => canCreate.value
+  ? allItems.value.filter(i => !(i.notified && i.stage !== 'ended'))
+  : allItems.value)
 function goRegister(it) {
   window.location.assign('/learning-register?id=' + it.id)
 }
