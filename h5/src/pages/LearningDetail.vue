@@ -165,8 +165,11 @@ function selectedNames() { return members.value.filter(m => m.checked).map(m => 
 const currentCategory = computed(() => (item.value && item.value.category === 'external') ? 'external' : 'internal')
 // 名词随分类：内部学习→"学习"，外部培训→"培训"（标题/材料等文案统一取用）
 const catNoun = computed(() => currentCategory.value === 'external' ? '培训' : '学习')
-// 顶栏标题：分类名词 + 阶段（准备→通知，其余→详情），如"学习通知""培训详情"
-const navTitle = computed(() => catNoun.value + ((item.value && item.value.stage === 'preparing') ? '通知' : '详情'))
+// 顶栏标题：仅「准备中且未通知」显示"通知"，已通知/进行中/已完成都显示"详情"
+const navTitle = computed(() => {
+  const isNotice = item.value && item.value.stage === 'preparing' && !item.value.notified
+  return catNoun.value + (isNotice ? '通知' : '详情')
+})
 // 组织单位：内部学习由业委会自行组织，显示本业委会；外部培训显示填写的组织单位/讲师
 const committeeName = computed(() => {
   const r = getStorage('activeRole', null) || {}
