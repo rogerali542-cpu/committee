@@ -1375,7 +1375,8 @@ const portalDomains = computed(() => {
       // 硬跳(0725 修):原 enterWorkArea+软跳,软路由偶发不切视图,人被留在刚切出来的甲页;
       // 与 enterCommitteeArea 同款做法——写回 tabs 布局后整页跳转,必达
       onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') } },
-    { key: 'seal', glyph: '章', title: '印章管理', tone: 'amber',
+    { key: 'seal', glyph: '章', title: '印章管理', tone: 'blue',
+      // 印章已并入「业委会」，用同款蓝色卡（0729 用户定：蓝-绿-橙-蓝 三色循环）
       // 印章管理独立页 /seal（用印申请 + 用印台账），同款硬跳保证必达
       onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/seal') } }
   ]
