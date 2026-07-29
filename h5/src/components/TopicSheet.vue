@@ -156,22 +156,28 @@
         </button>
       </div>
 
-      <!-- 通报区（仅通报类议题）：正文 + 已读进度 + 本人「我已读」 + (主任)标记全体已通报 -->
+      <!-- 通报区（仅通报类议题，0729 用户定重做）：一次性通知——主任/副主任/秘书负责通知，
+           其他人接到即可；无表决、无讨论，不再逐个统计已读进度 -->
       <div v-if="topic.type === 'notice'" class="ts-notice">
-        <div class="ts-notice-label">通知内容</div>
+        <div class="ts-notice-label">通知事项</div>
         <div class="ts-notice-body">{{ topic.content || '（暂无通知正文）' }}</div>
-        <div class="ts-notice-foot">
-          <!-- 状态显示"已读 X/Y 人"；Y 为会议参会名单人数，凑齐全体自动「已通报」 -->
-          <span class="ts-notice-status" :class="{ done: topic.notified }">{{ topic.notified ? '✓ 全体已通报' : ('已读 ' + (topic.viewedCount || 0) + '/' + (topic.signedInCount || 0) + ' 人') }}</span>
-          <!-- 委员/主任本人：只确认自己「我已读」，不再一人点就全体已通报 -->
-          <button v-if="interactive && signedIn && !topic.viewedByMe && !topic.notified" class="ts-notice-read" @click="markMyRead">我已读</button>
-          <span v-else-if="interactive && signedIn && topic.viewedByMe && !topic.notified" class="ts-notice-mine">✓ 您已确认</span>
-        </div>
-        <!-- 主任人工推进：无需逐个等待，直接标记全体已通报 -->
-        <div v-if="isChair && interactive && !topic.notified" class="ts-notice-chair">
-          <button class="ts-notice-forceall" @click="markNoticeRead">标记全体已通报</button>
-          <span class="ts-notice-chair-tip">无需逐个等待，主任可直接确认全体已知悉</span>
-        </div>
+
+        <!-- 已通知：清爽一行了事 -->
+        <div v-if="topic.notified" class="ts-notice-done"><span class="ts-notice-done-mark">✓</span>已通知全体</div>
+        <template v-else>
+          <!-- 责任人（主任/副主任/秘书）：负责把通知传达到位，确认后本议题即完成 -->
+          <div v-if="isChair && interactive" class="ts-notice-act">
+            <button class="ts-notice-forceall" @click="markNoticeRead">确认已通知全体</button>
+            <span class="ts-notice-tip">由主任 / 副主任 / 秘书负责通知，确认后本议题即完成</span>
+          </div>
+          <!-- 其他人：接到了点一下即可，不参与讨论 -->
+          <div v-else-if="interactive && signedIn" class="ts-notice-act">
+            <button v-if="!topic.viewedByMe" class="ts-notice-read" @click="markMyRead">我已收到</button>
+            <span v-else class="ts-notice-mine">✓ 已收到，待通知人确认</span>
+          </div>
+          <!-- 未签到 / 只读：仅查看内容 -->
+          <div v-else class="ts-notice-act"><span class="ts-notice-status">待通知人确认</span></div>
+        </template>
       </div>
 
       <!-- 意见区 -->
@@ -379,7 +385,10 @@ const guideType = computed(() => {
 const guideText = computed(() => {
   const t = props.topic
   if (!t) return ''
-  if (t.type === 'notice') return t.notified ? '本通报已全体知悉（已通报）' : '请阅读下面的通报内容，读完点「我已读」'
+  if (t.type === 'notice') {
+    if (t.notified) return '本通知已全体知悉'
+    return props.isChair ? '请向大家通报以下内容，通报到位后点「确认已通知全体」' : '以下为通知事项，接到后点「我已收到」即可'
+  }
   if (t.voteRequired) {
     // 已揭晓（主任已结束表决 / 会议已结束）：给白话结论
     if (t.voteClosed) return t.passed ? '本议题表决已结束：决议通过' : '本议题表决已结束：未通过'
@@ -599,25 +608,25 @@ async function markMyRead() {
   if (t.viewedByMe) return
   try {
     await api.committeeNoticeView(props.meetingId, t.id)
-    toast({ title: '已确认「我已读」', icon: 'success' })
-    emit('changed') // 刷新（可能刚好凑齐"全体已读"→已通报）
+    toast({ title: '已确认收到', icon: 'success' })
+    emit('changed') // 刷新（可能刚好凑齐"全体已收到"→已通知）
   } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
 
-// 「标记全体已通报」（仅主任/副主任）：人工推进，无需逐个等待，直接把该通报视为全体已知悉。
+// 「确认已通知全体」（主任/副主任/秘书）：责任人负责通知，通报到位后一键确认，无需逐个等待。
 async function markNoticeRead() {
   const t = props.topic
   if (!t || t.type !== 'notice') return
   const res = await showModal({
-    title: '标记全体已通报',
-    content: '确认全体委员均已知悉本通报？标记后本议题即视为「已通报」，无需再逐个确认。',
-    confirmText: '确认已通报',
+    title: '确认已通知全体',
+    content: '确认已把本通知传达到全体委员？确认后本议题即完成，无需逐个等待。',
+    confirmText: '确认已通知',
     cancelText: '再等等'
   })
   if (!res.confirm) return
   try {
     await api.committeeNoticeRead(props.meetingId, t.id)
-    toast({ title: '已标记全体已通报', icon: 'success' })
+    toast({ title: '已确认通知全体', icon: 'success' })
     emit('changed')
   } catch (e) { toast({ title: (e && e.message) || '操作失败', icon: 'none' }) }
 }
@@ -1353,21 +1362,22 @@ async function removeOpinion(op) {
 .ts-tally-veil { font-size: 24rpx; color: #9AA0A6; }
 
 /* 通报类议题：通知正文 + 已通报状态 */
-.ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 18rpx; margin-bottom: 18rpx; }
+.ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 20rpx; margin-bottom: 18rpx; }
 .ts-notice-label { font-size: 26rpx; font-weight: 700; color: #A85800; margin-bottom: 12rpx; }
 .ts-notice-body { font-size: 32rpx; color: #1f2329; line-height: 1.7; white-space: pre-wrap; }
-.ts-notice-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; }
-.ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
-.ts-notice-status.done { color: #2E7D32; }
-.ts-notice-read { border: none; background: #2E8B57; color: #fff; font-size: 30rpx; font-weight: 700; border-radius: 14rpx; padding: 20rpx 40rpx; }
+/* 已通知：清爽一行绿字（0729 重做——通知是一次性传达，完成即一行了事，不再堆已读进度） */
+.ts-notice-done { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; font-size: 28rpx; font-weight: 700; color: #2E7D32; }
+.ts-notice-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 34rpx; height: 34rpx; border-radius: 50%; background: #2E8B57; color: #fff; font-size: 22rpx; }
+/* 动作区：责任人「确认已通知全体」/ 其他人「我已收到」 */
+.ts-notice-act { display: flex; align-items: center; flex-wrap: wrap; gap: 14rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
+.ts-notice-forceall { flex-shrink: 0; border: none; background: #C76A00; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 34rpx; }
+.ts-notice-forceall:active { background: #A85800; }
+.ts-notice-read { flex-shrink: 0; border: none; background: #2E8B57; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 42rpx; }
 .ts-notice-read:active { background: #256F45; }
-/* #8：本人已确认「我已读」的状态标 */
-.ts-notice-mine { flex-shrink: 0; font-size: 26rpx; font-weight: 700; color: #2E7D32; }
-/* #8：主任「标记全体已通报」——单独一行、描边弱化，与委员本人确认区分开 */
-.ts-notice-chair { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
-.ts-notice-forceall { flex-shrink: 0; border: 2rpx solid #C76A00; background: #FFF6EC; color: #A85800; font-size: 26rpx; font-weight: 700; border-radius: 14rpx; padding: 12rpx 24rpx; }
-.ts-notice-forceall:active { background: #FBEAD6; }
-.ts-notice-chair-tip { font-size: 22rpx; color: #B79A6A; line-height: 1.4; }
+.ts-notice-mine { font-size: 26rpx; font-weight: 700; color: #2E7D32; }
+.ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
+/* 责任人按钮下方的一行说明：占满整行落到按钮下方 */
+.ts-notice-tip { flex: 1 1 100%; font-size: 22rpx; color: #B79A6A; line-height: 1.4; }
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops.summary { margin-top: 18rpx; padding-top: 14rpx; }
 .ts-top-summary { flex-shrink: 0; margin-top: 0; margin-bottom: 12rpx; }
