@@ -52,7 +52,7 @@
             </div>
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
-              <button v-if="isChair && !observersText" class="er-act" @click="editObservers">登记列席</button>
+              <button v-if="isChair && !observersText && needsObservers" class="er-act" @click="editObservers">登记列席</button>
               <button v-if="!isOnlineMeeting" class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
                 {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
               </button>
@@ -450,7 +450,6 @@
           </div>
           <div v-else-if="transcriptMode === 'short'">
             <span class="qk-transcript-body">{{ transcriptPreviewText || '暂无摘要文本' }}</span>
-            <div class="qk-note">{{ transcriptView ? '这是该条录音单独识别出的原文；整会合并稿见录音卡片的查看转写。' : '摘要用于快速判断转写是否完成；正式匹配仍以全部内容为依据。' }}</div>
           </div>
           <div v-else>
             <div v-if="transcriptSegs.length === 0" class="lp-empty">暂无转写原文</div>
@@ -3568,6 +3567,8 @@ async function onMaterialFileChange(e) {
 // ——— 列席人员（0723 向真实材料看齐）：居委/街道/物业等非委员到会者。
 // 登记后进会议记录（实到写「委员数+列席数」）与纪要（结尾「××等同志到会指导」） ———
 const observersText = computed(() => (detail.value && detail.value.observers) || '')
+// 列席登记仅「重大事项」会议开放(0729 用户定:没勾选「含重大事项」就不需要居委会到场列席，不显示登记入口)
+const needsObservers = computed(() => !!(detail.value && detail.value.record && detail.value.record.hasMajorIssue))
 async function editObservers() {
   const res = await showModal({
     title: '登记列席人员',
