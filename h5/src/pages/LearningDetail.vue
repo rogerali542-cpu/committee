@@ -17,12 +17,8 @@
       <div class="info-card">
         <div class="field-row">
           <span class="field-label">分类</span>
-          <!-- 显式分类，主任/副主任可在此改（纠正误分类）；其他人只读展示 -->
-          <div v-if="canManage" class="cat-seg">
-            <span class="cat-opt" :class="{ on: currentCategory === 'internal' }" @click="setCategory('internal')">内部学习</span>
-            <span class="cat-opt" :class="{ on: currentCategory === 'external' }" @click="setCategory('external')">外部培训</span>
-          </div>
-          <span v-else class="field-val tag" :class="'cat-' + currentCategory">{{ currentCategory === 'external' ? '外部培训' : '内部学习' }}</span>
+          <!-- 分类只读（0729 用户定：发起/登记时已定，详情不再可改） -->
+          <span class="field-val tag" :class="'cat-' + currentCategory">{{ currentCategory === 'external' ? '外部培训' : '内部学习' }}</span>
         </div>
         <div class="field-row">
           <span class="field-label">时间</span>
@@ -34,7 +30,7 @@
         </div>
         <div class="field-row">
           <span class="field-label">组织单位</span>
-          <span class="field-val">{{ item.trainer || '未填写' }}</span>
+          <span class="field-val">{{ organizerDisplay }}</span>
         </div>
         <div class="field-row">
           <span class="field-label">{{ item.stage === 'preparing' ? '计划参加' : '通知人员' }}</span>
@@ -116,8 +112,8 @@
       <!-- 通知与留档材料 -->
       <div class="ev-card">
         <div class="ev-head">
-          <span class="ev-title">培训材料（{{ item.evidences ? item.evidences.length : 0 }}）</span>
-          <span v-if="item.stage !== 'ended' && canManage" class="ev-add" @click="addEvidence">上传</span>
+          <span class="ev-title">{{ catNoun }}材料（{{ item.evidences ? item.evidences.length : 0 }}）</span>
+          <button v-if="item.stage !== 'ended' && canManage" type="button" class="ev-add" @click="addEvidence">＋ 上传</button>
         </div>
         <div v-if="item.evidences && item.evidences.length" class="ev-list">
           <div v-for="ev in item.evidences" :key="ev.id" class="ev-item">
@@ -128,8 +124,8 @@
           </div>
         </div>
         <span v-else class="ev-empty">
-          <template v-if="item.stage === 'preparing'">可上传培训通知、课件或学习材料</template>
-          <template v-else-if="item.stage === 'ongoing'">可上传培训记录、课件、照片等</template>
+          <template v-if="item.stage === 'preparing'">可上传{{ catNoun }}通知、课件或{{ catNoun }}材料</template>
+          <template v-else-if="item.stage === 'ongoing'">可上传{{ catNoun }}记录、课件、照片等</template>
           <template v-else>暂无归档资料</template>
         </span>
       </div>
@@ -167,6 +163,7 @@ import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
 import { navigateBack, goModuleHome } from '@/utils/navigate'
 import { pickAndUpload } from '@/utils/upload'
+import { getStorage } from '@/utils/storage'
 
 const route = useRoute()
 const item = ref(null)
@@ -184,8 +181,17 @@ function toggleMember(mid) { const m = members.value.find(x => x.userRoleId === 
 function selectedNames() { return members.value.filter(m => m.checked).map(m => m.name) }
 // 显式分类（内部学习/外部培训），空值按内部兜底展示
 const currentCategory = computed(() => (item.value && item.value.category === 'external') ? 'external' : 'internal')
-// 顶栏标题随阶段：准备阶段是"培训通知"，其余为"培训详情"
-const navTitle = computed(() => (item.value && item.value.stage === 'preparing') ? '培训通知' : '培训详情')
+// 名词随分类：内部学习→"学习"，外部培训→"培训"（标题/材料等文案统一取用）
+const catNoun = computed(() => currentCategory.value === 'external' ? '培训' : '学习')
+// 顶栏标题：分类名词 + 阶段（准备→通知，其余→详情），如"学习通知""培训详情"
+const navTitle = computed(() => catNoun.value + ((item.value && item.value.stage === 'preparing') ? '通知' : '详情'))
+// 组织单位：内部学习由业委会自行组织，显示本业委会；外部培训显示填写的组织单位/讲师
+const committeeName = computed(() => {
+  const r = getStorage('activeRole', null) || {}
+  return r.communityName ? (r.communityName + '业委会') : '业主委员会'
+})
+const organizerDisplay = computed(() =>
+  currentCategory.value === 'internal' ? committeeName.value : ((item.value && item.value.trainer) || '未填写'))
 // 计划参加：正好是全体业委会成员时显示"全体业委会成员"，否则列出姓名
 const attendeesDisplay = computed(() => {
   const names = String((item.value && item.value.attendees) || '').split(/[,，、\s]+/).filter(Boolean)
@@ -296,17 +302,6 @@ async function finishLearn() {
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
-// 详情内改分类（内部学习/外部培训），用于纠正误分类；乐观更新本地
-async function setCategory(cat) {
-  if (!canManage.value) return
-  if (currentCategory.value === cat) return
-  try {
-    await api.learningSetCategory(itemId, cat)
-    if (item.value) item.value.category = cat
-    toast({ title: cat === 'internal' ? '已设为内部学习' : '已设为外部培训', icon: 'success' })
-  } catch (e) { toast({ title: (e && e.message) || '修改失败', icon: 'none' }) }
-}
-
 async function addEvidence() {
   if (!canManage.value) return
   try {
@@ -374,10 +369,6 @@ onMounted(() => {
 .field-val.tag.cat-internal { background: #FFF3DC; color: #C77800; }
 .field-val.tag.cat-external { background: #EBF5FB; color: #2980B9; }
 /* 分类可编辑段控（主任/副主任在详情里改内部/外部） */
-.cat-seg { display: inline-flex; border: 2rpx solid #E3E5E9; border-radius: 12rpx; overflow: hidden; }
-.cat-opt { padding: 8rpx 22rpx; font-size: 28rpx; color: #5C6672; background: #fff; }
-.cat-opt.on { background: var(--c-primary-soft); color: var(--c-primary-dark); font-weight: 700; }
-.cat-opt + .cat-opt { border-left: 2rpx solid #E3E5E9; }
 
 /* 进度卡片 */
 .progress-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
@@ -436,7 +427,9 @@ onMounted(() => {
 .ev-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .ev-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
 .ev-title { font-size: 30rpx; font-weight: 700; color: #1f2329; }
-.ev-add { font-size: 28rpx; color: #C77800; font-weight: 600; }
+/* 上传按钮：明显的橙色描边胶囊（0729 用户定） */
+.ev-add { display: inline-flex; align-items: center; gap: 4rpx; padding: 10rpx 26rpx; border: 2rpx solid var(--c-primary); border-radius: 999rpx; background: var(--c-primary-soft); color: var(--c-primary-dark); font-size: 26rpx; font-weight: 700; line-height: 1; }
+.ev-add:active { background: #F7E6C8; }
 .ev-list { display: flex; flex-direction: column; gap: 8rpx; }
 .ev-item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 18rpx; background: #fafbfc; border-radius: 12rpx; font-size: 28rpx; color: #444; }
 .ev-name { flex: 1; min-width: 0; word-break: break-all; }
