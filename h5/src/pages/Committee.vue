@@ -4203,6 +4203,10 @@ onActivated(show)
 .ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-title,
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-sub { max-width: 430rpx; }
+/* 头部(删除会议/翻页)不受右侧按钮预留 224rpx 约束，用负边距贴回右上角（0729 修：线上会议卡删除会议错位到中间） */
+.ck-todo.blue:not(.ck-todo-complete) .ck-todo-head { margin-right: -198rpx; }
+/* 该卡同时有「删除会议」和翻页时，让翻页回到流内与删除会议并排（否则绝对定位的翻页会压在删除会议上） */
+.ck-todo.blue:not(.ck-todo-complete) .ck-todo-pager { position: static; top: auto; right: auto; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-cta {
   position: absolute;
   right: 30rpx;
