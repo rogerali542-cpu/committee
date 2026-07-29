@@ -68,19 +68,19 @@
               <span class="er-item-toggle">{{ erCollapsed[2] ? '▸' : '▾' }}</span>
             </div>
             <template v-if="!erCollapsed[2]">
-            <!-- 各议题结果一行一条；主任/秘书可「改结果」（0729 用户定：允许改，但留操作记录） -->
+            <!-- 各议题结果一行一条；修改统一走下方「继续处理议题」大按钮（0729 用户定：不逐行加改结果） -->
             <div v-if="meetingTopics.length" class="er-topic-list">
               <div class="er-topic-item" v-for="(t, ti) in meetingTopics" :key="'er-' + t.id">
                 <div class="er-topic-row">
                   <span class="er-topic-title">（{{ ti + 1 }}）{{ t.title }}</span>
                   <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
-                  <button v-if="isChair" class="er-topic-edit" @click="editTopicResult(t)">改结果</button>
                 </div>
                 <div v-if="t.resultAuditText" class="er-topic-audit">{{ t.resultAuditText }}</div>
               </div>
             </div>
-            <div v-if="pendingTopicCount && !isOnlineMeeting" class="er-item-actions">
-              <button class="er-act warm" @click="continuePendingTopics">继续处理议题</button>
+            <!-- 统一入口：线下还有未处理议题→回议题处理流程；否则主任/秘书选一条改结果（留痕） -->
+            <div v-if="meetingTopics.length && (isChair || (pendingTopicCount && !isOnlineMeeting))" class="er-item-actions">
+              <button class="er-act warm" @click="continueTopics">继续处理议题</button>
             </div>
             </template>
           </div>
@@ -1239,6 +1239,18 @@ function erTopicResult(t) {
   }
   if (t.type === 'notice') return topicBadgeDone(t) ? { cls: 'done', text: '已通报' } : { cls: 'todo', text: '待通报' }
   return topicBadgeDone(t) ? { cls: 'done', text: '已讨论' } : { cls: 'todo', text: '待讨论' }
+}
+
+// 「继续处理议题」统一入口（0729 用户定：不逐行加改结果按钮）：
+// 线下还有未处理议题→回原议题处理流程；否则主任/秘书先选议题、再改结果（留痕）
+async function continueTopics() {
+  if (!isOnlineMeeting.value && pendingTopicCount.value) { continuePendingTopics(); return }
+  if (!isChair.value) return
+  const list = meetingTopics.value
+  const res = await showActionSheet({ title: '选择要修改结果的议题', itemList: list.map((t, i) => '（' + (i + 1) + '）' + t.title) })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  const t = list[res.tapIndex]
+  if (t) await editTopicResult(t)
 }
 
 // 主任/秘书改议题结果（0729 用户定）：允许改，但留下操作记录（谁/何时/改成什么），行下方常驻展示
@@ -4117,9 +4129,7 @@ async function returnToRecordingPage() {
 /* 议题结果简表：标题省略 + 右侧结论小签 */
 .er-topic-list { margin-top:20rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:22rpx; }
 .er-topic-row { display:flex; align-items:center; gap:14rpx; }
-/* 改结果：轻量文字按钮（同待办卡「编辑」款）；留痕小字常驻行下，灰色不抢眼 */
-.er-topic-edit { flex-shrink:0; border:0; background:transparent; color:#2464B4; font-size:23rpx; font-weight:600; padding:2rpx 6rpx; }
-.er-topic-edit:active { opacity:.6; }
+/* 结果改动留痕小字：常驻行下，灰色不抢眼 */
 .er-topic-audit { margin-top:6rpx; padding-left:8rpx; font-size:21rpx; color:#9AA3AD; line-height:1.5; }
 .er-topic-title { flex:1; min-width:0; font-size:26rpx; color:#4A5058; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
