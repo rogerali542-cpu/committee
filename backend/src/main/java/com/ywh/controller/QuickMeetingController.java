@@ -292,6 +292,15 @@ public class QuickMeetingController {
         return Result.ok(committeeService.initTodos(id, items));
     }
 
+    /** 主任/副主任/秘书人工修改议题结果（0729）：允许改，但留操作痕迹（谁/何时/改成什么）。 */
+    @PostMapping("/topics/{topicId}/result")
+    @RequireRole({"主任", "副主任", "业委会秘书"})
+    public Result<Void> topicResultOverride(@PathVariable Long id, @PathVariable Long topicId,
+                                            @RequestBody Map<String, String> body) {
+        committeeService.overrideTopicResult(id, topicId, body == null ? null : body.get("result"));
+        return Result.ok();
+    }
+
     /** 主任手动新增一条待办（AI 边界难界定，除识别外还需人工增补）。 */
     @PostMapping("/todos/add")
     @RequireRole({"主任", "副主任"})

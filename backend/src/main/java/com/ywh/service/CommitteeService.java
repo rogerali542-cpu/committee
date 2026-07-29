@@ -1336,6 +1336,98 @@ public class CommitteeService {
         }
     }
 
+    /** 议题结果留痕：每题最近一次人工改动的展示文案（topicId → "张三 将结果改为「通过」 07-29 14:32"）。 */
+    private Map<Long, String> latestResultAudit(MeetingRecord record) {
+        if (record == null || record.getResultAuditJson() == null || record.getResultAuditJson().isBlank()) {
+            return Collections.emptyMap();
+        }
+        try {
+            List<Map<String, Object>> entries = objectMapper.readValue(record.getResultAuditJson(),
+                    new TypeReference<List<Map<String, Object>>>() {});
+            Map<Long, String> out = new HashMap<>();
+            for (Map<String, Object> e : entries) {   // 顺序追加，后写覆盖前写=留最近一次
+                Long tid = e.get("topicId") == null ? null : Long.valueOf(String.valueOf(e.get("topicId")));
+                if (tid != null && e.get("text") != null) out.put(tid, String.valueOf(e.get("text")));
+            }
+            return out;
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
+    }
+
+    /**
+     * 主任/副主任/秘书人工修改议题结果（0729 用户定）：允许改，但必须留痕。
+     * 改动写入 quickConfirmJson 的该题 result（记录/纪要/公示取结果时同源生效），
+     * 留痕追加到 resultAuditJson（谁、何时、由什么改成什么），永不覆盖历史。
+     */
+    @Transactional
+    public void overrideTopicResult(Long meetingId, Long topicId, String result) {
+        List<String> allowed = List.of("passed", "rejected", "invalid", "notified", "discussed");
+        if (result == null || !allowed.contains(result)) throw new IllegalArgumentException("不支持的结果类型");
+        MeetingRecord record = recordRepo.findByMeetingId(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议记录不存在"));
+        RecordTopic topic = topicRepo.findById(topicId)
+                .orElseThrow(() -> new IllegalArgumentException("议题不存在"));
+        if (topic.getRecord() == null || !topic.getRecord().getId().equals(record.getId())) {
+            throw new IllegalArgumentException("议题与会议不匹配");
+        }
+        boolean vote = isVoteTopic(topic);
+        if (vote && !("passed".equals(result) || "rejected".equals(result) || "invalid".equals(result))) {
+            throw new IllegalArgumentException("表决议题只能改为 通过/未通过/表决无效");
+        }
+        if (!vote && !("notified".equals(result) || "discussed".equals(result))) {
+            throw new IllegalArgumentException("通报/讨论议题只能改为 已通报/已讨论");
+        }
+        // 1) 更新 quickConfirmJson 里该题的 result（无则补一条）
+        QuickConfirmRequest req;
+        try {
+            req = record.getQuickConfirmJson() == null || record.getQuickConfirmJson().isBlank()
+                    ? new QuickConfirmRequest()
+                    : objectMapper.readValue(record.getQuickConfirmJson(), QuickConfirmRequest.class);
+        } catch (Exception e) { req = new QuickConfirmRequest(); }
+        if (req.getTopics() == null) req.setTopics(new ArrayList<>());
+        QuickConfirmRequest.TopicResult tr = req.getTopics().stream()
+                .filter(t -> t != null && topicId.equals(t.getTopicId())).findFirst().orElse(null);
+        String prev = tr == null ? null : tr.getResult();
+        if (tr == null) {
+            tr = new QuickConfirmRequest.TopicResult();
+            tr.setTopicId(topicId);
+            req.getTopics().add(tr);
+        }
+        tr.setResult(result);
+        tr.setConfirmed(true);
+        // 通报类改「已通报」：同步议题 notified 标记，让所有展示口径一致
+        if ("notified".equals(result) && !Boolean.TRUE.equals(topic.getNotified())) {
+            topic.setNotified(true);
+            topicRepo.save(topic);
+        }
+        // 2) 留痕（永不删改历史，逐条追加）
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        String byName = ur == null ? "未知操作人" : ur.getRealName();
+        String at = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MM-dd HH:mm"));
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("topicId", topicId);
+        entry.put("from", prev);
+        entry.put("to", result);
+        entry.put("byName", byName);
+        entry.put("at", at);
+        entry.put("text", byName + " 将结果改为「" + quickResultLabel(result) + "」 " + at);
+        List<Map<String, Object>> audits;
+        try {
+            audits = record.getResultAuditJson() == null || record.getResultAuditJson().isBlank()
+                    ? new ArrayList<>()
+                    : objectMapper.readValue(record.getResultAuditJson(), new TypeReference<List<Map<String, Object>>>() {});
+        } catch (Exception e) { audits = new ArrayList<>(); }
+        audits.add(entry);
+        try {
+            record.setQuickConfirmJson(objectMapper.writeValueAsString(req));
+            record.setResultAuditJson(objectMapper.writeValueAsString(audits));
+        } catch (Exception e) {
+            throw new IllegalStateException("保存失败，请重试");
+        }
+        recordRepo.save(record);
+    }
+
     @Transactional(readOnly = true)
     public List<ProxyTargetVO> listProxyTargets(Long meetingId, String keyword) {
         CommitteeMeeting meeting = getMeetingForProxy(meetingId);
@@ -2112,6 +2204,9 @@ public class CommitteeService {
         if ("rejected".equals(result)) return "未通过";
         if ("abstain".equals(result)) return "弃权";
         if ("unclear".equals(result)) return "未明确说明";
+        if ("invalid".equals(result)) return "表决无效";   // 人工改结果（0729）新增词
+        if ("notified".equals(result)) return "已通报";
+        if ("discussed".equals(result)) return "已讨论";
         return nullToUnknown(result);
     }
 
@@ -3031,6 +3126,7 @@ public class CommitteeService {
         }).collect(Collectors.toList());
 
         Map<Long, QuickConfirmRequest.TopicResult> quickConfirmTopics = quickConfirmTopicMap(record);
+        Map<Long, String> resultAudits = latestResultAudit(record);
         List<RecordInfoVO.TopicVO> topicVOs = topics.stream().map(tp -> {
             List<TopicVote> votes = voteRepo.findByTopicId(tp.getId());
             int need = total / 2 + 1;
@@ -3107,6 +3203,9 @@ public class CommitteeService {
             tv.setStatus(!voteRequired ? "recorded" : (passed ? "passed" : (countedVotes < total ? "pending" : "failed")));
             tv.setText(statusText);
             tv.setSummaryDraft(quickResult != null ? quickResult.getSummaryDraft() : null);
+            // 议题结果人工改动（0729）：改过才带 audit 文案；前端以「有留痕」判定是否用改后结果覆盖显示
+            tv.setConfirmedResult(quickResult != null ? quickResult.getResult() : null);
+            tv.setResultAuditText(resultAudits.get(tp.getId()));
             // 通报类：正文 + 已通报 + 本人是否看过 + 已读进度（已确认「我已读」人数 / 参会名单人数）
             tv.setContent(tp.getContent());
             tv.setNotified(Boolean.TRUE.equals(tp.getNotified()));

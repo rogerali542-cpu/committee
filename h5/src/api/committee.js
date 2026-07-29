@@ -329,6 +329,10 @@ export default {
   committeeTodoUpdate: function (id, todoId, item) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/todos/' + todoId + '/update', item);
   },
+  // 主任/秘书改议题结果（留痕）
+  committeeTopicResultOverride: function (id, topicId, result) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/topics/' + topicId + '/result', { result: result });
+  },
   committeeTodoStatus: function (id, todoId, status) {
     return core.realRequest('PUT', '/api/committees/' + id + '/quick/todos/' + todoId + '/status?status=' + encodeURIComponent(status));
   },

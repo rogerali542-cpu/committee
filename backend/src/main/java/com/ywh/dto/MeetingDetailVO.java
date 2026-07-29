@@ -193,6 +193,9 @@ public class MeetingDetailVO {
             // 实名表决（规则5）
             private Boolean realNameVote;
             private List<Map<String, Object>> voterChoices;  // 仅实名表决时填充：{name, choice/label}
+            // 议题结果人工改动（0729）：主任/秘书改结果后，confirmedResult=改后的值，resultAuditText=最近一次留痕文案
+            private String confirmedResult;
+            private String resultAuditText;
         }
 
         @Data

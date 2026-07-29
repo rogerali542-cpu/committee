@@ -49,6 +49,10 @@ public class MeetingRecord {
     @Column(name = "quick_confirm_json", columnDefinition = "TEXT")
     private String quickConfirmJson;
 
+    /** 议题结果人工改动留痕（JSON 数组：topicId/from/to/byName/at/text）。主任/秘书改结果必须留记录。 */
+    @Column(name = "result_audit_json", columnDefinition = "TEXT")
+    private String resultAuditJson;
+
     @Column(name = "quick_confirm_hash", length = 64)
     private String quickConfirmHash;
 

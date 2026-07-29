@@ -197,6 +197,12 @@ public class MeetingRecordPdfService {
                 }
                 String tally = parts.isEmpty() ? "（无选项）" : String.join("、", parts);
                 String resultText = leading >= need ? ("表决通过：" + leadingLabel) : "表决未通过";
+                // 人工确认/改动的结果（quickConfirm）优先于票数推算（0729：主任/秘书可改结果并留痕）
+                if (qr != null && qr.getResult() != null) {
+                    if ("passed".equals(qr.getResult())) resultText = "表决通过：" + leadingLabel;
+                    else if ("rejected".equals(qr.getResult())) resultText = "表决未通过";
+                    else if ("invalid".equals(qr.getResult())) resultText = "表决无效";
+                }
                 c.decisions.add(di + ". " + title + "：" + tally + "，" + resultText + "。");
                 c.resultAppendix.add(cnNum(di) + "、" + title + "【" + mergedTypeLabel(topic) + "】");
                 c.resultAppendix.add("　　各选项票数：" + tally + "，" + resultText + "。");
@@ -212,6 +218,12 @@ public class MeetingRecordPdfService {
                 }
                 String tally = "同意 " + forV + " 票、反对 " + agV + " 票、弃权 " + abV + " 票";
                 String resultText = forV >= need ? "表决通过" : "表决未通过";
+                // 人工确认/改动的结果（quickConfirm）优先于票数推算（0729：主任/秘书可改结果并留痕）
+                if (qr != null && qr.getResult() != null) {
+                    if ("passed".equals(qr.getResult())) resultText = "表决通过";
+                    else if ("rejected".equals(qr.getResult())) resultText = "表决未通过";
+                    else if ("invalid".equals(qr.getResult())) resultText = "表决无效";
+                }
                 c.decisions.add(di + ". " + title + "：" + tally + "，" + resultText + "。");
                 // 附页：逐题委员名单（按实际 choice 分组；标签取自枚举，不再硬编码字符串）
                 c.resultAppendix.add(cnNum(di) + "、" + title + "【" + mergedTypeLabel(topic) + "】");

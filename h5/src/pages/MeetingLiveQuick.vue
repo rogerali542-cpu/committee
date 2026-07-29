@@ -68,12 +68,15 @@
               <span class="er-item-toggle">{{ erCollapsed[2] ? '▸' : '▾' }}</span>
             </div>
             <template v-if="!erCollapsed[2]">
-            <!-- 各议题结果一行一条（纯状态展示，不可点——0722 用户定：入口统一走「继续处理议题」，
-                 避免误导；未投拦截的「去代录」仍程序直开弹层） -->
+            <!-- 各议题结果一行一条；主任/秘书可「改结果」（0729 用户定：允许改，但留操作记录） -->
             <div v-if="meetingTopics.length" class="er-topic-list">
-              <div class="er-topic-row" v-for="(t, ti) in meetingTopics" :key="'er-' + t.id">
-                <span class="er-topic-title">（{{ ti + 1 }}）{{ t.title }}</span>
-                <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
+              <div class="er-topic-item" v-for="(t, ti) in meetingTopics" :key="'er-' + t.id">
+                <div class="er-topic-row">
+                  <span class="er-topic-title">（{{ ti + 1 }}）{{ t.title }}</span>
+                  <span class="er-topic-result" :class="erTopicResult(t).cls">{{ erTopicResult(t).text }}</span>
+                  <button v-if="isChair" class="er-topic-edit" @click="editTopicResult(t)">改结果</button>
+                </div>
+                <div v-if="t.resultAuditText" class="er-topic-audit">{{ t.resultAuditText }}</div>
               </div>
             </div>
             <div v-if="pendingTopicCount && !isOnlineMeeting" class="er-item-actions">
@@ -1202,6 +1205,22 @@ const endReviewHint = computed(() => {
 })
 // 会后整理清单第2项：每条议题的简要结果（表决=通过/未通过，讨论/通报=已办与否）
 function erTopicResult(t) {
+  // 主任/秘书改过结果（有留痕）时，以改后的为准（0729 用户定）
+  if (t.resultAuditText && t.confirmedResult) {
+    const cr = t.confirmedResult
+    if (cr === 'invalid') return { cls: 'fail', text: '表决无效' }
+    if (cr === 'rejected') return { cls: 'fail', text: '未通过' }
+    if (cr === 'passed') {
+      if ((t.decisionType || 'simple') === 'multi_choice') {
+        let best = null
+        for (const o of (t.options || [])) if (!best || (o.votes || 0) > (best.votes || 0)) best = o
+        return { cls: 'pass', text: best && best.label ? '已定：' + best.label : '通过' }
+      }
+      return { cls: 'pass', text: '通过' }
+    }
+    if (cr === 'notified') return { cls: 'done', text: '已通报' }
+    if (cr === 'discussed') return { cls: 'done', text: '已讨论' }
+  }
   if (t.voteRequired) {
     // 现场已结束（0722 用户定）：不再显示"待表决"，直接给结论——
     // 签到未过半会议不成立→无效；否则 通过/未通过（不带票数，票数明细在议题弹层里看）
@@ -1220,6 +1239,38 @@ function erTopicResult(t) {
   }
   if (t.type === 'notice') return topicBadgeDone(t) ? { cls: 'done', text: '已通报' } : { cls: 'todo', text: '待通报' }
   return topicBadgeDone(t) ? { cls: 'done', text: '已讨论' } : { cls: 'todo', text: '待讨论' }
+}
+
+// 主任/秘书改议题结果（0729 用户定）：允许改，但留下操作记录（谁/何时/改成什么），行下方常驻展示
+async function editTopicResult(t) {
+  const opts = t.voteRequired
+    ? [{ label: '通过', value: 'passed' }, { label: '未通过', value: 'rejected' }, { label: '表决无效', value: 'invalid' }]
+    : t.type === 'notice'
+      ? [{ label: '已通报', value: 'notified' }]
+      : [{ label: '已讨论', value: 'discussed' }]
+  let pick
+  if (opts.length === 1) {
+    pick = opts[0]
+  } else {
+    const res = await showActionSheet({ title: '把结果改为', itemList: opts.map(o => o.label) })
+    if (!res || res.tapIndex == null || res.tapIndex < 0) return
+    pick = opts[res.tapIndex]
+  }
+  const cur = erTopicResult(t).text
+  if (pick.label === cur) { toast({ title: '与当前结果相同，未修改', icon: 'none' }); return }
+  const ok = await showModal({
+    title: '修改议题结果',
+    content: '把「' + t.title + '」的结果由「' + cur + '」改为「' + pick.label + '」？修改会留下操作记录。',
+    confirmText: '确认修改', cancelText: '取消'
+  })
+  if (!ok.confirm) return
+  try {
+    await api.committeeTopicResultOverride(meetingId.value, t.id, pick.value)
+    toast({ title: '已修改并留痕', icon: 'success' })
+    loadDetail()
+  } catch (e) {
+    toast({ title: (e && e.message) || '修改失败，请重试', icon: 'none' })
+  }
 }
 
 // 清单第3项「会议记录」的状态灯：绿=可生成纪要，蓝=识别在途，黄=有录音没识别完，灰=没录音
@@ -4066,6 +4117,10 @@ async function returnToRecordingPage() {
 /* 议题结果简表：标题省略 + 右侧结论小签 */
 .er-topic-list { margin-top:20rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:22rpx; }
 .er-topic-row { display:flex; align-items:center; gap:14rpx; }
+/* 改结果：轻量文字按钮（同待办卡「编辑」款）；留痕小字常驻行下，灰色不抢眼 */
+.er-topic-edit { flex-shrink:0; border:0; background:transparent; color:#2464B4; font-size:23rpx; font-weight:600; padding:2rpx 6rpx; }
+.er-topic-edit:active { opacity:.6; }
+.er-topic-audit { margin-top:6rpx; padding-left:8rpx; font-size:21rpx; color:#9AA3AD; line-height:1.5; }
 .er-topic-title { flex:1; min-width:0; font-size:26rpx; color:#4A5058; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
 .er-topic-result.pass { color:#2E7D32; }
