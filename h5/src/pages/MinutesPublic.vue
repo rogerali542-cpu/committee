@@ -130,7 +130,7 @@ const publicContent = computed(() => {
   lines.push('',
     '本公示自' + dateStr + '起在本小区业委会公示栏张榜公布，公示期7天。相关会议纪要及附件一并公示。',
     '公示期内如有意见或建议，请在业主接待日向业主委员会当面反映，或以书面形式投递至意见箱。',
-    '', '特此公示。', '', org,
+    '', '特此公示。', '', '阳光花园业主委员会',
     (detail.value && detail.value.publish && detail.value.publish.publishDate) || dateStr)
   return lines.join('\n')
 })
@@ -353,5 +353,5 @@ onMounted(() => {
 .pub-btn.publish { background:#4A6E9C; font-weight:600; }
 .pub-btn.publish:active { background:#3E5E88; }
 .pub-btn.publish:disabled { opacity:.6; }
-.pub-btn.ghost { background:#fff; color:var(--pub-blue); border:2rpx solid var(--pub-blue); line-height:92rpx; margin-top:30rpx; }
+.pub-btn.ghost { background:#fff; color:var(--pub-blue); border:2rpx solid var(--pub-blue); line-height:78rpx; margin-top:30rpx; }
 </style>

@@ -1837,7 +1837,7 @@ public class CommitteeService {
         text.append("\n本公示自").append(TODAY).append("起在本小区业委会公示栏张榜公布，公示期7天。相关会议纪要及附件一并公示。\n");
         text.append("公示期内如有意见或建议，请在业主接待日向业主委员会当面反映，或以书面形式投递至意见箱。\n\n");
         text.append("特此公示。\n\n");
-        text.append(orgFullName(meeting)).append("\n").append(TODAY);
+        text.append(org).append("\n").append(TODAY);   // 落款用短名「阳光花园业主委员会」，与纪要/记录口径统一
         return text.toString();
     }
 
@@ -1871,7 +1871,7 @@ public class CommitteeService {
             int i = 1;
             for (RecordTopic topic : topics) t.append(cnNumSvc(i++)).append("、").append(nullToUnknown(topic.getTitle())).append("\n");
         }
-        t.append("\n特此公告，请全体业主知悉。\n\n").append(orgFullName(m)).append("\n").append(TODAY);
+        t.append("\n特此公告，请全体业主知悉。\n\n").append(org).append("\n").append(TODAY);   // 落款用短名，与公示/纪要口径统一
         return t.toString();
     }
 
