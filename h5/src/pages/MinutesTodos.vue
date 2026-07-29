@@ -83,10 +83,10 @@
         <div v-else class="manual-form">
           <div class="manual-form-title">新增待办</div>
           <textarea class="manual-input title" v-model="manualForm.title" rows="2" placeholder="待办内容"></textarea>
-          <div class="manual-row2">
-            <input class="manual-input" v-model="manualForm.owner" placeholder="负责人（选填）" />
-            <input class="manual-input" v-model="manualForm.due" placeholder="截止时间（选填）" />
-          </div>
+          <select class="manual-input manual-select" :class="{ 'is-placeholder': !manualForm.owner }" v-model="manualForm.owner">
+            <option value="">负责人（选填）</option>
+            <option v-for="m in members" :key="m.userRoleId || m.name" :value="m.name">{{ m.name }}<template v-if="m.role">（{{ m.role }}）</template></option>
+          </select>
           <div class="manual-form-acts">
             <button class="manual-cancel" :disabled="manualForm.saving" @click="closeManual">取消</button>
             <button class="manual-save" :disabled="manualForm.saving || !manualForm.title.trim()" @click="saveManual">{{ manualForm.saving ? '保存中…' : '保存' }}</button>
@@ -270,16 +270,23 @@ let meetingId = null
 // 错误/等待态（加载失败/缺参/委员等主任确认）：只提示，不给增删；genuine 空("无明确待办")不算，主任可增补
 const isErrorEmpty = computed(() => /加载失败|缺少会议参数|待主任确认整理后查看/.test(emptyText.value))
 
-// 手动添加待办（0729 用户定：AI 边界难界定，需人工增补）
-const manualForm = ref({ open: false, title: '', owner: '', due: '', saving: false })
-function openManual() { manualForm.value = { open: true, title: '', owner: '', due: '', saving: false } }
+// 手动添加待办（0729 用户定：AI 边界难界定，需人工增补）。负责人从业委会委员下拉选择。
+const members = ref([])
+let membersLoaded = false
+async function loadMembers() {
+  if (membersLoaded) return
+  membersLoaded = true
+  try { members.value = (await api.committeeMembers()) || [] } catch (e) { membersLoaded = false }
+}
+const manualForm = ref({ open: false, title: '', owner: '', saving: false })
+function openManual() { manualForm.value = { open: true, title: '', owner: '', saving: false }; loadMembers() }
 function closeManual() { manualForm.value.open = false }
 async function saveManual() {
   const title = String(manualForm.value.title || '').trim()
   if (!title) { toast({ title: '请输入待办内容', icon: 'none' }); return }
   manualForm.value.saving = true
   try {
-    const item = await api.committeeTodoAdd(meetingId, { title, owner: manualForm.value.owner, dueText: manualForm.value.due, status: 'todo' })
+    const item = await api.committeeTodoAdd(meetingId, { title, owner: manualForm.value.owner, status: 'todo' })
     if (item) { cards.value = markDueUrgent([...cards.value, item]); emptyText.value = '' }
     manualForm.value.open = false
     toast({ title: '已添加待办', icon: 'success' })
@@ -454,8 +461,8 @@ onMounted(() => {
 .manual-form-title { font-size: 32rpx; font-weight: 800; color: #1f2329; margin-bottom: 18rpx; }
 .manual-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E5E9ED; border-radius: 14rpx; padding: 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
 .manual-input.title { resize: none; line-height: 1.45; font-weight: 600; }
-.manual-row2 { display: flex; gap: 14rpx; margin-top: 14rpx; }
-.manual-row2 .manual-input { flex: 1; min-width: 0; }
+.manual-select { margin-top: 14rpx; height: 88rpx; padding: 0 18rpx; }
+.manual-select.is-placeholder { color: #9AA3AD; }
 .manual-form-acts { display: flex; gap: 16rpx; margin-top: 22rpx; }
 .manual-cancel { flex: 1; min-height: 84rpx; border: 2rpx solid #D8DBE0; border-radius: 14rpx; background: #fff; color: #55585E; font-size: 30rpx; font-weight: 600; }
 .manual-save { flex: 1.4; min-height: 84rpx; border: 0; border-radius: 14rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
