@@ -4376,9 +4376,9 @@ async function returnToRecordingPage() {
 .si-roster.open { display:flex; flex-direction:column; }
 .si-roster-body { max-height:none; overflow:visible; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
 /* 底部拇指区：跟随名单下方，避免首屏中段出现大片空白 */
-.si-bottom { flex:0 0 auto; z-index:180; display:flex; flex-direction:column; align-items:center; gap:35rpx; margin:0; padding:24rpx 0 env(safe-area-inset-bottom); background:rgba(255,255,255,.38); }
+.si-bottom { flex:0 0 auto; z-index:180; display:flex; flex-direction:column; align-items:center; gap:35rpx; margin:0; padding:24rpx 0 calc(env(safe-area-inset-bottom) + 30rpx); background:rgba(255,255,255,.38); }
 /* 方案B「通栏沉稳大按钮」：深橙实色通栏，无渐变/脉动/投影 */
-.signin-big-btn { width:65% !important; height:100rpx; box-sizing:border-box; max-width:none; margin:0 auto !important; background:#315F7D !important; color:#fff !important; font-size:40rpx !important; font-weight:700; letter-spacing:4rpx; padding:0 !important; border-radius:24rpx; box-shadow:0 10rpx 24rpx rgba(49,95,125,.28); }
+.signin-big-btn { width:65% !important; height:100rpx; box-sizing:border-box; max-width:none; margin:0 auto !important; background:#A85800 !important; color:#fff !important; font-size:40rpx !important; font-weight:700; letter-spacing:4rpx; padding:0 !important; border-radius:24rpx; box-shadow:0 10rpx 24rpx rgba(168,88,0,.28); }
 .signin-big-btn:active { filter:brightness(0.92); }
 .signin-remote-btn { width:65%; height:100rpx; box-sizing:border-box; margin:0 auto; padding:0; border:2rpx solid #88A9BF; border-radius:24rpx; background:#EFF5F9; color:#315F7D; font-size:36rpx; font-weight:700; letter-spacing:2rpx; box-shadow:0 5rpx 14rpx rgba(49,95,125,.10); }
 .signin-remote-btn:active { background:#E1EDF4; }
