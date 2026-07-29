@@ -9,10 +9,11 @@
 
     <!-- 年度履职摘要：只保留成员需要确认的两项 -->
     <div class="learn-target">
-      <div class="lt-head">
+      <div class="lt-head" @click="toggleSummary">
         <span class="lt-title">{{ currentYear }}年度学习情况</span>
+        <span class="lt-toggle" :class="{ open: summaryOpen }"></span>
       </div>
-      <div class="annual-list">
+      <div class="annual-list" v-if="summaryOpen">
         <div class="annual-row">
           <div class="annual-main">
             <span class="annual-name">内部学习</span>
@@ -141,6 +142,10 @@ const annualStudyCount = ref(0);
 const annualExternalDone = ref(false);
 const currentYear = new Date().getFullYear();
 const canCreate = ref(false);
+// 年度学习情况卡可折叠：默认展开；有"进行中"事项(管理者视角)时默认折叠以突出进行中；手动点过后尊重手动选择
+const summaryOpen = ref(true);
+let summaryTouched = false;
+function toggleSummary() { summaryOpen.value = !summaryOpen.value; summaryTouched = true; }
 const undoVisible = ref(false);
 const undoText = ref('');
 // createVisible/createForm 已删(0725):创建表单迁独立页 /learning-create
@@ -184,6 +189,8 @@ async function loadAll() {
       return String(b.date || '').localeCompare(String(a.date || ''));
     });
     applyRecordFilter();
+    // 有进行中事项(且管理者能看到进行中卡)时默认折叠年度卡，突出进行中；用户手动点过则不再自动改
+    if (!summaryTouched) summaryOpen.value = !(canCreate.value && ongoingItems.value.length);
   } catch (e) {
     allItems.value = [];
     items.value = [];
@@ -272,8 +279,13 @@ onUnmounted(() => {
 
 /* 年度目标 */
 .learn-target { margin: 20rpx 0 24rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
-.lt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20rpx; }
+.lt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
+.lt-head:active { opacity: 0.7; }
 .lt-title { font-size: 32rpx; font-weight: 700; color: #1f2329; }
+/* 折叠三角：展开时朝下，收起时朝右（0729 用户定） */
+.lt-toggle { flex-shrink: 0; width: 0; height: 0; border-left: 9rpx solid transparent; border-right: 9rpx solid transparent; border-top: 11rpx solid #AAB2BC; transition: transform .2s ease; }
+.lt-toggle:not(.open) { transform: rotate(-90deg); }
+.annual-list { margin-top: 18rpx; }
 .annual-list { display: flex; flex-direction: column; }
 .annual-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-top: 2rpx solid #F0F2F4; }
 .annual-main { min-width: 0; display: flex; flex-direction: column; gap: 7rpx; }
