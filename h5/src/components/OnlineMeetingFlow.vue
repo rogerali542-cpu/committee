@@ -316,11 +316,16 @@ function topicRowBadgeDone(item) {
 }
 function topicActionType(item) { return item.voteRequired ? 'vote' : 'discuss' } // 通知也走 discuss 配色(与线下一致)
 function topicActionName(item) { return item.type === 'notice' ? '通知' : (item.voteRequired ? '表决' : '讨论') }
-function topicRowDone(item) { return item.voteRequired ? (!!item.voteClosed || meetingEnded.value) : topicRowBadgeDone(item) }
+// 讨论不存在「讨论完」（0729 用户定）：有意见≠讨论结束，会议结束才结束（同表决方案A）；通知仍按「已通报」
+function topicRowDone(item) {
+  if (item.voteRequired) return !!item.voteClosed || meetingEnded.value
+  if (item.type === 'notice') return topicRowBadgeDone(item)
+  return meetingEnded.value
+}
 function topicActionButton(item) {
   if (item.voteRequired) return topicRowDone(item) ? '看结果' : '去表决'
   if (item.type === 'notice') return topicRowBadgeDone(item) ? '已通报' : (props.isChair ? '去通知' : '查看通知')
-  return topicRowBadgeDone(item) ? '已讨论' : '去讨论'
+  return meetingEnded.value ? '已讨论' : '去讨论'
 }
 // 结束会议由弱转强:主任把每条议题都点开过(过完一遍)才升为主按钮
 const allTopicsDone = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(t => visitedIds.value.includes(t.id)))

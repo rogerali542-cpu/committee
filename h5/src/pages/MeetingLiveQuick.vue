@@ -859,17 +859,7 @@ const pendingTopicCount = computed(() => meetingTopics.value.filter(item => !top
 const meetingEnded = computed(() => !!detail.value && detail.value.stage === 'ended')
 // 主任可随时结束现场会议；议题允许在停止现场录音后继续处理。
 const canEndFromRecordingPage = computed(() => isChair.value && meetingPhase.value === 'recording')
-function topicBadgeText(item) {
-  const done = topicBadgeDone(item)
-  if (item.voteRequired) return done ? '已表决' : '待表决'
-  return done ? '已讨论' : '待讨论'
-}
-// 胶囊按钮文案：待办用动词(去表决/去通报/去讨论)增强"可点"召唤；已办沿用状态词(已表决…)
-function topicPillLabel(item) {
-  if (topicBadgeDone(item)) return topicBadgeText(item)
-  if (item.voteRequired) return '去表决'
-  return '去讨论'
-}
+// （topicBadgeText/topicPillLabel 旧胶囊 UI 已删，函数一并清掉；badgeDone 仍供「结束会议未处理提醒」用）
 // 胶囊按钮按议题类型着色，与议题弹层标签同一套：表决橙 / 通报紫 / 讨论蓝
 function topicPillType(item) {
   if (item.voteRequired) return 'vote'
@@ -889,7 +879,9 @@ function topicActionName(item) {
 function topicRowDone(item) {
   // 方案A：表决全程开放→一直「去表决」；会议结束后（或旧数据已 voteClosed）才「看结果」
   if (item.voteRequired) return !!item.voteClosed || meetingEnded.value
-  return topicBadgeDone(item)
+  if (item.type === 'notice') return topicBadgeDone(item)
+  // 讨论不存在「讨论完」（0729 用户定）：有意见≠讨论结束，会议结束才结束（同表决方案A）
+  return meetingEnded.value
 }
 function topicActionButton(item) {
   const t = topicActionType(item)
@@ -899,7 +891,7 @@ function topicActionButton(item) {
     if (topicBadgeDone(item)) return '已通报'
     return isHost.value ? '去通知' : '查看通知'
   }
-  return topicBadgeDone(item) ? '已完成' : '去讨论'
+  return topicRowDone(item) ? '已完成' : '去讨论'
 }
 
 // 方案A（0722 用户定）：取消单独的「结束表决」——表决全程开放、实时可见，
