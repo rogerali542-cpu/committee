@@ -306,10 +306,17 @@ public class MeetingRecordPdfService {
         StringBuilder sb = new StringBuilder();
         sb.append("业主委员会会议记录\n").append(c.org).append("\n\n");
         // 表头逐项一行（0729 用户定）：原先把「议题/时间/主持人…」多项挤一行用空格分隔，
-        // 手机窄屏 + break-all 会在字中间断行，排版全乱。改成每项独占一行，清爽不折断。
+        // 手机窄屏会在字中间断行，排版全乱；改成每项独占一行。唯「应到/实到人数」两项短、并到一行。
         for (String[] row : c.infoRows) {
-            for (int i = 0; i + 1 < row.length; i += 2)
-                sb.append(row[i].replace("  ", "")).append('：').append(row[i + 1]).append('\n');
+            boolean sameLine = row.length >= 2 && "应到人数".equals(row[0].replace("  ", ""));
+            if (sameLine) {
+                List<String> pairs = new ArrayList<>();
+                for (int i = 0; i + 1 < row.length; i += 2) pairs.add(row[i].replace("  ", "") + "：" + row[i + 1]);
+                sb.append(String.join("　　", pairs)).append('\n');
+            } else {
+                for (int i = 0; i + 1 < row.length; i += 2)
+                    sb.append(row[i].replace("  ", "")).append('：').append(row[i + 1]).append('\n');
+            }
         }
         sb.append("\n会议内容：\n");
         for (String s : c.content) sb.append(s).append('\n');
