@@ -381,5 +381,7 @@ onMounted(() => {
 .pub-btn.publish { background:#4A6E9C; font-weight:600; }
 .pub-btn.publish:active { background:#3E5E88; }
 .pub-btn.publish:disabled { opacity:.6; }
-.pub-btn.ghost { background:#fff; color:var(--pub-blue); border:2rpx solid var(--pub-blue); line-height:78rpx; margin-top:30rpx; }
+/* 次按钮改「柔和浅蓝填充」而非强描边——两个白底蓝框叠在一起太刺眼，弱化后让「确认发布」成为唯一视觉焦点 */
+.pub-btn.ghost { background:var(--pub-blue-soft); color:var(--pub-blue); border:none; line-height:82rpx; margin-top:24rpx; }
+.pub-btn.ghost:active { background:#DCE6F1; }
 </style>

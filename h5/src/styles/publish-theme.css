@@ -80,7 +80,7 @@
   width: 70%; height: 82rpx; line-height: 82rpx;
   border: none; border-radius: 18rpx;
   background: var(--pub-blue); color: #fff;
-  font-size: 36rpx; font-weight: 700; margin: 8rpx auto 0;
+  font-size: 34rpx; font-weight: 600; margin: 8rpx auto 0;
 }
 .pub-btn:active { background: var(--pub-blue-deep); }
 
