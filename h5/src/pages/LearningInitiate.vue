@@ -57,6 +57,10 @@ function todayStr() {
   const d = new Date()
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
+function nowHm() {
+  const d = new Date()
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
+}
 const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '社区活动室', description: '' })
 const saving = ref(false)
 
@@ -81,6 +85,10 @@ async function submit() {
   if (!String(form.description).trim()) missing.push('学习内容')
   if (missing.length) { toast({ title: '请补全：' + missing.join('、'), icon: 'none' }); return }
   if (form.date < todayStr()) { toast({ title: '日期不能早于今天', icon: 'none' }); return }
+  // 今天的学习：时间不能早于当前（默认 14:00 未改且已过点时兜底拦截）
+  if (form.date === todayStr() && form.time && form.time < nowHm()) {
+    toast({ title: '时间不能早于当前时间', icon: 'none' }); return
+  }
   if (saving.value) return
   saving.value = true
   try {
@@ -108,11 +116,8 @@ async function submit() {
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
-.form-row { display: flex; gap: 20rpx; }
-.form-group.half { flex: 1; min-width: 0; }
 .form-label { display: block; margin-bottom: 12rpx; font-size: 28rpx; color: #4a5560; font-weight: 600; }
-.form-hint { display: block; margin: 12rpx 4rpx 0; font-size: 25rpx; line-height: 1.5; color: #98A2AD; }
-.form-input, .picker-field, .form-textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833; font-size: 30rpx; padding: 0 18rpx; height: 84rpx; outline: none; }
+.form-input, .form-textarea { width: 100%; box-sizing: border-box; border: 2rpx solid #DFE5E9; border-radius: 16rpx; background: #FCFDFD; color: #202833; font-size: 30rpx; padding: 0 18rpx; height: 84rpx; outline: none; }
 .form-input.large { font-size: 32rpx; }
 .form-textarea { padding: 16rpx 18rpx; min-height: 160rpx; height: 160rpx; resize: none; line-height: 1.5; }
 
