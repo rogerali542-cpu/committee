@@ -18,7 +18,7 @@
       <div class="review-card" v-for="(r, i) in reviewRows" :key="i">
         <span class="review-idx">{{ i + 1 }}</span>
         <button class="review-del" @click="reviewRows.splice(i, 1)" aria-label="删除此项">×</button>
-        <textarea class="review-input title" v-model="r.title" rows="2" placeholder="待办内容，例如：跟进电梯维保合同签订"></textarea>
+        <textarea class="review-input title" v-model="r.title" rows="2"></textarea>
         <div class="review-row2">
           <!-- 负责人与手动新增同口径：从委员下拉选择；AI 识别出的名字不在名单时保留为一个选项，不丢失 -->
           <select class="review-input review-select" :class="{ 'is-placeholder': !r.owner }" v-model="r.owner">
@@ -41,12 +41,29 @@
         <div class="access-icon">✓</div>
         <span class="access-title">本次会议无明确待办事项。</span>
       </div>
-      <div class="todo-card" v-for="(item, index) in cards" :key="item.id || index">
+      <!-- 已完成沉底：未办的排前面，完成一条自动沉到底部 -->
+      <div class="todo-card" v-for="(item, index) in sortedCards" :key="item.id || index">
+        <!-- 编辑态：整卡切换为修改表单（复用新增表单样式） -->
+        <template v-if="editForm.id && editForm.id === item.id">
+          <div class="manual-form-title">修改待办</div>
+          <textarea class="manual-input title" v-model="editForm.title" rows="2"></textarea>
+          <select class="manual-input manual-select" :class="{ 'is-placeholder': !editForm.owner }" v-model="editForm.owner">
+            <option value="">负责人（选填）</option>
+            <option v-if="editForm.owner && !members.some(m => m.name === editForm.owner)" :value="editForm.owner">{{ editForm.owner }}</option>
+            <option v-for="m in members" :key="m.userRoleId || m.name" :value="m.name">{{ m.name }}<template v-if="m.role">（{{ m.role }}）</template></option>
+          </select>
+          <div class="manual-form-acts">
+            <button class="manual-cancel" :disabled="editForm.saving" @click="cancelEdit">取消</button>
+            <button class="manual-save" :disabled="editForm.saving" @click="saveEdit(item)">{{ editForm.saving ? '保存中…' : '保存' }}</button>
+          </div>
+        </template>
+        <template v-else>
         <div class="todo-top">
           <span class="todo-idx">{{ index + 1 }}</span>
           <span class="todo-title">{{ item.title }}</span>
           <div class="todo-head-actions">
             <span class="status-tag" :class="'tag-' + item.status">{{ statusLabel(item.status) }}</span>
+            <button v-if="canPushTicket && !item.ticketNo && item.id" class="edit-btn" @click="beginEdit(item)">编辑</button>
             <button v-if="canPushTicket && !item.ticketNo" class="delete-btn" :disabled="item.deleting" @click="deleteTodo(item)">删除</button>
           </div>
         </div>
@@ -75,6 +92,7 @@
             <span class="completed-mark">✓ 已完成</span>
           </template>
         </div>
+        </template>
       </div>
 
       <!-- 解析失败兜底：整段原文 -->
@@ -87,7 +105,7 @@
         <button v-if="!manualForm.open" class="manual-add-btn" @click="openManual">＋ 手动添加待办</button>
         <div v-else class="manual-form">
           <div class="manual-form-title">新增待办</div>
-          <textarea class="manual-input title" v-model="manualForm.title" rows="2" placeholder="待办内容，例如：跟进电梯维保合同签订"></textarea>
+          <textarea class="manual-input title" v-model="manualForm.title" rows="2"></textarea>
           <select class="manual-input manual-select" :class="{ 'is-placeholder': !manualForm.owner }" v-model="manualForm.owner">
             <option value="">负责人（选填）</option>
             <option v-for="m in members" :key="m.userRoleId || m.name" :value="m.name">{{ m.name }}<template v-if="m.role">（{{ m.role }}）</template></option>
@@ -301,6 +319,34 @@ async function saveManual() {
   } finally { manualForm.value.saving = false }
 }
 
+// 展示排序：已完成沉底（未办的保持原顺序在前），标记完成后自动沉下去
+const sortedCards = computed(() => [
+  ...cards.value.filter(c => c.status !== 'done'),
+  ...cards.value.filter(c => c.status === 'done')
+])
+
+// 编辑已有待办（0729 用户定：写错只能删了重加太糙）。已发工单的不可改，入口同删除一起隐藏。
+const editForm = ref({ id: null, title: '', owner: '', saving: false })
+function beginEdit(item) {
+  editForm.value = { id: item.id, title: item.title || '', owner: item.owner || '', saving: false }
+  loadMembers()
+}
+function cancelEdit() { editForm.value = { id: null, title: '', owner: '', saving: false } }
+async function saveEdit(item) {
+  const title = String(editForm.value.title || '').trim()
+  if (!title) { toast({ title: '请输入待办内容', icon: 'none' }); return }
+  editForm.value.saving = true
+  try {
+    const res = await api.committeeTodoUpdate(meetingId, item.id, { title, owner: editForm.value.owner })
+    if (res) { item.title = res.title; item.owner = res.owner; item.lastActorName = res.lastActorName; item.updatedAt = res.updatedAt }
+    cancelEdit()
+    toast({ title: '已保存修改', icon: 'success' })
+  } catch (e) {
+    editForm.value.saving = false
+    toast({ title: (e && e.message) || '保存失败，请重试', icon: 'none' })
+  }
+}
+
 // 截止日期临近（≤3 天）标红警示。dueText 为文本，能解析成日期才判定。
 function markDueUrgent(list) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -487,6 +533,7 @@ onMounted(() => {
 .tag-done { background:#E3F5E9; color:#217246; }
 .delete-btn { height:32px; padding:0 8px; border:0; background:transparent; color:#B42318; font-size:15px; font-weight:700; }
 .delete-btn:disabled { opacity:.5; }
+.edit-btn { height:32px; padding:0 8px; border:0; background:transparent; color:#2464B4; font-size:15px; font-weight:700; }
 .todo-meta { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0 48px; }
 .meta-item { display: flex; align-items: center; font-size: 19px; font-weight: 600; }
 .meta-label { color: #555; margin-right: 8px; }

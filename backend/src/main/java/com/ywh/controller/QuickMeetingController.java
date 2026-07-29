@@ -299,6 +299,13 @@ public class QuickMeetingController {
         return Result.ok(committeeService.addTodo(id, item));
     }
 
+    /** 主任修改一条待办的内容/负责人（已发工单的不允许改）。 */
+    @PostMapping("/todos/{todoId}/update")
+    @RequireRole({"主任", "副主任"})
+    public Result<MeetingTodoVO> todoUpdate(@PathVariable Long id, @PathVariable Long todoId, @RequestBody MeetingTodoVO item) {
+        return Result.ok(committeeService.updateTodo(id, todoId, item));
+    }
+
     /** 委员更新某条待办状态：status = todo/doing/done。 */
     @PutMapping("/todos/{todoId}/status")
     @RequireRole({"主任", "副主任", "记录员", "委员"})

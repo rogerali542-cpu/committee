@@ -2283,6 +2283,27 @@ public class CommitteeService {
         return toTodoVO(todoRepo.save(t));
     }
 
+    /** 主任修改一条待办的内容/负责人（0729：写错只能删了重加太糙）。已发工单的不允许改，避免与工单内容脱节。 */
+    @Transactional
+    public MeetingTodoVO updateTodo(Long meetingId, Long todoId, MeetingTodoVO item) {
+        MeetingTodo t = todoRepo.findById(todoId)
+                .orElseThrow(() -> new IllegalArgumentException("待办不存在"));
+        if (!t.getMeetingId().equals(meetingId)) {
+            throw new IllegalArgumentException("待办与会议不匹配");
+        }
+        if (t.getExternalTicketNo() != null || t.getTicketNo() != null) {
+            throw new IllegalArgumentException("该待办已创建工单，不能修改内容");
+        }
+        String title = item == null || item.getTitle() == null ? "" : item.getTitle().trim();
+        if (title.isEmpty()) throw new IllegalArgumentException("待办内容不能为空");
+        t.setTitle(clip(title, 500));
+        t.setOwner(clip(blankToNull(item.getOwner()), 100));
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (ur != null) { t.setLastActorId(ur.getId()); t.setLastActorName(ur.getRealName()); }
+        t.setUpdatedAt(LocalDateTime.now());
+        return toTodoVO(todoRepo.save(t));
+    }
+
     /** 把待办的「来源议题」文本匹配到本会议议题（相等或互相包含），拿不到返回 null。仅追溯用。 */
     private Long resolveSourceTopicId(String sourceRef, List<RecordTopic> topics) {
         if (sourceRef == null || sourceRef.isBlank() || topics == null || topics.isEmpty()) return null;
