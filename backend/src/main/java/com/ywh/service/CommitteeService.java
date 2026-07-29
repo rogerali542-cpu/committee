@@ -2260,6 +2260,29 @@ public class CommitteeService {
         return saved.stream().map(this::toTodoVO).collect(Collectors.toList());
     }
 
+    /** 主任手动新增一条待办（0729：AI 待办边界难界定，除识别外还需人工增补）。追加到现有清单末尾。 */
+    @Transactional
+    public MeetingTodoVO addTodo(Long meetingId, MeetingTodoVO item) {
+        meetingRepo.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        String title = item == null || item.getTitle() == null ? "" : item.getTitle().trim();
+        if (title.isEmpty()) throw new IllegalArgumentException("待办内容不能为空");
+        LocalDateTime now = LocalDateTime.now();
+        MeetingTodo t = MeetingTodo.builder()
+                .meetingId(meetingId)
+                .title(clip(title, 500))
+                .owner(clip(blankToNull(item.getOwner()), 100))
+                .dueText(clip(blankToNull(item.getDueText()), 100))
+                .status(normalizeTodoStatus(item.getStatus()))
+                .sortOrder((int) todoRepo.countByMeetingId(meetingId)) // 追加到末尾
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        if (ur != null) { t.setLastActorId(ur.getId()); t.setLastActorName(ur.getRealName()); }
+        return toTodoVO(todoRepo.save(t));
+    }
+
     /** 把待办的「来源议题」文本匹配到本会议议题（相等或互相包含），拿不到返回 null。仅追溯用。 */
     private Long resolveSourceTopicId(String sourceRef, List<RecordTopic> topics) {
         if (sourceRef == null || sourceRef.isBlank() || topics == null || topics.isEmpty()) return null;

@@ -323,6 +323,9 @@ export default {
   committeeTodoInit: function (id, items) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/todos/init', items);
   },
+  committeeTodoAdd: function (id, item) {
+    return core.realRequest('POST', '/api/committees/' + id + '/quick/todos/add', item);
+  },
   committeeTodoStatus: function (id, todoId, status) {
     return core.realRequest('PUT', '/api/committees/' + id + '/quick/todos/' + todoId + '/status?status=' + encodeURIComponent(status));
   },

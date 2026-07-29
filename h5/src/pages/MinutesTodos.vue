@@ -3,8 +3,9 @@
     <PageNav title="待办事项" />
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
-    <div v-else-if="emptyText" class="access-card">
-      <div class="access-icon">{{ /待主任确认|加载失败/.test(emptyText) ? '📋' : '✓' }}</div>
+    <!-- 错误/等待态（加载失败/缺参/待主任确认）：只提示，不给增删 -->
+    <div v-else-if="isErrorEmpty" class="access-card">
+      <div class="access-icon">📋</div>
       <span class="access-title">{{ emptyText }}</span>
     </div>
 
@@ -30,6 +31,11 @@
     </template>
 
     <template v-else>
+      <!-- 无 AI 待办（无卡片）时的提示；主任仍可在下方手动增补 -->
+      <div v-if="!cards.length && !rawText" class="access-card">
+        <div class="access-icon">✓</div>
+        <span class="access-title">本次会议无明确待办事项。</span>
+      </div>
       <div class="todo-card" v-for="(item, index) in cards" :key="item.id || index">
         <div class="todo-top">
           <span class="todo-idx">{{ index + 1 }}</span>
@@ -70,12 +76,29 @@
       <div class="doc" v-if="rawText">
         <span class="doc-body">{{ rawText }}</span>
       </div>
+
+      <!-- 手动添加（主任）：AI 待办边界难界定，除识别外还需人工增补/删除（删除在每条卡片上） -->
+      <div v-if="isChair" class="manual-zone">
+        <button v-if="!manualForm.open" class="manual-add-btn" @click="openManual">＋ 手动添加待办</button>
+        <div v-else class="manual-form">
+          <div class="manual-form-title">新增待办</div>
+          <textarea class="manual-input title" v-model="manualForm.title" rows="2" placeholder="待办内容"></textarea>
+          <div class="manual-row2">
+            <input class="manual-input" v-model="manualForm.owner" placeholder="负责人（选填）" />
+            <input class="manual-input" v-model="manualForm.due" placeholder="截止时间（选填）" />
+          </div>
+          <div class="manual-form-acts">
+            <button class="manual-cancel" :disabled="manualForm.saving" @click="closeManual">取消</button>
+            <button class="manual-save" :disabled="manualForm.saving || !manualForm.title.trim()" @click="saveManual">{{ manualForm.saving ? '保存中…' : '保存' }}</button>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
@@ -244,6 +267,27 @@ const emptyText = ref('')
 
 let meetingId = null
 
+// 错误/等待态（加载失败/缺参/委员等主任确认）：只提示，不给增删；genuine 空("无明确待办")不算，主任可增补
+const isErrorEmpty = computed(() => /加载失败|缺少会议参数|待主任确认整理后查看/.test(emptyText.value))
+
+// 手动添加待办（0729 用户定：AI 边界难界定，需人工增补）
+const manualForm = ref({ open: false, title: '', owner: '', due: '', saving: false })
+function openManual() { manualForm.value = { open: true, title: '', owner: '', due: '', saving: false } }
+function closeManual() { manualForm.value.open = false }
+async function saveManual() {
+  const title = String(manualForm.value.title || '').trim()
+  if (!title) { toast({ title: '请输入待办内容', icon: 'none' }); return }
+  manualForm.value.saving = true
+  try {
+    const item = await api.committeeTodoAdd(meetingId, { title, owner: manualForm.value.owner, dueText: manualForm.value.due, status: 'todo' })
+    if (item) { cards.value = markDueUrgent([...cards.value, item]); emptyText.value = '' }
+    manualForm.value.open = false
+    toast({ title: '已添加待办', icon: 'success' })
+  } catch (e) {
+    toast({ title: (e && e.message) || '添加失败，请重试', icon: 'none' })
+  } finally { manualForm.value.saving = false }
+}
+
 // 截止日期临近（≤3 天）标红警示。dueText 为文本，能解析成日期才判定。
 function markDueUrgent(list) {
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -402,6 +446,20 @@ onMounted(() => {
 .review-confirm { width: 70%; min-height: 92rpx; border: 0; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 32rpx; font-weight: 700; box-shadow: 0 8rpx 20rpx rgba(168,88,0,0.22); }
 .review-confirm:disabled { opacity: 0.6; box-shadow: none; }
 .review-confirm:active { opacity: 0.9; }
+/* 手动添加待办（0729）：入口按钮 + 展开的输入表单，与确认清单同款视觉 */
+.manual-zone { margin-top: 22rpx; }
+.manual-add-btn { width: 100%; min-height: 92rpx; border: 2rpx solid var(--c-primary); border-radius: 16rpx; background: #FFF6EC; color: #C2410C; font-size: 30rpx; font-weight: 700; }
+.manual-add-btn:active { background: #FDEBD8; }
+.manual-form { background: #fff; border-radius: 18rpx; padding: 26rpx 24rpx; box-shadow: 0 4rpx 14rpx rgba(20,42,58,0.05); }
+.manual-form-title { font-size: 32rpx; font-weight: 800; color: #1f2329; margin-bottom: 18rpx; }
+.manual-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E5E9ED; border-radius: 14rpx; padding: 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
+.manual-input.title { resize: none; line-height: 1.45; font-weight: 600; }
+.manual-row2 { display: flex; gap: 14rpx; margin-top: 14rpx; }
+.manual-row2 .manual-input { flex: 1; min-width: 0; }
+.manual-form-acts { display: flex; gap: 16rpx; margin-top: 22rpx; }
+.manual-cancel { flex: 1; min-height: 84rpx; border: 2rpx solid #D8DBE0; border-radius: 14rpx; background: #fff; color: #55585E; font-size: 30rpx; font-weight: 600; }
+.manual-save { flex: 1.4; min-height: 84rpx; border: 0; border-radius: 14rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+.manual-save:disabled { opacity: 0.55; }
 .todo-card { background: #fff; border-radius: 16px; padding: 22px 20px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .todo-top { display: flex; align-items: flex-start; position: relative; }
 .todo-idx { flex: none; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 50%; background: #1A4A8A; color: #fff; font-size: 18px; font-weight: 700; margin-right: 14px; margin-top: 2px; }

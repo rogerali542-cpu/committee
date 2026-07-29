@@ -292,6 +292,13 @@ public class QuickMeetingController {
         return Result.ok(committeeService.initTodos(id, items));
     }
 
+    /** 主任手动新增一条待办（AI 边界难界定，除识别外还需人工增补）。 */
+    @PostMapping("/todos/add")
+    @RequireRole({"主任", "副主任"})
+    public Result<MeetingTodoVO> todoAdd(@PathVariable Long id, @RequestBody MeetingTodoVO item) {
+        return Result.ok(committeeService.addTodo(id, item));
+    }
+
     /** 委员更新某条待办状态：status = todo/doing/done。 */
     @PutMapping("/todos/{todoId}/status")
     @RequireRole({"主任", "副主任", "记录员", "委员"})
