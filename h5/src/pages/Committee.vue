@@ -102,12 +102,11 @@
         <div v-if="cockpitTodos.length" class="ck-section">
           <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
                class="ck-todo" :class="[currentCockpitTodo.tone, { 'ck-todo-complete': currentCockpitTodo.complete }]">
-            <div v-if="(currentCockpitTodo.meeting && isChair) || currentCockpitTodo.draft || committeeCockpitTodos.length > 1" class="ck-todo-head">
+            <!-- 首页不再放「删除会议」(0729 用户定：易误点 + 版面怪)；删除已移到会议详情页底部不起眼处。此处只留草稿撤销与翻页 -->
+            <div v-if="currentCockpitTodo.draft || committeeCockpitTodos.length > 1" class="ck-todo-head">
               <div class="ck-todo-head-actions">
-                <button v-if="currentCockpitTodo.meeting && isChair" type="button" class="ck-todo-delete"
-                        @click.stop.prevent="removeCurrent(currentCockpitTodo.meeting)">删除会议</button>
-                <!-- 草稿卡的撤销出口：与「删除会议」同位同式，远离右下主按钮避免误点；点击走确认弹窗 -->
-                <button v-else-if="currentCockpitTodo.draft" type="button" class="ck-todo-delete"
+                <!-- 草稿卡的撤销出口：远离右下主按钮避免误点；点击走确认弹窗 -->
+                <button v-if="currentCockpitTodo.draft" type="button" class="ck-todo-delete"
                         @click.stop.prevent="discardDraft">放弃草稿</button>
                 <div v-if="committeeCockpitTodos.length > 1" class="ck-todo-pager">
                   <button type="button" @click.stop="showPreviousCockpitTodo">上一项</button>
@@ -4203,9 +4202,9 @@ onActivated(show)
 .ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-title,
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-sub { max-width: 430rpx; }
-/* 头部(删除会议/翻页)不受右侧按钮预留 224rpx 约束，用负边距贴回右上角（0729 修：线上会议卡删除会议错位到中间） */
+/* 头部(放弃草稿/翻页)不受右侧按钮预留 224rpx 约束，用负边距贴回右上角（0729：删除会议已移走，这里只剩草稿撤销/翻页） */
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-head { margin-right: -198rpx; }
-/* 该卡同时有「删除会议」和翻页时，让翻页回到流内与删除会议并排（否则绝对定位的翻页会压在删除会议上） */
+/* 该卡同时有「放弃草稿」和翻页时，让翻页回到流内与之并排（否则绝对定位的翻页会压在放弃草稿上） */
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-pager { position: static; top: auto; right: auto; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-cta {
   position: absolute;

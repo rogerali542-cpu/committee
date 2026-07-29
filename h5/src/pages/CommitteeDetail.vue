@@ -342,6 +342,11 @@
           <span class="ext-hint">会议结束公示后可查看会议纪要</span>
         </template>
       </template>
+
+      <!-- 删除会议（0729 用户定：首页不放删除，移到详情页底部不起眼处）。准备阶段用上方「取消会议」，此处覆盖其余阶段（已结束等） -->
+      <div v-if="userView === 'chair' && !(detail.stage === 'preparing' && !noticePackageVisible)" class="detail-del-zone">
+        <span class="detail-del-link" @click="removeMeeting">删除会议</span>
+      </div>
     </div>
 
     <!-- 准备阶段（主任）：底部固定主操作 -->
@@ -1570,10 +1575,14 @@ async function exportPreNotice() {
 async function removeMeeting() {
   const isRecordingThisMeeting = meetingRecordingSession.active
     && String(meetingRecordingSession.meetingId || '') === String(meetingId)
+  // 准备阶段是「取消」(会还没开)，其余阶段(已结束等)是「删除」记录——用词随阶段变，二者走同一删除接口
+  const preparing = !!(detail.value && detail.value.stage === 'preparing')
+  const verb = preparing ? '取消' : '删除'
   const res = await showModal({
-    title: '确认取消',
-    content: '确定取消该会议？'
-      + (isRecordingThisMeeting ? '\n\n该会议正在录音，取消后录音将立即停止并丢弃。' : '')
+    title: preparing ? '确认取消' : '删除会议',
+    content: '确定' + verb + '该会议？'
+      + (isRecordingThisMeeting ? '\n\n该会议正在录音，' + verb + '后录音将立即停止并丢弃。' : '')
+      + (preparing ? '' : '\n\n删除后无法恢复。')
   })
   if (res.confirm) {
     try { await api.committeeRemove(meetingId); await discardMeetingRecording(meetingId); navigateBack() }
@@ -2311,6 +2320,10 @@ async function removeMaterial(item) {
 .pma-btn:disabled { opacity:.6; }
 .pma-btn.danger { color:#B0463A; border-color:#DEB4AE; }
 .pma-btn.danger:active { background:#FBF0EE; }
+/* 删除会议：详情页最底部的低调出口(0729 用户定)——灰字、不抢眼，仅供清理建错/测试的会 */
+.detail-del-zone { margin:56rpx 0 24rpx; text-align:center; }
+.detail-del-link { display:inline-block; padding:12rpx 40rpx; font-size:25rpx; color:#A2A8B0; letter-spacing:2rpx; }
+.detail-del-link:active { color:#B0463A; }
 /* 会前公告并入操作排(0725);说明小字独立在按钮组下方 */
 .pre-notice-hint { margin:0 24rpx 14rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
 .method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
