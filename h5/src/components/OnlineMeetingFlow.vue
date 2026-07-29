@@ -167,35 +167,57 @@
             <div class="vote-closed-tag" :class="{ pass: topic.passed }">{{ topic.passed ? '已通过' : '未通过' }}</div>
           </template>
 
-          <!-- 意见:所有议题都可补充书面意见,记入会议记录;列表收在「查看详情」里(0725 用户定) -->
-          <div v-if="topicOpinions(topic.id).length" class="op-detail-row">
-            <button type="button" class="op-detail-toggle" @click="opsOpen = !opsOpen">
-              {{ opsOpen ? '收起意见 ▲' : '查看详情（' + topicOpinions(topic.id).length + ' 条意见）▾' }}
-            </button>
-          </div>
-          <div v-if="opsOpen && topicOpinions(topic.id).length" class="topic-opinions">
-            <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
-              <b>{{ op.name }}</b>
-              <span v-if="opVoteTag(op)" class="op-vote-tag" :class="opVoteClass(op)">{{ opVoteTag(op) }}</span>
-              <span class="op-text">{{ op.content }}</span>
-              <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
+          <!-- 通知类议题(0729 用户定重做):一次性通知——主任/副主任/秘书负责通知,其他人接到即可,不讨论不表决 -->
+          <template v-if="topic.type === 'notice'">
+            <div class="omf-notice-body">{{ topic.content || '（暂无通知正文）' }}</div>
+            <div v-if="topic.notified" class="omf-notice-done"><span class="omf-notice-done-mark">✓</span>已通知全体</div>
+            <template v-else-if="!meetingEnded">
+              <!-- 责任人(主任/副主任/秘书):负责把通知传达到位,确认后本议题即完成 -->
+              <div v-if="isChair" class="omf-notice-act">
+                <button type="button" class="omf-notice-confirm" :disabled="busy" @click="confirmNoticeAll(topic)">确认已通知全体</button>
+                <span class="omf-notice-tip">由主任 / 副主任 / 秘书负责通知，确认后本议题即完成</span>
+              </div>
+              <!-- 其他人:接到了点一下即可 -->
+              <div v-else-if="selfPresent" class="omf-notice-act">
+                <button v-if="!topic.viewedByMe" type="button" class="omf-notice-received" :disabled="busy" @click="markNoticeReceived(topic)">我已收到</button>
+                <span v-else class="omf-notice-mine">✓ 已收到，待通知人确认</span>
+              </div>
+              <div v-else class="omf-notice-act"><span class="omf-notice-status">签到后可确认收到</span></div>
+            </template>
+            <div v-else class="omf-notice-status">未通知</div>
+          </template>
+
+          <!-- 非通知类(讨论/表决):可补充书面意见,记入会议记录;列表收在「查看详情」里(0725 用户定) -->
+          <template v-else>
+            <div v-if="topicOpinions(topic.id).length" class="op-detail-row">
+              <button type="button" class="op-detail-toggle" @click="opsOpen = !opsOpen">
+                {{ opsOpen ? '收起意见 ▲' : '查看详情（' + topicOpinions(topic.id).length + ' 条意见）▾' }}
+              </button>
             </div>
-          </div>
-          <!-- 表决题:先投票才能填意见(0725 用户定),意见带作者表决标签 -->
-          <div v-if="!meetingEnded && topic.voteRequired && !hasMyVote(topic)" class="op-need-vote">
-            请先完成上方表决，再补充意见
-          </div>
-          <div v-else-if="!meetingEnded" class="op-input">
-            <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充意见（可选）"></textarea>
-            <div class="op-btn-row">
-              <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
-                      :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
-              <button v-else type="button" class="op-ai-btn"
-                      :disabled="aiBusyMap[topic.id]" @click="helpWriteOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 写作中…' : 'AI 帮写' }}</button>
-              <button v-if="polishUndoMap[topic.id] != null" type="button" class="mini-act" @click="undoPolish(topic)">还原</button>
-              <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
+            <div v-if="opsOpen && topicOpinions(topic.id).length" class="topic-opinions">
+              <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
+                <b>{{ op.name }}</b>
+                <span v-if="opVoteTag(op)" class="op-vote-tag" :class="opVoteClass(op)">{{ opVoteTag(op) }}</span>
+                <span class="op-text">{{ op.content }}</span>
+                <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
+              </div>
             </div>
-          </div>
+            <!-- 表决题:先投票才能填意见(0725 用户定),意见带作者表决标签 -->
+            <div v-if="!meetingEnded && topic.voteRequired && !hasMyVote(topic)" class="op-need-vote">
+              请先完成上方表决，再补充意见
+            </div>
+            <div v-else-if="!meetingEnded" class="op-input">
+              <textarea v-model="opinionDrafts[topic.id]" rows="2" placeholder="补充意见（可选）"></textarea>
+              <div class="op-btn-row">
+                <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
+                        :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
+                <button v-else type="button" class="op-ai-btn"
+                        :disabled="aiBusyMap[topic.id]" @click="helpWriteOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 写作中…' : 'AI 帮写' }}</button>
+                <button v-if="polishUndoMap[topic.id] != null" type="button" class="mini-act" @click="undoPolish(topic)">还原</button>
+                <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
+              </div>
+            </div>
+          </template>
         </div>
 
         <div v-if="!topics.length" class="topic-empty">本次会议暂无议题</div>
@@ -326,6 +348,29 @@ async function removeOpinion(op) {
   } catch (e) { toast({ title: e.message || '删除失败', icon: 'none' }) }
 }
 
+// 通知类议题(0729 用户定重做):其他人接到点「我已收到」即可,不参与讨论
+async function markNoticeReceived(topic) {
+  if (!topic || topic.viewedByMe || busy.value) return
+  busy.value = true
+  try {
+    await api.committeeNoticeView(props.meetingId, topic.id)
+    await emitReload()
+    toast({ title: '已确认收到', icon: 'success' })
+  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) } finally { busy.value = false }
+}
+// 责任人(主任/副主任/秘书)一键确认已通知全体,本议题即完成,无需逐个等待
+async function confirmNoticeAll(topic) {
+  if (!topic) return
+  const res = await showModal({ title: '确认已通知全体', content: '确认已把本通知传达到全体委员？确认后本议题即完成，无需逐个等待。', confirmText: '确认已通知', cancelText: '再等等' })
+  if (!res.confirm) return
+  busy.value = true
+  try {
+    await api.committeeNoticeRead(props.meetingId, topic.id)
+    await emitReload()
+    toast({ title: '已确认通知全体', icon: 'success' })
+  } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) } finally { busy.value = false }
+}
+
 function initFromDetail() {
   liveAttendance.value = ((props.detail.record && props.detail.record.attendances) || []).slice()
   applyTopics((props.detail.record && props.detail.record.topics) || [])
@@ -337,6 +382,9 @@ function applyTopics(raw) {
     id: item.id,
     title: item.title,
     type: item.type,
+    content: item.content || '',        // 通知类议题正文
+    notified: !!item.notified,          // 是否已通知全体
+    viewedByMe: !!item.viewedByMe,      // 本人是否已确认收到
     voteRequired: !!item.voteRequired,
     decisionType: item.decisionType || 'simple',
     voteClosed: !!item.voteClosed,
@@ -686,6 +734,18 @@ onBeforeUnmount(() => {
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
 .op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
+/* 通知类议题(0729 重做):正文卡 + 责任人「确认已通知全体」/ 其他人「我已收到」,与标题左对齐(52rpx) */
+.omf-notice-body{margin:16rpx 0 0 52rpx;background:#FFFBF3;border:2rpx solid #F1E2C6;border-radius:14rpx;padding:20rpx;font-size:29rpx;line-height:1.7;color:#1f2329;white-space:pre-wrap}
+.omf-notice-done{display:flex;align-items:center;gap:10rpx;margin:16rpx 0 0 52rpx;font-size:27rpx;font-weight:700;color:#2E7D32}
+.omf-notice-done-mark{display:inline-flex;align-items:center;justify-content:center;width:32rpx;height:32rpx;border-radius:50%;background:#2E8B57;color:#fff;font-size:20rpx}
+.omf-notice-act{display:flex;align-items:center;flex-wrap:wrap;gap:14rpx;margin:16rpx 0 0 52rpx}
+.omf-notice-confirm{flex-shrink:0;border:none;background:#C76A00;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 34rpx}
+.omf-notice-confirm:active{background:#A85800}.omf-notice-confirm:disabled{opacity:.5}
+.omf-notice-received{flex-shrink:0;border:none;background:#2E8B57;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 42rpx}
+.omf-notice-received:active{background:#256F45}.omf-notice-received:disabled{opacity:.5}
+.omf-notice-mine{font-size:26rpx;font-weight:700;color:#2E7D32}
+.omf-notice-status{font-size:26rpx;color:#9AA0A6;font-weight:600}
+.omf-notice-tip{flex:1 1 100%;font-size:22rpx;color:#B79A6A;line-height:1.4}
 .vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
 .vote-options{display:flex;flex-direction:column;gap:12rpx;margin:18rpx 0 0 52rpx}
 .vote-opt{height:70rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
