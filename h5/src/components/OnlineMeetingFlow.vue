@@ -708,7 +708,7 @@ onBeforeUnmount(() => {
 .signin-count{margin-top:26rpx;color:#7a8894;font-size:26rpx}
 .omf-primary{border:0;border-radius:14rpx;height:76rpx;font-size:27rpx;width:100%;margin-top:28rpx;background:#416f8b;color:#fff}.omf-primary:disabled{opacity:.45}
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
-.topic-head-row{display:flex;align-items:center;justify-content:space-between}
+.topic-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:22rpx}
 .topic-pager-ind{flex:none;background:#e7f0f5;color:#35647D;font-size:25rpx;font-weight:700;padding:5rpx 18rpx;border-radius:999rpx}
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
 .omf--has-footer{padding-bottom:170rpx}
