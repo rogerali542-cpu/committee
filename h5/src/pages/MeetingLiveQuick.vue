@@ -136,8 +136,8 @@
             </template>
           </div>
 
-          <!-- 结论行紧贴主按钮：解释按钮此刻为什么可点/不可点 -->
-          <div class="er-hint">{{ endReviewHint }}</div>
+          <!-- 结论行紧贴主按钮：解释按钮此刻为什么可点/不可点；无话可说时整行不渲染 -->
+          <div v-if="endReviewHint" class="er-hint">{{ endReviewHint }}</div>
           <button class="end-review-primary" :disabled="endReviewPrimaryDisabled" @click="handleEndReviewPrimary">
             {{ endReviewPrimaryText }}
           </button>
@@ -1194,8 +1194,8 @@ const bgMinutesGenerating = computed(() => aiTask.active && !!aiTask.targetPath 
 // 会中已不生成纪要：原「AI生成纪要」主按钮及 suppMinutes* 计算属性已移除，纪要一律会后在会议详情页生成
 const endReviewHint = computed(() => {
   if (minutesGenerated.value) return '会议纪要已经生成，可直接查看并继续编辑。'
-  // 线上会议无录音,结果已按各委员投票定稿,可直接生成纪要
-  if (isOnlineMeeting.value) return '表决结果已定稿，材料整理完可生成会议纪要。'
+  // 线上会议无录音、结果已定稿：不需要解释性小字（0729 用户定：删），返回空整行不渲染
+  if (isOnlineMeeting.value) return ''
   if (canUpload.value) return '本次未上传的录音不会用于自动生成会议纪要。'
   if (uploading.value) return '录音正在上传，完成后会自动识别。'
   if (polling.value || extracting.value) return '录音正在后台识别，你可以停留在本页等待完成。'
