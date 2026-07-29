@@ -113,7 +113,6 @@
       <div class="ev-card">
         <div class="ev-head">
           <span class="ev-title">{{ catNoun }}材料（{{ item.evidences ? item.evidences.length : 0 }}）</span>
-          <button v-if="item.stage !== 'ended' && canManage" type="button" class="ev-add" @click="addEvidence">＋ 上传</button>
         </div>
         <div v-if="item.evidences && item.evidences.length" class="ev-list">
           <div v-for="ev in item.evidences" :key="ev.id" class="ev-item">
@@ -128,6 +127,8 @@
           <template v-else-if="item.stage === 'ongoing'">可上传{{ catNoun }}记录、课件、照片等</template>
           <template v-else>暂无归档资料</template>
         </span>
+        <!-- 上传：下方居中大按钮（0729 用户定） -->
+        <button v-if="item.stage !== 'ended' && canManage" type="button" class="ev-add-btn" @click="addEvidence">＋ 上传材料</button>
       </div>
 
       <!-- 管理操作 -->
@@ -427,9 +428,9 @@ onMounted(() => {
 .ev-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
 .ev-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
 .ev-title { font-size: 30rpx; font-weight: 700; color: #1f2329; }
-/* 上传按钮：明显的橙色描边胶囊（0729 用户定） */
-.ev-add { display: inline-flex; align-items: center; gap: 4rpx; padding: 10rpx 26rpx; border: 2rpx solid var(--c-primary); border-radius: 999rpx; background: var(--c-primary-soft); color: var(--c-primary-dark); font-size: 26rpx; font-weight: 700; line-height: 1; }
-.ev-add:active { background: #F7E6C8; }
+/* 上传：下方居中大按钮（0729 用户定） */
+.ev-add-btn { display: block; width: 66%; margin: 22rpx auto 4rpx; height: 88rpx; border: 2rpx solid var(--c-primary); border-radius: 20rpx; background: var(--c-primary-soft); color: var(--c-primary-dark); font-size: 30rpx; font-weight: 700; }
+.ev-add-btn:active { background: #F7E6C8; }
 .ev-list { display: flex; flex-direction: column; gap: 8rpx; }
 .ev-item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 18rpx; background: #fafbfc; border-radius: 12rpx; font-size: 28rpx; color: #444; }
 .ev-name { flex: 1; min-width: 0; word-break: break-all; }
