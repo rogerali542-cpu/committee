@@ -115,6 +115,7 @@
                 </div>
               </div>
             </div>
+            <span class="ck-todo-tag">{{ currentCockpitTodo.tag || '业委会' }}</span>
             <div class="ck-todo-title">{{ currentCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
               <div v-if="currentCockpitTodo.sub" class="ck-todo-sub">{{ currentCockpitTodo.sub }}</div>
@@ -125,6 +126,7 @@
           </div>
           <div v-if="receptionCockpitTodo" :key="receptionCockpitTodo.key"
                class="ck-todo ck-reception-todo" :class="receptionCockpitTodo.tone">
+            <span class="ck-todo-tag">{{ receptionCockpitTodo.tag || '接待' }}</span>
             <div class="ck-todo-title">{{ receptionCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
               <div v-if="receptionCockpitTodo.sub" class="ck-todo-sub">{{ receptionCockpitTodo.sub }}</div>
@@ -142,6 +144,7 @@
           <!-- 学习培训直达卡（0729 领导意见：三项工作都要有入口） -->
           <div v-if="learningCockpitTodo" :key="learningCockpitTodo.key"
                class="ck-todo ck-learning-todo" :class="learningCockpitTodo.tone">
+            <span class="ck-todo-tag">{{ learningCockpitTodo.tag }}</span>
             <div class="ck-todo-title">{{ learningCockpitTodo.title }}</div>
             <div class="ck-todo-foot">
               <div v-if="learningCockpitTodo.sub" class="ck-todo-sub">{{ learningCockpitTodo.sub }}</div>
@@ -156,20 +159,14 @@
           <div class="ck-calm-text">本期暂无待办事项<br>各项工作井然有序</div>
         </div>
 
-        <div class="ck-section ck-work-section">
-          <div class="ck-sec-title">工作板块</div>
-          <div class="ck-lines">
-            <div v-for="d in portalDomains" :key="d.key" class="ck-line" :class="d.tone" @click="d.onTap()">
-              <span class="ck-line-ico" :class="d.tone">{{ d.glyph }}</span>
-            <div class="ck-line-info">
-              <div class="ck-line-title">{{ d.title }}</div>
-              <div v-if="d.detail" class="ck-line-detail">{{ d.detail }}</div>
-            </div>
-              <span class="ck-line-enter">›</span>
-            </div>
+        <div class="welcome-foot">{{ welcomeFootText }}</div>
+        <!-- 工作板块改底栏（0729 用户定）：四项固定在页面底部，随时可达 -->
+        <div class="ck-dock">
+          <div v-for="d in portalDomains" :key="d.key" class="ck-dock-item" @click="d.onTap()">
+            <span class="ck-dock-ico" :class="d.tone">{{ d.glyph }}</span>
+            <span class="ck-dock-label">{{ d.title }}</span>
           </div>
         </div>
-        <div class="welcome-foot">{{ welcomeFootText }}</div>
       </div>
 
       <!-- 会议工作页：驾驶舱负责提醒和直达，这里只保留近期安排与年度记录，避免同一场会议重复出现。 -->
@@ -1530,7 +1527,7 @@ const cockpitTodos = computed(() => {
   const learn = learnRanked[0]
   if (learn) {
     const when = learn.days === 0 ? '今天' : learn.days === 1 ? '明天' : (learn.days > 1 ? learn.days + '天后' : '')
-    items.push({ key: 'learning', tag: '学习', tone: 'amber', level: learn.days === 0 ? 'urgent' : 'calm',
+    items.push({ key: 'learning', tag: '学习培训', tone: 'amber', level: learn.days === 0 ? 'urgent' : 'calm',
       timeScope: learn.days === 0 ? 'today' : 'recent', daysUntil: null,
       title: learn.t.title || '学习培训任务', sub: [when, learn.t.location].filter(Boolean).join(' · '),
       cta: '去查看', actionable: true,
@@ -4200,18 +4197,28 @@ onActivated(show)
 }
 .portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
-.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 170rpx; /* 给固定底栏让位 */ }
 /* 问候大字已删(0729 领导意见)：hero 只剩一行日期+摘要，内边距收紧 */
 .welcome-hero { flex-shrink: 0; padding: 12rpx 10rpx 0; }
 .welcome-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx; font-size: 30rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
 .welcome-tip .welcome-date { color: #53647B; font-weight: 600; }
 .welcome-tip i { width: 2rpx; height: 28rpx; background: #CDD4DE; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 21rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+/* 工作板块底栏（0729 用户定）：四项固定页底，图标块沿用各板块色系 */
+.ck-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: #fff; border-top: 2rpx solid #E6EAEF; padding: 12rpx 8rpx calc(10rpx + env(safe-area-inset-bottom)); box-shadow: 0 -6rpx 18rpx rgba(24,51,76,.06); }
+.ck-dock-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; padding: 6rpx 0; }
+.ck-dock-item:active { opacity: .65; }
+.ck-dock-ico { width: 64rpx; height: 64rpx; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 800; }
+.ck-dock-ico.blue { color: #3A5E92; background: #E6EDF8; }
+.ck-dock-ico.green { color: #3B7150; background: #E4F0E8; }
+.ck-dock-ico.amber { color: #8A6420; background: #F5EBD8; }
+.ck-dock-label { font-size: 23rpx; color: #4A5560; font-weight: 600; }
 .ck-section { margin-top: 34rpx; }
 .welcome-hero + .ck-section { margin-top: 22rpx; }
 .ck-work-section { margin-top: 48rpx; }
 .ck-sec-title { font-size: 29rpx; font-weight: 700; color: #6B7686; letter-spacing: 1rpx; margin: 0 8rpx 18rpx; }
-.ck-todo { position: relative; display: block; background: #fff; border-radius: 30rpx; padding: 40rpx 30rpx 42rpx 42rpx; margin-bottom: 24rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 16rpx 34rpx rgba(20,33,61,0.09); overflow: hidden; }
+/* 0729 用户定：三卡整体缩小一档（内距/字号收紧），加类别标签 */
+.ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 26rpx 26rpx 30rpx 34rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.08); overflow: hidden; }
 .ck-todo:last-child { margin-bottom: 0; }
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
@@ -4226,13 +4233,13 @@ onActivated(show)
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-pager { position: static; top: auto; right: auto; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-cta {
   position: absolute;
-  right: 30rpx;
+  right: 26rpx;
   top: 50%;
-  width: 174rpx;
-  min-height: 64rpx;
+  width: 164rpx;
+  min-height: 60rpx;
   padding: 0 14rpx;
   transform: translateY(-50%);
-  font-size: 30rpx;
+  font-size: 28rpx;
 }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-cta:active { transform: translateY(calc(-50% + 2rpx)); }
 .ck-todo-complete { padding-top: 22rpx; padding-bottom: 22rpx; background: #F8FBF9; box-shadow: 0 2rpx 5rpx rgba(20,33,61,.035), 0 8rpx 20rpx rgba(20,33,61,.05); }
@@ -4242,7 +4249,7 @@ onActivated(show)
 .ck-todo-complete .ck-todo-foot { margin-top: 9rpx; }
 .ck-todo-complete .ck-todo-sub { color: #668170; font-size: 25rpx; }
 .ck-reception-todo { padding-right: 224rpx; }
-.ck-reception-todo .ck-todo-title { max-width: 430rpx; font-size: 35rpx; }
+.ck-reception-todo .ck-todo-title { max-width: 430rpx; font-size: 32rpx; }
 .ck-reception-todo .ck-todo-sub {
   display: -webkit-box;
   max-width: 320rpx;
@@ -4267,21 +4274,21 @@ onActivated(show)
 .ck-reception-actions .ck-reception-secondary,
 .ck-reception-actions .ck-reception-cta {
   width: 100%;
-  min-height: 64rpx;
+  min-height: 60rpx;
   padding: 0 14rpx;
   border: 0;
   border-radius: 13rpx;
-  background: #4C8062;
+  background: #A85800;   /* 统一深橙（0729 用户定） */
   color: #fff;
-  box-shadow: 0 4rpx 10rpx rgba(76, 128, 98, .14);
-  font-size: 30rpx;
+  box-shadow: 0 4rpx 10rpx rgba(168, 88, 0, .14);
+  font-size: 28rpx;
   font-weight: 700;
   white-space: nowrap;
 }
 .ck-reception-actions .ck-reception-secondary:active,
-.ck-reception-actions .ck-reception-cta:active { background: #3E6F53; color: #fff; }
+.ck-reception-actions .ck-reception-cta:active { background: #8F4A06; color: #fff; }
 .ck-reception-actions .ck-reception-cta i { margin-left: 3rpx; font-size: 27rpx; }
-.ck-reception-cta { background: #4C8062; box-shadow: 0 6rpx 14rpx rgba(76,128,98,.16); }
+.ck-reception-cta { background: #A85800; box-shadow: 0 6rpx 14rpx rgba(168,88,0,.16); }
 /* head 不占高度、不定位:其中的分页/删除各自已绝对定位相对整张卡浮在右上角，
    head 归零后标题不再被压低。若父容器定位，分页会以 head 为参照被压成竖排（已避免）。 */
 .ck-todo-head { display: flex; align-items: center; justify-content: flex-end; min-height: 0; }
@@ -4290,14 +4297,16 @@ onActivated(show)
    就是大片无意义空白的来源,已去掉。右侧「去安排」按钮绝对定位垂直居中,天然与文字块对齐。 */
 .ck-todo.blue:not(.ck-todo-complete) { display: flex; flex-direction: column; }
 .ck-todo-head-actions { display: inline-flex; align-items: center; gap: 20rpx; }
-.ck-todo-tag { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 18rpx; border-radius: 999rpx; }
+.ck-todo-tag { display: inline-block; flex-shrink: 0; font-size: 22rpx; font-weight: 700; padding: 5rpx 16rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
 .ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
-.ck-todo-title { margin-top: 6rpx; font-size: 39rpx; font-weight: 800; color: #2A3244; line-height: 1.3; text-wrap: balance; }
-.ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 20rpx; }
-.ck-todo-sub { min-width: 0; font-size: 27rpx; color: #8A94A6; line-height: 1.38; text-wrap: balance; }
-.ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 16rpx; background: #D86A35; color: #fff; font-size: 28rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(216, 106, 53, .16); }
-.ck-todo.blue .ck-todo-cta { background: #35647D; box-shadow: 0 6rpx 14rpx rgba(53, 100, 125, .16); }
+.ck-todo.amber .ck-todo-tag { color: #8A6420; background: #F5EBD8; }
+.ck-todo-title { margin-top: 8rpx; font-size: 34rpx; font-weight: 800; color: #2A3244; line-height: 1.3; text-wrap: balance; }
+.ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 14rpx; }
+.ck-todo-sub { min-width: 0; font-size: 25rpx; color: #8A94A6; line-height: 1.38; text-wrap: balance; }
+/* 按钮统一深橙（0729 用户定：原蓝卡深蓝/接待绿/去查看各一色太杂太深，全部收敛到品牌深橙） */
+.ck-todo-cta { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 60rpx; padding: 0 22rpx; border: 0; border-radius: 14rpx; background: #A85800; color: #fff; font-size: 27rpx; font-weight: 700; white-space: nowrap; box-shadow: 0 6rpx 14rpx rgba(168, 88, 0, .16); }
+.ck-todo-cta:active { background: #8F4A06; }
 .ck-todo-cta:active { transform: translateY(2rpx); filter: brightness(.96); }
 .ck-todo-cta i { margin-left: 5rpx; font-style: normal; font-size: 33rpx; line-height: 1; }
 .ck-todo-delete { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #956B6B; font-size: 24rpx; font-weight: 500; transform: translate(7rpx, -4rpx); }
