@@ -259,8 +259,8 @@
               <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
             </div>
             <div class="ts-ai-row">
+              <!-- 0729 用户定:不要「AI 帮写」;输入内容后才显示「AI 润色」 -->
               <button v-if="draft.trim()" class="ts-ai-btn ai" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中…' : 'AI 润色' }}</button>
-              <button v-else class="ts-ai-btn ai" :disabled="aiBusy" @click="onHelpWrite"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 写作中…' : 'AI 帮写' }}</button>
               <button class="ts-ai-btn voice" :disabled="aiBusy" @click="startVoice('draft')">语音转文字</button>
             </div>
           </div>
