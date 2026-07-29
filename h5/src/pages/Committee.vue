@@ -4316,7 +4316,7 @@ onActivated(show)
 .mr-row { display: flex; align-items: center; gap: 14rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
-.mr-featured { position: relative; margin: 0 0 24rpx; padding: 22rpx 16rpx 22rpx 22rpx; min-height: 136rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
+.mr-featured { position: relative; margin: 0 0 24rpx; padding: 22rpx 16rpx 22rpx 22rpx; min-height: 136rpx; gap: 26rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
 .mr-featured:active { background: #F0F5F8; }
