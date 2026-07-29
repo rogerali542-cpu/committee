@@ -245,6 +245,21 @@
               <div class="ase-copy"><b>会议纪要</b></div>
               <button class="ase-btn primary" @click="viewDoc('minutes')">查看</button>
             </div>
+            <!-- 会议录音（0729 用户定：页顶存档卡删了，入口保留在卡片里）：查看详情=连播全部录音 + 转写全文。
+                 纪要生成前录音入口已在上方 minutes-basis 行，这里只补生成后的常驻入口，避免重复。 -->
+            <template v-if="hasRecordings && detail.minutesReady">
+              <div class="attendance-sheet-entry rec-entry">
+                <div class="ase-copy"><b>会议录音</b><small>{{ recTotalDurText || '录音存档' }}</small></div>
+                <button class="ase-btn" @click="toggleRecDetail">{{ recDetailOpen ? '收起' : '查看详情' }}</button>
+              </div>
+              <div class="rec-detail" v-if="recDetailOpen">
+                <button class="rec-play-btn" :class="{ playing: recAudioPlaying }" @click="toggleRecPlayback">
+                  <span class="rec-play-ico">{{ recAudioPlaying ? '❚❚' : '▶' }}</span>{{ recAudioPlaying ? '播放中…（点此暂停）' : '试听全部录音' }}
+                </button>
+                <div class="rec-trans-title">录音转写</div>
+                <div class="rec-transcript">{{ basisLoading ? '加载中…' : (basisTranscript || '暂无转写内容') }}</div>
+              </div>
+            </template>
             <!-- 返回会后整理（0729 用户定）：老人误进"会议结果与公示"也有明确回退入口，可回整理页改议题/记录/纪要，
                  避免"进来就无法挽回"。仅本机走过会后整理(fieldEndedLocal，restore 才能恢复整理视图)且未公示/归档时出现。 -->
             <div class="attendance-sheet-entry review-back-entry" v-if="isFreshEnded && fieldEndedLocal">
@@ -638,15 +653,24 @@ const detail = ref(null)
 const basisOpen = ref(false)
 const basisLoading = ref(false)
 const basisTranscript = ref('')
+const recDetailOpen = ref(false) // 卡片内「会议录音」行的详情展开态（连播 + 转写全文）
+// 转写全文按需加载一次；minutes-basis「看转写」与卡片「会议录音·查看详情」共用同一份
+async function loadTranscriptOnce() {
+  if (basisTranscript.value || basisLoading.value) return
+  basisLoading.value = true
+  try {
+    const r = await api.committeeTranscript(meetingIdRef.value)
+    basisTranscript.value = typeof r === 'string' ? r : ((r && (r.text || r.transcript || r.content)) || '')
+  } catch (e) {} finally { basisLoading.value = false }
+}
 async function toggleBasis() {
   basisOpen.value = !basisOpen.value
-  if (basisOpen.value && !basisTranscript.value && !basisLoading.value) {
-    basisLoading.value = true
-    try {
-      const r = await api.committeeTranscript(meetingIdRef.value)
-      basisTranscript.value = typeof r === 'string' ? r : ((r && (r.text || r.transcript || r.content)) || '')
-    } catch (e) {} finally { basisLoading.value = false }
-  }
+  if (basisOpen.value) loadTranscriptOnce()
+}
+// 会议录音「查看详情」：展开后可连播全部录音 + 看转写全文（纪要生成后卡片内的常驻录音入口）
+async function toggleRecDetail() {
+  recDetailOpen.value = !recDetailOpen.value
+  if (recDetailOpen.value) loadTranscriptOnce()
 }
 const userView = ref('')
 
@@ -2074,6 +2098,14 @@ async function removeMaterial(item) {
 .review-back-entry { background:#FFF7EF; border-color:#F0D9C0; }
 .ase-btn.back-edit { background:var(--c-primary-dark); border-color:var(--c-primary-dark); color:#fff; }
 .ase-btn.back-edit:active { background:var(--c-primary-strong); }
+/* 会议录音·查看详情：连播全部录音 + 转写全文（0729） */
+.rec-detail { margin:-8px 16px 16px; padding:14px; border:1px solid #E7E9ED; border-radius:14px; background:#FBFCFD; }
+.rec-play-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; height:46px; border:1px solid #8FB3DC; border-radius:12px; background:#fff; color:#2464B4; font-size:16px; font-weight:700; }
+.rec-play-btn:active { background:#EAF2FB; }
+.rec-play-btn.playing { background:#2464B4; border-color:#2464B4; color:#fff; }
+.rec-play-ico { font-size:15px; line-height:1; }
+.rec-trans-title { margin:14px 0 6px; font-size:14px; color:#7B818B; font-weight:600; }
+.rec-transcript { font-size:14px; color:#444; line-height:1.7; background:#fff; border:1px solid #E7E9ED; border-radius:12px; padding:12px 14px; white-space:pre-wrap; max-height:280px; overflow-y:auto; }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
 
 
