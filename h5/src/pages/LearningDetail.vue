@@ -76,27 +76,8 @@
         </div>
       </div>
 
-      <!-- 培训结束后：由负责人登记实际参加人员，不做现场签到 -->
-      <div class="sign-card" v-if="item.stage === 'ongoing' && item._signList.length">
-        <div class="sign-head">
-          <span class="sign-title">实际参加人员</span>
-          <span class="sign-stat">{{ selectedAttendance.length }}/{{ item._totalCount }} 人</span>
-        </div>
-        <span class="attendance-hint">培训结束后，勾选实际参加人员</span>
-        <div class="sign-list">
-          <div v-for="s in item._signList" :key="s.name" class="sign-row attendance-row"
-               :class="selectedAttendance.includes(s.name) ? 'done' : ''" @click="toggleAttendance(s.name)">
-            <span class="sign-name">{{ s.name }}</span>
-            <span class="attendance-check">{{ selectedAttendance.includes(s.name) ? '✓ 已参加' : '未参加' }}</span>
-          </div>
-        </div>
-        <div v-if="canManage" class="sign-my">
-          <button class="btn-signin" @click="saveAttendance">保存参加情况</button>
-        </div>
-      </div>
-
-      <!-- 已完成：参加人员汇总 -->
-      <div class="sign-card" v-if="item.stage === 'ended' && item._signList.length">
+      <!-- 进行中/已完成：实际参加人员（只读；登记在独立页「登记结果」进行） -->
+      <div class="sign-card" v-if="(item.stage === 'ongoing' || item.stage === 'ended') && item._signList.length">
         <div class="sign-head">
           <span class="sign-title">实际参加人员</span>
           <span class="sign-stat ok">{{ item._signedCount }}/{{ item._totalCount }} 人参加</span>
@@ -133,9 +114,9 @@
 
       <!-- 管理操作 -->
       <div class="action-card" v-if="item.stage !== 'ended' && canManage">
-        <span class="ac-hint">{{ item.stage === 'preparing' ? (item.notified ? (catNoun + '结束后登记参加情况和材料') : '请先通知参加人员，通知后才能登记结果') : '确认参加情况及材料后完成留档' }}</span>
-        <button v-if="item.stage === 'preparing'" class="btn-primary" :disabled="!item.notified" @click="startLearn">登记{{ catNoun }}结果</button>
-        <button v-if="item.stage === 'ongoing'" class="btn-primary finish" @click="finishLearn">完成留档</button>
+        <span class="ac-hint">{{ item.stage === 'preparing' ? (item.notified ? (catNoun + '结束后进入登记参加情况和材料') : '请先通知参加人员，通知后才能登记结果') : '继续登记参加情况和材料，完成后归档' }}</span>
+        <button v-if="item.stage === 'preparing'" class="btn-primary" :disabled="!item.notified" @click="goRegister">登记{{ catNoun }}结果</button>
+        <button v-if="item.stage === 'ongoing'" class="btn-primary" @click="goRegister">继续登记{{ catNoun }}结果</button>
       </div>
 
       <div class="perm-note" v-if="item.stage !== 'ended' && !canManage">
@@ -252,11 +233,13 @@ async function notifyAll() {
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
-function toggleAttendance(name) {
-  if (!canManage.value) return
-  const index = selectedAttendance.value.indexOf(name)
-  if (index >= 0) selectedAttendance.value.splice(index, 1)
-  else selectedAttendance.value.push(name)
+// 登记结果改为独立页（0729 用户定：不在当前页展开）；准备阶段进入即推进到进行中
+function goRegister() {
+  if (!canManage.value) { toast({ title: '仅主任/副主任/委员可操作', icon: 'none' }); return }
+  if (item.value && item.value.stage === 'preparing' && !item.value.notified) {
+    toast({ title: '请先通知参加人员，通知后才能登记结果', icon: 'none' }); return
+  }
+  window.location.assign('/learning-register?id=' + itemId)
 }
 
 function formatTime(value) {
@@ -265,42 +248,6 @@ function formatTime(value) {
 
 function goHome() {
   goModuleHome('meeting')
-}
-
-async function saveAttendance() {
-  try {
-    await api.learningSetAttendance(itemId, selectedAttendance.value)
-    toast({ title: '参加情况已保存', icon: 'success' })
-    loadItem()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
-async function startLearn() {
-  if (!canManage.value) {
-    toast({ title: '仅主任/副主任/委员可操作', icon: 'none' })
-    return
-  }
-  if (!item.value || !item.value.notified) {
-    toast({ title: '请先通知参加人员，通知后才能登记结果', icon: 'none' })
-    return
-  }
-  try {
-    await api.learningStart(itemId)
-    toast({ title: '请登记培训结果', icon: 'success' })
-    loadItem()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
-}
-
-async function finishLearn() {
-  if (!canManage.value) {
-    toast({ title: '仅主任/副主任/委员可操作', icon: 'none' })
-    return
-  }
-  try {
-    await api.learningFinish(itemId)
-    toast({ title: '已完成留档', icon: 'success' })
-    loadItem()
-  } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
 
 async function addEvidence() {

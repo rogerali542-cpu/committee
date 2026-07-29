@@ -38,6 +38,7 @@ const routes = [
   { path: '/learning-create', component: () => import('@/pages/LearningCreate.vue'), meta: { title: '新增学习记录' } },
   { path: '/learning-initiate', component: () => import('@/pages/LearningInitiate.vue'), meta: { title: '发起内部学习' } },
   { path: '/learning-notify', component: () => import('@/pages/LearningNotify.vue'), meta: { title: '学习通知' } },
+  { path: '/learning-register', component: () => import('@/pages/LearningRegister.vue'), meta: { title: '登记学习结果' } },
   { path: '/learning-detail', component: () => import('@/pages/LearningDetail.vue'), meta: { title: '学习培训详情' } },
   { path: '/notifications', component: () => import('@/pages/Notifications.vue'), meta: { title: '通知' } },
   { path: '/todo', component: () => import('@/pages/Todo.vue'), meta: { title: '待办' } },
