@@ -191,13 +191,15 @@
             <div v-else class="omf-notice-status">未通知</div>
           </template>
 
-          <!-- 非通知类(讨论/表决):可补充书面意见,记入会议记录;列表收在「查看详情」里(0725 用户定) -->
+          <!-- 非通知类(讨论/表决):上=大家的意见(集体,突出可点开),下=我补充意见(分区)。0729 用户定重做 -->
           <template v-else>
-            <div v-if="topicOpinions(topic.id).length" class="op-detail-row">
-              <button type="button" class="op-detail-toggle" @click="opsOpen = !opsOpen">
-                {{ opsOpen ? '收起意见 ▲' : '查看详情（' + topicOpinions(topic.id).length + ' 条意见）▾' }}
-              </button>
-            </div>
+            <!-- 区一:已提交的意见——醒目的可点开条 + 数量徽标(CSS 箭头,不用字符,遵项目约定) -->
+            <button v-if="topicOpinions(topic.id).length" type="button" class="op-view-bar" @click="opsOpen = !opsOpen">
+              <span class="op-view-ico">💬</span>
+              <span class="op-view-txt">大家的意见</span>
+              <span class="op-view-count">{{ topicOpinions(topic.id).length }}</span>
+              <span class="op-view-arr" :class="{ open: opsOpen }"></span>
+            </button>
             <div v-if="opsOpen && topicOpinions(topic.id).length" class="topic-opinions">
               <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
                 <b>{{ op.name }}</b>
@@ -208,12 +210,13 @@
             </div>
             <!-- 意见输入:讨论题随时可填;表决题需先投票(0725 用户定,submitOpinion 亦有守卫)。
                  未投票时不再显示「请先完成表决」提示条(0729 用户定),直接不出输入框即可 -->
-            <div v-if="!meetingEnded && (!topic.voteRequired || hasMyVote(topic))" class="op-input">
-              <div class="op-label">补充意见（可选）</div>
+            <!-- 区二:我个人补充意见——与上方「大家的意见」用分隔线分开(有意见时才分隔) -->
+            <div v-if="!meetingEnded && (!topic.voteRequired || hasMyVote(topic))" class="op-input" :class="{ divided: topicOpinions(topic.id).length }">
+              <div class="op-label">补充意见</div>
               <textarea v-model="opinionDrafts[topic.id]" rows="2"></textarea>
-              <!-- 有内容才出现操作按钮:AI润色 + 提交意见;空态只留输入框+翻页,不拥挤(0729 用户定) -->
-              <div v-if="String(opinionDrafts[topic.id] || '').trim()" class="op-btn-row">
-                <button type="button" class="op-ai-btn"
+              <!-- 提交意见常驻(空间够,不折叠);AI润色仅在有内容时出现 -->
+              <div class="op-btn-row">
+                <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
                         :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
                 <button v-if="polishUndoMap[topic.id] != null" type="button" class="mini-act" @click="undoPolish(topic)">还原</button>
                 <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
@@ -721,8 +724,13 @@ onBeforeUnmount(() => {
 .omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
 .omf-vote-footer .member-wait-hint{margin-top:0}
 .topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
-.op-detail-row{margin:18rpx 0 0 52rpx}
-.op-detail-toggle{border:0;background:none;padding:0;color:#416f8b;font-size:24rpx;font-weight:600}
+/* 区一「大家的意见」:醒目胶囊条 + 数量徽标 + CSS 箭头(不用字符,遵项目约定) */
+.op-view-bar{display:inline-flex;align-items:center;gap:12rpx;margin:16rpx 0 0 52rpx;padding:12rpx 22rpx;background:#eaf1fb;border:2rpx solid #cfe0f2;border-radius:999rpx;color:#2f5e96;font-size:26rpx;font-weight:700}
+.op-view-bar:active{background:#dfeafa}
+.op-view-ico{font-size:26rpx;line-height:1}
+.op-view-count{display:inline-flex;align-items:center;justify-content:center;min-width:34rpx;height:34rpx;padding:0 10rpx;border-radius:999rpx;background:#3E6BA8;color:#fff;font-size:22rpx;font-weight:700}
+.op-view-arr{width:12rpx;height:12rpx;border-right:3rpx solid currentColor;border-bottom:3rpx solid currentColor;transform:rotate(45deg);position:relative;top:-2rpx;transition:transform .2s ease,top .2s ease}
+.op-view-arr.open{transform:rotate(-135deg);top:2rpx}
 .topic-block{padding:24rpx 0;border-top:2rpx solid #edf1f3}.topic-block:first-of-type{border-top:0}
 .topic-form-head{display:flex;gap:14rpx;align-items:center}.topic-no{width:38rpx;height:38rpx;border-radius:50%;background:#e7f0f5;color:#416f8b;text-align:center;line-height:38rpx;flex:none}
 .topic-heading{display:flex;align-items:center;gap:12rpx;min-width:0}.topic-heading b{min-width:0;font-size:27rpx}.topic-kind{flex:none;padding:4rpx 12rpx;border-radius:999rpx;font-size:20rpx;font-weight:600;line-height:1.4}.topic-kind.vote{background:#f7eadf;color:#9a5d2e}.topic-kind.discussion{background:#e7f0f6;color:#426f8c}
@@ -743,7 +751,9 @@ onBeforeUnmount(() => {
 .op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
 .op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
 .op-input{display:flex;flex-direction:column;gap:10rpx;margin:16rpx 0 0 52rpx}
-.op-label{font-size:24rpx;color:#7a8894;font-weight:500}
+/* 区二「补充意见」有上方意见时用分隔线与之分开 */
+.op-input.divided{border-top:2rpx solid #e9edf1;margin-top:22rpx;padding-top:20rpx}
+.op-label{font-size:25rpx;color:#5a6672;font-weight:600}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
 .op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
