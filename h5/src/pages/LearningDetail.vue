@@ -48,22 +48,35 @@
         <span class="cc-text">{{ item.description }}</span>
       </div>
 
-      <!-- 培训前：通知人员（默认收起，头部显示 计划/全体 计数），与会议通知页同族 -->
-      <div class="sign-card" v-if="item.stage === 'preparing' && item._signList.length">
+      <!-- 培训前：通知人员（默认收起，全选+单独勾选，与会议通知页同款；未通知可改，发送即按所选落库） -->
+      <div class="sign-card" v-if="item.stage === 'preparing' && (members.length || item._signList.length)">
         <div class="nc2-head" @click="noticeListOpen = !noticeListOpen">
           <span class="sign-title">通知人员</span>
           <div class="nc2-right">
-            <span class="sign-stat" :class="item.notified ? 'ok' : ''">{{ item.notified ? '已通知全员' : (item._signList.length + '/' + (memberTotal || item._signList.length) + ' 人') }}</span>
+            <div v-if="!item.notified" class="mc-all" @click.stop="toggleAll">
+              <div class="mc-check" :class="{ on: allChecked }">{{ allChecked ? '✓' : '' }}</div>
+              <span class="mc-all-label">全选</span>
+            </div>
+            <span class="sign-stat" :class="item.notified ? 'ok' : ''">{{ item.notified ? '已通知全员' : ('已选 ' + selectedCount + '/' + members.length + ' 人') }}</span>
             <span class="nc2-arrow" :class="{ open: noticeListOpen }"></span>
           </div>
         </div>
         <div v-if="noticeListOpen" class="sign-list nc2-list">
-          <div v-for="s in item._signList" :key="s.name" class="sign-row">
-            <span class="sign-name">{{ s.name }}</span>
-          </div>
+          <template v-if="!item.notified">
+            <div v-for="m in members" :key="m.userRoleId" class="mc-item" @click="toggleMember(m.userRoleId)">
+              <div class="mc-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
+              <div class="mc-person">
+                <span class="mc-name">{{ m.name }}</span>
+                <span v-if="m.role" class="mc-role">{{ m.role }}</span>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div v-for="s in item._signList" :key="s.name" class="sign-row"><span class="sign-name">{{ s.name }}</span></div>
+          </template>
         </div>
         <div v-if="!item.notified && canManage" class="sign-my">
-          <button class="btn-signin" @click="notifyAll">通知全员</button>
+          <button class="btn-signin btn-notify" @click="notifyAll">发送通知</button>
         </div>
       </div>
 
@@ -160,8 +173,15 @@ const item = ref(null)
 const canManage = ref(false)   // 可以操作（创建/推进）= 主任/副主任/委员
 const selectedAttendance = ref([])
 const noticeListOpen = ref(false)   // 通知人员列表默认收起
-const memberNames = ref([])         // 业委会成员姓名（判断"全体"、给通知人员计数用分母）
-const memberTotal = computed(() => memberNames.value.length)
+// 通知人员选择（业委会成员，默认全选、可展开单独勾选）——发送通知时按所选落库
+const members = ref([])             // [{ userRoleId, name, role, checked }]
+const memberTotal = computed(() => members.value.length)
+const memberNames = computed(() => members.value.map(m => m.name).filter(Boolean))
+const selectedCount = computed(() => members.value.filter(m => m.checked).length)
+const allChecked = computed(() => members.value.length > 0 && members.value.every(m => m.checked))
+function toggleAll() { const t = !allChecked.value; members.value.forEach(m => { m.checked = t }) }
+function toggleMember(mid) { const m = members.value.find(x => x.userRoleId === mid); if (m) m.checked = !m.checked }
+function selectedNames() { return members.value.filter(m => m.checked).map(m => m.name) }
 // 显式分类（内部学习/外部培训），空值按内部兜底展示
 const currentCategory = computed(() => (item.value && item.value.category === 'external') ? 'external' : 'internal')
 // 顶栏标题随阶段：准备阶段是"培训通知"，其余为"培训详情"
@@ -174,9 +194,15 @@ const attendeesDisplay = computed(() => {
   if (all.length && names.length >= all.length && all.every(n => names.includes(n))) return '全体业委会成员'
   return names.join('、')
 })
+// 载入业委会成员并按记录已有计划名单预勾选（无则默认全选）
 async function loadMembers() {
-  try { const list = await api.committeeMembers(); memberNames.value = (list || []).map(m => m && m.name).filter(Boolean) }
-  catch (e) { memberNames.value = [] }
+  try {
+    const list = await api.committeeMembers()
+    const planned = new Set(String((item.value && item.value.attendees) || '').split(/[,，、\s]+/).filter(Boolean))
+    members.value = (list || [])
+      .map(m => ({ userRoleId: Number(m.userRoleId), name: m.name || '委员', role: m.role || '', checked: planned.size ? planned.has(m.name || '委员') : true }))
+      .filter(m => m.userRoleId)
+  } catch (e) { members.value = [] }
 }
 let itemId = null
 
@@ -205,13 +231,16 @@ function applyItem(found) {
   found._totalCount = found._signList.length
   selectedAttendance.value = found._signList.filter(function (s) { return s.signed }).map(function (s) { return s.name })
   item.value = found
+  if (found.stage === 'preparing') loadMembers()   // 准备阶段载入成员并预勾选
 }
 
 async function notifyAll() {
   if (!canManage.value) return
+  const names = selectedNames()
+  if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   try {
-    await api.learningNotifyAll(itemId)
-    toast({ title: '已通知全员', icon: 'success' })
+    await api.learningNotifyAll(itemId, names)
+    toast({ title: '已发送通知', icon: 'success' })
     loadItem()
   } catch (e) { toast({ title: e.message, icon: 'none' }) }
 }
@@ -323,7 +352,6 @@ onMounted(() => {
   itemId = parseInt(route.query.id)
   canManage.value = perm.can('learning.create')
   loadItem()
-  loadMembers()
 })
 </script>
 
@@ -377,6 +405,17 @@ onMounted(() => {
 .nc2-arrow { display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #A4A9B0; border-bottom: 3rpx solid #A4A9B0; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .18s ease, top .18s ease; }
 .nc2-arrow.open { transform: rotate(-135deg); top: 2rpx; }
 .nc2-list { margin-top: 16rpx; }
+/* 通知人员：全选 + 可勾选成员行（与会议通知页同款） */
+.mc-all { display: flex; align-items: center; gap: 8rpx; }
+.mc-all-label { font-size: 27rpx; color: #A85800; font-weight: 700; white-space: nowrap; }
+.mc-item { display: flex; align-items: center; gap: 14rpx; padding: 14rpx 8rpx; border-bottom: 1px solid #f0f0f2; }
+.mc-item:last-child { border-bottom: none; }
+.mc-item:active { background: #fafafa; }
+.mc-check { flex-shrink: 0; width: 38rpx; height: 38rpx; border-radius: 50%; border: 3rpx solid #cfd4da; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24rpx; font-weight: 700; box-sizing: border-box; }
+.mc-check.on { background: var(--c-primary); border-color: var(--c-primary); }
+.mc-person { display: flex; flex-direction: column; gap: 2rpx; }
+.mc-name { font-size: 28rpx; color: #1f2329; font-weight: 600; }
+.mc-role { font-size: 20rpx; color: #9aa0a6; }
 .attendance-hint { display: block; margin: -4rpx 0 14rpx; font-size: 25rpx; color: #8A94A6; }
 .sign-list { display: flex; flex-direction: column; gap: 4rpx; margin-bottom: 10rpx; }
 .sign-row { display: flex; align-items: center; justify-content: space-between; padding: 14rpx; border-radius: 12rpx; }
@@ -391,6 +430,7 @@ onMounted(() => {
 .sign-status.wait { color: #666; }
 .sign-my { padding-top: 16rpx; border-top: 2rpx solid #f0f0f0; text-align: center; }
 .btn-signin { width: 100%; height: 84rpx; line-height: 84rpx; border-radius: 42rpx; background: #fff; color: #C77800; border: 2rpx solid #FFA800; font-size: 30rpx; font-weight: 600; margin: 0; }
+.btn-notify { width: 50%; }   /* 发送通知：半宽居中（父级 text-align:center） */
 
 /* 佐证 */
 .ev-card { background: #fff; border-radius: 24rpx; padding: 24rpx 26rpx; margin-bottom: 20rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
