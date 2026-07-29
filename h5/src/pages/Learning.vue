@@ -74,7 +74,7 @@
               <!-- 副行只留日期时间(0725 用户定):地点太长必截断,反成噪音,展开细节里看全 -->
               <span class="lc-sub">{{ item.date }} · {{ formatTime(item.time) }}</span>
             </div>
-            <span class="lc-more" :class="{ open: expandedId === item.id }">{{ expandedId === item.id ? '收起' : '详情' }}<span class="lc-more-arr">⌄</span></span>
+            <span class="lc-more" :class="{ open: expandedId === item.id }">{{ expandedId === item.id ? '收起' : '详情' }}<span class="lc-more-arr"></span></span>
           </div>
           <template v-if="expandedId === item.id">
             <div class="lc-meta">
@@ -287,9 +287,10 @@ onUnmounted(() => {
 .lc-detail-btn:active { background: #F7EFDD; }
 .lc-meta-line { font-size: 30rpx; color: #6b7785; display: flex; align-items: center; gap: 10rpx; }
 /* 展开入口：文字「详情/收起」+ 旋转箭头(0728 用户定:替代原裸箭头,更明确好点) */
-.lc-more { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4rpx; color: #8A94A0; font-size: 26rpx; white-space: nowrap; }
-.lc-more-arr { font-size: 28rpx; line-height: 1; transition: transform .2s; position: relative; top: -1rpx; }
-.lc-more.open .lc-more-arr { transform: rotate(180deg); }
+.lc-more { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8rpx; color: #8A94A0; font-size: 26rpx; white-space: nowrap; }
+/* 箭头改 CSS 绘制并垂直居中（字符 ⌄ 基线偏低会下坠） */
+.lc-more-arr { display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .2s ease, top .2s ease; }
+.lc-more.open .lc-more-arr { transform: rotate(-135deg); top: 2rpx; }
 
 /* bottom 抬到底部 TabBar(100rpx) 之上，否则撤销条会被一级 tab 栏挡住 */
 .undo-toast { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(120rpx + env(safe-area-inset-bottom)); z-index: 40; background: rgba(45,45,45,0.94); color: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; display: flex; align-items: center; justify-content: space-between; font-size: 28rpx; box-shadow: 0 8rpx 24rpx rgba(0,0,0,0.2); }
