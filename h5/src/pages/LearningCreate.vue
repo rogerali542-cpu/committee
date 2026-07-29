@@ -10,7 +10,7 @@
       <section class="form-card">
         <!-- 占位示例文案不放（0725 用户定，同发起会议议题框）：标签已说明用途，灰字是重复噪音 -->
         <div class="form-group">
-          <span class="form-label">学习标题 *</span>
+          <span class="form-label">学习主题 *</span>
           <input class="form-input large" v-model="form.title" />
         </div>
 
@@ -85,7 +85,7 @@ function back() { navigateBack() }
 async function submit() {
   // 必填:标题/日期/地点/组织单位(0725 用户定,地点与组织也是记录要件)
   const missing = []
-  if (!String(form.title).trim()) missing.push('标题')
+  if (!String(form.title).trim()) missing.push('主题')
   if (!form.date) missing.push('日期')
   if (!String(form.location).trim()) missing.push('地点')
   if (!String(form.trainer).trim()) missing.push('组织单位/讲师')
