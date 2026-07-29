@@ -21,7 +21,7 @@
         <span v-else class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
       </div>
       <div v-if="editing" :ref="bindBodyEditor" class="doc-body editable" contenteditable="true" @input="onBodyInput"></div>
-      <div v-else class="doc-body">{{ documentParts.body }}</div>
+      <div v-else class="doc-body">{{ bodyDisplay }}</div>
       <div class="mv-signature">阳光花园业主委员会</div>
       <div v-if="editing" class="mv-editor-actions">
         <button class="mv-cancel" :disabled="saving" @click="cancelEdit">取消</button>
@@ -103,6 +103,13 @@ function withSignature(value) {
   const content = normalizeMinutesText(value)
   return content + '\n\n' + SIGNATURE
 }
+// 正文每段首行缩进两个全角字符（公文格式）；仅影响展示，编辑/复制仍用原文
+function indentParagraphs(value) {
+  return String(value || '').split('\n')
+    .map(l => { const t = l.trim(); return t ? '　　' + t : '' })
+    .join('\n')
+}
+const bodyDisplay = computed(() => indentParagraphs(documentParts.value.body))
 
 function beginInlineEdit() {
   editableMeetingName.value = documentParts.value.meetingName
