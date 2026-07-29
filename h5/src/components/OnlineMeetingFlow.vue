@@ -228,14 +228,18 @@
         </div>
       </section>
 
-      <!-- 固定底栏(0725 用户定):结束会议与上方内容拉开,避免误点 -->
-      <div class="omf-vote-footer">
+      <!-- 固定底栏(0725 用户定):结束会议与上方内容拉开,避免误点。
+           0729 用户定:议题没过完前「结束会议」降级不抢眼(仍保留提前结束的出口),过完才升为主按钮 -->
+      <div class="omf-vote-footer" :class="{ quiet: isChair && !meetingEnded && !onLastTopic }">
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
         <template v-if="isChair && !meetingEnded">
-          <button class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
+          <!-- 还没翻到最后一条议题:幽灵小链接,引导先「下一议题」逐条过 -->
+          <button v-if="!onLastTopic" type="button" class="omf-end-ghost" :disabled="busy" @click="endMeeting">结束会议</button>
+          <!-- 已到最后一条(或单条/无议题):升为主按钮 -->
+          <button v-else type="button" class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
         </template>
         <div v-else-if="!meetingEnded" class="member-wait-hint">表决和意见填写完成后，等待主任结束会议、进入材料整理</div>
-        <button v-else class="omf-primary" @click="endMeeting">查看会议详情</button>
+        <button v-else type="button" class="omf-primary" @click="endMeeting">查看会议详情</button>
       </div>
     </template>
   </div>
@@ -275,6 +279,9 @@ defineExpose({ handleBack })
 const cardMode = ref(typeof location !== 'undefined' && new URLSearchParams(location.search).get('card') === '1')
 const topics = reactive([])
 const currentTopic = computed(() => topics[topicIndex.value] || null)
+// 结束会议按钮的醒目程度:还没翻到最后一条议题(仍有「下一议题」)时降级为幽灵小链接,
+// 引导先把议题逐条过完;到最后一条(或单条/无议题)才升为主按钮(0729 用户定)
+const onLastTopic = computed(() => topics.length <= 1 || topicIndex.value >= topics.length - 1)
 const liveAttendance = ref([])
 
 const attendance = computed(() => liveAttendance.value.length
@@ -700,6 +707,10 @@ onBeforeUnmount(() => {
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
 .omf--has-footer{padding-bottom:170rpx}
 .omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
+/* 议题没过完:底栏去掉实底/描边/毛玻璃,只留一枚居中的灰色小链接,尽量不抢眼 */
+.omf-vote-footer.quiet{background:transparent;border-top:0;backdrop-filter:none;padding-top:6rpx;text-align:center}
+.omf-end-ghost{display:inline-block;border:0;background:transparent;color:#9aa4ad;font-size:24rpx;font-weight:500;padding:10rpx 26rpx;text-decoration:underline;text-underline-offset:4rpx}
+.omf-end-ghost:active{color:#6b7680}.omf-end-ghost:disabled{opacity:.5}
 .topic-pager{display:flex;gap:16rpx;margin-top:26rpx}
 .topic-pager button{flex:0 0 calc(50% - 8rpx);height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
 .topic-pager button:active{background:#eef3f6}
