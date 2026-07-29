@@ -21,7 +21,7 @@
         <span v-else class="minutes-meeting-name">{{ documentParts.meetingName }}</span>
       </div>
       <div v-if="editing" :ref="bindBodyEditor" class="doc-body editable" contenteditable="true" @input="onBodyInput"></div>
-      <div v-else class="doc-body">{{ bodyDisplay }}</div>
+      <div v-else class="doc-body"><p v-for="(ln, i) in bodyLines" :key="i" class="doc-ln" :class="ln.cls">{{ ln.text }}</p></div>
       <div class="mv-signature">阳光花园业主委员会</div>
       <div v-if="editing" class="mv-editor-actions">
         <button class="mv-cancel" :disabled="saving" @click="cancelEdit">取消</button>
@@ -103,13 +103,16 @@ function withSignature(value) {
   const content = normalizeMinutesText(value)
   return content + '\n\n' + SIGNATURE
 }
-// 正文每段首行缩进两个全角字符（公文格式）；仅影响展示，编辑/复制仍用原文
-function indentParagraphs(value) {
-  return String(value || '').split('\n')
-    .map(l => { const t = l.trim(); return t ? '　　' + t : '' })
-    .join('\n')
-}
-const bodyDisplay = computed(() => indentParagraphs(documentParts.value.body))
+// 正文按公文格式排版（仅影响展示，编辑/复制仍用原文）：
+// 普通段落首行缩进两个全角字符；落款（××业主委员会）与日期行右对齐、右缩进两字。
+const SIGNOFF_RE = /^(.{0,30}业主委员会(（第.{1,6}届）)?|\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日)$/
+const HEAD_RE = /^[一二三四五六七八九十]+、/
+const bodyLines = computed(() => documentParts.value.body.split('\n').map((raw) => {
+  const t = raw.trim()
+  if (!t) return { text: '', cls: 'blank' }
+  if (SIGNOFF_RE.test(t)) return { text: t, cls: 'sign' }       // 落款/日期：右对齐 + 右缩进两字
+  return { text: '　　' + t, cls: HEAD_RE.test(t) ? 'head' : '' } // 普通段落：首行缩进两字
+}))
 
 function beginInlineEdit() {
   editableMeetingName.value = documentParts.value.meetingName
@@ -269,6 +272,11 @@ onMounted(() => {
 .minutes-letterhead { display:flex; flex-direction:column; align-items:center; text-align:center; padding:18rpx 10rpx 34rpx; }
 .minutes-meeting-name { font-size:42rpx; font-weight:700; color:#161616; line-height:1.45; white-space:pre-wrap; }
 .doc-body { display: block; font-size: 34rpx; color: #33373d; line-height: 1.9; white-space: pre-wrap; padding: 24rpx 0; }
+/* 查看态逐段排版：普通段落首行缩进（正文里已前置两个全角空格）；落款/日期右对齐、右缩进两字 */
+.doc-ln { margin: 0; white-space: pre-wrap; }
+.doc-ln.head { font-weight: 700; color: #1E2430; margin-top: 12rpx; }
+.doc-ln.sign { text-align: right; padding-right: 2em; }
+.doc-ln.blank { height: 20rpx; }
 .editable { outline: none; border-radius: 8rpx; transition: background .15s; }
 .editable:focus { background: #fffaf2; box-shadow: 0 0 0 2rpx rgba(198,106,0,.18); }
 .minutes-meeting-name.editable { min-width: 60%; }
@@ -277,7 +285,7 @@ onMounted(() => {
 .mv-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12rpx 34rpx; margin-top: 12rpx; padding-top: 18rpx; border-top: 2rpx solid #f0f0f0; }
 .mv-link { font-size: 26rpx; font-weight: 400; color: #858b92; padding: 10rpx 16rpx; }
 .mv-link:active { opacity: 0.6; }
-.mv-signature { margin-top: 36rpx; text-align: right; font-size: 32rpx; line-height: 1.8; color: #33373d; }
+.mv-signature { margin-top: 36rpx; text-align: right; padding-right: 2em; font-size: 32rpx; line-height: 1.8; color: #33373d; }
 .mv-editor-actions { display: flex; gap: 20rpx; margin-top: 34rpx; padding-top: 22rpx; border-top: 2rpx solid #f0f0f0; }
 .mv-editor-actions.single { justify-content: center; }
 .mv-editor-actions.single button { flex: 0 0 60%; }
