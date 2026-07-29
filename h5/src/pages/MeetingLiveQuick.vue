@@ -301,20 +301,23 @@
 
       <!-- 会中辅助区：拆「会议录音」+「会议材料」两个子标题区 -->
       <div class="supp-card" v-if="meetingPhase === 'recording'">
-        <!-- ① 会议录音 -->
+        <!-- ① 会议录音（0729 用户定：左栏=标题+「已录N段·展开」；右侧「继续录音」放大、纵向占满两行高度，
+             既醒目又远离展开，避免和展开相互误点） -->
         <div class="supp-head recording-compact-head">
-          <span class="supp-title">会议录音</span>
+          <div class="rec-head-left">
+            <span class="supp-title">会议录音</span>
+            <!-- 展开紧挨「已录N段」（挪离右侧录音钮）：左侧一组，右侧录音钮，互不误触 -->
+            <div v-if="recordings.length" class="rec-seg-toggle-row">
+              <span class="rec-seg-label">已录 {{ recordings.length }} 段</span>
+              <button class="recording-summary-toggle" @click="recListOpen = !recListOpen">{{ recListOpen ? '收起 ▲' : '展开 ▾' }}</button>
+            </div>
+          </div>
           <button v-if="!isPaused && !isSelfRemote" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
             {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
           </button>
         </div>
         <!-- 线上参会：不参与现场录音，仅可查看已录段落与会议进展 -->
         <div v-if="isSelfRemote" class="rec-remote-note">您以线上方式参会，无需现场录音。现场录音由到场委员完成。</div>
-        <!-- 已录段落行：左侧「已录N段」文字，右侧展开/收起按钮 -->
-        <div v-if="recordings.length" class="rec-seg-toggle-row">
-          <span class="rec-seg-label">已录 {{ recordings.length }} 段</span>
-          <button class="recording-summary-toggle" @click="recListOpen = !recListOpen">{{ recListOpen ? '收起 ▲' : '展开 ▾' }}</button>
-        </div>
         <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
         <div v-if="recordings.length && recListOpen" class="rec-list rec-list-before-action">
           <div class="rec-list-body">
@@ -3943,13 +3946,16 @@ async function returnToRecordingPage() {
 .supp-card { background:#FFF; border:2rpx solid #E8EBEF; border-radius:18rpx; padding:18rpx 20rpx; margin-top:16rpx; box-shadow:0 5rpx 16rpx rgba(31,35,41,.04); } /* 会中辅助区压缩为紧凑工具卡 */
 .supp-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16rpx; margin-bottom:12rpx; }
 .recording-compact-head { align-items:center; margin-bottom:8rpx; }
-/* 已录段落 toggle：独立成行、左起头、字号加大一号 */
-.rec-seg-toggle-row { display:flex; align-items:center; justify-content:space-between; margin-top:6rpx; margin-bottom:2rpx; }
+/* 左栏：标题 + 「已录N段·展开」竖排；右侧留给放大的录音钮 */
+.rec-head-left { display:flex; flex-direction:column; gap:10rpx; flex:1; min-width:0; }
+/* 已录段落 toggle：展开紧挨段数（左对齐成组），不再撑到最右、远离录音钮防误点 */
+.rec-seg-toggle-row { display:flex; align-items:center; justify-content:flex-start; gap:18rpx; }
 .rec-seg-label { font-size:26rpx; color:#6B7480; font-weight:650; }
 /* 录音主控放卡片下部、居中 */
 .rec-bottom-action { display:flex; justify-content:center; margin-top:16rpx; }
 .rec-bottom-action .supp-btn.rec { width:56%; min-width:260rpx; height:72rpx; font-size:27rpx; }
-.recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 0; white-space:nowrap; }
+.recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 12rpx; white-space:nowrap; }
+.recording-summary-toggle:active { opacity:.6; }
 
 /* 签到名单弹窗 */
 .roster-pop-mask { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; padding:48rpx; } /* 高于会后整理页(180)，两处都能弹 */
@@ -3978,7 +3984,8 @@ async function returnToRecordingPage() {
 .rp-state.off { color:#B0392E; }
 /* ⚠ 须用 .supp-btn.recording-head-action 提权：基础 .supp-btn(84rpx) 在文件更后面，
    单类同权重会被其覆盖（0722 用户实测按钮一直没变小的根因） */
-.supp-btn.recording-head-action { flex-shrink:0; width:auto; min-width:142rpx; height:54rpx; padding:0 26rpx; font-size:26rpx; font-weight:600; }
+/* 放大：占满左栏两行高度、加宽加粗，醒目且远离展开（0729 用户定） */
+.supp-btn.recording-head-action { flex-shrink:0; align-self:center; width:auto; min-width:200rpx; height:96rpx; padding:0 40rpx; font-size:30rpx; font-weight:700; }
 .supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
 .supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
