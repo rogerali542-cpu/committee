@@ -65,15 +65,19 @@ public class LearningController {
         return Result.ok();
     }
 
-    // 通知全员；可选 body { names: [...] }：通知页选定的参加人员，准备阶段一并落库
+    // 通知全员；可选 body { names: [...], channel: "app"|"wechat" }：参加人员落库 + 通知留痕
     @PostMapping("/{id}/notify-all")
     @RequireRole({"主任", "副主任"})
     public Result<Void> notifyAll(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
         List<String> names = null;
-        if (body != null && body.get("names") instanceof List<?> raw) {
-            names = raw.stream().filter(java.util.Objects::nonNull).map(String::valueOf).toList();
+        String channel = null;
+        if (body != null) {
+            if (body.get("names") instanceof List<?> raw) {
+                names = raw.stream().filter(java.util.Objects::nonNull).map(String::valueOf).toList();
+            }
+            if (body.get("channel") != null) channel = String.valueOf(body.get("channel"));
         }
-        service.notifyAll(id, names);
+        service.notifyAll(id, names, channel);
         return Result.ok();
     }
 

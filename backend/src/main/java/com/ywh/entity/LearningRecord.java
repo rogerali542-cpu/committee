@@ -43,6 +43,16 @@ public class LearningRecord {
     @Column(nullable = false)
     private Boolean notified = false;
 
+    /** 通知留痕（0729）：谁、何时、通过什么渠道通知的。列可空，ddl-auto 自动加列。 */
+    @Column(name = "notified_at")
+    private LocalDateTime notifiedAt;
+
+    @Column(name = "notified_by_name", length = 40)
+    private String notifiedByName;
+
+    @Column(name = "notified_channel", length = 15)
+    private String notifiedChannel;   // app / wechat
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
     private LearningType type;

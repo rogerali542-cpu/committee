@@ -239,7 +239,7 @@ async function notifyAll() {
   const names = selectedNames()
   if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   try {
-    await api.learningNotifyAll(itemId, names)
+    await api.learningNotifyAll(itemId, names, 'app')
     toast({ title: '已发送通知', icon: 'success' })
     loadItem()
   } catch (e) { toast({ title: e.message, icon: 'none' }) }

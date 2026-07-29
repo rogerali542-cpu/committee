@@ -38,11 +38,20 @@
         </div>
       </section>
 
-      <!-- 已通知：提示 + 进入详情（结束后在详情登记学习情况） -->
-      <div class="done-tip" v-if="item.notified">
-        <span class="dt-ic">✓</span>
-        <span class="dt-text">{{ notifiedText }}</span>
-      </div>
+      <!-- 已通知：提示 + 通知记录 + 进入详情（结束后在详情登记学习情况） -->
+      <template v-if="item.notified">
+        <div class="done-tip">
+          <span class="dt-ic">✓</span>
+          <span class="dt-text">{{ notifiedText }}</span>
+        </div>
+        <section class="rec-card">
+          <div class="rec-title">通知记录</div>
+          <div class="rec-row">
+            <span class="rec-ic">✓</span>
+            <span class="rec-text">{{ noticeRecordText }}</span>
+          </div>
+        </section>
+      </template>
     </main>
 
     <!-- 底部主操作：未通知=二选一发通知；已通知=去详情 -->
@@ -76,6 +85,17 @@ const planNames = computed(() => String((item.value && item.value.attendees) || 
 const notifiedText = computed(() => planNames.value.length
   ? ('已通知 ' + planNames.value.length + ' 位委员，学习结束后可在详情登记参加情况')
   : '通知已发出，学习结束后可在详情登记参加情况')
+// 通知记录：已由 谁 通过 App/微信 通知 · 时间
+const noticeRecordText = computed(() => {
+  const it = item.value || {}
+  const via = it.notifiedChannel === 'wechat' ? '通过微信通知' : '通过App内通知'
+  const who = it.notifiedByName ? ('已由 ' + it.notifiedByName + ' ' + via) : ('已' + via)
+  return who + (it.notifiedAt ? ' · ' + fmtRecordTime(it.notifiedAt) : '')
+})
+function fmtRecordTime(s) {
+  const m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/)
+  return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : String(s || '')
+}
 
 // 参加人员选择（业委会成员，默认全选，可展开单独勾选）——通知时随通知落库
 const members = ref([])          // [{ userRoleId, name, role, checked }]
@@ -110,7 +130,7 @@ async function notifyApp() {
   if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   busy.value = true
   try {
-    await api.learningNotifyAll(id, names)
+    await api.learningNotifyAll(id, names, 'app')
     toast({ title: '已在 App 内通知', icon: 'success' })
     load()
   } catch (e) {
@@ -125,7 +145,7 @@ async function notifyWechat() {
   busy.value = true
   try {
     await copyText(noticePlainText())
-    await api.learningNotifyAll(id, names)
+    await api.learningNotifyAll(id, names, 'wechat')
     toast({ title: '通知已复制，去微信群粘贴发送', icon: 'none' })
     load()
   } catch (e) {
@@ -205,6 +225,13 @@ onMounted(load)
 .done-tip { margin-top: 20rpx; display: flex; align-items: center; gap: 12rpx; padding: 20rpx 24rpx; background: #E8F5EE; border-radius: 18rpx; }
 .dt-ic { color: #2E9E5B; font-weight: 700; font-size: 30rpx; }
 .dt-text { font-size: 28rpx; color: #2E7D46; line-height: 1.5; font-weight: 600; }
+
+/* 通知记录 */
+.rec-card { margin-top: 20rpx; background: #fff; border-radius: 18rpx; padding: 22rpx 26rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
+.rec-title { font-size: 30rpx; font-weight: 700; color: #1f2329; margin-bottom: 14rpx; }
+.rec-row { display: flex; align-items: center; gap: 12rpx; }
+.rec-ic { color: #2E9E5B; font-weight: 700; font-size: 27rpx; }
+.rec-text { font-size: 27rpx; color: #2E7D46; font-weight: 600; line-height: 1.5; }
 
 .notify-footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; gap: 24rpx; padding: 18rpx 28rpx calc(20rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -6rpx 20rpx rgba(0,0,0,.06); }
 .nf-btn { flex: 1; height: 92rpx; border: 0; border-radius: 20rpx; font-size: 32rpx; font-weight: 700; }

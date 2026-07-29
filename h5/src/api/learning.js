@@ -39,8 +39,11 @@ export default {
   learningSetAttendance: function (id, attendedNames) {
     return core.request('PUT', '/api/learning/' + id + '/attendance', { attendedNames: attendedNames });
   },
-  // names 可选：通知页选定的参加人员，准备阶段随通知落库
-  learningNotifyAll: function (id, names) {
-    return core.request('POST', '/api/learning/' + id + '/notify-all', names && names.length ? { names: names } : {});
+  // names 可选：通知页选定的参加人员，准备阶段随通知落库；channel：app/wechat，用于通知留痕
+  learningNotifyAll: function (id, names, channel) {
+    var body = {};
+    if (names && names.length) body.names = names;
+    if (channel) body.channel = channel;
+    return core.request('POST', '/api/learning/' + id + '/notify-all', body);
   }
 };

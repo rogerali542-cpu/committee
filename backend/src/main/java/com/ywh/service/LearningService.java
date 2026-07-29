@@ -61,6 +61,9 @@ public class LearningService {
             m.put("progress", r.getProgress());
             m.put("attendees", r.getAttendees());
             m.put("notified", r.getNotified());
+            m.put("notifiedAt", r.getNotifiedAt() != null ? r.getNotifiedAt().toString() : null);
+            m.put("notifiedByName", r.getNotifiedByName());
+            m.put("notifiedChannel", r.getNotifiedChannel());
             // 佐证
             List<LearningEvidence> evs = evRepo.findByRecordId(r.getId());
             m.put("evidences", evs.stream().map(ev -> {
@@ -179,8 +182,9 @@ public class LearningService {
     }
 
     // 通知全员；names 非空且处于准备阶段时，把通知页选定的参加人员落库（更新 attendees + 重建签到名单）
+    // channel：app / wechat，随通知记录留痕（谁、何时、什么渠道）
     @Transactional
-    public void notifyAll(Long id, List<String> names) {
+    public void notifyAll(Long id, List<String> names, String channel) {
         LearningRecord r = requireCurrentCommunityRecord(id);
         if (names != null && !names.isEmpty() && r.getStage() == MeetingStage.preparing) {
             Set<String> clean = names.stream()
@@ -195,6 +199,10 @@ public class LearningService {
             }
         }
         r.setNotified(true);
+        r.setNotifiedAt(LocalDateTime.now());
+        UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
+        r.setNotifiedByName(ur != null ? (ur.getRealName() + "·" + ur.getRole()) : null);
+        r.setNotifiedChannel("wechat".equals(channel) ? "wechat" : "app");
         repo.save(r);
     }
 
