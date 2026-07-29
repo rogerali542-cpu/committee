@@ -454,8 +454,8 @@ onBeforeUnmount(() => {
 .vote-entry .omf-primary{display:block;width:80%;margin-left:auto;margin-right:auto;font-size:29rpx;font-weight:500}
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
 .omf--has-footer{padding-bottom:170rpx}
-.omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
-.omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
+.omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(44rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
+.omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0;display:block;width:70%;margin-left:auto;margin-right:auto}
 .omf-vote-footer .member-wait-hint{margin-top:0}
 /* 0729 用户定「学一学线下」:议题列表(与线下 .core-* 同款) */
 .core-head{display:flex;align-items:center;justify-content:space-between;gap:18rpx;margin-bottom:22rpx}
