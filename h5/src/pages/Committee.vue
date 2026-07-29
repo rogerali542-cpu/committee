@@ -90,8 +90,8 @@
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
       <!-- 驾驶舱首页（路线乙）：欢迎语 + 跨条线待办聚合 + 全部业务目录 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
+        <!-- 0729 领导意见：问候大字删除（顶栏已有姓名·职务，称呼重复且占地），只留一行 日期｜今日摘要 -->
         <div class="welcome-hero">
-          <div class="welcome-slogan">{{ greeting }}，{{ salutation }}</div>
           <div class="welcome-tip">
             <span class="welcome-date">{{ cockpitDateText }}</span>
             <i></i>
@@ -137,6 +137,17 @@
                   {{ receptionCockpitTodo.cta }} <i>›</i>
                 </button>
               </div>
+            </div>
+          </div>
+          <!-- 学习培训直达卡（0729 领导意见：三项工作都要有入口） -->
+          <div v-if="learningCockpitTodo" :key="learningCockpitTodo.key"
+               class="ck-todo ck-learning-todo" :class="learningCockpitTodo.tone">
+            <div class="ck-todo-title">{{ learningCockpitTodo.title }}</div>
+            <div class="ck-todo-foot">
+              <div v-if="learningCockpitTodo.sub" class="ck-todo-sub">{{ learningCockpitTodo.sub }}</div>
+              <button type="button" class="ck-todo-cta" @click="learningCockpitTodo.onTap()">
+                {{ learningCockpitTodo.cta }} <i>›</i>
+              </button>
             </div>
           </div>
         </div>
@@ -1321,20 +1332,7 @@ try {
 } catch (e) {}
 // 欢迎引导页（路线乙）：一句标语 + 选择要进入的业务线（顶层选择）。
 // 三方联席会议/联合接待另做独立软件，不纳入本 App，故欢迎页只留三条真实业务线。
-const greeting = computed(() => {
-  const h = new Date().getHours()
-  return h < 6 ? '夜深了' : h < 11 ? '上午好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
-})
-const DOUBLE_SURNAMES = ['欧阳', '司马', '诸葛', '上官', '夏侯', '令狐', '慕容', '皇甫', '东方', '尉迟', '长孙', '宇文', '司徒', '司空', '澹台', '公孙', '轩辕', '钟离', '端木', '独孤', '南宫', '万俟', '闻人', '拓跋', '完颜', '赫连', '呼延', '东郭', '西门', '百里']
-const salutation = computed(() => {
-  const r = activeRole.value || {}
-  const name = (r.realName || '').trim()
-  const role = (r.role || '').trim()
-  if (!name) return '您'
-  if (!role) return name
-  const surname = DOUBLE_SURNAMES.indexOf(name.slice(0, 2)) !== -1 ? name.slice(0, 2) : name.slice(0, 1)
-  return surname + role
-})
+// （问候语 greeting/salutation 已删，0729 领导意见：顶栏已有姓名·职务，问候大字重复且占地）
 // 欢迎引导页当前是否可见（portal 布局 + 开会 tab）→ 隐藏底栏；选定业务后置回，底栏出现
 const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.value === 'meeting')
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
@@ -1482,6 +1480,17 @@ const cockpitTodos = computed(() => {
       // 0725 导航审计:同上,不再预切甲
       onTap: () => onPlanRow(row) })
   }
+  // 兜底（0729 领导意见：会议待办卡不能消失）：只要还有进行中的会议——含整理已完成、
+  // 待公示/归档的——首页必须保留一张会议直达卡；上面各分支都没出卡时在此补。
+  if (!items.some(i => i.tag === '业委会')) {
+    const og = (currents.value || []).find(c => c.stage === 'ongoing')
+    if (og) {
+      items.push({ key: 'committee-ongoing-' + og.id, tag: '业委会', tone: 'blue', level: 'active',
+        timeScope: 'recent', summaryLabel: '会议任务', daysUntil: null,
+        title: og.title, sub: [og.timeText, og.locationText].filter(Boolean).join(' · '),
+        cta: og.ctaLabel || '会议详情', meeting: og, onTap: () => goCurrent(og) })
+    }
+  }
   const pendingReceptions = (Array.isArray(calRecs.value) ? calRecs.value : []).filter(receptionNeedsAction)
   if (pendingReceptions.length > 0) {
     const first = pendingReceptions[0] || {}
@@ -1513,11 +1522,25 @@ const cockpitTodos = computed(() => {
       summaryLabel: '接待安排任务', daysUntil: null,
       cta: isChair.value ? '去设置' : '查看', actionable: true, onTap: enterReceptionArea })
   }
+  // 学习培训（0729 领导意见：三项工作都要有入口卡）：取最近一场未结束的学习/培训给直达卡。
+  // 不设 summaryLabel——顶部摘要行已单独统计学习任务，避免重复计数。
+  const learnRanked = cockpitLearningTasks.value
+    .map(t => ({ t, days: daysFromToday(t.date || t.trainingDate || t.startDate) }))
+    .sort((a, b) => (a.days == null ? 999 : a.days) - (b.days == null ? 999 : b.days))
+  const learn = learnRanked[0]
+  if (learn) {
+    const when = learn.days === 0 ? '今天' : learn.days === 1 ? '明天' : (learn.days > 1 ? learn.days + '天后' : '')
+    items.push({ key: 'learning', tag: '学习', tone: 'amber', level: learn.days === 0 ? 'urgent' : 'calm',
+      timeScope: learn.days === 0 ? 'today' : 'recent', daysUntil: null,
+      title: learn.t.title || '学习培训任务', sub: [when, learn.t.location].filter(Boolean).join(' · '),
+      cta: '去查看', actionable: true,
+      onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') } })
+  }
   return items
 })
 const committeeCockpitTodos = computed(() => {
   return cockpitTodos.value
-    .filter(item => item.key !== 'reception')
+    .filter(item => item.key !== 'reception' && item.key !== 'learning')
     .map((item, index) => {
       if (item.periodRow && Number(item.periodRow.period)) {
         return { item, index, order: Number(item.periodRow.period) }
@@ -1535,6 +1558,7 @@ const committeeCockpitTodos = computed(() => {
     .map(entry => entry.item)
 })
 const receptionCockpitTodo = computed(() => cockpitTodos.value.find(item => item.key === 'reception') || null)
+const learningCockpitTodo = computed(() => cockpitTodos.value.find(item => item.key === 'learning') || null)
 const cockpitTodoIndex = ref(0)
 const currentCockpitTodo = computed(() => {
   const items = committeeCockpitTodos.value
@@ -4177,9 +4201,9 @@ onActivated(show)
 .portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
 .welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; }
-.welcome-hero { flex-shrink: 0; padding: 20rpx 10rpx 10rpx; }
-.welcome-slogan { font-size: 56rpx; font-weight: 800; color: #2F3D56; line-height: 1.2; letter-spacing: 1rpx; }
-.welcome-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; font-size: 30rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
+/* 问候大字已删(0729 领导意见)：hero 只剩一行日期+摘要，内边距收紧 */
+.welcome-hero { flex-shrink: 0; padding: 12rpx 10rpx 0; }
+.welcome-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx; font-size: 30rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
 .welcome-tip .welcome-date { color: #53647B; font-weight: 600; }
 .welcome-tip i { width: 2rpx; height: 28rpx; background: #CDD4DE; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 21rpx; color: #AEB6C2; letter-spacing: 1rpx; }
@@ -4192,6 +4216,7 @@ onActivated(show)
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
+.ck-todo.amber::before { background: #A87F2E; }   /* 学习培训卡：琥珀色条，与「学」板块同色系 */
 .ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-title,
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-sub { max-width: 430rpx; }
