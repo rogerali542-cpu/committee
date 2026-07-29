@@ -448,8 +448,8 @@ onMounted(() => {
 .review-confirm:active { opacity: 0.9; }
 /* 手动添加待办（0729）：入口按钮 + 展开的输入表单，与确认清单同款视觉 */
 .manual-zone { margin-top: 22rpx; }
-.manual-add-btn { width: 100%; min-height: 92rpx; border: 2rpx solid var(--c-primary); border-radius: 16rpx; background: #FFF6EC; color: #C2410C; font-size: 30rpx; font-weight: 700; }
-.manual-add-btn:active { background: #FDEBD8; }
+.manual-add-btn { display: block; width: 70%; margin: 0 auto; min-height: 92rpx; border: 0; border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+.manual-add-btn:active { background: var(--c-primary-strong); }
 .manual-form { background: #fff; border-radius: 18rpx; padding: 26rpx 24rpx; box-shadow: 0 4rpx 14rpx rgba(20,42,58,0.05); }
 .manual-form-title { font-size: 32rpx; font-weight: 800; color: #1f2329; margin-bottom: 18rpx; }
 .manual-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E5E9ED; border-radius: 14rpx; padding: 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
