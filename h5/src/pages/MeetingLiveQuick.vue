@@ -185,8 +185,8 @@
     <template v-if="currentStep === 1">
       <div class="signin-page">
         <div class="si-scroll-content">
-        <!-- 顶部精简会议卡：名称/时间/地点，点击展开议题 -->
-        <div class="si-meet-card" @click="siMeetOpen = !siMeetOpen">
+        <!-- 顶部精简会议卡：名称/时间/地点。展开只认「查看议题」文字（0729 用户定：整卡可点易误触） -->
+        <div class="si-meet-card">
           <div class="si-meet-main">
             <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
             <div class="si-meet-meta">
@@ -194,7 +194,7 @@
               <span v-if="detail.location" class="si-meet-row">{{ detail.location }}</span>
             </div>
           </div>
-          <span class="si-meet-caret">{{ siMeetOpen ? '收起 ▲' : '查看议题 ▾' }}</span>
+          <span class="si-meet-caret" @click="siMeetOpen = !siMeetOpen">{{ siMeetOpen ? '收起 ▲' : '查看议题 ▾' }}</span>
         </div>
         <div v-if="siMeetOpen" class="si-meet-topics">
           <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
@@ -206,14 +206,14 @@
           <span v-else class="si-topic-empty">暂无议题</span>
         </div>
 
-        <!-- 参会名单：默认收起，点击展开 -->
+        <!-- 参会名单：默认收起，展开只认右侧「展开」文字（0729 用户定：整行可点易误触） -->
         <div v-if="signinStats.total" class="si-roster" :class="{ open: siRosterOpen }">
-          <div class="si-roster-bar" @click="siRosterOpen = !siRosterOpen">
+          <div class="si-roster-bar">
             <span class="si-roster-title">参会名单</span>
             <span class="si-roster-count">
               <span class="si-roster-summary">已有{{ signinStats.signedCount || 0 }}人签到（{{ signinStats.remoteCount || 0 }}人线上参会）</span>
             </span>
-            <span class="si-roster-caret">{{ siRosterOpen ? '收起 ▲' : '展开 ▾' }}</span>
+            <span class="si-roster-caret" @click="siRosterOpen = !siRosterOpen">{{ siRosterOpen ? '收起 ▲' : '展开 ▾' }}</span>
           </div>
           <div v-if="siRosterOpen" class="si-roster-body">
             <div class="signin-roster-row" v-for="a in signinStats.list" :key="a.userRoleId">
@@ -297,7 +297,7 @@
       </div>
 
       <!-- 录音中断预警：放在录音卡上方（不占卡内空间）；切出瞬间 JS 冻结无法当场提示，只能前置 -->
-      <div v-if="recActive" class="rec-bg-warn">⚠ 录音中请不要切出微信或锁屏，否则录音会中断</div>
+      <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中请不要切出微信或锁屏，否则录音会中断</div>
 
       <!-- 会中辅助区：拆「会议录音」+「会议材料」两个子标题区 -->
       <div class="supp-card" v-if="meetingPhase === 'recording'">
@@ -347,9 +347,10 @@
 
       <!-- 会议材料：独立卡片（与会议录音分开）；份数紧跟标题，文件名蓝字下划线示可点 -->
       <div class="supp-card" v-if="meetingPhase === 'recording'">
-        <div class="supp-head" :class="{ 'supp-head-click': materials.length }" @click="materials.length && (matListOpen = !matListOpen)">
+        <!-- 展开只认右侧「展开」文字（0729 用户定：整卡可点易误触） -->
+        <div class="supp-head">
           <span class="supp-title">会议材料<span v-if="materials.length">（共{{ materials.length }}份）</span></span>
-          <span v-if="materials.length" class="rec-list-toggle">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
+          <span v-if="materials.length" class="rec-list-toggle" @click="matListOpen = !matListOpen">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
         </div>
         <div v-if="materials.length" class="supp-files">
           <div v-if="matListOpen" class="rec-list-body">
@@ -4312,7 +4313,8 @@ async function returnToRecordingPage() {
 /* 已录N段（折叠） */
 .rec-list { margin-top:12rpx; border-top:2rpx solid #ECEDEF; padding-top:10rpx; }
 .rec-list-head { display:flex; align-items:center; justify-content:space-between; font-size:24rpx; color:#5A6069; padding:4rpx 2rpx; }
-.rec-list-toggle { font-size:22rpx; color:var(--c-primary-dark, #E8890C); }
+.rec-list-toggle { font-size:22rpx; color:var(--c-primary-dark, #E8890C); padding:10rpx 6rpx; margin:-10rpx 0; }
+.rec-list-toggle:active { opacity:.6; }
 .rec-list-body { margin-top:6rpx; }
 
 /* 下一步：单一主按钮区 */
@@ -4320,6 +4322,15 @@ async function returnToRecordingPage() {
 .rec-status { display:flex; align-items:center; justify-content:center; gap:12rpx; width:100%; font-size:28rpx; color:#E8890C; font-weight:600; padding:6rpx 0; }
 /* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
 .rec-bg-warn { width:fit-content; max-width:100%; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 14rpx; box-sizing:border-box; margin:14rpx auto 0; }  /* 移到录音卡上方，居中一条 */
+/* 录音警示三角：放大 + 脉冲发光，录音中持续抓注意力（0729 用户定） */
+.rec-bg-warn-ico { display:inline-block; vertical-align:middle; font-size:36rpx; line-height:1; margin-right:8rpx; color:#E8890C; animation:recWarnPulse 1.1s ease-in-out infinite; }
+@keyframes recWarnPulse {
+  0%, 100% { transform:scale(1); opacity:.85; text-shadow:0 0 2rpx rgba(232,137,12,.2); }
+  50% { transform:scale(1.22); opacity:1; text-shadow:0 0 16rpx rgba(232,137,12,.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-bg-warn-ico { animation:none; transform:scale(1.15); }
+}
 .rec-status.err { color:#C0392B; }
 /* 线上参会提示：不参与现场录音 */
 .rec-remote-note { width:100%; box-sizing:border-box; text-align:center; font-size:26rpx; line-height:1.5; color:#6B7280; background:#F6F7F9; border:1px solid #E5E7EB; border-radius:12rpx; padding:16rpx 18rpx; margin-top:12rpx; }
@@ -4358,7 +4369,9 @@ async function returnToRecordingPage() {
 .si-meet-title { font-size:36rpx; font-weight:700; color:#1F2024; line-height:1.42; letter-spacing:-0.5rpx; }
 .si-meet-meta { display:flex; flex-direction:column; gap:18rpx; margin-top:24rpx; padding-right:130rpx; }
 .si-meet-row { font-size:31rpx; color:#61656C; line-height:1.55; }
-.si-meet-caret { position:absolute; right:34rpx; bottom:43rpx; min-width:116rpx; text-align:right; font-size:28rpx; color:#A85800; font-weight:700; }
+/* 展开热区只在「查看议题」文字上：加内边距扩大点击区、右下偏移抵掉 padding 保持原位 */
+.si-meet-caret { position:absolute; right:20rpx; bottom:31rpx; min-width:116rpx; text-align:right; font-size:28rpx; color:#A85800; font-weight:700; padding:12rpx 14rpx; }
+.si-meet-caret:active { opacity:.6; }
 .si-meet-topics { background:#fff; border-radius:26rpx; padding:28rpx 34rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); margin-top:-4rpx; min-height:170rpx; box-sizing:border-box; }
 .si-topic-item { display:flex; align-items:flex-start; gap:18rpx; padding:24rpx 0; border-bottom:2rpx solid #F4F4F6; }
 .si-topic-item:last-child { border-bottom:0; }
@@ -4371,7 +4384,9 @@ async function returnToRecordingPage() {
 .si-roster-title { font-size:30rpx; font-weight:700; color:#1f2329; }
 .si-roster-count { flex:1; font-size:26rpx; color:#6b7078; }
 .si-roster-summary { margin-left:12rpx; color:#8A5A2B; font-size:24rpx; font-weight:550; }
-.si-roster-caret { flex-shrink:0; color:#7A4C22; font-size:25rpx; font-weight:600; }
+/* 展开热区只在「展开/收起」文字上：内边距扩大点击区，负外边距抵掉不撑高整行 */
+.si-roster-caret { flex-shrink:0; color:#7A4C22; font-size:25rpx; font-weight:600; padding:10rpx 4rpx 10rpx 22rpx; margin:-10rpx 0; }
+.si-roster-caret:active { opacity:.6; }
 .si-quorum { display:flex; align-items:center; gap:12rpx; margin:-4rpx 0 22rpx; padding:16rpx 18rpx; border-radius:16rpx; background:#FFF5E8; color:#B76700; font-size:26rpx; font-weight:600; }
 .si-quorum-icon { width:34rpx; height:34rpx; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#D98012; color:#fff; font-size:23rpx; font-weight:800; flex-shrink:0; }
 /* 名单展开后跟随整页滚动，避免内部滚动区域的末尾被固定签到按钮遮挡。 */
