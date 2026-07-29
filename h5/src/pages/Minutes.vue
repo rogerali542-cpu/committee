@@ -222,8 +222,18 @@ onUnmounted(() => {
 })
 
 function backFromMinutes() {
-  // 导航新规(0725 用户定):返回=上一页,来处分支交给浏览器历史
   aiTask.overlayShown = false
+  // 会后整理页跳来的（生成纪要/最小化后落在本页）：返回=确定性回会后整理页。
+  // 这条链路是一串 redirect，浏览器历史下一层往往是驾驶舱/首页，盲退会把人甩出会议（0729 BUG1）
+  if (fromPage === 'meeting-live-quick' && meetingId) {
+    const q = 'meetingId=' + meetingId
+    redirectTo('/pages/meeting-live-quick/meeting-live-quick?' + q)
+    setTimeout(() => {
+      if (document.querySelector('.minutes-page')) window.location.replace('/meeting-live-quick?' + q)
+    }, 300)
+    return
+  }
+  // 其余来处仍走历史回退（0725 导航新规）
   navigateBack()
 }
 

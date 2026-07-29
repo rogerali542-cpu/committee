@@ -1693,7 +1693,7 @@ const meetingRecordList = computed(() => {
     const current = (currents.value || []).find(c => meetingPeriod(c, viewYear.value) === r.period)
     const draftMatch = hasDraft.value && meetingPeriod(draft.value || {}, viewYear.value) === r.period
     if (current) {
-      const state = current.stage === 'ongoing' ? '进行中'
+      const state = current.stage === 'ongoing' ? (current.fieldEnded ? '会后整理' : '进行中')
         : current.stage === 'preparing' ? '去召开'
           : (current.minutesGen ? '纪要生成中' : (current.ctaLabel === '查看会议' ? '已完成' : '待整理'))
       return {
@@ -2425,6 +2425,7 @@ function decorateCurrent(m, chair) {
     location: m.location, timeText: formatMeetingTime(m), locationText: m.location || '地点待定',
     step: step, steps: steps, stage: m.stage, stageText: MEETING_STAGE_TEXT[m.stage] || '未开始',
     ctaLabel: ctaLabel, ctaIcon: ctaIcon, tag: tag, minutesGen: minutesGen, reviewDone: local.reviewDone,
+    fieldEnded: local.fieldEnded,   // 现场/线上已结束、待会后整理：卡片状态词据此显示「会后整理」
     preNoticeTip: preNoticeTip
   }
 }

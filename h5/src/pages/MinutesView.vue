@@ -223,10 +223,19 @@ function backToDetail() {
 // 导航新规(0725 用户定):返回=历史上一页(详情/进行页进来的都天然回来处);
 // from=committee(首页查看进来)确定性回业委会首页——真机残留历史会让历史回退窜到接待首页(用户报的 bug)
 function backFromView() {
-  const from = new URLSearchParams(window.location.search).get('from')
+  const params = new URLSearchParams(window.location.search)
+  const from = params.get('from')
   if (from === 'committee') {
     redirectTo('/main?home=tabs')
     setTimeout(() => { if (document.querySelector('.detail-minutes-view')) window.location.replace('/main?home=tabs') }, 300)
+    return
+  }
+  // 会后整理页进来的：确定性回会后整理页（redirect 链路下历史盲退会窜到驾驶舱/首页，0729 BUG1 同款）
+  const mid = params.get('meetingId')
+  if (from === 'meeting-live-quick' && mid) {
+    const q = 'meetingId=' + mid
+    redirectTo('/pages/meeting-live-quick/meeting-live-quick?' + q)
+    setTimeout(() => { if (document.querySelector('.detail-minutes-view')) window.location.replace('/meeting-live-quick?' + q) }, 300)
     return
   }
   navigateBack()
