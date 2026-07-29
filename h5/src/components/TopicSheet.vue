@@ -259,8 +259,10 @@
               <button class="ts-send" :disabled="!draft.trim() || sending" @click="submitOpinion">发表</button>
             </div>
             <div class="ts-ai-row">
-              <!-- 0729 用户定:不要「AI 帮写」;输入内容后才显示「AI 润色」 -->
-              <button v-if="draft.trim()" class="ts-ai-btn ai" :disabled="aiBusy" @click="polishByAi"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? 'AI 润色中…' : 'AI 润色' }}</button>
+              <!-- 左侧 AI 按钮常驻但可"虚化"（0729 用户定）：讨论议题=「AI 润色」(有输入才亮)；
+                   表决议题=「AI 帮写」(投票后才亮，按你的投票结果代写发言)；一旦框里有内容统一转「AI 润色」。
+                   语音转文字固定右侧、不再独占整行。虚化态点它给提示，不做静默死键。 -->
+              <button class="ts-ai-btn ai" :class="{ faded: !composerAiReady && !aiBusy }" @click="composerAiClick"><span v-if="aiBusy" class="ts-ai-spin"></span>{{ aiBusy ? (composerAiMode === 'draft' ? 'AI 写作中…' : 'AI 润色中…') : composerAiLabel }}</button>
               <button class="ts-ai-btn voice" :disabled="aiBusy" @click="startVoice('draft')">语音转文字</button>
             </div>
           </div>
@@ -824,6 +826,32 @@ async function draftFromVote(voteVal, option) {
   } catch (e) {
     toast({ title: (e && e.message) || 'AI 助手开小差了，请重试', icon: 'none' })
   } finally { aiBusy.value = false }
+}
+
+// ── 补充意见输入区左侧 AI 按钮（0729 用户定）──
+// 讨论议题：「AI 润色」——有输入才亮，空态虚化（不给 AI 帮写）。
+// 表决议题：「AI 帮写」——投票后才亮，按本人投票结果直接代写发言；未投票时虚化。
+// 只要框里已有内容，两类统一切「AI 润色」（帮写出的稿也能再润色）。
+const composerAiMode = computed(() => {
+  if (draft.value.trim()) return 'polish'
+  return props.topic && props.topic.voteRequired ? 'draft' : 'polish'
+})
+const composerAiLabel = computed(() => (composerAiMode.value === 'draft' ? 'AI 帮写' : 'AI 润色'))
+const composerAiReady = computed(() =>
+  composerAiMode.value === 'draft' ? committedVote.value != null : !!draft.value.trim())
+function composerAiClick() {
+  if (aiBusy.value) return
+  if (!composerAiReady.value) {
+    toast({ title: composerAiMode.value === 'draft' ? '先投票，AI 就能按你的投票帮你写发言' : '先输入几个字，AI 再帮你润色', icon: 'none' })
+    return
+  }
+  if (composerAiMode.value === 'draft') {
+    const v = committedVote.value
+    const opt = ((props.topic && props.topic.options) || []).find(o => String(o.id) === String(v))
+    draftFromVote(v, opt)
+  } else {
+    polishByAi()
+  }
 }
 
 async function loadOpinions() {
@@ -1497,6 +1525,8 @@ async function removeOpinion(op) {
 .ts-ai-btn.voice { background: #EAF3FC; border-color: #C6DDF3; color: #1F6FB2; }
 .ts-ai-btn.voice:active { background: #DCEAF8; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
+/* 虚化态（0729 用户定）：条件不满足时 AI 按钮"占位但暗淡"，满足后恢复为清晰可点 */
+.ts-ai-btn.faded { opacity: 0.4; filter: grayscale(0.4); }
 .ts-ai-undo { font-size: 26rpx; color: #1A73E8; text-decoration: underline; padding: 4rpx; }
 .ts-ai-tokenline { flex-shrink: 0; text-align: right; font-size: 22rpx; color: #C2C6CC; padding: 8rpx 2rpx 0; }
 .ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
