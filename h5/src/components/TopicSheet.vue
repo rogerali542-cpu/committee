@@ -100,10 +100,10 @@
             <!-- 代委员投票（仅主持人、会后整理阶段）：现场会议结束后，主任为忘投/不会用手机的委员补录并留凭证审计。
                  现场会议进行中不出现——委员应本人投票（0723 用户定） -->
             <div v-if="isChair && interactive && allowProxy" class="ts-proxy">
-              <!-- 一个入口「修改投票」（0729 用户定）：合并 改我的票 / 撤回我的票 / 改代投的票 三件事 -->
-              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">修改投票</button>
+              <!-- 一个入口：还有人没投→「代委员投票」(去代投)；都投完→「修改投票」(改我的/改代投/撤回)。0729 用户定 -->
+              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">{{ notVoted > 0 ? '代委员投票' : '修改投票' }}</button>
               <div v-else class="ts-proxy-panel">
-                <div class="ts-proxy-title">修改投票<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
+                <div class="ts-proxy-title">{{ notVoted > 0 ? '代委员投票' : '修改投票' }}<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
                 <div v-else-if="!proxyTargets.length" class="ts-empty">暂无可修改或代投的投票</div>
                 <template v-else>
@@ -1074,8 +1074,10 @@ async function openProxy() {
       toast({ title: '暂无可修改或代投的投票', icon: 'none' })
       return
     }
-    // 顺序：我 → 已代投(可改) → 未投(可代投)
-    proxyTargets.value = [...selfRow, ...correctable, ...unvoted]
+    // 还有人没投 → 代投优先(未投在前，打开就落在第一个未投的人)；都投完 → 修改优先(我在前)
+    proxyTargets.value = notVoted.value > 0
+      ? [...unvoted, ...correctable, ...selfRow]
+      : [...selfRow, ...correctable, ...unvoted]
     proxyOpen.value = true
     // 打开就自动选中第一个，少一次点选
     selectProxyMember(proxyTargets.value[0].memberId)
