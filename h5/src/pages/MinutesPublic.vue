@@ -16,33 +16,36 @@
           <span class="pub-tag">事项公示</span>
           <span class="pub-badge" :class="badgeClass">{{ badgeText }}</span>
           <h1 class="notice-title">{{ publicTitle }}</h1>
-          <div class="notice-content-body">{{ publicContent }}</div>
+          <div class="notice-content-body"><p v-for="(ln, i) in contentLines" :key="i" class="docp-ln" :class="ln.cls">{{ ln.text }}</p></div>
         </section>
 
         <!-- 0722 精简（用户定）：对齐线下公告栏形态——一张公示 + 附件清单。
              纪要全文不再平铺（改为附件入口进 /doc-preview）；意见反馈/公示说明两段删除，
              反馈方式已在公示正文末尾一句带出 -->
         <section class="pub-card" v-if="minutesText || relatedMaterials.length">
-          <header class="section-head">
+          <header class="section-head section-head-toggle" :class="{ collapsed: !attachOpen }" @click="attachOpen = !attachOpen">
             <span class="section-index">附件</span>
             <div><h2>公示附件</h2><p>会议纪要及相关材料，点击查看</p></div>
+            <i class="attach-arrow" :class="{ open: attachOpen }"></i>
           </header>
-          <div class="material-list">
-            <div v-if="minutesText" class="material-row" @click="viewMinutesDoc">
-              <span class="material-icon">附件</span>
-              <span class="material-name">会议纪要</span>
-              <span class="material-open">查看 ›</span>
+          <div v-show="attachOpen">
+            <div class="material-list">
+              <div v-if="minutesText" class="material-row" @click="viewMinutesDoc">
+                <span class="material-icon">附件</span>
+                <span class="material-name">会议纪要</span>
+                <span class="material-open">查看 ›</span>
+              </div>
+              <a v-for="item in relatedMaterials" :key="item.id || item.url || item.fileName" class="material-row" :href="item.url || item.fileUrl" target="_blank">
+                <span class="material-icon">附件</span>
+                <span class="material-name">{{ item.fileName || item.name || '相关材料' }}</span>
+                <span class="material-open">查看 ›</span>
+              </a>
             </div>
-            <a v-for="item in relatedMaterials" :key="item.id || item.url || item.fileName" class="material-row" :href="item.url || item.fileUrl" target="_blank">
-              <span class="material-icon">附件</span>
-              <span class="material-name">{{ item.fileName || item.name || '相关材料' }}</span>
-              <span class="material-open">查看 ›</span>
-            </a>
+            <!-- 张贴留痕（0723 向真实档案看齐：每份公示都配公示栏张贴照片存档） -->
+            <button v-if="isPublished && isChairUser" class="post-photo-btn" :disabled="photoUploading" @click="takePostPhoto">
+              {{ photoUploading ? '正在上传照片…' : '拍照留痕：公示栏张贴照片' }}
+            </button>
           </div>
-          <!-- 张贴留痕（0723 向真实档案看齐：每份公示都配公示栏张贴照片存档） -->
-          <button v-if="isPublished && isChairUser" class="post-photo-btn" :disabled="photoUploading" @click="takePostPhoto">
-            {{ photoUploading ? '正在上传照片…' : '拍照留痕：公示栏张贴照片' }}
-          </button>
         </section>
         <!-- 未发布时主任在预览页里发布（0722 用户定：详情页入口改为「查看公示材料」，先看内容再发布） -->
         <button v-if="canPublish" class="pub-btn publish" :disabled="publishing" @click="publishFromPreview">{{ publishing ? '发布中…' : '确认发布公示' }}</button>
@@ -51,7 +54,6 @@
           {{ exportingPdf ? '正在导出…' : '导出 PDF 打印张贴' }}
         </button>
         <button class="pub-btn ghost" @click="copyText">复制公示正文</button>
-        <span class="pub-foot">{{ isPublished ? '本页为面向本小区业主发布的事项公示材料' : '以上为公示材料预览，发布后对本小区业主公开' }}</span>
       </template>
     </div>
   </div>
@@ -82,6 +84,7 @@ const minutesText = ref('')
 const opinions = ref([])
 const todos = ref([])
 const emptyText = ref('')
+const attachOpen = ref(false)   // 公示附件默认收起
 let meetingId = null
 
 const record = computed(() => (detail.value && detail.value.record) || {})
@@ -133,6 +136,23 @@ const publicContent = computed(() => {
     '', '特此公示。', '', '阳光花园业主委员会',
     (detail.value && detail.value.publish && detail.value.publish.publishDate) || dateStr)
   return lines.join('\n')
+})
+// 公示正文按行渲染（与会议纪要口径一致）：普通段落首行缩进两个中文字符，落款/日期右对齐；
+// 落款统一简化为「阳光花园业主委员会」（旧数据里的长名也在此归一显示）。
+const PUB_DATE_RE = /^\d{4}\s*[-年./]\s*\d{1,2}\s*[-月./]\s*\d{1,2}\s*日?$/
+const PUB_ORG_RE = /^.{0,30}业主委员会(（第.{0,6}届）)?$/
+const PUB_SIGN_ORG = '阳光花园业主委员会'
+const contentLines = computed(() => {
+  const out = []
+  let orgDone = false
+  for (const raw of String(publicContent.value || '').split('\n')) {
+    const t = raw.trim()
+    if (!t) { out.push({ text: '', cls: 'blank' }); continue }
+    if (PUB_DATE_RE.test(t)) { out.push({ text: t, cls: 'sign' }); continue }
+    if (PUB_ORG_RE.test(t)) { if (!orgDone) { orgDone = true; out.push({ text: PUB_SIGN_ORG, cls: 'sign' }) } continue }
+    out.push({ text: '　　' + t, cls: '' })
+  }
+  return out
 })
 const relatedMaterials = computed(() => {
   if (!detail.value) return []
@@ -302,7 +322,10 @@ onMounted(() => {
 .hero-card { overflow:hidden; }
 .notice-paper { position:relative; padding-top:44rpx; }
 .notice-title { margin:44rpx auto 40rpx; max-width:92%; text-align:center; color:#17191d; font-size:42rpx; line-height:1.5; font-weight:800; }
-.notice-content-body { padding:12rpx 8rpx 26rpx; white-space:pre-wrap; color:#30343a; font-size:32rpx; line-height:2; text-align:justify; }
+.notice-content-body { padding:12rpx 8rpx 26rpx; color:#30343a; font-size:32rpx; line-height:2; text-align:justify; }
+.docp-ln { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.docp-ln.sign { text-align:right; padding-right:2em; }
+.docp-ln.blank { height:20rpx; }
 .material-list { display:flex; flex-direction:column; gap:14rpx; }
 .material-row { display:flex; align-items:center; gap:18rpx; padding:22rpx; border:2rpx solid #e8ebef; border-radius:16rpx; color:inherit; text-decoration:none; background:#fafbfc; }
 .material-icon { flex-shrink:0; padding:7rpx 10rpx; border-radius:8rpx; background:var(--pub-blue-soft); color:var(--pub-blue); font-size:22rpx; font-weight:700; }
@@ -323,6 +346,11 @@ onMounted(() => {
 .section-head { display:flex; align-items:center; gap:18rpx; margin-bottom:28rpx; }
 .section-index { color:var(--pub-blue); font-size:26rpx; font-weight:800; border-right:3rpx solid var(--pub-blue-line); padding-right:16rpx; }
 .section-head h2 { margin:0; color:var(--pub-ink); font-size:36rpx; }
+/* 公示附件：可折叠头部（默认收起），箭头用 CSS 边框绘制、旋转切换方向 */
+.section-head-toggle { cursor:pointer; }
+.section-head-toggle.collapsed { margin-bottom:0; }
+.attach-arrow { flex:none; margin-left:auto; width:16rpx; height:16rpx; border-right:3rpx solid var(--pub-sub); border-bottom:3rpx solid var(--pub-sub); transform:rotate(45deg); position:relative; top:-2rpx; transition:transform .2s ease, top .2s ease; }
+.attach-arrow.open { transform:rotate(-135deg); top:2rpx; }
 .section-head p { margin:5rpx 0 0; color:var(--pub-sub); font-size:25rpx; }
 .process-line { display:flex; justify-content:space-between; position:relative; margin:28rpx 0; }
 .process-line::before { content:''; position:absolute; left:8%; right:8%; top:23rpx; height:3rpx; background:var(--pub-blue-line); }
