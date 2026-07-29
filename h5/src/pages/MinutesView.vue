@@ -27,8 +27,12 @@
         <button class="mv-cancel" :disabled="saving" @click="cancelEdit">取消</button>
         <button class="mv-save" :disabled="saving" @click="saveEdit">{{ saving ? '保存中…' : '确定' }}</button>
       </div>
-      <div v-else-if="canEdit" class="mv-editor-actions single">
-        <button class="mv-cancel" @click="backFromView">返回</button>
+      <div v-else-if="canEdit" class="mv-view-actions">
+        <button class="mv-edit-btn" @click="beginInlineEdit">编辑纪要</button>
+        <div class="mv-links">
+          <span class="mv-link" @click="copyAll">复制全文</span>
+          <span class="mv-link" @click="viewTodos">待办事项</span>
+        </div>
       </div>
       <div v-else class="mv-links">
         <span class="mv-link" @click="copyAll">复制全文</span>
@@ -153,7 +157,8 @@ async function load() {
     const published = !!(detail && detail.publish && detail.publish.published)
     const archived = !!(detail && detail._archived)
     canEdit.value = (perm.isChair() || perm.can('committee.publish')) && !published && !archived
-    if (canEdit.value && text.value) beginInlineEdit()
+    // 默认进"查看"（公文格式：首行缩进、落款/日期右对齐）——可编辑者点「编辑纪要」再进编辑态。
+    // 原来 canEdit 直接进编辑态(contenteditable 显示原文)，看不到排版，用户反馈"格式没变"。
   } catch (e) {
     text.value = ''
     canEdit.value = false
@@ -293,6 +298,11 @@ onMounted(() => {
 .mv-cancel { background: #f1f2f4; color: #555; }
 .mv-save { background: var(--c-primary-dark); color: #fff; }
 .mv-editor-actions button:disabled { opacity: .55; }
+/* 查看态（可编辑者）：编辑纪要主按钮 + 复制/待办链接 */
+.mv-view-actions { margin-top: 34rpx; padding-top: 22rpx; border-top: 2rpx solid #f0f0f0; display: flex; flex-direction: column; align-items: center; gap: 12rpx; }
+.mv-edit-btn { width: 60%; height: 84rpx; border-radius: 42rpx; border: 0; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
+.mv-edit-btn:active { background: var(--c-primary-strong, #8f4a06); }
+.mv-view-actions .mv-links { margin-top: 0; padding-top: 6rpx; border-top: 0; }
 /* 无纪要时的空状态 */
 .mv-empty { background: #fff; border-radius: 24rpx; padding: 80rpx 40rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .mv-empty-ico { font-size: 72rpx; margin-bottom: 16rpx; }
