@@ -133,8 +133,8 @@
 
       <!-- 管理操作 -->
       <div class="action-card" v-if="item.stage !== 'ended' && canManage">
-        <span class="ac-hint">{{ item.stage === 'preparing' ? (item.notified ? '培训结束后登记参加情况和材料' : '请先通知参加人员，通知后才能登记结果') : '确认参加情况及材料后完成留档' }}</span>
-        <button v-if="item.stage === 'preparing'" class="btn-primary" :disabled="!item.notified" @click="startLearn">培训已结束，登记结果</button>
+        <span class="ac-hint">{{ item.stage === 'preparing' ? (item.notified ? (catNoun + '结束后登记参加情况和材料') : '请先通知参加人员，通知后才能登记结果') : '确认参加情况及材料后完成留档' }}</span>
+        <button v-if="item.stage === 'preparing'" class="btn-primary" :disabled="!item.notified" @click="startLearn">登记{{ catNoun }}结果</button>
         <button v-if="item.stage === 'ongoing'" class="btn-primary finish" @click="finishLearn">完成留档</button>
       </div>
 
