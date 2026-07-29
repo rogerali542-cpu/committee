@@ -59,21 +59,28 @@ function joinMinutesTitle(meetingTitle) {
 const HEAD_RE = /^[一二三四五六七八九十]+、/
 // 记录表格版式（0723 仿工作手册）的分区标签行
 const RECORD_HEAD_RE = /^(会议内容：|会议有关决定及表决结果|会议决定、决议公告的时间|出席成员名单及签章|附页：会议结果)/
-// 落款行（业委会全称/日期）：右对齐、不缩进，与导出 PDF 同规则
-const SIGNOFF_RE = /^(.{0,30}业主委员会(（第.{1,6}届）)?|\d{4}年\d{1,2}月\d{1,2}日)$/
+// 落款/日期行：右对齐、不缩进。落款统一简化为「阳光花园业主委员会」（0729 用户定：不要区划/届别长名）
+const DATE_RE = /^\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日$/
+const ORG_RE = /^.{0,30}业主委员会(（第.{0,6}届）)?$/
+const SIGN_ORG = '阳光花园业主委员会'
 
 // 纪要正文 → 展示行：去 Markdown 记号、跳过开头重复标题、每段首行缩进两格（与导出 PDF 同规则）
 function minutesLines(text, meetingTitle) {
   const full = joinMinutesTitle(meetingTitle)
   const out = []
   let bodyStarted = false
+  let orgDone = false
   for (const raw of String(text).split(/\r?\n/)) {
     const t = raw.trim().replace(/^#{1,6}\s*/, '')
     if (!t) { if (bodyStarted) out.push({ text: '', cls: 'blank' }); continue }
     // 正文开头的标题行一律跳过（页顶已有标题）：含 AI 稿自带的「××业委会会议纪要」
     if (!bodyStarted && (t === '会议纪要' || t === meetingTitle || t === full || (t.length <= 30 && /会议纪要$/.test(t)))) continue
     bodyStarted = true
-    if (SIGNOFF_RE.test(t)) { out.push({ text: t, cls: 'sign' }); continue }
+    if (DATE_RE.test(t)) { out.push({ text: t, cls: 'sign' }); continue }
+    if (ORG_RE.test(t)) { // 落款单位：简化为短名，多处只留一处（去重旧稿里累积的长名/短名）
+      if (!orgDone) { orgDone = true; out.push({ text: SIGN_ORG, cls: 'sign' }) }
+      continue
+    }
     out.push({ text: '　　' + t, cls: HEAD_RE.test(t) ? 'head' : '' })
   }
   return out

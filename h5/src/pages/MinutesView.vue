@@ -22,7 +22,7 @@
       </div>
       <div v-if="editing" :ref="bindBodyEditor" class="doc-body editable" contenteditable="true" @input="onBodyInput"></div>
       <div v-else class="doc-body"><p v-for="(ln, i) in bodyLines" :key="i" class="doc-ln" :class="ln.cls">{{ ln.text }}</p></div>
-      <div class="mv-signature">阳光花园业主委员会</div>
+      <div v-if="!bodyHasSignoff" class="mv-signature">阳光花园业主委员会</div>
       <div v-if="editing" class="mv-editor-actions">
         <button class="mv-cancel" :disabled="saving" @click="cancelEdit">取消</button>
         <button class="mv-save" :disabled="saving" @click="saveEdit">{{ saving ? '保存中…' : '确定' }}</button>
@@ -108,15 +108,25 @@ function withSignature(value) {
   return content + '\n\n' + SIGNATURE
 }
 // 正文按公文格式排版（仅影响展示，编辑/复制仍用原文）：
-// 普通段落首行缩进两个全角字符；落款（××业主委员会）与日期行右对齐、右缩进两字。
-const SIGNOFF_RE = /^(.{0,30}业主委员会(（第.{1,6}届）)?|\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日)$/
+// 普通段落首行缩进两字；落款统一简化为「阳光花园业主委员会」（去掉区划/届别长名、多处去重）+ 日期，右对齐右缩进两字。
+const DATE_RE = /^\d{4}\s*年\s*\d{1,2}\s*月\s*\d{1,2}\s*日$/
+const ORG_RE = /^.{0,30}业主委员会(（第.{0,6}届）)?$/
+const SIGN_ORG = '阳光花园业主委员会'
 const HEAD_RE = /^[一二三四五六七八九十]+、/
-const bodyLines = computed(() => documentParts.value.body.split('\n').map((raw) => {
-  const t = raw.trim()
-  if (!t) return { text: '', cls: 'blank' }
-  if (SIGNOFF_RE.test(t)) return { text: t, cls: 'sign' }       // 落款/日期：右对齐 + 右缩进两字
-  return { text: '　　' + t, cls: HEAD_RE.test(t) ? 'head' : '' } // 普通段落：首行缩进两字
-}))
+const bodyLines = computed(() => {
+  const out = []
+  let orgDone = false
+  for (const raw of documentParts.value.body.split('\n')) {
+    const t = raw.trim()
+    if (!t) { out.push({ text: '', cls: 'blank' }); continue }
+    if (DATE_RE.test(t)) { out.push({ text: t, cls: 'sign' }); continue }                 // 日期：右对齐
+    if (ORG_RE.test(t)) { if (!orgDone) { orgDone = true; out.push({ text: SIGN_ORG, cls: 'sign' }) } continue } // 落款：简化+去重
+    out.push({ text: '　　' + t, cls: HEAD_RE.test(t) ? 'head' : '' })                     // 普通段落：首行缩进两字
+  }
+  return out
+})
+// 正文里已含落款（AI 长名已简化到位）时，底部不再重复署名
+const bodyHasSignoff = computed(() => bodyLines.value.some(l => l.cls === 'sign' && l.text === SIGN_ORG))
 
 function beginInlineEdit() {
   editableMeetingName.value = documentParts.value.meetingName

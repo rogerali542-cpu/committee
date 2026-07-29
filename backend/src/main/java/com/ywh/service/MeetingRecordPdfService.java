@@ -349,6 +349,7 @@ public class MeetingRecordPdfService {
             w.title(docTitle);
             w.gap(10);
             boolean bodyStarted = false;
+            boolean orgDone = false;
             for (String raw : minutesText.split("\\R")) {
                 String t = raw.strip().replaceAll("^#{1,6}\\s*", ""); // 去掉 AI 稿里的 Markdown 标题记号
                 if (t.isEmpty()) { if (bodyStarted) w.gap(6); continue; }
@@ -356,7 +357,11 @@ public class MeetingRecordPdfService {
                 if (!bodyStarted && (t.equals("会议纪要") || t.equals(meetingTitle) || t.equals(docTitle)
                         || (t.length() <= 30 && t.endsWith("会议纪要")))) continue;
                 bodyStarted = true;
-                if (isSignoffLine(t)) { w.right(t); continue; } // 落款（业委会全称/日期）右对齐，仿真实公文
+                if (isDateLine(t)) { w.right(t); continue; }              // 日期：右对齐
+                if (isOrgLine(t)) {                                        // 落款：简化为短名 + 去重（0729 用户定）
+                    if (!orgDone) { orgDone = true; w.right(SIGN_ORG); }
+                    continue;
+                }
                 w.paragraph("　　" + t);
             }
             // 盖章位（0723 用户定：只留位、不做电子章）——落款下方标注并留白，打印后线下加盖公章
@@ -412,6 +417,10 @@ public class MeetingRecordPdfService {
     private static boolean isSignoffLine(String t) {
         return t.matches(".{0,30}业主委员会(（第.{1,6}届）)?") || t.matches("\\d{4}年\\d{1,2}月\\d{1,2}日");
     }
+    // 会议纪要落款：日期行 / 落款单位行。纪要落款统一简化为短名（不带区划/届别），见 generateMinutesPdf。
+    private static final String SIGN_ORG = "阳光花园业主委员会";
+    private static boolean isDateLine(String t) { return t.matches("\\d{4}\\s*年\\s*\\d{1,2}\\s*月\\s*\\d{1,2}\\s*日"); }
+    private static boolean isOrgLine(String t) { return t.matches(".{0,30}业主委员会(（第.{0,6}届）)?"); }
 
     private String role(RecordAttendance a) {
         if (a.getUserRole().getRole() == null) return "委员";
