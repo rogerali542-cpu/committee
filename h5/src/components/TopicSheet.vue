@@ -168,7 +168,6 @@
           <!-- 责任人（主任/副主任/秘书）：负责把通知传达到位，确认后本议题即完成 -->
           <div v-if="isChair && interactive" class="ts-notice-act">
             <button class="ts-notice-forceall" @click="markNoticeRead">确认已通知全体</button>
-            <span class="ts-notice-tip">由主任 / 副主任 / 秘书负责通知，确认后本议题即完成</span>
           </div>
           <!-- 其他人：接到了点一下即可，不参与讨论 -->
           <div v-else-if="interactive && signedIn" class="ts-notice-act">
@@ -1368,16 +1367,14 @@ async function removeOpinion(op) {
 /* 已通知：清爽一行绿字（0729 重做——通知是一次性传达，完成即一行了事，不再堆已读进度） */
 .ts-notice-done { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; font-size: 28rpx; font-weight: 700; color: #2E7D32; }
 .ts-notice-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 34rpx; height: 34rpx; border-radius: 50%; background: #2E8B57; color: #fff; font-size: 22rpx; }
-/* 动作区：责任人「确认已通知全体」/ 其他人「我已收到」 */
-.ts-notice-act { display: flex; align-items: center; flex-wrap: wrap; gap: 14rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
-.ts-notice-forceall { flex-shrink: 0; border: none; background: #C76A00; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 34rpx; }
-.ts-notice-forceall:active { background: #A85800; }
-.ts-notice-read { flex-shrink: 0; border: none; background: #2E8B57; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 42rpx; }
+/* 动作区：责任人「确认已通知全体」/ 其他人「我已收到」——单枚按钮居中 */
+.ts-notice-act { display: flex; align-items: center; justify-content: center; gap: 14rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
+.ts-notice-forceall { flex-shrink: 0; border: none; background: #3E6BA8; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 48rpx; }
+.ts-notice-forceall:active { background: #35647D; }
+.ts-notice-read { flex-shrink: 0; border: none; background: #2E8B57; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 48rpx; }
 .ts-notice-read:active { background: #256F45; }
 .ts-notice-mine { font-size: 26rpx; font-weight: 700; color: #2E7D32; }
 .ts-notice-status { font-size: 26rpx; color: #9AA0A6; font-weight: 600; }
-/* 责任人按钮下方的一行说明：占满整行落到按钮下方 */
-.ts-notice-tip { flex: 1 1 100%; font-size: 22rpx; color: #B79A6A; line-height: 1.4; }
 .ts-ops { border-top: 2rpx solid #F2F2F4; padding-top: 18rpx; }
 .ts-ops.summary { margin-top: 18rpx; padding-top: 14rpx; }
 .ts-top-summary { flex-shrink: 0; margin-top: 0; margin-bottom: 12rpx; }

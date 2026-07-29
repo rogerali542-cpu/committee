@@ -175,7 +175,6 @@
               <!-- 责任人(主任/副主任/秘书):负责把通知传达到位,确认后本议题即完成 -->
               <div v-if="isChair" class="omf-notice-act">
                 <button type="button" class="omf-notice-confirm" :disabled="busy" @click="confirmNoticeAll(topic)">确认已通知全体</button>
-                <span class="omf-notice-tip">由主任 / 副主任 / 秘书负责通知，确认后本议题即完成</span>
               </div>
               <!-- 其他人:接到了点一下即可 -->
               <div v-else-if="selfPresent" class="omf-notice-act">
@@ -738,14 +737,13 @@ onBeforeUnmount(() => {
 .omf-notice-body{margin:16rpx 0 0 52rpx;background:#FFFBF3;border:2rpx solid #F1E2C6;border-radius:14rpx;padding:20rpx;font-size:29rpx;line-height:1.7;color:#1f2329;white-space:pre-wrap}
 .omf-notice-done{display:flex;align-items:center;gap:10rpx;margin:16rpx 0 0 52rpx;font-size:27rpx;font-weight:700;color:#2E7D32}
 .omf-notice-done-mark{display:inline-flex;align-items:center;justify-content:center;width:32rpx;height:32rpx;border-radius:50%;background:#2E8B57;color:#fff;font-size:20rpx}
-.omf-notice-act{display:flex;align-items:center;flex-wrap:wrap;gap:14rpx;margin:16rpx 0 0 52rpx}
-.omf-notice-confirm{flex-shrink:0;border:none;background:#C76A00;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 34rpx}
-.omf-notice-confirm:active{background:#A85800}.omf-notice-confirm:disabled{opacity:.5}
-.omf-notice-received{flex-shrink:0;border:none;background:#2E8B57;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 42rpx}
+.omf-notice-act{display:flex;align-items:center;justify-content:center;gap:14rpx;margin:20rpx 0 4rpx}
+.omf-notice-confirm{flex-shrink:0;border:none;background:#3E6BA8;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 48rpx}
+.omf-notice-confirm:active{background:#35647D}.omf-notice-confirm:disabled{opacity:.5}
+.omf-notice-received{flex-shrink:0;border:none;background:#2E8B57;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 48rpx}
 .omf-notice-received:active{background:#256F45}.omf-notice-received:disabled{opacity:.5}
 .omf-notice-mine{font-size:26rpx;font-weight:700;color:#2E7D32}
 .omf-notice-status{font-size:26rpx;color:#9AA0A6;font-weight:600}
-.omf-notice-tip{flex:1 1 100%;font-size:22rpx;color:#B79A6A;line-height:1.4}
 .vote-choice-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14rpx;margin:18rpx 0 0 52rpx}
 .vote-options{display:flex;flex-direction:column;gap:12rpx;margin:18rpx 0 0 52rpx}
 .vote-opt{height:70rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
