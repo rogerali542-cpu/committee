@@ -169,12 +169,17 @@
 
           <!-- 通知类议题(0729 用户定重做):一次性通知——主任/副主任/秘书负责通知,其他人接到即可,不讨论不表决 -->
           <template v-if="topic.type === 'notice'">
-            <div class="omf-notice-body">{{ topic.content || '（暂无通知正文）' }}</div>
+            <!-- 通知正文=只读展示(读稿样式,不是输入框);无正文时不摆空框,标题即通知(0729 用户定重做) -->
+            <div v-if="topic.content" class="omf-notice-content">
+              <div class="omf-notice-label">通知内容</div>
+              <div class="omf-notice-text">{{ topic.content }}</div>
+            </div>
+            <div v-else class="omf-notice-none">无补充正文，以标题为准</div>
             <div v-if="topic.notified" class="omf-notice-done"><span class="omf-notice-done-mark">✓</span>已通知全体</div>
             <template v-else-if="!meetingEnded">
               <!-- 责任人(主任/副主任/秘书):负责把通知传达到位,确认后本议题即完成 -->
               <div v-if="isChair" class="omf-notice-act">
-                <button type="button" class="omf-notice-confirm" :disabled="busy" @click="confirmNoticeAll(topic)">确认已通知全体</button>
+                <button type="button" class="omf-notice-confirm" :disabled="busy" @click="confirmNoticeAll(topic)">确认通知</button>
               </div>
               <!-- 其他人:接到了点一下即可 -->
               <div v-else-if="selfPresent" class="omf-notice-act">
@@ -743,12 +748,16 @@ onBeforeUnmount(() => {
 .op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
 /* 通知类议题(0729 重做):正文卡 + 责任人「确认已通知全体」/ 其他人「我已收到」,与标题左对齐(52rpx) */
-.omf-notice-body{margin:16rpx 0 0 52rpx;background:#FFFBF3;border:2rpx solid #F1E2C6;border-radius:14rpx;padding:20rpx;font-size:29rpx;line-height:1.7;color:#1f2329;white-space:pre-wrap}
+/* 通知正文=只读展示:去掉输入框式描边,改浅底callout+字段标签,左对齐读稿(0729 重做) */
+.omf-notice-content{margin:14rpx 0 0 52rpx;background:#FBF6EC;border-radius:12rpx;padding:16rpx 20rpx}
+.omf-notice-label{font-size:23rpx;color:#a98b52;font-weight:600;margin-bottom:6rpx}
+.omf-notice-text{font-size:29rpx;color:#2b2f36;line-height:1.7;white-space:pre-wrap}
+.omf-notice-none{margin:14rpx 0 0 52rpx;font-size:24rpx;color:#9aa4ad}
 .omf-notice-done{display:flex;align-items:center;gap:10rpx;margin:16rpx 0 0 52rpx;font-size:27rpx;font-weight:700;color:#2E7D32}
 .omf-notice-done-mark{display:inline-flex;align-items:center;justify-content:center;width:32rpx;height:32rpx;border-radius:50%;background:#2E8B57;color:#fff;font-size:20rpx}
 .omf-notice-act{display:flex;align-items:center;justify-content:center;gap:14rpx;margin:20rpx 0 4rpx}
-.omf-notice-confirm{flex-shrink:0;border:none;background:#3E6BA8;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 48rpx}
-.omf-notice-confirm:active{background:#35647D}.omf-notice-confirm:disabled{opacity:.5}
+.omf-notice-confirm{flex-shrink:0;border:none;background:#A85800;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 56rpx}
+.omf-notice-confirm:active{background:#8F4A06}.omf-notice-confirm:disabled{opacity:.5}
 .omf-notice-received{flex-shrink:0;border:none;background:#2E8B57;color:#fff;font-size:28rpx;font-weight:700;border-radius:14rpx;padding:16rpx 48rpx}
 .omf-notice-received:active{background:#256F45}.omf-notice-received:disabled{opacity:.5}
 .omf-notice-mine{font-size:26rpx;font-weight:700;color:#2E7D32}

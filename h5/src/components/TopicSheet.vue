@@ -160,14 +160,15 @@
            其他人接到即可；无表决、无讨论，不再逐个统计已读进度 -->
       <div v-if="topic.type === 'notice'" class="ts-notice">
         <div class="ts-notice-label">通知事项</div>
-        <div class="ts-notice-body">{{ topic.content || '（暂无通知正文）' }}</div>
+        <div v-if="topic.content" class="ts-notice-body">{{ topic.content }}</div>
+        <div v-else class="ts-notice-none">无补充正文，以标题为准</div>
 
         <!-- 已通知：清爽一行了事 -->
         <div v-if="topic.notified" class="ts-notice-done"><span class="ts-notice-done-mark">✓</span>已通知全体</div>
         <template v-else>
           <!-- 责任人（主任/副主任/秘书）：负责把通知传达到位，确认后本议题即完成 -->
           <div v-if="isChair && interactive" class="ts-notice-act">
-            <button class="ts-notice-forceall" @click="markNoticeRead">确认已通知全体</button>
+            <button class="ts-notice-forceall" @click="markNoticeRead">确认通知</button>
           </div>
           <!-- 其他人：接到了点一下即可，不参与讨论 -->
           <div v-else-if="interactive && signedIn" class="ts-notice-act">
@@ -1364,13 +1365,14 @@ async function removeOpinion(op) {
 .ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 20rpx; margin-bottom: 18rpx; }
 .ts-notice-label { font-size: 26rpx; font-weight: 700; color: #A85800; margin-bottom: 12rpx; }
 .ts-notice-body { font-size: 32rpx; color: #1f2329; line-height: 1.7; white-space: pre-wrap; }
+.ts-notice-none { font-size: 26rpx; color: #A79A7E; }
 /* 已通知：清爽一行绿字（0729 重做——通知是一次性传达，完成即一行了事，不再堆已读进度） */
 .ts-notice-done { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; font-size: 28rpx; font-weight: 700; color: #2E7D32; }
 .ts-notice-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 34rpx; height: 34rpx; border-radius: 50%; background: #2E8B57; color: #fff; font-size: 22rpx; }
 /* 动作区：责任人「确认已通知全体」/ 其他人「我已收到」——单枚按钮居中 */
 .ts-notice-act { display: flex; align-items: center; justify-content: center; gap: 14rpx; margin-top: 18rpx; padding-top: 16rpx; border-top: 2rpx dashed #EBD9B8; }
-.ts-notice-forceall { flex-shrink: 0; border: none; background: #3E6BA8; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 48rpx; }
-.ts-notice-forceall:active { background: #35647D; }
+.ts-notice-forceall { flex-shrink: 0; border: none; background: #A85800; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 56rpx; }
+.ts-notice-forceall:active { background: #8F4A06; }
 .ts-notice-read { flex-shrink: 0; border: none; background: #2E8B57; color: #fff; font-size: 28rpx; font-weight: 700; border-radius: 14rpx; padding: 16rpx 48rpx; }
 .ts-notice-read:active { background: #256F45; }
 .ts-notice-mine { font-size: 26rpx; font-weight: 700; color: #2E7D32; }
