@@ -97,7 +97,8 @@ public class AttendanceSheetPdfService {
         for (RecordAttendance a : rows) {
             String confirm = Boolean.TRUE.equals(a.getDeclined()) ? "因故缺席"
                     : Boolean.TRUE.equals(a.getSignedIn()) ? "已确认参会" : "未确认";
-            String actual = Boolean.TRUE.equals(a.getSignedIn()) ? "已参会" : "未参会";
+            String actual = Boolean.TRUE.equals(a.getSignedIn())
+                    ? ("remote".equals(a.getAttendanceMode()) ? "已参会（远程）" : "已参会") : "未参会";
             String role = roleLabel(a.getUserRole().getRole().name());
             drawRow(cs, font, left, y, widths, rowH,
                     new String[]{String.valueOf(index++), a.getUserRole().getRealName(), role, confirm, actual, "", ""}, false);

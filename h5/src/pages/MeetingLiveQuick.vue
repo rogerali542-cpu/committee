@@ -53,7 +53,8 @@
             <div class="er-item-actions">
               <button class="er-act" @click="rosterPopOpen = true">查看名单</button>
               <button v-if="isChair && !observersText && needsObservers" class="er-act" @click="editObservers">登记列席</button>
-              <button v-if="!isOnlineMeeting" class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
+              <!-- 线上会议也可导出（0729 用户定）：签到表作为存档材料线上线下同权，打印后线下补签 -->
+              <button class="er-act" :disabled="exportingAttendanceSheet" @click="exportAttendanceSheet">
                 {{ exportingAttendanceSheet ? '正在生成…' : '打印签到表' }}
               </button>
             </div>
