@@ -162,6 +162,14 @@
         <button v-if="canDiscuss && interactive && !opinionOpen && !hasOpinions" class="ts-op-entry" @click="opinionOpen = true">
           补充意见
         </button>
+        <!-- 没有意见时的友好空态（0729 用户定：投完票、还没意见时页面别太空、太荒芜）。
+             仅在"已投票/已揭晓"后出现——未投票时焦点在投票按钮，不提前占位。 -->
+        <div v-if="canDiscuss && !opinionOpen && !hasOpinions && !loading && (committedVote != null || voteRevealed)" class="ts-ops-empty">
+          <div class="ts-ops-empty-ico">💬</div>
+          <div class="ts-ops-empty-title">还没有补充意见</div>
+          <div v-if="interactive" class="ts-ops-empty-sub">补充意见是选填的——会上口头说过就行。<br>想给这个议题留句书面说明，点上方「补充意见」。</div>
+          <div v-else class="ts-ops-empty-sub">本议题暂无补充意见记录。</div>
+        </div>
       </div>
 
       <!-- 通报区（仅通报类议题，0729 用户定重做）：一次性通知——主任/副主任/秘书负责通知，
@@ -1527,6 +1535,11 @@ async function removeOpinion(op) {
 .ts-ops.summary .ts-ops-head { font-size: 26rpx; margin-bottom: 8rpx; color: #5F6570; }
 .ts-ops.summary .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
+/* 无意见友好空态：软图标 + 一句安心话，填补投完票后的空白（0729 用户定） */
+.ts-ops-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16rpx; padding: 88rpx 48rpx 64rpx; text-align: center; }
+.ts-ops-empty-ico { width: 108rpx; height: 108rpx; border-radius: 50%; background: #F1F4F8; display: flex; align-items: center; justify-content: center; font-size: 52rpx; opacity: .75; }
+.ts-ops-empty-title { font-size: 30rpx; font-weight: 700; color: #8A9099; }
+.ts-ops-empty-sub { font-size: 25rpx; color: #AEB4BC; line-height: 1.75; }
 /* 意见条（方案C 极简两行式）：第一行 姓名+表决标签+时间，第二行 意见摘要+查看；点击整条展开全文 */
 .ts-op { padding: 16rpx 0; border-bottom: 2rpx solid #F2F0EC; cursor: pointer; }
 /* 意见汇总：每条意见做浅白背景小卡片，删除按钮在卡片右下角（0722 用户定） */
