@@ -39,6 +39,7 @@ public class MeetingTodoTicketService {
     private final ObjectMapper objectMapper;
 
     @Value("${external.ticket.enabled:false}") private boolean enabled;
+    @Value("${external.ticket.simulate:false}") private boolean simulate;   // 演示模式：不外呼，本地受理
     @Value("${external.ticket.base-url:}") private String baseUrl;
     @Value("${external.ticket.uid:}") private String externalUid;
     @Value("${external.ticket.community-code:}") private String communityCode;
@@ -52,7 +53,7 @@ public class MeetingTodoTicketService {
 
     @Transactional
     public MeetingTodoTicketVO push(Long meetingId, Long todoId) {
-        validateConfig();
+        if (!simulate) validateConfig();
         MeetingTodo todo = todoRepo.findById(todoId)
                 .orElseThrow(() -> new IllegalArgumentException("待办不存在"));
         if (!todo.getMeetingId().equals(meetingId)) throw new IllegalArgumentException("待办与会议不匹配");
@@ -60,6 +61,23 @@ public class MeetingTodoTicketService {
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
 
         String externalNo = "YWH-MEETING-" + meetingId + "-TODO-" + todoId;
+        // 模拟模式（演示/对方系统未上线）：不外呼，本地受理并生成稳定模拟单号；重复点幂等返回已有单
+        if (simulate) {
+            LocalDateTime now = LocalDateTime.now();
+            if (blank(todo.getTicketNo())) {
+                todo.setExternalTicketNo(externalNo);
+                todo.setTicketNo("GD" + now.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-" + String.format("%03d", todoId % 1000));
+                todo.setTicketPushedAt(now);
+                todoRepo.save(todo);
+            }
+            log.info("工单模拟模式：会议待办本地受理 externalTicketNo={}, ticketNo={}", externalNo, todo.getTicketNo());
+            return MeetingTodoTicketVO.builder()
+                    .created(true).externalTicketNo(externalNo).ticketNo(todo.getTicketNo())
+                    .status("ACCEPTED").statusLabel("已受理")
+                    .pushedAt((todo.getTicketPushedAt() == null ? now : todo.getTicketPushedAt())
+                            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm")))
+                    .build();
+        }
         UserRoleEntity actor = SecurityUtils.getCurrentUserRole();
         String reporter = actor != null && actor.getRealName() != null ? actor.getRealName() : defaultReporterName;
 

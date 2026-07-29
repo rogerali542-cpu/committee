@@ -112,6 +112,9 @@ logging:
 external:
   ticket:
     enabled: ${EXTERNAL_TICKET_ENABLED:false}
+    # 模拟模式（演示/对方系统未上线用）：true 时不外呼工单系统，本地受理并生成模拟单号（幂等）。
+    # 上线接入真实工单系统时务必改回 false。
+    simulate: ${EXTERNAL_TICKET_SIMULATE:false}
     base-url: ${EXTERNAL_TICKET_BASE_URL:https://communityhub.slaicreativity.com}
     uid: ${EXTERNAL_TICKET_UID:}
     community-code: ${EXTERNAL_TICKET_COMMUNITY_CODE:}

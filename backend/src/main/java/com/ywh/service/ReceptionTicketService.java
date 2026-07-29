@@ -40,6 +40,7 @@ public class ReceptionTicketService {
     private final ObjectMapper objectMapper;
 
     @Value("${external.ticket.enabled:false}") private boolean enabled;
+    @Value("${external.ticket.simulate:false}") private boolean simulate;   // 演示模式：不外呼，本地受理
     @Value("${external.ticket.base-url:}") private String baseUrl;
     @Value("${external.ticket.uid:}") private String externalUid;
     @Value("${external.ticket.community-code:}") private String communityCode;
@@ -53,7 +54,7 @@ public class ReceptionTicketService {
 
     @Transactional
     public MeetingTodoTicketVO push(Long recordId) {
-        validateConfig();
+        if (!simulate) validateConfig();
         ReceptionRecord r = recordRepo.findById(recordId)
                 .filter(record -> record.getCommunity() != null
                         && SecurityUtils.getCurrentCommunityId().equals(record.getCommunity().getId()))
@@ -61,6 +62,23 @@ public class ReceptionTicketService {
 
         // 幂等键：同一条接待重复点「派发工单」不会重复建单，对方按 uid+externalTicketNo 返回已有工单。
         String externalNo = "YWH-RECEPTION-" + recordId;
+        // 模拟模式（演示/对方系统未上线）：不外呼，本地受理并生成稳定模拟单号；重复点幂等返回已有单
+        if (simulate) {
+            LocalDateTime now = LocalDateTime.now();
+            if (blank(r.getTicketNo())) {
+                r.setExternalTicketNo(externalNo);
+                r.setTicketNo("GD" + now.format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-R" + String.format("%03d", recordId % 1000));
+                r.setTicketPushedAt(now);
+                recordRepo.save(r);
+            }
+            log.info("工单模拟模式：接待诉求本地受理 externalTicketNo={}, ticketNo={}", externalNo, r.getTicketNo());
+            return MeetingTodoTicketVO.builder()
+                    .created(true).externalTicketNo(externalNo).ticketNo(r.getTicketNo())
+                    .status("ACCEPTED").statusLabel("已受理")
+                    .pushedAt((r.getTicketPushedAt() == null ? now : r.getTicketPushedAt())
+                            .format(DateTimeFormatter.ofPattern("MM-dd HH:mm")))
+                    .build();
+        }
         UserRoleEntity actor = SecurityUtils.getCurrentUserRole();
         String reporter = actor != null && actor.getRealName() != null ? actor.getRealName() : defaultReporterName;
         String location = blank(r.getRoom()) ? r.getCommunity().getName() : r.getCommunity().getName() + r.getRoom();
