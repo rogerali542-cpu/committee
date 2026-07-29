@@ -170,18 +170,8 @@
       <!-- ══════════ 结束阶段 ══════════ -->
       <!-- 会后功能区：正式结束的会议 + 现场已结束的会议（0722 用户定：测试期不真正归档也要能看到公示/归档等会后功能） -->
       <template v-if="showPostMeeting">
-        <!-- 会议录音存档（委员/主任可见，外部无 record 自动隐藏）-->
-        <!-- 会后录音存档：快速会议存多段 recordings，老单文件流程存 record.recordingUrl，两种都要能显示/试听 -->
-        <div v-if="detail.meetingMethod !== 'online' && (hasRecordings || (detail.record && detail.record.recordingUrl))" class="rec-archive-card">
-          <div class="rac-head">
-            <span class="rac-title">🎙 会议录音</span>
-            <span class="rac-sub">{{ recAudioPlaying ? '播放中…' : (hasRecordings ? (recTotalDurText || '录音存档') : '会议全程录音存档') }}</span>
-          </div>
-          <div class="rac-actions">
-            <button class="btn btn-outline mini" @click="hasRecordings ? toggleRecPlayback() : toggleRecording()">{{ recAudioPlaying ? '暂停' : '试听' }}</button>
-            <button v-if="detail.record && detail.record.recordingUrl" class="btn btn-ghost mini" @click="downloadRecording">下载/转发</button>
-          </div>
-        </div>
+        <!-- 会议录音的「试听/看转写」并入下方会议卡（主任的 minutes-basis 行 / 会议记录），
+             不再单独在页顶放一张「会议录音」存档卡（0729 用户定：删，录音应在卡片里而非顶部横条）。 -->
 
         <!-- 委员：简洁结论 -->
         <template v-if="userView === 'member'">
@@ -840,41 +830,8 @@ function toggleRecPlayback() {
   const p = _recAudio.play()
   if (p && p.catch) p.catch(() => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) })
 }
-function toggleRecording() {
-  const url = detail.value && detail.value.record ? detail.value.record.recordingUrl : ''
-  if (!url) { toast({ title: '暂无录音', icon: 'none' }); return }
-  if (_recAudio && recAudioPlaying.value) { _recAudio.pause(); return }
-  if (!_recAudio) {
-    _recAudio = new Audio(url)
-    _recAudio.onplay = () => { recAudioPlaying.value = true }
-    _recAudio.onpause = () => { recAudioPlaying.value = false }
-    _recAudio.onended = () => { recAudioPlaying.value = false }
-    _recAudio.onerror = () => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) }
-  }
-  const p = _recAudio.play()
-  if (p && p.catch) p.catch(() => { recAudioPlaying.value = false; toast({ title: '播放失败', icon: 'none' }) })
-}
-// H5 无微信转发文件能力：降级为下载（拉成 blob 保证跨域也能下），提示可在微信内转发该文件。
-async function downloadRecording() {
-  const url = detail.value && detail.value.record ? detail.value.record.recordingUrl : ''
-  if (!url) { toast({ title: '暂无录音', icon: 'none' }); return }
-  try {
-    const resp = await fetch(url)
-    const blob = await resp.blob()
-    const objUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objUrl
-    a.download = '会议录音' + (url.lastIndexOf('.') >= 0 ? url.slice(url.lastIndexOf('.')) : '.mp3')
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(objUrl), 2000)
-    toast({ title: '已下载，可在微信中转发该文件' })
-  } catch (e) {
-    window.open(url, '_blank')
-    toast({ title: '已打开录音，可长按保存或转发' })
-  }
-}
+// 单文件流程的「试听/下载转发」(toggleRecording/downloadRecording) 随页顶「会议录音」存档卡一起删除
+// (0729)：会后录音统一走多段连播 toggleRecPlayback（会议卡内的 minutes-basis 行）。
 
 // 会议进行页本地快照里「现场会议已结束」的标记（与 MeetingLiveQuick 持久化键一致，按角色隔离）
 function _fieldEndedLocally() {
@@ -2487,13 +2444,6 @@ async function removeMaterial(item) {
 .wc-empty { text-align:center; color:#666; font-size: 30rpx; padding:22px 0; display:block; }
 .wc-confirm { width:100%; min-height:54px; padding:14px; background:var(--c-primary-dark); color:#fff; font-size: 34rpx; font-weight:700; border:none; border-radius:14px; margin-top:10px; }
 .wc-done-banner { text-align:center; background:#EAF7EF; padding:14px; border-radius:12px; font-size: 30rpx; color:#27AE60; font-weight:700; line-height:1.5; }
-
-/* 会议录音存档卡 */
-.rec-archive-card { background:#fff; border-radius:16px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
-.rac-head { display:flex; flex-direction:column; gap:3px; margin-bottom:10px; }
-.rac-title { font-size: 30rpx; font-weight:700; color:#1F2024; }
-.rac-sub { font-size: 28rpx; color:#666; }
-.rac-actions { display:flex; gap:10px; }
 
 /* Completion */
 .cc-time { font-size: 28rpx; color:#666; margin-top:4px; }
