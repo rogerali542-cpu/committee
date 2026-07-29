@@ -114,7 +114,7 @@
 
       <!-- 管理操作 -->
       <div class="action-card" v-if="item.stage !== 'ended' && canManage">
-        <span class="ac-hint">{{ item.stage === 'preparing' ? (item.notified ? (catNoun + '结束后进入登记参加情况和材料') : '请先通知参加人员，通知后才能登记结果') : '继续登记参加情况和材料，完成后归档' }}</span>
+        <span v-if="item.stage === 'preparing' && !item.notified" class="ac-hint">请先通知参加人员，通知后才能登记结果</span>
         <button v-if="item.stage === 'preparing'" class="btn-primary" :disabled="!item.notified" @click="goRegister">登记{{ catNoun }}结果</button>
         <button v-if="item.stage === 'ongoing'" class="btn-primary" @click="goRegister">继续登记{{ catNoun }}结果</button>
       </div>
