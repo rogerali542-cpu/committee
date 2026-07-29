@@ -201,11 +201,9 @@
                 <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
               </div>
             </div>
-            <!-- 表决题:先投票才能填意见(0725 用户定),意见带作者表决标签 -->
-            <div v-if="!meetingEnded && topic.voteRequired && !hasMyVote(topic)" class="op-need-vote">
-              请先完成上方表决，再补充意见
-            </div>
-            <div v-else-if="!meetingEnded" class="op-input">
+            <!-- 意见输入:讨论题随时可填;表决题需先投票(0725 用户定,submitOpinion 亦有守卫)。
+                 未投票时不再显示「请先完成表决」提示条(0729 用户定),直接不出输入框即可 -->
+            <div v-if="!meetingEnded && (!topic.voteRequired || hasMyVote(topic))" class="op-input">
               <div class="op-label">补充意见（可选）</div>
               <textarea v-model="opinionDrafts[topic.id]" rows="2"></textarea>
               <!-- 有内容才出现操作按钮:AI润色 + 提交意见;空态只留输入框+翻页,不拥挤(0729 用户定) -->
@@ -732,14 +730,13 @@ onBeforeUnmount(() => {
 .op-vote-tag.no{background:#f9e9e6;color:#984a3e}
 .op-vote-tag.ab{background:#eef1f4;color:#5a6b7a}
 .op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
-.vote-submit{display:block;width:calc(100% - 52rpx);margin:18rpx 0 0 52rpx;height:72rpx;border:0;border-radius:14rpx;background:#416f8b;color:#fff;font-size:27rpx;font-weight:600}
-.vote-submit:disabled{opacity:.5}
+.vote-submit{display:block;width:60%;margin:18rpx auto 0;height:72rpx;border:0;border-radius:14rpx;background:#A85800;color:#fff;font-size:27rpx;font-weight:700}
+.vote-submit:active{background:#8F4A06}.vote-submit:disabled{opacity:.5}
 .mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
 .mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
 .op-btn-row{display:flex;align-items:center;gap:16rpx;margin-top:6rpx}
 .op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
 .op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
-.op-need-vote{margin:16rpx 0 0 52rpx;padding:18rpx 22rpx;border-radius:12rpx;background:#f7f4ec;border:2rpx dashed #dfd2b4;color:#8a6d35;font-size:24rpx;line-height:1.6}
 .op-input{display:flex;flex-direction:column;gap:10rpx;margin:16rpx 0 0 52rpx}
 .op-label{font-size:24rpx;color:#7a8894;font-weight:500}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
@@ -768,7 +765,7 @@ onBeforeUnmount(() => {
 .result-votes{margin:14rpx 0 0 52rpx;color:#49718a;font-size:25rpx}
 .vote-closed-tag{margin:10rpx 0 0 52rpx;display:inline-block;padding:3rpx 14rpx;border-radius:999rpx;background:#f0f2f4;color:#8a95a0;font-size:22rpx;font-weight:600}
 .vote-closed-tag.pass{background:#e4f2e9;color:#43815b}
-.end-to-review{margin-top:30rpx}
+.end-to-review{margin-top:30rpx;background:#A85800}.end-to-review:active{background:#8F4A06}
 .member-wait-hint{margin-top:26rpx;text-align:center;color:#84929b;font-size:23rpx}
 .result-card{text-align:left}.result-seal{text-align:center;font-size:34rpx;font-weight:700;color:#274c63}.result-meta{text-align:center;margin:10rpx 0 26rpx;color:#798892;font-size:23rpx}.result-attendance{padding:18rpx;border-radius:12rpx;background:#f4f7f8}.result-attendance b{display:block;margin-bottom:8rpx}.result-topic{padding:22rpx 0;border-bottom:2rpx solid #edf1f3}.result-topic-title{font-weight:700}.result-topic-text{margin-top:10rpx;color:#526570;line-height:1.65;white-space:pre-wrap}.result-note{margin:24rpx 0 0;color:#75858f;font-size:23rpx}.result-confirmed{margin-top:26rpx;padding:20rpx;border-radius:14rpx;background:#e9f5ed;color:#43815b;text-align:center}
 .result-card .omf-primary{display:block;width:70%;margin-left:auto;margin-right:auto}
