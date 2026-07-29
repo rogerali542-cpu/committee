@@ -1,7 +1,7 @@
 <template>
   <div class="page" style="overflow-y:auto;">
     <!-- 导航新规(0725 用户定):返回=历史上一页(学习列表 push 进入,新建成功是 replace 落进来,回退都到列表) -->
-    <PageNav title="培训详情" style="margin: -24rpx -24rpx 20rpx">
+    <PageNav :title="navTitle" style="margin: -24rpx -24rpx 20rpx">
       <template #right>
         <button class="nav-home" @click="goHome">首页</button>
       </template>
@@ -38,7 +38,7 @@
         </div>
         <div class="field-row">
           <span class="field-label">{{ item.stage === 'preparing' ? '计划参加' : '通知人员' }}</span>
-          <span class="field-val">{{ item.attendees || '未填写' }}</span>
+          <span class="field-val">{{ attendeesDisplay }}</span>
         </div>
       </div>
 
@@ -48,13 +48,16 @@
         <span class="cc-text">{{ item.description }}</span>
       </div>
 
-      <!-- 培训前：通知计划参加人员 -->
+      <!-- 培训前：通知人员（默认收起，头部显示 计划/全体 计数），与会议通知页同族 -->
       <div class="sign-card" v-if="item.stage === 'preparing' && item._signList.length">
-        <div class="sign-head">
-          <span class="sign-title">计划参加人员</span>
-          <span class="sign-stat" :class="item.notified ? 'ok' : ''">{{ item.notified ? '已通知全员' : '待通知' }}</span>
+        <div class="nc2-head" @click="noticeListOpen = !noticeListOpen">
+          <span class="sign-title">通知人员</span>
+          <div class="nc2-right">
+            <span class="sign-stat" :class="item.notified ? 'ok' : ''">{{ item.notified ? '已通知全员' : (item._signList.length + '/' + (memberTotal || item._signList.length) + ' 人') }}</span>
+            <span class="nc2-arrow" :class="{ open: noticeListOpen }"></span>
+          </div>
         </div>
-        <div class="sign-list">
+        <div v-if="noticeListOpen" class="sign-list nc2-list">
           <div v-for="s in item._signList" :key="s.name" class="sign-row">
             <span class="sign-name">{{ s.name }}</span>
           </div>
@@ -120,8 +123,8 @@
 
       <!-- 管理操作 -->
       <div class="action-card" v-if="item.stage !== 'ended' && canManage">
-        <span class="ac-hint">{{ item.stage === 'preparing' ? '培训结束后登记参加情况和材料' : '确认参加情况及材料后完成留档' }}</span>
-        <button v-if="item.stage === 'preparing'" class="btn-primary" @click="startLearn">培训已结束，登记结果</button>
+        <span class="ac-hint">{{ item.stage === 'preparing' ? (item.notified ? '培训结束后登记参加情况和材料' : '请先通知参加人员，通知后才能登记结果') : '确认参加情况及材料后完成留档' }}</span>
+        <button v-if="item.stage === 'preparing'" class="btn-primary" :disabled="!item.notified" @click="startLearn">培训已结束，登记结果</button>
         <button v-if="item.stage === 'ongoing'" class="btn-primary finish" @click="finishLearn">完成留档</button>
       </div>
 
@@ -156,8 +159,25 @@ const route = useRoute()
 const item = ref(null)
 const canManage = ref(false)   // 可以操作（创建/推进）= 主任/副主任/委员
 const selectedAttendance = ref([])
+const noticeListOpen = ref(false)   // 通知人员列表默认收起
+const memberNames = ref([])         // 业委会成员姓名（判断"全体"、给通知人员计数用分母）
+const memberTotal = computed(() => memberNames.value.length)
 // 显式分类（内部学习/外部培训），空值按内部兜底展示
 const currentCategory = computed(() => (item.value && item.value.category === 'external') ? 'external' : 'internal')
+// 顶栏标题随阶段：准备阶段是"培训通知"，其余为"培训详情"
+const navTitle = computed(() => (item.value && item.value.stage === 'preparing') ? '培训通知' : '培训详情')
+// 计划参加：正好是全体业委会成员时显示"全体业委会成员"，否则列出姓名
+const attendeesDisplay = computed(() => {
+  const names = String((item.value && item.value.attendees) || '').split(/[,，、\s]+/).filter(Boolean)
+  if (!names.length) return '未填写'
+  const all = memberNames.value
+  if (all.length && names.length >= all.length && all.every(n => names.includes(n))) return '全体业委会成员'
+  return names.join('、')
+})
+async function loadMembers() {
+  try { const list = await api.committeeMembers(); memberNames.value = (list || []).map(m => m && m.name).filter(Boolean) }
+  catch (e) { memberNames.value = [] }
+}
 let itemId = null
 
 function loadItem() {
@@ -222,6 +242,10 @@ async function saveAttendance() {
 async function startLearn() {
   if (!canManage.value) {
     toast({ title: '仅主任/副主任/委员可操作', icon: 'none' })
+    return
+  }
+  if (!item.value || !item.value.notified) {
+    toast({ title: '请先通知参加人员，通知后才能登记结果', icon: 'none' })
     return
   }
   try {
@@ -299,6 +323,7 @@ onMounted(() => {
   itemId = parseInt(route.query.id)
   canManage.value = perm.can('learning.create')
   loadItem()
+  loadMembers()
 })
 </script>
 
@@ -345,6 +370,13 @@ onMounted(() => {
 .sign-title { font-size: 30rpx; font-weight: 700; color: #1f2329; }
 .sign-stat { font-size: 28rpx; color: #C77800; font-weight: 600; }
 .sign-stat.ok { color: #27AE60; }
+/* 通知人员：可点击收起/展开的头部 + 计数 + 箭头（默认收起） */
+.nc2-head { display: flex; align-items: center; justify-content: space-between; }
+.nc2-head:active { opacity: .7; }
+.nc2-right { display: flex; align-items: center; gap: 14rpx; }
+.nc2-arrow { display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #A4A9B0; border-bottom: 3rpx solid #A4A9B0; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .18s ease, top .18s ease; }
+.nc2-arrow.open { transform: rotate(-135deg); top: 2rpx; }
+.nc2-list { margin-top: 16rpx; }
 .attendance-hint { display: block; margin: -4rpx 0 14rpx; font-size: 25rpx; color: #8A94A6; }
 .sign-list { display: flex; flex-direction: column; gap: 4rpx; margin-bottom: 10rpx; }
 .sign-row { display: flex; align-items: center; justify-content: space-between; padding: 14rpx; border-radius: 12rpx; }
@@ -378,6 +410,7 @@ onMounted(() => {
 .ac-hint { font-size: 28rpx; color: #666; display: block; margin-bottom: 20rpx; }
 .btn-primary { width: 100%; height: 96rpx; line-height: 96rpx; border-radius: 48rpx; background: var(--c-primary-dark); color: #fff; font-size: 34rpx; font-weight: 600; border: none; margin: 0; }
 .btn-primary.finish { background: #5DADE2; }
+.btn-primary:disabled { background: #D6C3A6; color: #fff; }
 
 /* 无权限 / 已完成 */
 .perm-note { background: #FFF8E8; border: 2rpx solid #FFE0A3; border-radius: 18rpx; padding: 20rpx 24rpx; margin-bottom: 20rpx; font-size: 28rpx; color: #9A7600; text-align: center; }
