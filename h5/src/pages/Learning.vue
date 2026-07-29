@@ -34,6 +34,21 @@
       </div>
     </div>
 
+    <!-- 进行中（0729 用户定）：已通知但还未完成登记的内部学习，置顶提醒，点卡片直接进登记页 -->
+    <div v-if="canCreate && ongoingItems.length" class="inprogress-card">
+      <div class="ip-head">
+        <span class="ip-title">进行中</span>
+        <span class="ip-count">{{ ongoingItems.length }} 项待登记</span>
+      </div>
+      <div v-for="it in ongoingItems" :key="it.id" class="ip-row" @click="goRegister(it)">
+        <div class="ip-main">
+          <span class="ip-name">{{ it.title }}</span>
+          <span class="ip-sub">{{ it.date }} · {{ formatTime(it.time) }} · {{ it.stage === 'ongoing' ? '登记中' : '已通知，待登记结果' }}</span>
+        </div>
+        <span class="ip-go">去登记 ›</span>
+      </div>
+    </div>
+
     <!-- 两个入口（0728 用户定）：发起内部学习＝事前计划+通知；登记学习记录＝事后补录（含外部培训） -->
     <div v-if="canCreate" class="learn-actions">
       <button class="la-card" type="button" @click="openInitiate">
@@ -221,6 +236,11 @@ function openCreate() {
 function openInitiate() {
   window.location.assign('/learning-initiate')
 }
+// 进行中：已通知但未完成登记的内部学习（notified 且未结束）；点卡片进登记页
+const ongoingItems = computed(() => allItems.value.filter(i => i.notified && i.stage !== 'ended'))
+function goRegister(it) {
+  window.location.assign('/learning-register?id=' + it.id)
+}
 
 let mounted = false;
 onMounted(() => {
@@ -257,6 +277,19 @@ onUnmounted(() => {
 .annual-status.done { color: #2E7D50; background: #E8F4EC; }
 .annual-status.warn { color: #A96518; background: #FAEEDC; }
 .annual-status.neutral { color: #657183; background: #EEF1F4; }
+
+/* 进行中：待登记提醒卡（0729 用户定），暖橙描边强调、点行进登记页 */
+.inprogress-card { margin: 0 0 24rpx; background: linear-gradient(135deg, #FFFDFA 0%, #FBF3E7 100%); border: 2rpx solid #EAD9BF; border-radius: 24rpx; padding: 22rpx 24rpx; box-shadow: 0 8rpx 28rpx rgba(96, 72, 40, 0.08); }
+.ip-head { display: flex; align-items: baseline; gap: 14rpx; margin-bottom: 12rpx; }
+.ip-title { font-size: 30rpx; font-weight: 750; color: #7E571C; }
+.ip-count { font-size: 24rpx; color: #A8895C; }
+.ip-row { display: flex; align-items: center; gap: 16rpx; padding: 16rpx 6rpx; border-top: 2rpx solid #F0E3CE; }
+.ip-row:first-of-type { border-top: none; }
+.ip-row:active { opacity: 0.7; }
+.ip-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.ip-name { font-size: 30rpx; font-weight: 600; color: #3A2E1C; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ip-sub { font-size: 24rpx; color: #A08A6A; }
+.ip-go { flex-shrink: 0; font-size: 27rpx; font-weight: 700; color: #B0772E; white-space: nowrap; }
 
 .records-head { display: flex; align-items: center; justify-content: space-between; margin: 0 4rpx 14rpx; }
 .records-title { font-size: 32rpx; font-weight: 700; color: #303747; }
