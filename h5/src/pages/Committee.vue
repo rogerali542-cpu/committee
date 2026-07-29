@@ -4320,10 +4320,10 @@ onActivated(show)
 .mr-list { margin: 0; padding: 0 28rpx 12rpx; }
 .mr-group-title { padding: 26rpx 4rpx 14rpx; color: #53657A; font-size: 28rpx; font-weight: 750; letter-spacing: 1rpx; }
 .mr-group-plan { padding-top: 24rpx; padding-bottom: 6rpx; border-top: 2rpx solid #EEF1F4; color: #8792A0; font-size: 23rpx; font-weight: 600; }
-.mr-row { display: flex; align-items: center; gap: 20rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
+.mr-row { display: flex; align-items: center; gap: 14rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
-.mr-featured { position: relative; margin: 0 0 24rpx; padding: 22rpx 22rpx 22rpx 28rpx; min-height: 136rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
+.mr-featured { position: relative; margin: 0 0 24rpx; padding: 22rpx 16rpx 22rpx 22rpx; min-height: 136rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
 .mr-featured:active { background: #F0F5F8; }
@@ -4333,7 +4333,7 @@ onActivated(show)
 .mr-plan-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
 .mr-plan-btn:active { background: #EEF1F5; }
 /* 待处理/已完成行的右侧真按钮(0725 用户定:整行不可点,只按钮进入),描边胶囊按状态配色 */
-.mr-cta-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
+.mr-cta-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 18rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
 .mr-cta-btn:active { background: #F3F5F7; }
 .mr-cta-btn.overdue { color: #B0463A; border-color: #DFA79F; }
 .mr-cta-btn.current { color: #345F91; border-color: #AFC3DC; }
@@ -4365,7 +4365,7 @@ onActivated(show)
 .mr-badge.overdue { background: #FBE6E2; color: #B0463A; }
 .mr-badge.upcoming { background: #F0F2F5; color: #707C8B; }
 .mr-info { flex: 1; min-width: 0; }
-.mr-row-title { font-size: 33rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: balance; }  /* 折行两行均衡,避免第二行只剩单字 */
+.mr-row-title { font-size: 31rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: pretty; }  /* 0729:文字区加宽让例会名尽量一行;真折行时 pretty 填满行宽+末行不留孤字(旧 balance 会把两行均分,右侧空一大截离按钮很远) */
 .mr-makeup-tag { display: inline-block; margin-left: 12rpx; padding: 2rpx 14rpx; border-radius: 999rpx; background: #FBEBD9; color: #A85800; font-size: 22rpx; font-weight: 600; vertical-align: middle; white-space: nowrap; }
 .mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
 .mr-sub-seg { display: inline-block; max-width: 100%; }   /* 段内(日期时间/地点)不拆,只在「·」处折行 */
