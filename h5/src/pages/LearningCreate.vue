@@ -1,6 +1,6 @@
 <template>
   <div class="page learning-create">
-    <PageNav title="新增学习记录">
+    <PageNav :title="pageTitle">
       <template #left>
         <button class="back-btn" type="button" aria-label="返回学习培训" @click="back">‹</button>
       </template>
@@ -65,18 +65,24 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import { toast } from '@/utils/ui'
 import { navigateBack } from '@/utils/navigate'
+
+// 从「登记外部培训」入口进来 type=external：默认分类外部培训、标题相应变化
+const route = useRoute()
+const defaultCategory = route.query.type === 'external' ? 'external' : 'internal'
+const pageTitle = computed(() => defaultCategory === 'external' ? '登记外部培训' : '登记学习记录')
 
 // 文本字段默认全空（0725 用户定）；日期/时间给默认值（今天/14:00，0725 用户定：原生控件的 mm/dd/yyyy 空态难看又难填）
 function todayStr() {
   const d = new Date()
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
-const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', category: 'internal', description: '' })
+const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', category: defaultCategory, description: '' })
 const saving = ref(false)
 
 // 导航新规(0725 用户定):返回=历史上一页(本页只从学习列表 push 进入)

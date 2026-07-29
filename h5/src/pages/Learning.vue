@@ -41,7 +41,7 @@
         <span class="la-arrow">›</span>
       </button>
       <button class="la-card" type="button" @click="openCreate">
-        <span class="la-copy"><strong>登记学习记录</strong><em>补录已完成的学习</em></span>
+        <span class="la-copy"><strong>登记外部培训</strong><em>记录已参加的外部培训</em></span>
         <span class="la-arrow">›</span>
       </button>
     </div>
@@ -213,9 +213,9 @@ function undoLearning() {
   loadAll();
 }
 
-// ── 创建学习记录:表单已迁独立页 /learning-create(0725) ──
+// ── 登记外部培训:补录已参加的外部培训(0729 用户定:内部走发起、外部走登记) ──
 function openCreate() {
-  window.location.assign('/learning-create')   // 硬跳,与驾驶舱各入口一致(软路由偶发不切视图)
+  window.location.assign('/learning-create?type=external')   // 硬跳,与驾驶舱各入口一致(软路由偶发不切视图)
 }
 // 发起内部学习：事前计划+通知流程（0728 用户定）
 function openInitiate() {
