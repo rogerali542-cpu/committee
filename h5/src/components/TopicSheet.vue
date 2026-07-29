@@ -90,26 +90,30 @@
               <!-- 我的投票并入卡内一行（0722 用户定）：状态 + 小号改票/撤回 -->
               <div v-if="voteCollapsed && !proxyOpen" class="ts-my-line">
                 <span class="ts-my-vote">✓ 已投：{{ myVoteLabel || localVoteLabel }}</span>
-                <button class="ts-mini-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
-                <button class="ts-mini-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
+                <!-- 主任(会后整理)把改票/撤回并入下方「修改投票」面板，这里不重复；其余角色仍就地改票/撤回 -->
+                <template v-if="!proxyEditsUnified">
+                  <button class="ts-mini-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
+                  <button class="ts-mini-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
+                </template>
               </div>
             </div>
             <!-- 代委员投票（仅主持人、会后整理阶段）：现场会议结束后，主任为忘投/不会用手机的委员补录并留凭证审计。
                  现场会议进行中不出现——委员应本人投票（0723 用户定） -->
             <div v-if="isChair && interactive && allowProxy" class="ts-proxy">
-              <!-- 都投完了 → 入口变「改票」（只剩修改代投）；还有人没投 → 「代委员投票」（0729 用户定） -->
-              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">{{ notVoted === 0 ? '改票（修改代投）' : '代委员投票' }}</button>
+              <!-- 一个入口「修改投票」（0729 用户定）：合并 改我的票 / 撤回我的票 / 改代投的票 三件事 -->
+              <button v-if="!proxyOpen" class="ts-proxy-entry" @click="openProxy">修改投票</button>
               <div v-else class="ts-proxy-panel">
-                <div class="ts-proxy-title">{{ notVoted === 0 ? '修改代投票' : '代委员投票' }}<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
+                <div class="ts-proxy-title">修改投票<span class="ts-proxy-close" @click="proxyOpen = false">×</span></div>
                 <div v-if="proxyLoading" class="ts-empty">加载中…</div>
-                <div v-else-if="!proxyTargets.length" class="ts-empty">没有可代投/可改的委员</div>
+                <div v-else-if="!proxyTargets.length" class="ts-empty">暂无可修改或代投的投票</div>
                 <template v-else>
-                  <!-- 委员列表：一行一人、名字常显；点选后下方选票值。已代投的显示当前票，未投的标「未投票」 -->
+                  <!-- 名单：我（可改可撤回）→ 已代投（可改）→ 未投（可代投）。一行一人、名字常显、点选高亮 -->
                   <div class="ts-proxy-list">
                     <div v-for="p in proxyTargets" :key="p.memberId" class="ts-proxy-mrow"
-                         :class="{ on: proxySelected.has(p.memberId) }" @click="toggleProxyMember(p.memberId)">
+                         :class="{ on: proxySelected.has(p.memberId), me: p.isSelf }" @click="toggleProxyMember(p.memberId)">
                       <span class="ts-proxy-mrow-name">{{ p.name }}</span>
-                      <span v-if="p.proxyDone" class="ts-proxy-mrow-cur">已代投：{{ p.curLabel }}</span>
+                      <span v-if="p.isSelf" class="ts-proxy-mrow-cur self">我投的：{{ p.curLabel }}</span>
+                      <span v-else-if="p.proxyDone" class="ts-proxy-mrow-cur">已代投：{{ p.curLabel }}</span>
                       <span v-else class="ts-proxy-mrow-tag">未投票</span>
                     </div>
                   </div>
@@ -123,15 +127,19 @@
                             :class="{ on: String(proxyOptId) === String(o.id) }" @click="proxyOptId = o.id">{{ o.label }}</span>
                     </template>
                   </div>
-                  <div class="ts-proxy-proof">
+                  <!-- 凭证仅代投他人时需要（留痕审计）；改自己的票不需要 -->
+                  <div v-if="!proxySelectedIsSelf" class="ts-proxy-proof">
                     <button class="ts-proxy-proof-btn" :class="{ ok: proxyProofUrl }" :disabled="proxyUploading" @click="pickProxyProof">
                       {{ proxyUploading ? '上传中…' : (proxyProofUrl ? '✓ 已传凭证' : '凭证照片（选填）') }}
                     </button>
                     <span class="ts-proxy-proof-tip">纸质表决单或聊天记录截图</span>
                   </div>
-                  <button class="ts-proxy-submit" :disabled="!canSubmitProxy || proxySubmitting" @click="submitProxy">
-                    {{ proxySubmitting ? '提交中…' : (proxySelectedIsFix ? '确认修改' : '确认代投') }}
-                  </button>
+                  <div class="ts-proxy-acts">
+                    <button v-if="proxySelectedIsSelf" class="ts-proxy-retract" :disabled="proxySubmitting" @click="retractSelfInPanel">撤回我的投票</button>
+                    <button class="ts-proxy-submit" :disabled="!canSubmitProxy || proxySubmitting" @click="submitProxy">
+                      {{ proxySubmitting ? '提交中…' : (proxySelectedIsSelf || proxySelectedIsFix ? '确认修改' : '确认代投') }}
+                    </button>
+                  </div>
                 </template>
               </div>
             </div>
@@ -582,7 +590,12 @@ const proxySelectedNames = computed(() =>
   proxyTargets.value.filter(p => proxySelected.value.has(p.memberId)).map(p => p.name).join('、'))
 // 选中的委员是否为"已代投"（决定提交按钮显示「确认修改」还是「确认代投」）
 const proxySelectedIsFix = computed(() =>
-  proxyTargets.value.some(p => proxySelected.value.has(p.memberId) && p.proxyDone))
+  proxyTargets.value.some(p => proxySelected.value.has(p.memberId) && p.proxyDone && !p.isSelf))
+// 选中的是"我自己"（改自己的票走自投接口、并显示撤回入口）
+const proxySelectedIsSelf = computed(() =>
+  proxyTargets.value.some(p => proxySelected.value.has(p.memberId) && p.isSelf))
+// 主任(会后整理)统一入口：改我的票/撤回/改代投都并进「修改投票」面板，故隐藏就地的改票/撤回
+const proxyEditsUnified = computed(() => props.isChair && props.interactive && props.allowProxy)
 function resetProxy() {
   proxyOpen.value = false; proxyLoading.value = false; proxyTargets.value = []
   proxyMenuOpen.value = false
@@ -1036,13 +1049,20 @@ async function openProxy() {
         correctable.push({ ...p, proxyDone: true, curRaw: String(raw), curLabel: proxyLabelOf(String(raw)) })
       }
     }
-    if (!unvoted.length && !correctable.length) {
-      toast({ title: '已签到委员均已完成投票，无需代投', icon: 'none' })
+    // 我自己的票也纳入「修改投票」：可改、可撤回（放最前）
+    const myV = committedVote.value
+    const selfRow = myV != null ? [{
+      memberId: me.id, name: '我', isSelf: true, proxyDone: true,
+      curRaw: String(myV), curLabel: proxyLabelOf(String(myV))
+    }] : []
+    if (!selfRow.length && !unvoted.length && !correctable.length) {
+      toast({ title: '暂无可修改或代投的投票', icon: 'none' })
       return
     }
-    proxyTargets.value = [...unvoted, ...correctable]
+    // 顺序：我 → 已代投(可改) → 未投(可代投)
+    proxyTargets.value = [...selfRow, ...correctable, ...unvoted]
     proxyOpen.value = true
-    // 流水线代投（0723 用户定）：打开就自动选中第一个，少一次点选
+    // 打开就自动选中第一个，少一次点选
     selectProxyMember(proxyTargets.value[0].memberId)
   } catch (e) {
     toast({ title: (e && e.message) || '名单加载失败', icon: 'none' })
@@ -1105,36 +1125,58 @@ async function submitProxy() {
   if (!t || !canSubmitProxy.value || proxySubmitting.value) return
   const selected = proxyTargets.value.filter(p => proxySelected.value.has(p.memberId))
   const names = selected.map(p => p.name).join('、')
-  const wasFix = selected.some(p => p.proxyDone) // 选中的是"已代投"→本次是改投
+  const isSelfSel = selected.some(p => p.isSelf)
+  const wasFix = !isSelfSel && selected.some(p => p.proxyDone) // 已代投→本次是改投
   const isMulti = (t.decisionType || 'simple') === 'multi_choice'
+  const nextVal = isMulti ? proxyOptId.value : proxyChoice.value
   const label = isMulti
     ? (((t.options || []).find(o => String(o.id) === String(proxyOptId.value)) || {}).label || '')
     : ({ for_vote: '同意', against: '不同意', abstain: '弃权' }[proxyChoice.value] || '')
-  // 按钮本身就叫「确认代投」，不再二次弹窗（0722 用户定）；成功 toast 里带上代了谁投了什么
   proxySubmitting.value = true
   try {
-    await api.committeeProxySubmit(props.meetingId, {
-      actionType: 'vote',
-      topicId: t.id,
-      memberIds: Array.from(proxySelected.value),
-      choice: isMulti ? null : proxyChoice.value,
-      selectedId: isMulti ? proxyOptId.value : null,
-      proofUrl: proxyProofUrl.value || null
-    })
-    toast({ title: (wasFix ? '已把 ' + names + ' 的代投改为「' : '已代 ' + names + ' 投「') + label + '」', icon: 'success' })
-    // 流水线代投（0723 用户定）：投完一个自动跳到下一个未投的委员（仍默认「同意」），
-    // 不再整个面板重置；全部投完才收起。凭证是每人一张，跳人时清空。
-    const votedIds = new Set(proxySelected.value)
-    proxyTargets.value = proxyTargets.value.filter(p => !votedIds.has(p.memberId))
-    proxyProofUrl.value = ''
-    if (proxyTargets.value.length) {
-      selectProxyMember(proxyTargets.value[0].memberId)
+    if (isSelfSel) {
+      // 改"我自己"的票 → 走自投接口（非代投）；本地即时反映
+      await api.committeeVote(props.meetingId, t.id, isMulti ? null : proxyChoice.value, isMulti ? proxyOptId.value : null)
+      localVoteValue.value = nextVal; localVoteLabel.value = label; localRetracted.value = false
+      toast({ title: '已把我的票改为「' + label + '」', icon: 'success' })
     } else {
-      resetProxy()
+      await api.committeeProxySubmit(props.meetingId, {
+        actionType: 'vote',
+        topicId: t.id,
+        memberIds: Array.from(proxySelected.value),
+        choice: isMulti ? null : proxyChoice.value,
+        selectedId: isMulti ? proxyOptId.value : null,
+        proofUrl: proxyProofUrl.value || null
+      })
+      toast({ title: (wasFix ? '已把 ' + names + ' 的代投改为「' : '已代 ' + names + ' 投「') + label + '」', icon: 'success' })
     }
+    // 处理完当前选中项：从名单移除，跳到下一个；没有了就收起
+    const doneIds = new Set(proxySelected.value)
+    proxyTargets.value = proxyTargets.value.filter(p => !doneIds.has(p.memberId))
+    proxyProofUrl.value = ''
+    if (proxyTargets.value.length) selectProxyMember(proxyTargets.value[0].memberId)
+    else resetProxy()
     emit('changed')
   } catch (e) {
-    toast({ title: (e && e.message) || '代投失败，请重试', icon: 'none' })
+    toast({ title: (e && e.message) || '提交失败，请重试', icon: 'none' })
+  } finally { proxySubmitting.value = false }
+}
+// 面板内撤回"我的投票"（并入「修改投票」）：走自投撤回接口，回到未投
+async function retractSelfInPanel() {
+  const t = props.topic
+  if (!t || proxySubmitting.value) return
+  const res = await showModal({ title: '撤回投票', content: '撤回后可重新投票', confirmText: '撤回', cancelText: '取消' })
+  if (!res.confirm) return
+  proxySubmitting.value = true
+  try {
+    await api.committeeRetractVote(props.meetingId, t.id)
+    localRetracted.value = true
+    localVoteValue.value = null; localVoteLabel.value = ''
+    toast({ title: '已撤回我的投票', icon: 'success' })
+    resetProxy()
+    emit('changed')
+  } catch (e) {
+    toast({ title: (e && e.message) || '撤回失败，请重试', icon: 'none' })
   } finally { proxySubmitting.value = false }
 }
 
@@ -1429,6 +1471,9 @@ async function removeOpinion(op) {
 .ts-proxy-mrow.on { border-color:#7FB5AE; background:#EAF5F3; }
 .ts-proxy-mrow-name { flex:1; min-width:0; font-size:27rpx; font-weight:700; color:#1F2329; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ts-proxy-mrow-cur { flex-shrink:0; font-size:23rpx; font-weight:600; color:#A85800; background:#FBEFDD; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
+/* "我投的" 用绿色区分（自己的票），"已代投" 用琥珀色（代别人投的） */
+.ts-proxy-mrow-cur.self { color:#0F766E; background:#E6F4F2; }
+.ts-proxy-mrow.me { border-color:#BFDBD6; }
 .ts-proxy-mrow-tag { flex-shrink:0; font-size:23rpx; font-weight:600; color:#8A9099; background:#F1F2F4; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
 .ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
 .ts-proxy-choice { padding:10rpx 24rpx; border-radius:12rpx; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:25rpx; font-weight:600; }
@@ -1437,8 +1482,13 @@ async function removeOpinion(op) {
 .ts-proxy-proof-btn { border:2rpx dashed #C9CED6; background:#fff; color:#7A7F87; font-size:23rpx; font-weight:500; border-radius:10rpx; padding:10rpx 20rpx; font-family:inherit; }
 .ts-proxy-proof-btn.ok { border-style:solid; border-color:#B8DFAF; background:#F2FAEF; color:#2E7D32; }
 .ts-proxy-proof-tip { font-size:21rpx; color:#A0A5AD; }
-.ts-proxy-submit { display:block; width:60%; margin:16rpx auto 0; border:0; border-radius:999rpx; background:#0F766E; color:#fff; font-size:26rpx; font-weight:700; padding:14rpx 0; font-family:inherit; }
+/* 操作行：撤回(改自己票时才出) + 确认。撤回浅色描边，确认实心，居中并排 */
+.ts-proxy-acts { display:flex; align-items:center; justify-content:center; gap:16rpx; margin-top:16rpx; }
+.ts-proxy-submit { border:0; border-radius:999rpx; background:#0F766E; color:#fff; font-size:26rpx; font-weight:700; padding:14rpx 44rpx; font-family:inherit; }
 .ts-proxy-submit:disabled { background:#C7D1D5; }
+.ts-proxy-retract { border:2rpx solid #E1B4AC; background:#fff; color:#B0463A; font-size:25rpx; font-weight:600; border-radius:999rpx; padding:12rpx 30rpx; font-family:inherit; }
+.ts-proxy-retract:active { background:#FBEEEC; }
+.ts-proxy-retract:disabled { opacity:.55; }
 /* 已表决：结果卡整块替换选择区（占屏结果态，明确"做完了·不可改"） */
 .ts-vote-done { display: flex; align-items: center; flex-wrap: wrap; gap: 6rpx 12rpx; background: #EAF6E5; border: 2rpx solid #9FD290; border-radius: 16rpx; padding: 24rpx; font-size: 31rpx; font-weight: 800; color: #2E7D32; }
 .ts-vote-done-mark { display: inline-flex; align-items: center; justify-content: center; width: 40rpx; height: 40rpx; border-radius: 50%; background: #2E9E4B; color: #fff; font-size: 26rpx; margin-right: 4rpx; }
