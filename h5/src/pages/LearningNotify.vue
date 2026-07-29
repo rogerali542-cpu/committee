@@ -54,15 +54,19 @@
       </template>
     </main>
 
-    <!-- 底部主操作：未通知=二选一发通知；已通知=去详情 -->
+    <!-- 底部主操作：未通知=二选一发通知；已通知=进入详情 + 可继续通知 -->
     <div class="notify-footer" v-if="item">
       <template v-if="!item.notified">
         <button class="nf-btn nf-app" :disabled="busy" @click="notifyApp">App内通知</button>
         <button class="nf-btn nf-wechat" :disabled="busy" @click="notifyWechat">去微信通知</button>
       </template>
-      <template v-else>
-        <button class="nf-btn nf-detail" @click="goDetail">进入详情（结束后登记学习情况）</button>
-      </template>
+      <div v-else class="nf-col">
+        <button class="nf-detail-btn" @click="goDetail">进入详情（结束后登记学习情况）</button>
+        <div class="nf-again">
+          <button class="nf-again-btn" :disabled="busy" @click="notifyApp">再次 App 通知</button>
+          <button class="nf-again-btn" :disabled="busy" @click="notifyWechat">再次微信通知</button>
+        </div>
+      </div>
     </div>
 
     <div v-if="!item" class="empty-state"><span>加载中…</span></div>
@@ -105,6 +109,11 @@ const allChecked = computed(() => members.value.length > 0 && members.value.ever
 function toggleAll() { const t = !allChecked.value; members.value.forEach(m => { m.checked = t }) }
 function toggleMember(mid) { const m = members.value.find(x => x.userRoleId === mid); if (m) m.checked = !m.checked }
 function selectedNames() { return members.value.filter(m => m.checked).map(m => m.name) }
+// 通知名单：未通知时用勾选结果；已通知后（成员选择器已隐藏）继续通知则沿用当前名单
+function namesToNotify() {
+  const sel = selectedNames()
+  return sel.length ? sel : planNames.value
+}
 async function loadMembers() {
   try {
     const list = await api.committeeMembers()
@@ -126,12 +135,12 @@ function load() {
 
 async function notifyApp() {
   if (busy.value) return
-  const names = selectedNames()
+  const names = namesToNotify()
   if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   busy.value = true
   try {
     await api.learningNotifyAll(id, names, 'app')
-    toast({ title: '已在 App 内通知', icon: 'success' })
+    toast({ title: item.value && item.value.notified ? '已再次通知' : '已在 App 内通知', icon: 'success' })
     load()
   } catch (e) {
     toast({ title: (e && e.message) || '通知失败', icon: 'none' })
@@ -140,7 +149,7 @@ async function notifyApp() {
 
 async function notifyWechat() {
   if (busy.value) return
-  const names = selectedNames()
+  const names = namesToNotify()
   if (!names.length) { toast({ title: '请至少选择一位参加人员', icon: 'none' }); return }
   busy.value = true
   try {
@@ -238,7 +247,12 @@ onMounted(load)
 .nf-btn:disabled { opacity: .6; }
 .nf-app { background: #fff; border: 2rpx solid var(--c-primary); color: var(--c-primary-dark); }
 .nf-wechat { background: var(--c-primary); color: #fff; }
-.nf-detail { background: var(--c-primary); color: #fff; }
+/* 已通知：进入详情主按钮 + 下方「再次通知」一行 */
+.nf-col { flex: 1; display: flex; flex-direction: column; gap: 14rpx; }
+.nf-detail-btn { width: 100%; height: 92rpx; border: 0; border-radius: 20rpx; background: var(--c-primary); color: #fff; font-size: 32rpx; font-weight: 700; }
+.nf-again { display: flex; gap: 20rpx; }
+.nf-again-btn { flex: 1; height: 72rpx; border: 2rpx solid #C9D0D6; border-radius: 16rpx; background: #fff; color: #5B6570; font-size: 27rpx; font-weight: 600; }
+.nf-again-btn:disabled { opacity: .6; }
 
 .empty-state { padding: 100rpx 0; text-align: center; color: #8A94A6; font-size: 30rpx; }
 </style>
