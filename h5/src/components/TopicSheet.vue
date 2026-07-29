@@ -1002,21 +1002,27 @@ async function retractVote() {
 
 async function openProxy() {
   const t = props.topic
-  if (!t) return
-  proxyOpen.value = true
+  if (!t || proxyLoading.value) return
+  // 先查名单再决定是否展开面板（0729 用户定）：若已签到委员都投完了，直接提示"均已完成投票"，
+  // 不再弹出一个空的代投面板（原来会先弹面板、加载完显示"没有未投委员"，观感像出错）。
   proxyLoading.value = true
   try {
     const list = await api.committeeProxyTargets(props.meetingId)
     const me = getStorage('activeRole', null) || {}
-    proxyTargets.value = (list || []).filter(p =>
+    const targets = (list || []).filter(p =>
       p.signedIn
       && !(p.votedTopicIds || []).some(id => String(id) === String(t.id))
       && String(p.memberId) !== String(me.id || ''))
+    if (!targets.length) {
+      toast({ title: '已签到委员均已完成投票，无需代投', icon: 'none' })
+      return
+    }
+    proxyTargets.value = targets
+    proxyOpen.value = true
     // 流水线代投（0723 用户定）：打开就自动选中第一个未投的人，少一次点选
-    if (proxyTargets.value.length) selectProxyMember(proxyTargets.value[0].memberId)
+    selectProxyMember(targets[0].memberId)
   } catch (e) {
     toast({ title: (e && e.message) || '名单加载失败', icon: 'none' })
-    proxyOpen.value = false
   } finally { proxyLoading.value = false }
 }
 // 单选（0722 用户定）：一次只代一个人，选完即收起下拉；换人就再点开重选
