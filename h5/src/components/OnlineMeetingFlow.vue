@@ -115,137 +115,45 @@
     <!-- ③ 表决登记页:各委员填自己的表决结果+意见;主任结束会议时统一定稿 -->
     <template v-else>
       <section class="omf-card">
-        <div class="topic-head-row">
-          <h3>{{ meetingEnded ? '议题表决结果' : '议题处理' }}</h3>
-          <span v-if="topics.length" class="topic-pager-ind">议题 {{ topicIndex + 1 }}/{{ topics.length }}</span>
+        <div class="core-head">
+          <span class="core-title">{{ meetingEnded ? '议题表决结果' : '会议议题' }}</span>
+          <span v-if="meetingTopics.length" class="core-count">共{{ meetingTopics.length }}项</span>
         </div>
-        <!-- 每页只显示一个议题(0725 用户定),上一题/下一题翻页 -->
-        <div v-for="topic in (currentTopic ? [currentTopic] : [])" :key="topic.id" class="topic-block">
-          <div class="topic-form-head">
-            <span class="topic-no">{{ topicIndex + 1 }}</span>
-            <div class="topic-heading">
-              <b>{{ topic.title }}</b>
-              <span class="topic-kind" :class="topic.voteRequired ? 'vote' : 'discussion'">
-                {{ topic.voteRequired ? '表决' : (topic.type === 'notice' ? '通知' : '讨论') }}
-              </span>
+        <!-- 0729 用户定:线上表决改用线下同款「议题列表 → 点去表决/去讨论/去通知 → TopicSheet」模式 -->
+        <div v-if="meetingTopics.length" class="core-list">
+          <div class="core-topic" v-for="(item, index) in meetingTopics" :key="'topic-' + item.id">
+            <span class="core-topic-no">{{ index + 1 }}</span>
+            <div class="core-topic-main">
+              <span class="core-topic-title">{{ item.title }}</span>
+              <span class="core-topic-type" :class="topicActionType(item)">{{ topicActionName(item) }}</span>
             </div>
-          </div>
-
-          <!-- 表决题·未定稿:先选后交(与线下一致)——点选项仅选中,「确认提交」才落库;
-               已投后收起成「已投:X + 改票/撤回」,改票需再点确认提交 -->
-          <template v-if="topic.voteRequired && !topic.voteClosed">
-            <template v-if="!voteCollapsed(topic)">
-              <div v-if="topic.decisionType === 'multi_choice'" class="vote-options">
-                <button v-for="option in topic.options" :key="option.id" type="button" class="vote-opt"
-                        :class="{ on: isPicked(topic, option.id) }" :disabled="busy"
-                        @click="pickVote(topic, null, option)">{{ option.label }}</button>
-              </div>
-              <div v-else class="vote-choice-row">
-                <button type="button" class="vote-opt yes" :class="{ on: isPicked(topic, 'for_vote') }" :disabled="busy" @click="pickVote(topic, 'for_vote')">赞成</button>
-                <button type="button" class="vote-opt no" :class="{ on: isPicked(topic, 'against') }" :disabled="busy" @click="pickVote(topic, 'against')">反对</button>
-                <button type="button" class="vote-opt ab" :class="{ on: isPicked(topic, 'abstain') }" :disabled="busy" @click="pickVote(topic, 'abstain')">弃权</button>
-              </div>
-              <button v-if="pendingVotes[topic.id]" type="button" class="vote-submit" :disabled="busy" @click="submitVote(topic)">
-                {{ busy ? '提交中…' : '确认提交' }}
-              </button>
-            </template>
-            <div v-if="voteCollapsed(topic)" class="vote-progress">
-              <span class="voted-tag">✓ 已投：{{ myVoteLabel(topic) }}</span>
-              <button type="button" class="mini-act" :disabled="busy" @click="changeVoteOpen[topic.id] = true">改票</button>
-              <button type="button" class="mini-act" :disabled="busy" @click="retractMyVote(topic)">撤回</button>
-            </div>
-          </template>
-
-          <!-- 表决题·已定稿(会议结束):公布票数与结果 -->
-          <template v-else-if="topic.voteRequired">
-            <div v-if="topic.decisionType === 'multi_choice'" class="result-votes">
-              {{ topic.options.map(option => option.label + ' ' + (option.votes || 0) + '票').join(' · ') }}
-            </div>
-            <div v-else class="result-votes">
-              赞成 {{ topic.voteFor }} · 反对 {{ topic.voteAgainst }} · 弃权 {{ topic.voteAbstain }}
-            </div>
-            <div class="vote-closed-tag" :class="{ pass: topic.passed }">{{ topic.passed ? '已通过' : '未通过' }}</div>
-          </template>
-
-          <!-- 通知类议题(0729 用户定重做):一次性通知——主任/副主任/秘书负责通知,其他人接到即可,不讨论不表决 -->
-          <template v-if="topic.type === 'notice'">
-            <!-- 通知正文=只读展示(读稿样式,不是输入框);无正文时不摆空框,标题即通知(0729 用户定重做) -->
-            <div v-if="topic.content" class="omf-notice-content">
-              <div class="omf-notice-label">通知内容</div>
-              <div class="omf-notice-text">{{ topic.content }}</div>
-            </div>
-            <div v-else class="omf-notice-none">无补充正文，以标题为准</div>
-            <div v-if="topic.notified" class="omf-notice-done"><span class="omf-notice-done-mark">✓</span>已通知全体</div>
-            <template v-else-if="!meetingEnded">
-              <!-- 责任人(主任/副主任/秘书):负责把通知传达到位,确认后本议题即完成 -->
-              <div v-if="isChair" class="omf-notice-act">
-                <button type="button" class="omf-notice-confirm" :disabled="busy" @click="confirmNoticeAll(topic)">确认通知</button>
-              </div>
-              <!-- 其他人:接到了点一下即可 -->
-              <div v-else-if="selfPresent" class="omf-notice-act">
-                <button v-if="!topic.viewedByMe" type="button" class="omf-notice-received" :disabled="busy" @click="markNoticeReceived(topic)">我已收到</button>
-                <span v-else class="omf-notice-mine">✓ 已收到，待通知人确认</span>
-              </div>
-              <div v-else class="omf-notice-act"><span class="omf-notice-status">签到后可确认收到</span></div>
-            </template>
-            <div v-else class="omf-notice-status">未通知</div>
-          </template>
-
-          <!-- 非通知类(讨论/表决):上=大家的意见(集体,突出可点开),下=我补充意见(分区)。0729 用户定重做 -->
-          <template v-else>
-            <!-- 区一:已提交的意见——醒目的可点开条 + 数量徽标(CSS 箭头,不用字符,遵项目约定) -->
-            <button v-if="topicOpinions(topic.id).length" type="button" class="op-view-bar" @click="opsOpen = !opsOpen">
-              <span class="op-view-txt">大家的意见</span>
-              <span class="op-view-count">{{ topicOpinions(topic.id).length }}</span>
-              <span class="op-view-arr" :class="{ open: opsOpen }"></span>
+            <button type="button" class="core-topic-btn" :class="[topicActionType(item), { done: topicRowDone(item) }]" @click="openTopicSheet(item)">
+              {{ topicActionButton(item) }}
             </button>
-            <div v-if="opsOpen && topicOpinions(topic.id).length" class="topic-opinions">
-              <div v-for="op in topicOpinions(topic.id)" :key="op.id" class="op-row">
-                <b>{{ op.name }}</b>
-                <span v-if="opVoteTag(op)" class="op-vote-tag" :class="opVoteClass(op)">{{ opVoteTag(op) }}</span>
-                <span class="op-text">{{ op.content }}</span>
-                <button v-if="op.canDelete && !meetingEnded" type="button" class="op-del" @click="removeOpinion(op)">删除</button>
-              </div>
-            </div>
-            <!-- 意见输入:讨论题随时可填;表决题需先投票(0725 用户定,submitOpinion 亦有守卫)。
-                 未投票时不再显示「请先完成表决」提示条(0729 用户定),直接不出输入框即可 -->
-            <!-- 区二:我个人补充意见——与上方「大家的意见」用分隔线分开(有意见时才分隔) -->
-            <div v-if="!meetingEnded && (!topic.voteRequired || hasMyVote(topic))" class="op-input" :class="{ divided: topicOpinions(topic.id).length }">
-              <div class="op-label">补充意见</div>
-              <textarea v-model="opinionDrafts[topic.id]" rows="2"></textarea>
-              <!-- 提交意见常驻(空间够,不折叠);AI润色仅在有内容时出现 -->
-              <div class="op-btn-row">
-                <button v-if="String(opinionDrafts[topic.id] || '').trim()" type="button" class="op-ai-btn"
-                        :disabled="aiBusyMap[topic.id]" @click="polishOpinion(topic)">{{ aiBusyMap[topic.id] ? 'AI 润色中…' : 'AI 润色' }}</button>
-                <button v-if="polishUndoMap[topic.id] != null" type="button" class="mini-act" @click="undoPolish(topic)">还原</button>
-                <button type="button" class="op-submit" :disabled="busy" @click="submitOpinion(topic)">提交意见</button>
-              </div>
-            </div>
-          </template>
+          </div>
         </div>
-
-        <div v-if="!topics.length" class="topic-empty">本次会议暂无议题</div>
-
-        <!-- 翻页(0725 用户定:放回卡片内);没有对应方向的议题就隐藏按钮,不置灰占位;各占半宽 -->
-        <div v-if="topics.length > 1" class="topic-pager">
-          <button v-if="topicIndex > 0" type="button" class="pager-prev" @click="prevTopic">‹ 上一议题</button>
-          <button v-if="topicIndex < topics.length - 1" type="button" class="pager-next" @click="nextTopic">下一议题 ›</button>
-        </div>
+        <div v-else class="core-empty">本次会议暂无议题</div>
       </section>
 
       <!-- 固定底栏(0725 用户定):结束会议与上方内容拉开,避免误点。
            0729 用户定:议题没过完前「结束会议」降级不抢眼(仍保留提前结束的出口),过完才升为主按钮 -->
-      <div class="omf-vote-footer" :class="{ quiet: isChair && !meetingEnded && !onLastTopic }">
+      <div class="omf-vote-footer" :class="{ quiet: isChair && !meetingEnded && !allTopicsDone }">
         <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
         <template v-if="isChair && !meetingEnded">
-          <!-- 还没翻到最后一条议题:幽灵小链接,引导先「下一议题」逐条过 -->
-          <button v-if="!onLastTopic" type="button" class="omf-end-ghost" :disabled="busy" @click="endMeeting">结束会议</button>
-          <!-- 已到最后一条(或单条/无议题):升为主按钮 -->
+          <!-- 议题还没全部处理完:幽灵小链接,不抢眼,引导先逐条处理 -->
+          <button v-if="!allTopicsDone" type="button" class="omf-end-ghost" :disabled="busy" @click="endMeeting">结束会议</button>
+          <!-- 议题都处理完(或无议题):升为主按钮 -->
           <button v-else type="button" class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
         </template>
         <div v-else-if="!meetingEnded" class="member-wait-hint">表决和意见填写完成后，等待主任结束会议、进入材料整理</div>
         <button v-else type="button" class="omf-primary" @click="endMeeting">查看会议详情</button>
       </div>
+
+      <!-- 议题弹层(与线下同款):点列表某条 → 表决/发言/通知都在此完成 -->
+      <TopicSheet v-if="sheetTopic" :meeting-id="meetingId" :topic="sheetTopic"
+                  :interactive="!meetingEnded" :signed-in="selfPresent" :is-chair="isChair"
+                  :has-prev="sheetHasPrev" :has-next="sheetHasNext"
+                  @close="sheetTopicId = null" @changed="emitReload" @prev="gotoPrevTopic" @next="gotoNextTopic" />
     </template>
   </div>
 </template>
@@ -254,6 +162,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '@/api/committee'
 import { toast, showModal } from '@/utils/ui'
+import TopicSheet from './TopicSheet.vue'
 
 const props = defineProps({
   detail: { type: Object, required: true },
@@ -381,6 +290,40 @@ async function confirmNoticeAll(topic) {
     toast({ title: '已确认通知全体', icon: 'success' })
   } catch (e) { toast({ title: e.message || '操作失败', icon: 'none' }) } finally { busy.value = false }
 }
+
+// ── 0729 用户定「学一学线下」:线上表决改用线下同款「议题列表 → 点去表决/去讨论 → TopicSheet」模式 ──
+// 列表和弹层都用 detail.record.topics 原始数据(含 status/opinionCount 等 TopicSheet 需要的完整字段)
+const meetingTopics = computed(() => (props.detail.record && props.detail.record.topics) || [])
+const sheetTopicId = ref(null)
+const sheetTopic = computed(() => meetingTopics.value.find(t => t.id === sheetTopicId.value) || null)
+const visitedIds = ref([])   // 主任点开过的议题 id(判「过完一遍」→ 结束会议按钮由弱转强)
+function markVisited(id) { if (id != null && !visitedIds.value.includes(id)) visitedIds.value = visitedIds.value.concat(id) }
+function _sheetIdx() { const list = meetingTopics.value; return { list, i: list.findIndex(t => t.id === sheetTopicId.value) } }
+const sheetHasPrev = computed(() => _sheetIdx().i > 0)
+const sheetHasNext = computed(() => { const { list, i } = _sheetIdx(); return i >= 0 && i < list.length - 1 })
+function gotoPrevTopic() { const { list, i } = _sheetIdx(); if (i > 0) { sheetTopicId.value = list[i - 1].id; markVisited(sheetTopicId.value) } }
+function gotoNextTopic() { const { list, i } = _sheetIdx(); if (i >= 0 && i < list.length - 1) { sheetTopicId.value = list[i + 1].id; markVisited(sheetTopicId.value) } }
+function openTopicSheet(item) {
+  if (!selfPresent.value) { toast({ title: '请先返回签到，签到后即可表决/发言', icon: 'none' }); return }
+  markVisited(item.id)
+  sheetTopicId.value = item.id
+}
+// 行「完成感」:表决→表决已结束/会议已结束;通知→已通报或被提及;讨论→有意见
+function topicRowBadgeDone(item) {
+  if (item.voteRequired) return item.status === 'passed' || item.status === 'failed'
+  if (item.type === 'notice') return !!item.notified || (item.opinionCount || 0) > 0
+  return (item.opinionCount || 0) > 0
+}
+function topicActionType(item) { return item.voteRequired ? 'vote' : 'discuss' } // 通知也走 discuss 配色(与线下一致)
+function topicActionName(item) { return item.type === 'notice' ? '通知' : (item.voteRequired ? '表决' : '讨论') }
+function topicRowDone(item) { return item.voteRequired ? (!!item.voteClosed || meetingEnded.value) : topicRowBadgeDone(item) }
+function topicActionButton(item) {
+  if (item.voteRequired) return topicRowDone(item) ? '看结果' : '去表决'
+  if (item.type === 'notice') return topicRowBadgeDone(item) ? '已通报' : (props.isChair ? '去通知' : '查看通知')
+  return topicRowBadgeDone(item) ? '已讨论' : '去讨论'
+}
+// 结束会议由弱转强:主任把每条议题都点开过(过完一遍)才升为主按钮
+const allTopicsDone = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(t => visitedIds.value.includes(t.id)))
 
 function initFromDetail() {
   liveAttendance.value = ((props.detail.record && props.detail.record.attendances) || []).slice()
@@ -726,6 +669,26 @@ onBeforeUnmount(() => {
 .omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
 .omf-vote-footer .member-wait-hint{margin-top:0}
 .topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
+/* 0729 用户定「学一学线下」:议题列表(与线下 .core-* 同款) */
+.core-head{display:flex;align-items:center;justify-content:space-between;gap:18rpx;margin-bottom:22rpx}
+.core-title{font-size:34rpx;font-weight:700;color:#1F2024;line-height:1.35}
+.core-count{flex:none;color:#8A8F98;font-size:25rpx}
+.core-list{border:2rpx solid #EEF1F3;border-radius:20rpx;padding:4rpx 22rpx;background:#FAFBFC}
+.core-topic{display:flex;align-items:center;gap:16rpx;padding:20rpx 0;border-top:2rpx solid rgba(31,36,42,0.06)}
+.core-topic:first-child{border-top:0}
+.core-topic-no{flex-shrink:0;width:44rpx;height:44rpx;border-radius:50%;background:#FDF3D6;color:#B26A19;border:2rpx solid #EBD08A;display:flex;align-items:center;justify-content:center;font-size:26rpx;font-weight:700}
+.core-topic-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6rpx}
+.core-topic-title{flex:1;min-width:0;color:#1F2024;font-size:31rpx;line-height:1.45;word-break:break-all;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.core-topic-type{align-self:flex-start;font-size:25rpx;font-weight:700;border-radius:8rpx;padding:4rpx 13rpx;line-height:1.4}
+.core-topic-type.notice{background:#E6F4FB;color:#1677B8}
+.core-topic-type.vote{background:#FFF0E5;color:#D56A16}
+.core-topic-type.discuss{background:#EAF6EE;color:#2E8B57}
+.core-topic-btn{flex-shrink:0;min-width:128rpx;min-height:80rpx;display:inline-flex;align-items:center;justify-content:center;border-radius:999rpx;padding:8rpx 24rpx;font-size:28rpx;font-weight:800;border:0;color:#fff;font-family:inherit}
+.core-topic-btn.notice{background:#1677B8}
+.core-topic-btn.vote{background:#D56A16}
+.core-topic-btn.discuss{background:#2E8B57}
+.core-topic-btn.done{background:#E8F6EC;color:#2E7D32;border:2rpx solid #BFE0B2}
+.core-empty{text-align:center;color:#8A8F98;font-size:30rpx;padding:36rpx 0}
 /* 区一「大家的意见」:醒目胶囊条 + 数量徽标 + CSS 箭头(不用字符,遵项目约定) */
 .op-view-bar{display:inline-flex;align-items:center;gap:12rpx;margin:16rpx 0 0 52rpx;padding:12rpx 22rpx;background:#eaf1fb;border:2rpx solid #cfe0f2;border-radius:999rpx;color:#2f5e96;font-size:26rpx;font-weight:700}
 .op-view-bar:active{background:#dfeafa}
