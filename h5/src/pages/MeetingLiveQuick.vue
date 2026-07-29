@@ -3985,7 +3985,8 @@ async function returnToRecordingPage() {
 /* ⚠ 须用 .supp-btn.recording-head-action 提权：基础 .supp-btn(84rpx) 在文件更后面，
    单类同权重会被其覆盖（0722 用户实测按钮一直没变小的根因） */
 /* 放大：占满左栏两行高度、加宽加粗，醒目且远离展开（0729 用户定） */
-.supp-btn.recording-head-action { flex-shrink:0; align-self:center; width:auto; min-width:200rpx; height:96rpx; padding:0 40rpx; font-size:30rpx; font-weight:700; }
+/* 继续录音钮：在放大版基础上再缩约 20%（0729 用户定），仍醒目但不过大 */
+.supp-btn.recording-head-action { flex-shrink:0; align-self:center; width:auto; min-width:160rpx; height:77rpx; padding:0 32rpx; font-size:26rpx; font-weight:700; }
 .supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
 .supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
 .supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
@@ -3995,7 +3996,9 @@ async function returnToRecordingPage() {
 .supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 .supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
 .supp-actions.single.paused .supp-btn { width:30%; min-width:128rpx; height:46rpx; font-size:22rpx; font-weight:500; justify-self:center; }  /* 暂停态按钮（0722 二次再缩：46rpx/22号） */
-.rec-list-before-action { margin:4rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
+/* 双类提权确保 margin-top 生效（否则被后面的 .rec-list margin-top 覆盖）：
+   拉大「第1段」列表与上方「已录N段」行的间距（0729 用户定） */
+.rec-list.rec-list-before-action { margin:28rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
 .supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
 .supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:88rpx; font-size:28rpx; }
