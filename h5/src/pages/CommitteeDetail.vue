@@ -2331,10 +2331,10 @@ async function removeMaterial(item) {
 .pma-btn:disabled { opacity:.6; }
 .pma-btn.danger { color:#B0463A; border-color:#DEB4AE; }
 .pma-btn.danger:active { background:#FBF0EE; }
-/* 删除会议：详情页最底部的低调出口(0729 用户定)——灰字、不抢眼，仅供清理建错/测试的会 */
-.detail-del-zone { margin:56rpx 0 24rpx; text-align:center; }
-.detail-del-link { display:inline-block; padding:12rpx 40rpx; font-size:25rpx; color:#A2A8B0; letter-spacing:2rpx; }
-.detail-del-link:active { color:#B0463A; }
+/* 删除会议(0729 用户定二改)：贴近上方操作排、红字描边胶囊更醒目（原灰字太隐蔽、下方空白过大） */
+.detail-del-zone { margin:16rpx 0 0; text-align:center; }
+.detail-del-link { display:inline-block; padding:10rpx 44rpx; font-size:26rpx; font-weight:600; color:#B0463A; border:2rpx solid #DEB4AE; border-radius:999rpx; }
+.detail-del-link:active { background:#FBF0EE; }
 /* 会前公告并入操作排(0725);说明小字独立在按钮组下方 */
 .pre-notice-hint { margin:0 24rpx 14rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
 .method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
