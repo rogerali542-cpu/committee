@@ -165,6 +165,9 @@ onMounted(() => {
 <style scoped>
 .docp-page { display:flex; flex-direction:column; height:100vh; box-sizing:border-box; overflow:hidden; }
 .docp-back { width:96rpx; height:124rpx; display:flex; align-items:center; justify-content:center; color:#fff; font-size:66rpx; font-weight:700; }
+/* 顶栏「首页」白描边药丸（此前漏定义 .nav-home，按钮成了光秃秃的文字）：与其他页统一 */
+.nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:30rpx; font-weight:600; line-height:1; }
+.nav-home:active { background:rgba(255,255,255,0.28); }
 .docp-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:26rpx; color:#7B818B; font-size:30rpx; padding:0 40rpx; text-align:center; line-height:1.7; }
 .docp-err { color:#8A5A2B; }
 .docp-retry { border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:27rpx; font-weight:600; border-radius:999rpx; padding:12rpx 44rpx; }
