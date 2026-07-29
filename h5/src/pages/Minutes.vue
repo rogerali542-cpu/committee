@@ -9,7 +9,8 @@
     </PageNav>
 
     <!-- AI 工作中：纪要页 gen=1 大模型生成等待时显"生成纪要"态；完成后出确认按钮（覆盖原"生成中"提示） -->
-    <AiWorkingOverlay :active="aiGenerating" phase="gen" @confirm="openGeneratedMinutes" />
+    <!-- @close（中止）：必须处理，否则关掉遮罩后 aiGenerating 仍为 true，会把用户困在纪要页的"生成中"横幅上，回不到会后整理 -->
+    <AiWorkingOverlay :active="aiGenerating" phase="gen" @confirm="openGeneratedMinutes" @close="onGenAbort" />
 
     <!-- 编辑纪要弹窗（有已有内容时；首次手写走下方整屏编辑器） -->
     <div v-if="editMode && (hasServerMinutes || isOwner)" class="edit-modal-mask">
@@ -171,6 +172,7 @@ const accessText = ref('')
 
 // 非响应式实例状态
 let meetingId = null
+let fromPage = '' // 来处页面（如 meeting-live-quick）：中止生成时据此决定回哪儿
 let genAi = false
 let resumeAi = false
 let viewFirst = false
@@ -184,6 +186,7 @@ onMounted(() => {
   console.log('[minutes] onLoad 构建标记=BUILD-B（结束按钮已修），options=', options)
   const id = parseInt(options.meetingId)
   const from = options.from || ''
+  fromPage = from
   const owner = from === 'owner' || from === 'owner-detail'
   const external = perm.isExternal()
   isChair.value = perm.isChair() || perm.can('committee.publish')
@@ -526,6 +529,26 @@ function openGeneratedMinutes() {
   setTimeout(() => {
     if (document.querySelector('.minutes-page')) window.location.replace('/minutes-view?' + q)
   }, 300)
+}
+
+// 中止/关闭 AI 生成遮罩（右上角 ×，遮罩内已确认中止）：清掉本页"生成中"态并回到来处页面。
+// 关键修复：本页是"生成过程页"（gen=1 从会后整理跳来），此前遮罩无 @close，关掉后 aiGenerating
+// 仍为 true，页面会一直显示无效的"AI 正在生成…"横幅，把用户困在纪要页、回不到会后整理。
+// 后端生成是长任务、无法真正取消：保留全局后台任务(aiTask)让它跑完后由悬浮条通知，这里只收前台等待态。
+function onGenAbort() {
+  aiGenerating.value = false
+  aiTask.overlayShown = false
+  if (_aiTimer) { clearTimeout(_aiTimer); _aiTimer = null }
+  // 从会后整理页（生成会议纪要 / 完成会后整理）跳来的：回到会后整理页，别停在纪要页
+  if (fromPage === 'meeting-live-quick' && meetingId) {
+    const q = 'meetingId=' + meetingId
+    redirectTo('/pages/meeting-live-quick/meeting-live-quick?' + q)
+    setTimeout(() => {
+      if (document.querySelector('.minutes-page')) window.location.replace('/meeting-live-quick?' + q)
+    }, 300)
+    return
+  }
+  navigateBack()
 }
 
 // 会议进行中：在纪要页确认纪要无误并结束会议
