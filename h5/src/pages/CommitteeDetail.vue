@@ -245,6 +245,12 @@
               <div class="ase-copy"><b>会议纪要</b></div>
               <button class="ase-btn primary" @click="viewDoc('minutes')">查看</button>
             </div>
+            <!-- 返回会后整理（0729 用户定）：老人误进"会议结果与公示"也有明确回退入口，可回整理页改议题/记录/纪要，
+                 避免"进来就无法挽回"。仅本机走过会后整理(fieldEndedLocal，restore 才能恢复整理视图)且未公示/归档时出现。 -->
+            <div class="attendance-sheet-entry review-back-entry" v-if="isFreshEnded && fieldEndedLocal">
+              <div class="ase-copy"><b>返回会后整理</b><small>重新处理议题 / 补录音 / 重做纪要</small></div>
+              <button class="ase-btn back-edit" @click="backToReview">去修改</button>
+            </div>
             <div class="arc-list" v-if="detail.archiveExtras && detail.archiveExtras.length">
               <div class="arcl-row" v-for="ae in detail.archiveExtras" :key="ae.id" @click="ae.url && openMaterialViewer(ae)">
                 <img v-if="ae.url && isImageFile(ae.url, ae.fileType)" :src="ae.url" class="file-thumb" @click.stop="openMaterialViewer(ae)" />
@@ -1567,6 +1573,17 @@ function isImageFile(url, fileType) {
   return /\.(jpg|jpeg|png|gif|webp)(\?|$)/.test(s) || /(jpg|jpeg|png|gif|webp|图片|照片)/.test((fileType || '').toLowerCase())
 }
 
+// 返回会后整理页（继续修改议题/记录/纪要）：老人误进"会议结果与公示"也有明确回退入口，避免进来就改不了。
+// 会议仍进行中（测试期不真正归档），整理页 restoreQuickState 会据本机存档恢复到"会后整理"视图。
+// 软路由偶发不切换 → 硬导航兜底，确保必达。
+function backToReview() {
+  const q = 'meetingId=' + meetingId
+  navigateTo('/pages/meeting-live-quick/meeting-live-quick?' + q)
+  setTimeout(() => {
+    if (document.querySelector('.detail-page')) window.location.href = '/meeting-live-quick?' + q
+  }, 300)
+}
+
 function viewMinutes() {
   // 会议详情专用的只读纪要页（独立于录音页那套 Minutes.vue），返回固定回会议详情
   // 软路由偶发"URL变了却不切换视图" → 硬导航兜底，确保必达
@@ -2053,6 +2070,10 @@ async function removeMaterial(item) {
 .ase-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:10px; border:1px solid #8FB3DC; background:#fff; color:#2464B4; font-size:15px; font-weight:700; cursor:pointer; }
 .ase-btn:active { background:#EAF2FB; }
 .ase-btn:disabled { opacity:.55; cursor:default; }
+/* 返回会后整理行（0729）：暖色调区别于蓝色「查看」行；实心橙按钮更醒目，老人易找到回退入口 */
+.review-back-entry { background:#FFF7EF; border-color:#F0D9C0; }
+.ase-btn.back-edit { background:var(--c-primary-dark); border-color:var(--c-primary-dark); color:#fff; }
+.ase-btn.back-edit:active { background:var(--c-primary-strong); }
 .arch-result { display:block; font-size: 28rpx; color:#666; margin-top:3px; font-weight:500; }
 
 
