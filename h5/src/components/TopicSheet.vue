@@ -1220,9 +1220,9 @@ async function removeOpinion(op) {
 .ts-all-op:last-child { border-bottom: 0; }
 .ts-all-content { margin-top: 10rpx; color: #33373D; font-size: 29rpx; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
 
-.ts-sheet.is-vote { width: 100%; height: 100vh; max-height: 100vh; box-sizing: border-box; border-radius: 0; padding: calc(18rpx + env(safe-area-inset-top)) 34rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; }
+.ts-sheet.is-vote { width: 100%; height: 100vh; max-height: 100vh; box-sizing: border-box; border-radius: 0; padding: calc(64rpx + env(safe-area-inset-top)) 34rpx calc(24rpx + env(safe-area-inset-bottom)); background: #fff; }
 .ts-sheet.is-vote .ts-handle { display: none; }
-.ts-sheet.is-vote .ts-head { margin-bottom: 12rpx; align-items: flex-start; }
+.ts-sheet.is-vote .ts-head { margin-bottom: 56rpx; align-items: flex-start; }
 .ts-sheet.is-vote .ts-titlewrap { display: block; max-height: 168rpx; overflow:hidden; padding-right: 8rpx; }
 .ts-sheet.is-vote .ts-title { display: block; font-size: 38rpx; line-height: 1.35; font-weight: 800; text-align: left; }
 .ts-sheet.is-vote .ts-tag { display: none; }
@@ -1251,6 +1251,8 @@ async function removeOpinion(op) {
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
 .ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
+/* 补充意见按钮与上方蓝色票数框拉开距离(0729 用户定) */
+.ts-sheet.is-vote .ts-op-entry { margin-top: 44rpx; }
 .ts-op-entry.in-summary { margin: 18rpx auto 4rpx; }
 .ts-op-entry { display: flex; align-items: center; justify-content: center; width: 51%; min-height: 80rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 32rpx; font-weight: 700; padding: 14rpx 24rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
 .ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
