@@ -195,7 +195,6 @@
           <template v-else>
             <!-- 区一:已提交的意见——醒目的可点开条 + 数量徽标(CSS 箭头,不用字符,遵项目约定) -->
             <button v-if="topicOpinions(topic.id).length" type="button" class="op-view-bar" @click="opsOpen = !opsOpen">
-              <span class="op-view-ico">💬</span>
               <span class="op-view-txt">大家的意见</span>
               <span class="op-view-count">{{ topicOpinions(topic.id).length }}</span>
               <span class="op-view-arr" :class="{ open: opsOpen }"></span>
@@ -717,17 +716,19 @@ onBeforeUnmount(() => {
 .omf-vote-footer.quiet{background:transparent;border-top:0;backdrop-filter:none;padding-top:6rpx;text-align:center}
 .omf-end-ghost{display:inline-block;border:0;background:transparent;color:#9aa4ad;font-size:24rpx;font-weight:500;padding:10rpx 26rpx;text-decoration:underline;text-underline-offset:4rpx}
 .omf-end-ghost:active{color:#6b7680}.omf-end-ghost:disabled{opacity:.5}
-.topic-pager{display:flex;gap:16rpx;margin-top:26rpx}
-.topic-pager button{flex:0 0 calc(50% - 8rpx);height:72rpx;border:2rpx solid #cdd8df;border-radius:14rpx;background:#fff;color:#44586a;font-size:27rpx;font-weight:600}
-.topic-pager button:active{background:#eef3f6}
-.topic-pager .pager-next{margin-left:auto}
+.topic-pager{display:flex;gap:16rpx;margin-top:28rpx}
+/* 步骤流层级(0729 重做):下一议题=主按钮(实心蓝),上一议题=次级(描边灰) */
+.topic-pager button{flex:0 0 calc(50% - 8rpx);height:78rpx;border-radius:14rpx;font-size:27rpx;font-weight:600}
+.topic-pager .pager-prev{border:2rpx solid #dbe2e8;background:#fff;color:#5a6a78}
+.topic-pager .pager-prev:active{background:#eef3f6}
+.topic-pager .pager-next{margin-left:auto;border:0;background:#3E6BA8;color:#fff}
+.topic-pager .pager-next:active{background:#35647D}
 .omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
 .omf-vote-footer .member-wait-hint{margin-top:0}
 .topic-empty{padding:60rpx 0;text-align:center;color:#8a95a0;font-size:26rpx}
 /* 区一「大家的意见」:醒目胶囊条 + 数量徽标 + CSS 箭头(不用字符,遵项目约定) */
 .op-view-bar{display:inline-flex;align-items:center;gap:12rpx;margin:16rpx 0 0 52rpx;padding:12rpx 22rpx;background:#eaf1fb;border:2rpx solid #cfe0f2;border-radius:999rpx;color:#2f5e96;font-size:26rpx;font-weight:700}
 .op-view-bar:active{background:#dfeafa}
-.op-view-ico{font-size:26rpx;line-height:1}
 .op-view-count{display:inline-flex;align-items:center;justify-content:center;min-width:34rpx;height:34rpx;padding:0 10rpx;border-radius:999rpx;background:#3E6BA8;color:#fff;font-size:22rpx;font-weight:700}
 .op-view-arr{width:12rpx;height:12rpx;border-right:3rpx solid currentColor;border-bottom:3rpx solid currentColor;transform:rotate(45deg);position:relative;top:-2rpx;transition:transform .2s ease,top .2s ease}
 .op-view-arr.open{transform:rotate(-135deg);top:2rpx}
@@ -745,17 +746,20 @@ onBeforeUnmount(() => {
 .op-del{flex:none;margin-left:auto;border:0;background:none;color:#a4756a;font-size:22rpx;padding:0 4rpx}
 .vote-submit{display:block;width:60%;margin:18rpx auto 0;height:72rpx;border:0;border-radius:14rpx;background:#A85800;color:#fff;font-size:27rpx;font-weight:700}
 .vote-submit:active{background:#8F4A06}.vote-submit:disabled{opacity:.5}
-.mini-act{border:2rpx solid #cdd8df;border-radius:10rpx;background:#fff;color:#496474;font-size:22rpx;padding:4rpx 16rpx;line-height:1.5}
-.mini-act:active{background:#eef3f6}.mini-act:disabled{opacity:.5}
+/* 次要操作(改票/撤回/还原)=文字链,不再描边小框,减少"按钮堆"(0729 重做) */
+.mini-act{border:0;background:none;color:#3E6BA8;font-size:23rpx;font-weight:600;padding:2rpx 8rpx;line-height:1.5}
+.mini-act:active{opacity:.6}.mini-act:disabled{opacity:.4}
 .op-btn-row{display:flex;align-items:center;gap:16rpx;margin-top:6rpx}
-.op-ai-btn{height:72rpx;padding:0 40rpx;border:2rpx solid #e0b98a;border-radius:14rpx;background:#fdf6ec;color:#9a5d2e;font-size:27rpx;font-weight:600}
-.op-ai-btn:active{background:#f7ecdc}.op-ai-btn:disabled{opacity:.6}
+/* AI润色=文字链(辅助功能),不与「提交意见」抢眼(0729 重做) */
+.op-ai-btn{border:0;background:none;color:#A85800;font-size:25rpx;font-weight:600;padding:2rpx 4rpx}
+.op-ai-btn:active{opacity:.6}.op-ai-btn:disabled{opacity:.5}
 .op-input{display:flex;flex-direction:column;gap:10rpx;margin:16rpx 0 0 52rpx}
 /* 区二「补充意见」有上方意见时用分隔线与之分开 */
 .op-input.divided{border-top:2rpx solid #e9edf1;margin-top:22rpx;padding-top:20rpx}
 .op-label{font-size:25rpx;color:#5a6672;font-weight:600}
 .op-input textarea{width:100%;box-sizing:border-box;border:2rpx solid #d8e0e5;border-radius:12rpx;padding:14rpx 16rpx;font-size:25rpx;line-height:1.6;color:#33475a;background:#fbfcfd;resize:none;font-family:inherit}
-.op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #b9c8d1;border-radius:14rpx;background:#fff;color:#496474;font-size:27rpx;font-weight:600}
+/* 提交意见=次级操作:蓝字描边(与主按钮同色系,层级更低) */
+.op-submit{margin-left:auto;height:72rpx;padding:0 44rpx;border:2rpx solid #aebfce;border-radius:14rpx;background:#fff;color:#35647D;font-size:27rpx;font-weight:700}
 .op-submit:active{background:#eef3f6}.op-submit:disabled{opacity:.5}
 /* 通知类议题(0729 重做):正文卡 + 责任人「确认已通知全体」/ 其他人「我已收到」,与标题左对齐(52rpx) */
 /* 通知正文=只读展示:去掉输入框式描边,改浅底callout+字段标签,左对齐读稿(0729 重做) */
