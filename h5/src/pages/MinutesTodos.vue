@@ -18,9 +18,14 @@
       <div class="review-card" v-for="(r, i) in reviewRows" :key="i">
         <span class="review-idx">{{ i + 1 }}</span>
         <button class="review-del" @click="reviewRows.splice(i, 1)" aria-label="删除此项">×</button>
-        <textarea class="review-input title" v-model="r.title" rows="2" placeholder="待办内容"></textarea>
+        <textarea class="review-input title" v-model="r.title" rows="2" placeholder="待办内容，例如：跟进电梯维保合同签订"></textarea>
         <div class="review-row2">
-          <input class="review-input" v-model="r.owner" placeholder="负责人（选填）" />
+          <!-- 负责人与手动新增同口径：从委员下拉选择；AI 识别出的名字不在名单时保留为一个选项，不丢失 -->
+          <select class="review-input review-select" :class="{ 'is-placeholder': !r.owner }" v-model="r.owner">
+            <option value="">负责人（选填）</option>
+            <option v-if="r.owner && !members.some(m => m.name === r.owner)" :value="r.owner">{{ r.owner }}</option>
+            <option v-for="m in members" :key="m.userRoleId || m.name" :value="m.name">{{ m.name }}<template v-if="m.role">（{{ m.role }}）</template></option>
+          </select>
           <input class="review-input" v-model="r.due" placeholder="截止时间（选填）" />
         </div>
       </div>
@@ -31,8 +36,8 @@
     </template>
 
     <template v-else>
-      <!-- 无 AI 待办（无卡片）时的提示；主任仍可在下方手动增补 -->
-      <div v-if="!cards.length && !rawText" class="access-card">
+      <!-- 无 AI 待办（无卡片）时的提示；主任仍可在下方手动增补。新增表单打开时收起，避免「无待办」与「正在新增」同屏矛盾 -->
+      <div v-if="!cards.length && !rawText && !manualForm.open" class="access-card">
         <div class="access-icon">✓</div>
         <span class="access-title">本次会议无明确待办事项。</span>
       </div>
@@ -82,14 +87,15 @@
         <button v-if="!manualForm.open" class="manual-add-btn" @click="openManual">＋ 手动添加待办</button>
         <div v-else class="manual-form">
           <div class="manual-form-title">新增待办</div>
-          <textarea class="manual-input title" v-model="manualForm.title" rows="2" placeholder="待办内容"></textarea>
+          <textarea class="manual-input title" v-model="manualForm.title" rows="2" placeholder="待办内容，例如：跟进电梯维保合同签订"></textarea>
           <select class="manual-input manual-select" :class="{ 'is-placeholder': !manualForm.owner }" v-model="manualForm.owner">
             <option value="">负责人（选填）</option>
             <option v-for="m in members" :key="m.userRoleId || m.name" :value="m.name">{{ m.name }}<template v-if="m.role">（{{ m.role }}）</template></option>
           </select>
           <div class="manual-form-acts">
             <button class="manual-cancel" :disabled="manualForm.saving" @click="closeManual">取消</button>
-            <button class="manual-save" :disabled="manualForm.saving || !manualForm.title.trim()" @click="saveManual">{{ manualForm.saving ? '保存中…' : '保存' }}</button>
+            <!-- 不按「内容为空」置灰：灰按钮对老人像坏了；常亮，点了空内容由 saveManual 弹「请输入待办内容」说明原因 -->
+            <button class="manual-save" :disabled="manualForm.saving" @click="saveManual">{{ manualForm.saving ? '保存中…' : '保存' }}</button>
           </div>
         </div>
       </div>
@@ -322,6 +328,7 @@ async function load() {
         if (isChair) {
           reviewRows.value = parsed.map(c => ({ title: c.title, owner: c.owner, due: c.due, status: c.status, source: c.source }))
           reviewMode.value = true
+          loadMembers()   // 确认清单里的负责人下拉要用
           loading.value = false
           return
         }
@@ -445,7 +452,9 @@ onMounted(() => {
 .review-input { width: 100%; box-sizing: border-box; border: 2rpx solid #E5E9ED; border-radius: 14rpx; padding: 18rpx 18rpx; font-size: 29rpx; color: #24364B; background: #FAFBFC; }
 .review-input.title { margin-top: 48rpx; font-weight: 600; resize: none; line-height: 1.45; }
 .review-row2 { display: flex; gap: 14rpx; margin-top: 14rpx; }
-.review-row2 .review-input { flex: 1; }
+.review-row2 .review-input { flex: 1; min-width: 0; }
+.review-select { height: 84rpx; padding: 0 18rpx; }
+.review-select.is-placeholder { color: #9AA3AD; }
 /* 底部两按钮：各 70% 宽居中；手动添加升为清晰的描边色块（不再是若隐若现的虚线） */
 .review-actions { display: flex; flex-direction: column; align-items: center; gap: 18rpx; margin-top: 26rpx; }
 .review-add { width: 70%; min-height: 88rpx; border: 2rpx solid var(--c-primary); border-radius: 16rpx; background: #FFF6EC; color: #C2410C; font-size: 30rpx; font-weight: 700; }
