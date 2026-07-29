@@ -139,17 +139,12 @@
         <div v-else class="core-empty">本次会议暂无议题</div>
       </section>
 
-      <!-- 固定底栏(0725 用户定):结束会议与上方内容拉开,避免误点。
-           0729 用户定:议题没过完前「结束会议」降级不抢眼(仍保留提前结束的出口),过完才升为主按钮 -->
-      <div class="omf-vote-footer" :class="{ quiet: isChair && !meetingEnded && !allTopicsDone }">
-        <!-- 主任:结束会议→表决定稿→进入材料整理;委员填完等待即可 -->
-        <template v-if="isChair && !meetingEnded">
-          <!-- 议题还没全部处理完:幽灵小链接,不抢眼,引导先逐条处理 -->
-          <button v-if="!allTopicsDone" type="button" class="omf-end-ghost" :disabled="busy" @click="endMeeting">结束会议</button>
-          <!-- 议题都处理完(或无议题):升为主按钮 -->
-          <button v-else type="button" class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
-        </template>
-        <div v-else-if="!meetingEnded" class="member-wait-hint">表决和意见填写完成后，等待主任结束会议、进入材料整理</div>
+      <!-- 固定底栏(0729 用户定):页面出口=结束会议——会议到议题处理为止,材料整理是会后由主任/秘书
+           少数人做的事。主任常驻实心主按钮(不再按"过完一遍"升降级:该状态存内存,刷新即丢,出口会凭空消失);
+           点击后有确认弹窗兜底(未收齐票数会提示)。 -->
+      <div class="omf-vote-footer">
+        <button v-if="isChair && !meetingEnded" type="button" class="omf-primary end-to-review" :disabled="busy" @click="endMeeting">结束会议，进入材料整理</button>
+        <div v-else-if="!meetingEnded" class="member-wait-hint">各议题填写完成即可；主任结束会议后，材料整理由主任、秘书处理</div>
         <button v-else type="button" class="omf-primary" @click="endMeeting">查看会议详情</button>
       </div>
 
@@ -228,16 +223,13 @@ async function loadOpinions() {
 const meetingTopics = computed(() => (props.detail.record && props.detail.record.topics) || [])
 const sheetTopicId = ref(null)
 const sheetTopic = computed(() => meetingTopics.value.find(t => t.id === sheetTopicId.value) || null)
-const visitedIds = ref([])   // 主任点开过的议题 id(判「过完一遍」→ 结束会议按钮由弱转强)
-function markVisited(id) { if (id != null && !visitedIds.value.includes(id)) visitedIds.value = visitedIds.value.concat(id) }
 function _sheetIdx() { const list = meetingTopics.value; return { list, i: list.findIndex(t => t.id === sheetTopicId.value) } }
 const sheetHasPrev = computed(() => _sheetIdx().i > 0)
 const sheetHasNext = computed(() => { const { list, i } = _sheetIdx(); return i >= 0 && i < list.length - 1 })
-function gotoPrevTopic() { const { list, i } = _sheetIdx(); if (i > 0) { sheetTopicId.value = list[i - 1].id; markVisited(sheetTopicId.value) } }
-function gotoNextTopic() { const { list, i } = _sheetIdx(); if (i >= 0 && i < list.length - 1) { sheetTopicId.value = list[i + 1].id; markVisited(sheetTopicId.value) } }
+function gotoPrevTopic() { const { list, i } = _sheetIdx(); if (i > 0) sheetTopicId.value = list[i - 1].id }
+function gotoNextTopic() { const { list, i } = _sheetIdx(); if (i >= 0 && i < list.length - 1) sheetTopicId.value = list[i + 1].id }
 function openTopicSheet(item) {
   if (!selfPresent.value) { toast({ title: '请先返回签到，签到后即可表决/发言', icon: 'none' }); return }
-  markVisited(item.id)
   sheetTopicId.value = item.id
 }
 // 行「完成感」:表决→表决已结束/会议已结束;通知→已通报或被提及;讨论→有意见
@@ -259,9 +251,6 @@ function topicActionButton(item) {
   if (item.type === 'notice') return topicRowBadgeDone(item) ? '已通报' : (props.isChair ? '去通知' : '查看通知')
   return meetingEnded.value ? '已讨论' : '去讨论'
 }
-// 结束会议由弱转强:主任把每条议题都点开过(过完一遍)才升为主按钮
-const allTopicsDone = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(t => visitedIds.value.includes(t.id)))
-
 // 本人进度小标(0729):表决题「我已表决」、讨论题「我已发言」;会议结束后不再显示(行进入结束态)
 const myOpinionTopicIds = computed(() => new Set(opinions.value.filter(op => op.isSelf).map(op => Number(op.topicId))))
 function myMarkText(item) {
@@ -466,10 +455,6 @@ onBeforeUnmount(() => {
 /* 固定底栏:与卡片内的 AI/提交意见拉开,避免误点 */
 .omf--has-footer{padding-bottom:170rpx}
 .omf-vote-footer{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:18rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:2rpx solid #eceef1;backdrop-filter:blur(8px)}
-/* 议题没过完:底栏去掉实底/描边/毛玻璃,只留一枚居中的灰色小链接,尽量不抢眼 */
-.omf-vote-footer.quiet{background:transparent;border-top:0;backdrop-filter:none;padding-top:6rpx;text-align:center}
-.omf-end-ghost{display:inline-block;border:0;background:transparent;color:#9aa4ad;font-size:24rpx;font-weight:500;padding:10rpx 26rpx;text-decoration:underline;text-underline-offset:4rpx}
-.omf-end-ghost:active{color:#6b7680}.omf-end-ghost:disabled{opacity:.5}
 .omf-vote-footer .omf-primary,.omf-vote-footer .end-to-review{margin-top:0}
 .omf-vote-footer .member-wait-hint{margin-top:0}
 /* 0729 用户定「学一学线下」:议题列表(与线下 .core-* 同款) */
