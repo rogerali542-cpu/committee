@@ -4475,9 +4475,18 @@ onActivated(show)
 .mr-list { padding: 16rpx 4rpx 0; }
 /* 待召开卡（0730 五改）：竖排列表；状态标签与选中态分离 */
 .mtg-due-card { margin-top: 4rpx; margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
-.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 26rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+/* 待召开卡放大（0730 用户+设计师定，加对地方）：行内距 26→34rpx(两行更松)；会议名(本行最重要
+   信息)31→34rpx；标题↔副行间距 7→10rpx；日期块 94→108rpx / range 132→152rpx，字号同步加大 */
+.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 34rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
+.mtg-due-row .mr-row-title { font-size: 34rpx; }
+.mtg-due-row .mr-row-sub { margin-top: 10rpx; }
+.mtg-due-row .mr-badge { width: 108rpx; min-height: 90rpx; }
+.mtg-due-row .mr-badge b { font-size: 33rpx; }
+.mtg-due-row .mr-badge span { font-size: 25rpx; }
+.mtg-due-row .mr-badge.range { width: 152rpx; min-height: 64rpx; }
+.mtg-due-row .mr-badge.range b { font-size: 26rpx; }
 /* 选中态（点2/3）：整行浅蓝底 + 左侧竖条，不用 ✓ 框 */
 /* 「选中」浅蓝底 + 左竖条已删（0730 用户定）：逾期暖色胶囊已标出要补救的那场，
    底部主按钮副行又点名了是哪场，这条高亮属重复噪音，去掉让卡片更干净 */
@@ -4521,7 +4530,9 @@ onActivated(show)
 /* gap 16rpx＝8px（0730 用户定）：两钮原来 12rpx 贴太近、像一个大按钮，拉开到 8px 才是两块 */
 .mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 次级「＋ 发起临时会议」（0730 点2三改）：浅蓝底、叠在主按钮上方，主次分明 */
-.mtg-secondary { min-height: 78rpx; border: 0; border-radius: 18rpx; background: #EAF0F7; color: #3E6BA8; font-size: 29rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+/* 次级按钮压到 72rpx(≈46px，0730 用户+设计师定)：比主按钮矮一档，主按钮独占饱和实心；
+   仍保浅蓝底(规范§7「次按钮浅底」)，不改白底描边 */
+.mtg-secondary { min-height: 72rpx; border: 0; border-radius: 18rpx; background: #EAF0F7; color: #3E6BA8; font-size: 28rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .mtg-secondary:active { background: #DCE6F1; }
 .mtg-primary { width: 100%; min-height: 100rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; }
 .mtg-primary:active { background: #35608F; }

@@ -20,7 +20,8 @@ function back() {
 <style scoped>
 .pub-nav {
   position: sticky; top: 0; z-index: 50;
-  background: var(--pub-nav-grad, linear-gradient(160deg, #5D8EB8 0%, #3D70A0 100%));
+  /* 默认顶栏＝会议模块蓝（0730 用户定：公示类统一成会议蓝）。资料库等自设 --pub-nav-grad 的页不受影响 */
+  background: var(--pub-nav-grad, linear-gradient(160deg, #4470a5 0%, #2f5f9e 100%));
   padding-top: env(safe-area-inset-top);
   display: flex; align-items: center;
   height: calc(116rpx + env(safe-area-inset-top));
