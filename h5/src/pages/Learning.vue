@@ -69,17 +69,13 @@
 
     <div class="records-head">
       <span class="records-title">学习记录</span>
-      <span class="records-count">共{{ allItems.length }}条</span>
+      <span class="records-count">在办 {{ items.length }} 条</span>
     </div>
 
-    <!-- 单层筛选，不再要求用户理解内外部与培训子分类 -->
-    <div class="filter-tabs">
-      <div class="f-tab" :class="{ active: recordFilter == 'all' }" @click="switchFilter('all')">全部 {{ recordCounts.all }}</div>
-      <div class="f-tab" :class="{ active: recordFilter == 'pending' }" @click="switchFilter('pending')">待处理 {{ recordCounts.pending }}</div>
-      <div class="f-tab" :class="{ active: recordFilter == 'ended' }" @click="switchFilter('ended')">已完成 {{ recordCounts.ended }}</div>
-    </div>
+    <!-- 已完成培训记录已移入档案馆（0730 设计师定）：首页只留在办/待办，筛选页签随之删除
+         （移走完成态后「全部」与「待处理」等同，无意义） -->
 
-    <!-- 学习卡片列表 -->
+    <!-- 学习卡片列表（仅在办/待办；已完成见页脚档案馆入口） -->
     <div class="learn-list">
       <template v-if="items.length">
         <!-- 手风琴(0725 用户定):默认全部收起只留标题行,点卡片摊开细节;进详情走展开区内的按钮 -->
@@ -112,7 +108,13 @@
           </template>
         </div>
       </template>
-      <div v-else class="empty-state"><span>{{ recordFilter === 'all' ? '暂无学习记录' : '当前没有需要显示的记录' }}</span></div>
+      <div v-else class="empty-state"><span>暂无在办的学习培训</span></div>
+    </div>
+
+    <!-- 档案馆入口（0730 设计师定）：已完成培训记录都在档案馆 -->
+    <div class="learn-arch" @click="goArchive('learning')">
+      <span>档案馆 · 培训记录</span>
+      <span class="learn-arch-arr">›</span>
     </div>
 
     <!-- 底部虚线入口已删(0725 用户定):新增是本页主动作,升级为列表上方大按钮 .learn-register-card -->
@@ -168,16 +170,14 @@ let undoData = null;
 function openDetail(item) {
   navigateTo('/learning-detail?id=' + item.id);
 }
+// 档案馆入口（0730 设计师定）：已完成培训记录统一进档案馆学习页签
+function goArchive(tab) {
+  navigateTo('/library' + (tab ? '?tab=' + tab : ''));
+}
 
 function applyRecordFilter() {
-  const src = listItems.value;   // 已排除"进行中"卡里的项（管理者视角）
-  if (recordFilter.value === 'ended') {
-    items.value = src.filter(i => i.stage === 'ended');
-  } else if (recordFilter.value === 'pending') {
-    items.value = src.filter(i => i.stage !== 'ended');
-  } else {
-    items.value = [...src];
-  }
+  // 首页只留在办/待办；已完成移入档案馆（0730 设计师定）。筛选页签已删，此处恒排除 ended。
+  items.value = listItems.value.filter(i => i.stage !== 'ended');
 }
 
 function switchFilter(filter) {
@@ -338,6 +338,10 @@ onUnmounted(() => {
 
 /* 学习卡片 */
 .learn-list { display: flex; flex-direction: column; gap: 16rpx; }
+/* 档案馆入口（0730 设计师定）：列表末的轻入口，深灰、可跳转 */
+.learn-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 92rpx; margin-top: 18rpx; padding: 0 8rpx; border-top: 2rpx solid #E6E9ED; color: #4B5563; font-size: 28rpx; font-weight: 600; cursor: pointer; }
+.learn-arch:active { opacity: .65; }
+.learn-arch-arr { flex-shrink: 0; font-size: 32rpx; color: #9AA4B0; }
 /* 收起卡压缩到与业委会记录行同级(0725 用户定):内距/字号/标签整体降一档 */
 .learn-card { background: #fff; border-radius: 20rpx; padding: 22rpx 24rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); position: relative; }
 .learn-card:active { background: #fafbfc; }

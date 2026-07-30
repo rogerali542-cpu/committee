@@ -55,9 +55,9 @@
           <span class="rrc-arrow">›</span>
         </button>
         <div v-if="planTab === 'reception'" class="rec-recent-card">
+          <!-- 「接待记录」改称「近期接待」，「查看全部」重复入口删掉——往期/已办统一收进档案馆（0730 设计师定） -->
           <div class="rec-recent-head">
-            <span>接待记录</span>
-            <button type="button" @click="goReceptionRecords">查看全部</button>
+            <span>近期接待</span>
           </div>
           <div v-if="!recentReceptionRecords.length" class="rec-recent-empty">暂无接待记录</div>
           <div v-for="session in recentReceptionRecords" :key="session.key" class="rec-recent-session">
@@ -80,6 +80,11 @@
                 <em>{{ r.done ? '已办结' : ((r.propertyTransferred || r.ticketPushed) ? '处理中' : '去处理') }}</em>
               </div>
             </div>
+          </div>
+          <!-- 末行档案馆入口（0730 设计师定）：往期接待记录与已办事项都在档案馆 -->
+          <div class="rec-recent-arch" @click="goArchive('reception')">
+            <span>档案馆 · 接待记录与已办事项</span>
+            <span class="rec-recent-arch-arr">›</span>
           </div>
         </div>
 
@@ -155,6 +160,19 @@
             <span class="ck-dock-label">{{ d.title }}</span>
           </div>
         </div>
+        <!-- 档案馆入口（0730 设计师定）：不属于四个工作板块，做成板块下方一条中性灰入口，年末总结/领导视察时才专门去查 -->
+        <div class="ck-archive" @click="goArchive()">
+          <span class="ck-archive-ico">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3.5" y="4.5" width="17" height="5" rx="1.3"/><path d="M5 9.5v8.2c0 .7.6 1.3 1.3 1.3h11.4c.7 0 1.3-.6 1.3-1.3V9.5"/><line x1="9.7" y1="13" x2="14.3" y2="13"/>
+            </svg>
+          </span>
+          <div class="ck-archive-copy">
+            <span class="ck-archive-title">档案馆</span>
+            <span class="ck-archive-sub">会议纪要 · 接待记录 · 培训记录</span>
+          </div>
+          <span class="ck-archive-arrow">›</span>
+        </div>
       </div>
 
       <!-- 会议工作页：驾驶舱负责提醒和直达，这里只保留近期安排与年度记录，避免同一场会议重复出现。 -->
@@ -217,6 +235,11 @@
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
               <b>{{ viewYear }}年全年会议</b>
               <span class="mtg-next-more">{{ meetingCalendarOpen ? '收起' : '展开' }} <i class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</i></span>
+            </div>
+            <!-- 档案馆入口（0730 设计师定）：全年会议是今年排期总览、可展开；档案馆是历年已归档纪要，两件事并存 -->
+            <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
+              <b>档案馆 · 会议纪要</b>
+              <span class="mtg-next-more">›</span>
             </div>
           </div>
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
@@ -1148,6 +1171,10 @@ function goReceptionRecords() {
   setTimeout(() => {
     if (!document.querySelector('.reception-records')) window.location.href = '/reception-records'
   }, 300)
+}
+// 档案馆入口（0730 设计师定）：会议/接待/学习历史统一进档案馆(/library)，带 tab 直达对应页签
+function goArchive(tab) {
+  navigateTo('/library' + (tab ? '?tab=' + tab : ''))
 }
 
 async function loadCalExtras() {
@@ -4330,6 +4357,15 @@ onActivated(show)
 .ck-dock-ico.green { color: #3B7150; background: #E4F0E8; }
 .ck-dock-ico.amber { color: #2a6b73; background: #DDEBEC; }
 .ck-dock-label { font-size: 27rpx; color: #4A5560; font-weight: 600; }
+/* 档案馆入口（0730 设计师定）：板块下方一条中性灰白卡，弱于工作板块、独立于四色 */
+.ck-archive { display: flex; align-items: center; gap: 18rpx; margin: 6rpx 4rpx 0; padding: 22rpx 26rpx; background: #fff; border-radius: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 10rpx 24rpx rgba(20,33,61,0.06); cursor: pointer; }
+.ck-archive:active { background: #f6f7f9; }
+.ck-archive-ico { flex-shrink: 0; width: 64rpx; height: 64rpx; border-radius: 16rpx; background: #EDEFF2; color: #4A5560; display: flex; align-items: center; justify-content: center; }
+.ck-archive-ico svg { width: 34rpx; height: 34rpx; }
+.ck-archive-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.ck-archive-title { font-size: 31rpx; font-weight: 700; color: #2F3D56; }
+.ck-archive-sub { font-size: 25rpx; color: #8A94A6; }
+.ck-archive-arrow { flex-shrink: 0; font-size: 34rpx; color: #B4BCC7; }
 .ck-section { margin-top: 34rpx; }
 .welcome-hero + .ck-section { margin-top: 22rpx; }
 .ck-work-section { margin-top: 48rpx; }
@@ -4799,6 +4835,10 @@ onActivated(show)
   padding: 22rpx 2rpx 16rpx; font-size: 34rpx; font-weight: 700; color: var(--c-text-strong); }
 .rec-recent-head button { padding: 8rpx 0 8rpx 20rpx; border: 0; background: transparent;
   color: #3B7150; font-size: 27rpx; font-weight: 500; }
+/* 末行档案馆入口（0730 设计师定）：往期/已办统一进档案馆 */
+.rec-recent-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 90rpx; margin-top: 4rpx; border-top: 2rpx solid #EEF1F3; color: #4B5563; font-size: 28rpx; font-weight: 600; cursor: pointer; }
+.rec-recent-arch:active { opacity: .65; }
+.rec-recent-arch-arr { flex-shrink: 0; font-size: 32rpx; color: #9AA4B0; }
 .rec-recent-session { border-top: 2rpx solid #EEF1F3; }
 .rec-recent-row { display: flex; align-items: center; gap: 18rpx; padding: 20rpx 2rpx; border-top: 2rpx solid #EEF1F3; }
 .rec-recent-session .rec-recent-row { border-top: 0; }
