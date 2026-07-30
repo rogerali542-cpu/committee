@@ -46,19 +46,17 @@
             <div class="rnh-kicker">接待安排</div>
             <div class="rnh-time none">还没设置接待时间</div>
           </template>
-          <button v-if="canManageReception" class="rec-notice-primary" type="button" @click="goReceptionNotice">
-            调整接待安排
-          </button>
+          <!-- 「调整接待安排」按钮已移到底部动作区（0730 图一：卡片保持干净，只承载时间/地点信息） -->
         </div>
 
-        <button v-if="planTab === 'reception' && canManageReception" class="rec-register-card" type="button" @click="openReceptionCreate">
-          <span class="rrc-icon">＋</span>
-          <span class="rrc-copy">
-            <em v-if="receptionHero.set" class="rrc-when">{{ receptionHero.objLine }}</em>
-            <strong>登记接待</strong>
-          </span>
-          <span class="rrc-arrow">›</span>
-        </button>
+        <!-- 底部动作区（0730 图一）：调整接待安排(浅绿) + 登记接待(绿实心CTA)，成组落在内容末尾（order:8） -->
+        <div v-if="planTab === 'reception' && canManageReception" class="rec-actions">
+          <button type="button" class="rec-adjust-btn" @click="goReceptionNotice">调整接待安排</button>
+          <button type="button" class="rec-register-btn" @click="openReceptionCreate">
+            <span v-if="receptionHero.set" class="rrb-when">{{ receptionHero.objLine }}</span>
+            <span class="rrb-main">登记接待</span>
+          </button>
+        </div>
         <div v-if="planTab === 'reception'" class="rec-recent-card">
           <!-- 「接待记录」改称「近期接待」，「查看全部」重复入口删掉——往期/已办统一收进档案馆（0730 设计师定） -->
           <div class="rec-recent-head">
@@ -86,9 +84,9 @@
               </div>
             </div>
           </div>
-          <!-- 末行档案馆入口（0730 设计师定）：往期接待记录与已办事项都在档案馆 -->
+          <!-- 末行档案馆入口（0730 图一）：往期与已办都在档案馆 -->
           <div class="rec-recent-arch" @click="goArchive('reception')">
-            <span>档案馆 · 接待记录与已办事项</span>
+            <span>档案馆 · 往期与已办</span>
             <span class="rec-recent-arch-arr">›</span>
           </div>
         </div>
@@ -1083,7 +1081,7 @@ watch(() => props.section, (section) => {
 watch(planTab, v => { try { sessionStorage.setItem('homePlanTab', v) } catch (e) {} })
 const calMonth = ref(curMonth)   // 选中月，默认本月
 const calRecs = ref([])          // 全部接待记录（进页拉一次）
-const receptionTodoOpen = ref(true)
+const receptionTodoOpen = ref(false)   // 0730 图一：待办默认折叠成「待办事项 · N项」摘要行，点开看清单
 const recentOpenKey = ref('')
 const recentReceptionRecords = computed(() => {
   const groups = new Map()
@@ -4861,6 +4859,16 @@ onActivated(show)
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
   border-radius: 50%; background: #E4F0E8; color: #3B7150; font-size: 36rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
+/* 底部动作区（0730 图一）：白面板里 调整接待安排(浅绿) + 登记接待(绿实心CTA)，order:8 落在内容末尾 */
+.rec-actions { order: 8; margin-top: 30rpx; display: flex; flex-direction: column; gap: 16rpx; padding: 20rpx; background: #fff; border-radius: 22rpx; box-shadow: 0 8rpx 24rpx rgba(40,96,64,.08); }
+.rec-adjust-btn { min-height: 84rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 30rpx; font-weight: 650; }
+.rec-adjust-btn:active { background: #D6E9DD; }
+.rec-register-btn { min-height: 100rpx; border: 0; border-radius: 16rpx; background: #2f6b45; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
+.rec-register-btn:active { background: #285f3d; }
+.rrb-when { font-size: 24rpx; opacity: .85; }
+.rrb-main { font-size: 33rpx; font-weight: 700; }
+/* 接待 tab：待办移到近期接待上方（图一顺序 hero→待办→近期→档案→动作区） */
+.reception-mode .plan-todo-card { order: 2; }
 .rec-recent-card { order: 3; margin-top: 57rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
   box-shadow: 0 5rpx 18rpx rgba(20,42,58,0.04); }
