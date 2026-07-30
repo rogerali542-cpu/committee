@@ -24,6 +24,7 @@ import api from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { redirectTo } from '@/utils/navigate'
 import { toast } from '@/utils/ui'
+import { setStorage } from '@/utils/storage'
 
 const auth = useAuthStore()
 
@@ -85,10 +86,14 @@ function doLogin(r) {
     scopeRegionCode: r.scopeRegionCode, scopeRegionName: r.scopeRegionName
   })
   const isGovernmentManager = r.role === '街道管理员' || r.role === '区级管理员'
-  redirectTo(isGovernmentManager ? '/management' : '/pages/main/main')
+  // 选完身份统一进驾驶舱（0731 用户定）：驾驶舱是首页，不沿用上次残留的 tabs 工作页布局——
+  // 换身份重新选择后落回统一起点，符合"进软件→选身份→到首页"的心智（政府管理员仍进管理端）
+  setStorage('home_layout', 'portal')
+  const target = isGovernmentManager ? '/management' : '/main?home=portal'
+  redirectTo(target)
   // 部分手机 WebView / Cloudflare 公网预览中偶发软路由不切页；登录态已写入后用硬跳兜底。
   setTimeout(() => {
-    if (window.location.pathname === '/login') window.location.replace(isGovernmentManager ? '/management' : '/main')
+    if (window.location.pathname === '/login') window.location.replace(target)
   }, 300)
 }
 </script>
