@@ -367,7 +367,7 @@ const aggItems = computed(() => {
   }))
   const rec = (aggReception.value || []).filter(r => !r.done && r.visitorName !== '无人来访').map(r => ({
     key: 'r-' + r.id, kind: 'reception',
-    title: String(r.content || '').slice(0, 20) || '来访事项',
+    title: String(r.content || '').split(/[，。；、,.;]/)[0] || '来访事项',   // 首短句不半句硬切（0731）
     date: r.date || '',
     dateText: fmtAggDate(r.date),
     source: '接待' + (r.visitorName ? (' · ' + r.visitorName + ' 反映') : ''),

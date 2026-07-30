@@ -100,7 +100,7 @@ async function loadArchive() {
   const receptionItems = (reception || [])
     .map(r => ({
       id: r.id, kind: 'reception',
-      title: r.visitorName ? (r.visitorName + ' 来访') : (r.content ? String(r.content).slice(0, 16) : '接待记录'),
+      title: r.visitorName ? (r.visitorName + ' 来访') : (String(r.content || '').split(/[，。；、,.;]/)[0] || '接待记录'),
       date: r.date || '',
       statusText: '',
       metaText: [r.receiver && ('接待人 ' + r.receiver), r.room].filter(Boolean).join(' · ')
@@ -128,7 +128,7 @@ async function loadArchive() {
     .filter(r => r.done && r.visitorName !== '无人来访')
     .map(r => ({
       id: r.id, kind: 'reception',
-      title: String(r.content || '').slice(0, 20) || (r.visitorName ? (r.visitorName + ' 来访') : '接待事项'),
+      title: String(r.content || '').split(/[，。；、,.;]/)[0] || (r.visitorName ? (r.visitorName + ' 来访') : '接待事项'),
       date: r.date || '',
       statusText: '已办结',
       metaText: r.visitorName ? (r.visitorName + ' 反映') : ''

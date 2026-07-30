@@ -1142,7 +1142,10 @@ const receptionHero = computed(() => {
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
 const recPendingList = computed(() => (calRecs.value || []).filter(r => !r.done && r.visitorName !== '无人来访'))
 const recPendingSummary = computed(() => {
-  const parts = recPendingList.value.map(r => String(r.content || '').replace(/\s+/g, '').slice(0, 10)).filter(Boolean)
+  // 首个标点前的完整短句（0731：不半句硬切），超宽由 CSS 省略号兜底
+  const parts = recPendingList.value
+    .map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0])
+    .filter(Boolean)
   return parts.slice(0, 2).join('、') + (parts.length > 2 ? ' 等' : '')
 })
 // 进「业委会待办」聚合页（/minutes-todos 无参＝聚合模式）；软路由坑同款硬跳兜底
@@ -1152,9 +1155,12 @@ function goTodos() {
     if (!document.querySelector('.todos-page')) window.location.href = '/minutes-todos'
   }, 300)
 }
-// 近期行副行（0730 定稿图）：列内容短摘要「反映 下水管返味、门禁卡失灵」，比「反映 2 项」信息量大
+// 近期行副行（0730 定稿图）：列内容短摘要「反映 下水管返味、门禁卡失灵」，比「反映 2 项」信息量大。
+// 取每条第一个标点前的完整短句（0731 用户定：不在半句处硬切），整行超宽由 CSS 省略号兜底
 function recSummaryOf(session) {
-  const parts = (session.displayRecords || []).map(r => String(r.content || '').replace(/\s+/g, '').slice(0, 10)).filter(Boolean)
+  const parts = (session.displayRecords || [])
+    .map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0])
+    .filter(Boolean)
   const text = parts.slice(0, 3).join('、') + (parts.length > 3 ? ' 等' : '')
   return text || (session.visitorCount + ' 项')
 }
