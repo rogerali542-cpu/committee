@@ -136,7 +136,21 @@
         <!-- 工作板块改底栏（0729 用户定）：四项固定在页面底部，随时可达 -->
         <div class="ck-dock">
           <div v-for="d in portalDomains" :key="d.key" class="ck-dock-item" @click="d.onTap()">
-            <span class="ck-dock-ico" :class="d.tone">{{ d.glyph }}</span>
+            <!-- 画的小图标（0729 用户定：不用汉字图标）：内联 SVG 描边风，stroke 随色块 currentColor -->
+            <span class="ck-dock-ico" :class="d.tone">
+              <svg v-if="d.key === 'committee'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9" r="2.4"/><path d="M15.6 13.6c2.3.2 4.1 1.7 4.7 4.4"/>
+              </svg>
+              <svg v-else-if="d.key === 'reception'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.2 3.4c-.4.3-.8 0-.8-.4V6.5z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/>
+              </svg>
+              <svg v-else-if="d.key === 'learning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 6.5C10.5 5 8.2 4.4 5.5 4.4c-.8 0-1.5.6-1.5 1.4v11c0 .8.7 1.4 1.5 1.4 2.7 0 5 .6 6.5 2.1 1.5-1.5 3.8-2.1 6.5-2.1.8 0 1.5-.6 1.5-1.4v-11c0-.8-.7-1.4-1.5-1.4-2.7 0-5 .6-6.5 2.1z"/><line x1="12" y1="6.5" x2="12" y2="20.3"/>
+              </svg>
+              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.5 10.5c-.8-.9-1.3-2-1.3-3.2C8.2 5 9.9 3.4 12 3.4s3.8 1.6 3.8 3.9c0 1.2-.5 2.3-1.3 3.2l-.6.7c-.3.4-.3.9 0 1.3h2.9c1.4 0 2.6 1.1 2.6 2.6v1.5H4.6v-1.5c0-1.4 1.2-2.6 2.6-2.6h2.9c.3-.4.3-.9 0-1.3l-.6-.7z"/><line x1="5.5" y1="20" x2="18.5" y2="20"/>
+              </svg>
+            </span>
             <span class="ck-dock-label">{{ d.title }}</span>
           </div>
         </div>
@@ -4215,7 +4229,8 @@ onActivated(show)
 .ck-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: #fff; border-top: 2rpx solid #E6EAEF; padding: 12rpx 8rpx calc(10rpx + env(safe-area-inset-bottom)); box-shadow: 0 -6rpx 18rpx rgba(24,51,76,.06); }
 .ck-dock-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; padding: 6rpx 0; }
 .ck-dock-item:active { opacity: .65; }
-.ck-dock-ico { width: 72rpx; height: 72rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; font-size: 34rpx; font-weight: 800; }
+.ck-dock-ico { width: 72rpx; height: 72rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; }
+.ck-dock-ico svg { width: 42rpx; height: 42rpx; }
 .ck-dock-ico.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-dock-ico.green { color: #3B7150; background: #E4F0E8; }
 .ck-dock-ico.amber { color: #8A6420; background: #F5EBD8; }
