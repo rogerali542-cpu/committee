@@ -63,19 +63,15 @@
             <span>近期接待</span>
           </div>
           <div v-if="!recentReceptionRecords.length" class="rec-recent-empty">暂无接待记录</div>
+          <!-- 行式照图一（spec §11）：记录只是记录，不挂状态标签——事项状态由上方待办卡承担；
+               行上的删除 × 已撤（spec §10：删除移入详情页，ReceptionDetail 有「删除这条接待记录」） -->
           <div v-for="session in recentReceptionRecords" :key="session.key" class="rec-recent-session">
             <div class="rec-recent-row" @click="openRecentSession(session)">
               <div class="rec-recent-copy">
-                <div class="rec-recent-title">
-                  <strong>{{ session.noVisit ? '本次无人来访' : (session.visitorCount + '人来访') }}</strong>
-                  <i :class="session.status">{{ session.statusText }}</i>
-                </div>
-                <span v-if="session.summaryText" class="rec-recent-summary">{{ session.summaryText }}</span>
-                <span>{{ fmtPlanDate(session.date) }}<template v-if="session.time"> · {{ String(session.time).slice(0, 5) }}</template><template v-if="session.receiver"> · {{ session.receiver }}</template></span>
+                <strong class="rec-recent-main">{{ fmtPlanDate(session.date) }}<template v-if="session.receiver"> · {{ session.receiver }}</template></strong>
+                <span class="rec-recent-sub">{{ session.noVisit ? '无人来访' : ('反映 ' + session.displayRecords.length + ' 项') }}</span>
               </div>
-              <span v-if="session.displayRecords.length > 1" class="rec-recent-chevron" :class="{ open: recentOpenKey === session.key }">⌄</span>
-              <button v-if="canManageReception" class="rec-recent-delete" type="button"
-                      aria-label="删除本次接待记录" @click.stop="removeReceptionSession(session)">×</button>
+              <i class="rec-recent-chev" :class="{ open: recentOpenKey === session.key && session.displayRecords.length > 1 }"></i>
             </div>
             <div v-if="recentOpenKey === session.key && session.displayRecords.length > 1" class="rec-recent-items">
               <div v-for="r in session.displayRecords" :key="r.id" class="rec-recent-item" @click="goReceptionDetail(r)">
@@ -373,11 +369,12 @@
                   :class="{ danger: planTodoList.length > 4, warn: planTodoList.length >= 2 && planTodoList.length <= 4, safe: planTodoList.length <= 1 }">
               {{ planTodoList.length }}项
             </span>
-            <span v-if="planTab === 'reception'" class="rec-todo-chevron" :class="{ open: receptionTodoOpen }">▾</span>
+            <!-- 收起=右指›、展开=下指（CSS 边框画箭头，字符箭头基线坠，见 CLAUDE.md） -->
+            <i v-if="planTab === 'reception'" class="rec-todo-chev" :class="{ open: receptionTodoOpen }"></i>
           </div>
           <!-- 本期例会与其他期次同为普通条目（0716 用户定：原实心大按钮太重、与列表风格打架，已拆） -->
           <template v-if="!planTodoList.length || planTab !== 'reception' || receptionTodoOpen">
-            <div v-if="!planTodoList.length" class="plan-empty">{{ planTab === 'reception' ? '暂无待处理事项' : `暂无需要处理的${planTabLabel}事项` }}</div>
+            <div v-if="!planTodoList.length" class="plan-empty">{{ planTab === 'reception' ? '暂无待办事项' : `暂无需要处理的${planTabLabel}事项` }}</div>
             <div v-else v-for="it in planTodoList" :key="it.key" class="yc-item" :class="[planTab === 'meeting' ? it.status : 'todo-plain', it.flag]"
                  @click="it.onTap()">
               <div class="yc-item-info">
@@ -2150,23 +2147,7 @@ function openRecentSession(session) {
   recentOpenKey.value = recentOpenKey.value === session.key ? '' : session.key
 }
 
-async function removeReceptionSession(session) {
-  const ok = await showModal({
-    title: '删除本次接待',
-    content: '确认删除后无法恢复。',
-    confirmText: '删除',
-    cancelText: '取消',
-    showCancel: true
-  })
-  if (!ok || !ok.confirm) return
-  try {
-    await Promise.all(session.records.map(record => api.receptionRemove(record.id)))
-    toast({ title: '已删除', icon: 'success' })
-    await loadCalExtras()
-  } catch (e) {
-    toast({ title: (e && e.message) || '删除失败', icon: 'none' })
-  }
-}
+// removeReceptionSession 已删（0730 spec §10）：列表行不放删除 ×，删除走 ReceptionDetail 的「删除这条接待记录」
 
 // 接待：点条目直接进这一条的处理页（0716 重做）。
 // 原先是「弹窗看详情 → 再点『去接待页处理』→ 落到另一个清单页」，点两次才够得着，
@@ -2212,7 +2193,7 @@ watch(planTab, () => { calMonthTapped.value = false })
 const ovFilter = ref('pending')
 watch(planTab, () => { ovFilter.value = 'pending' })
 const planListTitle = computed(() => {
-  if (planTab.value === 'reception') return ovFilter.value === 'done' ? '已完成事项' : (ovFilter.value === 'all' ? '全部接待记录' : '待处理事项')
+  if (planTab.value === 'reception') return ovFilter.value === 'done' ? '已完成事项' : (ovFilter.value === 'all' ? '全部接待记录' : '待办事项')   // 0730 图一：待处理事项→待办事项
   return '待办事项'
 })
 // 接待列表：受概览筛选（ovFilter），按日期升序；每项点「查看」弹该条详情
@@ -4869,41 +4850,28 @@ onActivated(show)
 .rrb-main { font-size: 33rpx; font-weight: 700; }
 /* 接待 tab：待办移到近期接待上方（图一顺序 hero→待办→近期→档案→动作区） */
 .reception-mode .plan-todo-card { order: 2; }
-.rec-recent-card { order: 3; margin-top: 57rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
-  background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
-  box-shadow: 0 5rpx 18rpx rgba(20,42,58,0.04); }
+/* 近期接待轻列表化（0730 图一/spec §5）：只需知晓的记录＝透明底+分隔线，不再套白卡 */
+.rec-recent-card { order: 3; margin-top: 26rpx; padding: 0 8rpx; box-sizing: border-box;
+  background: transparent; border: 0; box-shadow: none; }
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
-  padding: 22rpx 2rpx 16rpx; font-size: 34rpx; font-weight: 700; color: var(--c-text-strong); }
-.rec-recent-head button { padding: 8rpx 0 8rpx 20rpx; border: 0; background: transparent;
-  color: #3B7150; font-size: 27rpx; font-weight: 500; }
+  min-height: 84rpx; padding: 0 2rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
 /* 末行档案馆入口（0730 设计师定）：往期/已办统一进档案馆 */
-.rec-recent-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 90rpx; margin-top: 4rpx; border-top: 2rpx solid #EEF1F3; color: #4B5563; font-size: 28rpx; font-weight: 600; cursor: pointer; }
+.rec-recent-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E2E5EA; color: #4B5563; font-size: 28rpx; font-weight: 600; cursor: pointer; }
 .rec-recent-arch:active { opacity: .65; }
 .rec-recent-arch-arr { flex-shrink: 0; font-size: 32rpx; color: #9AA4B0; }
-.rec-recent-session { border-top: 2rpx solid #EEF1F3; }
-.rec-recent-row { display: flex; align-items: center; gap: 18rpx; padding: 20rpx 2rpx; border-top: 2rpx solid #EEF1F3; }
-.rec-recent-session .rec-recent-row { border-top: 0; }
+.rec-recent-session { border-top: 2rpx solid #E2E5EA; }
+.rec-recent-row { display: flex; align-items: center; gap: 18rpx; min-height: 112rpx; padding: 20rpx 2rpx; }
 .rec-recent-row:active { opacity: 0.68; }
-.rec-recent-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
-.rec-recent-title { display: flex; align-items: center; gap: 12rpx; min-width: 0; }
-.rec-recent-copy strong { font-size: 30rpx; line-height: 1.35; font-weight: 500; color: var(--c-text-strong);
+.rec-recent-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+/* 行式照图一：主行「M月D日 · 接待人」，副行「反映 N 项/无人来访」；状态标签已撤（spec §11） */
+.rec-recent-main { font-size: 31rpx; line-height: 1.35; font-weight: 650; color: #1F2937;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-recent-title i { flex-shrink: 0; padding: 5rpx 14rpx; border-radius: 999rpx;
-  font-size: 25rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
-/* 三级状态色（0730 设计师定，全 app 通用）：待处理=常态灰、处理中=进行中蓝、已办结=常态灰 */
-.rec-recent-title i.pending { color: #6B7280; background: transparent; }
-.rec-recent-title i.doing { color: #2f6b45; background: transparent; }
-.rec-recent-title i.done { color: #6B7280; background: transparent; }
-.rec-recent-copy span { font-size: 27rpx; line-height: 1.4; color: var(--c-text-weak); }
-/* 收起态摘要行：是谁、什么事，一眼可读 */
-.rec-recent-summary { font-size: 27rpx !important; color: var(--c-text-mid) !important;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-recent-delete { flex-shrink: 0; width: 46rpx; height: 46rpx; padding: 0; border: 0;
-  border-radius: 50%; background: #F1F3F4; color: #858D92; font-size: 34rpx; font-weight: 400;
-  line-height: 42rpx; text-align: center; transform: translateY(4rpx); }
-.rec-recent-delete:active { background: #E2E6E8; color: #626A6F; }
-.rec-recent-chevron { color: var(--c-text-weak); font-size: 32rpx; transition: transform .2s ease; }
-.rec-recent-chevron.open { transform: rotate(180deg); }
+.rec-recent-sub { font-size: 27rpx; line-height: 1.4; color: #6B7280; }
+/* 右侧箭头：CSS 边框画（CLAUDE.md），收起右指›、展开子列表时转下 */
+.rec-recent-chev { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx;
+  border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7;
+  transform: rotate(-45deg); transition: transform .2s ease; }
+.rec-recent-chev.open { transform: rotate(45deg); }
 .rec-recent-items { margin: -2rpx 0 14rpx 20rpx; padding-left: 20rpx; border-left: 4rpx solid #E8ECEE; }
 .rec-recent-item { display: flex; align-items: center; gap: 18rpx; padding: 17rpx 2rpx; border-top: 2rpx solid #F0F2F3; }
 .rec-recent-item > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
@@ -4912,21 +4880,29 @@ onActivated(show)
 .rec-recent-item em { flex-shrink: 0; color: var(--c-primary-dark); font-size: 27rpx; font-style: normal; }
 .rec-recent-empty { padding: 22rpx 0 26rpx; border-top: 2rpx solid #EEF1F3;
   text-align: center; font-size: 27rpx; color: var(--c-text-weak); }
-.plan-stack.reception-mode .plan-todo-card { margin-top: 57rpx; }
-.plan-stack.reception-mode .plan-todo-card { padding-bottom: 8rpx; }
-.plan-stack.reception-mode .plan-todo-card .yc-list-head { min-height: 72rpx; padding: 10rpx 2rpx 12rpx; }
+/* 待办轻列表化（0730 图一/spec §5）：容器去白卡壳——收起时只是一行「待办事项 · N 项 ›」
+   （上下细分隔线），展开后每条待办各自成白卡（白卡＝要办的事） */
+.plan-stack.reception-mode .plan-todo-card { margin-top: 26rpx; padding: 0 8rpx 8rpx;
+  background: transparent; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-head { min-height: 96rpx; padding: 0 2rpx;
+  border-top: 2rpx solid #E2E5EA; border-bottom: 2rpx solid #E2E5EA; }
 .plan-stack.reception-mode .plan-todo-card .yc-list-head.foldable { cursor: pointer; }
-.rec-todo-chevron { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  width: 48rpx; height: 48rpx; color: var(--c-text-weak); font-size: 30rpx; transition: transform .2s ease; }
-.rec-todo-chevron.open { transform: rotate(180deg); }
-.plan-stack.reception-mode .plan-todo-card .yc-head-title { font-size: 34rpx; font-weight: 400; }
-.plan-stack.reception-mode .plan-todo-card .yc-list-count {
-  margin-right: auto; font-size: 34rpx; font-weight: 600;
-}
-.plan-stack.reception-mode .plan-todo-card .yc-list-count.danger { color: #B42318; }
-.plan-stack.reception-mode .plan-todo-card .yc-list-count.warn { color: #B26A00; }
-.plan-stack.reception-mode .plan-todo-card .yc-list-count.safe { color: #278653; }
-.plan-stack.reception-mode .plan-todo-card .yc-item.todo-plain { padding: 24rpx 4rpx; cursor: default; }
+/* 收起=右指›、展开=下指（CSS 边框画箭头，字符箭头基线坠，见 CLAUDE.md） */
+.rec-todo-chev { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx;
+  border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7;
+  transform: rotate(-45deg); transition: transform .2s ease; }
+.rec-todo-chev.open { transform: rotate(45deg); }
+.plan-stack.reception-mode .plan-todo-card .yc-head-title { font-size: 30rpx; font-weight: 700; color: #536175; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-count { margin-right: auto; font-size: 27rpx; font-weight: 500; color: #6B7280; }
+.plan-stack.reception-mode .plan-todo-card .yc-list-count::before { content: '· '; }
+/* 计数不再红黄绿三色（三级规则：常态灰）；积压的警示由待办条目自身承担 */
+.plan-stack.reception-mode .plan-todo-card .yc-list-count.danger,
+.plan-stack.reception-mode .plan-todo-card .yc-list-count.warn,
+.plan-stack.reception-mode .plan-todo-card .yc-list-count.safe { color: #6B7280; }
+/* 展开后的每条待办＝白卡（spec §5 白卡=要办的事） */
+.plan-stack.reception-mode .plan-todo-card .yc-item.todo-plain { margin-top: 16rpx; padding: 24rpx 26rpx;
+  background: #fff; border: 0; border-radius: 20rpx;
+  box-shadow: 0 2rpx 6rpx rgba(20,33,61,.04), 0 8rpx 20rpx rgba(20,33,61,.06); cursor: default; }
 .plan-stack.reception-mode .plan-todo-card .yc-item-title { font-size: 34rpx; }
 .plan-stack.reception-mode .plan-todo-card .yc-item-sub { font-size: 26rpx; }
 .plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
