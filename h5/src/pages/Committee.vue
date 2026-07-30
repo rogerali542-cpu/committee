@@ -11,10 +11,11 @@
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
-      <!-- 评分数字纯白（0731 设计师定）：红绿灯渐变的绿会撞接待模块色，而评分不属于任何模块 -->
+      <!-- 评分（0731 用户定四改）：数字恢复红绿灯渐变——颜色与得分高低挂钩是它的语义，不是模块色；
+           标签「当前综合评分」，数字在标签宽度内水平居中 -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
-        <span class="hd-score-num">{{ score }}</span>
-        <span class="hd-score-label">综合评分 ›</span>
+        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
+        <span class="hd-score-label">当前综合评分 ›</span>
       </div>
     </div>
 
@@ -4276,12 +4277,12 @@ onActivated(show)
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
-/* 顶栏右上角评分（0731 定稿改竖排）：大数字在上、「综合评分 ›」在下，右对齐、可点进个人中心 */
-.hd-score { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 6rpx; align-self: center; cursor: pointer; }
+/* 顶栏右上角评分（0731 四改）：大数字在上并在标签宽度内水平居中、「当前综合评分 ›」在下，可点进个人中心 */
+.hd-score { display: inline-flex; flex-direction: column; align-items: center; gap: 6rpx; align-self: center; cursor: pointer; }
 .hd-score:active { opacity: .7; }
 .hd-score-label { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
-/* 数字纯白（0731 设计师定：绿=接待模块色，评分不属于模块；页头已是中性深灰，白字即可） */
-.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; color: #fff; }
+/* 数字随分数高低红绿灯渐变（0731 用户定：颜色与得分挂钩是评分语义，恢复；backgroundImage 由 scoreGradient 注入） */
+.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 /* 当前会议主卡片 */
 /* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
    适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
