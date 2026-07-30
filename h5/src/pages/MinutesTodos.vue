@@ -1,8 +1,15 @@
 <template>
-  <div class="todos-page" style="overflow-y:auto;">
+  <div class="todos-page" :class="{ 'agg-page': aggMode }" style="overflow-y:auto;">
     <!-- 双模式（0730 用户定）：带 meetingId＝单场会议的待办（原有流程不变）；
-         不带参数＝业委会整体待办（聚合全部会议已固化待办 + 接待未办结事项） -->
-    <PageNav :title="aggMode ? '业委会待办' : '待办事项'" />
+         不带参数＝业委会整体待办（0731 设计师稿：中性深灰页头+三页签+只读卡片点击分流详情） -->
+    <PageNav v-if="!aggMode" title="待办事项" />
+    <div v-else class="agg-hd">
+      <div class="agg-hd-row">
+        <div class="agg-back" @click="goBack">‹</div>
+        <span class="agg-hd-title">待办事项</span>
+      </div>
+      <div class="agg-hd-sub">{{ aggPendingCount }} 项待办</div>
+    </div>
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <!-- 错误/等待态（加载失败/缺参/待主任确认）：只提示，不给增删 -->
@@ -37,14 +44,45 @@
       </div>
     </template>
 
+    <!-- 业委会整体待办（0731 设计师稿）：三页签过滤；卡片只读——标题+状态（待跟进灰/处理中蓝）、
+         日期+来源+进度两列副区；点击分流到能操作的详情页（会议→该场待办页、接待→接待详情）。
+         已办事项不在本页，走底部「档案馆 · 已办事项」 -->
+    <template v-else-if="aggMode">
+      <div class="agg-tabs">
+        <div v-for="t in AGG_TABS" :key="t.key" class="agg-tab" :class="{ active: aggTab === t.key }" @click="aggTab = t.key">{{ t.label }}</div>
+      </div>
+      <div class="agg-body">
+        <div class="agg-card" v-for="it in aggList" :key="it.key" @click="it.onTap()">
+          <div class="agg-line1">
+            <span class="agg-title">{{ it.title }}</span>
+            <span class="agg-status" :class="it.doing ? 'st-doing' : 'st-todo'">{{ it.doing ? '处理中' : '待跟进' }}</span>
+          </div>
+          <div class="agg-line2">
+            <span class="agg-date">{{ it.dateText }}</span>
+            <div class="agg-srccol">
+              <span>{{ it.source }}</span>
+              <span v-if="it.progress">{{ it.progress }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="!aggList.length" class="access-card">
+          <div class="access-icon">✓</div>
+          <span class="access-title">当前没有待办事项。</span>
+        </div>
+        <!-- 已办事项收进档案馆（0731 设计师稿），本页只留未办 -->
+        <div class="agg-arch" @click="goArchiveDone">
+          <span class="agg-arch-text"><b>档案馆</b> · 已办事项 {{ aggDoneCount }} 项</span>
+          <i class="agg-arch-arr"></i>
+        </div>
+      </div>
+    </template>
+
     <template v-else>
       <!-- 无 AI 待办（无卡片）时的提示；主任仍可在下方手动增补。新增表单打开时收起，避免「无待办」与「正在新增」同屏矛盾 -->
-      <div v-if="!cards.length && !rawText && !manualForm.open && !(aggMode && recCards.length)" class="access-card">
+      <div v-if="!cards.length && !rawText && !manualForm.open" class="access-card">
         <div class="access-icon">✓</div>
-        <span class="access-title">{{ aggMode ? '当前没有待办事项。' : '本次会议无明确待办事项。' }}</span>
+        <span class="access-title">本次会议无明确待办事项。</span>
       </div>
-      <!-- 聚合模式分节：会议待办（各场会议已固化的）在前，接待待办在后 -->
-      <div v-if="aggMode && sortedCards.length" class="agg-sec">会议待办 <em>{{ sortedCards.length }} 项</em></div>
       <!-- 已完成沉底：未办的排前面，完成一条自动沉到底部 -->
       <div class="todo-card" v-for="(item, index) in sortedCards" :key="item.id || index">
         <!-- 编辑态：整卡切换为修改表单（复用新增表单样式） -->
@@ -71,8 +109,7 @@
             <button v-if="canPushTicket && !item.ticketNo" class="delete-btn" :disabled="item.deleting" @click="deleteTodo(item)">删除</button>
           </div>
         </div>
-        <div class="todo-meta" v-if="item.owner || item.dueText || (aggMode && item.meetingTitle)">
-          <div class="meta-item" v-if="aggMode && item.meetingTitle"><span class="meta-label">来源</span><span class="meta-val">{{ item.meetingTitle }}</span></div>
+        <div class="todo-meta" v-if="item.owner || item.dueText">
           <div class="meta-item" v-if="item.owner"><span class="meta-label">负责人</span><span class="meta-val">{{ item.owner }}</span></div>
           <div class="meta-item" v-if="item.dueText"><span class="meta-label">截止</span><span class="meta-val" :class="{ 'due-urgent': item.dueUrgent }">{{ item.dueText }}{{ item.dueUrgent ? ' ⚠' : '' }}</span></div>
         </div>
@@ -100,29 +137,13 @@
         </template>
       </div>
 
-      <!-- 接待待办（0730 聚合页）：来自接待记录里未办结的事项；处理动作在接待详情页，整卡可点直达 -->
-      <template v-if="aggMode && recCards.length">
-        <div class="agg-sec">接待待办 <em>{{ recCards.length }} 项</em></div>
-        <div class="todo-card rec-todo-row" v-for="r in recCards" :key="'rec-' + r.id" @click="goReception(r)">
-          <div class="todo-top">
-            <span class="todo-title">{{ r.title }}</span>
-            <div class="todo-head-actions">
-              <span class="status-tag" :class="r.doing ? 'tag-doing' : 'tag-todo'">{{ r.doing ? '处理中' : '待处理' }}</span>
-            </div>
-          </div>
-          <div class="rec-todo-sub">{{ r.sub }}</div>
-          <div class="todo-footer rec-todo-foot"><span class="rec-go">去处理 ›</span></div>
-        </div>
-      </template>
-
       <!-- 解析失败兜底：整段原文 -->
       <div class="doc" v-if="rawText">
         <span class="doc-body">{{ rawText }}</span>
       </div>
 
-      <!-- 手动添加（主任）：AI 待办边界难界定，除识别外还需人工增补/删除（删除在每条卡片上）。
-           聚合模式不放新增——手动待办挂在具体会议下，入口保留在单会议待办页 -->
-      <div v-if="isChair && !aggMode" class="manual-zone">
+      <!-- 手动添加（主任）：AI 待办边界难界定，除识别外还需人工增补/删除（删除在每条卡片上） -->
+      <div v-if="isChair" class="manual-zone">
         <button v-if="!manualForm.open" class="manual-add-btn" @click="openManual">＋ 手动添加待办</button>
         <div v-else class="manual-form">
           <div class="manual-form-title">新增待办</div>
@@ -148,7 +169,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
 import * as perm from '@/utils/perm'
-import { navigateTo } from '@/utils/navigate'
+import { navigateTo, navigateBack } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 
 // 待办独立页：优先用后端结构化待办（每条带 id、可点按钮改状态、留痕操作人）。
@@ -312,40 +333,85 @@ const rawText = ref('')
 const emptyText = ref('')
 
 let meetingId = null
-// 独立聚合模式（0730 用户定）：URL 不带 meetingId＝业委会整体待办。
-// 会议待办来自跨会议聚合接口（每条自带 meetingId，操作沿用单会议接口）；接待待办来自接待记录未办结项。
+// 独立聚合模式（0730 用户定；0731 设计师稿）：URL 不带 meetingId＝业委会整体待办。
+// 本页只读总览：会议待办来自跨会议聚合接口，接待待办来自接待记录未办结项；
+// 操作分流到各自详情页（会议→该场待办页，接待→接待详情）。已办事项收进档案馆「已办」页签。
 const aggMode = ref(false)
-const recCards = ref([])
+const AGG_TABS = [
+  { key: 'all', label: '全部' },
+  { key: 'reception', label: '业主接待' },
+  { key: 'meeting', label: '会议议题' }
+]
+const aggTab = ref('all')
+const aggMeeting = ref([])    // 跨会议待办原始 VO（含 done，档案馆计数用）
+const aggReception = ref([])  // 接待记录原始数据（含 done）
 function fmtAggDate(s) {
   const p = String(s || '').split('-')
   return p.length === 3 ? (Number(p[1]) + '月' + Number(p[2]) + '日') : String(s || '')
 }
+function shortMeetingName(title) {
+  const m = String(title || '').match(/第\s*(\d+)\s*次/)
+  return m ? ('第' + m[1] + '次例会') : String(title || '')
+}
+const aggItems = computed(() => {
+  const meeting = (aggMeeting.value || []).filter(t => t.status !== 'done').map(t => ({
+    key: 'm-' + t.id, kind: 'meeting',
+    title: t.title,
+    date: t.meetingDate || '',
+    dateText: fmtAggDate(t.meetingDate),
+    // 来源行「第2次例会 · 议题」＋进度行（有啥显啥：负责人/截止）
+    source: [shortMeetingName(t.meetingTitle), t.sourceRef ? String(t.sourceRef).slice(0, 12) : ''].filter(Boolean).join(' · '),
+    progress: t.owner ? ('负责人 ' + t.owner) : (t.dueText ? ('截止 ' + t.dueText) : ''),
+    doing: t.status === 'doing',
+    onTap: () => goMeetingTodos(t.meetingId)
+  }))
+  const rec = (aggReception.value || []).filter(r => !r.done && r.visitorName !== '无人来访').map(r => ({
+    key: 'r-' + r.id, kind: 'reception',
+    title: String(r.content || '').slice(0, 20) || '来访事项',
+    date: r.date || '',
+    dateText: fmtAggDate(r.date),
+    source: '接待' + (r.visitorName ? (' · ' + r.visitorName + ' 反映') : ''),
+    progress: r.propertyTransferred ? '已交物业' : (r.ticketPushed ? '已派单' : '尚未派单'),
+    doing: !!(r.propertyTransferred || r.ticketPushed),
+    onTap: () => goReception(r)
+  }))
+  // 旧在前（欠账优先）：拖得最久的排最上
+  return [...meeting, ...rec].sort((a, b) => String(a.date).localeCompare(String(b.date)))
+})
+const aggList = computed(() => aggTab.value === 'all' ? aggItems.value : aggItems.value.filter(i => i.kind === aggTab.value))
+const aggPendingCount = computed(() => aggItems.value.length)
+const aggDoneCount = computed(() =>
+  (aggMeeting.value || []).filter(t => t.status === 'done').length +
+  (aggReception.value || []).filter(r => r.done && r.visitorName !== '无人来访').length)
 async function loadAll() {
   try {
     const [meeting, reception] = await Promise.all([
       api.committeeTodosOverview().catch(() => []),
       api.receptionRecords('all').catch(() => [])
     ])
-    cards.value = markDueUrgent(meeting || [])
-    recCards.value = (reception || [])
-      .filter(r => !r.done && r.visitorName !== '无人来访')
-      .map(r => ({
-        id: r.id,
-        doing: !!(r.propertyTransferred || r.ticketPushed),
-        title: (r.visitorName ? r.visitorName + '：' : '') + (String(r.content || '').slice(0, 30) || '来访事项'),
-        sub: [fmtAggDate(r.date), r.receiver ? ('接待人 ' + r.receiver) : ''].filter(Boolean).join(' · ')
-      }))
+    aggMeeting.value = meeting || []
+    aggReception.value = reception || []
     emptyText.value = ''
   } catch (e) {
     emptyText.value = '加载失败，请稍后重试'
   }
   loading.value = false
 }
+function goBack() { navigateBack() }
+// 同组件带参自跳（/minutes-todos → /minutes-todos?meetingId=N）：vue-router 复用实例不触发
+// onMounted，直接整页跳转最稳
+function goMeetingTodos(id) { window.location.href = '/minutes-todos?meetingId=' + id }
 function goReception(r) {
   navigateTo('/pages/reception-detail/reception-detail?id=' + r.id)
   // 软路由偶发不切视图（本仓已知坑）：0.3s 后没见到接待详情哨兵就硬跳
   setTimeout(() => {
     if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + r.id
+  }, 300)
+}
+function goArchiveDone() {
+  navigateTo('/library?tab=done')
+  setTimeout(() => {
+    if (!document.querySelector('.arch-page')) window.location.href = '/library?tab=done'
   }, 300)
 }
 
@@ -626,14 +692,36 @@ onMounted(() => {
   .rollback-btn { flex:0 0 auto; }
 }
 
-/* 聚合模式（0730 独立待办页）：分节标题 + 接待待办卡 */
-.agg-sec { display: flex; align-items: baseline; gap: 10rpx; margin: 28rpx 4rpx 18rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
-.agg-sec em { font-style: normal; font-size: 25rpx; font-weight: 500; color: #8A94A6; }
-.rec-todo-row { cursor: pointer; }
-.rec-todo-row:active { background: #F7F9FB; }
-.rec-todo-sub { margin-top: 10px; font-size: 16px; color: #6B7280; }
-.rec-todo-foot { justify-content: flex-end; }
-.rec-go { color: #2F5F9E; font-size: 16px; font-weight: 700; }
+/* ── 业委会整体待办（0731 设计师稿）──
+   中性深灰页头（跨模块页不用三色，同档案馆）+ 三页签下划线式 + 只读白卡 + 档案馆已办行 */
+.todos-page.agg-page { padding: 0 0 60rpx; }
+.agg-hd { background: linear-gradient(160deg, #55606e 0%, #434d5a 100%); padding: calc(env(safe-area-inset-top) + 10rpx) 24rpx 22rpx 12rpx; }
+.agg-hd-row { display: flex; align-items: center; }
+.agg-back { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 60rpx; font-weight: 700; cursor: pointer; }
+.agg-hd-title { color: #fff; font-size: 40rpx; font-weight: 700; }
+.agg-hd-sub { margin: 4rpx 0 0 72rpx; color: rgba(255,255,255,.72); font-size: 27rpx; }
+.agg-tabs { display: flex; background: #fff; border-bottom: 2rpx solid #E2E5EA; }
+.agg-tab { flex: 1; text-align: center; padding: 26rpx 0 20rpx; font-size: 30rpx; font-weight: 600; color: #6B7280; border-bottom: 6rpx solid transparent; cursor: pointer; }
+.agg-tab.active { color: #1F2937; font-weight: 700; border-bottom-color: #3F4A5E; }
+.agg-body { padding: 24rpx; }
+.agg-card { background: #fff; border-radius: 20rpx; padding: 26rpx 28rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.04), 0 8rpx 20rpx rgba(31,41,55,.06); cursor: pointer; }
+.agg-card:active { background: #F7F9FB; }
+.agg-line1 { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; }
+.agg-title { flex: 1; min-width: 0; font-size: 33rpx; font-weight: 700; color: #1F2937; line-height: 1.4; }
+/* 状态三级：待跟进=常态灰、处理中=蓝（跨模块页不随模块变色） */
+.agg-status { flex-shrink: 0; font-size: 26rpx; white-space: nowrap; }
+.agg-status.st-todo { color: #6B7280; font-weight: 500; }
+.agg-status.st-doing { color: #2F5F9E; font-weight: 700; }
+.agg-line2 { display: flex; gap: 26rpx; margin-top: 14rpx; }
+.agg-date { flex-shrink: 0; font-size: 27rpx; color: #6B7280; }
+.agg-srccol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; font-size: 27rpx; color: #6B7280; }
+.agg-srccol span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 档案馆已办行：轻列表（透明底+分隔线），「档案馆」深色、说明灰 */
+.agg-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; margin-top: 6rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
+.agg-arch:active { opacity: .65; }
+.agg-arch-text { font-size: 28rpx; font-weight: 500; color: #6B7280; }
+.agg-arch-text b { font-weight: 700; color: #1F2937; }
+.agg-arch-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
 
 .access-card { background: #fff; border-radius: 24rpx; padding: 64rpx 36rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .access-icon { width: 96rpx; height: 96rpx; border-radius: 50%; background: #E8F7EC; color: #2B9E55; display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx; font-weight: 700; }

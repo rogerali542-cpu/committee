@@ -53,13 +53,15 @@ const route = useRoute()
 const TABS = [
   { key: 'committee', label: '会议', emptyHint: '已归档的会议纪要会显示在这里。' },
   { key: 'reception', label: '接待', emptyHint: '往期接待记录与已办事项会显示在这里。' },
-  { key: 'learning', label: '学习', emptyHint: '已完成的培训记录会显示在这里。' }
+  { key: 'learning', label: '学习', emptyHint: '已完成的培训记录会显示在这里。' },
+  // 已办页签（0731 设计师稿）：业委会待办页只留未办，已办结的待办（会议+接待）统一收进这里
+  { key: 'done', label: '已办', emptyHint: '已办结的待办事项会显示在这里。' }
 ]
 
 const tab = ref('committee')
 const yearFilter = ref('')
-const lists = ref({ committee: [], reception: [], learning: [] })
-const counts = ref({ committee: 0, reception: 0, learning: 0 })
+const lists = ref({ committee: [], reception: [], learning: [], done: [] })
+const counts = ref({ committee: 0, reception: 0, learning: 0, done: 0 })
 const loading = ref(true)
 
 function byDateDesc(a, b) { return String(b.date || '').localeCompare(String(a.date || '')) }
@@ -78,11 +80,12 @@ const items = computed(() => {
 
 async function loadArchive() {
   loading.value = true
-  // 三类数据并行拉取，任一失败降级为空数组，互不影响
-  const [committee, reception, learning] = await Promise.all([
+  // 四路数据并行拉取，任一失败降级为空数组，互不影响
+  const [committee, reception, learning, todos] = await Promise.all([
     api.committeeArchiveList().catch(() => []),
     api.receptionRecords('all').catch(() => []),
-    api.learningList('', 'ended').catch(() => [])
+    api.learningList('', 'ended').catch(() => []),
+    api.committeeTodosOverview().catch(() => [])
   ])
   // 会议：已归档会议纪要（保留公示/归档态；三级色规则下这两态都是灰字）
   const committeeItems = (committee || [])
@@ -112,16 +115,39 @@ async function loadArchive() {
     }))
     .sort(byDateDesc)
 
-  lists.value = { committee: committeeItems, reception: receptionItems, learning: learningItems }
-  counts.value = { committee: committeeItems.length, reception: receptionItems.length, learning: learningItems.length }
+  // 已办：会议待办 done + 接待事项 done（0731 设计师稿：待办页只留未办，已办统一在此）
+  const doneTodoItems = (todos || [])
+    .filter(t => t.status === 'done')
+    .map(t => ({
+      id: t.id, kind: 'todo-meeting', meetingId: t.meetingId,
+      title: t.title, date: t.meetingDate || '',
+      statusText: '已完成',
+      metaText: t.meetingTitle || ''
+    }))
+  const doneRecItems = (reception || [])
+    .filter(r => r.done && r.visitorName !== '无人来访')
+    .map(r => ({
+      id: r.id, kind: 'reception',
+      title: String(r.content || '').slice(0, 20) || (r.visitorName ? (r.visitorName + ' 来访') : '接待事项'),
+      date: r.date || '',
+      statusText: '已办结',
+      metaText: r.visitorName ? (r.visitorName + ' 反映') : ''
+    }))
+  const doneItems = [...doneTodoItems, ...doneRecItems].sort(byDateDesc)
+
+  lists.value = { committee: committeeItems, reception: receptionItems, learning: learningItems, done: doneItems }
+  counts.value = { committee: committeeItems.length, reception: receptionItems.length, learning: learningItems.length, done: doneItems.length }
   loading.value = false
 }
 
 function switchTab(t) { tab.value = t; yearFilter.value = '' }
 
 function openDetail(item) {
-  // 会议/学习归档详情走 ArchiveDetail；接待有自己的详情页（ArchiveDetail 不含 reception 分支）
-  if (item.kind === 'reception') {
+  // 会议/学习归档详情走 ArchiveDetail；接待有自己的详情页（ArchiveDetail 不含 reception 分支）；
+  // 已办的会议待办回到该场会议的待办页（整页跳转最稳）
+  if (item.kind === 'todo-meeting') {
+    window.location.href = '/minutes-todos?meetingId=' + item.meetingId
+  } else if (item.kind === 'reception') {
     navigateTo('/pages/reception-detail/reception-detail?id=' + item.id + '&from=archive')
   } else {
     navigateTo('/pages/archive-detail/archive-detail?kind=' + item.kind + '&id=' + item.id)

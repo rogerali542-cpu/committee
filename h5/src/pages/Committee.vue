@@ -3,7 +3,8 @@
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
-        <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '接待中心' : '业委会会议') }}</span>
+        <!-- 0731 设计师定：页头与底栏同名「业主接待」——底栏是用户的定位锚，页头跟着走；「中心」是无信息后缀 -->
+        <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '业主接待' : '业委会会议') }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
@@ -4866,12 +4867,13 @@ onActivated(show)
 /* 底部动作区（0731 修正）：fixed 钉死在底栏上沿——放文档流(order/sticky)时内容不足一屏
    会浮在半空、与底栏脱开，会议页/接待页都踩过，见 CLAUDE.md「底部主操作条」约定。
    白底全宽与底栏连成整片（TabBar 在 /reception-center 加 .merged 去顶描边） */
-.rec-actions { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 14rpx; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+.rec-actions { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 固定动作区(两钮约224rpx)+底栏(约102rpx)两层让位，内容不被挡 */
 .home.has-rec-bar { padding-bottom: calc(340rpx + env(safe-area-inset-bottom)); }
-.rec-adjust-btn { min-height: 84rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 30rpx; font-weight: 650; }
+/* 0731 设计师定：间距压到 8px(16rpx)、次级矮一档——对齐会议页既定规格（mtg-secondary 72 / mtg-primary 100），主次不只靠颜色 */
+.rec-adjust-btn { min-height: 72rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 28rpx; font-weight: 600; }
 .rec-adjust-btn:active { background: #D6E9DD; }
-.rec-register-btn { min-height: 96rpx; border: 0; border-radius: 16rpx; background: #2f6b45; color: #fff; display: flex; align-items: center; justify-content: center; }
+.rec-register-btn { min-height: 100rpx; border: 0; border-radius: 16rpx; background: #2f6b45; color: #fff; display: flex; align-items: center; justify-content: center; }
 .rec-register-btn:active { background: #285f3d; }
 .rrb-main { font-size: 33rpx; font-weight: 700; }
 /* 接待 tab：待办移到近期接待上方（图一顺序 hero→待办→近期→档案→动作区） */
