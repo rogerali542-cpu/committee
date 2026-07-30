@@ -32,16 +32,20 @@
              清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
         <div v-if="planTab === 'reception'" class="rec-notice-hero">
-          <div class="rec-notice-hero-head">
-            <div class="rnh-copy">
-              <div class="rnh-kicker">接待安排</div>
-              <div class="rnh-time" :class="{ none: !receptionTimeText }">
-                {{ receptionTimeText || '还没设置接待时间' }}
-              </div>
-              <!-- 地址整体不拆:放不下就整体换到第二行,不从地名中间掰断 -->
-              <div v-if="recSystem && recSystem.place" class="rnh-place">接待地点：<span class="rnh-place-name">{{ recSystem.place }}</span></div>
+          <!-- 三态时间显示（0730 设计师定，见 receptionHero）：今天/明天绿字、其它灰字，标题语气随之变 -->
+          <template v-if="receptionHero.set">
+            <div class="rnh-top">
+              <span class="rnh-date" :class="receptionHero.tone">{{ receptionHero.dateLine }}</span>
+              <span v-if="receptionHero.week" class="rnh-week">{{ receptionHero.week }}</span>
             </div>
-          </div>
+            <div class="rnh-title">{{ receptionHero.title }}</div>
+            <!-- 地址整体不拆:放不下就整体换到第二行,不从地名中间掰断 -->
+            <div v-if="recSystem && recSystem.place" class="rnh-place"><span class="rnh-place-name">{{ recSystem.place }}</span></div>
+          </template>
+          <template v-else>
+            <div class="rnh-kicker">接待安排</div>
+            <div class="rnh-time none">还没设置接待时间</div>
+          </template>
           <button v-if="canManageReception" class="rec-notice-primary" type="button" @click="goReceptionNotice">
             调整接待安排
           </button>
@@ -50,6 +54,7 @@
         <button v-if="planTab === 'reception' && canManageReception" class="rec-register-card" type="button" @click="openReceptionCreate">
           <span class="rrc-icon">＋</span>
           <span class="rrc-copy">
+            <em v-if="receptionHero.set" class="rrc-when">{{ receptionHero.objLine }}</em>
             <strong>登记接待</strong>
           </span>
           <span class="rrc-arrow">›</span>
@@ -1156,6 +1161,26 @@ const receptionTimeText = computed(() => {
   return String((recSystem.value && recSystem.value.timeDesc) || '')
     .replace(/[，,、]?\s*法定节假日暂停.*$/, '')
     .trim()
+})
+// 接待安排卡三态时间显示（0730 设计师定）：按"下次接待离今天多远"切三种语气——
+//   今天(days0)/明天(days1)＝绿字(模块色②，今日要办但不异常)；其它＝灰字(常态·制度语气)。
+//   底部登记按钮的对象行(今晚/明晚/下次)同步跟着变。
+const receptionHero = computed(() => {
+  if (!receptionTimeText.value) return { set: false }
+  const info = nextReceptionInfo()   // {days, shortDateText:'M月D日', dateText:'M月D日 周四', startTime, range}
+  const hour = parseInt(String(info.startTime).split(':')[0], 10) || 19
+  const part = hour >= 18 ? '晚' : (hour >= 12 ? '下午' : '上午')
+  if (info.days === 0) {
+    return { set: true, tone: 'today', dateLine: '今日 · ' + info.shortDateText, week: '每周四',
+      title: '今' + part + ' ' + info.startTime + ' 接待', objLine: '今' + part + ' · ' + info.shortDateText }
+  }
+  if (info.days === 1) {
+    return { set: true, tone: 'tomorrow', dateLine: '明日 · ' + info.shortDateText, week: '每周四',
+      title: '明' + part + ' ' + info.startTime + ' 接待', objLine: '明' + part + ' · ' + info.shortDateText }
+  }
+  // 其它日子：制度语气，标题写「每周四 起—止 接待」；周四已在左侧「下次·M月D日 周四」，右侧不再重复
+  return { set: true, tone: 'other', dateLine: '下次 · ' + info.dateText, week: '',
+    title: '每周四 ' + info.range + ' 接待', objLine: '下次 · ' + info.shortDateText }
 })
 // 卡标题「X月接待安排」用的当前月份。取一次就够：跨月那一刻用户不会正开着页面
 const recMonth = new Date().getMonth() + 1
@@ -4802,6 +4827,13 @@ onActivated(show)
 .rec-notice-hero-head { display: flex; align-items: flex-start; gap: 26rpx; }
 .rnh-copy { flex: 1; min-width: 0; }
 .rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #3B7150; }
+/* 三态时间显示（0730 设计师定）：今/明＝接待绿(模块色②)，其它＝灰字(常态)；右侧「每周四」仅今/明出（其它已在左侧写了周四） */
+.rnh-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; }
+.rnh-date { font-size: 30rpx; font-weight: 700; }
+.rnh-date.today, .rnh-date.tomorrow { color: #2f6b45; }
+.rnh-date.other { color: #6b7280; }
+.rnh-week { flex-shrink: 0; font-size: 27rpx; color: #8A94A6; }
+.rnh-title { margin-top: 12rpx; font-size: 43rpx; line-height: 1.3; font-weight: 700; color: var(--c-text-strong); }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
   color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rnh-time.none { color: #9A3412; }
@@ -4824,6 +4856,7 @@ onActivated(show)
 .rrc-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx;
   border-radius: 15rpx; background: #4C8062; color: #fff; font-size: 34rpx; font-weight: 500; }
 .rrc-copy { flex: 1; display: flex; flex-direction: column; gap: 3rpx; }
+.rrc-when { font-size: 25rpx; font-weight: 500; color: #6E8578; font-style: normal; }   /* 对象行：今晚/明晚/下次·日期（随接待日切换） */
 .rrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #2F6647; font-weight: 650; }
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
   border-radius: 50%; background: #E4F0E8; color: #3B7150; font-size: 36rpx; font-weight: 700; }
