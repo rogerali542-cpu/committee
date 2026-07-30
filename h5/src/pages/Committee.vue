@@ -114,9 +114,9 @@
         <!-- 三模块聚合卡：每节＝模块名(灰) + 主行(黑) + 副行(灰) + 状态（三级：逾期暖胶囊/今日绿/进行中蓝）；
              整节点击进对应模块页（spec §6 行点击=进入） -->
         <div class="pt-card">
+          <!-- 模块名标签已删（0731 用户定三改：上色仍不够明显，索性删）：各节标题自明——
+               例会/接待字样自带归属，学习空态文案改「近期无学习培训」补上下文 -->
           <div v-for="sec in portalSections" :key="sec.key" class="pt-sec" @click="sec.onTap()">
-            <!-- 模块名加重带模块色（0731 用户定：小灰字看不清；与三级状态②"模块色文字"同构） -->
-            <div class="pt-sec-tag" :class="sec.tone">{{ sec.tag }}</div>
             <div class="pt-sec-row">
               <div class="pt-sec-main">
                 <div class="pt-sec-title">{{ sec.title }}</div>
@@ -1719,14 +1719,15 @@ const portalSections = computed(() => {
     lTitle = lt.title
     lSub = [fmtPlanDate(lt.date), lt.stage === 'ongoing' ? '待整理' : (lt.notified ? '已通知' : '待通知')].filter(Boolean).join(' · ')
   } else {
-    lTitle = '近期无安排'
+    // 模块名标签已删（0731），空态标题自带「学习培训」四字补上下文
+    lTitle = '近期无学习培训'
     const last = lastEndedLearning.value
     if (last) lSub = '上次 ' + fmtPlanDate(last.date) + (last.title ? ' ' + last.title : '')
   }
   return [
-    { key: 'meeting', tag: '业委会会议', tone: 'blue', title: mTitle, sub: mSub, badge: mBadge, tier: mTier, onTap: enterCommitteeArea },
-    { key: 'reception', tag: '业主接待', tone: 'green', title: rTitle, sub: rSub, badge: rBadge, tier: rTier, onTap: enterReceptionArea },
-    { key: 'learning', tag: '学习培训', tone: 'cyan', title: lTitle, sub: lSub, badge: '', tier: '', onTap: goLearningHome }
+    { key: 'meeting', title: mTitle, sub: mSub, badge: mBadge, tier: mTier, onTap: enterCommitteeArea },
+    { key: 'reception', title: rTitle, sub: rSub, badge: rBadge, tier: rTier, onTap: enterReceptionArea },
+    { key: 'learning', title: lTitle, sub: lSub, badge: '', tier: '', onTap: goLearningHome }
   ]
 })
 // 驾驶舱轻列表：聚合待办计数（会议未办 + 接待未办）
@@ -4369,12 +4370,8 @@ onActivated(show)
 .pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; }
 .pt-sec:first-child { border-top: 0; }
 .pt-sec:active { background: #FAFBFC; }
-/* 模块名加重带模块色（0731 用户定：小灰字看不清） */
-.pt-sec-tag { font-size: 26rpx; font-weight: 600; }
-.pt-sec-tag.blue { color: #2f5f9e; }
-.pt-sec-tag.green { color: #2f6b45; }
-.pt-sec-tag.cyan { color: #2a6b73; }
-.pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 10rpx; }
+/* 模块名标签已删（0731 用户定三改）：标题自明归属，行内直接主行起头 */
+.pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; }
 .pt-sec-main { flex: 1; min-width: 0; }
 .pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 长标题（如培训名）窄屏截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
