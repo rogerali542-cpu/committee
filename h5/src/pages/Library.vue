@@ -104,12 +104,13 @@ onActivated(enter)
    并给 PublishNav 传橙色渐变(--pub-nav-grad)。不影响其它 publish 页（它们不设这些变量→维持蓝）。 */
 .lib-page {
   padding-bottom: 40rpx;
-  --pub-blue: #A85800;
-  --pub-blue-2: #C76A00;
-  --pub-blue-deep: #8F4A06;
-  --pub-blue-soft: #FFF3E0;
-  --pub-blue-line: #F0E1CE;
-  --pub-nav-grad: linear-gradient(160deg, #C76A00 0%, #A85800 100%);
+  /* 资料库＝学习深青（用户定，规范三色制借色）；橙留给异常态，历史资料库不用橙 */
+  --pub-blue: #2a6b73;
+  --pub-blue-2: #3f8189;
+  --pub-blue-deep: #1e5a62;
+  --pub-blue-soft: #e2edee;
+  --pub-blue-line: #d3e3e4;
+  --pub-nav-grad: linear-gradient(160deg, #3f8189 0%, #2a6b73 100%);
 }
 
 /* 分类切换（深橙） */

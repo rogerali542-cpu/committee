@@ -225,7 +225,7 @@ onActivated(load);
 
 <style scoped>
 /* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 无横向内边距，天然满宽 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2f5f9e; }   /* 印章页头＝蓝（用户定，规范三色制借色） */
 .hd-cockpit { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 500; }
 .hd-cockpit:active { background: rgba(255,255,255,.2); }
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }

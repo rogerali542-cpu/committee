@@ -143,7 +143,7 @@ async function submit() {
 <style scoped>
 .seal-apply { min-height: 100vh; background: #f5f5f7; }
 /* 顶栏统一为业委会首页同款深青灰（0729 用户定：印章模块整体走蓝/青灰） */
-:deep(.page-nav) { background: #43546F; }
+:deep(.page-nav) { background: #2f5f9e; }   /* 印章页头＝蓝（用户定） */
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }

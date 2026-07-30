@@ -121,6 +121,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+:deep(.page-nav) { background: #2a6b73; }  /* 学习模块页头（规范三色制） */
 .learning-register { min-height: 100vh; background: #f4f5f7; }
 .reg-body { padding: 24rpx 24rpx calc(160rpx + env(safe-area-inset-bottom)); }
 .reg-tip { margin: 0 4rpx 18rpx; font-size: 27rpx; color: #8A6B36; line-height: 1.5; }

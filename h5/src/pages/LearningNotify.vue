@@ -198,6 +198,7 @@ onMounted(load)
 </script>
 
 <style scoped>
+:deep(.page-nav) { background: #2a6b73; }  /* 学习模块页头（规范三色制） */
 .learning-notify { min-height: 100vh; background: #f5f5f7; }
 .notify-body { padding: 24rpx 28rpx calc(200rpx + env(safe-area-inset-bottom)); }
 

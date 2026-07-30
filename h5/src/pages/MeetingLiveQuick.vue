@@ -3914,8 +3914,8 @@ async function returnToRecordingPage() {
 /* 仅本页：顶栏矮 24rpx(12px)，124→100rpx（PageNav 是共享组件，其他页不动） */
 .live-page :deep(.page-nav) { height:calc(100rpx + env(safe-area-inset-top)); }
 .live-page :deep(.page-nav .nav-back) { height:100rpx; }
-/* 顶栏统一为纯深橙（与其他页一致，覆盖 PageNav 默认黄橙渐变） */
-:deep(.page-nav) { background: var(--c-primary-dark); }
+/* 顶栏＝会议模块蓝（规范三色制，覆盖 PageNav 默认橙） */
+:deep(.page-nav) { background: #2f5f9e; }
 
 /* 步骤指示器 */
 /* 首屏容器：至少撑满一屏（100vh 减 顶栏+页面上下留白），参会名单被顶到首屏之下，往下拉才看到 */

@@ -308,6 +308,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+:deep(.page-nav) { background: #2f6b45; }  /* 接待模块页头（规范三色制） */
 .reception-create { min-height: 100vh; background: #F3F5F7; overflow-y: auto; }
 .back-btn { width: 64rpx; height: 64rpx; border: 0; background: transparent; color: #fff; font-size: 54rpx; }
 .nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }

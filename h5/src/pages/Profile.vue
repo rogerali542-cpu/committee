@@ -124,10 +124,10 @@ function refresh() {
   ]
 
   const gradMap = {
-    '主任': 'linear-gradient(160deg,#FFCC44,#FFA800)',
-    '副主任': 'linear-gradient(160deg,#FFCC44,#FFA800)',
-    '委员': 'linear-gradient(160deg,#FFCC44,#FFA800)',
-    '业委会秘书': 'linear-gradient(160deg,#7895B6,#4E6F94)'
+    '主任': 'linear-gradient(160deg,#3a8159,#2f6b45)',
+    '副主任': 'linear-gradient(160deg,#3a8159,#2f6b45)',
+    '委员': 'linear-gradient(160deg,#3a8159,#2f6b45)',
+    '业委会秘书': 'linear-gradient(160deg,#3a8159,#2f6b45)'
   }
   const descMap = {
     '主任': '负责召集主持会议，具有最高操作权限',

@@ -323,6 +323,7 @@ async function exportPdf() {
 </script>
 
 <style scoped>
+:deep(.page-nav) { background: #2f6b45; }  /* 接待模块页头（规范三色制） */
 .page { background: var(--c-bg-page); min-height: 100vh; }
 .notice-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
   padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }

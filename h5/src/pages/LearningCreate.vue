@@ -115,6 +115,7 @@ async function submit() {
 </script>
 
 <style scoped>
+:deep(.page-nav) { background: #2a6b73; }  /* 学习模块页头（规范三色制） */
 .learning-create { min-height: 100vh; background: #f5f5f7; }
 .back-btn { width: 64rpx; height: 64rpx; border: 0; background: transparent; color: #fff; font-size: 54rpx; }
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
