@@ -180,32 +180,22 @@
 
         <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
-          <!-- 主卡（0730 用户定，图一骨架）：最高优先级一场（沿用原 immediate 排序=欠账优先），
-               整卡可点；胶囊=日期时间+倒计时（将来）/状态词（逆风局原样）；大标题+地点。 -->
-          <div v-if="heroMeeting" class="mtg-hero" @click="heroMeeting.onTap()">
-            <div class="mtg-hero-chiprow">
-              <span class="mtg-hero-chip">{{ heroChipText }}</span>
-            </div>
-            <div class="mtg-hero-title">{{ heroMeeting.title }}</div>
-            <div v-if="heroSubText" class="mtg-hero-sub">{{ heroSubText }}</div>
-          </div>
-          <!-- 其余待处理（逆风局：逾期补开/草稿/待安排等无日期项）：保持原卡样式原样；
-               已排期的其它会议移入下方「接下来」（0730 用户定二改） -->
-          <template v-if="pendingExtras.length">
-            <div class="mr-group-title">待处理</div>
-            <div v-for="row in pendingExtras" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
-              <div class="mr-feat-main">
-                <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
-                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+          <!-- 主卡（0730 三改）：所有待处理合并进同一张卡，多张时左右滑动切换（scroll-snap），
+               小圆点指示当前页；整卡可点；底部动作条跟随当前滑到的那张。 -->
+          <div v-if="meetingRecordList.immediate.length" class="mtg-hero-wrap">
+            <div class="mtg-hero-scroller" ref="heroScrollerEl" @scroll.passive="onHeroScroll">
+              <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mtg-hero" @click="row.onTap()">
+                <div class="mtg-hero-chiprow">
+                  <span class="mtg-hero-chip">{{ heroChipFor(row) }}</span>
                 </div>
-                <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
-                  <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
-                </div>
+                <div class="mtg-hero-title">{{ row.title }}</div>
+                <div v-if="heroSubFor(row)" class="mtg-hero-sub">{{ heroSubFor(row) }}</div>
               </div>
-              <button type="button" class="mr-cta-wide" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
             </div>
-          </template>
+            <div v-if="meetingRecordList.immediate.length > 1" class="mtg-hero-dots">
+              <i v-for="(row, i) in meetingRecordList.immediate" :key="'hd-' + row.key" :class="{ on: i === heroIdx }"></i>
+            </div>
+          </div>
           <!-- 底部动作条（0730 图一骨架）：＋新建 + 主CTA（跟随主卡状态）钉在底栏上方拇指区 -->
           <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
             <button v-if="canCreate" type="button" class="mtg-add" @click="openNewMeeting()">＋</button>
@@ -1734,22 +1724,32 @@ const homeFocusItems = computed(() => {
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
 // recDoneOpen 已删(0725 方案A):已完成清单并入月历弹层,不再单独折叠
-// 主卡（0730 用户定，图一骨架）：immediate[0]=最高优先级（欠账>逾期>本期>将来，排序沿用原逻辑）
-const heroMeeting = computed(() => meetingRecordList.value.immediate[0] || null)
-const heroChipText = computed(() => {
-  const h = heroMeeting.value
+// 主卡（0730 三改）：immediate 全量进同一张卡横滑切换；heroIdx=当前滑到的页，底部动作条跟随
+const heroIdx = ref(0)
+const heroScrollerEl = ref(null)
+function onHeroScroll() {
+  const el = heroScrollerEl.value
+  if (!el || !el.clientWidth) return
+  const idx = Math.round(el.scrollLeft / el.clientWidth)
+  const max = meetingRecordList.value.immediate.length - 1
+  heroIdx.value = Math.max(0, Math.min(idx, max))
+}
+const heroMeeting = computed(() => {
+  const list = meetingRecordList.value.immediate
+  return list[Math.min(heroIdx.value, list.length - 1)] || null
+})
+function heroChipFor(h) {
   if (!h) return ''
   const timeSeg = String(h.sub || '').split(' · ')[0] || ''
   const d = h.meetingDate ? daysFromToday(String(h.meetingDate).slice(0, 10)) : null
   // 将来的会=倒计时；今天/欠账/进行中等逆风局=状态词原样
   const right = (d !== null && d > 0 && h.statusClass === 'upcoming') ? '还有 ' + d + ' 天' : h.statusLabel
   return [timeSeg, right].filter(Boolean).join(' · ')
-})
-const heroSubText = computed(() => {
-  const h = heroMeeting.value
+}
+function heroSubFor(h) {
   if (!h) return ''
   return String(h.sub || '').split(' · ').slice(1).join(' · ')
-})
+}
 // 底部主按钮副行：日期 + 短称（“2026年第4次业主委员会例会”→“第4次例会”）
 const heroBarSub = computed(() => {
   const h = heroMeeting.value
@@ -1764,12 +1764,8 @@ const yearMeetingTotal = computed(() => {
   const l = meetingRecordList.value
   return (l.done ? l.done.length : 0) + (l.immediate ? l.immediate.length : 0) + (l.planned ? l.planned.length : 0)
 })
-// 接下来（0730 二改）：主卡之外「已排期」的会 + 计划期次；无日期的逆风项（草稿/逾期/待安排）留在待处理组
-const nextRows = computed(() => {
-  const l = meetingRecordList.value
-  return [...l.immediate.slice(1).filter(r => r.meetingDate), ...l.planned]
-})
-const pendingExtras = computed(() => meetingRecordList.value.immediate.slice(1).filter(r => !r.meetingDate))
+// 接下来（0730 三改）：待处理已全量并入主卡横滑，这里只剩计划期次
+const nextRows = computed(() => meetingRecordList.value.planned)
 const meetingCalendarOpen = ref(false)
 // （折叠态的 sessionStorage 保持机制已整体退役：0730 用户定「返回默认收起、回顶部」+ 后续计划改平铺）
 // （补开判定 isMakeupHeld 已删，0729 用户定：完成列表不再标「补开」，月历已表达各期执行情况）
@@ -4447,8 +4443,15 @@ onActivated(show)
 .hd-cockpit:active { background: rgba(255,255,255,.2); }
 
 /* ── 图一骨架（0730 用户定）：主卡 + 接下来 + 底部动作条 ── */
-.mtg-hero { padding: 30rpx 28rpx 32rpx; margin-bottom: 8rpx; border: 2rpx solid #D6E2EC; border-radius: 24rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); cursor: pointer; }
+/* 主卡横滑（0730 三改）：scroll-snap 逐页吸附，多张待处理左右滑切换 */
+.mtg-hero-wrap { margin-bottom: 8rpx; }
+.mtg-hero-scroller { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; border-radius: 24rpx; }
+.mtg-hero-scroller::-webkit-scrollbar { display: none; }
+.mtg-hero { flex: 0 0 100%; box-sizing: border-box; scroll-snap-align: start; min-height: 220rpx; padding: 30rpx 28rpx 32rpx; border: 2rpx solid #D6E2EC; border-radius: 24rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); cursor: pointer; }
 .mtg-hero:active { background: #F1F7FB; }
+.mtg-hero-dots { display: flex; justify-content: center; gap: 10rpx; margin-top: 14rpx; }
+.mtg-hero-dots i { width: 12rpx; height: 12rpx; border-radius: 50%; background: #C9D2DC; transition: all .2s; }
+.mtg-hero-dots i.on { width: 32rpx; border-radius: 999rpx; background: #3E6BA8; }
 .mtg-hero-chiprow { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
 .mtg-hero-chip { display: inline-block; padding: 10rpx 22rpx; border-radius: 999rpx; background: #E8F0FA; color: #2F5E96; font-size: 28rpx; font-weight: 700; }
 .mtg-hero-title { margin-top: 20rpx; font-size: 40rpx; font-weight: 800; color: #1F2A3C; line-height: 1.35; text-wrap: balance; }
