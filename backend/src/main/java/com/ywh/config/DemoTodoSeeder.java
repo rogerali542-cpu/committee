@@ -4,12 +4,14 @@ import com.ywh.entity.Community;
 import com.ywh.entity.CommitteeMeeting;
 import com.ywh.entity.MeetingTodo;
 import com.ywh.entity.ReceptionRecord;
+import com.ywh.entity.ReceptionSystem;
 import com.ywh.enums.MeetingStage;
 import com.ywh.enums.ReceptionCategory;
 import com.ywh.repository.CommitteeMeetingRepository;
 import com.ywh.repository.CommunityRepository;
 import com.ywh.repository.MeetingTodoRepository;
 import com.ywh.repository.ReceptionRecordRepository;
+import com.ywh.repository.ReceptionSystemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -36,15 +38,34 @@ public class DemoTodoSeeder implements CommandLineRunner {
 
     private final CommunityRepository communityRepo;
     private final ReceptionRecordRepository receptionRepo;
+    private final ReceptionSystemRepository receptionSystemRepo;
     private final CommitteeMeetingRepository meetingRepo;
     private final MeetingTodoRepository todoRepo;
 
     @Override
     public void run(String... args) {
         for (Community c : communityRepo.findAll()) {
+            seedReceptionSystem(c);
             seedPendingReceptions(c);
             seedMeetingTodos(c);
         }
+    }
+
+    /** 接待时间安排默认预置（0731）：此前无任何 seeder 种它，库重建后「每周四接待」就消失，
+     *  接待页/驾驶舱都会退成「还没设置接待时间」。有记录则不动（尊重用户手动设置）。 */
+    private void seedReceptionSystem(Community c) {
+        if (receptionSystemRepo.findByCommunityId(c.getId()).isPresent()) {
+            return;
+        }
+        receptionSystemRepo.save(ReceptionSystem.builder()
+                .community(c)
+                .published(true)
+                .timeDesc("每周四 19:00—20:00，法定节假日暂停")
+                .place(c.getName() + "党群服务站一楼接待室")
+                .person("当值委员轮值")
+                .updatedAt(LocalDateTime.now())
+                .build());
+        log.info("[DemoTodoSeeder] 小区 {} 预置默认接待安排：每周四 19:00—20:00", c.getName());
     }
 
     /** 未办结接待事项（resolution 空且未办结时间为空＝待跟进/处理中），按 sessionKey 逐条幂等。 */

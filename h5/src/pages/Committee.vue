@@ -136,7 +136,7 @@
           </div>
           <!-- 印章管理行已删（0731 用户定：低频），入口移入个人中心菜单 -->
           <div class="pt-link" @click="goArchive()">
-            <span class="pt-link-t">查看历史记录</span>
+            <span class="pt-link-t">历史记录</span>
             <i class="pt-arr"></i>
           </div>
         </div>
