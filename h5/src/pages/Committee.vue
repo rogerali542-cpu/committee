@@ -3,16 +3,17 @@
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
-        <!-- 0731 设计师定：页头与底栏同名「业主接待」——底栏是用户的定位锚，页头跟着走；「中心」是无信息后缀 -->
-        <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '业主接待' : '业委会会议') }}</span>
+        <!-- 0731 设计师定：页头与底栏同名「业主接待」——底栏是用户的定位锚，页头跟着走；「中心」是无信息后缀。
+             驾驶舱页头＝小区业委会全称（0731 定稿：首页说明"这是谁的系统"，比"智能助手"有信息量） -->
+        <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? ((activeRole.communityName || '阳光花园') + '业主委员会') : (planTab === 'reception' ? '业主接待' : '业委会会议') }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回驾驶舱</button>
-      <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score">
-        <span class="hd-score-label">当前业委会综合评分</span>
+      <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
+      <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
-        <span class="hd-score-unit">分</span>
+        <span class="hd-score-label">综合评分 ›</span>
       </div>
     </div>
 
@@ -105,84 +106,38 @@
              卡上只读，编辑和导出打印都在 /reception-notice。
              标题带当前月份「X月接待安排」+ 补地点行 + 按钮统一「编辑」（0717 用户定）：
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
-      <!-- 驾驶舱首页（路线乙）：欢迎语 + 跨条线待办聚合 + 全部业务目录 -->
+      <!-- 驾驶舱首页（0731 设计师定稿重做）：日期行 + 三模块聚合卡 + 轻列表（待办/印章/档案馆）。
+           原欢迎语/智能摘要/三栏任务板/工作板块 dock 整体退役；底栏改用全局 TabBar 四项 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
-        <!-- 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要；不带姓名（顶栏已有） -->
-        <div class="welcome-hero">
-          <div class="welcome-line1">{{ cockpitDateText }}，{{ greeting }}</div>
-          <div class="welcome-line2">{{ cockpitSummaryText }}</div>
-        </div>
-
-        <!-- 任务大卡（0729 用户定）：业委会/接待/学习培训三栏合一，各显示最近一条任务，多条可翻页 -->
-        <div class="ck-section">
-          <div class="ck-board">
-            <!-- 标签独占一行放标题上方（0729 用户定）：兼作类型分隔，行距加大区分三栏 -->
-            <div v-for="row in cockpitBoardRows" :key="row.key" class="ck-board-row">
-              <div class="ck-board-head">
-                <span class="ck-board-tag" :class="row.tone">{{ row.label }}</span>
-                <div v-if="row.items.length > 1" class="ck-board-pager">
-                  <button type="button" @click.stop="boardShift(row.key, -1)">‹</button>
-                  <span>{{ row.index + 1 }}/{{ row.items.length }}</span>
-                  <button type="button" @click.stop="boardShift(row.key, 1)">›</button>
-                </div>
+        <div class="pt-date">{{ cockpitDateText }}</div>
+        <!-- 三模块聚合卡：每节＝模块名(灰) + 主行(黑) + 副行(灰) + 状态（三级：逾期暖胶囊/今日绿/进行中蓝）；
+             整节点击进对应模块页（spec §6 行点击=进入） -->
+        <div class="pt-card">
+          <div v-for="sec in portalSections" :key="sec.key" class="pt-sec" @click="sec.onTap()">
+            <div class="pt-sec-tag">{{ sec.tag }}</div>
+            <div class="pt-sec-row">
+              <div class="pt-sec-main">
+                <div class="pt-sec-title">{{ sec.title }}</div>
+                <div v-if="sec.sub" class="pt-sec-sub">{{ sec.sub }}</div>
               </div>
-              <div class="ck-board-body">
-                <div class="ck-board-main">
-                  <template v-if="row.cur">
-                    <div class="ck-board-title">{{ row.cur.title }}</div>
-                    <div v-if="row.cur.sub" class="ck-board-sub">{{ row.cur.sub }}</div>
-                  </template>
-                  <div v-else class="ck-board-empty">{{ row.emptyText }}</div>
-                </div>
-                <div v-if="row.cur && row.cur.cta" class="ck-board-acts">
-                  <button type="button" class="ck-board-cta" @click="row.cur.onTap()">{{ row.cur.cta }} ›</button>
-                  <button v-if="row.cur.secondaryCta" type="button" class="ck-board-secondary"
-                          @click="row.cur.onSecondaryTap()">{{ row.cur.secondaryCta }}</button>
-                  <button v-else-if="row.cur.draft" type="button" class="ck-board-secondary danger"
-                          @click.stop.prevent="discardDraft">放弃草稿</button>
-                </div>
-                <div v-else-if="!row.cur && row.emptyCta" class="ck-board-acts">
-                  <button type="button" class="ck-board-cta" @click="row.onEmptyTap()">{{ row.emptyCta }} ›</button>
-                </div>
-              </div>
+              <span v-if="sec.badge" class="pt-badge" :class="sec.tier">{{ sec.badge }}</span>
             </div>
           </div>
         </div>
-
-        <div class="welcome-foot">{{ welcomeFootText }}</div>
-        <!-- 工作板块改底栏（0729 用户定）：四项固定在页面底部，随时可达 -->
-        <div class="ck-dock">
-          <div v-for="d in portalDomains" :key="d.key" class="ck-dock-item" @click="d.onTap()">
-            <!-- 画的小图标（0729 用户定：不用汉字图标）：内联 SVG 描边风，stroke 随色块 currentColor -->
-            <span class="ck-dock-ico" :class="d.tone">
-              <svg v-if="d.key === 'committee'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9" r="2.4"/><path d="M15.6 13.6c2.3.2 4.1 1.7 4.7 4.4"/>
-              </svg>
-              <svg v-else-if="d.key === 'reception'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.2 3.4c-.4.3-.8 0-.8-.4V6.5z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/>
-              </svg>
-              <svg v-else-if="d.key === 'learning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 6.5C10.5 5 8.2 4.4 5.5 4.4c-.8 0-1.5.6-1.5 1.4v11c0 .8.7 1.4 1.5 1.4 2.7 0 5 .6 6.5 2.1 1.5-1.5 3.8-2.1 6.5-2.1.8 0 1.5-.6 1.5-1.4v-11c0-.8-.7-1.4-1.5-1.4-2.7 0-5 .6-6.5 2.1z"/><line x1="12" y1="6.5" x2="12" y2="20.3"/>
-              </svg>
-              <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9.5 10.5c-.8-.9-1.3-2-1.3-3.2C8.2 5 9.9 3.4 12 3.4s3.8 1.6 3.8 3.9c0 1.2-.5 2.3-1.3 3.2l-.6.7c-.3.4-.3.9 0 1.3h2.9c1.4 0 2.6 1.1 2.6 2.6v1.5H4.6v-1.5c0-1.4 1.2-2.6 2.6-2.6h2.9c.3-.4.3-.9 0-1.3l-.6-.7z"/><line x1="5.5" y1="20" x2="18.5" y2="20"/>
-              </svg>
-            </span>
-            <span class="ck-dock-label">{{ d.title }}</span>
+        <!-- 轻列表（spec §5：非"当下要办"的入口用透明底+分隔线）：聚合待办 / 印章 / 档案馆 -->
+        <div class="pt-links">
+          <div class="pt-link" @click="goTodos()">
+            <span class="pt-link-t">待办事项<em v-if="ptTodoCount"> · {{ ptTodoCount }} 项</em></span>
+            <i class="pt-arr"></i>
           </div>
-        </div>
-        <!-- 档案馆入口（0730 设计师定）：不属于四个工作板块，做成板块下方一条中性灰入口，年末总结/领导视察时才专门去查 -->
-        <div class="ck-archive" @click="goArchive()">
-          <span class="ck-archive-ico">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3.5" y="4.5" width="17" height="5" rx="1.3"/><path d="M5 9.5v8.2c0 .7.6 1.3 1.3 1.3h11.4c.7 0 1.3-.6 1.3-1.3V9.5"/><line x1="9.7" y1="13" x2="14.3" y2="13"/>
-            </svg>
-          </span>
-          <div class="ck-archive-copy">
-            <span class="ck-archive-title">档案馆</span>
-            <span class="ck-archive-sub">会议纪要 · 接待记录 · 培训记录</span>
+          <div class="pt-link" @click="goSealHome()">
+            <span class="pt-link-t">印章管理</span>
+            <i class="pt-arr"></i>
           </div>
-          <span class="ck-archive-arrow">›</span>
+          <div class="pt-link" @click="goArchive()">
+            <span class="pt-link-t">档案馆</span>
+            <i class="pt-arr"></i>
+          </div>
         </div>
       </div>
 
@@ -1181,7 +1136,7 @@ const receptionHero = computed(() => {
   const title = info.days === 0 ? ('今' + part + ' ' + info.startTime + ' 接待')
     : info.days === 1 ? ('明' + part + ' ' + info.startTime + ' 接待')
       : ('每周四 ' + info.range + ' 接待')
-  return { set: true, dateLine: info.dateText, title }
+  return { set: true, dateLine: info.dateText, title, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
 const recPendingList = computed(() => (calRecs.value || []).filter(r => !r.done && r.visitorName !== '无人来访'))
@@ -1241,9 +1196,13 @@ async function loadCockpitLearningTasks() {
     api.learningList('training', null).catch(() => [])
   ])
   // Array.isArray 防御：接口异常返回对象时不至于让整页崩掉（学习任务缺失可接受，白屏不可接受）
-  cockpitLearningTasks.value = [...(Array.isArray(internal) ? internal : []), ...(Array.isArray(training) ? training : [])]
-    .filter(item => item && item.stage !== 'ended')
+  const all = [...(Array.isArray(internal) ? internal : []), ...(Array.isArray(training) ? training : [])]
+  cockpitLearningTasks.value = all.filter(item => item && item.stage !== 'ended')
+  // 0731 定稿：学习节空态要写「上次 X月X日 …」——留最近一条已完成的
+  lastEndedLearning.value = all.filter(item => item && item.stage === 'ended')
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || null
 }
+const lastEndedLearning = ref(null)
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
 // 开会=该月所在双月期例会状态（已开绿✓/本期橙/逾期红!/待排灰）
 // 接待=该月接待汇总（N件待办橙/已办结绿✓/无灰—）
@@ -1729,6 +1688,62 @@ const cockpitDateText = computed(() => {
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + weekdays[d.getDay()]
 })
+// ── 驾驶舱三模块聚合卡（0731 设计师定稿）──
+// 每节：模块名 + 主行 + 副行 + 状态（三级：逾期=暖胶囊、今日/明日=接待绿、进行中=会议蓝）
+const portalSections = computed(() => {
+  // 会议节：最急项（heroBarSub＝「第3次例会 · 应于 5-6月」式）；无急项给下一场计划
+  let mTitle, mSub = '', mBadge = '', mTier = ''
+  const h = heroMeeting.value
+  if (h) {
+    mTitle = heroBarSub.value
+    if (h.statusClass === 'overdue') { mSub = '尚未召开'; mBadge = '逾期'; mTier = 'st-warn' }
+    else if (h.statusClass === 'ongoing') { mSub = '会议进行中'; mBadge = '进行中'; mTier = 'st-blue' }
+    else { mSub = dueSubFor(h) }
+  } else {
+    const n = nextRows.value[0]
+    mTitle = n ? (nextWhen(n) + ' · ' + shortMeetingName(n.title)) : '近期无会议安排'
+    if (n) mSub = '计划中'
+  }
+  // 接待节
+  let rTitle, rSub = '', rBadge = '', rTier = ''
+  if (receptionHero.value.set) {
+    rTitle = receptionHero.value.title
+    rSub = String((recSystem.value && recSystem.value.place) || '')
+    if (receptionHero.value.days === 0) { rBadge = '今日'; rTier = 'st-green' }
+    else if (receptionHero.value.days === 1) { rBadge = '明日'; rTier = 'st-green' }
+  } else { rTitle = '还没设置接待时间' }
+  // 学习节：有在办给在办；没有＝「近期无安排」+「上次 X月X日 …」
+  const lt = cockpitLearningTasks.value[0]
+  let lTitle, lSub = ''
+  if (lt) {
+    lTitle = lt.title
+    lSub = [fmtPlanDate(lt.date), lt.stage === 'ongoing' ? '待整理' : (lt.notified ? '已通知' : '待通知')].filter(Boolean).join(' · ')
+  } else {
+    lTitle = '近期无安排'
+    const last = lastEndedLearning.value
+    if (last) lSub = '上次 ' + fmtPlanDate(last.date) + (last.title ? ' ' + last.title : '')
+  }
+  return [
+    { key: 'meeting', tag: '业委会会议', title: mTitle, sub: mSub, badge: mBadge, tier: mTier, onTap: enterCommitteeArea },
+    { key: 'reception', tag: '业主接待', title: rTitle, sub: rSub, badge: rBadge, tier: rTier, onTap: enterReceptionArea },
+    { key: 'learning', tag: '学习培训', title: lTitle, sub: lSub, badge: '', tier: '', onTap: goLearningHome }
+  ]
+})
+// 驾驶舱轻列表：聚合待办计数（会议未办 + 接待未办）
+const portalTodos = ref([])
+async function loadPortalTodos() {
+  try { portalTodos.value = (await api.committeeTodosOverview()) || [] } catch (e) { portalTodos.value = [] }
+}
+const ptTodoCount = computed(() =>
+  portalTodos.value.filter(t => t.status !== 'done').length + recPendingList.value.length)
+// 印章/学习入口（与原 portalDomains 同款硬跳，软路由偶发不切视图）
+function goSealHome() { window.location.assign('/seal') }
+function goLearningHome() { setStorage('home_layout', 'tabs'); window.location.assign('/learning') }
+// 评分点击进个人中心（履职统计在那里）
+function goScore() {
+  navigateTo('/profile')
+  setTimeout(() => { if (!document.querySelector('.profile-scroll')) window.location.href = '/profile' }, 300)
+}
 // 欢迎页落款/日期（0724 用户定，极淡）
 const welcomeFootText = computed(() => {
   const org = activeRole.value && activeRole.value.communityName ? activeRole.value.communityName + '业主委员会' : '业委会智能助手'
@@ -2432,6 +2447,7 @@ function show() {
   loadAll()
   loadCalExtras() // 履职年历：接待数据（月格角标与当月清单用）
   loadCockpitLearningTasks()
+  loadPortalTodos()   // 驾驶舱「待办事项 · N 项」计数（会议聚合待办）
   loadDraft()
   // 从「会议通知」页左箭头返回：以编辑模式打开该会议（一次性交接，用完即清）
   const _editId = getStorage('editMeetingId', null)
@@ -4260,15 +4276,12 @@ onActivated(show)
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
-/* 顶栏右上角综合评分：无胶囊白色加粗字直排顶栏上（0716 用户定，胶囊突兀已撤）；
-   align-items:center（非 baseline）大数字上下均匀凸出；渐变色阶已换亮色版适配深橙底 */
-.hd-score { display: inline-flex; align-items: center; gap: 4rpx; align-self: center; }
-/* 标签和单位退到 500（0716）：它俩是陪衬，该粗的是分数本身（800）。
-   没照提案里的 400 走——白字压在深橙上，400 太细会发虚（老人尤其），500 是安全下限。 */
-.hd-score-label { font-size: 28rpx; font-weight: 500; color: #fff; margin-right: 4rpx; }
+/* 顶栏右上角评分（0731 定稿改竖排）：大数字在上、「综合评分 ›」在下，右对齐、可点进个人中心 */
+.hd-score { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 6rpx; align-self: center; cursor: pointer; }
+.hd-score:active { opacity: .7; }
+.hd-score-label { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
 /* 数字随分数高低红绿灯渐变（backgroundImage 由 scoreGradient 注入，background-clip:text 上色） */
-.hd-score-num { position: relative; top: -3rpx; font-size: 44rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
-.hd-score-unit { font-size: 28rpx; font-weight: 500; color: rgba(255,255,255,0.95); }
+.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 /* 当前会议主卡片 */
 /* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
    适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
@@ -4350,7 +4363,31 @@ onActivated(show)
 }
 .portal-home .hd-title { font-size: 38rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 27rpx; }
-.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 190rpx; /* 给固定底栏让位（字号加大后底栏更高） */ }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 150rpx; /* 给全局 TabBar 让位（ck-dock 已退役） */ }
+/* ── 驾驶舱 0731 定稿：日期行 + 三模块聚合卡 + 轻列表 ── */
+.pt-date { padding: 26rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
+.pt-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); padding: 8rpx 30rpx; }
+.pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; }
+.pt-sec:first-child { border-top: 0; }
+.pt-sec:active { background: #FAFBFC; }
+.pt-sec-tag { font-size: 26rpx; color: #6B7280; }
+.pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 10rpx; }
+.pt-sec-main { flex: 1; min-width: 0; }
+.pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; }
+.pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=会议蓝 */
+.pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
+.pt-badge.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; }
+.pt-badge.st-green { color: #2f6b45; font-weight: 700; }
+.pt-badge.st-blue { color: #2f5f9e; font-weight: 700; }
+/* 轻列表（spec §5）：透明底+分隔线；行高 104rpx 方便点按 */
+.pt-links { margin-top: 30rpx; padding: 0 6rpx; }
+.pt-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 104rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
+.pt-link:last-child { border-bottom: 2rpx solid #E2E5EA; }
+.pt-link:active { opacity: .65; }
+.pt-link-t { font-size: 31rpx; font-weight: 650; color: #1F2937; }
+.pt-link-t em { font-style: normal; font-weight: 500; color: #6B7280; font-size: 28rpx; }
+.pt-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
 /* 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要 */
 .welcome-hero { flex-shrink: 0; padding: 16rpx 10rpx 0; }
 /* 0730 用户定：头行收小一档，重心让给卡片正文 */

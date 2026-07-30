@@ -38,19 +38,18 @@ import { redirectTo } from '@/utils/navigate'
 import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
-// 图标底栏(0730 用户定二改:印章独立成第五个 tab，与会议区别大不并入)。印章插在接待与学习之间
+// 四项底栏（0731 设计师定稿：印章 tab 撤销——五格对老人太小不好点，印章入口收进驾驶舱轻列表行）
 const tabs = [
   { path: '/main', label: '业委会', key: 'committee', tone: 'blue' },
   { path: '/reception-center', label: '业主接待', key: 'reception', tone: 'green' },
-  { path: '/seal', label: '印章', key: 'seal', tone: 'seal' },
   { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' },
   { path: '/profile', label: '个人中心', key: 'profile', tone: 'slate' }
 ]
-const active = computed(() => route.path)
-// 欢迎引导页激活时隐藏底栏（选定业务后由 Committee.vue 复位再显示）
-// URL 是驾驶舱时直接判定隐藏，避免开发期热更新中新旧页面卸载/挂载顺序造成底栏短暂误显。
+// 驾驶舱也显示底栏（0731 定稿），但不高亮任何 tab——驾驶舱是各板块之上的首页，不属于哪一格。
+// welcomeVisible（=驾驶舱态）与 URL 双判定，防开发期热更新时挂载顺序造成误亮。
 const routeIsCockpit = computed(() => route.path === '/main' && route.query.home === 'portal')
-const isTab = computed(() => tabs.some((t) => t.path === route.path) && !routeIsCockpit.value && !homeShell.welcomeVisible)
+const active = computed(() => (homeShell.welcomeVisible || routeIsCockpit.value) ? '' : route.path)
+const isTab = computed(() => tabs.some((t) => t.path === route.path))
 // 标签切换用 replace(0725 用户报的 bug):底部四个 tab 是平级页,不应堆进历史。
 // 原来用 push/location.assign,历史会累积「接待中心→业委会→详情页」,从详情页逐级返回时
 // 会穿过 /main 再退回接待中心(用户遇到的"返回错误进入接待页面")。改 replace 后 tab 不占历史栈。
