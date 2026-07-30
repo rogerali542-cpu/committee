@@ -1696,7 +1696,7 @@ const portalSections = computed(() => {
   const h = heroMeeting.value
   if (h) {
     mTitle = heroBarSub.value
-    if (h.statusClass === 'overdue') { mSub = '尚未召开'; mBadge = '逾期'; mTier = 'st-warn' }
+    if (h.statusClass === 'overdue') { mBadge = '逾期'; mTier = 'st-warn' }   // 副行「尚未召开」已删（0731 用户定：逾期胶囊已表达，冗余）
     else if (h.statusClass === 'ongoing') { mSub = '会议进行中'; mBadge = '进行中'; mTier = 'st-blue' }
     else { mSub = dueSubFor(h) }
   } else {
