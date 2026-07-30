@@ -246,8 +246,8 @@
             <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
               <b>{{ viewYear }}年全年会议</b>
-              <!-- 展开控件做成胶囊按钮（0731 用户定：裸灰字看不出可点）；整行仍是点击区 -->
-              <span class="mtg-fold-btn">{{ meetingCalendarOpen ? '收起' : '展开' }} <i class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</i></span>
+              <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
+              <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
             </div>
             <!-- 档案馆入口（0730 设计师定）：全年会议是今年排期总览、可展开；档案馆是历年已归档纪要，两件事并存 -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
@@ -4593,9 +4593,12 @@ onActivated(show)
    展开▾/› 辅助符仍灰。仍不用蓝——展开行非跳转，蓝只留给链接类 */
 .mtg-next-foot b { font-size: 33rpx; font-weight: 650; color: #1F2937; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
-/* 展开/收起胶囊按钮（0731 用户定）：浅底+深字，一眼可点；档案馆行的 › 保持裸箭头不套壳 */
-.mtg-fold-btn { flex-shrink: 0; display: inline-flex; align-items: center; gap: 8rpx; min-height: 64rpx; padding: 0 26rpx; border-radius: 999rpx; background: #EEF2F7; color: #3D4A5C; font-size: 27rpx; font-weight: 600; }
+/* 纯图形展开按钮（0731 用户定二改：去文字）：圆形浅底+CSS 边框箭头（见 CLAUDE.md 配方），
+   向下=可展开、向上=可收起；档案馆行的 › 保持裸箭头不套壳 */
+.mtg-fold-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 68rpx; height: 68rpx; border-radius: 50%; background: #EEF2F7; }
 .mtg-next-foot:active .mtg-fold-btn { background: #E2E8EF; }
+.mfb-chev { display: inline-block; width: 16rpx; height: 16rpx; border-right: 4rpx solid #4A5B70; border-bottom: 4rpx solid #4A5B70; transform: rotate(45deg); position: relative; top: -4rpx; transition: transform .2s ease, top .2s ease; }
+.mfb-chev.open { transform: rotate(-135deg); top: 4rpx; }
 /* 底部动作条（0730 点4四改，回到 fixed）：flex sticky-footer 在这套嵌套下没能真正撑满，
    按钮仍浮在页面中间、下方一大片空白——索性回到最稳的 position:fixed，钉死在底栏
    （TabBar≈102rpx）上沿。白底，与底栏共用一整片白色背景（TabBar 在 /main 去掉顶部描边+
