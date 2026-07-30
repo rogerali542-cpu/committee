@@ -1573,50 +1573,74 @@ function formatLocalDay(value) {
   if (Number.isNaN(d.getTime())) return ''
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
-// 摘要行（0730 用户定「智能一点」）：按真实状态组句——过去的会没办完写「昨天的会议尚未处理完毕（尚未归档）」，
-// 临近任务写「今天有接待」，多条用逗号串联；不再是笼统的「近期有会议任务需要处理」。
+// 摘要行（0730 用户定二改）：综合「当前时刻 × 任务时间 × 任务状态」组句——
+// 每条待办生成一个带优先级的信号（过去没办完 > 今天正点的事 > 逾期 > 明天 > 更远），
+// 每类先取最要紧的一条，再全局挑前两条，按时段措辞（今晚/明天下午/前天开的会…），分号串联。
 const cockpitSummaryText = computed(() => {
-  const parts = []
+  const sigs = []
+  const now = new Date()
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const toMin = (t) => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null }
+  const pastWord = (d) => d === -1 ? '昨天' : d === -2 ? '前天' : (-d) + '天前'
+  const futWord = (d, t) => {
+    const min = toMin(t)
+    const tod = min == null ? '' : (min < 720 ? '上午' : min < 1080 ? '下午' : '晚上')
+    if (d === 0) return tod === '晚上' ? '今晚' : '今天' + tod
+    if (d === 1) return tod === '晚上' ? '明晚' : '明天' + tod
+    if (d === 2) return '后天' + tod
+    return d + '天后'
+  }
   const items = cockpitTodos.value
-  // 会议：先说"过去没办完的"（按最近一场），其次逾期/待安排，再说将来的会
-  const dated = items
+  // —— 会议：区分「开完了没办完的事」「还没结束的会」「将来的会」——
+  const POST_STATE = { '会后整理': '还差会后整理没做完', '整理会议记录': '会议记录还没整理', '继续生成会议纪要': '会议纪要正在生成', '会议详情': '还没归档' }
+  items
     .filter(i => i.tag === '业委会' && i.meeting && i.meeting.meetingDate)
-    .map(i => ({ i, d: daysFromToday(String(i.meeting.meetingDate).slice(0, 10)) }))
-    .filter(e => e.d !== null)
-  const past = dated.filter(e => e.d < 0).sort((a, b) => b.d - a.d)[0]
-  const future = dated.filter(e => e.d >= 0).sort((a, b) => a.d - b.d)[0]
-  if (past) {
-    const when = past.d === -1 ? '昨天' : (-past.d) + '天前'
-    const cta = past.i.cta || ''
-    const st = cta === '会后整理' ? '（待会后整理）'
-      : cta === '整理会议记录' ? '（待整理记录）'
-        : cta === '继续生成会议纪要' ? '（纪要生成中）'
-          : cta === '进入会议' ? '（会议未结束）'
-            : '（尚未归档）'
-    parts.push(when + '的会议尚未处理完毕' + st)
-  } else if (items.some(i => String(i.key).indexOf('committee-overdue') === 0)) {
-    parts.push('有例会逾期未开')
-  } else if (items.some(i => i.key === 'committee-current-period')) {
-    parts.push('本期例会待安排')
-  } else if (future) {
-    const when = future.d === 0 ? '今天' : future.d === 1 ? '明天' : future.d + '天后'
-    parts.push(when + '有会议')
-  }
-  // 接待：待处理事项优先；否则只提临近（今天/明天）的接待日，更远的不占摘要
+    .forEach(i => {
+      const d = daysFromToday(String(i.meeting.meetingDate).slice(0, 10))
+      if (d === null) return
+      const min = toMin(i.meeting.meetingTime)
+      const cta = i.cta || ''
+      const startedPast = d < 0 || (d === 0 && min != null && nowMin > min)
+      if (POST_STATE[cta] && startedPast) {
+        const w = d === 0 ? '今天开完的会' : pastWord(d) + '开的会'
+        sigs.push({ p: 10 + Math.max(d, -3), cat: 'meeting', text: w + POST_STATE[cta] })
+      } else if (cta === '进入会议' && startedPast) {
+        sigs.push({ p: 11, cat: 'meeting', text: (d === 0 ? '今天' : pastWord(d)) + '的会议还没结束' })
+      } else if (d >= 0) {
+        const t = i.meeting.meetingTime ? ' ' + String(i.meeting.meetingTime).slice(0, 5) : ''
+        sigs.push({ p: d === 0 ? 9 : d === 1 ? 6 : 4, cat: 'meeting', text: futWord(d, i.meeting.meetingTime) + t + ' 有业委会会议' })
+      }
+    })
+  if (items.some(i => String(i.key).indexOf('committee-overdue') === 0)) sigs.push({ p: 8, cat: 'meeting', text: '有例会逾期未开' })
+  if (items.some(i => i.key === 'committee-current-period')) sigs.push({ p: 5, cat: 'meeting', text: '本期例会还没安排' })
+  // —— 接待：待办结事项 > 未设置 > 临近的接待日（带钟点）——
   const rec = items.find(i => i.key === 'reception')
-  if (rec) {
-    if (rec.actionable !== false && String(rec.title).indexOf('待处理') >= 0) parts.push(rec.title)
-    else if (rec.title === '接待安排尚未设置') parts.push('接待安排待设置')
-    else if (rec.daysUntil === 0) parts.push('今天有接待')
-    else if (rec.daysUntil === 1) parts.push('明天有接待')
+  if (rec && rec.actionable !== false && String(rec.title).indexOf('待处理') >= 0) {
+    sigs.push({ p: 9, cat: 'reception', text: String(rec.title).replace('待处理', '还没办结') })
+  } else if (rec && rec.title === '接待安排尚未设置') {
+    sigs.push({ p: 6, cat: 'reception', text: '固定接待时间还没设置' })
+  } else if (rec && typeof rec.daysUntil === 'number' && rec.daysUntil <= 2) {
+    const info = nextReceptionInfo()
+    sigs.push({ p: rec.daysUntil === 0 ? 7 : 5, cat: 'reception', text: futWord(rec.daysUntil, info.startTime) + ' ' + info.startTime + ' 有业主接待' })
   }
-  // 学习培训：最近一场（副行已带 今天/明天/N天后）
+  // —— 学习培训：最近一场，带名称（截短防挤爆）——
   const learn = learningCockpitTodos.value[0]
   if (learn) {
-    const m = String(learn.sub || '').match(/^(今天|明天|\d+天后)/)
-    parts.push(m ? m[1] + '有学习培训' : '有学习培训任务')
+    const name = String(learn.title || '').slice(0, 12)
+    const m = String(learn.sub || '').match(/^(今天|明天|(\d+)天后)/)
+    if (m) {
+      const d = m[1] === '今天' ? 0 : m[1] === '明天' ? 1 : Number(m[2])
+      sigs.push({ p: d === 0 ? 7 : d === 1 ? 5 : 3, cat: 'learning', text: m[1] + '有学习培训「' + name + '」' })
+    } else {
+      sigs.push({ p: 3, cat: 'learning', text: '有一场学习培训待完成' })
+    }
   }
-  return parts.length ? parts.join('，') : '近期暂无工作安排'
+  // 每类取最要紧的一条，全局挑前两条
+  const byCat = {}
+  for (const s of sigs.sort((a, b) => b.p - a.p)) if (!byCat[s.cat]) byCat[s.cat] = s
+  const top = Object.values(byCat).sort((a, b) => b.p - a.p).slice(0, 2)
+  if (!top.length) return '近期暂无待办，工作节奏正常'
+  return top.map(s => s.text).join('；')
 })
 const cockpitDateText = computed(() => {
   const d = new Date()
