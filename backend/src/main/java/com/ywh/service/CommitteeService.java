@@ -169,7 +169,9 @@ public class CommitteeService {
         Map<String, Object> taskSummary = getTaskSummary(m, ur);
         boolean hideInternalRecord = isExternal(ur) && !canSeePublished(ur, m);
 
-        PublishInfoVO publishInfo = m.getStage() == MeetingStage.ended ? getPublishInfo(m) : null;
+        // 公示状态不分阶段一律下发（0730 修）：测试期会议长期 ongoing，若只在 ended 才给，
+        // 发布成功后前端刷新拿到 publish=null，会把「确认发布公示」按钮又放出来、可反复发布
+        PublishInfoVO publishInfo = getPublishInfo(m);
         if (publishInfo != null && isExternal(ur)) {
             redactPublishForExternal(publishInfo);
         }
@@ -1806,6 +1808,10 @@ public class CommitteeService {
         // 无效会议此前未初始化公示记录（仅非无效会议会预建）→ 这里按需创建，保证无效会议也能公示
         MeetingPublish pub = publishRepo.findByMeetingId(meetingId)
                 .orElseGet(() -> MeetingPublish.builder().meeting(m).published(false).withdrawn(false).build());
+        // 已公示且未撤回：拒绝重复发布（0730 修）——避免连点/多端重复覆盖公示内容与纪要快照
+        if (Boolean.TRUE.equals(pub.getPublished())) {
+            throw new IllegalArgumentException("本次会议已公示，无需重复发布；如需修改请先撤回公示");
+        }
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         pub.setPublished(true);
         pub.setPublishDate(TODAY);
