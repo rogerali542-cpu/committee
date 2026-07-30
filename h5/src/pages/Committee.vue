@@ -4188,11 +4188,13 @@ onActivated(show)
 }
 /* 顶栏 */
 /* 顶栏加高（0716 用户定），评分徽章 align-self:center 在栏内垂直居中 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
-.reception-home > .hd { background: #3F6B52; }   /* 接待页顶栏转绿（0730 用户定：含顶栏） */
+/* 页头三色制（规范二）：会议蓝#2f5f9e／接待绿#2f6b45（模块色仅用于页头/底栏选中/主按钮） */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2f5f9e; }
+.reception-home > .hd { background: #2f6b45; }   /* 接待页顶栏＝模块绿 */
+.reception-home .hd-sub { color: #c6ddcf; }      /* 接待页头副文字（规范） */
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
-.hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
+.hd-sub { font-size: 28rpx; color: #c5cede; margin-top: 4rpx; line-height: 1.3; }   /* 会议页头副文字（规范） */
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
@@ -4303,7 +4305,7 @@ onActivated(show)
 .ck-board-tag { font-size: 26rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; white-space: nowrap; }
 .ck-board-tag.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-board-tag.green { color: #3B7150; background: #E4F0E8; }
-.ck-board-tag.amber { color: #8A6420; background: #F5EBD8; }
+.ck-board-tag.amber { color: #2a6b73; background: #DDEBEC; }   /* 学习＝模块深青（规范） */
 .ck-board-pager { display: flex; align-items: center; gap: 8rpx; font-size: 25rpx; color: #8A94A6; font-variant-numeric: tabular-nums; }
 .ck-board-pager button { border: 0; background: #F2F4F7; color: #5A6473; width: 48rpx; height: 48rpx; border-radius: 10rpx; font-size: 30rpx; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .ck-board-pager button:active { background: #E4E8ED; }
@@ -4326,7 +4328,7 @@ onActivated(show)
 .ck-dock-ico svg { width: 42rpx; height: 42rpx; }
 .ck-dock-ico.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-dock-ico.green { color: #3B7150; background: #E4F0E8; }
-.ck-dock-ico.amber { color: #8A6420; background: #F5EBD8; }
+.ck-dock-ico.amber { color: #2a6b73; background: #DDEBEC; }
 .ck-dock-label { font-size: 27rpx; color: #4A5560; font-weight: 600; }
 .ck-section { margin-top: 34rpx; }
 .welcome-hero + .ck-section { margin-top: 22rpx; }
@@ -4338,7 +4340,7 @@ onActivated(show)
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
-.ck-todo.amber::before { background: #A87F2E; }   /* 学习培训卡：琥珀色条，与「学」板块同色系 */
+.ck-todo.amber::before { background: #3f8189; }   /* 学习培训卡：青色条（规范学习深青系） */
 .ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-title,
 .ck-todo.blue:not(.ck-todo-complete) .ck-todo-sub { max-width: 430rpx; }
@@ -4415,7 +4417,7 @@ onActivated(show)
 .ck-todo-tag { display: inline-block; flex-shrink: 0; font-size: 22rpx; font-weight: 700; padding: 5rpx 16rpx; border-radius: 999rpx; }
 .ck-todo.blue .ck-todo-tag { color: #3A5E92; background: #E6EDF8; }
 .ck-todo.green .ck-todo-tag { color: #3B7150; background: #E4F0E8; }
-.ck-todo.amber .ck-todo-tag { color: #8A6420; background: #F5EBD8; }
+.ck-todo.amber .ck-todo-tag { color: #2a6b73; background: #DDEBEC; }
 .ck-todo-title { margin-top: 8rpx; font-size: 34rpx; font-weight: 800; color: #2A3244; line-height: 1.3; text-wrap: balance; }
 .ck-todo-foot { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; margin-top: 14rpx; }
 .ck-todo-sub { min-width: 0; font-size: 25rpx; color: #8A94A6; line-height: 1.38; text-wrap: balance; }
@@ -4438,12 +4440,12 @@ onActivated(show)
 .ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
 .ck-line.blue::before { background: #3E6BA8; }
 .ck-line.green::before { background: #3F7C5A; }
-.ck-line.amber::before { background: #C79A5B; }
+.ck-line.amber::before { background: #4e8f98; }
 .ck-line:active { transform: translateY(2rpx); }
 .ck-line-ico { flex-shrink: 0; width: 82rpx; height: 82rpx; border-radius: 21rpx; display: flex; align-items: center; justify-content: center; font-size: 43rpx; font-weight: 800; }
 .ck-line-ico.blue { background: #E6EDF8; color: #3A5E92; }
 .ck-line-ico.green { background: #E4F0E8; color: #3B7150; }
-.ck-line-ico.amber { background: #F1E8D8; color: #9C6B2E; }
+.ck-line-ico.amber { background: #DDEBEC; color: #2a6b73; }
 .ck-line-info { flex: 1; min-width: 0; }
 .ck-line-title { font-size: 32rpx; font-weight: 750; color: #2A3244; }
 .ck-line-detail { margin-top: 8rpx; font-size: 25rpx; font-weight: 500; color: #708078; line-height: 1.35; }
@@ -4798,7 +4800,7 @@ onActivated(show)
   font-size: 25rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
 /* 三级状态色（0730 设计师定，全 app 通用）：待处理=常态灰、处理中=进行中蓝、已办结=常态灰 */
 .rec-recent-title i.pending { color: #6B7280; background: transparent; }
-.rec-recent-title i.doing { color: #2F5F9E; background: transparent; }
+.rec-recent-title i.doing { color: #2f6b45; background: transparent; }
 .rec-recent-title i.done { color: #6B7280; background: transparent; }
 .rec-recent-copy span { font-size: 27rpx; line-height: 1.4; color: var(--c-text-weak); }
 /* 收起态摘要行：是谁、什么事，一眼可读 */

@@ -411,6 +411,6 @@ onMounted(() => {
 .stage-pill { font-size: 28rpx; font-weight: 600; padding: 6rpx 18rpx; border-radius: 12rpx; white-space: nowrap; }
 /* 三级状态色（0730 设计师定，全 app 通用）：已通知/待通知=常态灰、待整理=进行中蓝、已完成=常态灰 */
 .stage-pill.preparing { background: transparent; color: #6B7280; }
-.stage-pill.ongoing { background: transparent; color: #2F5F9E; }
+.stage-pill.ongoing { background: transparent; color: #2a6b73; }
 .stage-pill.ended { background: transparent; color: #6B7280; }
 </style>

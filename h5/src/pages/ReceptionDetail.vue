@@ -333,7 +333,7 @@ function goBack() {
    同是浅底状态胶囊、同是「有人在办、还没完」，语义和角色都对得上。
    跟按钮那边退掉青的理由也不冲突：那儿是两颗深色实心按钮并排、青蓝只差 40° 色相分不开；
    这儿是顶部一枚浅底胶囊，离按钮十万八千里，不存在两色相邻比对的问题。 */
-.stage-pill.doing { background: transparent; color: #2F5F9E; }
+.stage-pill.doing { background: transparent; color: #2f6b45; }
 .stage-pill.done { background: transparent; color: #6B7280; }
 
 .info-card, .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);

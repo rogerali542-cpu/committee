@@ -288,12 +288,12 @@ onUnmounted(() => {
 .page { min-height: 100vh; background: #f4f5f7; padding: 0 24rpx 160rpx; box-sizing: border-box; }
 
 /* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 有 24rpx 横向内边距，负边距抵消让顶栏满宽 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #A85800; }   /* 学习页顶栏转深橙（0730 用户定：含顶栏） */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2a6b73; }   /* 学习页顶栏＝模块深青（规范：学习不能用橙，橙留给异常色） */
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-cockpit { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 500; }
 .hd-cockpit:active { background: rgba(255,255,255,.2); }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
-.hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
+.hd-sub { font-size: 28rpx; color: #bdd8db; margin-top: 4rpx; line-height: 1.3; }   /* 学习页头副文字（规范） */
 
 /* 年度目标 */
 .learn-target { margin: 20rpx 0 24rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 26rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }
@@ -351,7 +351,7 @@ onUnmounted(() => {
 /* 三级状态色（0730 设计师定，全 app 通用）：已通知/待通知=常态灰、待整理=进行中蓝(当前该办的阶段)、
    已完成=常态灰。（年度达标进度 .annual-status 属合规指标、非任务状态，保留绿/琥珀语义不动） */
 .lc-pill.preparing { background: transparent; color: #6B7280; }
-.lc-pill.ongoing { background: transparent; color: #2F5F9E; }
+.lc-pill.ongoing { background: transparent; color: #2a6b73; }
 .lc-pill.ended { background: transparent; color: #6B7280; }
 .lc-meta { display: flex; flex-direction: column; gap: 8rpx; margin: 16rpx 0 12rpx; padding-top: 18rpx; border-top: 2rpx solid #F1F3F5; }
 .lc-detail-btn { display: block; width: 56%; height: 72rpx; margin: 8rpx auto 2rpx; border: 2rpx solid #D8C9A8; border-radius: 16rpx; background: #FFFBF2; color: #8B5A1E; font-size: 28rpx; font-weight: 600; }
@@ -378,11 +378,11 @@ onUnmounted(() => {
 .la-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 8rpx; }
 .la-card:active { opacity: 0.7; }
 /* 0730 用户定：学习页统一深橙色系——内部=深橙、外部=浅一档的琥珀，不再用蓝 */
-.la-internal::before { background: #A85800; }   /* 内部学习＝深橙 */
-.la-external::before { background: #C98F3F; }   /* 外部培训＝琥珀 */
+.la-internal::before { background: #2a6b73; }   /* 内部学习＝模块深青 */
+.la-external::before { background: #4e8f98; }   /* 外部培训＝浅一档青（同模块色系） */
 .la-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .la-copy strong { font-size: 32rpx; line-height: 1.3; font-weight: 700; }
-.la-internal .la-copy strong { color: #8F4A06; }
+.la-internal .la-copy strong { color: #1e5a62; }
 .la-external .la-copy strong { color: #96702B; }
 .la-copy em { font-size: 24rpx; line-height: 1.35; color: #99A0A8; font-style: normal; }
 .la-arrow { flex-shrink: 0; font-size: 38rpx; font-weight: 700; }
