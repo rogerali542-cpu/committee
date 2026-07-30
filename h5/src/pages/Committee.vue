@@ -249,10 +249,11 @@
               <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
               <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
             </div>
-            <!-- 档案馆入口（0730 设计师定）：全年会议是今年排期总览、可展开；档案馆是历年已归档纪要，两件事并存 -->
+            <!-- 档案馆入口（0730 设计师定）：全年会议是今年排期总览、可展开；档案馆是历年已归档纪要，两件事并存。
+                 右侧与展开按钮同款圆底图形钮，仅方向不同（0731 用户定：右指=跳转、下指=展开） -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
               <b>档案馆 · 会议纪要</b>
-              <span class="mtg-next-more">›</span>
+              <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
             </div>
           </div>
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
@@ -4602,6 +4603,7 @@ onActivated(show)
 .mtg-next-foot:active .mtg-fold-btn { background: #E2E8EF; }
 .mfb-chev { display: inline-block; width: 16rpx; height: 16rpx; border-right: 4rpx solid #4A5B70; border-bottom: 4rpx solid #4A5B70; transform: rotate(45deg); position: relative; top: -4rpx; transition: transform .2s ease, top .2s ease; }
 .mfb-chev.open { transform: rotate(-135deg); top: 4rpx; }
+.mfb-chev.right { transform: rotate(-45deg); top: 0; left: -3rpx; }   /* 右指＝跳转（档案馆行），与展开钮同款仅换向 */
 /* 底部动作条（0730 点4四改，回到 fixed）：flex sticky-footer 在这套嵌套下没能真正撑满，
    按钮仍浮在页面中间、下方一大片空白——索性回到最稳的 position:fixed，钉死在底栏
    （TabBar≈102rpx）上沿。白底，与底栏共用一整片白色背景（TabBar 在 /main 去掉顶部描边+
