@@ -1,6 +1,6 @@
 <template>
   <div class="pub-page arch-page">
-    <PublishNav title="档案馆" />
+    <PublishNav title="历史记录" />
 
     <div class="pub-wrap">
       <!-- 三页签：会议 / 接待 / 学习（0730 设计师定：统一档案馆，中性深灰、不用三色） -->

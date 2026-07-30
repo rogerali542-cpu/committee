@@ -71,7 +71,7 @@
         </div>
         <!-- 已办事项收进档案馆（0731 设计师稿），本页只留未办 -->
         <div class="agg-arch" @click="goArchiveDone">
-          <span class="agg-arch-text"><b>档案馆</b> · 已办事项 {{ aggDoneCount }} 项</span>
+          <span class="agg-arch-text"><b>历史记录</b> · 已办事项 {{ aggDoneCount }} 项</span>
           <i class="agg-arch-arr"></i>
         </div>
       </div>

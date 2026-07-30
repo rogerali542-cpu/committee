@@ -113,7 +113,7 @@
 
     <!-- 档案馆入口（0730 设计师定）：已完成培训记录都在档案馆 -->
     <div class="learn-arch" @click="goArchive('learning')">
-      <span>档案馆 · 培训记录</span>
+      <span>历史记录 · 培训记录</span>
       <span class="learn-arch-arr">›</span>
     </div>
 

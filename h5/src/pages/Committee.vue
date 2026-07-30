@@ -97,7 +97,7 @@
           </div>
           <!-- 末行档案馆入口（0730 定稿图）：「档案馆」深色、说明灰色 -->
           <div class="rec-recent-arch" @click="goArchive('reception')">
-            <span class="rra-text"><b>档案馆</b> · 往期接待与已办事项</span>
+            <span class="rra-text"><b>历史记录</b> · 往期接待与已办事项</span>
             <span class="rec-recent-arch-arr">›</span>
           </div>
         </div>
@@ -136,7 +136,7 @@
           </div>
           <!-- 印章管理行已删（0731 用户定：低频），入口移入个人中心菜单 -->
           <div class="pt-link" @click="goArchive()">
-            <span class="pt-link-t">档案馆</span>
+            <span class="pt-link-t">查看历史记录</span>
             <i class="pt-arr"></i>
           </div>
         </div>
@@ -208,7 +208,7 @@
             <!-- 档案馆入口（0730 设计师定）：全年会议是今年排期总览、可展开；档案馆是历年已归档纪要，两件事并存。
                  右侧与展开按钮同款圆底图形钮，仅方向不同（0731 用户定：右指=跳转、下指=展开） -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
-              <b>档案馆 · 会议纪要</b>
+              <b>历史记录 · 会议纪要</b>
               <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
             </div>
           </div>
