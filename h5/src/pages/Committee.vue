@@ -162,18 +162,14 @@
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
-        <div class="plan-head" :class="{ foldable: planTab !== 'meeting', 'meeting-plan-head': planTab === 'meeting' }"
-             @click="planTab !== 'meeting' ? (ovGridFold = !ovGridFold) : null">
-          <!-- 开会 tab 标题＝「2026年」（0716 定，多轮收敛：履职年历→全年会议→年份本身当标题，
-               原右上角的年份标签删了）。年份切换箭头已摘，按年计算的能力全保留，恢复见 0e0d15f。 -->
+        <!-- 会议 tab 的「会议安排」标题已删（0730 用户定点3：信息量低、下方卡片自明，删掉让首屏更早进正题）。
+             接待/培训仍保留「全年接待日历」卡头（兼折叠开关） -->
+        <div v-if="planTab !== 'meeting'" class="plan-head foldable" @click="ovGridFold = !ovGridFold">
           <div class="plan-title-wrap">
-            <!-- 标题下的「YYYY年·逾期N期·本期…」摘要行已删（0730 用户定：与下方卡片重复） -->
-            <span v-if="planTab === 'meeting'" class="plan-title">会议安排</span>
-            <span v-else class="plan-title ov-title">全年接待日历</span>
+            <span class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
-            <!-- 标题行不放「发起会议」(0725 用户定:右上角孤悬一个按钮不明所以)——入口在页面底部「发起其他会议」 -->
-            <span v-if="planTab !== 'meeting'" class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
+            <span class="ov-fold-chev" :class="{ open: !ovGridFold }">▾</span>
           </div>
         </div>
 
@@ -202,27 +198,27 @@
           <!-- 接下来（0730 用户图样六改）：去白卡，只留分隔线——次要清单不与待召开卡抢层级；
                行=单行「短名 · 时段」+右侧无底色灰字状态（仍是唯一入口，0725 防误触规则不变）；
                尾行「YYYY年全年会议 | 展开▾」承接原「全年会议一览」折叠 -->
-          <template v-if="nextRows.length">
-            <div class="mtg-next-head">
-              <span>接下来</span>
-              <em>还有 {{ nextRows.length }} 场</em>
+          <!-- 头部「接下来 · 还有N场」只在真有后续场次时出；列表容器恒显（至少含「发起临时会议」/全年会议尾行） -->
+          <div v-if="nextRows.length" class="mtg-next-head">
+            <span>接下来</span>
+            <em>还有 {{ nextRows.length }} 场</em>
+          </div>
+          <div class="mtg-next-list">
+            <div v-for="row in nextRows" :key="row.key" class="mtg-next-row">
+              <span class="mtg-next-line">{{ shortMeetingName(row.title) }} · {{ nextWhen(row) }}</span>
+              <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
             </div>
-            <div class="mtg-next-list">
-              <div v-for="row in nextRows" :key="row.key" class="mtg-next-row">
-                <span class="mtg-next-line">{{ shortMeetingName(row.title) }} · {{ nextWhen(row) }}</span>
-                <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
-              </div>
-              <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
-              <div class="mtg-next-foot" @click="toggleMeetingCalendar">
-                <b>{{ viewYear }}年全年会议</b>
-                <span class="mtg-next-more">{{ meetingCalendarOpen ? '收起' : '展开' }} <i class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</i></span>
-              </div>
+            <!-- 发起临时会议（0730 用户定点2）：低频动作从底部裸「＋」挪来这里，配全文案，
+                 老年用户一眼看懂；底部只留一个主按钮最干净 -->
+            <div v-if="canCreate" class="mtg-next-row mtg-add-row" @click="openNewMeeting()">
+              <span class="mtg-add-line">＋ 发起临时会议</span>
+              <span class="mtg-add-arrow">›</span>
             </div>
-          </template>
-          <!-- 无接下来场次时，全年一览折叠行单独保留 -->
-          <div v-else class="mr-fold" @click="toggleMeetingCalendar">
-            <span>{{ viewYear }}年全年会议</span>
-            <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
+            <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
+            <div class="mtg-next-foot" @click="toggleMeetingCalendar">
+              <b>{{ viewYear }}年全年会议</b>
+              <span class="mtg-next-more">{{ meetingCalendarOpen ? '收起' : '展开' }} <i class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</i></span>
+            </div>
           </div>
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
             <div class="mr-calendar-panel-title">
@@ -251,14 +247,12 @@
             </template>
           </div>
           </div>
-          <!-- 底部动作条（0730 点4改 sticky）：＋新建 + 主CTA（指向最急项）。内容短时跟在列表
-               尾部、不再钉死屏底留大片空白；内容长（展开全年月历）时自动吸附在底栏上方拇指区；
-               导航栏收起时(navHidden)下沉贴屏底 -->
-          <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
-            <button v-if="canCreate" type="button" class="mtg-add" @click="openNewMeeting()">＋</button>
-            <button type="button" class="mtg-primary" @click="heroMeeting ? heroMeeting.onTap() : openNewMeeting()">
-              <span v-if="heroMeeting && heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
-              <span class="mtg-primary-main">{{ heroMeeting ? heroMeeting.statusLabel : '发起会议' }}</span>
+          <!-- 底部动作条（0730 点2改）：裸「＋」已挪进「接下来」列表（发起临时会议），这里只剩一个
+               指向最急项的主 CTA，独占整条、拇指区最干净。无最急项时整条不显示（发起会议走列表那行） -->
+          <div v-if="heroMeeting" class="mtg-actionbar">
+            <button type="button" class="mtg-primary" @click="heroMeeting.onTap()">
+              <span v-if="heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
+              <span class="mtg-primary-main">{{ heroMeeting.statusLabel }}</span>
             </button>
           </div>
         </div>
@@ -4440,11 +4434,7 @@ onActivated(show)
 .ck-chip.calm { color: #3B7150; background: #E7F2EB; }
 .ck-line-enter { flex-shrink: 0; font-size: 34rpx; color: #C1C7D0; }
 /* 会议工作页：驾驶舱管提醒，这里按“近期安排 / 后续计划 / 已完成”组织，避免重复主卡。 */
-.meeting-plan-head { padding: 30rpx 30rpx 24rpx !important; border-bottom: 2rpx solid #E8EDF2; align-items: center; }
-.meeting-plan-head .plan-title-wrap { flex-direction: column; align-items: flex-start; gap: 8rpx; }
-.meeting-plan-head .plan-title { font-size: 34rpx !important; font-weight: 700 !important; }  /* 0730 用户定：缩两号、字重-100 */
-.meeting-year-summary { font-size: 27rpx; font-weight: 550; color: #65758A; line-height: 1.35; }
-/* .meeting-calendar-toggle 已删(0725):查看月历改为列表尾部折叠行,复用 .mr-fold */
+/* 「会议安排」卡头已整体删除（0730 用户定点3），相关 .meeting-plan-head/.meeting-year-summary 样式随之移除 */
 .mr-list { margin: 0; padding: 0 28rpx 12rpx; }
 .mr-group-title { padding: 26rpx 4rpx 14rpx; color: #53657A; font-size: 28rpx; font-weight: 750; letter-spacing: 1rpx; }
 .mr-group-plan { padding-top: 24rpx; padding-bottom: 6rpx; border-top: 2rpx solid #EEF1F4; color: #8792A0; font-size: 23rpx; font-weight: 600; }
@@ -4459,8 +4449,8 @@ onActivated(show)
 /* 主卡横滑（0730 三改）：scroll-snap 逐页吸附，多张待处理左右滑切换 */
 /* 卡中卡修复（0730，点5）：会议 tab 的外层 plan-calendar-card 去壳，内层卡直接落在页面底上 */
 .plan-calendar-card.mtg-flat { border: 0; background: transparent; box-shadow: none; overflow: visible; }
-.meeting-plan-head { border-bottom: 0 !important; padding: 8rpx 8rpx 16rpx !important; }
-.mr-list { padding: 0 4rpx; }
+/* 卡头删除后，会议 tab 列表直接起头：给点上间距，别贴着深色顶栏 */
+.mr-list { padding: 16rpx 4rpx 0; }
 /* 待召开卡（0730 五改）：竖排列表；状态标签与选中态分离 */
 .mtg-due-card { margin-top: 4rpx; margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
 .mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 26rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
@@ -4470,16 +4460,20 @@ onActivated(show)
 .mtg-due-row.selected { background: #F2F7FC; }
 .mtg-due-row.selected::before { content: ''; position: absolute; left: -22rpx; top: 0; bottom: 0; width: 8rpx; background: #3E6BA8; }
 /* 常驻状态标签（点2/4）：无边框、浅底文字，明显不是按钮 */
-.mtg-due-status { flex-shrink: 0; align-self: center; padding: 5rpx 14rpx; border-radius: 8rpx; font-size: 24rpx; font-weight: 600; white-space: nowrap; }
-.mtg-due-status.overdue { color: #B0641A; background: #FBEEDD; }
-.mtg-due-status.ongoing { color: #2F6647; background: #E7F2EB; }
-.mtg-due-status.current, .mtg-due-status.upcoming { color: #5A6B82; background: #EEF2F7; }
+/* 0730 用户定点1：去掉浅底方框（长得像按钮），改无底文字，与「接下来」列表的灰字状态统一。
+   「待召开」用灰字＝与「计划中」一致；逾期/进行中保留语义色文字（无底），仍能一眼看出轻重 */
+.mtg-due-status { flex-shrink: 0; align-self: center; padding: 0; font-size: 25rpx; font-weight: 500; white-space: nowrap; }
+.mtg-due-status.overdue { color: #C0692A; }
+.mtg-due-status.ongoing { color: #2F6647; }
+.mtg-due-status.current, .mtg-due-status.upcoming { color: #97A1AF; }
 .mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 0 8rpx; min-height: 84rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
 .mtg-next-head em { font-style: normal; font-size: 26rpx; font-weight: 500; color: #8A94A6; }
 /* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
 /* 0730 图样六改（点1）：去白卡去边框——次要清单直接铺在页面底色上，只留分隔线，
    和上方待召开白卡拉开视觉层级 */
 .mtg-next-list { padding: 0 8rpx; }
+/* 首行去掉顶分隔线：有「接下来」头时头已作分隔，无头时（无后续场次）也不留孤零零一条线 */
+.mtg-next-list > :first-child { border-top: 0 !important; }
 .mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; }
 .mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #3D4A5C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态签（点2）：灰底方框长得像按钮但用户以为不可点 → 无底色灰字；点击入口能力保留 */
@@ -4495,15 +4489,19 @@ onActivated(show)
    阴影来配合，见 TabBar.vue .tabbar.merged），中间只留一条小缝。z-index 90 < 底栏 100，
    重叠的几像素落在底栏空白内边距里，白叠白无缝。 */
 .mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
-.mtg-add { flex-shrink: 0; width: 96rpx; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #EAF0F7; color: #3E6BA8; font-size: 44rpx; font-weight: 700; }
-.mtg-add:active { background: #DCE6F1; }
-.mtg-primary { flex: 1; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
+/* 「＋ 发起临时会议 ›」行（0730 点2）：复用 .mtg-next-row 骨架；＋与文案同蓝、点明动作，
+   老年用户不用猜；箭头灰、示意可进入 */
+.mtg-add-row { cursor: pointer; }
+.mtg-add-row:active { opacity: .6; }
+.mtg-add-line { flex: 1; min-width: 0; font-size: 29rpx; font-weight: 600; color: #3E6BA8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtg-add-arrow { flex-shrink: 0; font-size: 32rpx; color: #B4BCC7; }
+.mtg-primary { flex: 1; min-height: 100rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
 .mtg-primary:active { background: #35608F; }
 .mtg-primary-sub { font-size: 24rpx; opacity: .85; line-height: 1.3; }
 .mtg-primary-main { font-size: 33rpx; font-weight: 800; line-height: 1.3; }
 /* 会议 tab 内容区给动作条+底栏让位 */
-/* 动作条回到 fixed：底部要清开「固定动作条(约124rpx) + 底栏(约102rpx)」两层，内容才不被挡 */
-.home.has-mtg-bar { padding-bottom: calc(232rpx + env(safe-area-inset-bottom)); }
+/* 动作条回到 fixed：底部要清开「固定动作条(约128rpx) + 底栏(约102rpx)」两层，内容才不被挡 */
+.home.has-mtg-bar { padding-bottom: calc(244rpx + env(safe-area-inset-bottom)); }
 
 /* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
