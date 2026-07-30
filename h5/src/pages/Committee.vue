@@ -227,14 +227,15 @@
           <!-- 接下来（0730 用户图样六改）：去白卡，只留分隔线——次要清单不与待召开卡抢层级；
                行=单行「短名 · 时段」+右侧无底色灰字状态（仍是唯一入口，0725 防误触规则不变）；
                尾行「YYYY年全年会议 | 展开▾」承接原「全年会议一览」折叠 -->
-          <!-- 头部只留「接下来」标题：右侧计数已删（0730 设计师定：信息由下方「还有 N 场」承担） -->
+          <!-- 「接下来」→「后续会议」（0731 用户定：接下来不明确是干什么）；右侧计数已删 -->
           <div v-if="nextRows.length" class="mtg-next-head">
-            <span>接下来</span>
+            <span>后续会议</span>
           </div>
           <div class="mtg-next-list">
-            <!-- 截断而非折叠：默认只出最近 2 场，首屏高度恒定 -->
+            <!-- 截断而非折叠：默认只出最近 2 场，首屏高度恒定。
+                 行式时间在前（0731 用户定：与上方待召开卡统一「时间→名称」时间轴式） -->
             <div v-for="row in visibleNextRows" :key="row.key" class="mtg-next-row">
-              <span class="mtg-next-line">{{ shortMeetingName(row.title) }} · {{ nextWhen(row) }}</span>
+              <span class="mtg-next-line">{{ nextWhen(row) }} · {{ shortMeetingName(row.title) }}</span>
               <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
             </div>
             <!-- 「还有 N 场 ›」：一次展开其余；前 2 场始终在，绝不会点了什么都看不到 -->
@@ -4584,10 +4585,11 @@ onActivated(show)
 /* 状态签（点2 + 设计师三级③）：无底灰字，灰＝#6B7280；「计划中/待确认」都是常态 */
 .mtg-next-chip { flex-shrink: 0; min-height: 88rpx; padding: 0 4rpx 0 20rpx; border: 0; background: transparent; color: #6B7280; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
 .mtg-next-chip:active { opacity: .55; }
-.mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
+.mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 108rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
 .mtg-next-foot:active { opacity: .7; }
-/* 0730 用户定：这行是「展开」不是「跳转」，改深灰字——蓝色只留给可跳转的，避免同色不同行为 */
-.mtg-next-foot b { font-size: 29rpx; font-weight: 600; color: #4B5563; }
+/* 0731 用户定：全年会议/档案馆两行加大两号、颜色更明显（29→33rpx、灰→正文深色），行高随之加大方便点按；
+   展开▾/› 辅助符仍灰。仍不用蓝——展开行非跳转，蓝只留给链接类 */
+.mtg-next-foot b { font-size: 33rpx; font-weight: 650; color: #1F2937; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
 /* 底部动作条（0730 点4四改，回到 fixed）：flex sticky-footer 在这套嵌套下没能真正撑满，
    按钮仍浮在页面中间、下方一大片空白——索性回到最稳的 position:fixed，钉死在底栏
