@@ -4118,7 +4118,7 @@ onActivated(show)
 /* 顶栏 */
 /* 顶栏加高（0716 用户定），评分徽章 align-self:center 在栏内垂直居中 */
 .hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
-.reception-home > .hd { background: #43546F; }
+.reception-home > .hd { background: #3F6B52; }   /* 接待页顶栏转绿（0730 用户定：含顶栏） */
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }

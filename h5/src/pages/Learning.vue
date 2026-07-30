@@ -281,7 +281,7 @@ onUnmounted(() => {
 .page { min-height: 100vh; background: #f4f5f7; padding: 0 24rpx 160rpx; box-sizing: border-box; }
 
 /* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 有 24rpx 横向内边距，负边距抵消让顶栏满宽 */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
+.hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #A85800; }   /* 学习页顶栏转深橙（0730 用户定：含顶栏） */
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
