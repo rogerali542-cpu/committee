@@ -1,6 +1,8 @@
 <template>
   <div class="todos-page" style="overflow-y:auto;">
-    <PageNav title="待办事项" />
+    <!-- 双模式（0730 用户定）：带 meetingId＝单场会议的待办（原有流程不变）；
+         不带参数＝业委会整体待办（聚合全部会议已固化待办 + 接待未办结事项） -->
+    <PageNav :title="aggMode ? '业委会待办' : '待办事项'" />
     <div v-if="loading" class="empty-state"><span>加载中...</span></div>
 
     <!-- 错误/等待态（加载失败/缺参/待主任确认）：只提示，不给增删 -->
@@ -37,10 +39,12 @@
 
     <template v-else>
       <!-- 无 AI 待办（无卡片）时的提示；主任仍可在下方手动增补。新增表单打开时收起，避免「无待办」与「正在新增」同屏矛盾 -->
-      <div v-if="!cards.length && !rawText && !manualForm.open" class="access-card">
+      <div v-if="!cards.length && !rawText && !manualForm.open && !(aggMode && recCards.length)" class="access-card">
         <div class="access-icon">✓</div>
-        <span class="access-title">本次会议无明确待办事项。</span>
+        <span class="access-title">{{ aggMode ? '当前没有待办事项。' : '本次会议无明确待办事项。' }}</span>
       </div>
+      <!-- 聚合模式分节：会议待办（各场会议已固化的）在前，接待待办在后 -->
+      <div v-if="aggMode && sortedCards.length" class="agg-sec">会议待办 <em>{{ sortedCards.length }} 项</em></div>
       <!-- 已完成沉底：未办的排前面，完成一条自动沉到底部 -->
       <div class="todo-card" v-for="(item, index) in sortedCards" :key="item.id || index">
         <!-- 编辑态：整卡切换为修改表单（复用新增表单样式） -->
@@ -67,7 +71,8 @@
             <button v-if="canPushTicket && !item.ticketNo" class="delete-btn" :disabled="item.deleting" @click="deleteTodo(item)">删除</button>
           </div>
         </div>
-        <div class="todo-meta" v-if="item.owner || item.dueText">
+        <div class="todo-meta" v-if="item.owner || item.dueText || (aggMode && item.meetingTitle)">
+          <div class="meta-item" v-if="aggMode && item.meetingTitle"><span class="meta-label">来源</span><span class="meta-val">{{ item.meetingTitle }}</span></div>
           <div class="meta-item" v-if="item.owner"><span class="meta-label">负责人</span><span class="meta-val">{{ item.owner }}</span></div>
           <div class="meta-item" v-if="item.dueText"><span class="meta-label">截止</span><span class="meta-val" :class="{ 'due-urgent': item.dueUrgent }">{{ item.dueText }}{{ item.dueUrgent ? ' ⚠' : '' }}</span></div>
         </div>
@@ -95,13 +100,29 @@
         </template>
       </div>
 
+      <!-- 接待待办（0730 聚合页）：来自接待记录里未办结的事项；处理动作在接待详情页，整卡可点直达 -->
+      <template v-if="aggMode && recCards.length">
+        <div class="agg-sec">接待待办 <em>{{ recCards.length }} 项</em></div>
+        <div class="todo-card rec-todo-row" v-for="r in recCards" :key="'rec-' + r.id" @click="goReception(r)">
+          <div class="todo-top">
+            <span class="todo-title">{{ r.title }}</span>
+            <div class="todo-head-actions">
+              <span class="status-tag" :class="r.doing ? 'tag-doing' : 'tag-todo'">{{ r.doing ? '处理中' : '待处理' }}</span>
+            </div>
+          </div>
+          <div class="rec-todo-sub">{{ r.sub }}</div>
+          <div class="todo-footer rec-todo-foot"><span class="rec-go">去处理 ›</span></div>
+        </div>
+      </template>
+
       <!-- 解析失败兜底：整段原文 -->
       <div class="doc" v-if="rawText">
         <span class="doc-body">{{ rawText }}</span>
       </div>
 
-      <!-- 手动添加（主任）：AI 待办边界难界定，除识别外还需人工增补/删除（删除在每条卡片上） -->
-      <div v-if="isChair" class="manual-zone">
+      <!-- 手动添加（主任）：AI 待办边界难界定，除识别外还需人工增补/删除（删除在每条卡片上）。
+           聚合模式不放新增——手动待办挂在具体会议下，入口保留在单会议待办页 -->
+      <div v-if="isChair && !aggMode" class="manual-zone">
         <button v-if="!manualForm.open" class="manual-add-btn" @click="openManual">＋ 手动添加待办</button>
         <div v-else class="manual-form">
           <div class="manual-form-title">新增待办</div>
@@ -127,6 +148,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import { toast, showModal } from '@/utils/ui'
 import * as perm from '@/utils/perm'
+import { navigateTo } from '@/utils/navigate'
 import PageNav from '@/components/PageNav.vue'
 
 // 待办独立页：优先用后端结构化待办（每条带 id、可点按钮改状态、留痕操作人）。
@@ -290,6 +312,42 @@ const rawText = ref('')
 const emptyText = ref('')
 
 let meetingId = null
+// 独立聚合模式（0730 用户定）：URL 不带 meetingId＝业委会整体待办。
+// 会议待办来自跨会议聚合接口（每条自带 meetingId，操作沿用单会议接口）；接待待办来自接待记录未办结项。
+const aggMode = ref(false)
+const recCards = ref([])
+function fmtAggDate(s) {
+  const p = String(s || '').split('-')
+  return p.length === 3 ? (Number(p[1]) + '月' + Number(p[2]) + '日') : String(s || '')
+}
+async function loadAll() {
+  try {
+    const [meeting, reception] = await Promise.all([
+      api.committeeTodosOverview().catch(() => []),
+      api.receptionRecords('all').catch(() => [])
+    ])
+    cards.value = markDueUrgent(meeting || [])
+    recCards.value = (reception || [])
+      .filter(r => !r.done && r.visitorName !== '无人来访')
+      .map(r => ({
+        id: r.id,
+        doing: !!(r.propertyTransferred || r.ticketPushed),
+        title: (r.visitorName ? r.visitorName + '：' : '') + (String(r.content || '').slice(0, 30) || '来访事项'),
+        sub: [fmtAggDate(r.date), r.receiver ? ('接待人 ' + r.receiver) : ''].filter(Boolean).join(' · ')
+      }))
+    emptyText.value = ''
+  } catch (e) {
+    emptyText.value = '加载失败，请稍后重试'
+  }
+  loading.value = false
+}
+function goReception(r) {
+  navigateTo('/pages/reception-detail/reception-detail?id=' + r.id)
+  // 软路由偶发不切视图（本仓已知坑）：0.3s 后没见到接待详情哨兵就硬跳
+  setTimeout(() => {
+    if (!document.querySelector('.recep-detail')) window.location.href = '/reception-detail?id=' + r.id
+  }, 300)
+}
 
 // 错误/等待态（加载失败/缺参/委员等主任确认）：只提示，不给增删；genuine 空("无明确待办")不算，主任可增补
 const isErrorEmpty = computed(() => /加载失败|缺少会议参数|待主任确认整理后查看/.test(emptyText.value))
@@ -337,7 +395,7 @@ async function saveEdit(item) {
   if (!title) { toast({ title: '请输入待办内容', icon: 'none' }); return }
   editForm.value.saving = true
   try {
-    const res = await api.committeeTodoUpdate(meetingId, item.id, { title, owner: editForm.value.owner })
+    const res = await api.committeeTodoUpdate(item.meetingId || meetingId, item.id, { title, owner: editForm.value.owner })
     if (res) { item.title = res.title; item.owner = res.owner; item.lastActorName = res.lastActorName; item.updatedAt = res.updatedAt }
     cancelEdit()
     toast({ title: '已保存修改', icon: 'success' })
@@ -402,7 +460,8 @@ async function setStatus(item, key) {
   const prev = item.status
   item.status = key
   try {
-    const res = await api.committeeTodoStatus(meetingId, item.id, key)
+    // 聚合模式下每条自带来源会议 id；单会议模式退回页面级 meetingId
+    const res = await api.committeeTodoStatus(item.meetingId || meetingId, item.id, key)
     if (res) { item.lastActorName = res.lastActorName; item.updatedAt = res.updatedAt }
   } catch (e) {
     item.status = prev
@@ -434,7 +493,7 @@ async function pushTicket(item) {
   if (!item.id || item.ticketPushing) return
   item.ticketPushing = true
   try {
-    const res = await api.committeeTodoPushTicket(meetingId, item.id)
+    const res = await api.committeeTodoPushTicket(item.meetingId || meetingId, item.id)
     item.externalTicketNo = res && res.externalTicketNo
     item.ticketNo = (res && res.ticketNo) || item.externalTicketNo
     item.ticketPushedAt = res && res.pushedAt
@@ -458,9 +517,9 @@ async function deleteTodo(item) {
   if (!res.confirm) return
   item.deleting = true
   try {
-    await api.committeeTodoDelete(meetingId, item.id)
+    await api.committeeTodoDelete(item.meetingId || meetingId, item.id)
     cards.value = cards.value.filter(c => c.id !== item.id)
-    if (!cards.value.length) emptyText.value = '本次会议无明确待办事项。'
+    if (!cards.value.length && !aggMode.value) emptyText.value = '本次会议无明确待办事项。'
     toast({ title: '待办已删除', icon: 'success' })
   } catch (e) {
     toast({ title: (e && e.message) || '删除失败', icon: 'none' })
@@ -472,8 +531,9 @@ async function deleteTodo(item) {
 onMounted(() => {
   meetingId = parseInt(route.query.meetingId)
   if (!meetingId) {
-    loading.value = false
-    emptyText.value = '缺少会议参数'
+    // 不带 meetingId＝独立聚合页（0730 用户定），不再是「缺少会议参数」错误
+    aggMode.value = true
+    loadAll()
     return
   }
   load()
@@ -565,6 +625,15 @@ onMounted(() => {
   .self-handle-btn,.primary-btn { flex:1; min-width:130px; }
   .rollback-btn { flex:0 0 auto; }
 }
+
+/* 聚合模式（0730 独立待办页）：分节标题 + 接待待办卡 */
+.agg-sec { display: flex; align-items: baseline; gap: 10rpx; margin: 28rpx 4rpx 18rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
+.agg-sec em { font-style: normal; font-size: 25rpx; font-weight: 500; color: #8A94A6; }
+.rec-todo-row { cursor: pointer; }
+.rec-todo-row:active { background: #F7F9FB; }
+.rec-todo-sub { margin-top: 10px; font-size: 16px; color: #6B7280; }
+.rec-todo-foot { justify-content: flex-end; }
+.rec-go { color: #2F5F9E; font-size: 16px; font-weight: 700; }
 
 .access-card { background: #fff; border-radius: 24rpx; padding: 64rpx 36rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); text-align: center; }
 .access-icon { width: 96rpx; height: 96rpx; border-radius: 50%; background: #E8F7EC; color: #2B9E55; display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx; font-weight: 700; }

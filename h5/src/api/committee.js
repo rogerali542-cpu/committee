@@ -320,6 +320,10 @@ export default {
   committeeTodoList: function (id) {
     return core.realRequest('GET', '/api/committees/' + id + '/quick/todos/list');
   },
+  // 业委会整体待办（0730 独立待办页）：跨会议聚合，每条带来源会议 meetingId/meetingTitle/meetingDate
+  committeeTodosOverview: function () {
+    return core.realRequest('GET', '/api/committees/todos/overview');
+  },
   committeeTodoInit: function (id, items) {
     return core.realRequest('POST', '/api/committees/' + id + '/quick/todos/init', items);
   },

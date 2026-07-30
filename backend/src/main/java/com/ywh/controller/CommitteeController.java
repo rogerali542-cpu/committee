@@ -6,6 +6,7 @@ import com.ywh.enums.SystemPermission;
 import com.ywh.dto.CreateMeetingRequest;
 import com.ywh.dto.DeliverySendRequest;
 import com.ywh.dto.MeetingDetailVO;
+import com.ywh.dto.MeetingTodoVO;
 import com.ywh.dto.MeetingPrefillVO;
 import com.ywh.dto.OnlineAttendanceRequest;
 import com.ywh.dto.quick.NewsTaskStatusVO;
@@ -53,6 +54,14 @@ public class CommitteeController {
             @RequestParam(required = false) String stage,
             @RequestParam(required = false) Boolean archived) {
         return Result.ok(service.listMeetings(stage, archived));
+    }
+
+    /** 业委会整体待办汇总（0730 独立待办页）：跨会议聚合，不再绑定单场会议。
+     *  字面量路径 /todos/overview 不会与 /{id}/** 冲突（Spring 精确段优先于变量段）。 */
+    @GetMapping("/todos/overview")
+    @RequireRole({"主任", "副主任", "记录员", "委员"})
+    public Result<List<MeetingTodoVO>> todosOverview() {
+        return Result.ok(service.listAllTodos());
     }
 
     /** 直接归档（不公示，0723 补实现）：终局动作，会议移入资料库并从日常列表隐藏 */

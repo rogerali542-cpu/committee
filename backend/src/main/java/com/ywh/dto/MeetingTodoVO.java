@@ -23,4 +23,8 @@ public class MeetingTodoVO {
     private String externalTicketNo;
     private String ticketNo;
     private String ticketPushedAt;
+    /** 来源会议（0730 独立待办页）：仅跨会议聚合接口填充；单会议接口下为 null。 */
+    private Long meetingId;
+    private String meetingTitle;
+    private String meetingDate;
 }

@@ -2322,6 +2322,32 @@ public class CommitteeService {
                 .map(this::toTodoVO).collect(Collectors.toList());
     }
 
+    /** 业委会整体待办（0730 独立待办页）：跨会议聚合全部结构化待办，附来源会议标题/日期。
+     *  只返回已固化的待办——尚未走过「确认待办清单」的会议不在此列（固化流程仍在单会议页）。 */
+    @Transactional(readOnly = true)
+    public List<MeetingTodoVO> listAllTodos() {
+        List<MeetingTodo> all = todoRepo.findAll();
+        if (all.isEmpty()) return Collections.emptyList();
+        Set<Long> ids = all.stream().map(MeetingTodo::getMeetingId).collect(Collectors.toSet());
+        Map<Long, CommitteeMeeting> meetings = meetingRepo.findAllById(ids).stream()
+                .collect(Collectors.toMap(CommitteeMeeting::getId, m -> m));
+        // 新会议在前，同一场内保持固化顺序
+        all.sort(Comparator.comparing(MeetingTodo::getMeetingId, Comparator.reverseOrder())
+                .thenComparing(MeetingTodo::getSortOrder));
+        List<MeetingTodoVO> out = new ArrayList<>(all.size());
+        for (MeetingTodo t : all) {
+            MeetingTodoVO vo = toTodoVO(t);
+            vo.setMeetingId(t.getMeetingId());
+            CommitteeMeeting m = meetings.get(t.getMeetingId());
+            if (m != null) {
+                vo.setMeetingTitle(m.getTitle());
+                vo.setMeetingDate(m.getMeetingDate() == null ? null : m.getMeetingDate().toString());
+            }
+            out.add(vo);
+        }
+        return out;
+    }
+
     /** 固化待办。幂等：已固化则忽略本次提交、直接返回现有，避免覆盖委员已更新的状态。 */
     @Transactional
     public List<MeetingTodoVO> initTodos(Long meetingId, List<MeetingTodoVO> items) {
