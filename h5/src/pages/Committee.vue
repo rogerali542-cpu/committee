@@ -198,15 +198,20 @@
           <!-- 接下来（0730 用户图样六改）：去白卡，只留分隔线——次要清单不与待召开卡抢层级；
                行=单行「短名 · 时段」+右侧无底色灰字状态（仍是唯一入口，0725 防误触规则不变）；
                尾行「YYYY年全年会议 | 展开▾」承接原「全年会议一览」折叠 -->
-          <!-- 头部「接下来 · 还有N场」只在真有后续场次时出；列表容器恒显（至少含「发起临时会议」/全年会议尾行） -->
+          <!-- 头部只留「接下来」标题：右侧计数已删（0730 设计师定：信息由下方「还有 N 场」承担） -->
           <div v-if="nextRows.length" class="mtg-next-head">
             <span>接下来</span>
-            <em>还有 {{ nextRows.length }} 场</em>
           </div>
           <div class="mtg-next-list">
-            <div v-for="row in nextRows" :key="row.key" class="mtg-next-row">
+            <!-- 截断而非折叠：默认只出最近 2 场，首屏高度恒定 -->
+            <div v-for="row in visibleNextRows" :key="row.key" class="mtg-next-row">
               <span class="mtg-next-line">{{ shortMeetingName(row.title) }} · {{ nextWhen(row) }}</span>
               <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
+            </div>
+            <!-- 「还有 N 场 ›」：一次展开其余；前 2 场始终在，绝不会点了什么都看不到 -->
+            <div v-if="nextMoreCount && !nextExpanded" class="mtg-next-row mtg-next-more-row" @click="nextExpanded = true">
+              <span class="mtg-next-line more">还有 {{ nextMoreCount }} 场</span>
+              <span class="mtg-next-more-arr">›</span>
             </div>
             <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
@@ -1779,6 +1784,12 @@ function nextWhen(row) {
 // （全年总场次计数已删——0730 用户定：全年是"至少6场"的不定数，不写数字免误导）
 // 接下来（0730 三改）：待处理已全量并入主卡横滑，这里只剩计划期次
 const nextRows = computed(() => meetingRecordList.value.planned)
+// 截断而非折叠（0730 设计师定）：默认只显示最近 2 场，其余由「还有 N 场 ›」一次展开。
+// 首屏高度恒定（无论 2 场还是 8 场）；积压时更该让用户看到前几场，而不是收起来看不到。
+const NEXT_PREVIEW = 2
+const nextExpanded = ref(false)
+const visibleNextRows = computed(() => nextExpanded.value ? nextRows.value : nextRows.value.slice(0, NEXT_PREVIEW))
+const nextMoreCount = computed(() => Math.max(0, nextRows.value.length - NEXT_PREVIEW))
 const meetingCalendarOpen = ref(false)
 // （折叠态的 sessionStorage 保持机制已整体退役：0730 用户定「返回默认收起、回顶部」+ 后续计划改平铺）
 // （补开判定 isMakeupHeld 已删，0729 用户定：完成列表不再标「补开」，月历已表达各期执行情况）
@@ -2344,6 +2355,7 @@ function show() {
   // 0730 用户定（推翻 0725 的"返回保持展开并滚到日历"）：从详情等页返回首页一律回到顶部，
   // 全年会议一览默认收起——落到页面底部的日历属于导航错误
   meetingCalendarOpen.value = false
+  nextExpanded.value = false   // 「接下来」回到默认截断态（只显 2 场）
   homeShell.navHidden = false   // 回首页恢复导航栏
   // （后续计划已平铺，无折叠态可恢复——0730 图一骨架）
   try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
@@ -4485,6 +4497,12 @@ onActivated(show)
 .mtg-next-list > :first-child { border-top: 0 !important; }
 .mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; }
 .mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #3D4A5C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 「还有 N 场 ›」截断展开行（0730 设计师定）：与「全年会议」同为页内揭示、非跳转，用深灰；
+   › 示意可展开更多。前 2 场恒在，展开后本行消失 */
+.mtg-next-more-row { cursor: pointer; }
+.mtg-next-more-row:active { opacity: .6; }
+.mtg-next-line.more { font-weight: 600; color: #4B5563; }
+.mtg-next-more-arr { flex-shrink: 0; font-size: 34rpx; color: #9AA4B0; }
 /* 状态签（点2 + 设计师三级③）：无底灰字，灰＝#6B7280；「计划中/待确认」都是常态 */
 .mtg-next-chip { flex-shrink: 0; min-height: 88rpx; padding: 0 4rpx 0 20rpx; border: 0; background: transparent; color: #6B7280; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
 .mtg-next-chip:active { opacity: .55; }
