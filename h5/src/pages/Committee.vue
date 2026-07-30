@@ -4443,7 +4443,7 @@ onActivated(show)
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
 /* 顶栏「返回驾驶舱」胶囊（0730 图一骨架）：白描边适配深色顶栏 */
-.hd-cockpit { flex-shrink: 0; align-self: flex-start; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 600; }
+.hd-cockpit { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 500; }
 .hd-cockpit:active { background: rgba(255,255,255,.2); }
 
 /* ── 图一骨架（0730 用户定）：主卡 + 接下来 + 底部动作条 ── */

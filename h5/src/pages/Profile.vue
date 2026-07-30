@@ -249,7 +249,7 @@ onActivated(() => { if (mounted) refresh() })
   flex-direction: column;
   align-items: center;
 }
-.ph-cockpit { position: absolute; top: calc(env(safe-area-inset-top) + 18rpx); right: 24rpx; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid currentColor; border-radius: 999rpx; background: rgba(255,255,255,.14); font-size: 26rpx; font-weight: 600; }
+.ph-cockpit { position: absolute; top: calc(env(safe-area-inset-top) + 18rpx); right: 24rpx; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid currentColor; border-radius: 999rpx; background: rgba(255,255,255,.14); font-size: 26rpx; font-weight: 500; }
 .ph-cockpit:active { opacity: .7; }
 .ph-avatar {
   width: 160rpx; height: 160rpx;
