@@ -190,7 +190,7 @@
                   <div class="mr-row-title">{{ shortMeetingName(row.title) }}</div>
                   <div class="mr-row-sub">{{ dueSubFor(row) }}</div>
                 </div>
-                <span class="mtg-due-status" :class="row.statusClass">{{ dueStatusText(row) }}</span>
+                <span class="mtg-due-status" :class="dueStatusTier(row)">{{ dueStatusText(row) }}</span>
               </div>
             </div>
           </template>
@@ -1736,6 +1736,15 @@ function dueStatusText(row) {
   if (row.statusClass === 'ongoing') return '进行中'
   if (String(row.key).indexOf('mr-draft') === 0) return '编辑中'
   return '待召开'
+}
+// 状态字三级样式（0730 设计师定，全 app 通用）——判据：这个状态是否需要用户额外做点补救？
+//   ① st-warn 暖色胶囊(有底)＝异常需补救(逾期)：一屏最多一种，全页唯一跳出来的东西
+//   ② st-today 蓝字(无底)＝今日要办但不异常(进行中/今日)
+//   ③ st-muted 灰字(无底)＝其余全部(待召开/待确认/计划中/编辑中/已归档…)＝常态，不能给底色否则异常不显眼
+function dueStatusTier(row) {
+  if (row.statusClass === 'overdue') return 'st-warn'
+  if (row.statusClass === 'ongoing' || dueStatusText(row) === '进行中') return 'st-today'
+  return 'st-muted'
 }
 // 副行：具体信息/下一步提示（状态词已在右侧标签，这里不重复）
 function dueSubFor(row) {
@@ -4460,12 +4469,13 @@ onActivated(show)
 .mtg-due-row.selected { background: #F2F7FC; }
 .mtg-due-row.selected::before { content: ''; position: absolute; left: -22rpx; top: 0; bottom: 0; width: 8rpx; background: #3E6BA8; }
 /* 常驻状态标签（点2/4）：无边框、浅底文字，明显不是按钮 */
-/* 0730 用户定点1：去掉浅底方框（长得像按钮），改无底文字，与「接下来」列表的灰字状态统一。
-   「待召开」用灰字＝与「计划中」一致；逾期/进行中保留语义色文字（无底），仍能一眼看出轻重 */
+/* 状态字三级样式（0730 设计师定，全 app 通用，见 dueStatusTier）：
+   ① 逾期＝暖色胶囊(有底)，一屏唯一异常；② 今日/进行中＝蓝字；③ 其余＝灰字。
+   常态「待召开」绝不给底色，否则异常(逾期)就不显眼了 */
 .mtg-due-status { flex-shrink: 0; align-self: center; padding: 0; font-size: 25rpx; font-weight: 500; white-space: nowrap; }
-.mtg-due-status.overdue { color: #C0692A; }
-.mtg-due-status.ongoing { color: #2F6647; }
-.mtg-due-status.current, .mtg-due-status.upcoming { color: #97A1AF; }
+.mtg-due-status.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; font-weight: 600; }
+.mtg-due-status.st-today { color: #2F5F9E; }
+.mtg-due-status.st-muted { color: #6B7280; }
 .mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 0 8rpx; min-height: 84rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
 .mtg-next-head em { font-style: normal; font-size: 26rpx; font-weight: 500; color: #8A94A6; }
 /* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
@@ -4476,8 +4486,8 @@ onActivated(show)
 .mtg-next-list > :first-child { border-top: 0 !important; }
 .mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; }
 .mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #3D4A5C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 状态签（点2）：灰底方框长得像按钮但用户以为不可点 → 无底色灰字；点击入口能力保留 */
-.mtg-next-chip { flex-shrink: 0; min-height: 88rpx; padding: 0 4rpx 0 20rpx; border: 0; background: transparent; color: #97A1AF; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
+/* 状态签（点2 + 设计师三级③）：无底灰字，灰＝#6B7280；「计划中/待确认」都是常态 */
+.mtg-next-chip { flex-shrink: 0; min-height: 88rpx; padding: 0 4rpx 0 20rpx; border: 0; background: transparent; color: #6B7280; font-size: 26rpx; font-weight: 500; white-space: nowrap; }
 .mtg-next-chip:active { opacity: .55; }
 .mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
 .mtg-next-foot:active { opacity: .7; }
@@ -4544,10 +4554,10 @@ onActivated(show)
 /* 待处理大卡里的期次胶囊稍放大,与 33rpx 标题的比例协调(后续计划小行仍用小号) */
 .mr-featured .mr-badge.range { min-height: 62rpx; }
 .mr-featured .mr-badge.range b { font-size: 25rpx; }
-.mr-badge.done { background: #EAF6EE; color: #2E7D50; }
-.mr-badge.current { background: #E6EEF7; color: #345F91; }
-.mr-badge.overdue { background: #FBE6E2; color: #B0463A; }
-.mr-badge.upcoming { background: #F0F2F5; color: #707C8B; }
+/* 日期块配套三级（0730 设计师定，全 app 通用）：只有逾期那场用暖底，其余（已完成/进行中/待召开）
+   一律灰底——和状态字同一套「一屏唯一暖色」逻辑，扫一眼就能锁定要补救的那场 */
+.mr-badge.overdue { background: #FDF4E8; color: #7A4A10; }
+.mr-badge.done, .mr-badge.current, .mr-badge.upcoming { background: #F4F6F9; color: #4B5563; }
 .mr-info { flex: 1; min-width: 0; }
 .mr-row-title { font-size: 31rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: pretty; }  /* 0729:文字区加宽让例会名尽量一行;真折行时 pretty 填满行宽+末行不留孤字(旧 balance 会把两行均分,右侧空一大截离按钮很远) */
 .mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
