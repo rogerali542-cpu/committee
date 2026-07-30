@@ -90,73 +90,40 @@
              月份强化「每月要更新」的节奏感；真实接待记录里时间/地点从来成对出现，缺地点老人不知道去哪。 -->
       <!-- 驾驶舱首页（路线乙）：欢迎语 + 跨条线待办聚合 + 全部业务目录 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
-        <!-- 0729 领导意见：问候大字删除（顶栏已有姓名·职务，称呼重复且占地），只留一行 日期｜今日摘要 -->
+        <!-- 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要；不带姓名（顶栏已有） -->
         <div class="welcome-hero">
-          <div class="welcome-tip">
-            <span class="welcome-date">{{ cockpitDateText }}</span>
-            <i></i>
-            <span>{{ cockpitSummaryText }}</span>
-          </div>
+          <div class="welcome-line1">{{ cockpitDateText }}，{{ greeting }}</div>
+          <div class="welcome-line2">{{ cockpitSummaryText }}</div>
         </div>
 
-        <div v-if="cockpitTodos.length" class="ck-section">
-          <div v-if="currentCockpitTodo" :key="currentCockpitTodo.key"
-               class="ck-todo" :class="[currentCockpitTodo.tone, { 'ck-todo-complete': currentCockpitTodo.complete }]">
-            <!-- 首页不再放「删除会议」(0729 用户定：易误点 + 版面怪)；删除已移到会议详情页底部不起眼处。此处只留草稿撤销与翻页 -->
-            <div v-if="currentCockpitTodo.draft || committeeCockpitTodos.length > 1" class="ck-todo-head">
-              <div class="ck-todo-head-actions">
-                <!-- 草稿卡的撤销出口：远离右下主按钮避免误点；点击走确认弹窗 -->
-                <button v-if="currentCockpitTodo.draft" type="button" class="ck-todo-delete"
-                        @click.stop.prevent="discardDraft">放弃草稿</button>
-                <div v-if="committeeCockpitTodos.length > 1" class="ck-todo-pager">
-                  <button type="button" @click.stop="showPreviousCockpitTodo">上一项</button>
-                  <span>{{ cockpitTodoIndex + 1 }}/{{ committeeCockpitTodos.length }}</span>
-                  <button type="button" @click.stop="showNextCockpitTodo">下一项</button>
+        <!-- 任务大卡（0729 用户定）：业委会/接待/学习培训三栏合一，各显示最近一条任务，多条可翻页 -->
+        <div class="ck-section">
+          <div class="ck-board">
+            <div v-for="row in cockpitBoardRows" :key="row.key" class="ck-board-row">
+              <div class="ck-board-side">
+                <span class="ck-board-tag" :class="row.tone">{{ row.label }}</span>
+                <div v-if="row.items.length > 1" class="ck-board-pager">
+                  <button type="button" @click.stop="boardShift(row.key, -1)">‹</button>
+                  <span>{{ row.index + 1 }}/{{ row.items.length }}</span>
+                  <button type="button" @click.stop="boardShift(row.key, 1)">›</button>
                 </div>
               </div>
-            </div>
-            <span class="ck-todo-tag">{{ currentCockpitTodo.tag || '业委会' }}</span>
-            <div class="ck-todo-title">{{ currentCockpitTodo.title }}</div>
-            <div class="ck-todo-foot">
-              <div v-if="currentCockpitTodo.sub" class="ck-todo-sub">{{ currentCockpitTodo.sub }}</div>
-              <button v-if="currentCockpitTodo.cta" type="button" class="ck-todo-cta" @click="currentCockpitTodo.onTap()">
-                {{ currentCockpitTodo.cta }} <i>›</i>
-              </button>
-            </div>
-          </div>
-          <div v-if="receptionCockpitTodo" :key="receptionCockpitTodo.key"
-               class="ck-todo ck-reception-todo" :class="receptionCockpitTodo.tone">
-            <span class="ck-todo-tag">{{ receptionCockpitTodo.tag || '接待' }}</span>
-            <div class="ck-todo-title">{{ receptionCockpitTodo.title }}</div>
-            <div class="ck-todo-foot">
-              <div v-if="receptionCockpitTodo.sub" class="ck-todo-sub">{{ receptionCockpitTodo.sub }}</div>
-              <div class="ck-reception-actions">
-                <button v-if="receptionCockpitTodo.secondaryCta" type="button"
-                        class="ck-reception-secondary" @click="receptionCockpitTodo.onSecondaryTap()">
-                  {{ receptionCockpitTodo.secondaryCta }}
-                </button>
-                <button type="button" class="ck-todo-cta ck-reception-cta" @click="receptionCockpitTodo.onTap()">
-                  {{ receptionCockpitTodo.cta }} <i>›</i>
-                </button>
+              <div class="ck-board-main">
+                <template v-if="row.cur">
+                  <div class="ck-board-title">{{ row.cur.title }}</div>
+                  <div v-if="row.cur.sub" class="ck-board-sub">{{ row.cur.sub }}</div>
+                </template>
+                <div v-else class="ck-board-empty">{{ row.emptyText }}</div>
+              </div>
+              <div v-if="row.cur && row.cur.cta" class="ck-board-acts">
+                <button type="button" class="ck-board-cta" @click="row.cur.onTap()">{{ row.cur.cta }} ›</button>
+                <button v-if="row.cur.secondaryCta" type="button" class="ck-board-secondary"
+                        @click="row.cur.onSecondaryTap()">{{ row.cur.secondaryCta }}</button>
+                <button v-else-if="row.cur.draft" type="button" class="ck-board-secondary danger"
+                        @click.stop.prevent="discardDraft">放弃草稿</button>
               </div>
             </div>
           </div>
-          <!-- 学习培训直达卡（0729 领导意见：三项工作都要有入口） -->
-          <div v-if="learningCockpitTodo" :key="learningCockpitTodo.key"
-               class="ck-todo ck-learning-todo" :class="learningCockpitTodo.tone">
-            <span class="ck-todo-tag">{{ learningCockpitTodo.tag }}</span>
-            <div class="ck-todo-title">{{ learningCockpitTodo.title }}</div>
-            <div class="ck-todo-foot">
-              <div v-if="learningCockpitTodo.sub" class="ck-todo-sub">{{ learningCockpitTodo.sub }}</div>
-              <button type="button" class="ck-todo-cta" @click="learningCockpitTodo.onTap()">
-                {{ learningCockpitTodo.cta }} <i>›</i>
-              </button>
-            </div>
-          </div>
-        </div>
-        <div v-else class="ck-calm">
-          <span class="ck-calm-ico">✓</span>
-          <div class="ck-calm-text">本期暂无待办事项<br>各项工作井然有序</div>
         </div>
 
         <div class="welcome-foot">{{ welcomeFootText }}</div>
@@ -1329,7 +1296,11 @@ try {
 } catch (e) {}
 // 欢迎引导页（路线乙）：一句标语 + 选择要进入的业务线（顶层选择）。
 // 三方联席会议/联合接待另做独立软件，不纳入本 App，故欢迎页只留三条真实业务线。
-// （问候语 greeting/salutation 已删，0729 领导意见：顶栏已有姓名·职务，问候大字重复且占地）
+// 问候语（0729 用户定二改：与日期同行，不带姓名）
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  return h < 6 ? '夜深了' : h < 11 ? '早上好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'
+})
 // 欢迎引导页当前是否可见（portal 布局 + 开会 tab）→ 隐藏底栏；选定业务后置回，底栏出现
 const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.value === 'meeting')
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
@@ -1519,25 +1490,25 @@ const cockpitTodos = computed(() => {
       summaryLabel: '接待安排任务', daysUntil: null,
       cta: isChair.value ? '去设置' : '查看', actionable: true, onTap: enterReceptionArea })
   }
-  // 学习培训（0729 领导意见：三项工作都要有入口卡）：取最近一场未结束的学习/培训给直达卡。
+  // 学习培训（0729 用户定二改：多条任务都进列表，大卡内翻页）：按日期就近排序，最多 6 条。
   // 不设 summaryLabel——顶部摘要行已单独统计学习任务，避免重复计数。
-  const learnRanked = cockpitLearningTasks.value
+  cockpitLearningTasks.value
     .map(t => ({ t, days: daysFromToday(t.date || t.trainingDate || t.startDate) }))
     .sort((a, b) => (a.days == null ? 999 : a.days) - (b.days == null ? 999 : b.days))
-  const learn = learnRanked[0]
-  if (learn) {
-    const when = learn.days === 0 ? '今天' : learn.days === 1 ? '明天' : (learn.days > 1 ? learn.days + '天后' : '')
-    items.push({ key: 'learning', tag: '学习培训', tone: 'amber', level: learn.days === 0 ? 'urgent' : 'calm',
-      timeScope: learn.days === 0 ? 'today' : 'recent', daysUntil: null,
-      title: learn.t.title || '学习培训任务', sub: [when, learn.t.location].filter(Boolean).join(' · '),
-      cta: '去查看', actionable: true,
-      onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') } })
-  }
+    .slice(0, 6)
+    .forEach((entry, i) => {
+      const when = entry.days === 0 ? '今天' : entry.days === 1 ? '明天' : (entry.days > 1 ? entry.days + '天后' : '')
+      items.push({ key: 'learning-' + i, tag: '学习培训', tone: 'amber', level: entry.days === 0 ? 'urgent' : 'calm',
+        timeScope: entry.days === 0 ? 'today' : 'recent', daysUntil: null,
+        title: entry.t.title || '学习培训任务', sub: [when, entry.t.location].filter(Boolean).join(' · '),
+        cta: '去查看', actionable: true,
+        onTap: () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') } })
+    })
   return items
 })
 const committeeCockpitTodos = computed(() => {
   return cockpitTodos.value
-    .filter(item => item.key !== 'reception' && item.key !== 'learning')
+    .filter(item => item.key !== 'reception' && String(item.key).indexOf('learning') !== 0)
     .map((item, index) => {
       if (item.periodRow && Number(item.periodRow.period)) {
         return { item, index, order: Number(item.periodRow.period) }
@@ -1554,22 +1525,26 @@ const committeeCockpitTodos = computed(() => {
     .sort((a, b) => a.order - b.order || a.index - b.index)
     .map(entry => entry.item)
 })
-const receptionCockpitTodo = computed(() => cockpitTodos.value.find(item => item.key === 'reception') || null)
-const learningCockpitTodo = computed(() => cockpitTodos.value.find(item => item.key === 'learning') || null)
-const cockpitTodoIndex = ref(0)
-const currentCockpitTodo = computed(() => {
-  const items = committeeCockpitTodos.value
-  if (!items.length) return null
-  return items[cockpitTodoIndex.value % items.length]
+const learningCockpitTodos = computed(() => cockpitTodos.value.filter(item => String(item.key).indexOf('learning') === 0))
+// 任务大卡三栏（0729 用户定）：业委会/接待/学习培训各自独立翻页，显示当前一条
+const boardIdx = reactive({ committee: 0, reception: 0, learning: 0 })
+const cockpitBoardRows = computed(() => {
+  const mk = (key, label, tone, items, emptyText) => {
+    const len = items.length
+    const idx = len ? boardIdx[key] % len : 0
+    return { key, label, tone, items, index: idx, cur: len ? items[idx] : null, emptyText }
+  }
+  return [
+    mk('committee', '业委会', 'blue', committeeCockpitTodos.value, '本期暂无会议待办'),
+    mk('reception', '接待', 'green', cockpitTodos.value.filter(i => i.key === 'reception'), '暂无接待安排'),
+    mk('learning', '学习培训', 'amber', learningCockpitTodos.value, '近期暂无学习培训')
+  ]
 })
-function showNextCockpitTodo() {
-  if (committeeCockpitTodos.value.length < 2) return
-  cockpitTodoIndex.value = (cockpitTodoIndex.value + 1) % committeeCockpitTodos.value.length
-}
-function showPreviousCockpitTodo() {
-  const length = committeeCockpitTodos.value.length
-  if (length < 2) return
-  cockpitTodoIndex.value = (cockpitTodoIndex.value - 1 + length) % length
+function boardShift(key, delta) {
+  const row = cockpitBoardRows.value.find(r => r.key === key)
+  if (!row || row.items.length < 2) return
+  const len = row.items.length
+  boardIdx[key] = ((boardIdx[key] + delta) % len + len) % len
 }
 function formatLocalDay(value) {
   const d = value instanceof Date ? value : new Date(value)
@@ -4198,12 +4173,33 @@ onActivated(show)
 .portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
 .welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 170rpx; /* 给固定底栏让位 */ }
-/* 问候大字已删(0729 领导意见)：hero 只剩一行日期+摘要，内边距收紧 */
-.welcome-hero { flex-shrink: 0; padding: 12rpx 10rpx 0; }
-.welcome-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 12rpx; font-size: 30rpx; font-weight: 500; color: #6F7C91; letter-spacing: 0.5rpx; }
-.welcome-tip .welcome-date { color: #53647B; font-weight: 600; }
-.welcome-tip i { width: 2rpx; height: 28rpx; background: #CDD4DE; }
+/* 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要 */
+.welcome-hero { flex-shrink: 0; padding: 16rpx 10rpx 0; }
+.welcome-line1 { font-size: 36rpx; font-weight: 700; color: #2F3D56; line-height: 1.3; }
+.welcome-line2 { margin-top: 8rpx; font-size: 27rpx; font-weight: 500; color: #6F7C91; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 21rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+/* 任务大卡（0729 用户定）：三栏合一，左类别+翻页、中任务、右按钮 */
+.ck-board { background: #fff; border-radius: 26rpx; padding: 6rpx 26rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,.05), 0 12rpx 26rpx rgba(20,33,61,.08); }
+.ck-board-row { display: flex; align-items: center; gap: 20rpx; padding: 26rpx 0; border-bottom: 2rpx solid #F0F2F5; }
+.ck-board-row:last-child { border-bottom: 0; }
+.ck-board-side { flex-shrink: 0; width: 132rpx; display: flex; flex-direction: column; align-items: flex-start; gap: 10rpx; }
+.ck-board-tag { font-size: 22rpx; font-weight: 700; padding: 5rpx 14rpx; border-radius: 999rpx; white-space: nowrap; }
+.ck-board-tag.blue { color: #3A5E92; background: #E6EDF8; }
+.ck-board-tag.green { color: #3B7150; background: #E4F0E8; }
+.ck-board-tag.amber { color: #8A6420; background: #F5EBD8; }
+.ck-board-pager { display: flex; align-items: center; gap: 8rpx; font-size: 21rpx; color: #8A94A6; font-variant-numeric: tabular-nums; }
+.ck-board-pager button { border: 0; background: #F2F4F7; color: #5A6473; width: 40rpx; height: 40rpx; border-radius: 10rpx; font-size: 26rpx; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.ck-board-pager button:active { background: #E4E8ED; }
+.ck-board-main { flex: 1; min-width: 0; }
+.ck-board-title { font-size: 29rpx; font-weight: 700; color: #2A3244; line-height: 1.35; }
+.ck-board-sub { margin-top: 6rpx; font-size: 23rpx; color: #8A94A6; line-height: 1.4; }
+.ck-board-empty { font-size: 25rpx; color: #9AA3AD; }
+.ck-board-acts { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 8rpx; }
+.ck-board-cta { min-height: 56rpx; padding: 0 20rpx; border: 0; border-radius: 12rpx; background: #A85800; color: #fff; font-size: 25rpx; font-weight: 700; white-space: nowrap; }
+.ck-board-cta:active { background: #8F4A06; }
+.ck-board-secondary { border: 0; background: none; color: #A85800; font-size: 22rpx; font-weight: 600; padding: 2rpx 4rpx; }
+.ck-board-secondary.danger { color: #B0463A; }
+.ck-board-secondary:active { opacity: .6; }
 /* 工作板块底栏（0729 用户定）：四项固定页底，图标块沿用各板块色系 */
 .ck-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: #fff; border-top: 2rpx solid #E6EAEF; padding: 12rpx 8rpx calc(10rpx + env(safe-area-inset-bottom)); box-shadow: 0 -6rpx 18rpx rgba(24,51,76,.06); }
 .ck-dock-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; padding: 6rpx 0; }
