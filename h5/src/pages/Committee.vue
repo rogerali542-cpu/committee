@@ -1,5 +1,5 @@
 <template>
-  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception' }">
+  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs' }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
@@ -178,51 +178,56 @@
 
         <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
-          <template v-if="meetingRecordList.immediate.length">
-            <!-- 「待处理」(0725 用户定):这组是逾期未开/本期待开/待整理——要办的事,不是"安排";与驾驶舱用词一致 -->
-            <div class="mr-group-title">待处理</div>
-          </template>
-          <!-- 移动习惯重排（0730 用户定）：当前会议卡=全卡可点（进入是查看/继续处理，安全无副作用），
-               主操作改为卡内通宽大按钮沉到卡底（拇指热区），不再是右缘小胶囊。
-               计划行仍保持"整行不可点"（0725 定，防误触提前召开），两者规则不同是有意的。 -->
-          <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
-            <div class="mr-feat-main">
-              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
-                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-              </div>
-              <div class="mr-info">
-                <div class="mr-row-title">{{ row.title }}</div>
-                <!-- 副标题按「 · 」分段,每段整体折行:避免"党群服务中心"这类地名被从中间掰断 -->
-                <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
-              </div>
+          <!-- 主卡（0730 用户定，图一骨架）：最高优先级一场（沿用原 immediate 排序=欠账优先），
+               整卡可点；胶囊=日期时间+倒计时（将来）/状态词（逆风局原样）；大标题+地点。 -->
+          <div v-if="heroMeeting" class="mtg-hero" @click="heroMeeting.onTap()">
+            <div class="mtg-hero-chiprow">
+              <span class="mtg-hero-chip">{{ heroChipText }}</span>
             </div>
-            <button type="button" class="mr-cta-wide" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
+            <div class="mtg-hero-title">{{ heroMeeting.title }}</div>
+            <div v-if="heroSubText" class="mtg-hero-sub">{{ heroSubText }}</div>
           </div>
-          <!-- 发起非例会会议:动作跟动作区(待处理卡)挨着,收纳行(计划/一览)沉底(0725 用户定) -->
-          <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
-          <!-- 「查看」组(0727 用户定):后续计划 + 全年会议一览 是回看/查阅,与上方「待处理卡 + 发起其他会议」
-               这组"要动手办的事"拉开明显更大的间距,让「开会」和「查看」读成两块。间距由 .mr-lookup 承担,
-               组内行距不变;不另起文字标题——「后续计划」是将来要开的,叫"历史"名不副实,用留白分区更干净。 -->
-          <div class="mr-lookup">
-          <!-- 后续计划默认收起(0725 用户定):与「已完成N场」同款折叠行,点开才展 -->
-          <template v-if="meetingRecordList.planned.length">
-            <div class="mr-fold" @click="planListOpen = !planListOpen">
-              <span>后续计划 {{ meetingRecordList.planned.length }} 期</span>
-              <span class="mr-fold-chev" :class="{ open: planListOpen }">▾</span>
-            </div>
-            <template v-if="planListOpen">
-              <!-- 计划行整行不可点(0725 用户定,防误触"提前召开"),只有右侧按钮进入 -->
-              <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
+          <!-- 其余待处理（逆风局：逾期补开/草稿/待安排等多卡并存时）：保持原卡样式原样 -->
+          <template v-if="meetingRecordList.immediate.length > 1">
+            <div class="mr-group-title">待处理</div>
+            <div v-for="row in meetingRecordList.immediate.slice(1)" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
+              <div class="mr-feat-main">
                 <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
                 <div class="mr-info">
                   <div class="mr-row-title">{{ row.title }}</div>
-                  <div class="mr-row-sub">{{ row.sub }}</div>
+                  <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
                 </div>
-                <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
               </div>
-            </template>
+              <button type="button" class="mr-cta-wide" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
+            </div>
+          </template>
+          <!-- 底部动作条（0730 图一骨架）：＋新建 + 主CTA（跟随主卡状态）钉在底栏上方拇指区 -->
+          <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
+            <button v-if="canCreate" type="button" class="mtg-add" @click="openNewMeeting()">＋</button>
+            <button type="button" class="mtg-primary" @click="heroMeeting ? heroMeeting.onTap() : openNewMeeting()">
+              <span v-if="heroMeeting && heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
+              <span class="mtg-primary-main">{{ heroMeeting ? heroMeeting.statusLabel : '发起会议' }}</span>
+            </button>
+          </div>
+          <div class="mr-lookup">
+          <!-- 接下来（0730 图一骨架）：后续计划由折叠改平铺；行不可点+右侧按钮进入（0725 防误触提前召开）不变 -->
+          <template v-if="meetingRecordList.planned.length">
+            <div class="mtg-next-head">
+              <span>接下来</span>
+              <em>{{ viewYear }}年 · 共{{ yearMeetingTotal }}场</em>
+            </div>
+            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
+              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
+                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+              </div>
+              <div class="mr-info">
+                <div class="mr-row-title">{{ row.title }}</div>
+                <div class="mr-row-sub">{{ row.sub }}</div>
+              </div>
+              <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
+            </div>
           </template>
           <!-- 查看月历入口行在列表尾部;月历本体改弹层浮在页面中央(0725 用户定):
                原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
@@ -1719,18 +1724,38 @@ const homeFocusItems = computed(() => {
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
 // recDoneOpen 已删(0725 方案A):已完成清单并入月历弹层,不再单独折叠
-const planListOpen = ref(false)   // 后续计划折叠,默认收起(0725 用户定)
+// 主卡（0730 用户定，图一骨架）：immediate[0]=最高优先级（欠账>逾期>本期>将来，排序沿用原逻辑）
+const heroMeeting = computed(() => meetingRecordList.value.immediate[0] || null)
+const heroChipText = computed(() => {
+  const h = heroMeeting.value
+  if (!h) return ''
+  const timeSeg = String(h.sub || '').split(' · ')[0] || ''
+  const d = h.meetingDate ? daysFromToday(String(h.meetingDate).slice(0, 10)) : null
+  // 将来的会=倒计时；今天/欠账/进行中等逆风局=状态词原样
+  const right = (d !== null && d > 0 && h.statusClass === 'upcoming') ? '还有 ' + d + ' 天' : h.statusLabel
+  return [timeSeg, right].filter(Boolean).join(' · ')
+})
+const heroSubText = computed(() => {
+  const h = heroMeeting.value
+  if (!h) return ''
+  return String(h.sub || '').split(' · ').slice(1).join(' · ')
+})
+// 底部主按钮副行：日期 + 短称（“2026年第4次业主委员会例会”→“第4次例会”）
+const heroBarSub = computed(() => {
+  const h = heroMeeting.value
+  if (!h) return ''
+  const timeSeg = (String(h.sub || '').split(' · ')[0] || '').split(' ')[0]
+  const m = String(h.title || '').match(/第\d+次/)
+  const short = m ? m[0] + '例会' : String(h.title || '').slice(0, 10)
+  return [timeSeg, short].filter(Boolean).join(' · ')
+})
+// 「接下来」右侧计数：全年已完成+待办+计划的总场次
+const yearMeetingTotal = computed(() => {
+  const l = meetingRecordList.value
+  return (l.done ? l.done.length : 0) + (l.immediate ? l.immediate.length : 0) + (l.planned ? l.planned.length : 0)
+})
 const meetingCalendarOpen = ref(false)
-// 展开态在会话内保持(0725 用户定:展开后进详情再返回,应保持展开而非重置)。
-// 用 sessionStorage:同一会话内导航保持,冷启动仍默认收起。
-function _restoreFold(key, target) {
-  try { if (window.sessionStorage.getItem(key) === '1') target.value = true } catch (e) { /* 无痕等场景忽略 */ }
-}
-function _persistFold(key, val) {
-  try { val ? window.sessionStorage.setItem(key, '1') : window.sessionStorage.removeItem(key) } catch (e) { /* 忽略 */ }
-}
-// （日历展开态不再跨页保持——0730 用户定：返回首页默认收起、回顶部）
-watch(planListOpen, (v) => _persistFold('mr_planlist_open', v))
+// （折叠态的 sessionStorage 保持机制已整体退役：0730 用户定「返回默认收起、回顶部」+ 后续计划改平铺）
 // （补开判定 isMakeupHeld 已删，0729 用户定：完成列表不再标「补开」，月历已表达各期执行情况）
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
@@ -1751,6 +1776,7 @@ const meetingRecordList = computed(() => {
         sub: [current.timeText, current.locationText].filter(Boolean).join(' · '),
         statusLabel: state,
         statusClass: current.stage === 'ongoing' ? 'current' : (current.stage === 'ended' ? 'done' : 'upcoming'),
+        meetingDate: current.meetingDate || '',   // 主卡倒计时用
         onTap: () => goCurrent(current)
       }
     }
@@ -2302,7 +2328,7 @@ function show() {
   // 0730 用户定（推翻 0725 的"返回保持展开并滚到日历"）：从详情等页返回首页一律回到顶部，
   // 全年会议一览默认收起——落到页面底部的日历属于导航错误
   meetingCalendarOpen.value = false
-  _restoreFold('mr_planlist_open', planListOpen)
+  // （后续计划已平铺，无折叠态可恢复——0730 图一骨架）
   try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
@@ -4398,6 +4424,26 @@ onActivated(show)
 .mr-row { display: flex; align-items: center; gap: 14rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
+/* ── 图一骨架（0730 用户定）：主卡 + 接下来 + 底部动作条 ── */
+.mtg-hero { padding: 30rpx 28rpx 32rpx; margin-bottom: 8rpx; border: 2rpx solid #D6E2EC; border-radius: 24rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); cursor: pointer; }
+.mtg-hero:active { background: #F1F7FB; }
+.mtg-hero-chiprow { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.mtg-hero-chip { display: inline-block; padding: 10rpx 22rpx; border-radius: 999rpx; background: #E8F0FA; color: #2F5E96; font-size: 28rpx; font-weight: 700; }
+.mtg-hero-title { margin-top: 20rpx; font-size: 40rpx; font-weight: 800; color: #1F2A3C; line-height: 1.35; text-wrap: balance; }
+.mtg-hero-sub { margin-top: 12rpx; font-size: 30rpx; color: #5A6473; line-height: 1.4; }
+.mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 8rpx 8rpx 6rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
+.mtg-next-head em { font-style: normal; font-size: 26rpx; font-weight: 500; color: #8A94A6; }
+/* 底部动作条：钉在底栏(约110rpx)上方，z 低于底栏(100)但盖内容 */
+.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 14rpx 24rpx; background: rgba(255,255,255,.96); border-top: 2rpx solid #ECEEF1; backdrop-filter: blur(8px); }
+.mtg-add { flex-shrink: 0; width: 96rpx; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #EAF0F7; color: #3E6BA8; font-size: 44rpx; font-weight: 700; }
+.mtg-add:active { background: #DCE6F1; }
+.mtg-primary { flex: 1; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
+.mtg-primary:active { background: #35608F; }
+.mtg-primary-sub { font-size: 24rpx; opacity: .85; line-height: 1.3; }
+.mtg-primary-main { font-size: 33rpx; font-weight: 800; line-height: 1.3; }
+/* 会议 tab 内容区给动作条+底栏让位 */
+.home.has-mtg-bar { padding-bottom: calc(262rpx + env(safe-area-inset-bottom)); }
+
 /* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
 .mr-featured:active { background: #F1F7FB; }
