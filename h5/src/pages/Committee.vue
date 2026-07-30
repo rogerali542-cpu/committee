@@ -1849,12 +1849,13 @@ const heroBarSub = computed(() => {
   const timeSeg = (String(h.sub || '').split(' · ')[0] || '').split(' ')[0]
   return [timeSeg, short].filter(Boolean).join(' · ')
 })
-// 接下来行的时段（0730 图样六改）：有日期「8月5日」；没定日期「预计 11-12月」
+// 后续行的时段：有日期「8月5日」；没定日期给期次「11-12月」（0731 用户定：「预计」冗余不写——
+// 右侧「计划中」已表达未定性）
 function nextWhen(row) {
   const d = String(row.meetingDate || '').split('-')
   if (d.length === 3) return Number(d[1]) + '月' + Number(d[2]) + '日'
   const seg = String(row.badgeTop || '') + String(row.badgeBot || '')
-  return seg ? ('预计 ' + seg) : (String(row.sub || '').split(' · ')[0] || '')
+  return seg || (String(row.sub || '').split(' · ')[0] || '')
 }
 // （全年总场次计数已删——0730 用户定：全年是"至少6场"的不定数，不写数字免误导）
 // 接下来（0730 三改）：待处理已全量并入主卡横滑，这里只剩计划期次
