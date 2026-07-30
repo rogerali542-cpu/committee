@@ -10,6 +10,21 @@
       :class="{ active: active === t.path }"
       @click="go(t.path)"
     >
+      <!-- 图标底栏（0730 用户定：与驾驶舱底栏同款画风）——内联 SVG 线性图标 + 色块 -->
+      <span class="tab-ico" :class="t.tone">
+        <svg v-if="t.key === 'committee'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9" r="2.4"/><path d="M15.6 13.6c2.3.2 4.1 1.7 4.7 4.4"/>
+        </svg>
+        <svg v-else-if="t.key === 'reception'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.2 3.4c-.4.3-.8 0-.8-.4V6.5z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/>
+        </svg>
+        <svg v-else-if="t.key === 'learning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 6.5C10.5 5 8.2 4.4 5.5 4.4c-.8 0-1.5.6-1.5 1.4v11c0 .8.7 1.4 1.5 1.4 2.7 0 5 .6 6.5 2.1 1.5-1.5 3.8-2.1 6.5-2.1.8 0 1.5-.6 1.5-1.4v-11c0-.8-.7-1.4-1.5-1.4-2.7 0-5 .6-6.5 2.1z"/><line x1="12" y1="6.5" x2="12" y2="20.3"/>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.5-5.8 7-5.8s6.2 2 7 5.8"/>
+        </svg>
+      </span>
       <span class="tab-label">{{ t.label }}</span>
     </div>
   </nav>
@@ -22,12 +37,12 @@ import { redirectTo } from '@/utils/navigate'
 import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
-// 纯文字底栏(0728 用户定:去图标)。印章并入「业委会」(见 GovSubTabs 二级切换)，回到 4 格
+// 图标底栏(0730 用户定:与驾驶舱底栏同款)。印章并入「业委会」(见 GovSubTabs 二级切换)，第四格为个人中心
 const tabs = [
-  { path: '/main', label: '业委会' },
-  { path: '/reception-center', label: '业主接待' },
-  { path: '/learning', label: '学习培训' },
-  { path: '/profile', label: '个人中心' }
+  { path: '/main', label: '业委会', key: 'committee', tone: 'blue' },
+  { path: '/reception-center', label: '业主接待', key: 'reception', tone: 'green' },
+  { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' },
+  { path: '/profile', label: '个人中心', key: 'profile', tone: 'slate' }
 ]
 // /seal 是「业委会」下的二级视图：印章页仍显示底栏、并高亮业委会
 const active = computed(() => route.path === '/seal' ? '/main' : route.path)
@@ -59,7 +74,7 @@ function backToCockpit() {
 .cockpit-return {
   position: fixed;
   right: 22rpx;
-  bottom: calc(112rpx + env(safe-area-inset-bottom));
+  bottom: calc(128rpx + env(safe-area-inset-bottom));
   z-index: 101;
   min-height: 48rpx;
   padding: 0 20rpx;
@@ -73,32 +88,23 @@ function backToCockpit() {
   line-height: 1;
 }
 .cockpit-return:active { transform: translateY(1rpx); background: #F3F6F9; }
+/* 图标底栏（0730 用户定：驾驶舱同款画风）——高度约 110rpx，各页 132rpx 留白仍够 */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
   display: flex; background: #fff; border-top: 1rpx solid #ececec;
-  padding-bottom: env(safe-area-inset-bottom);
-  height: calc(100rpx + env(safe-area-inset-bottom));
+  padding: 8rpx 0 calc(6rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -6rpx 18rpx rgba(24, 51, 76, .05);
 }
-.tab { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-/* 四格之间的竖向分界线：短、浅灰，垂直居中并随文字上移对齐 */
-.tab:not(:last-child)::after {
-  content: ''; position: absolute; right: 0; top: 50%;
-  transform: translateY(calc(-50% - 8rpx));
-  width: 1rpx; height: 40rpx; background: #E3E5E9;
-}
-/* 纯文字底栏：未选中=中性灰常规字（4 字标签，字号收到 30rpx 留出胶囊空间） */
-.tab-label {
-  font-size: 30rpx; font-weight: 500; color: var(--c-text-weak); line-height: 1;
-  padding: 12rpx 20rpx; border-radius: 16rpx;
-  position: relative; top: -8rpx;   /* 文字整体上移一点（0728 用户定），别贴底 */
-  transition: color .15s, background .15s, box-shadow .15s;
-}
-/* 选中：沉稳业委会蓝 #3E6BA8 + 一点边缘发光。
-   弃用过亮的 azure #2E6CE6（重新调研：银行/政务类偏严肃 App 多用低饱和深钢蓝，不用亮蓝抢视线） */
-.tab.active .tab-label {
-  color: #fff; font-weight: 700;
-  background: #3E6BA8;
-  box-shadow: 0 0 16rpx rgba(62, 107, 168, 0.55), 0 6rpx 14rpx rgba(62, 107, 168, 0.3);
-}
-.tab:active .tab-label { opacity: .8; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5rpx; padding: 4rpx 0; }
+.tab-ico { width: 52rpx; height: 52rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; transition: box-shadow .15s; }
+.tab-ico svg { width: 32rpx; height: 32rpx; }
+.tab-ico.blue { color: #3A5E92; background: #E6EDF8; }
+.tab-ico.green { color: #3B7150; background: #E4F0E8; }
+.tab-ico.amber { color: #8A6420; background: #F5EBD8; }
+.tab-ico.slate { color: #4A5560; background: #EDEFF3; }
+.tab-label { font-size: 24rpx; font-weight: 500; color: #6A7482; line-height: 1; transition: color .15s; }
+/* 选中态：图标块描一圈本色 + 标签加深加粗 */
+.tab.active .tab-ico { box-shadow: inset 0 0 0 3rpx currentColor; }
+.tab.active .tab-label { color: #2F3D56; font-weight: 700; }
+.tab:active { opacity: .75; }
 </style>
