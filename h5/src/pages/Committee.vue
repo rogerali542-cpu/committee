@@ -189,10 +189,11 @@
             <div class="mtg-hero-title">{{ heroMeeting.title }}</div>
             <div v-if="heroSubText" class="mtg-hero-sub">{{ heroSubText }}</div>
           </div>
-          <!-- 其余待处理（逆风局：逾期补开/草稿/待安排等多卡并存时）：保持原卡样式原样 -->
-          <template v-if="meetingRecordList.immediate.length > 1">
+          <!-- 其余待处理（逆风局：逾期补开/草稿/待安排等无日期项）：保持原卡样式原样；
+               已排期的其它会议移入下方「接下来」（0730 用户定二改） -->
+          <template v-if="pendingExtras.length">
             <div class="mr-group-title">待处理</div>
-            <div v-for="row in meetingRecordList.immediate.slice(1)" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
+            <div v-for="row in pendingExtras" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
               <div class="mr-feat-main">
                 <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
@@ -214,32 +215,34 @@
             </button>
           </div>
           <div class="mr-lookup">
-          <!-- 接下来（0730 图一骨架）：后续计划由折叠改平铺；行不可点+右侧按钮进入（0725 防误触提前召开）不变 -->
-          <template v-if="meetingRecordList.planned.length">
+          <!-- 接下来（0730 用户定二改）：白卡容器；头部右侧「还有 N 场」；
+               行=日期叶+标题+副行+右侧状态签（仍是入口按钮，0725 防误触规则不变）；
+               卡底一行「YYYY年全年 N 场 | 展开▾」承接原「全年会议一览」折叠 -->
+          <template v-if="nextRows.length">
             <div class="mtg-next-head">
               <span>接下来</span>
-              <em>{{ viewYear }}年 · 共{{ yearMeetingTotal }}场</em>
+              <em>还有 {{ nextRows.length }} 场</em>
             </div>
-            <div v-for="row in meetingRecordList.planned" :key="row.key" class="mr-row mr-planned">
-              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
-                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+            <div class="mtg-next-card">
+              <div v-for="row in nextRows" :key="row.key" class="mr-row mr-planned mtg-next-row">
+                <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
+                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+                </div>
+                <div class="mr-info">
+                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-sub">{{ row.sub }}</div>
+                </div>
+                <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
               </div>
-              <div class="mr-info">
-                <div class="mr-row-title">{{ row.title }}</div>
-                <div class="mr-row-sub">{{ row.sub }}</div>
+              <div class="mtg-next-foot" @click="toggleMeetingCalendar">
+                <b>{{ viewYear }}年全年 {{ yearMeetingTotal }} 场</b>
+                <span class="mtg-next-more">{{ meetingCalendarOpen ? '收起' : '展开' }} <i class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</i></span>
               </div>
-              <button type="button" class="mr-plan-btn" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
             </div>
           </template>
-          <!-- 查看月历入口行在列表尾部;月历本体改弹层浮在页面中央(0725 用户定):
-               原地展开在列表底部看不全还得自己滚,参照 12306/美团 的日期面板一律浮层,看完即关 -->
-          <!-- 档案抽屉(0725 用户定,方案A):月历与历史会议共用一个入口——两者都是"今年开过哪些会"的
-               低频回看视图;弹层=月历宫格(按时间索引)+已完成清单(按场次索引),原「已完成N场」折叠行删除 -->
-          <!-- 原地展开(0725 用户定,替代弹窗):展开时自动滚到月历——当初否掉原地展开的痛点就是"不自动滚、看不全" -->
-          <!-- 门牌用一个上位概念(0725 用户定:「全年月历·历史会议」两名硬拼违和);
-               展开区内部自带「2026年月历」「已完成N场」分区标题,内容自解释 -->
-          <div class="mr-fold" @click="toggleMeetingCalendar">
-            <span>全年会议一览</span>
+          <!-- 无接下来场次时，全年一览折叠行单独保留 -->
+          <div v-else class="mr-fold" @click="toggleMeetingCalendar">
+            <span>{{ viewYear }}年全年 {{ yearMeetingTotal }} 场</span>
             <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
           </div>
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
@@ -1761,6 +1764,12 @@ const yearMeetingTotal = computed(() => {
   const l = meetingRecordList.value
   return (l.done ? l.done.length : 0) + (l.immediate ? l.immediate.length : 0) + (l.planned ? l.planned.length : 0)
 })
+// 接下来（0730 二改）：主卡之外「已排期」的会 + 计划期次；无日期的逆风项（草稿/逾期/待安排）留在待处理组
+const nextRows = computed(() => {
+  const l = meetingRecordList.value
+  return [...l.immediate.slice(1).filter(r => r.meetingDate), ...l.planned]
+})
+const pendingExtras = computed(() => meetingRecordList.value.immediate.slice(1).filter(r => !r.meetingDate))
 const meetingCalendarOpen = ref(false)
 // （折叠态的 sessionStorage 保持机制已整体退役：0730 用户定「返回默认收起、回顶部」+ 后续计划改平铺）
 // （补开判定 isMakeupHeld 已删，0729 用户定：完成列表不再标「补开」，月历已表达各期执行情况）
@@ -1812,11 +1821,13 @@ const meetingRecordList = computed(() => {
         onTap: () => { if (held.id) openMeetingTap(held) } }
     }
     const label = r.status === 'current' ? (r.active ? '进行中' : '去召开')
-      : r.status === 'overdue' ? '去补开' : (r.past ? '未召开' : '待排')
+      : r.status === 'overdue' ? '去补开' : (r.past ? '未召开' : '计划中')   // 0730 二改：待排→计划中
+    const upcoming = r.status === 'upcoming' || (!r.past && r.status !== 'current' && r.status !== 'overdue')
     return { key: 'mr-' + r.period, done: false,
-      badgeTop: String(r.monthLabel || ''), badgeBot: '', range: true, // 期次区间横排胶囊「9-10月」,不再伪装成日期叶
-      title: '第' + r.period + '次业委会例会',
-      sub: r.sub,
+      // 0730 二改：计划期次徽标改「11-12 / 月」两行式，与日期叶同构
+      badgeTop: String(r.monthLabel || '').replace(/月$/, ''), badgeBot: '月', range: true,
+      title: upcoming ? (viewYear.value + '年第' + r.period + '次业主委员会例会') : ('第' + r.period + '次业委会例会'),
+      sub: upcoming ? '日期未定' : r.sub,
       statusLabel: label, statusClass: r.status,
       onTap: () => onPlanRow(r) }
   }
@@ -4442,8 +4453,18 @@ onActivated(show)
 .mtg-hero-chip { display: inline-block; padding: 10rpx 22rpx; border-radius: 999rpx; background: #E8F0FA; color: #2F5E96; font-size: 28rpx; font-weight: 700; }
 .mtg-hero-title { margin-top: 20rpx; font-size: 40rpx; font-weight: 800; color: #1F2A3C; line-height: 1.35; text-wrap: balance; }
 .mtg-hero-sub { margin-top: 12rpx; font-size: 30rpx; color: #5A6473; line-height: 1.4; }
-.mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 8rpx 8rpx 6rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
+.mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 8rpx 8rpx 12rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
 .mtg-next-head em { font-style: normal; font-size: 26rpx; font-weight: 500; color: #8A94A6; }
+/* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
+.mtg-next-card { background: #fff; border: 2rpx solid #E5E9ED; border-radius: 20rpx; padding: 4rpx 22rpx; box-shadow: 0 5rpx 18rpx rgba(20,42,58,.05); }
+.mtg-next-row { opacity: 1; border-top: 2rpx solid #F0F2F5; padding: 22rpx 0; }
+.mtg-next-row:first-child { border-top: 0; }
+.mtg-next-chip { flex-shrink: 0; min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 14rpx; background: #EEF1F4; color: #5A6473; font-size: 26rpx; font-weight: 600; white-space: nowrap; }
+.mtg-next-chip:active { background: #E2E6EB; }
+.mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 92rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+.mtg-next-foot:active { background: #FAFBFC; }
+.mtg-next-foot b { font-size: 30rpx; font-weight: 700; color: #2F5E96; }
+.mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
 /* 底部动作条：钉在底栏(约110rpx)上方，z 低于底栏(100)但盖内容 */
 .mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 14rpx 24rpx; background: rgba(255,255,255,.96); border-top: 2rpx solid #ECEEF1; backdrop-filter: blur(8px); }
 .mtg-add { flex-shrink: 0; width: 96rpx; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #EAF0F7; color: #3E6BA8; font-size: 44rpx; font-weight: 700; }
