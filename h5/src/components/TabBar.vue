@@ -1,6 +1,6 @@
 <template>
   <!-- 「返回驾驶舱」已移入各页顶栏右上角（0730 用户定，图一骨架），不再浮在底栏上方 -->
-  <nav v-if="isTab" class="tabbar">
+  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden }">
     <div
       v-for="t in tabs"
       :key="t.path"
@@ -71,7 +71,10 @@ function go(path) {
   display: flex; background: #fff; border-top: 1rpx solid #ececec;
   padding: 8rpx 0 calc(6rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -6rpx 18rpx rgba(24, 51, 76, .05);
+  transition: transform .22s ease;
 }
+/* 向下滚动时收起（0730 用户定，点8）：让出被操作条+导航栏叠占的高度 */
+.tabbar.hidden { transform: translateY(120%); }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5rpx; padding: 4rpx 0; }
 .tab-ico { width: 52rpx; height: 52rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; transition: box-shadow .15s; }
 .tab-ico svg { width: 32rpx; height: 32rpx; }

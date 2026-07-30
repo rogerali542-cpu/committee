@@ -159,7 +159,7 @@
       </div>
 
       <!-- 会议工作页：驾驶舱负责提醒和直达，这里只保留近期安排与年度记录，避免同一场会议重复出现。 -->
-      <div v-if="planTab === 'meeting' && homeLayout === 'tabs'" class="plan-calendar-card">
+      <div v-if="planTab === 'meeting' && homeLayout === 'tabs'" class="plan-calendar-card mtg-flat">
         <!-- 接待/培训：整个卡头就是折叠开关（默认收起，见 ovGridFold）。标题用「全年日历」而非
              「接待概览」——概览已由上方三数字承担，这张卡里只剩 12 月宫格；且老板找的就是「日历」
              这两个字，他问起来一眼能指到这行。 -->
@@ -168,8 +168,8 @@
           <!-- 开会 tab 标题＝「2026年」（0716 定，多轮收敛：履职年历→全年会议→年份本身当标题，
                原右上角的年份标签删了）。年份切换箭头已摘，按年计算的能力全保留，恢复见 0e0d15f。 -->
           <div class="plan-title-wrap">
+            <!-- 标题下的「YYYY年·逾期N期·本期…」摘要行已删（0730 用户定：与下方卡片重复） -->
             <span v-if="planTab === 'meeting'" class="plan-title">会议安排</span>
-            <span v-if="planTab === 'meeting'" class="meeting-year-summary">{{ viewYear }}年 · {{ meetingYearSummary }}</span>
             <span v-else class="plan-title ov-title">全年接待日历</span>
           </div>
           <div class="plan-actions">
@@ -180,25 +180,28 @@
 
         <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
-          <!-- 待召开卡（0730 四改）：所有待处理竖排在同一张卡；每行=日期叶+标题+副行+右侧状态签；
-               整行可点进入各自流程；底部动作条驱动「本期正常下一步」（无本期时=最高优先级）。 -->
+          <!-- 待召开卡（0730 五改）：竖排；行=左选中竖条+日期叶+标题(短名)+副行+右侧「常驻状态标签」；
+               状态与选中分离——选中(底部按钮指向的最急项)用整行浅底+左竖条，状态用无边框浅底文字标签。
+               整行可点进入各自流程；底部动作条默认落在最急项（欠账优先）。 -->
           <template v-if="meetingRecordList.immediate.length">
             <div class="mtg-due-head">待召开 {{ meetingRecordList.immediate.length }} 场</div>
             <div class="mtg-due-card">
-              <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mtg-due-row" @click="row.onTap()">
+              <div v-for="row in meetingRecordList.immediate" :key="row.key"
+                   class="mtg-due-row" :class="{ selected: heroMeeting && row.key === heroMeeting.key }" @click="row.onTap()">
                 <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
                 <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-title">{{ shortMeetingName(row.title) }}</div>
                   <div class="mr-row-sub">{{ dueSubFor(row) }}</div>
                 </div>
-                <span class="mtg-due-chip" :class="row.statusClass">{{ dueChipFor(row) }}</span>
+                <span class="mtg-due-status" :class="row.statusClass">{{ dueStatusText(row) }}</span>
               </div>
             </div>
           </template>
-          <!-- 底部动作条（0730 图一骨架）：＋新建 + 主CTA（跟随主卡状态）钉在底栏上方拇指区 -->
-          <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
+          <!-- 底部动作条（0730 图一骨架）：＋新建 + 主CTA（指向最急项）钉在底栏上方拇指区；
+               导航栏收起时(navHidden)下沉贴屏底 -->
+          <div v-if="heroMeeting || canCreate" class="mtg-actionbar" :class="{ 'nav-hidden': homeShell.navHidden }">
             <button v-if="canCreate" type="button" class="mtg-add" @click="openNewMeeting()">＋</button>
             <button type="button" class="mtg-primary" @click="heroMeeting ? heroMeeting.onTap() : openNewMeeting()">
               <span v-if="heroMeeting && heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
@@ -220,7 +223,7 @@
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
                 <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-title">{{ shortMeetingName(row.title) }}</div>
                   <div class="mr-row-sub">{{ row.sub }}</div>
                 </div>
                 <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
@@ -1726,27 +1729,34 @@ const homeFocusItems = computed(() => {
 // 首页会议记录列表（0724 领导意见#1）：原 12 格月历宫格空占版面、信息少 → 改竖排记录列表，
 // 待办/待排期次常驻置顶，已完成的会议收进「已完成 N 场」折叠，点开才展。数据同源 yearPlan。
 // recDoneOpen 已删(0725 方案A):已完成清单并入月历弹层,不再单独折叠
-// 待召开卡（0730 四改）：竖排列表（无横滑）。底部动作条 heroMeeting=本期正常下一步
-// （本期待召开/进行中），无本期时退回最高优先级（如仅逾期时=去补开）。
-// 逾期项在列表里以醒目「逾期」签提示、点该行进补开流程。
+// 待召开卡（0730 五改）：底部动作条 + 列表选中高亮 = 最紧急项（欠账优先，点1）。
+// 紧急度：进行中(在办) > 逾期(违规欠账) > 本期待召开 > 其它待召开 > 草稿。
+const DUE_RANK = { ongoing: 0, overdue: 1, current: 2, upcoming: 3 }
 const heroMeeting = computed(() => {
   const list = meetingRecordList.value.immediate
-  return list.find(r => r.statusClass === 'current' || r.statusClass === 'ongoing') || list[0] || null
+  if (!list.length) return null
+  const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
+  return [...list].sort((a, b) => rank(a) - rank(b))[0]
 })
-// 列表行副文案：状态短语 + 日期/地点（无确切日期写「日期未定」）
-function dueSubFor(row) {
-  if (row.statusClass === 'overdue') return '逾期未召开 · 需补开'
-  if (row.statusClass === 'ongoing') return '会议进行中'
-  if (String(row.key).indexOf('mr-draft') === 0) return '会议通知编辑中'
-  const info = (row.range || !row.meetingDate) ? '日期未定' : (String(row.sub || '').split(' · ')[0] || '')
-  return ['本期待召开', info].filter(Boolean).join(' · ')
+// 短名（点6）：列表统一「第N次业委会例会」；非例会（专项议事会等）保留原名；长名只在全年一览
+function shortMeetingName(title) {
+  const m = String(title || '').match(/第\s*(\d+)\s*次/)
+  return m ? ('第' + m[1] + '次业委会例会') : String(title || '')
 }
-// 右侧状态签：逾期→醒目「逾期」；进行中→「进行中」；草稿→「草稿」；本期正常待召开→蓝「✓」
-function dueChipFor(row) {
+// 右侧常驻状态标签（点2/4：无边框浅底文字，与"选中"分离）
+function dueStatusText(row) {
   if (row.statusClass === 'overdue') return '逾期'
   if (row.statusClass === 'ongoing') return '进行中'
-  if (String(row.key).indexOf('mr-draft') === 0) return '草稿'
-  return '✓'
+  if (String(row.key).indexOf('mr-draft') === 0) return '编辑中'
+  return '待召开'
+}
+// 副行：具体信息/下一步提示（状态词已在右侧标签，这里不重复）
+function dueSubFor(row) {
+  if (String(row.key).indexOf('mr-draft') === 0) return '通知尚未填写完成'
+  if (row.statusClass === 'overdue') return '已超期，请尽快补开'
+  if (row.statusClass === 'ongoing') return '会议进行中，点击继续'
+  const info = (row.range || !row.meetingDate) ? '本期内 · 日期未定' : (String(row.sub || '').split(' · ')[0] || '')
+  return info
 }
 // 底部主按钮副行：日期 + 短称（“2026年第4次业主委员会例会”→“第4次例会”）
 const heroBarSub = computed(() => {
@@ -1830,18 +1840,7 @@ const meetingRecordList = computed(() => {
   }
 })
 
-const meetingYearSummary = computed(() => {
-  const rows = yearPlan.value || []
-  const overdue = rows.filter(row => row.status === 'overdue').length
-  const current = rows[curPeriod - 1]
-  let currentText = '本期待安排'
-  if (current) {
-    if (current.status === 'done') currentText = '本期已完成'
-    else if (current.active) currentText = '本期进行中'
-  }
-  // 「已完成N期」不再展示（0725 用户定）：已完成的会议收在下方"已完成N场"折叠里，标题行只说当下要紧的
-  return [overdue ? ('逾期' + overdue + '期') : '无逾期', currentText].join(' · ')
-})
+// （meetingYearSummary 已删——0730 用户定点7：标题下摘要行与下方卡片重复，移除）
 
 // 原地展开 + 自动滚到月历(0725 用户定):当初否掉原地展开的痛点是"展开在视野外、看不全"
 const calendarPanelEl = ref(null)
@@ -2336,6 +2335,7 @@ function show() {
   // 0730 用户定（推翻 0725 的"返回保持展开并滚到日历"）：从详情等页返回首页一律回到顶部，
   // 全年会议一览默认收起——落到页面底部的日历属于导航错误
   meetingCalendarOpen.value = false
+  homeShell.navHidden = false   // 回首页恢复导航栏
   // （后续计划已平铺，无折叠态可恢复——0730 图一骨架）
   try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
   isChair.value = perm.isChair()
@@ -3348,9 +3348,21 @@ function realUsePhoto() {
   _realShotFile = null
   bindStreamToVideo()
 }
+// 底部导航栏随滚动收起（0730 用户定，点8）：向下滚→隐藏一级导航栏（操作条落到屏底），向上滚/近顶→复现
+let _lastScrollY = 0
+function _onWinScroll() {
+  const y = window.scrollY || document.documentElement.scrollTop || 0
+  if (y < 60) { homeShell.navHidden = false; _lastScrollY = y; return }
+  if (Math.abs(y - _lastScrollY) < 10) return
+  homeShell.navHidden = y > _lastScrollY
+  _lastScrollY = y
+}
+onMounted(() => window.addEventListener('scroll', _onWinScroll, { passive: true }))
 // 离开页面/组件卸载时务必释放摄像头；顺带复位欢迎页标记，避免离开后底栏一直被隐藏
 onUnmounted(() => {
   stopRealStream()
+  window.removeEventListener('scroll', _onWinScroll)
+  homeShell.navHidden = false
   // 开发期热更新会先挂载新页面、再卸载旧页面；同在 /main 时不回写 false，避免驾驶舱底栏误显。
   if (window.location.pathname !== '/main') homeShell.welcomeVisible = false
 })
@@ -4438,16 +4450,24 @@ onActivated(show)
 
 /* ── 图一骨架（0730 用户定）：主卡 + 接下来 + 底部动作条 ── */
 /* 主卡横滑（0730 三改）：scroll-snap 逐页吸附，多张待处理左右滑切换 */
-/* 待召开卡（0730 四改）：竖排列表，行=日期叶+标题+副行+右侧状态签 */
-.mtg-due-head { margin: 4rpx 8rpx 12rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
-.mtg-due-card { margin-bottom: 8rpx; padding: 4rpx 24rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); }
-.mtg-due-row { display: flex; align-items: center; gap: 22rpx; padding: 26rpx 0; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+/* 卡中卡修复（0730，点5）：会议 tab 的外层 plan-calendar-card 去壳，内层卡直接落在页面底上 */
+.plan-calendar-card.mtg-flat { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+.meeting-plan-head { border-bottom: 0 !important; padding: 8rpx 8rpx 16rpx !important; }
+.mr-list { padding: 0 4rpx; }
+/* 待召开卡（0730 五改）：竖排列表；状态标签与选中态分离 */
+.mtg-due-head { margin: 4rpx 4rpx 12rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
+.mtg-due-card { margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
+.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 26rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
-.mtg-due-chip { flex-shrink: 0; align-self: center; min-width: 96rpx; text-align: center; padding: 8rpx 20rpx; border-radius: 999rpx; font-size: 26rpx; font-weight: 700; white-space: nowrap; }
-.mtg-due-chip.overdue { color: #9A5A13; background: #FBEBD9; }
-.mtg-due-chip.ongoing { color: #2F6647; background: #E4F0E8; }
-.mtg-due-chip.current, .mtg-due-chip.upcoming { color: #2F5E96; background: #E8F0FA; }
+/* 选中态（点2/3）：整行浅蓝底 + 左侧竖条，不用 ✓ 框 */
+.mtg-due-row.selected { background: #F2F7FC; }
+.mtg-due-row.selected::before { content: ''; position: absolute; left: -22rpx; top: 0; bottom: 0; width: 8rpx; background: #3E6BA8; }
+/* 常驻状态标签（点2/4）：无边框、浅底文字，明显不是按钮 */
+.mtg-due-status { flex-shrink: 0; align-self: center; padding: 5rpx 14rpx; border-radius: 8rpx; font-size: 24rpx; font-weight: 600; white-space: nowrap; }
+.mtg-due-status.overdue { color: #B0641A; background: #FBEEDD; }
+.mtg-due-status.ongoing { color: #2F6647; background: #E7F2EB; }
+.mtg-due-status.current, .mtg-due-status.upcoming { color: #5A6B82; background: #EEF2F7; }
 .mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 8rpx 8rpx 12rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
 .mtg-next-head em { font-style: normal; font-size: 26rpx; font-weight: 500; color: #8A94A6; }
 /* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
@@ -4461,7 +4481,9 @@ onActivated(show)
 .mtg-next-foot b { font-size: 30rpx; font-weight: 700; color: #2F5E96; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
 /* 底部动作条：钉在底栏(约110rpx)上方，z 低于底栏(100)但盖内容 */
-.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 14rpx 24rpx; background: rgba(255,255,255,.96); border-top: 2rpx solid #ECEEF1; backdrop-filter: blur(8px); }
+.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(110rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 14rpx 24rpx; background: rgba(255,255,255,.96); border-top: 2rpx solid #ECEEF1; backdrop-filter: blur(8px); transition: bottom .22s ease; }
+/* 导航栏收起时操作条下沉贴屏底（点8） */
+.mtg-actionbar.nav-hidden { bottom: env(safe-area-inset-bottom); }
 .mtg-add { flex-shrink: 0; width: 96rpx; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #EAF0F7; color: #3E6BA8; font-size: 44rpx; font-weight: 700; }
 .mtg-add:active { background: #DCE6F1; }
 .mtg-primary { flex: 1; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
