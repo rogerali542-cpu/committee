@@ -99,8 +99,9 @@
         <!-- 任务大卡（0729 用户定）：业委会/接待/学习培训三栏合一，各显示最近一条任务，多条可翻页 -->
         <div class="ck-section">
           <div class="ck-board">
+            <!-- 标签独占一行放标题上方（0729 用户定）：兼作类型分隔，行距加大区分三栏 -->
             <div v-for="row in cockpitBoardRows" :key="row.key" class="ck-board-row">
-              <div class="ck-board-side">
+              <div class="ck-board-head">
                 <span class="ck-board-tag" :class="row.tone">{{ row.label }}</span>
                 <div v-if="row.items.length > 1" class="ck-board-pager">
                   <button type="button" @click.stop="boardShift(row.key, -1)">‹</button>
@@ -108,19 +109,21 @@
                   <button type="button" @click.stop="boardShift(row.key, 1)">›</button>
                 </div>
               </div>
-              <div class="ck-board-main">
-                <template v-if="row.cur">
-                  <div class="ck-board-title">{{ row.cur.title }}</div>
-                  <div v-if="row.cur.sub" class="ck-board-sub">{{ row.cur.sub }}</div>
-                </template>
-                <div v-else class="ck-board-empty">{{ row.emptyText }}</div>
-              </div>
-              <div v-if="row.cur && row.cur.cta" class="ck-board-acts">
-                <button type="button" class="ck-board-cta" @click="row.cur.onTap()">{{ row.cur.cta }} ›</button>
-                <button v-if="row.cur.secondaryCta" type="button" class="ck-board-secondary"
-                        @click="row.cur.onSecondaryTap()">{{ row.cur.secondaryCta }}</button>
-                <button v-else-if="row.cur.draft" type="button" class="ck-board-secondary danger"
-                        @click.stop.prevent="discardDraft">放弃草稿</button>
+              <div class="ck-board-body">
+                <div class="ck-board-main">
+                  <template v-if="row.cur">
+                    <div class="ck-board-title">{{ row.cur.title }}</div>
+                    <div v-if="row.cur.sub" class="ck-board-sub">{{ row.cur.sub }}</div>
+                  </template>
+                  <div v-else class="ck-board-empty">{{ row.emptyText }}</div>
+                </div>
+                <div v-if="row.cur && row.cur.cta" class="ck-board-acts">
+                  <button type="button" class="ck-board-cta" @click="row.cur.onTap()">{{ row.cur.cta }} ›</button>
+                  <button v-if="row.cur.secondaryCta" type="button" class="ck-board-secondary"
+                          @click="row.cur.onSecondaryTap()">{{ row.cur.secondaryCta }}</button>
+                  <button v-else-if="row.cur.draft" type="button" class="ck-board-secondary danger"
+                          @click.stop.prevent="discardDraft">放弃草稿</button>
+                </div>
               </div>
             </div>
           </div>
@@ -4180,9 +4183,11 @@ onActivated(show)
 .welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 21rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 /* 任务大卡（0729 用户定）：三栏合一，左类别+翻页、中任务、右按钮 */
 .ck-board { background: #fff; border-radius: 26rpx; padding: 6rpx 26rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,.05), 0 12rpx 26rpx rgba(20,33,61,.08); }
-.ck-board-row { display: flex; align-items: center; gap: 20rpx; padding: 26rpx 0; border-bottom: 2rpx solid #F0F2F5; }
+/* 标签行在上、任务行在下；上下留白加大，三类任务分得开 */
+.ck-board-row { display: block; padding: 32rpx 0 36rpx; border-bottom: 2rpx solid #F0F2F5; }
 .ck-board-row:last-child { border-bottom: 0; }
-.ck-board-side { flex-shrink: 0; width: 132rpx; display: flex; flex-direction: column; align-items: flex-start; gap: 10rpx; }
+.ck-board-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
+.ck-board-body { display: flex; align-items: center; gap: 20rpx; }
 .ck-board-tag { font-size: 22rpx; font-weight: 700; padding: 5rpx 14rpx; border-radius: 999rpx; white-space: nowrap; }
 .ck-board-tag.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-board-tag.green { color: #3B7150; background: #E4F0E8; }
