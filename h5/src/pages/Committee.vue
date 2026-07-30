@@ -1725,7 +1725,7 @@ function _restoreFold(key, target) {
 function _persistFold(key, val) {
   try { val ? window.sessionStorage.setItem(key, '1') : window.sessionStorage.removeItem(key) } catch (e) { /* 忽略 */ }
 }
-watch(meetingCalendarOpen, (v) => _persistFold('mr_calendar_open', v))
+// （日历展开态不再跨页保持——0730 用户定：返回首页默认收起、回顶部）
 watch(planListOpen, (v) => _persistFold('mr_planlist_open', v))
 // （补开判定 isMakeupHeld 已删，0729 用户定：完成列表不再标「补开」，月历已表达各期执行情况）
 const meetingRecordList = computed(() => {
@@ -2295,18 +2295,11 @@ function show() {
   // 优先 ?tab= 显式指定，其次会话内最后停留的 tab（sessionStorage：微信杀会话即清，
   // 新打开仍默认开会——开会是核心价值，冷启动不动它）。
   planTab.value = props.section === 'reception' ? 'reception' : 'meeting'
-  // 恢复会话内的展开态(0725 用户定:进详情返回后保持展开)
-  _restoreFold('mr_calendar_open', meetingCalendarOpen)
+  // 0730 用户定（推翻 0725 的"返回保持展开并滚到日历"）：从详情等页返回首页一律回到顶部，
+  // 全年会议一览默认收起——落到页面底部的日历属于导航错误
+  meetingCalendarOpen.value = false
   _restoreFold('mr_planlist_open', planListOpen)
-  // 返回首页时视角落到日历/历史位置(0725 用户定):月历已展开(=之前看过)则滚动过去,
-  // 盖过路由默认的置顶,免得用户每次回来都要重新下拉找日历
-  if (meetingCalendarOpen.value && planTab.value === 'meeting') {
-    setTimeout(() => {
-      if (calendarPanelEl.value && calendarPanelEl.value.scrollIntoView) {
-        calendarPanelEl.value.scrollIntoView({ behavior: 'auto', block: 'start' })
-      }
-    }, 180)
-  }
+  try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
