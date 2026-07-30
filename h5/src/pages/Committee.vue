@@ -1697,7 +1697,7 @@ const portalSections = computed(() => {
   const h = heroMeeting.value
   if (h) {
     mTitle = heroBarSub.value
-    if (h.statusClass === 'overdue') { mSub = '请尽快补开'; mBadge = '逾期'; mTier = 'st-warn' }   // 副行行动导向（0731 用户定：与另两节同构；"尚未召开"那种状态复读不要）
+    if (h.statusClass === 'overdue') { mTitle += '召开'; mSub = '请尽快补开'; mBadge = '逾期'; mTier = 'st-warn' }   // 「应于 5-6月召开」语义完整（0731 用户定）；副行行动导向
     else if (h.statusClass === 'ongoing') { mSub = '会议进行中'; mBadge = '进行中'; mTier = 'st-blue' }
     else { mSub = dueSubFor(h) }
   } else {
