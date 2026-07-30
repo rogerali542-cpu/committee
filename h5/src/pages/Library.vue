@@ -1,66 +1,90 @@
 <template>
-  <div class="pub-page lib-page">
-    <PublishNav title="历史记录" />
+  <div class="pub-page arch-page">
+    <PublishNav title="档案馆" />
 
     <div class="pub-wrap">
-      <!-- 顶部分类切换（蓝色） -->
-      <div class="lib-tabs">
-        <div class="lib-tab" :class="{ active: tab === 'committee' }" @click="switchTab('committee')">
-          业委会会议 <span class="lib-tab-count">{{ counts.committee }}</span>
+      <!-- 三页签：会议 / 接待 / 学习（0730 设计师定：统一档案馆，中性深灰、不用三色） -->
+      <div class="arch-tabs">
+        <div v-for="t in TABS" :key="t.key" class="arch-tab" :class="{ active: tab === t.key }" @click="switchTab(t.key)">
+          {{ t.label }}<span class="arch-tab-count">{{ counts[t.key] || 0 }}</span>
         </div>
       </div>
 
-      <template v-if="items.length">
-        <div class="pub-card lib-card" v-for="item in items" :key="item.id" @click="openDetail(item)">
-          <span class="pub-tag">业委会会议</span>
-          <!-- 状态徽标位：现示归档/公示状态；未来上社区链后此处换「已上链/存证中」 -->
-          <span class="pub-badge" :class="badgeClass(item.statusText)">{{ item.statusText }}</span>
+      <!-- 年份筛选（客户端；三类数据均无服务端年份参数）。只一个年份时不显示，免冗余 -->
+      <div v-if="years.length > 1" class="arch-years">
+        <div class="arch-year" :class="{ active: yearFilter === '' }" @click="yearFilter = ''">全部</div>
+        <div v-for="y in years" :key="y" class="arch-year" :class="{ active: yearFilter === y }" @click="yearFilter = y">{{ y }}年</div>
+      </div>
 
-          <span class="pub-title">{{ item.title }}</span>
-
-          <div class="pub-meta">
-            <span class="mi" v-if="item.date">日期：<b>{{ item.date }}</b></span>
-            <span class="mi" v-if="item.metaText">{{ item.metaText }}</span>
+      <!-- 纯轻列表（spec §5：只需知晓的历史信息＝透明底+分隔线，非白卡） -->
+      <div v-if="items.length" class="arch-list">
+        <div v-for="item in items" :key="item.kind + '-' + item.id" class="arch-row" @click="openDetail(item)">
+          <div class="arch-info">
+            <div class="arch-title">{{ item.title }}</div>
+            <div class="arch-meta">
+              <span v-if="item.date">{{ item.date }}</span>
+              <template v-if="item.metaText"><span class="arch-dot">·</span><span>{{ item.metaText }}</span></template>
+            </div>
           </div>
+          <span v-if="item.statusText" class="arch-status">{{ item.statusText }}</span>
+          <span class="arch-arrow">›</span>
         </div>
-      </template>
+      </div>
 
-      <div v-else-if="!loading" class="pub-card lib-empty">
+      <div v-else-if="!loading" class="arch-empty">
         <div class="empty-icon">📚</div>
-        <span class="empty-title">该分类暂无归档</span>
-        <span class="empty-text">已结束并归档的会议会显示在这里。</span>
+        <span class="empty-title">{{ curTab.label }}暂无归档</span>
+        <span class="empty-text">{{ curTab.emptyHint }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '@/api'
 import PublishNav from '@/components/PublishNav.vue'
-import { redirectTo } from '@/utils/navigate'
-import { navigateTo } from '@/utils/navigate'
+import { navigateTo, redirectTo } from '@/utils/navigate'
 import { getStorage } from '@/utils/storage'
 
-function byDateDesc(a, b) { return (b.date || '').localeCompare(a.date || '') }
+const route = useRoute()
+
+const TABS = [
+  { key: 'committee', label: '会议', emptyHint: '已归档的会议纪要会显示在这里。' },
+  { key: 'reception', label: '接待', emptyHint: '往期接待记录与已办事项会显示在这里。' },
+  { key: 'learning', label: '学习', emptyHint: '已完成的培训记录会显示在这里。' }
+]
 
 const tab = ref('committee')
-const counts = ref({ committee: 0 })
-const lists = ref({ committee: [] })
-const items = ref([])
+const yearFilter = ref('')
+const lists = ref({ committee: [], reception: [], learning: [] })
+const counts = ref({ committee: 0, reception: 0, learning: 0 })
 const loading = ref(true)
 
-// 状态 → 徽标配色：已公示=蓝、已完成=绿、已归档=中性
-function badgeClass(status) {
-  if (status === '已公示') return 'is-pub'
-  if (status === '已完成') return 'is-done'
-  return 'is-wait'
-}
+function byDateDesc(a, b) { return String(b.date || '').localeCompare(String(a.date || '')) }
+
+const curTab = computed(() => TABS.find(t => t.key === tab.value) || TABS[0])
+const curList = computed(() => lists.value[tab.value] || [])
+const years = computed(() => {
+  const ys = new Set()
+  curList.value.forEach(it => { const y = String(it.date || '').slice(0, 4); if (/^\d{4}$/.test(y)) ys.add(y) })
+  return [...ys].sort((a, b) => b.localeCompare(a))
+})
+const items = computed(() => {
+  const list = curList.value
+  return yearFilter.value ? list.filter(it => String(it.date || '').startsWith(yearFilter.value)) : list
+})
 
 async function loadArchive() {
   loading.value = true
-
-  const committee = await api.committeeArchiveList().catch(() => [])
+  // 三类数据并行拉取，任一失败降级为空数组，互不影响
+  const [committee, reception, learning] = await Promise.all([
+    api.committeeArchiveList().catch(() => []),
+    api.receptionRecords('all').catch(() => []),
+    api.learningList('', 'ended').catch(() => [])
+  ])
+  // 会议：已归档会议纪要（保留公示/归档态；三级色规则下这两态都是灰字）
   const committeeItems = (committee || [])
     .filter(m => m.compliance !== 'invalid')
     .map(m => ({
@@ -69,29 +93,46 @@ async function loadArchive() {
       metaText: (m.materials ? m.materials.length : 0) + ' 份材料'
     }))
     .sort(byDateDesc)
+  // 接待：往期接待记录与已办事项（记录只有一种状态，不写状态标签——spec §11）
+  const receptionItems = (reception || [])
+    .map(r => ({
+      id: r.id, kind: 'reception',
+      title: r.visitorName ? (r.visitorName + ' 来访') : (r.content ? String(r.content).slice(0, 16) : '接待记录'),
+      date: r.date || '',
+      statusText: '',
+      metaText: [r.receiver && ('接待人 ' + r.receiver), r.room].filter(Boolean).join(' · ')
+    }))
+    .sort(byDateDesc)
+  // 学习：已完成培训记录（已完成＝灰字）
+  const learningItems = (learning || [])
+    .map(l => ({
+      id: l.id, kind: 'learning', title: l.title, date: l.date || '',
+      statusText: '已完成',
+      metaText: [l.trainer && ('讲师 ' + l.trainer), l.category === 'internal' ? '内部学习' : '外部培训'].filter(Boolean).join(' · ')
+    }))
+    .sort(byDateDesc)
 
-  const ls = { committee: committeeItems }
-  lists.value = ls
-  counts.value = { committee: committeeItems.length }
-  items.value = ls[tab.value]
+  lists.value = { committee: committeeItems, reception: receptionItems, learning: learningItems }
+  counts.value = { committee: committeeItems.length, reception: receptionItems.length, learning: learningItems.length }
   loading.value = false
 }
 
-function switchTab(t) {
-  tab.value = t
-  items.value = lists.value[t]
-}
+function switchTab(t) { tab.value = t; yearFilter.value = '' }
 
 function openDetail(item) {
-  navigateTo('/pages/archive-detail/archive-detail?kind=' + item.kind + '&id=' + item.id)
+  // 会议/学习归档详情走 ArchiveDetail；接待有自己的详情页（ArchiveDetail 不含 reception 分支）
+  if (item.kind === 'reception') {
+    navigateTo('/pages/reception-detail/reception-detail?id=' + item.id + '&from=archive')
+  } else {
+    navigateTo('/pages/archive-detail/archive-detail?kind=' + item.kind + '&id=' + item.id)
+  }
 }
 
 function enter() {
   const activeRole = getStorage('activeRole')
-  if (!activeRole) {
-    redirectTo('/pages/login/login')
-    return
-  }
+  if (!activeRole) { redirectTo('/pages/login/login'); return }
+  const qtab = route.query && route.query.tab
+  if (qtab && TABS.some(t => t.key === qtab)) tab.value = qtab
   loadArchive()
 }
 
@@ -100,43 +141,44 @@ onActivated(enter)
 </script>
 
 <style scoped>
-/* 本页统一为深橙风格：仅在 .lib-page 作用域内把共享的蓝色 --pub-* 覆盖成橙，
-   并给 PublishNav 传橙色渐变(--pub-nav-grad)。不影响其它 publish 页（它们不设这些变量→维持蓝）。 */
-.lib-page {
+/* 档案馆＝中性深灰（0730 设计师定：不属于任何模块，所以不用三色）。
+   在本页作用域内把 publish 主题的蓝/资料库旧深青覆盖成中性灰，并给 PublishNav 传中性灰顶栏。 */
+.arch-page {
   padding-bottom: 40rpx;
-  /* 资料库＝学习深青（用户定，规范三色制借色）；橙留给异常态，历史资料库不用橙 */
-  --pub-blue: #2a6b73;
-  --pub-blue-2: #3f8189;
-  --pub-blue-deep: #1e5a62;
-  --pub-blue-soft: #e2edee;
-  --pub-blue-line: #d3e3e4;
-  --pub-nav-grad: linear-gradient(160deg, #3f8189 0%, #2a6b73 100%);
+  background: #f2f3f5;
+  --pub-blue: #4a5560;
+  --pub-blue-2: #5a6472;
+  --pub-blue-deep: #3a424e;
+  --pub-blue-soft: #eceef1;
+  --pub-blue-line: #e2e5ea;
+  --pub-nav-grad: linear-gradient(160deg, #55606e 0%, #434d5a 100%);
 }
 
-/* 分类切换（深橙） */
-.lib-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
-.lib-tab {
-  flex: 1; text-align: center; font-size: 30rpx; color: var(--pub-sub);
-  background: #fff; border-radius: 18rpx; padding: 20rpx 0; font-weight: 600;
-  box-shadow: 0 6rpx 20rpx rgba(41, 63, 102, 0.06);
-}
-.lib-tab.active { background: var(--pub-blue); color: #fff; }
-.lib-tab-count { font-size: 28rpx; opacity: 0.85; }
+/* 三页签 */
+.arch-tabs { display: flex; gap: 14rpx; margin-bottom: 20rpx; }
+.arch-tab { flex: 1; text-align: center; font-size: 30rpx; color: #6b7280; background: #fff; border-radius: 18rpx; padding: 20rpx 0; font-weight: 600; box-shadow: 0 6rpx 20rpx rgba(31,41,55,0.05); }
+.arch-tab.active { background: #4a5560; color: #fff; }
+.arch-tab-count { font-size: 26rpx; opacity: 0.85; margin-left: 6rpx; }
 
-/* 卡片可点击反馈 */
-.lib-card { cursor: pointer; }
-.lib-card:active { background: var(--pub-blue-soft); }
+/* 年份筛选胶囊 */
+.arch-years { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 22rpx; }
+.arch-year { padding: 8rpx 24rpx; border-radius: 999rpx; background: #fff; color: #6b7280; font-size: 26rpx; border: 2rpx solid #e2e5ea; }
+.arch-year.active { background: #4a5560; color: #fff; border-color: #4a5560; }
 
-/* 学习「已完成」绿色徽标（在蓝色体系里作正向区分） */
-.pub-badge.is-done { background: var(--pub-green-soft); color: var(--pub-green); }
+/* 轻列表：透明底 + 分隔线（spec §5：只需知晓的历史信息，弱于要办的白卡） */
+.arch-list { border-top: 2rpx solid #e2e5ea; }
+.arch-row { display: flex; align-items: center; gap: 16rpx; min-height: 108rpx; padding: 22rpx 8rpx; border-bottom: 2rpx solid #e2e5ea; cursor: pointer; }
+.arch-row:active { background: #ecedf0; }
+.arch-info { flex: 1; min-width: 0; }
+.arch-title { font-size: 31rpx; font-weight: 650; color: #1f2937; line-height: 1.35; }
+.arch-meta { margin-top: 8rpx; font-size: 26rpx; color: #6b7280; display: flex; align-items: center; gap: 8rpx; flex-wrap: wrap; }
+.arch-dot { opacity: .5; }
+.arch-status { flex-shrink: 0; align-self: center; font-size: 25rpx; font-weight: 500; color: #6b7280; }
+.arch-arrow { flex-shrink: 0; font-size: 32rpx; color: #b4bcc7; }
 
-/* 空态蓝卡 */
-.lib-empty { text-align: center; padding: 72rpx 36rpx; cursor: default; }
-.lib-empty:active { background: #fff; }
-.empty-icon {
-  width: 100rpx; height: 100rpx; border-radius: 50%; background: var(--pub-blue-soft);
-  display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx;
-}
-.empty-title { display: block; font-size: 38rpx; color: var(--pub-ink); font-weight: 700; margin-bottom: 14rpx; }
-.empty-text { display: block; font-size: 30rpx; color: var(--pub-sub); line-height: 1.7; }
+/* 空态 */
+.arch-empty { text-align: center; padding: 80rpx 36rpx; background: #fff; border-radius: 20rpx; box-shadow: 0 6rpx 20rpx rgba(31,41,55,0.05); }
+.empty-icon { width: 100rpx; height: 100rpx; border-radius: 50%; background: #eceef1; display: flex; align-items: center; justify-content: center; margin: 0 auto 24rpx; font-size: 52rpx; }
+.empty-title { display: block; font-size: 34rpx; color: #1f2937; font-weight: 700; margin-bottom: 12rpx; }
+.empty-text { display: block; font-size: 28rpx; color: #6b7280; line-height: 1.6; }
 </style>
