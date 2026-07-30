@@ -2,6 +2,8 @@
   <div class="profile-scroll" style="overflow-y:auto;">
     <!-- Header -->
     <div class="profile-header" :style="{ background: headerGrad, paddingTop: (statusBarHeight + 24) + 'px' }">
+      <!-- 返回驾驶舱移入顶栏右上角（0730 用户定） -->
+      <button type="button" class="ph-cockpit" :style="{ color: textColor, borderColor: textColor }" @click="goCockpitFromHd">返回驾驶舱</button>
       <div class="ph-avatar" :style="{ color: textColor }">{{ activeRole.realName && activeRole.realName[0] }}</div>
       <span class="ph-name" :style="{ color: textColor }">{{ activeRole.realName }}</span>
       <span class="ph-role-chip" :style="{ background: 'rgba(255,255,255,0.3)', color: textColor }">{{ activeRole.role }}</span>
@@ -79,7 +81,7 @@ import { ref, onMounted, onActivated } from 'vue'
 import api from '@/api'
 import { toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
-import { getStorage } from '@/utils/storage'
+import { getStorage, setStorage } from '@/utils/storage'
 import { useAuthStore } from '@/stores/auth'
 import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 
@@ -87,6 +89,11 @@ const auth = useAuthStore()
 
 const statusBarHeight = ref(0)
 const activeRole = ref({})
+// 顶栏「返回驾驶舱」（0730：由 TabBar 浮球移入顶栏）
+function goCockpitFromHd() {
+  setStorage('home_layout', 'portal')
+  window.location.replace('/main?home=portal')
+}
 const headerGrad = ref('')
 const textColor = ref('#5C3D00')
 const roleDesc = ref('')
@@ -236,11 +243,14 @@ onActivated(() => { if (mounted) refresh() })
 
 /* Header */
 .profile-header {
+  position: relative;
   padding: 0 40rpx 56rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+.ph-cockpit { position: absolute; top: calc(env(safe-area-inset-top) + 18rpx); right: 24rpx; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid currentColor; border-radius: 999rpx; background: rgba(255,255,255,.14); font-size: 26rpx; font-weight: 600; }
+.ph-cockpit:active { opacity: .7; }
 .ph-avatar {
   width: 160rpx; height: 160rpx;
   border-radius: 50%;

@@ -1,7 +1,5 @@
 <template>
-  <button v-if="isTab" class="cockpit-return" type="button" @click="backToCockpit">
-    返回驾驶舱
-  </button>
+  <!-- 「返回驾驶舱」已移入各页顶栏右上角（0730 用户定，图一骨架），不再浮在底栏上方 -->
   <nav v-if="isTab" class="tabbar">
     <div
       v-for="t in tabs"
@@ -64,30 +62,9 @@ function go(path) {
   }
   if (path !== route.path) redirectTo(path)
 }
-function backToCockpit() {
-  localStorage.setItem('home_layout', JSON.stringify('portal'))
-  window.location.replace('/main?home=portal')
-}
 </script>
 
 <style scoped>
-.cockpit-return {
-  position: fixed;
-  right: 22rpx;
-  bottom: calc(128rpx + env(safe-area-inset-bottom));
-  z-index: 101;
-  min-height: 48rpx;
-  padding: 0 20rpx;
-  border: 2rpx solid rgba(47, 61, 86, .18);
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 0 5rpx 16rpx rgba(30, 42, 62, .10);
-  color: #53627A;
-  font-size: 22rpx;
-  font-weight: 600;
-  line-height: 1;
-}
-.cockpit-return:active { transform: translateY(1rpx); background: #F3F6F9; }
 /* 图标底栏（0730 用户定：驾驶舱同款画风）——高度约 110rpx，各页 132rpx 留白仍够 */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;

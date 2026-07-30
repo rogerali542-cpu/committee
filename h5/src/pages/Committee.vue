@@ -6,6 +6,8 @@
         <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? '业委会智能助手' : (planTab === 'reception' ? '接待中心' : '业委会会议') }}</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
+      <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
+      <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回驾驶舱</button>
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score">
         <span class="hd-score-label">当前业委会综合评分</span>
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
@@ -1335,6 +1337,11 @@ const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.v
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
 // 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
+// 顶栏「返回驾驶舱」（0730：由 TabBar 浮球移入各页顶栏）
+function goCockpitFromHd() {
+  setStorage('home_layout', 'portal')
+  window.location.replace('/main?home=portal')
+}
 function enterCommitteeArea() {
   // 驾驶舱 URL 仍带 home=portal 时，TabBar 会据此继续隐藏。
   // 明确进入会议工作页并同步 URL，保证底栏和“返回驾驶舱”稳定出现。
@@ -4424,6 +4431,10 @@ onActivated(show)
 .mr-row { display: flex; align-items: center; gap: 14rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
+/* 顶栏「返回驾驶舱」胶囊（0730 图一骨架）：白描边适配深色顶栏 */
+.hd-cockpit { flex-shrink: 0; align-self: flex-start; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 600; }
+.hd-cockpit:active { background: rgba(255,255,255,.2); }
+
 /* ── 图一骨架（0730 用户定）：主卡 + 接下来 + 底部动作条 ── */
 .mtg-hero { padding: 30rpx 28rpx 32rpx; margin-bottom: 8rpx; border: 2rpx solid #D6E2EC; border-radius: 24rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); cursor: pointer; }
 .mtg-hero:active { background: #F1F7FB; }
