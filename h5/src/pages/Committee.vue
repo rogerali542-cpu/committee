@@ -182,7 +182,7 @@
             <!-- 「待召开 N 场」小标题已删（0730 用户定：下方卡片自明是几场） -->
             <div class="mtg-due-card">
               <div v-for="row in meetingRecordList.immediate" :key="row.key"
-                   class="mtg-due-row" :class="{ selected: heroMeeting && row.key === heroMeeting.key }" @click="row.onTap()">
+                   class="mtg-due-row" @click="row.onTap()">
                 <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
@@ -207,12 +207,6 @@
             <div v-for="row in nextRows" :key="row.key" class="mtg-next-row">
               <span class="mtg-next-line">{{ shortMeetingName(row.title) }} · {{ nextWhen(row) }}</span>
               <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
-            </div>
-            <!-- 发起临时会议（0730 用户定点2）：低频动作从底部裸「＋」挪来这里，配全文案，
-                 老年用户一眼看懂；底部只留一个主按钮最干净 -->
-            <div v-if="canCreate" class="mtg-next-row mtg-add-row" @click="openNewMeeting()">
-              <span class="mtg-add-line">＋ 发起临时会议</span>
-              <span class="mtg-add-arrow">›</span>
             </div>
             <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
@@ -247,12 +241,17 @@
             </template>
           </div>
           </div>
-          <!-- 底部动作条（0730 点2改）：裸「＋」已挪进「接下来」列表（发起临时会议），这里只剩一个
-               指向最急项的主 CTA，独占整条、拇指区最干净。无最急项时整条不显示（发起会议走列表那行） -->
-          <div v-if="heroMeeting" class="mtg-actionbar">
-            <button type="button" class="mtg-primary" @click="heroMeeting.onTap()">
+          <!-- 底部动作条（0730 点2三改）：上下叠放，主次分明且都在拇指区——
+               次级「＋ 发起临时会议」浅蓝底在上（低频，一两月一次），主按钮（指向最急项）实蓝在下。
+               无最急项时主按钮直接变「发起会议」、上方次级按钮省略（不重复） -->
+          <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
+            <button v-if="heroMeeting && canCreate" type="button" class="mtg-secondary" @click="openNewMeeting()">＋ 发起临时会议</button>
+            <button v-if="heroMeeting" type="button" class="mtg-primary" @click="heroMeeting.onTap()">
               <span v-if="heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
               <span class="mtg-primary-main">{{ heroMeeting.statusLabel }}</span>
+            </button>
+            <button v-else-if="canCreate" type="button" class="mtg-primary" @click="openNewMeeting()">
+              <span class="mtg-primary-main">＋ 发起会议</span>
             </button>
           </div>
         </div>
@@ -4466,8 +4465,8 @@ onActivated(show)
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
 /* 选中态（点2/3）：整行浅蓝底 + 左侧竖条，不用 ✓ 框 */
-.mtg-due-row.selected { background: #F2F7FC; }
-.mtg-due-row.selected::before { content: ''; position: absolute; left: -22rpx; top: 0; bottom: 0; width: 8rpx; background: #3E6BA8; }
+/* 「选中」浅蓝底 + 左竖条已删（0730 用户定）：逾期暖色胶囊已标出要补救的那场，
+   底部主按钮副行又点名了是哪场，这条高亮属重复噪音，去掉让卡片更干净 */
 /* 常驻状态标签（点2/4）：无边框、浅底文字，明显不是按钮 */
 /* 状态字三级样式（0730 设计师定，全 app 通用，见 dueStatusTier）：
    ① 逾期＝暖色胶囊(有底)，一屏唯一异常；② 今日/进行中＝蓝字；③ 其余＝灰字。
@@ -4491,27 +4490,27 @@ onActivated(show)
 .mtg-next-chip:active { opacity: .55; }
 .mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
 .mtg-next-foot:active { opacity: .7; }
-.mtg-next-foot b { font-size: 29rpx; font-weight: 600; color: #2F5E96; }
+/* 0730 用户定：这行是「展开」不是「跳转」，改深灰字——蓝色只留给可跳转的，避免同色不同行为 */
+.mtg-next-foot b { font-size: 29rpx; font-weight: 600; color: #4B5563; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
 /* 底部动作条（0730 点4四改，回到 fixed）：flex sticky-footer 在这套嵌套下没能真正撑满，
    按钮仍浮在页面中间、下方一大片空白——索性回到最稳的 position:fixed，钉死在底栏
    （TabBar≈102rpx）上沿。白底，与底栏共用一整片白色背景（TabBar 在 /main 去掉顶部描边+
    阴影来配合，见 TabBar.vue .tabbar.merged），中间只留一条小缝。z-index 90 < 底栏 100，
    重叠的几像素落在底栏空白内边距里，白叠白无缝。 */
-.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 12rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+/* 次级「＋ 发起临时会议」（0730 点2三改）：浅蓝底、叠在主按钮上方，主次分明 */
+.mtg-secondary { min-height: 78rpx; border: 0; border-radius: 18rpx; background: #EAF0F7; color: #3E6BA8; font-size: 29rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.mtg-secondary:active { background: #DCE6F1; }
 /* 「＋ 发起临时会议 ›」行（0730 点2）：复用 .mtg-next-row 骨架；＋与文案同蓝、点明动作，
    老年用户不用猜；箭头灰、示意可进入 */
-.mtg-add-row { cursor: pointer; }
-.mtg-add-row:active { opacity: .6; }
-.mtg-add-line { flex: 1; min-width: 0; font-size: 29rpx; font-weight: 600; color: #3E6BA8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mtg-add-arrow { flex-shrink: 0; font-size: 32rpx; color: #B4BCC7; }
-.mtg-primary { flex: 1; min-height: 100rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
+.mtg-primary { width: 100%; min-height: 100rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; }
 .mtg-primary:active { background: #35608F; }
 .mtg-primary-sub { font-size: 24rpx; opacity: .85; line-height: 1.3; }
 .mtg-primary-main { font-size: 33rpx; font-weight: 800; line-height: 1.3; }
 /* 会议 tab 内容区给动作条+底栏让位 */
-/* 动作条回到 fixed：底部要清开「固定动作条(约128rpx) + 底栏(约102rpx)」两层，内容才不被挡 */
-.home.has-mtg-bar { padding-bottom: calc(244rpx + env(safe-area-inset-bottom)); }
+/* 动作条回到 fixed 且叠成两钮：底部要清开「固定动作条(约218rpx) + 底栏(约102rpx)」两层 */
+.home.has-mtg-bar { padding-bottom: calc(330rpx + env(safe-area-inset-bottom)); }
 
 /* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
