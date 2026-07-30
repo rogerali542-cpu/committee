@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="profile-header" :style="{ background: headerGrad, paddingTop: (statusBarHeight + 24) + 'px' }">
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定） -->
-      <button type="button" class="ph-cockpit" :style="{ color: textColor, borderColor: textColor }" @click="goCockpitFromHd">返回驾驶舱</button>
+      <button type="button" class="ph-cockpit" :style="{ color: textColor, borderColor: textColor }" @click="goCockpitFromHd">返回首页</button>
       <div class="ph-avatar" :style="{ color: textColor }">{{ activeRole.realName && activeRole.realName[0] }}</div>
       <span class="ph-name" :style="{ color: textColor }">{{ activeRole.realName }}</span>
       <span class="ph-role-chip" :style="{ background: 'rgba(255,255,255,0.3)', color: textColor }">{{ activeRole.role }}</span>
@@ -65,7 +65,7 @@
     <div class="section-header">消息通知</div>
     <div class="section">
       <div class="menu-row" @click="openNotifications">
-        <div class="menu-icon" style="background:#FFF3DC;">🔔</div>
+        <div class="menu-icon" style="background:#E6EDF8;">🔔</div>
         <span class="menu-label">系统通知</span>
         <div v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</div>
         <span class="menu-arrow">›</span>
@@ -124,10 +124,10 @@ function refresh() {
   ]
 
   const gradMap = {
-    '主任': 'linear-gradient(160deg,#3a8159,#2f6b45)',
-    '副主任': 'linear-gradient(160deg,#3a8159,#2f6b45)',
-    '委员': 'linear-gradient(160deg,#3a8159,#2f6b45)',
-    '业委会秘书': 'linear-gradient(160deg,#3a8159,#2f6b45)'
+    '主任': 'linear-gradient(160deg,#4470a5,#2f5f9e)',
+    '副主任': 'linear-gradient(160deg,#4470a5,#2f5f9e)',
+    '委员': 'linear-gradient(160deg,#4470a5,#2f5f9e)',
+    '业委会秘书': 'linear-gradient(160deg,#4470a5,#2f5f9e)'
   }
   const descMap = {
     '主任': '负责召集主持会议，具有最高操作权限',
@@ -304,7 +304,7 @@ onActivated(() => { if (mounted) refresh() })
   border-top: 2rpx solid #f5f5f5;
 }
 .menu-row:first-child { border-top: none; }
-.menu-row.active { background: #FFFBF0; }
+.menu-row.active { background: #F0F5FB; }   /* 个人中心蓝系（0731 用户定：与会议同款蓝） */
 .menu-row:active { background: #fafbfc; }
 .menu-icon {
   width: 72rpx; height: 72rpx; border-radius: 18rpx;

@@ -8,7 +8,7 @@
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 印章已成底栏独立 tab（0730 用户定）：顶栏右上角返回驾驶舱，「会议｜印章」二级切换删除 -->
-      <button type="button" class="hd-cockpit" @click="goCockpitFromHd">返回驾驶舱</button>
+      <button type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
     </div>
 
     <!-- 印章保管（0728 用户定口径：不带行政区、保管人直说业委会秘书；确认/驳回权限仍按主任/副主任走） -->

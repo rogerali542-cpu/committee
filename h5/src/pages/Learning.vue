@@ -9,7 +9,7 @@
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定） -->
-      <button type="button" class="hd-cockpit" @click="goCockpitFromHd">返回驾驶舱</button>
+      <button type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
     </div>
 
     <!-- 年度履职摘要：只保留成员需要确认的两项 -->

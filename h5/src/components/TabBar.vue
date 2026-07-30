@@ -43,7 +43,7 @@ const tabs = [
   { path: '/main', label: '业委会', key: 'committee', tone: 'blue' },
   { path: '/reception-center', label: '业主接待', key: 'reception', tone: 'green' },
   { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' },
-  { path: '/profile', label: '个人中心', key: 'profile', tone: 'slate' }
+  { path: '/profile', label: '个人中心', key: 'profile', tone: 'blue' }   /* 0731 用户定：个人中心＝会议同款蓝系 */
 ]
 // 驾驶舱也显示底栏（0731 定稿），但不高亮任何 tab——驾驶舱是各板块之上的首页，不属于哪一格。
 // welcomeVisible（=驾驶舱态）与 URL 双判定，防开发期热更新时挂载顺序造成误亮。

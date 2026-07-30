@@ -9,7 +9,7 @@
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
-      <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回驾驶舱</button>
+      <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
