@@ -1194,7 +1194,12 @@ function goReceptionRecords() {
 }
 // 档案馆入口（0730 设计师定）：会议/接待/学习历史统一进档案馆(/library)，带 tab 直达对应页签
 function goArchive(tab) {
-  navigateTo('/library' + (tab ? '?tab=' + tab : ''))
+  const url = '/library' + (tab ? '?tab=' + tab : '')
+  navigateTo(url)
+  // 软路由偶发不切视图（本仓已知坑，同 goReceptionRecords）：0.3s 后没见到档案馆根节点就硬跳
+  setTimeout(() => {
+    if (!document.querySelector('.arch-page')) window.location.href = url
+  }, 300)
 }
 
 async function loadCalExtras() {
