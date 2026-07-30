@@ -183,7 +183,7 @@
                状态与选中分离——选中(底部按钮指向的最急项)用整行浅底+左竖条，状态用无边框浅底文字标签。
                整行可点进入各自流程；底部动作条默认落在最急项（欠账优先）。 -->
           <template v-if="meetingRecordList.immediate.length">
-            <div class="mtg-due-head">待召开 {{ meetingRecordList.immediate.length }} 场</div>
+            <!-- 「待召开 N 场」小标题已删（0730 用户定：下方卡片自明是几场） -->
             <div class="mtg-due-card">
               <div v-for="row in meetingRecordList.immediate" :key="row.key"
                    class="mtg-due-row" :class="{ selected: heroMeeting && row.key === heroMeeting.key }" @click="row.onTap()">
@@ -4433,7 +4433,7 @@ onActivated(show)
 /* 会议工作页：驾驶舱管提醒，这里按“近期安排 / 后续计划 / 已完成”组织，避免重复主卡。 */
 .meeting-plan-head { padding: 30rpx 30rpx 24rpx !important; border-bottom: 2rpx solid #E8EDF2; align-items: center; }
 .meeting-plan-head .plan-title-wrap { flex-direction: column; align-items: flex-start; gap: 8rpx; }
-.meeting-plan-head .plan-title { font-size: 42rpx !important; }
+.meeting-plan-head .plan-title { font-size: 34rpx !important; font-weight: 700 !important; }  /* 0730 用户定：缩两号、字重-100 */
 .meeting-year-summary { font-size: 27rpx; font-weight: 550; color: #65758A; line-height: 1.35; }
 /* .meeting-calendar-toggle 已删(0725):查看月历改为列表尾部折叠行,复用 .mr-fold */
 .mr-list { margin: 0; padding: 0 28rpx 12rpx; }
@@ -4453,8 +4453,7 @@ onActivated(show)
 .meeting-plan-head { border-bottom: 0 !important; padding: 8rpx 8rpx 16rpx !important; }
 .mr-list { padding: 0 4rpx; }
 /* 待召开卡（0730 五改）：竖排列表；状态标签与选中态分离 */
-.mtg-due-head { margin: 4rpx 4rpx 12rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
-.mtg-due-card { margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
+.mtg-due-card { margin-top: 4rpx; margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
 .mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 26rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
