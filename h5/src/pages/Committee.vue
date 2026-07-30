@@ -1697,7 +1697,7 @@ const portalSections = computed(() => {
   const h = heroMeeting.value
   if (h) {
     mTitle = heroBarSub.value
-    if (h.statusClass === 'overdue') { mBadge = '逾期'; mTier = 'st-warn' }   // 副行「尚未召开」已删（0731 用户定：逾期胶囊已表达，冗余）
+    if (h.statusClass === 'overdue') { mSub = '请尽快补开'; mBadge = '逾期'; mTier = 'st-warn' }   // 副行行动导向（0731 用户定：与另两节同构；"尚未召开"那种状态复读不要）
     else if (h.statusClass === 'ongoing') { mSub = '会议进行中'; mBadge = '进行中'; mTier = 'st-blue' }
     else { mSub = dueSubFor(h) }
   } else {
@@ -4378,7 +4378,7 @@ onActivated(show)
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=会议蓝 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
-.pt-badge.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; }
+.pt-badge.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; margin-top: 2rpx; }   /* 胶囊带高度，微调与标题行居中对齐 */
 .pt-badge.st-green { color: #2f6b45; font-weight: 700; }
 .pt-badge.st-blue { color: #2f5f9e; font-weight: 700; }
 /* 轻列表（spec §5；0731 设计师定：行压矮、去粗——"轻"列表不与白卡标题抢重量，和卡片更连贯 */
