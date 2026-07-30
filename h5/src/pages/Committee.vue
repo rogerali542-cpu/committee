@@ -11,8 +11,9 @@
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
+      <!-- 评分数字纯白（0731 设计师定）：红绿灯渐变的绿会撞接待模块色，而评分不属于任何模块 -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
-        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
+        <span class="hd-score-num">{{ score }}</span>
         <span class="hd-score-label">综合评分 ›</span>
       </div>
     </div>
@@ -126,8 +127,9 @@
         </div>
         <!-- 轻列表（spec §5：非"当下要办"的入口用透明底+分隔线）：聚合待办 / 印章 / 档案馆 -->
         <div class="pt-links">
+          <!-- 计数恒显（0731 设计师定：没数字这行信息量为零，0 项也要能看出"没有事要办"） -->
           <div class="pt-link" @click="goTodos()">
-            <span class="pt-link-t">待办事项<em v-if="ptTodoCount"> · {{ ptTodoCount }} 项</em></span>
+            <span class="pt-link-t">待办事项<em> · {{ ptTodoCount }} 项</em></span>
             <i class="pt-arr"></i>
           </div>
           <div class="pt-link" @click="goSealHome()">
@@ -4280,8 +4282,8 @@ onActivated(show)
 .hd-score { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 6rpx; align-self: center; cursor: pointer; }
 .hd-score:active { opacity: .7; }
 .hd-score-label { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
-/* 数字随分数高低红绿灯渐变（backgroundImage 由 scoreGradient 注入，background-clip:text 上色） */
-.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+/* 数字纯白（0731 设计师定：绿=接待模块色，评分不属于模块；页头已是中性深灰，白字即可） */
+.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; color: #fff; }
 /* 当前会议主卡片 */
 /* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
    适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
@@ -4373,19 +4375,19 @@ onActivated(show)
 .pt-sec-tag { font-size: 26rpx; color: #6B7280; }
 .pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 10rpx; }
 .pt-sec-main { flex: 1; min-width: 0; }
-.pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; }
+.pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 长标题（如培训名）窄屏截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=会议蓝 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
 .pt-badge.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; }
 .pt-badge.st-green { color: #2f6b45; font-weight: 700; }
 .pt-badge.st-blue { color: #2f5f9e; font-weight: 700; }
-/* 轻列表（spec §5）：透明底+分隔线；行高 104rpx 方便点按 */
-.pt-links { margin-top: 30rpx; padding: 0 6rpx; }
-.pt-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 104rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
+/* 轻列表（spec §5；0731 设计师定：行压矮、去粗——"轻"列表不与白卡标题抢重量，和卡片更连贯 */
+.pt-links { margin-top: 20rpx; padding: 0 6rpx; }
+.pt-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 76rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
 .pt-link:last-child { border-bottom: 2rpx solid #E2E5EA; }
 .pt-link:active { opacity: .65; }
-.pt-link-t { font-size: 31rpx; font-weight: 650; color: #1F2937; }
+.pt-link-t { font-size: 31rpx; font-weight: 400; color: #1F2937; }
 .pt-link-t em { font-style: normal; font-weight: 500; color: #6B7280; font-size: 28rpx; }
 .pt-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
 /* 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要 */
