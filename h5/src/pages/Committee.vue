@@ -4516,12 +4516,11 @@ onActivated(show)
    （TabBar≈102rpx）上沿。白底，与底栏共用一整片白色背景（TabBar 在 /main 去掉顶部描边+
    阴影来配合，见 TabBar.vue .tabbar.merged），中间只留一条小缝。z-index 90 < 底栏 100，
    重叠的几像素落在底栏空白内边距里，白叠白无缝。 */
-.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 12rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+/* gap 16rpx＝8px（0730 用户定）：两钮原来 12rpx 贴太近、像一个大按钮，拉开到 8px 才是两块 */
+.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 次级「＋ 发起临时会议」（0730 点2三改）：浅蓝底、叠在主按钮上方，主次分明 */
 .mtg-secondary { min-height: 78rpx; border: 0; border-radius: 18rpx; background: #EAF0F7; color: #3E6BA8; font-size: 29rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .mtg-secondary:active { background: #DCE6F1; }
-/* 「＋ 发起临时会议 ›」行（0730 点2）：复用 .mtg-next-row 骨架；＋与文案同蓝、点明动作，
-   老年用户不用猜；箭头灰、示意可进入 */
 .mtg-primary { width: 100%; min-height: 100rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; }
 .mtg-primary:active { background: #35608F; }
 .mtg-primary-sub { font-size: 24rpx; opacity: .85; line-height: 1.3; }
