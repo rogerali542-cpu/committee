@@ -4796,9 +4796,10 @@ onActivated(show)
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rec-recent-title i { flex-shrink: 0; padding: 5rpx 14rpx; border-radius: 999rpx;
   font-size: 25rpx; line-height: 1.45; font-style: normal; font-weight: 600; }
-.rec-recent-title i.pending { color: #9A5A13; background: #FFF1D8; }
-.rec-recent-title i.doing { color: #0F766E; background: #E7F6F3; }
-.rec-recent-title i.done { color: #287653; background: #E8F5EE; }
+/* 三级状态色（0730 设计师定，全 app 通用）：待处理=常态灰、处理中=进行中蓝、已办结=常态灰 */
+.rec-recent-title i.pending { color: #6B7280; background: transparent; }
+.rec-recent-title i.doing { color: #2F5F9E; background: transparent; }
+.rec-recent-title i.done { color: #6B7280; background: transparent; }
 .rec-recent-copy span { font-size: 27rpx; line-height: 1.4; color: var(--c-text-weak); }
 /* 收起态摘要行：是谁、什么事，一眼可读 */
 .rec-recent-summary { font-size: 27rpx !important; color: var(--c-text-mid) !important;
@@ -5128,8 +5129,9 @@ onActivated(show)
 .plan-badge { flex-shrink: 0; font-size: 23rpx; font-weight: 700; padding: 7rpx 16rpx; border-radius: 999rpx; line-height: 1.2; }
 /* 0716 降档：36/900→30/700，让位会议卡大按钮（大按钮>徽标>灰字 三级递减） */
 .plan-todo-card .plan-badge { min-width: 132rpx; text-align: center; font-size: 30rpx; font-weight: 700; padding: 16rpx 24rpx; box-sizing: border-box; }
-/* 已开=绿｜待开=橙｜逾期=红｜待排=灰 */
-.plan-badge.done     { color: var(--c-success); background: var(--c-success-soft); }
+/* 已开=绿｜待开=橙｜逾期=红｜待排=灰（.current/.overdue/.upcoming 属会议 tab 待办卡，
+   HOME_V2 下不渲染；接待 tab 仅出 .done「已办结」，按三级规则③改无底灰字） */
+.plan-badge.done     { color: #6B7280; background: transparent; }
 .plan-badge.current  { color: #fff; background: #D97706; box-shadow: 0 10rpx 22rpx rgba(217,119,6,0.34); }
 .plan-badge.overdue  { color: #fff; background: #D83A2E; box-shadow: 0 10rpx 22rpx rgba(216,58,46,0.30); }
 .plan-badge.upcoming { color: var(--c-text-weak); background: #EEF0F3; }

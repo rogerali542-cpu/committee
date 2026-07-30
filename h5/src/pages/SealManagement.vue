@@ -282,9 +282,11 @@ onActivated(load);
 .sr-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
 .sr-seal { font-size: 32rpx; font-weight: 750; color: var(--c-text-strong); }
 .sr-status { flex-shrink: 0; padding: 6rpx 18rpx; border-radius: 999rpx; font-size: 25rpx; font-weight: 600; }
-.sr-status.pending { color: #2F5E96; background: #E8F0FA; }
-.sr-status.approved { color: #287653; background: #E8F5EE; }
-.sr-status.rejected { color: #9A3F33; background: #FBE9E6; }
+/* 三级状态色（0730 设计师定，全 app 通用）：待确认/处理中=常态灰、已用印/已确认=常态灰、
+   已驳回=异常暖色胶囊（列表里唯一需注意的负向结果） */
+.sr-status.pending { color: #6B7280; background: transparent; }
+.sr-status.approved { color: #6B7280; background: transparent; }
+.sr-status.rejected { color: #9A5B12; background: #F7E4C6; }
 /* 台账登记行：左侧固定宽标签 + 右侧值，对齐成登记表样式 */
 /* 台账正文：内联「标签：值」，标签弱色、值随内容强调（0728 用户定） */
 .sr-rows { margin-top: 14rpx; display: flex; flex-direction: column; gap: 10rpx; }

@@ -247,9 +247,10 @@ onMounted(async () => {
   font-size: 28rpx; color: var(--c-text-mid); font-weight: 500; }
 .day-receiver { font-size: 25rpx; color: var(--c-text-weak); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .day-summary em, .record-title i { padding: 5rpx 14rpx; border-radius: 999rpx; font-size: 25rpx; font-style: normal; font-weight: 600; flex-shrink: 0; }
-.day-summary .pending, .record-title .pending { color: #9A5A13; background: #FFF1D8; }
-.day-summary .doing, .record-title .doing { color: #0F766E; background: #E7F6F3; }
-.day-summary .done, .record-title .done { color: #287653; background: #E8F5EE; }
+/* 三级状态色（0730 设计师定，全 app 通用）：待处理=常态灰、处理中=进行中蓝、已办结=常态灰 */
+.day-summary .pending, .record-title .pending { color: #6B7280; background: transparent; }
+.day-summary .doing, .record-title .doing { color: #2F5F9E; background: transparent; }
+.day-summary .done, .record-title .done { color: #6B7280; background: transparent; }
 .fold-text { flex-shrink: 0; color: var(--c-primary-dark); font-size: 28rpx; }
 .day-items { border-top: 2rpx solid #EDF0F2; padding: 0 22rpx; }
 .record-row { display: flex; align-items: center; gap: 16rpx; padding: 20rpx 0; border-top: 2rpx solid #F0F2F3; }

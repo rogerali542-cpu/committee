@@ -50,9 +50,11 @@
   height: 48rpx; padding: 0 22rpx; border-radius: 999rpx;
   font-size: 28rpx; font-weight: 700;
 }
-.pub-badge.is-pub   { background: var(--pub-blue); color: #fff; }
-.pub-badge.is-draft { background: var(--pub-amber-soft); color: var(--pub-amber); }
-.pub-badge.is-wait  { background: #EDF0F5; color: var(--pub-sub); }
+/* 三级状态色（0730 设计师定，全 app 通用；此文件被公示页与历史资料库共用）：
+   草稿/已公示/待公示/已归档 均为常态，一律无底灰字——列表里若有异常另行暖色，避免常态抢眼 */
+.pub-badge.is-pub   { background: transparent; color: #6B7280; }
+.pub-badge.is-draft { background: transparent; color: #6B7280; }
+.pub-badge.is-wait  { background: transparent; color: #6B7280; }
 
 .pub-title {
   display: block; font-size: 46rpx; font-weight: 800;

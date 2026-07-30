@@ -324,7 +324,8 @@ function goBack() {
 /* .detail-head/.dh-title 已删（0716 用户定：与 PageNav 重复）。状态胶囊挪进信息卡首行。 */
 /* 本页字号一律 ≥28rpx(14px)：首页三个 tab 刚清到零小字，这页别又造一批 */
 .stage-pill { flex-shrink: 0; padding: 6rpx 20rpx; border-radius: 999rpx; font-size: 28rpx; font-weight: 700; }
-.stage-pill.todo { background: #FFEDD5; color: #9A3412; }
+/* 三级状态色（0730 设计师定，全 app 通用）：待处理=常态灰、处理中=进行中蓝、已办结/已留档=常态灰 */
+.stage-pill.todo { background: transparent; color: #6B7280; }
 /* 已办理（中间态）：青 #0F766E 配 #E7F6F3 = 4.92:1 ✓。
    青为什么在这儿又回来了：胶囊是「这条记录现在什么状态」，两条路都能把它推到已办理，
    所以它既不能是蓝（工单专属）也不能是橙（转物业专属）——必须是中立的第三色。
@@ -332,8 +333,8 @@ function goBack() {
    同是浅底状态胶囊、同是「有人在办、还没完」，语义和角色都对得上。
    跟按钮那边退掉青的理由也不冲突：那儿是两颗深色实心按钮并排、青蓝只差 40° 色相分不开；
    这儿是顶部一枚浅底胶囊，离按钮十万八千里，不存在两色相邻比对的问题。 */
-.stage-pill.doing { background: #E7F6F3; color: #0F766E; }
-.stage-pill.done { background: #E7F6EC; color: #1E7E4E; }
+.stage-pill.doing { background: transparent; color: #2F5F9E; }
+.stage-pill.done { background: transparent; color: #6B7280; }
 
 .info-card, .sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);
   border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); }

@@ -157,8 +157,9 @@ onActivated(init)
 .todo-card:active { background: #fafbfc; }
 .tc-head { display: flex; justify-content: space-between; align-items: center; }
 .tc-tag { font-size: 28rpx; background: #FFF3DC; color: #C77800; padding: 4rpx 16rpx; border-radius: 10rpx; font-weight: 600; }
-.tc-status { font-size: 28rpx; color: #E67E22; font-weight: 600; }
-.tc-status.active { color: #2E86DE; }
+/* 三级状态色（0730 设计师定，全 app 通用）：待开始区=常态灰、进行中区=进行中蓝 */
+.tc-status { font-size: 28rpx; color: #6B7280; font-weight: 600; }
+.tc-status.active { color: #2F5F9E; }
 .tc-title { font-size: 36rpx; font-weight: 700; display: block; margin: 14rpx 0 10rpx; color: #1f2329; line-height: 1.5; }
 .tc-meta { font-size: 28rpx; color: #666; display: flex; flex-direction: column; gap: 4rpx; }
 .tc-sub { color: #777; }

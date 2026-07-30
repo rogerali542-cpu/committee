@@ -409,7 +409,8 @@ onMounted(() => {
 /* 复用 */
 .empty-state { padding: 80rpx; text-align: center; color: #777; font-size: 32rpx; }
 .stage-pill { font-size: 28rpx; font-weight: 600; padding: 6rpx 18rpx; border-radius: 12rpx; white-space: nowrap; }
-.stage-pill.preparing { background: #FFF3E0; color: #E67E22; }
-.stage-pill.ongoing { background: #EBF5FB; color: #2980B9; }
-.stage-pill.ended { background: #F0F0F0; color: #666; }
+/* 三级状态色（0730 设计师定，全 app 通用）：已通知/待通知=常态灰、待整理=进行中蓝、已完成=常态灰 */
+.stage-pill.preparing { background: transparent; color: #6B7280; }
+.stage-pill.ongoing { background: transparent; color: #2F5F9E; }
+.stage-pill.ended { background: transparent; color: #6B7280; }
 </style>

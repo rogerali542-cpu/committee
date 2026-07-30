@@ -348,9 +348,11 @@ onUnmounted(() => {
 .lc-title { min-width: 0; font-size: 30rpx; font-weight: 560; color: #1f2329; line-height: 1.4; }  /* 中等字重,别用大黑体压场 */
 .lc-sub { display: block; margin-top: 8rpx; font-size: 24rpx; color: #808C99; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* 副行一行截断,超长省略 */
 .lc-pill { flex-shrink: 0; margin-top: 2rpx; font-size: 24rpx; font-weight: 600; padding: 4rpx 14rpx; border-radius: 10rpx; white-space: nowrap; }
-.lc-pill.preparing { background: #FFF3E0; color: #E67E22; }
-.lc-pill.ongoing { background: #EBF5FB; color: #2980B9; }
-.lc-pill.ended { background: #F0F0F0; color: #666; }
+/* 三级状态色（0730 设计师定，全 app 通用）：已通知/待通知=常态灰、待整理=进行中蓝(当前该办的阶段)、
+   已完成=常态灰。（年度达标进度 .annual-status 属合规指标、非任务状态，保留绿/琥珀语义不动） */
+.lc-pill.preparing { background: transparent; color: #6B7280; }
+.lc-pill.ongoing { background: transparent; color: #2F5F9E; }
+.lc-pill.ended { background: transparent; color: #6B7280; }
 .lc-meta { display: flex; flex-direction: column; gap: 8rpx; margin: 16rpx 0 12rpx; padding-top: 18rpx; border-top: 2rpx solid #F1F3F5; }
 .lc-detail-btn { display: block; width: 56%; height: 72rpx; margin: 8rpx auto 2rpx; border: 2rpx solid #D8C9A8; border-radius: 16rpx; background: #FFFBF2; color: #8B5A1E; font-size: 28rpx; font-weight: 600; }
 .lc-detail-btn:active { background: #F7EFDD; }

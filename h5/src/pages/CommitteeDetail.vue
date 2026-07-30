@@ -1877,7 +1877,8 @@ async function removeMaterial(item) {
 .npc-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
 .npc-title { display:block; font-size: 32rpx; font-weight:700; color:#333; line-height:1.4; }
 .npc-sub { display:block; font-size: 28rpx; color:#666; margin-top:2px; line-height:1.45; }
-.npc-badge { flex-shrink:0; font-size: 28rpx; color:#27AE60; background:#EAF7EF; border-radius:12px; padding:3px 9px; line-height:1.35; }
+/* 三级状态③：通知「已送达」是完成态，无底灰字 */
+.npc-badge { flex-shrink:0; font-size: 28rpx; color:#6B7280; background:transparent; border-radius:12px; padding:3px 9px; line-height:1.35; }
 .npc-section { padding-top:10px; border-top:1px dashed #f0f0f0; margin-top:10px; }
 .npc-section:first-of-type { padding-top:0; border-top:0; margin-top:0; }
 .npc-section-title { display:block; font-size: 28rpx; font-weight:700; color:#5C3D00; margin-bottom:8px; line-height:1.45; }
@@ -2444,9 +2445,10 @@ async function removeMaterial(item) {
 .pf-del { color:#666; font-size: 36rpx; padding:0 4px; }
 /* 材料 OCR 文字识别状态徽标（适老化：字大、词清楚、颜色直观） */
 .ocr-badge { flex:none; font-size:24rpx; font-weight:600; line-height:1.2; padding:5rpx 14rpx; border-radius:16rpx; white-space:nowrap; }
-.ocr-proc { color:#2563EB; background:#EAF1FF; }
-.ocr-done { color:#1D9E75; background:#E1F5EE; }
-.ocr-fail { color:#C0392B; background:#FDECEC; }
+/* 三级状态色：识别中=进行中蓝、已识别=完成灰、识别失败=异常暖色胶囊（保留底色，唯一需处理项） */
+.ocr-proc { color:#2F5F9E; background:transparent; }
+.ocr-done { color:#6B7280; background:transparent; }
+.ocr-fail { color:#9A5B12; background:#F7E4C6; }
 /* 上传文件缩略图：适老化——尺寸够大、可点 */
 .file-thumb { width:64px; height:64px; object-fit:cover; border-radius:8px; border:1px solid #eee; flex:none; cursor:pointer; }
 

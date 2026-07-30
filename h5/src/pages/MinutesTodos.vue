@@ -528,9 +528,11 @@ onMounted(() => {
 .todo-title { flex: 1; font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1.55; }
 .todo-head-actions { flex:none; display:flex; align-items:center; gap:7px; margin-left:10px; position:relative; }
 .status-tag { height:30px; line-height:30px; padding:0 12px; border-radius:15px; font-size:15px; font-weight:700; white-space:nowrap; }
-.tag-todo { background:#FFF0DC; color:#A65300; }
-.tag-doing { background:#E4EEFF; color:#1857A6; }
-.tag-done { background:#E3F5E9; color:#217246; }
+/* 三级状态色（0730 设计师定，全 app 通用）：待处理=常态灰、处理中=进行中蓝、已完成=常态灰。
+   只有逾期才给暖色胶囊——待办本身不带逾期态，故此处无暖色 */
+.tag-todo { background:transparent; color:#6B7280; }
+.tag-doing { background:transparent; color:#2F5F9E; }
+.tag-done { background:transparent; color:#6B7280; }
 .delete-btn { height:32px; padding:0 8px; border:0; background:transparent; color:#B42318; font-size:15px; font-weight:700; }
 .delete-btn:disabled { opacity:.5; }
 .edit-btn { height:32px; padding:0 8px; border:0; background:transparent; color:#2464B4; font-size:15px; font-weight:700; }
@@ -552,7 +554,7 @@ onMounted(() => {
 .primary-ticket { background:#1A4A8A; min-width:150px; }
 .primary-doing { background:#247A4A; }
 .primary-btn:disabled { opacity:.6; }
-.completed-mark { margin-left:auto; min-width:120px; height:46px; line-height:46px; border-radius:12px; background:#E3F5E9; color:#217246; text-align:center; font-size:18px; font-weight:700; }
+.completed-mark { margin-left:auto; min-width:120px; height:46px; line-height:46px; border-radius:12px; background:transparent; color:#6B7280; text-align:center; font-size:18px; font-weight:700; }
 
 @media (max-width: 420px) {
   .todo-card { padding:18px 16px; }
