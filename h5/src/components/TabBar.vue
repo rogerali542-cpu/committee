@@ -5,7 +5,7 @@
       v-for="t in tabs"
       :key="t.path"
       class="tab"
-      :class="{ active: active === t.path }"
+      :class="[t.tone, { active: active === t.path }]"
       @click="go(t.path)"
     >
       <!-- 图标底栏（0730 用户定：与驾驶舱底栏同款画风）——内联 SVG 线性图标 + 色块 -->
@@ -82,14 +82,21 @@ function go(path) {
 .tab { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5rpx; padding: 4rpx 0; }
 .tab-ico { width: 52rpx; height: 52rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; transition: box-shadow .15s; }
 .tab-ico svg { width: 32rpx; height: 32rpx; }
-.tab-ico.blue { color: #3A5E92; background: #E6EDF8; }
-.tab-ico.green { color: #3B7150; background: #E4F0E8; }
-.tab-ico.amber { color: #8A6420; background: #F5EBD8; }
-.tab-ico.seal { color: #A8484A; background: #F4E6E6; }   /* 印章＝印泥红，与会议蓝明显区分 */
-.tab-ico.slate { color: #4A5560; background: #EDEFF3; }
+/* 配色（0730 用户定点6）：未选中统一灰——五色常亮太花，和页面单一色系打架；
+   本色（蓝/绿/琥珀/印泥红/岩灰）只在选中态点亮，标签跟色 */
+.tab-ico { color: #7E8794; background: #F1F3F6; }
+.tab.active .tab-ico.blue { color: #3A5E92; background: #E6EDF8; }
+.tab.active .tab-ico.green { color: #3B7150; background: #E4F0E8; }
+.tab.active .tab-ico.amber { color: #8A6420; background: #F5EBD8; }
+.tab.active .tab-ico.seal { color: #A8484A; background: #F4E6E6; }   /* 印章＝印泥红，与会议蓝明显区分 */
+.tab.active .tab-ico.slate { color: #4A5560; background: #EDEFF3; }
 .tab-label { font-size: 23rpx; font-weight: 500; color: #6A7482; line-height: 1; white-space: nowrap; transition: color .15s; }
-/* 选中态：图标块描一圈本色 + 标签加深加粗 */
+/* 选中态：图标块描一圈本色 + 标签跟本色加粗 */
 .tab.active .tab-ico { box-shadow: inset 0 0 0 3rpx currentColor; }
 .tab.active .tab-label { color: #2F3D56; font-weight: 700; }
+.tab.active.blue .tab-label { color: #3A5E92; }
+.tab.active.green .tab-label { color: #3B7150; }
+.tab.active.amber .tab-label { color: #8A6420; }
+.tab.active.seal .tab-label { color: #A8484A; }
 .tab:active { opacity: .75; }
 </style>
