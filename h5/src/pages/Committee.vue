@@ -4605,12 +4605,13 @@ onActivated(show)
 .ov-metrics-standalone { order: 2; background: var(--c-bg-card); border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); box-sizing: border-box; padding: 22rpx 20rpx; }
 
 /* 接待页按真实使用频率分级：通知维护最醒目，登记来访其次，处理清单随后。 */
+/* 接待页整体转绿色系（0730 用户定：接待=绿，与底栏/驾驶舱一致） */
 .rec-notice-hero { order: 1; box-sizing: border-box; padding: 34rpx;
-  background: linear-gradient(145deg, #FFFEFC 0%, #FAF4EB 100%);
-  border: 2rpx solid #E7DAC6; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(96,72,40,0.08); }
+  background: linear-gradient(145deg, #FDFFFE 0%, #EFF7F1 100%);
+  border: 2rpx solid #D3E4D9; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(40,96,64,0.08); }
 .rec-notice-hero-head { display: flex; align-items: flex-start; gap: 26rpx; }
 .rnh-copy { flex: 1; min-width: 0; }
-.rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #8A5A1E; }
+.rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #3B7150; }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
   color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rnh-time.none { color: #9A3412; }
@@ -4619,23 +4620,23 @@ onActivated(show)
 .rnh-place-name { display: inline-block; max-width: 100%; }  /* 地名整体折行,不从中间掰断 */
 /* 白底+深描边+投影(0725 用户定:原奶油底和卡片底融在一起,不像按钮) */
 .rec-notice-primary { display: block; width: 60%; height: 84rpx; margin: 29rpx auto 0;
-  border: 2rpx solid #CFA971; border-radius: 18rpx; background: #fff;
-  color: #7C551F; font-size: 32rpx; font-weight: 650; letter-spacing: normal;
-  box-shadow: 0 4rpx 12rpx rgba(120, 88, 34, 0.12); }
-.rec-notice-primary:active { background: #FDF3E3; }
+  border: 2rpx solid #9CC0AA; border-radius: 18rpx; background: #fff;
+  color: #2F6647; font-size: 32rpx; font-weight: 650; letter-spacing: normal;
+  box-shadow: 0 4rpx 12rpx rgba(47, 102, 71, 0.12); }
+.rec-notice-primary:active { background: #EAF5EE; }
 .rec-notice-primary:active { opacity: 0.76; }
 /* 与学习页「新增学习记录」同款(0725 用户定):短20%居中、配色减淡、外圈柔光 */
 .rec-register-card { order: 2; display: flex; align-items: center; gap: 16rpx; width: 80%; box-sizing: border-box;
   margin: 57rpx auto 0; padding: 20rpx 24rpx; text-align: left;
-  background: linear-gradient(135deg, #FFFEFC 0%, #FAF4EB 100%); border: 2rpx solid #E6D7BF;
+  background: linear-gradient(135deg, #FDFFFE 0%, #EFF7F1 100%); border: 2rpx solid #D3E4D9;
   border-radius: 20rpx; color: inherit;
-  box-shadow: 0 6rpx 18rpx rgba(96, 72, 40, 0.10); }
+  box-shadow: 0 6rpx 18rpx rgba(40, 96, 64, 0.10); }
 .rrc-icon { display: flex; align-items: center; justify-content: center; width: 60rpx; height: 60rpx;
-  border-radius: 15rpx; background: #B0772E; color: #fff; font-size: 34rpx; font-weight: 500; }
+  border-radius: 15rpx; background: #4C8062; color: #fff; font-size: 34rpx; font-weight: 500; }
 .rrc-copy { flex: 1; display: flex; flex-direction: column; gap: 3rpx; }
-.rrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #7E571C; font-weight: 650; }
+.rrc-copy strong { font-size: 34rpx; line-height: 1.35; color: #2F6647; font-weight: 650; }
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
-  border-radius: 50%; background: #F0E6D2; color: #916619; font-size: 36rpx; font-weight: 700; }
+  border-radius: 50%; background: #E4F0E8; color: #3B7150; font-size: 36rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
 .rec-recent-card { order: 3; margin-top: 57rpx; padding: 8rpx 26rpx 6rpx; box-sizing: border-box;
   background: var(--c-bg-card); border: 2rpx solid #E5E9EB; border-radius: 20rpx;
@@ -4643,7 +4644,7 @@ onActivated(show)
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
   padding: 22rpx 2rpx 16rpx; font-size: 34rpx; font-weight: 700; color: var(--c-text-strong); }
 .rec-recent-head button { padding: 8rpx 0 8rpx 20rpx; border: 0; background: transparent;
-  color: var(--c-primary-dark); font-size: 27rpx; font-weight: 500; }
+  color: #3B7150; font-size: 27rpx; font-weight: 500; }
 .rec-recent-session { border-top: 2rpx solid #EEF1F3; }
 .rec-recent-row { display: flex; align-items: center; gap: 18rpx; padding: 20rpx 2rpx; border-top: 2rpx solid #EEF1F3; }
 .rec-recent-session .rec-recent-row { border-top: 0; }

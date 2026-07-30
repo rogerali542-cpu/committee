@@ -366,16 +366,17 @@ onUnmounted(() => {
   background: #fff; box-shadow: 0 4rpx 14rpx rgba(20, 42, 58, 0.05); }
 .la-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 8rpx; }
 .la-card:active { opacity: 0.7; }
-.la-internal::before { background: #C0873A; }   /* 内部学习＝暖橙 */
-.la-external::before { background: #3E6BA8; }    /* 外部培训＝蓝 */
+/* 0730 用户定：学习页统一深橙色系——内部=深橙、外部=浅一档的琥珀，不再用蓝 */
+.la-internal::before { background: #A85800; }   /* 内部学习＝深橙 */
+.la-external::before { background: #C98F3F; }   /* 外部培训＝琥珀 */
 .la-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .la-copy strong { font-size: 32rpx; line-height: 1.3; font-weight: 700; }
-.la-internal .la-copy strong { color: #8A5A1E; }
-.la-external .la-copy strong { color: #2F5E96; }
+.la-internal .la-copy strong { color: #8F4A06; }
+.la-external .la-copy strong { color: #96702B; }
 .la-copy em { font-size: 24rpx; line-height: 1.35; color: #99A0A8; font-style: normal; }
 .la-arrow { flex-shrink: 0; font-size: 38rpx; font-weight: 700; }
-.la-internal .la-arrow { color: #CDA467; }
-.la-external .la-arrow { color: #8AA6C8; }
+.la-internal .la-arrow { color: #C88A4A; }
+.la-external .la-arrow { color: #D3B074; }
 
 /* 创建弹窗样式已删(0725):表单迁独立页 /learning-create */
 </style>
