@@ -224,15 +224,16 @@
                 </div>
                 <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
               </div>
+              <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
               <div class="mtg-next-foot" @click="toggleMeetingCalendar">
-                <b>{{ viewYear }}年全年 {{ yearMeetingTotal }} 场</b>
+                <b>{{ viewYear }}年全年会议</b>
                 <span class="mtg-next-more">{{ meetingCalendarOpen ? '收起' : '展开' }} <i class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</i></span>
               </div>
             </div>
           </template>
           <!-- 无接下来场次时，全年一览折叠行单独保留 -->
           <div v-else class="mr-fold" @click="toggleMeetingCalendar">
-            <span>{{ viewYear }}年全年 {{ yearMeetingTotal }} 场</span>
+            <span>{{ viewYear }}年全年会议</span>
             <span class="mr-fold-chev" :class="{ open: meetingCalendarOpen }">▾</span>
           </div>
           <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
@@ -1759,11 +1760,7 @@ const heroBarSub = computed(() => {
   const short = m ? m[0] + '例会' : String(h.title || '').slice(0, 10)
   return [timeSeg, short].filter(Boolean).join(' · ')
 })
-// 「接下来」右侧计数：全年已完成+待办+计划的总场次
-const yearMeetingTotal = computed(() => {
-  const l = meetingRecordList.value
-  return (l.done ? l.done.length : 0) + (l.immediate ? l.immediate.length : 0) + (l.planned ? l.planned.length : 0)
-})
+// （全年总场次计数已删——0730 用户定：全年是"至少6场"的不定数，不写数字免误导）
 // 接下来（0730 三改）：待处理已全量并入主卡横滑，这里只剩计划期次
 const nextRows = computed(() => meetingRecordList.value.planned)
 const meetingCalendarOpen = ref(false)
