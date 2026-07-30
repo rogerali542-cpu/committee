@@ -4489,18 +4489,12 @@ onActivated(show)
 .mtg-next-foot:active { opacity: .7; }
 .mtg-next-foot b { font-size: 29rpx; font-weight: 600; color: #2F5E96; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
-/* 底部动作条（0730 点4三改，回到图一）：sticky 短内容时不下坠、停在文档流原位＝屏幕中间悬空，
-   是个坑。改「flex sticky-footer」——祖先链 .plan-stack/.mtg-flat/.mr-list 全设 flex:1 撑满，
-   本条用 margin-top:auto 吃掉多余空白、稳稳钉到列表底部（内容短→贴底栏上方，图一那样）；
-   内容长（展开全年月历）时 auto 归零，动作条跟在内容后随页面滚动，不再固定、不需大块占位。
-   裸两钮（＋ + 主CTA）不套卡片，与图一一致。 */
-.mtg-actionbar { margin: auto 4rpx 0; display: flex; gap: 16rpx; padding: 4rpx 0 0; }
-/* flex sticky-footer 的撑满链（仅会议 tab；HOME_V2 下这条链里只有会议卡一个流内子元素，
-   待办卡/大会议卡都已关，所以撑满安全，不会顶到别的内容）。min-height:0 允许收缩、
-   避免子内容把容器撑破导致 auto 失效 */
-.home.has-mtg-bar > .plan-stack { flex: 1 1 auto; min-height: 0; }
-.home.has-mtg-bar .plan-calendar-card.mtg-flat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.home.has-mtg-bar .mr-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* 底部动作条（0730 点4四改，回到 fixed）：flex sticky-footer 在这套嵌套下没能真正撑满，
+   按钮仍浮在页面中间、下方一大片空白——索性回到最稳的 position:fixed，钉死在底栏
+   （TabBar≈102rpx）上沿。白底，与底栏共用一整片白色背景（TabBar 在 /main 去掉顶部描边+
+   阴影来配合，见 TabBar.vue .tabbar.merged），中间只留一条小缝。z-index 90 < 底栏 100，
+   重叠的几像素落在底栏空白内边距里，白叠白无缝。 */
+.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 .mtg-add { flex-shrink: 0; width: 96rpx; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #EAF0F7; color: #3E6BA8; font-size: 44rpx; font-weight: 700; }
 .mtg-add:active { background: #DCE6F1; }
 .mtg-primary { flex: 1; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
@@ -4508,8 +4502,8 @@ onActivated(show)
 .mtg-primary-sub { font-size: 24rpx; opacity: .85; line-height: 1.3; }
 .mtg-primary-main { font-size: 33rpx; font-weight: 800; line-height: 1.3; }
 /* 会议 tab 内容区给动作条+底栏让位 */
-/* 动作条改 sticky 占文档流后，底部只需清开固定 TabBar，再留一点缝隙 */
-.home.has-mtg-bar { padding-bottom: calc(150rpx + env(safe-area-inset-bottom)); }
+/* 动作条回到 fixed：底部要清开「固定动作条(约124rpx) + 底栏(约102rpx)」两层，内容才不被挡 */
+.home.has-mtg-bar { padding-bottom: calc(232rpx + env(safe-area-inset-bottom)); }
 
 /* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
