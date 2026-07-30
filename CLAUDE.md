@@ -16,6 +16,16 @@
   颜色用 `currentColor` 跟随父级文字色；容器 `display:inline-flex; align-items:center`。
 - 参考实现：`h5/src/pages/LearningDetail.vue`(.nc2-arrow)、`h5/src/components/PlanDateTimeField.vue`、`h5/src/pages/Learning.vue`(.lc-more-arr)。
 
+### 底部主操作条：必须 `position:fixed` 钉在底栏上沿，别放文档流
+- **问题**：把页面底部的主操作条放进内容流（flex `order` 排最后、或 `position:sticky`），内容不足一屏时它只会停在内容末尾——**浮在半空、和底部导航之间空出一大段**。会议页(`.mtg-actionbar`)、接待页(`.rec-actions`)先后踩过同一个坑：sticky 在不滚动的短页上不会下坠；flex sticky-footer 在多层嵌套里撑不满高度。
+- **正确做法**（设计规范 §7「主操作固定在拇指区、不随内容长度漂移」）：
+  ```css
+  .xxx-actionbar { position: fixed; left: 0; right: 0;
+    bottom: calc(98rpx + env(safe-area-inset-bottom)); /* 底栏高≈102rpx，留几 rpx 叠白 */
+    z-index: 90; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+  ```
+  并且：① 内容容器加 `padding-bottom` 给「操作条+底栏」两层让位；② TabBar 对应路由加 `.merged`（去顶部描边/阴影），两片白连成整片。参考 `.mtg-actionbar`（Committee.vue 会议 tab）与 `.rec-actions`（接待 tab）。
+
 ## Git（本仓库工作流）
 
 - 提交前先 `cd /home/user/committee`（在 `h5/` 里跑 `git add h5/src/...` 会 pathspec 不匹配）。

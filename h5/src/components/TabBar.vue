@@ -1,6 +1,6 @@
 <template>
   <!-- 「返回驾驶舱」已移入各页顶栏右上角（0730 用户定，图一骨架），不再浮在底栏上方 -->
-  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden, merged: active === '/main' }">
+  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden, merged: active === '/main' || active === '/reception-center' }">
     <div
       v-for="t in tabs"
       :key="t.path"
@@ -78,8 +78,8 @@ function go(path) {
 }
 /* 向下滚动时收起（0730 用户定，点8）：让出被操作条+导航栏叠占的高度 */
 .tabbar.hidden { transform: translateY(120%); }
-/* 业委会页(/main)：上方钉着会议操作条(.mtg-actionbar 白底)，底栏去掉顶部描边+阴影，
-   两片白连成一整片、共用一个背景（0730 用户定：操作条固定贴底栏、共用白色背景） */
+/* 上方钉着固定操作条的页（/main 会议操作条、/reception-center 接待动作区）：
+   底栏去掉顶部描边+阴影，两片白连成一整片、共用一个背景（0730 用户定） */
 .tabbar.merged { border-top: 0; box-shadow: none; }
 /* 5 格（0730 二改：印章独立成 tab） */
 .tab { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5rpx; padding: 4rpx 0; }

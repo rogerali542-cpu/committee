@@ -1,5 +1,5 @@
 <template>
-  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs' }">
+  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs', 'has-rec-bar': planTab === 'reception' && canManageReception }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <div class="hd-left">
@@ -49,14 +49,14 @@
           <!-- 「调整接待安排」按钮已移到底部动作区（0730 图一：卡片保持干净，只承载时间/地点信息） -->
         </div>
 
-        <!-- 待办入口卡（0730 设计师定稿）：白卡=要办的事；标题「待办事项 · N 项待跟进」+内容短摘要，
-             点击进「业委会待办」聚合页(/minutes-todos)——接待/会议待办已在那里合流。0 项时整卡不出（空白比塞满好） -->
-        <div v-if="planTab === 'reception' && recPendingList.length" class="rec-todo-entry" @click="goTodos()">
+        <!-- 待办入口卡（0730 设计师定稿；0731 用户定：入口常驻，0 项也保留——它是「业委会待办」
+             聚合页的固定入口，不随有无待办出没）：标题「待办事项 · N 项待跟进」+内容短摘要 -->
+        <div v-if="planTab === 'reception'" class="rec-todo-entry" @click="goTodos()">
           <div class="rte-top">
-            <b>待办事项 · {{ recPendingList.length }} 项待跟进</b>
+            <b>待办事项{{ recPendingList.length ? ' · ' + recPendingList.length + ' 项待跟进' : '' }}</b>
             <i class="rte-arr"></i>
           </div>
-          <div class="rte-sub">{{ recPendingSummary }}</div>
+          <div class="rte-sub">{{ recPendingList.length ? recPendingSummary : '暂无待跟进事项' }}</div>
         </div>
 
         <!-- 底部动作区（0730 图一）：调整接待安排(浅绿) + 登记接待(绿实心CTA)，成组落在内容末尾（order:8） -->
@@ -4863,8 +4863,12 @@ onActivated(show)
 .rrc-arrow { display: flex; align-items: center; justify-content: center; width: 50rpx; height: 50rpx;
   border-radius: 50%; background: #E4F0E8; color: #3B7150; font-size: 36rpx; font-weight: 700; }
 .rec-register-card:active { opacity: 0.7; }
-/* 底部动作区（0730 图一）：白面板里 调整接待安排(浅绿) + 登记接待(绿实心CTA)，order:8 落在内容末尾 */
-.rec-actions { order: 8; margin-top: 30rpx; display: flex; flex-direction: column; gap: 16rpx; padding: 20rpx; background: #fff; border-radius: 22rpx; box-shadow: 0 8rpx 24rpx rgba(40,96,64,.08); }
+/* 底部动作区（0731 修正）：fixed 钉死在底栏上沿——放文档流(order/sticky)时内容不足一屏
+   会浮在半空、与底栏脱开，会议页/接待页都踩过，见 CLAUDE.md「底部主操作条」约定。
+   白底全宽与底栏连成整片（TabBar 在 /reception-center 加 .merged 去顶描边） */
+.rec-actions { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 14rpx; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+/* 固定动作区(两钮约224rpx)+底栏(约102rpx)两层让位，内容不被挡 */
+.home.has-rec-bar { padding-bottom: calc(340rpx + env(safe-area-inset-bottom)); }
 .rec-adjust-btn { min-height: 84rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 30rpx; font-weight: 650; }
 .rec-adjust-btn:active { background: #D6E9DD; }
 .rec-register-btn { min-height: 96rpx; border: 0; border-radius: 16rpx; background: #2f6b45; color: #fff; display: flex; align-items: center; justify-content: center; }
