@@ -254,7 +254,7 @@
           <!-- 底部动作条（0730 点4改 sticky）：＋新建 + 主CTA（指向最急项）。内容短时跟在列表
                尾部、不再钉死屏底留大片空白；内容长（展开全年月历）时自动吸附在底栏上方拇指区；
                导航栏收起时(navHidden)下沉贴屏底 -->
-          <div v-if="heroMeeting || canCreate" class="mtg-actionbar" :class="{ 'nav-hidden': homeShell.navHidden }">
+          <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
             <button v-if="canCreate" type="button" class="mtg-add" @click="openNewMeeting()">＋</button>
             <button type="button" class="mtg-primary" @click="heroMeeting ? heroMeeting.onTap() : openNewMeeting()">
               <span v-if="heroMeeting && heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
@@ -4489,12 +4489,18 @@ onActivated(show)
 .mtg-next-foot:active { opacity: .7; }
 .mtg-next-foot b { font-size: 29rpx; font-weight: 600; color: #2F5E96; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
-/* 底部动作条（0730 点4改 sticky）：内容短时落在列表尾部、不再钉死屏底留 200px 空白；
-   内容长（展开全年月历）时吸到底栏(约110rpx)上方浮着，z 低于底栏(100)但盖内容。
-   注意 sticky 依赖祖先链无 overflow:hidden——.mtg-flat 已放开 overflow，别改回去 */
-.mtg-actionbar { position: sticky; bottom: calc(126rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; gap: 16rpx; margin-top: 32rpx; padding: 12rpx; background: rgba(255,255,255,.94); border: 2rpx solid #ECEEF1; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(20,42,58,.10); backdrop-filter: blur(8px); transition: bottom .22s ease; }
-/* 导航栏收起时操作条下沉贴屏底（点8） */
-.mtg-actionbar.nav-hidden { bottom: calc(16rpx + env(safe-area-inset-bottom)); }
+/* 底部动作条（0730 点4三改，回到图一）：sticky 短内容时不下坠、停在文档流原位＝屏幕中间悬空，
+   是个坑。改「flex sticky-footer」——祖先链 .plan-stack/.mtg-flat/.mr-list 全设 flex:1 撑满，
+   本条用 margin-top:auto 吃掉多余空白、稳稳钉到列表底部（内容短→贴底栏上方，图一那样）；
+   内容长（展开全年月历）时 auto 归零，动作条跟在内容后随页面滚动，不再固定、不需大块占位。
+   裸两钮（＋ + 主CTA）不套卡片，与图一一致。 */
+.mtg-actionbar { margin: auto 4rpx 0; display: flex; gap: 16rpx; padding: 4rpx 0 0; }
+/* flex sticky-footer 的撑满链（仅会议 tab；HOME_V2 下这条链里只有会议卡一个流内子元素，
+   待办卡/大会议卡都已关，所以撑满安全，不会顶到别的内容）。min-height:0 允许收缩、
+   避免子内容把容器撑破导致 auto 失效 */
+.home.has-mtg-bar > .plan-stack { flex: 1 1 auto; min-height: 0; }
+.home.has-mtg-bar .plan-calendar-card.mtg-flat { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.home.has-mtg-bar .mr-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .mtg-add { flex-shrink: 0; width: 96rpx; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #EAF0F7; color: #3E6BA8; font-size: 44rpx; font-weight: 700; }
 .mtg-add:active { background: #DCE6F1; }
 .mtg-primary { flex: 1; min-height: 96rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
