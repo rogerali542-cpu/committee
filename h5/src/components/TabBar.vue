@@ -19,6 +19,9 @@
         <svg v-else-if="t.key === 'learning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 6.5C10.5 5 8.2 4.4 5.5 4.4c-.8 0-1.5.6-1.5 1.4v11c0 .8.7 1.4 1.5 1.4 2.7 0 5 .6 6.5 2.1 1.5-1.5 3.8-2.1 6.5-2.1.8 0 1.5-.6 1.5-1.4v-11c0-.8-.7-1.4-1.5-1.4-2.7 0-5 .6-6.5 2.1z"/><line x1="12" y1="6.5" x2="12" y2="20.3"/>
         </svg>
+        <svg v-else-if="t.key === 'seal'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 10.5c-.8-.9-1.3-2-1.3-3.2C8.2 5 9.9 3.4 12 3.4s3.8 1.6 3.8 3.9c0 1.2-.5 2.3-1.3 3.2l-.6.7c-.3.4-.3.9 0 1.3h2.9c1.4 0 2.6 1.1 2.6 2.6v1.5H4.6v-1.5c0-1.4 1.2-2.6 2.6-2.6h2.9c.3-.4.3-.9 0-1.3l-.6-.7z"/><line x1="5.5" y1="20" x2="18.5" y2="20"/>
+        </svg>
         <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.5-5.8 7-5.8s6.2 2 7 5.8"/>
         </svg>
@@ -35,19 +38,19 @@ import { redirectTo } from '@/utils/navigate'
 import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
-// 图标底栏(0730 用户定:与驾驶舱底栏同款)。印章并入「业委会」(见 GovSubTabs 二级切换)，第四格为个人中心
+// 图标底栏(0730 用户定二改:印章独立成第五个 tab，与会议区别大不并入)。印章插在接待与学习之间
 const tabs = [
   { path: '/main', label: '业委会', key: 'committee', tone: 'blue' },
   { path: '/reception-center', label: '业主接待', key: 'reception', tone: 'green' },
+  { path: '/seal', label: '印章', key: 'seal', tone: 'seal' },
   { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' },
   { path: '/profile', label: '个人中心', key: 'profile', tone: 'slate' }
 ]
-// /seal 是「业委会」下的二级视图：印章页仍显示底栏、并高亮业委会
-const active = computed(() => route.path === '/seal' ? '/main' : route.path)
+const active = computed(() => route.path)
 // 欢迎引导页激活时隐藏底栏（选定业务后由 Committee.vue 复位再显示）
 // URL 是驾驶舱时直接判定隐藏，避免开发期热更新中新旧页面卸载/挂载顺序造成底栏短暂误显。
 const routeIsCockpit = computed(() => route.path === '/main' && route.query.home === 'portal')
-const isTab = computed(() => (tabs.some((t) => t.path === route.path) || route.path === '/seal') && !routeIsCockpit.value && !homeShell.welcomeVisible)
+const isTab = computed(() => tabs.some((t) => t.path === route.path) && !routeIsCockpit.value && !homeShell.welcomeVisible)
 // 标签切换用 replace(0725 用户报的 bug):底部四个 tab 是平级页,不应堆进历史。
 // 原来用 push/location.assign,历史会累积「接待中心→业委会→详情页」,从详情页逐级返回时
 // 会穿过 /main 再退回接待中心(用户遇到的"返回错误进入接待页面")。改 replace 后 tab 不占历史栈。
@@ -75,14 +78,16 @@ function go(path) {
 }
 /* 向下滚动时收起（0730 用户定，点8）：让出被操作条+导航栏叠占的高度 */
 .tabbar.hidden { transform: translateY(120%); }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5rpx; padding: 4rpx 0; }
+/* 5 格（0730 二改：印章独立成 tab） */
+.tab { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5rpx; padding: 4rpx 0; }
 .tab-ico { width: 52rpx; height: 52rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; transition: box-shadow .15s; }
 .tab-ico svg { width: 32rpx; height: 32rpx; }
 .tab-ico.blue { color: #3A5E92; background: #E6EDF8; }
 .tab-ico.green { color: #3B7150; background: #E4F0E8; }
 .tab-ico.amber { color: #8A6420; background: #F5EBD8; }
+.tab-ico.seal { color: #A8484A; background: #F4E6E6; }   /* 印章＝印泥红，与会议蓝明显区分 */
 .tab-ico.slate { color: #4A5560; background: #EDEFF3; }
-.tab-label { font-size: 24rpx; font-weight: 500; color: #6A7482; line-height: 1; transition: color .15s; }
+.tab-label { font-size: 23rpx; font-weight: 500; color: #6A7482; line-height: 1; white-space: nowrap; transition: color .15s; }
 /* 选中态：图标块描一圈本色 + 标签加深加粗 */
 .tab.active .tab-ico { box-shadow: inset 0 0 0 3rpx currentColor; }
 .tab.active .tab-label { color: #2F3D56; font-weight: 700; }

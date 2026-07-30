@@ -15,8 +15,7 @@
       </div>
     </div>
 
-    <!-- 业委会 tab 顶部二级切换（0728 用户定：印章并入业委会）。仅正式 tabs 布局的开会视图显示 -->
-    <GovSubTabs v-if="planTab === 'meeting' && homeLayout === 'tabs'" active="meeting" />
+    <!-- 「会议｜印章」二级切换已删（0730 用户定：印章独立成底栏第五个 tab，与会议分开） -->
 
     <!-- 履职年历（全员可见）+ 当前会议卡 + 待办：分类横栏 开会（默认）/培训/接待。始终显示；
          日历恒为首屏主角（0716 用户定）：会议卡挪进本容器排日历下方（见下方插入位），待办再往下。
@@ -935,7 +934,6 @@ import { navigateTo, redirectTo, switchTab } from '@/utils/navigate'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 import PageNav from '@/components/PageNav.vue'
 import MapPicker from '@/components/MapPicker.vue'
-import GovSubTabs from '@/components/GovSubTabs.vue'
 import { parseMeetingText } from '@/utils/meeting-parser'
 import { pickFiles, humanSize } from '@/utils/upload'
 import { isWecom, chooseWecomImages, isWecomCancel } from '@/utils/wecom'

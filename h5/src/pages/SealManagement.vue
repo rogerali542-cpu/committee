@@ -7,8 +7,9 @@
         <span class="hd-title">印章管理</span>
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
+      <!-- 印章已成底栏独立 tab（0730 用户定）：顶栏右上角返回驾驶舱，「会议｜印章」二级切换删除 -->
+      <button type="button" class="hd-cockpit" @click="goCockpitFromHd">返回驾驶舱</button>
     </div>
-    <GovSubTabs active="seal" />
 
     <!-- 印章保管（0728 用户定口径：不带行政区、保管人直说业委会秘书；确认/驳回权限仍按主任/副主任走） -->
     <div class="seal-info-card">
@@ -88,15 +89,19 @@
 <script setup>
 import { ref, computed, onMounted, onActivated } from 'vue';
 import api from '@/api';
-import GovSubTabs from '@/components/GovSubTabs.vue';
 import perm from '@/utils/perm';
 import { toast, showModal } from '@/utils/ui';
-import { getStorage } from '@/utils/storage';
+import { getStorage, setStorage } from '@/utils/storage';
 
 const allRecords = ref([]);
 const filter = ref('all');
 // 顶栏身份副标（业委会首页同款）：realName · role
 const activeRole = ref(getStorage('activeRole', {}) || {});
+// 顶栏「返回驾驶舱」（0730：印章成独立 tab）
+function goCockpitFromHd() {
+  setStorage('home_layout', 'portal')
+  window.location.replace('/main?home=portal')
+}
 
 // 申请：委员及以上；确认/驳回：保管人（主任/副主任）；删除：仅主任
 const canApply = computed(() => perm.can('seal.apply'));
@@ -221,6 +226,8 @@ onActivated(load);
 <style scoped>
 /* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 无横向内边距，天然满宽 */
 .hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #43546F; }
+.hd-cockpit { flex-shrink: 0; align-self: flex-start; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 600; }
+.hd-cockpit:active { background: rgba(255,255,255,.2); }
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #fff; margin-top: 4rpx; line-height: 1.3; }
