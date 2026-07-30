@@ -14,8 +14,8 @@
       <!-- 评分（0731 用户定四改）：数字恢复红绿灯渐变——颜色与得分高低挂钩是它的语义，不是模块色；
            标签「当前综合评分」，数字在标签宽度内水平居中 -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
-        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-label">当前综合评分 ›</span>
+        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
       </div>
     </div>
 
