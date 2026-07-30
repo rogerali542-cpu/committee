@@ -124,6 +124,9 @@
                   <button v-else-if="row.cur.draft" type="button" class="ck-board-secondary danger"
                           @click.stop.prevent="discardDraft">放弃草稿</button>
                 </div>
+                <div v-else-if="!row.cur && row.emptyCta" class="ck-board-acts">
+                  <button type="button" class="ck-board-cta" @click="row.onEmptyTap()">{{ row.emptyCta }} ›</button>
+                </div>
               </div>
             </div>
           </div>
@@ -1532,15 +1535,17 @@ const learningCockpitTodos = computed(() => cockpitTodos.value.filter(item => St
 // 任务大卡三栏（0729 用户定）：业委会/接待/学习培训各自独立翻页，显示当前一条
 const boardIdx = reactive({ committee: 0, reception: 0, learning: 0 })
 const cockpitBoardRows = computed(() => {
-  const mk = (key, label, tone, items, emptyText) => {
+  const mk = (key, label, tone, items, emptyText, emptyCta, onEmptyTap) => {
     const len = items.length
     const idx = len ? boardIdx[key] % len : 0
-    return { key, label, tone, items, index: idx, cur: len ? items[idx] : null, emptyText }
+    return { key, label, tone, items, index: idx, cur: len ? items[idx] : null, emptyText, emptyCta, onEmptyTap }
   }
   return [
     mk('committee', '业委会', 'blue', committeeCockpitTodos.value, '本期暂无会议待办'),
     mk('reception', '接待', 'green', cockpitTodos.value.filter(i => i.key === 'reception'), '暂无接待安排'),
-    mk('learning', '学习培训', 'amber', learningCockpitTodos.value, '近期暂无学习培训')
+    // 空态也给「去发起」入口（0729 用户定）：没有学习任务时可直接去学习培训模块发起
+    mk('learning', '学习培训', 'amber', learningCockpitTodos.value, '近期暂无学习培训', '去发起',
+      () => { setStorage('home_layout', 'tabs'); window.location.assign('/learning') })
   ]
 })
 function boardShift(key, delta) {
@@ -4173,14 +4178,15 @@ onActivated(show)
   background: #43546F;
   box-shadow: 0 6rpx 18rpx rgba(24, 51, 76, .12);
 }
-.portal-home .hd-title { font-size: 34rpx; font-weight: 700; letter-spacing: .5rpx; }
-.portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 23rpx; }
-.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 170rpx; /* 给固定底栏让位 */ }
+.portal-home .hd-title { font-size: 38rpx; font-weight: 700; letter-spacing: .5rpx; }
+.portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 27rpx; }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 190rpx; /* 给固定底栏让位（字号加大后底栏更高） */ }
 /* 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要 */
 .welcome-hero { flex-shrink: 0; padding: 16rpx 10rpx 0; }
-.welcome-line1 { font-size: 36rpx; font-weight: 700; color: #2F3D56; line-height: 1.3; }
-.welcome-line2 { margin-top: 8rpx; font-size: 27rpx; font-weight: 500; color: #6F7C91; }
-.welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 21rpx; color: #AEB6C2; letter-spacing: 1rpx; }
+/* 0729 用户定：驾驶舱内容不多，整页字号加大两号 */
+.welcome-line1 { font-size: 40rpx; font-weight: 700; color: #2F3D56; line-height: 1.3; }
+.welcome-line2 { margin-top: 8rpx; font-size: 31rpx; font-weight: 500; color: #6F7C91; }
+.welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 25rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 /* 任务大卡（0729 用户定）：三栏合一，左类别+翻页、中任务、右按钮 */
 .ck-board { background: #fff; border-radius: 26rpx; padding: 6rpx 26rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,.05), 0 12rpx 26rpx rgba(20,33,61,.08); }
 /* 标签行在上、任务行在下；上下留白加大，三类任务分得开 */
@@ -4188,32 +4194,32 @@ onActivated(show)
 .ck-board-row:last-child { border-bottom: 0; }
 .ck-board-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
 .ck-board-body { display: flex; align-items: center; gap: 20rpx; }
-.ck-board-tag { font-size: 22rpx; font-weight: 700; padding: 5rpx 14rpx; border-radius: 999rpx; white-space: nowrap; }
+.ck-board-tag { font-size: 26rpx; font-weight: 700; padding: 6rpx 18rpx; border-radius: 999rpx; white-space: nowrap; }
 .ck-board-tag.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-board-tag.green { color: #3B7150; background: #E4F0E8; }
 .ck-board-tag.amber { color: #8A6420; background: #F5EBD8; }
-.ck-board-pager { display: flex; align-items: center; gap: 8rpx; font-size: 21rpx; color: #8A94A6; font-variant-numeric: tabular-nums; }
-.ck-board-pager button { border: 0; background: #F2F4F7; color: #5A6473; width: 40rpx; height: 40rpx; border-radius: 10rpx; font-size: 26rpx; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.ck-board-pager { display: flex; align-items: center; gap: 8rpx; font-size: 25rpx; color: #8A94A6; font-variant-numeric: tabular-nums; }
+.ck-board-pager button { border: 0; background: #F2F4F7; color: #5A6473; width: 48rpx; height: 48rpx; border-radius: 10rpx; font-size: 30rpx; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .ck-board-pager button:active { background: #E4E8ED; }
 .ck-board-main { flex: 1; min-width: 0; }
-.ck-board-title { font-size: 29rpx; font-weight: 700; color: #2A3244; line-height: 1.35; }
-.ck-board-sub { margin-top: 6rpx; font-size: 23rpx; color: #8A94A6; line-height: 1.4; }
-.ck-board-empty { font-size: 25rpx; color: #9AA3AD; }
+.ck-board-title { font-size: 33rpx; font-weight: 700; color: #2A3244; line-height: 1.35; }
+.ck-board-sub { margin-top: 6rpx; font-size: 27rpx; color: #8A94A6; line-height: 1.4; }
+.ck-board-empty { font-size: 29rpx; color: #9AA3AD; }
 .ck-board-acts { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 8rpx; }
-.ck-board-cta { min-height: 56rpx; padding: 0 20rpx; border: 0; border-radius: 12rpx; background: #A85800; color: #fff; font-size: 25rpx; font-weight: 700; white-space: nowrap; }
+.ck-board-cta { min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 12rpx; background: #A85800; color: #fff; font-size: 29rpx; font-weight: 700; white-space: nowrap; }
 .ck-board-cta:active { background: #8F4A06; }
-.ck-board-secondary { border: 0; background: none; color: #A85800; font-size: 22rpx; font-weight: 600; padding: 2rpx 4rpx; }
+.ck-board-secondary { border: 0; background: none; color: #A85800; font-size: 26rpx; font-weight: 600; padding: 2rpx 4rpx; }
 .ck-board-secondary.danger { color: #B0463A; }
 .ck-board-secondary:active { opacity: .6; }
 /* 工作板块底栏（0729 用户定）：四项固定页底，图标块沿用各板块色系 */
 .ck-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: #fff; border-top: 2rpx solid #E6EAEF; padding: 12rpx 8rpx calc(10rpx + env(safe-area-inset-bottom)); box-shadow: 0 -6rpx 18rpx rgba(24,51,76,.06); }
 .ck-dock-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6rpx; padding: 6rpx 0; }
 .ck-dock-item:active { opacity: .65; }
-.ck-dock-ico { width: 64rpx; height: 64rpx; border-radius: 16rpx; display: flex; align-items: center; justify-content: center; font-size: 30rpx; font-weight: 800; }
+.ck-dock-ico { width: 72rpx; height: 72rpx; border-radius: 18rpx; display: flex; align-items: center; justify-content: center; font-size: 34rpx; font-weight: 800; }
 .ck-dock-ico.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-dock-ico.green { color: #3B7150; background: #E4F0E8; }
 .ck-dock-ico.amber { color: #8A6420; background: #F5EBD8; }
-.ck-dock-label { font-size: 23rpx; color: #4A5560; font-weight: 600; }
+.ck-dock-label { font-size: 27rpx; color: #4A5560; font-weight: 600; }
 .ck-section { margin-top: 34rpx; }
 .welcome-hero + .ck-section { margin-top: 22rpx; }
 .ck-work-section { margin-top: 48rpx; }
