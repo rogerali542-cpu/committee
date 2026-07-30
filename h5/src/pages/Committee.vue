@@ -182,17 +182,21 @@
             <!-- 「待处理」(0725 用户定):这组是逾期未开/本期待开/待整理——要办的事,不是"安排";与驾驶舱用词一致 -->
             <div class="mr-group-title">待处理</div>
           </template>
-          <!-- 待处理卡整行不可点(0725 用户定):只有右侧按钮进入,与计划行同规则 -->
-          <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured">
-            <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
-              <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+          <!-- 移动习惯重排（0730 用户定）：当前会议卡=全卡可点（进入是查看/继续处理，安全无副作用），
+               主操作改为卡内通宽大按钮沉到卡底（拇指热区），不再是右缘小胶囊。
+               计划行仍保持"整行不可点"（0725 定，防误触提前召开），两者规则不同是有意的。 -->
+          <div v-for="row in meetingRecordList.immediate" :key="row.key" class="mr-row mr-featured" @click="row.onTap()">
+            <div class="mr-feat-main">
+              <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
+                <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+              </div>
+              <div class="mr-info">
+                <div class="mr-row-title">{{ row.title }}</div>
+                <!-- 副标题按「 · 」分段,每段整体折行:避免"党群服务中心"这类地名被从中间掰断 -->
+                <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
+              </div>
             </div>
-            <div class="mr-info">
-              <div class="mr-row-title">{{ row.title }}</div>
-              <!-- 副标题按「 · 」分段,每段整体折行:避免"党群服务中心"这类地名被从中间掰断 -->
-              <div class="mr-row-sub"><span v-for="(seg, si) in String(row.sub || '').split(' · ')" :key="si" class="mr-sub-seg">{{ seg }}<i v-if="si < String(row.sub || '').split(' · ').length - 1"> · </i></span></div>
-            </div>
-            <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
+            <button type="button" class="mr-cta-wide" @click.stop="row.onTap()">{{ row.statusLabel }} ›</button>
           </div>
           <!-- 发起非例会会议:动作跟动作区(待处理卡)挨着,收纳行(计划/一览)沉底(0725 用户定) -->
           <div v-if="canCreate" class="create-misc-entry" @click="openNewMeeting()">＋ 发起其他会议</div>
@@ -4394,14 +4398,19 @@ onActivated(show)
 .mr-row { display: flex; align-items: center; gap: 14rpx; min-height: 116rpx; padding: 20rpx 8rpx; border-bottom: 2rpx solid #F1F3F5; cursor: pointer; box-sizing: border-box; }
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
-.mr-featured { position: relative; margin: 0 0 24rpx; padding: 22rpx 16rpx 22rpx 22rpx; min-height: 136rpx; gap: 26rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; }
+/* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
+.mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
+.mr-featured:active { background: #F1F7FB; }
+.mr-feat-main { display: flex; align-items: center; gap: 26rpx; }
+.mr-cta-wide { display: block; width: 100%; margin-top: 22rpx; min-height: 88rpx; border: 0; border-radius: 16rpx; background: #3E6BA8; color: #fff; font-size: 32rpx; font-weight: 700; }
+.mr-cta-wide:active { background: #35608F; }
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
 .mr-featured:active { background: #F0F5F8; }
 .mr-planned { min-height: 88rpx; padding: 12rpx 6rpx; gap: 16rpx; opacity: .78; cursor: default; }
 .mr-planned:active { background: transparent; }   /* 整行不可点,不给按压反馈 */
 /* 计划行右侧改真按钮:描边胶囊,比原纯文字「待排›」更大更明显(0725 用户定) */
-.mr-plan-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 24rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
+.mr-plan-btn { flex-shrink: 0; min-height: 76rpx; padding: 0 28rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 28rpx; font-weight: 650; white-space: nowrap; }
 .mr-plan-btn:active { background: #EEF1F5; }
 /* 待处理/已完成行的右侧真按钮(0725 用户定:整行不可点,只按钮进入),描边胶囊按状态配色 */
 .mr-cta-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 18rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
@@ -4411,7 +4420,6 @@ onActivated(show)
 .mr-cta-btn.upcoming { color: #345F91; border-color: #AFC3DC; }
 .mr-cta-btn.done { color: #2E7D50; border-color: #A8CDB6; }
 /* 整行不再可点:不给按压反馈 */
-.mr-featured { cursor: default; }
 .mr-featured:active { background: #F8FBFD; }
 .mr-cal-done-row { cursor: default; }
 .mr-cal-done-row:active { background: transparent; }
@@ -4445,7 +4453,8 @@ onActivated(show)
 .mr-status.current { color: #345F91; }
 .mr-status.overdue { color: #B0463A; }
 .mr-status.upcoming { color: #8A94A0; }
-.mr-fold { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; min-height: 88rpx; padding: 18rpx 8rpx; margin-top: 10rpx; font-size: 27rpx; font-weight: 600; color: #536175; border-top: 2rpx solid #E8ECEF; cursor: pointer; }
+.mr-fold { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; min-height: 100rpx; padding: 18rpx 8rpx; margin-top: 10rpx; font-size: 30rpx; font-weight: 600; color: #536175; border-top: 2rpx solid #E8ECEF; cursor: pointer; }
+.mr-fold:active { background: #F6F8FA; }
 .mr-fold:active { opacity: 0.7; }
 .mr-fold-chev { transition: transform 0.2s; }
 .mr-fold-chev.open { transform: rotate(180deg); }
@@ -4534,7 +4543,8 @@ onActivated(show)
 .draft-mat { font-size: 28rpx; color: #6b7075; margin-top: 10rpx; }
 .draft-continue { width: 80%; margin: 26rpx auto 0; height: 104rpx; border: none; border-radius: 24rpx; background: var(--c-primary); color: #fff; font-size: 42rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 8rpx 26rpx rgba(232,140,20,0.28); }
 /* 「发起其他会议」收进会议安排卡尾(0725 用户定):中性灰虚线的次要"添加"语义不变 */
-.create-misc-entry { width: 64%; margin: 26rpx auto 14rpx; height: 84rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 30rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
+/* 0730 移动习惯：靶子加大（≥96rpx），宽度放到 78% */
+.create-misc-entry { width: 78%; margin: 26rpx auto 14rpx; height: 96rpx; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--c-text-mid); font-size: 32rpx; font-weight: 600; border: 2rpx dashed #C9D0D6; border-radius: 22rpx; background: #F5F6F8; cursor: pointer; }
 .create-misc-entry:active { background: #EAEDF0; }
 .draft-continue:active { background: var(--c-primary-strong); transform: scale(0.99); }
 .draft-continue .btn-arrow { margin-left: 6rpx; font-size: 44rpx; }
