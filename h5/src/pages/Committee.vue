@@ -115,7 +115,8 @@
              整节点击进对应模块页（spec §6 行点击=进入） -->
         <div class="pt-card">
           <div v-for="sec in portalSections" :key="sec.key" class="pt-sec" @click="sec.onTap()">
-            <div class="pt-sec-tag">{{ sec.tag }}</div>
+            <!-- 模块名加重带模块色（0731 用户定：小灰字看不清；与三级状态②"模块色文字"同构） -->
+            <div class="pt-sec-tag" :class="sec.tone">{{ sec.tag }}</div>
             <div class="pt-sec-row">
               <div class="pt-sec-main">
                 <div class="pt-sec-title">{{ sec.title }}</div>
@@ -132,10 +133,7 @@
             <span class="pt-link-t">待办事项<em> · {{ ptTodoCount }} 项</em></span>
             <i class="pt-arr"></i>
           </div>
-          <div class="pt-link" @click="goSealHome()">
-            <span class="pt-link-t">印章管理</span>
-            <i class="pt-arr"></i>
-          </div>
+          <!-- 印章管理行已删（0731 用户定：低频），入口移入个人中心菜单 -->
           <div class="pt-link" @click="goArchive()">
             <span class="pt-link-t">档案馆</span>
             <i class="pt-arr"></i>
@@ -1726,9 +1724,9 @@ const portalSections = computed(() => {
     if (last) lSub = '上次 ' + fmtPlanDate(last.date) + (last.title ? ' ' + last.title : '')
   }
   return [
-    { key: 'meeting', tag: '业委会会议', title: mTitle, sub: mSub, badge: mBadge, tier: mTier, onTap: enterCommitteeArea },
-    { key: 'reception', tag: '业主接待', title: rTitle, sub: rSub, badge: rBadge, tier: rTier, onTap: enterReceptionArea },
-    { key: 'learning', tag: '学习培训', title: lTitle, sub: lSub, badge: '', tier: '', onTap: goLearningHome }
+    { key: 'meeting', tag: '业委会会议', tone: 'blue', title: mTitle, sub: mSub, badge: mBadge, tier: mTier, onTap: enterCommitteeArea },
+    { key: 'reception', tag: '业主接待', tone: 'green', title: rTitle, sub: rSub, badge: rBadge, tier: rTier, onTap: enterReceptionArea },
+    { key: 'learning', tag: '学习培训', tone: 'cyan', title: lTitle, sub: lSub, badge: '', tier: '', onTap: goLearningHome }
   ]
 })
 // 驾驶舱轻列表：聚合待办计数（会议未办 + 接待未办）
@@ -1738,8 +1736,7 @@ async function loadPortalTodos() {
 }
 const ptTodoCount = computed(() =>
   portalTodos.value.filter(t => t.status !== 'done').length + recPendingList.value.length)
-// 印章/学习入口（与原 portalDomains 同款硬跳，软路由偶发不切视图）
-function goSealHome() { window.location.assign('/seal') }
+// 学习入口（与原 portalDomains 同款硬跳，软路由偶发不切视图）。印章入口已移入个人中心（0731）
 function goLearningHome() { setStorage('home_layout', 'tabs'); window.location.assign('/learning') }
 // 评分点击进个人中心（履职统计在那里）
 function goScore() {
@@ -4372,7 +4369,11 @@ onActivated(show)
 .pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; }
 .pt-sec:first-child { border-top: 0; }
 .pt-sec:active { background: #FAFBFC; }
-.pt-sec-tag { font-size: 26rpx; color: #6B7280; }
+/* 模块名加重带模块色（0731 用户定：小灰字看不清） */
+.pt-sec-tag { font-size: 26rpx; font-weight: 600; }
+.pt-sec-tag.blue { color: #2f5f9e; }
+.pt-sec-tag.green { color: #2f6b45; }
+.pt-sec-tag.cyan { color: #2a6b73; }
 .pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 10rpx; }
 .pt-sec-main { flex: 1; min-width: 0; }
 .pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 长标题（如培训名）窄屏截断不溢出 */

@@ -61,6 +61,16 @@
       </div>
     </template>
 
+    <!-- 印章管理（0731 用户定：低频入口从驾驶舱撤下，归个人中心） -->
+    <div class="section-header">业委会事务</div>
+    <div class="section">
+      <div class="menu-row" @click="goSeal">
+        <div class="menu-icon" style="background:#E6EDF8;">章</div>
+        <span class="menu-label">印章管理</span>
+        <span class="menu-arrow">›</span>
+      </div>
+    </div>
+
     <!-- 消息通知 -->
     <div class="section-header">消息通知</div>
     <div class="section">
@@ -176,6 +186,11 @@ async function loadUnread() {
 
 function openNotifications() {
   navigateTo('/pages/notifications/notifications')
+}
+
+// 印章管理（0731 用户定：低频入口从驾驶舱撤下归此处）；硬跳保证必达（软路由偶发不切视图）
+function goSeal() {
+  window.location.assign('/seal')
 }
 
 async function switchRole(item) {
