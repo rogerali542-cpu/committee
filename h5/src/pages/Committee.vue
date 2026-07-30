@@ -4568,7 +4568,9 @@ onActivated(show)
 .mtg-due-status.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; font-weight: 600; }
 .mtg-due-status.st-today { color: #2F5F9E; }
 .mtg-due-status.st-muted { color: #6B7280; }
-.mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 0 8rpx; min-height: 84rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
+/* 文字两档制（0731 用户定收敛）：正文黑 #1F2937 / 次要灰 #6B7280，中间灰全部归档——
+   节标题=灰档加粗；列表正文=黑；层级靠字号字重，不靠灰阶渐变 */
+.mtg-next-head { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin: 0 8rpx; min-height: 84rpx; font-size: 30rpx; font-weight: 700; color: #6B7280; }
 .mtg-next-head em { font-style: normal; font-size: 26rpx; font-weight: 500; color: #8A94A6; }
 /* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
 /* 0730 图样六改（点1）：去白卡去边框——次要清单直接铺在页面底色上，只留分隔线，
@@ -4577,7 +4579,7 @@ onActivated(show)
 /* 首行去掉顶分隔线：有「接下来」头时头已作分隔，无头时（无后续场次）也不留孤零零一条线 */
 .mtg-next-list > :first-child { border-top: 0 !important; }
 .mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; }
-.mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #3D4A5C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 「还有 N 场 ›」截断展开行（0730 设计师定）：与「全年会议」同为页内揭示、非跳转，用深灰；
    › 示意可展开更多。前 2 场恒在，展开后本行消失 */
 .mtg-next-more-row { cursor: pointer; }
@@ -4591,7 +4593,8 @@ onActivated(show)
 .mtg-next-foot:active { opacity: .7; }
 /* 0731 用户定：全年会议/档案馆两行加大两号、颜色更明显（29→33rpx、灰→正文深色），行高随之加大方便点按；
    展开▾/› 辅助符仍灰。仍不用蓝——展开行非跳转，蓝只留给链接类 */
-.mtg-next-foot b { font-size: 33rpx; font-weight: 650; color: #1F2937; }
+/* 尾行 33→31rpx（两档制收敛）：让「主卡会议名34 > 列表行 > 尾行31」重量顺序回正 */
+.mtg-next-foot b { font-size: 31rpx; font-weight: 650; color: #1F2937; }
 .mtg-next-more { display: inline-flex; align-items: center; gap: 8rpx; font-size: 27rpx; color: #8A94A6; }
 /* 纯图形展开按钮（0731 用户定二改：去文字）：圆形浅底+CSS 边框箭头（见 CLAUDE.md 配方），
    向下=可展开、向上=可收起；档案馆行的 › 保持裸箭头不套壳 */
@@ -4666,7 +4669,7 @@ onActivated(show)
 .mr-badge.done, .mr-badge.current, .mr-badge.upcoming { background: #F4F6F9; color: #4B5563; }
 .mr-info { flex: 1; min-width: 0; }
 .mr-row-title { font-size: 31rpx; font-weight: 750; color: var(--c-text-strong); line-height: 1.3; text-wrap: pretty; }  /* 0729:文字区加宽让例会名尽量一行;真折行时 pretty 填满行宽+末行不留孤字(旧 balance 会把两行均分,右侧空一大截离按钮很远) */
-.mr-row-sub { font-size: 27rpx; color: #657286; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
+.mr-row-sub { font-size: 27rpx; color: #6B7280; margin-top: 7rpx; line-height: 1.35; text-wrap: balance; }  /* 兜底:真折行时两行均衡,不出孤字 */
 .mr-sub-seg { display: inline-block; max-width: 100%; }   /* 段内(日期时间/地点)不拆,只在「·」处折行 */
 .mr-sub-seg i { font-style: normal; }
 .mr-status { flex-shrink: 0; font-size: 28rpx; font-weight: 650; }
@@ -4674,7 +4677,7 @@ onActivated(show)
 .mr-status.current { color: #345F91; }
 .mr-status.overdue { color: #B0463A; }
 .mr-status.upcoming { color: #8A94A0; }
-.mr-fold { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; min-height: 100rpx; padding: 18rpx 8rpx; margin-top: 10rpx; font-size: 30rpx; font-weight: 600; color: #536175; border-top: 2rpx solid #E8ECEF; cursor: pointer; }
+.mr-fold { display: flex; align-items: center; justify-content: space-between; gap: 10rpx; min-height: 100rpx; padding: 18rpx 8rpx; margin-top: 10rpx; font-size: 30rpx; font-weight: 600; color: #1F2937; border-top: 2rpx solid #E8ECEF; cursor: pointer; }
 .mr-fold:active { background: #F6F8FA; }
 .mr-fold:active { opacity: 0.7; }
 .mr-fold-chev { transition: transform 0.2s; }
@@ -4892,7 +4895,7 @@ onActivated(show)
 .rec-recent-card { order: 3; margin-top: 26rpx; padding: 0 8rpx; box-sizing: border-box;
   background: transparent; border: 0; box-shadow: none; }
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
-  min-height: 84rpx; padding: 0 2rpx; font-size: 30rpx; font-weight: 700; color: #536175; }
+  min-height: 84rpx; padding: 0 2rpx; font-size: 30rpx; font-weight: 700; color: #6B7280; }   /* 两档制：节标题=灰档加粗 */
 /* 末行档案馆入口（0730 定稿图）：「档案馆」深色粗、说明灰 */
 .rec-recent-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
 .rec-recent-arch:active { opacity: .65; }
