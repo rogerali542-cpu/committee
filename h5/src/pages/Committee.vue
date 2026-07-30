@@ -4225,9 +4225,9 @@ onActivated(show)
 .welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 190rpx; /* 给固定底栏让位（字号加大后底栏更高） */ }
 /* 头部两行（0729 用户定）：第一行 日期+问候，第二行 最近任务摘要 */
 .welcome-hero { flex-shrink: 0; padding: 16rpx 10rpx 0; }
-/* 0729 用户定：驾驶舱内容不多，整页字号加大两号 */
-.welcome-line1 { font-size: 40rpx; font-weight: 700; color: #2F3D56; line-height: 1.3; }
-.welcome-line2 { margin-top: 8rpx; font-size: 31rpx; font-weight: 500; color: #6F7C91; }
+/* 0730 用户定：头行收小一档，重心让给卡片正文 */
+.welcome-line1 { font-size: 34rpx; font-weight: 700; color: #2F3D56; line-height: 1.3; }
+.welcome-line2 { margin-top: 8rpx; font-size: 28rpx; font-weight: 500; color: #6F7C91; }
 .welcome-foot { margin-top: auto; text-align: center; padding: 8rpx 0 6rpx; font-size: 25rpx; color: #AEB6C2; letter-spacing: 1rpx; }
 /* 任务大卡（0729 用户定）：三栏合一，左类别+翻页、中任务、右按钮 */
 .ck-board { background: #fff; border-radius: 26rpx; padding: 6rpx 26rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,.05), 0 12rpx 26rpx rgba(20,33,61,.08); }
@@ -4244,8 +4244,9 @@ onActivated(show)
 .ck-board-pager button { border: 0; background: #F2F4F7; color: #5A6473; width: 48rpx; height: 48rpx; border-radius: 10rpx; font-size: 30rpx; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .ck-board-pager button:active { background: #E4E8ED; }
 .ck-board-main { flex: 1; min-width: 0; }
-.ck-board-title { font-size: 33rpx; font-weight: 700; color: #2A3244; line-height: 1.35; }
-.ck-board-sub { margin-top: 6rpx; font-size: 27rpx; color: #8A94A6; line-height: 1.4; }
+/* 0730 用户定：卡片正文加大加重（页面重心） */
+.ck-board-title { font-size: 37rpx; font-weight: 800; color: #232B3C; line-height: 1.35; }
+.ck-board-sub { margin-top: 8rpx; font-size: 29rpx; font-weight: 500; color: #7E8899; line-height: 1.4; }
 .ck-board-empty { font-size: 29rpx; color: #9AA3AD; }
 .ck-board-acts { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 8rpx; }
 .ck-board-cta { min-height: 64rpx; padding: 0 24rpx; border: 0; border-radius: 12rpx; background: #A85800; color: #fff; font-size: 29rpx; font-weight: 700; white-space: nowrap; }
