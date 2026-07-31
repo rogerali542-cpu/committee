@@ -1170,11 +1170,13 @@ const receptionHero = computed(() => {
   const hour = parseInt(String(info.startTime).split(':')[0], 10) || 19
   const part = hour >= 18 ? '晚' : (hour >= 12 ? '下午' : '上午')
   // 非当日不写规律「每周四」而写具体这一次（0731 设计师点1×用户定）：周一~周三看＝本周四，
-  // 周四结束后/周五~周日看＝下周四（中国周一起算，周日属上一周）
+  // 周四结束后/周五~周日看＝下周四（中国周一起算，周日属上一周）。
+  // 加「下次接待」前缀（0731 用户定）：把这行定性为日程信息，与右侧常驻「去登记」入口语义解耦——
+  // 否则「下周四接待 · 去登记」像在给下周预登记
   const dow = new Date().getDay()
   const title = info.days === 0 ? ('今' + part + ' ' + info.startTime + ' 接待')
     : info.days === 1 ? ('明' + part + ' ' + info.startTime + ' 接待')
-      : (((dow >= 1 && dow <= 3) ? '本周四 ' : '下周四 ') + info.range + ' 接待')
+      : ('下次接待 ' + ((dow >= 1 && dow <= 3) ? '本周四' : '下周四') + ' ' + info.range)
   return { set: true, dateLine: info.dateText, title, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
@@ -1774,8 +1776,9 @@ const portalCards = computed(() => {
       badge: rh.days === 0 ? '今日' : (rh.days === 1 ? '明日' : ''), tier: 'st-green',
       // 副行不再显示接待地点（0731 用户定）：首页这张卡的操作是「去登记」而非「改安排」，地点是安排属性、登记时用不到
       title: rh.title, sub: '',
-      // 登记入口常驻（0731 用户定：不能去掉），措辞按当日与否切换——当日登今晚的＝去登记，非当日登的是过往场次＝补登记
-      verb: rh.days === 0 ? '去登记' : '补登记', onTap: () => openReceptionCreate()
+      // 登记入口常驻、动词统一「去登记」（0731 用户定：补登记怪）；与标题的语义错位由标题端解决——
+      // 非当日标题带「下次接待」前缀自明为日程信息，不再像按钮的操作对象
+      verb: '去登记', onTap: () => openReceptionCreate()
     })
   } else {
     cards.push({
