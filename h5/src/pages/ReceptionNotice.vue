@@ -70,6 +70,8 @@
           <label class="f-label">调整原因（选填）</label>
           <input v-model="form.reason" class="f-input" maxlength="60" :disabled="!canManage" />
         </div>
+        <!-- 提前 1 天惯例（0731 用户定；制度汇编未规定时限，此为产品自定规则） -->
+        <div v-if="canManage" class="sec-hint rule-hint">按惯例，接待安排调整请至少提前 1 天公示业主。</div>
         <div v-if="!canManage" class="sec-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
         <!-- 灰态给出原因文案（0723）：老人首次进页看到灰按钮不知为何点不动 -->
         <button v-if="canManage" class="confirm-adjust" type="button"
@@ -116,7 +118,7 @@ import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
-import { toast } from '@/utils/ui'
+import { toast, showModal } from '@/utils/ui'
 import { navigateBack, goModuleHome } from '@/utils/navigate'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
@@ -268,10 +270,37 @@ async function load() {
 }
 onMounted(load)
 
+// 距「当前已公示安排」的下一场接待不足 1 天？（0731 提前 1 天惯例的守门）
+// 从 saved.timeDesc 解析周几与结束时刻；解析不出（如未设置过）不拦
+function nextSessionWithin1Day() {
+  const m = String(saved.timeDesc || '').match(/周([一二三四五六日天])/)
+  if (!m) return false
+  const dowMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0, '天': 0 }
+  const recDow = dowMap[m[1]]
+  const now = new Date()
+  let days = (recDow - now.getDay() + 7) % 7
+  if (days === 0) {
+    const t = String(saved.timeDesc || '').match(/[—–-]\s*(\d{1,2}):(\d{2})/)
+    const endAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), t ? Number(t[1]) : 20, t ? Number(t[2]) : 0)
+    if (now > endAt) days = 7
+  }
+  return days <= 1
+}
+
 /** 点击确定后才保存，并以已保存的数据生成下方的新公告。 */
 async function confirmAdjustment() {
   if (saving.value) return
   if (!timeText.value) { toast({ title: '请先选择星期和起止时间', icon: 'none' }); return }
+  // 提前 1 天惯例（0731 用户定）：下一场就在 24 小时内还要改，先确认一道
+  if (nextSessionWithin1Day()) {
+    const res = await showModal({
+      size: 'action',
+      title: '距下次接待不足 1 天，仍要调整吗？',
+      content: '按惯例应提前 1 天公示业主。',
+      confirmText: '仍要保存', cancelText: '取消', showCancel: true
+    })
+    if (!res || !res.confirm) return
+  }
   saving.value = true
   try {
     const place = form.place.trim()

@@ -45,6 +45,8 @@
                （今天「今晚…」/明天「明晚…」/其他日子制度句「每周四 起—止 接待」） -->
           <template v-if="receptionHero.set">
             <div class="rnh-top">
+              <!-- 0731 用户定：去绿底后卡失语——左上小标签一词定性，右侧仍是具体日期 -->
+              <span class="rnh-kicker-sm">接待安排</span>
               <span class="rnh-date">{{ receptionHero.dateLine }}</span>
             </div>
             <!-- 主行只写时间（0731 设计师点2：上行小字已是具体日期，「下周四」与之重复；具体日期更可靠） -->
@@ -56,15 +58,21 @@
             <div class="rnh-kicker">接待安排</div>
             <div class="rnh-time none">还没设置接待时间</div>
           </template>
-          <!-- 「调整接待安排」按钮已移到底部动作区（0730 图一：卡片保持干净，只承载时间/地点信息） -->
+          <!-- 0731 用户定：调整安排≈月频（比待办高），从列表末行上移为本卡底行——
+               它操作的正是卡里显示的内容，"看到安排→改安排"同一动线；底部仍只留登记主按钮 -->
+          <div v-if="canManageReception" class="rnh-adjust" @click="goReceptionNotice">
+            <span>{{ receptionHero.set ? '调整接待安排' : '去设置接待时间' }}</span>
+            <i class="pt-arr"></i>
+          </div>
         </div>
 
         <!-- 待办入口卡（0730 设计师定稿；0731 用户定：入口常驻，0 项也保留——它是「业委会待办」
              聚合页的固定入口，不随有无待办出没）：标题「待办事项 · N 项待跟进」+内容短摘要 -->
         <div v-if="planTab === 'reception'" class="rec-todo-entry" @click="goTodos()">
           <div class="rte-top">
-            <!-- 0731 设计师点4：与首页「待办事项」重名但范围不同（这里只有业主反馈转来的），改名区分 -->
-            <b>业主反馈{{ recPendingList.length ? ' · ' + recPendingList.length + ' 项待跟进' : '' }}</b>
+            <!-- 0731 用户定：就叫「待办」——这卡点进去是全委待办聚合页，计数也用全量（与首页对齐），
+                 「业主反馈」名不副实且太长 -->
+            <b>待办{{ ptTodoCount ? ' · ' + ptTodoCount + ' 项' : '' }}</b>
             <i class="rte-arr"></i>
           </div>
           <div class="rte-sub">{{ recPendingList.length ? recPendingSummary : '暂无待跟进事项' }}</div>
@@ -105,11 +113,6 @@
           <div class="rec-recent-arch" @click="goArchive('reception')">
             <!-- 副题删（0731 设计师点5：把两个上级栏目名念了一遍，太长） -->
             <span class="rra-text"><b>历史记录</b></span>
-            <span class="rec-recent-arch-arr">›</span>
-          </div>
-          <!-- 调整接待安排（0731 设计师点3）：低频动作收列表末行，底部只留登记主按钮 -->
-          <div v-if="canManageReception" class="rec-recent-arch" @click="goReceptionNotice">
-            <span class="rra-text"><b>调整接待安排</b></span>
             <span class="rec-recent-arch-arr">›</span>
           </div>
         </div>
@@ -5104,6 +5107,9 @@ onActivated(show)
 .rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #3B7150; }
 /* 顶行（0730 设计师定稿）：统一灰字「M月D日 周四」，语气只落在标题 */
 .rnh-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; }
+.rnh-kicker-sm { font-size: 29rpx; font-weight: 650; color: #6B7280; }   /* 卡片身份标签（0731：白卡后一词定性） */
+.rnh-adjust { margin-top: 24rpx; padding-top: 22rpx; border-top: 2rpx solid #F0F2F5; min-height: 64rpx; display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 30rpx; font-weight: 600; color: #1F2937; cursor: pointer; }
+.rnh-adjust:active { opacity: .65; }
 .rnh-date { font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .rnh-title { margin-top: 12rpx; font-size: 43rpx; line-height: 1.3; font-weight: 700; color: var(--c-text-strong); }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
@@ -5157,13 +5163,13 @@ onActivated(show)
 .rra-text b { font-weight: 700; color: #1F2937; }
 .rec-recent-arch-arr { flex-shrink: 0; font-size: 32rpx; color: #9AA4B0; }
 .rec-recent-session { border-top: 2rpx solid #E2E5EA; }
-.rec-recent-row { display: flex; align-items: center; gap: 18rpx; min-height: 112rpx; padding: 20rpx 2rpx; }
+.rec-recent-row { display: flex; align-items: center; gap: 18rpx; min-height: 96rpx; padding: 12rpx 2rpx; }
 .rec-recent-row:active { opacity: 0.68; }
-.rec-recent-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
+.rec-recent-copy { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 14rpx; }   /* 0731 用户定：两行压一行，近期接待瘦身近半 */
 /* 行式照图一：主行「M月D日 · 接待人」，副行「反映 N 项/无人来访」；状态标签已撤（spec §11） */
-.rec-recent-main { font-size: 31rpx; line-height: 1.35; font-weight: 650; color: #1F2937;
+.rec-recent-main { flex-shrink: 0; white-space: nowrap; font-size: 31rpx; line-height: 1.35; font-weight: 650; color: #1F2937;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-recent-sub { font-size: 27rpx; line-height: 1.4; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-recent-sub { flex: 1; min-width: 0; font-size: 27rpx; line-height: 1.4; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 右侧箭头：CSS 边框画（CLAUDE.md），收起右指›、展开子列表时转下 */
 .rec-recent-chev { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx;
   border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7;
