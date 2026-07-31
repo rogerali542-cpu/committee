@@ -1050,8 +1050,11 @@ const yearPanelRows = computed(() => {
   for (const r of (yearPlan.value || [])) {
     if (r.status === 'done') {
       const held = r.meeting
+      // 已开且有具体日期：期次列直接写「1月16日」（0731 用户定）；没日期兜底期次「1-2月」
+      const d = String((held && held.meetingDate) || '').split('-')
       rows.push({
-        key: 'yp-' + r.period, period: r.monthLabel,
+        key: 'yp-' + r.period,
+        period: d.length === 3 ? (Number(d[1]) + '月' + Number(d[2]) + '日') : r.monthLabel,
         title: shortMeetingName((held && held.title) || ('第' + r.period + '次业委会例会')),
         statusText: '已开', done: true,
         onTap: () => { if (held && held.id) { saveYearPanelRestore(); openMeetingTap(held) } }
