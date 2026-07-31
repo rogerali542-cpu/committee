@@ -239,7 +239,7 @@
                 <i class="yp-arr"></i>
               </div>
               <!-- 历史记录（0731 用户定：并入全年展开面板收尾）：今年之外的历年归档去历史记录页 -->
-              <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
+              <div class="mtg-next-foot mtg-arch-foot" @click="saveYearPanelRestore(); goArchive('committee')">
                 <b>查看全部历史</b>
                 <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
               </div>
@@ -1054,7 +1054,7 @@ const yearPanelRows = computed(() => {
         key: 'yp-' + r.period, period: r.monthLabel,
         title: shortMeetingName((held && held.title) || ('第' + r.period + '次业委会例会')),
         statusText: '已开', done: true,
-        onTap: () => { if (held && held.id) openMeetingTap(held) }
+        onTap: () => { if (held && held.id) { saveYearPanelRestore(); openMeetingTap(held) } }
       })
     } else if (r.status === 'upcoming') {
       rows.push({
@@ -1068,6 +1068,10 @@ const yearPanelRows = computed(() => {
   return rows
 })
 const yearDoneCount = computed(() => (yearPlan.value || []).filter(r => r.status === 'done').length)
+// 离开前存「展开+滚动位置」一次性标记（0731 用户定：从面板点进详情/历史，返回时原状原位）
+function saveYearPanelRestore() {
+  try { sessionStorage.setItem('mtg_year_restore', JSON.stringify({ y: window.scrollY || 0 })) } catch (e) { /* 忽略 */ }
+}
 const thisYearPlan = computed(() => buildYearPlan(curYear))      // 待办/逾期红条：恒今年，不受翻年影响
 
 // ── 履职年历：按路由 section 分开会/接待两态 + 12 月宫格 + 警示条 + 点月看当月该类事项 ──
@@ -2577,12 +2581,28 @@ function show() {
   // 优先 ?tab= 显式指定，其次会话内最后停留的 tab（sessionStorage：微信杀会话即清，
   // 新打开仍默认开会——开会是核心价值，冷启动不动它）。
   planTab.value = props.section === 'reception' ? 'reception' : 'meeting'
-  // 0730 用户定（推翻 0725 的"返回保持展开并滚到日历"）：从详情等页返回首页一律回到顶部，
-  // 全年会议一览默认收起——落到页面底部的日历属于导航错误
-  meetingCalendarOpen.value = false
+  // 0730 用户定：从详情等页返回首页默认回到顶部、全年一览收起。
+  // 0731 补例外：从「全年面板」点进去的（已开会议详情/全部历史），返回要恢复展开态+滚动位置——
+  // 一次性标记存 sessionStorage（软路由 KeepAlive 与硬跳整页加载两条返回路都吃得到）
+  let restored = false
+  try {
+    const raw = sessionStorage.getItem('mtg_year_restore')
+    if (raw) {
+      sessionStorage.removeItem('mtg_year_restore')
+      const st = JSON.parse(raw)
+      meetingCalendarOpen.value = true
+      restored = true
+      // 数据异步加载，页面高度晚到：分两次尝试滚回（60ms 软路由即中；400ms 兜整页重载）
+      const back = () => { try { window.scrollTo(0, st.y || 0) } catch (e) { /* 忽略 */ } }
+      setTimeout(back, 60)
+      setTimeout(back, 400)
+    }
+  } catch (e) { /* 忽略 */ }
+  if (!restored) {
+    meetingCalendarOpen.value = false
+    try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
+  }
   homeShell.navHidden = false   // 回首页恢复导航栏
-  // （后续计划已平铺，无折叠态可恢复——0730 图一骨架）
-  try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
   isChair.value = perm.isChair()
   isRecorder.value = perm.isRecorder()
   isExternal.value = perm.isExternal()
