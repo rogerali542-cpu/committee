@@ -238,11 +238,11 @@
                 <span class="yp-status" :class="{ done: row.done }">{{ row.statusText }}</span>
                 <i class="yp-arr"></i>
               </div>
-              <!-- 历史记录（0731 用户定：并入全年展开面板收尾）：今年之外的历年归档去历史记录页 -->
-              <div class="mtg-next-foot mtg-arch-foot" @click="saveYearPanelRestore(); goArchive('committee')">
-                <b>查看全部历史</b>
-                <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
-              </div>
+            </div>
+            <!-- 查看全部历史（0731 用户定：移出全年面板，与发起临时会议同级同重量）——历年归档入口 -->
+            <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
+              <b>查看全部历史</b>
+              <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
             </div>
             <!-- ＋ 发起临时会议（0731 设计师点2）：一年用几次的低频动作收进列表末行，
                  底部动作条只留主按钮一个实心色块 -->
