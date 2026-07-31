@@ -4532,7 +4532,7 @@ onActivated(show)
 /* ── 驾驶舱 0731 定稿：日期行 + 三模块聚合卡 + 轻列表 ── */
 .pt-date { padding: 26rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .pt-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); padding: 8rpx 30rpx; }
-.pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; touch-action: pan-y; }   /* pan-y：竖向留给页面滚动，横向手势交给 JS 翻页 */
+.pt-sec { padding: 40rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; touch-action: pan-y; }   /* 内边距 20px（0731 设计师定：拇指区不塞假主按钮，放大行让内容下长+触区变大）；pan-y：竖向留给页面滚动，横向手势交给 JS 翻页 */
 .pt-sec:first-child { border-top: 0; }
 .pt-sec:active { background: #FAFBFC; }
 /* 模块名行＝小图标+类型名+状态徽章。0731 设计师定：类型名调浅一档（黑字墙太重），靠图标补存在感 */
@@ -4559,7 +4559,7 @@ onActivated(show)
 /* 右侧固定动词（0731 设计师定：状态驱动跳转必须把动词写出来，老人只读字不记规则） */
 .pt-verb { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8rpx; font-size: 31rpx; font-weight: 700; color: #1F2937; white-space: nowrap; }
 .pt-sec-main { flex: 1; min-width: 0; }
-.pt-sec-title { font-size: 32rpx; font-weight: 600; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 正文＝该卡主读信息，明确比模块名大且深，层级唯一不含糊；长标题窄屏截断不溢出 */
+.pt-sec-title { font-size: 40rpx; font-weight: 600; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 正文 20px（0731 设计师定：行放大）＝该卡主读信息，明确比模块名大且深；长标题窄屏截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=蓝、其余=灰 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
@@ -4570,7 +4570,7 @@ onActivated(show)
 /* （主操作条已删——0731 与设计师定：首页是分派台不硬选主操作，空白留着比塞一个假主操作好） */
 /* 轻列表（spec §5；0731 设计师定：行压矮、去粗——"轻"列表不与白卡标题抢重量，和卡片更连贯 */
 .pt-links { margin-top: 20rpx; padding: 0 6rpx; }
-.pt-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 76rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
+.pt-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 124rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }   /* 行高 62px（0731 设计师定：拇指区解法=放大触区，不塞假主按钮） */
 .pt-link:last-child { border-bottom: 2rpx solid #E2E5EA; }
 .pt-link:active { opacity: .65; }
 .pt-link-t { font-size: 31rpx; font-weight: 400; color: #1F2937; }
