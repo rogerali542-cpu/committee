@@ -1171,13 +1171,12 @@ const receptionHero = computed(() => {
   const part = hour >= 18 ? '晚' : (hour >= 12 ? '下午' : '上午')
   // 非当日不写规律「每周X」而写具体这一次（0731 设计师点1×用户定），且周几随制度动态解析。
   // 本周X/下周X 通用判法（周一起算）：今天的周一序号+间隔天数仍落在本周 7 格内＝本周，否则下周。
-  // 加「下次接待」前缀（0731 用户定）：把这行定性为日程信息，与右侧常驻「去登记」入口语义解耦——
-  // 否则「下周四接待 · 去登记」像在给下周预登记
+  // 「下次接待」前缀试过又删（0731 用户看实物定：冗长；本周X/下周X 本身已表明是日程）
   const mondayIdx = (new Date().getDay() + 6) % 7
   const weekWord = (mondayIdx + info.days <= 6 ? '本周' : '下周') + info.recDowChar
   const title = info.days === 0 ? ('今' + part + ' ' + info.startTime + ' 接待')
     : info.days === 1 ? ('明' + part + ' ' + info.startTime + ' 接待')
-      : ('下次接待 ' + weekWord + ' ' + info.range)
+      : (weekWord + ' ' + info.range + ' 接待')
   return { set: true, dateLine: info.dateText, title, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
