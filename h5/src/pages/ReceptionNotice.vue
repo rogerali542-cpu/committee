@@ -72,7 +72,7 @@
         </div>
         <div v-if="exportSuccess" class="export-success">已导出PDF文件，可打印通知</div>
         <button v-if="canManage" class="pv-export" :disabled="exporting || !saved.timeDesc" @click="exportPdf">
-          {{ exporting ? '正在生成…' : '导出为 PDF' }}
+          {{ exporting ? '正在生成…' : (dirty ? '先保存，再导出 PDF' : '导出为 PDF') }}
         </button>
       </div>
 
@@ -164,7 +164,8 @@ watch(() => form.start, (val) => {
   if (hh > maxHour) hh = maxHour                          // 越界则夹到最晚,避免出现无效结束时间
   form.end = String(hh).padStart(2, '0') + ':' + m[2]
 })
-// saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
+// saved 是「已保存到后端」的基线：算 dirty、导出 PDF 门槛、下次接待时间判定用。
+// 公告预览不再用它——0731 用户定：预览实时跟当前选择（见 noticeParas）
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 // 载入时的原值快照（0731 设计师稿：改动行旁标「原 19:00」，老人看得见改了什么）
 const orig = reactive({ day: '', start: '', end: '' })
@@ -189,12 +190,14 @@ const dirty = computed(() =>
   timeText.value !== saved.timeDesc || form.place !== saved.place ||
   form.person !== saved.person || form.reason !== saved.reason)
 
-/** 公告段落。时间、地点、人员分别顶格成行；说明及后续正文保持正文缩进。 */
+/** 公告段落（0731 用户定：预览实时跟当前选择变，不等保存）。
+ *  句式与后端 PDF 模板逐字一致；导出 PDF 前强制先保存（exportPdf 里把关），
+ *  所以印出来的永远和看到的相同。 */
 const noticeParas = computed(() => {
-  const time = saved.timeDesc || '未填写'
-  const place = saved.place || '未填写'
-  const person = saved.person || '未填写'
-  const reason = saved.reason.trim()
+  const time = timeText.value || '未填写'
+  const place = form.place.trim() || '未填写'
+  const person = form.person.trim() || '未填写'
+  const reason = form.reason.trim()
   if (reason) {
     return [
       { text: orgName.value + '因' + reason + '，需要调整近期的业主接待安排。', noIndent: false },
@@ -448,6 +451,8 @@ async function confirmAdjustment() {
 async function exportPdf() {
   if (exporting.value) return
   if (!saved.timeDesc) { toast({ title: '请先确认接待安排', icon: 'none' }); return }
+  // 预览实时跟 form，但 PDF 由后端按已保存数据生成——有未保存修改时先拦下，保证纸上=眼前
+  if (dirty.value) { toast({ title: '有未保存的修改，请先点「保存并生成公告」', icon: 'none' }); return }
   exportSuccess.value = false
   exporting.value = true
   try {
