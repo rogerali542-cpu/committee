@@ -2890,13 +2890,13 @@ async function onPlanRow(row) {
     return
   }
   // 未到期（提前召开）仍二次确认，避免误触提前起会。
-  // 文案四改（0731 设计师定）：正文只报事实不复读标题、不解释制度；「暂不」→「取消」；
-  // 确认钮=模块蓝实心大触区（size:'action'，暖橙只留异常态）
+  // 一行式（0731 用户×设计师定）：标题就是那个问题——「X月例会 要提前召开吗？」，正文删
+  // （"按计划在X月召开"在点进来的那行上就写着）；场次留在问句里当宾语，从列表点进来才知道问的是哪场
   if (isChair.value) {
     const res = await showModal({
       size: 'action',
-      title: row.monthLabel + '例会',
-      content: '按计划在 ' + row.monthLabel + ' 召开',
+      title: row.monthLabel + '例会 要提前召开吗？',
+      content: '',
       confirmText: '提前召开', cancelText: '取消', showCancel: true
     })
     if (res && res.confirm) openNewMeeting(row.period)
@@ -2904,7 +2904,7 @@ async function onPlanRow(row) {
     await showModal({
       size: 'action',
       title: row.monthLabel + '例会',
-      content: '按计划在 ' + row.monthLabel + ' 召开，会议由主任发起。',
+      content: '会议由主任发起。',
       showCancel: false, confirmText: '知道了'
     })
   }

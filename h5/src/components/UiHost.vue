@@ -20,7 +20,8 @@
     <div class="ui-modal" :class="uiState.modal.size">
       <span v-if="uiState.modal.showClose" class="ui-modal-x" @click="onClose">×</span>
       <div v-if="uiState.modal.title" class="ui-modal-title">{{ uiState.modal.title }}</div>
-      <div v-if="!uiState.modal.editable" class="ui-modal-content" :class="{ bold: uiState.modal.contentBold }">{{ uiState.modal.content }}</div>
+      <!-- 正文为空则整行不渲染（0731：允许"标题即问题"的一行式弹窗，不留空行占位） -->
+      <div v-if="!uiState.modal.editable && uiState.modal.content" class="ui-modal-content" :class="{ bold: uiState.modal.contentBold }">{{ uiState.modal.content }}</div>
       <div v-if="uiState.modal.meta && !uiState.modal.editable" class="ui-modal-meta">{{ uiState.modal.meta }}</div>
       <textarea v-if="uiState.modal.editable" class="ui-modal-input" v-model="editText" :placeholder="uiState.modal.placeholderText"></textarea>
       <div class="ui-modal-actions" :class="{ 'emphasize-confirm': uiState.modal.emphasizeConfirm, 'emphasize-cancel': uiState.modal.emphasizeCancel }">
