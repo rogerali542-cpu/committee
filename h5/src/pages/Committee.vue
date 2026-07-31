@@ -11,10 +11,10 @@
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
-      <!-- 评分（0731 定稿）：核心驱动力恢复大数字（白字，绿是接待模块色、页头三色制不用）；
-           「没按时」的后果由页头下方归因条与它同框（数字+后果=驱动力） -->
+      <!-- 评分（0731 用户定：改回绿色且与分数挂钩）：大数字用 scoreGradient 渐变字，
+           ≥90薄荷绿 / 80-89草绿 / 70-79黄绿 / 60-69琥珀 / <60朱红，压在深色页头 #43546F 上对比足；点击进个人中心看履职统计 -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
-        <span class="hd-score-num">{{ score }}</span>
+        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-label">综合评分 ›</span>
       </div>
     </div>
@@ -4387,7 +4387,7 @@ onActivated(show)
    后果由页头下的归因条同框呈现 */
 .hd-score { display: inline-flex; flex-direction: column; align-items: center; gap: 4rpx; align-self: center; cursor: pointer; }
 .hd-score:active { opacity: .7; }
-.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; color: #fff; }
+.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }   /* 渐变字：颜色随 scoreGradient 跟分数走 */
 .hd-score-label { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
 /* 归因条：贴页头下沿的浅一档色带，有逾期才出，点击直达逾期事项 */
 /* 当前会议主卡片 */
