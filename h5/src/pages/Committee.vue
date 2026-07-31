@@ -219,37 +219,25 @@
           <!-- 后续会议/历史记录整合进「全年会议」展开面板（0731 用户定）：首屏只剩
                待召开卡 + 全年会议行 + 发起临时会议行，其余点开再看 -->
           <div class="mtg-next-list">
-            <!-- 全年场次是"至少6场"的不定数（0730 用户定）：不写具体数字，免得误导 -->
+            <!-- 标题行右侧「已开 N / 共 6」计数（0731 用户×设计师定稿）：总览由数字承担，
+                 面板里不再放宫格（原「不写具体数字」的顾虑被计数式取代） -->
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
               <b>{{ viewYear }}年全年会议</b>
-              <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
-              <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
+              <span class="yp-head-right">
+                <span class="yp-count">已开 {{ yearDoneCount }} / 共 {{ yearPlan.length }}</span>
+                <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
+                <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
+              </span>
             </div>
+            <!-- 全年展开＝单列行式（0731 用户×设计师定稿第二版，宫格版否决）：期次+会议名+状态一行直读；
+                 逾期/本期在上方待召开卡里，这里不重复出现；已开=完成绿，缓解整页灰字视觉疲劳 -->
             <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
-              <!-- 后续会议（0731 用户定：并入全年展开后全量平铺，「还有N场」截断退役——已在折叠后面了） -->
-              <template v-if="nextRows.length">
-                <div class="mr-calendar-panel-title">
-                  <span>后续会议</span>
-                </div>
-                <div v-for="row in nextRows" :key="row.key" class="mtg-next-row" @click="row.onTap()">
-                  <span class="mtg-next-line">{{ nextWhen(row) }} · {{ shortMeetingName(row.title) }}</span>
-                </div>
-              </template>
-              <!-- 12 月月历宫格已删（0731 用户定：展开内容太多）——后续会议+已完成+历史入口已覆盖全年信息 -->
-              <template v-if="meetingRecordList.done.length">
-                <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
-                <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row">
-                  <div class="mr-badge" :class="row.statusClass">
-                    <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-                  </div>
-                  <div class="mr-info">
-                    <!-- 「补开」标签已删（0729 用户定）：月历已表达各期执行情况，完成列表不再另标 -->
-                    <div class="mr-row-title">{{ row.title }}</div>
-                    <div class="mr-row-sub">{{ row.sub }}</div>
-                  </div>
-                  <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">查看 ›</button>
-                </div>
-              </template>
+              <div v-for="row in yearPanelRows" :key="row.key" class="mtg-next-row yp-row" @click="row.onTap()">
+                <span class="yp-period">{{ row.period }}</span>
+                <span class="mtg-next-line">{{ row.title }}</span>
+                <span class="yp-status" :class="{ done: row.done }">{{ row.statusText }}</span>
+                <i class="yp-arr"></i>
+              </div>
               <!-- 历史记录（0731 用户定：并入全年展开面板收尾）：今年之外的历年归档去历史记录页 -->
               <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
                 <b>查看全部历史</b>
@@ -1055,6 +1043,31 @@ function buildYearPlan(year) {
   return rows
 }
 const yearPlan = computed(() => buildYearPlan(viewYear.value))   // 日历：跟年份箭头走
+// 全年展开列表（0731 用户×设计师定稿第二版）：已开（完成绿）/未排 单列行式，含会议名；
+// current/overdue 期次不进列表——它们已在上方待召开卡，重复出现会让人疑惑是不是同一场
+const yearPanelRows = computed(() => {
+  const rows = []
+  for (const r of (yearPlan.value || [])) {
+    if (r.status === 'done') {
+      const held = r.meeting
+      rows.push({
+        key: 'yp-' + r.period, period: r.monthLabel,
+        title: shortMeetingName((held && held.title) || ('第' + r.period + '次业委会例会')),
+        statusText: '已开', done: true,
+        onTap: () => { if (held && held.id) openMeetingTap(held) }
+      })
+    } else if (r.status === 'upcoming') {
+      rows.push({
+        key: 'yp-' + r.period, period: r.monthLabel,
+        title: '第' + r.period + '次业委会例会',
+        statusText: r.past ? '未开' : '未排', done: false,
+        onTap: () => onPlanRow(r)
+      })
+    }
+  }
+  return rows
+})
+const yearDoneCount = computed(() => (yearPlan.value || []).filter(r => r.status === 'done').length)
 const thisYearPlan = computed(() => buildYearPlan(curYear))      // 待办/逾期红条：恒今年，不受翻年影响
 
 // ── 履职年历：按路由 section 分开会/接待两态 + 12 月宫格 + 警示条 + 点月看当月该类事项 ──
@@ -4831,16 +4844,8 @@ onActivated(show)
 .mr-plan-btn { flex-shrink: 0; min-height: 76rpx; padding: 0 28rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 28rpx; font-weight: 650; white-space: nowrap; }
 .mr-plan-btn:active { background: #EEF1F5; }
 /* 待处理/已完成行的右侧真按钮(0725 用户定:整行不可点,只按钮进入),描边胶囊按状态配色 */
-.mr-cta-btn { flex-shrink: 0; min-height: 62rpx; padding: 0 18rpx; border: 2rpx solid #B9C6D4; border-radius: 999rpx; background: #fff; color: #4E6076; font-size: 26rpx; font-weight: 650; white-space: nowrap; }
-.mr-cta-btn:active { background: #F3F5F7; }
-.mr-cta-btn.overdue { color: #B0463A; border-color: #DFA79F; }
-.mr-cta-btn.current { color: #345F91; border-color: #AFC3DC; }
-.mr-cta-btn.upcoming { color: #345F91; border-color: #AFC3DC; }
-.mr-cta-btn.done { color: #2E7D50; border-color: #A8CDB6; }
 /* 整行不再可点:不给按压反馈 */
 .mr-featured:active { background: #F8FBFD; }
-.mr-cal-done-row { cursor: default; }
-.mr-cal-done-row:active { background: transparent; }
 .mr-planned .mr-badge { width: 78rpx; min-height: 70rpx; border-radius: 14rpx; }
 .mr-planned .mr-badge b { font-size: 25rpx; }
 .mr-planned .mr-badge span { font-size: 20rpx; }
@@ -4882,12 +4887,16 @@ onActivated(show)
 .mr-lookup > .mr-fold:first-child { margin-top: 0; }
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
 /* 弹窗样式(mr-cal-mask/sheet/close)已删(0725):月历改原地展开 .mr-calendar-panel */
-.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 22rpx 20rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; scroll-margin-top: 20rpx; }
+.mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 6rpx 20rpx 4rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; scroll-margin-top: 20rpx; }
+/* 全年展开行（0731 定稿第二版）：期次列 + 会议名 + 状态 + ›，单列直读 */
+.mr-calendar-panel .mtg-next-row:first-child { border-top: 0; }
+.yp-period { flex-shrink: 0; width: 122rpx; font-size: 28rpx; color: #6B7280; }
+.yp-status { flex-shrink: 0; font-size: 27rpx; font-weight: 600; color: #6B7280; }
+.yp-status.done { color: #2E7D50; }   /* 完成绿（0731 用户定：已开上绿，缓解整页灰字视觉疲劳）；沿用 app 既有完成绿 */
+.yp-arr { flex-shrink: 0; display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
+.yp-head-right { display: inline-flex; align-items: center; gap: 16rpx; }
+.yp-count { font-size: 27rpx; font-weight: 500; color: #6B7280; }
 /* 弹层内「已完成」清单:宫格下方的档案区,与宫格用分隔线区隔 */
-.mr-cal-done-title { margin-top: 26rpx; padding-top: 22rpx; border-top: 2rpx solid #EEF1F4; color: #53657A; font-size: 27rpx; font-weight: 700; }
-.mr-cal-done-row { padding-left: 2rpx; padding-right: 2rpx; }
-.mr-cal-done-row .mr-row-sub { display: none; }   /* 每行都是同一句"可查看会议记录",抽屉里省掉,行更紧凑 */
-.mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
    全删（0717 用户定：会议进行中那一栏撤掉，接待日安排顶上）。
