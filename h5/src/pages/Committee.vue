@@ -2,12 +2,14 @@
   <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs', 'has-rec-bar': planTab === 'reception' && canManageReception }">
     <!-- 顶栏：标题 -->
     <div class="hd">
-      <div class="hd-left">
+      <!-- 驾驶舱态整个左侧（机构名+身份行）都是个人中心入口（0731 用户定：机构名也可点，触区更大）；
+           工作页只点身份行——那里标题是页名（业委会会议/业主接待），点页名进资料会奇怪 -->
+      <div class="hd-left" :class="{ 'hd-left-link': welcomeVisible }" @click="welcomeVisible && goProfilePage()">
         <!-- 0731 设计师定：页头与底栏同名「业主接待」——底栏是用户的定位锚，页头跟着走；「中心」是无信息后缀。
              驾驶舱页头＝小区业委会全称（0731 定稿：首页说明"这是谁的系统"，比"智能助手"有信息量） -->
         <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? ((activeRole.communityName || '阳光花园') + '业主委员会') : (planTab === 'reception' ? '业主接待' : '业委会会议') }}</span>
         <!-- 身份行＝个人中心入口（0731 设计师定：底栏第四格让给「首页」，个人中心挪这儿——点名字进资料是通用心智） -->
-        <span class="hd-sub hd-sub-link" @click="goProfilePage">{{ activeRole.realName }} · {{ activeRole.role }} ›</span>
+        <span class="hd-sub hd-sub-link" @click.stop="goProfilePage">{{ activeRole.realName }} · {{ activeRole.role }} ›</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
@@ -4408,6 +4410,8 @@ onActivated(show)
 .hd-sub { font-size: 28rpx; color: #c5cede; margin-top: 4rpx; line-height: 1.3; }   /* 会议页头副文字（规范） */
 .hd-sub-link { cursor: pointer; }   /* 身份行＝个人中心入口（0731）；点按反馈轻微即可，不做按钮化 */
 .hd-sub-link:active { opacity: .65; }
+.hd-left-link { cursor: pointer; }   /* 驾驶舱态：机构名+身份行整块可点进个人中心（0731 用户定） */
+.hd-left-link:active { opacity: .75; }
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
