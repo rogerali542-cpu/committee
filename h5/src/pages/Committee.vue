@@ -194,8 +194,9 @@
 
         <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
-          <!-- 待召开卡（0731 用户定重排）：标题写全称、第二行状态文字（已逾期/待召开），
-               右侧动词（去补开/去召开）——与首页卡片同构；整行可点进入各自流程 -->
+          <!-- 待召开卡（0731 设计师三点定稿）：一行一场——日期块 + 名称（去年份，下方全年行已交代）
+               + 右侧状态签（逾期暖胶囊/其余灰字）。卡内不放动词只报状态，动作全交底部主按钮
+               （三个动词入口会让人不知道按哪个）；整行可点进入各自流程 -->
           <template v-if="meetingRecordList.immediate.length">
             <div class="mtg-due-card">
               <div v-for="row in meetingRecordList.immediate" :key="row.key"
@@ -204,10 +205,9 @@
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
                 <div class="mr-info">
-                  <div class="mr-row-title">{{ row.title }}</div>
-                  <div class="mr-row-sub" :class="{ warn: row.statusClass === 'overdue' }">{{ dueRowStatus(row) }}</div>
+                  <div class="mr-row-title">{{ yearlessTitle(row.title) }}</div>
                 </div>
-                <span class="mr-verb">{{ dueRowVerb(row) }}<i class="pt-arr"></i></span>
+                <span class="mtg-due-status" :class="dueStatusTier(row)">{{ dueStatusText(row) }}</span>
               </div>
             </div>
           </template>
@@ -1997,22 +1997,10 @@ function dueStatusTier(row) {
   if (row.statusClass === 'ongoing' || dueStatusText(row) === '进行中') return 'st-today'
   return 'st-muted'
 }
-// 待召开卡行（0731 用户定重排）：第二行=状态文字，右侧=动词——与首页卡片「状态+动词」同构
-function dueRowStatus(row) {
-  if (row.statusClass === 'overdue') return '已逾期'
-  if (String(row.key).indexOf('mr-draft') === 0) return '通知编辑中'
-  if (row.statusClass === 'ongoing' || row.statusLabel === '进行中') return '会议进行中'
-  if (row.statusLabel === '会后整理' || row.statusLabel === '待整理') return '待整理'
-  if (row.statusLabel === '纪要生成中') return '纪要生成中'
-  return '待召开'
-}
-function dueRowVerb(row) {
-  if (row.statusClass === 'overdue') return '去补开'
-  if (String(row.key).indexOf('mr-draft') === 0) return '继续'
-  if (row.statusClass === 'ongoing' || row.statusLabel === '进行中') return '继续'
-  if (row.statusLabel === '会后整理' || row.statusLabel === '待整理') return '去整理'
-  if (row.statusLabel === '纪要生成中') return '查看'
-  return '去召开'
+// 待召开卡行名称去年份（0731 设计师定）：年份多余——下方「2026年全年例会」已交代，
+// 且「2026年第3次业委/会例会」会在词中间断行；去掉后「第3次业委会例会」正好一行
+function yearlessTitle(title) {
+  return String(title || '').replace(/^\s*\d{4}年/, '')
 }
 // 底部主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」——动词领队一句话，不再两行分散重量。
 // （原两行式的 heroBarSub/meetingRowTitle 随之退役）
@@ -2021,9 +2009,10 @@ const heroBarLine = computed(() => {
   if (!h) return ''
   const m = String(h.title || '').match(/第\d+次/)
   const short = m ? m[0] + '例会' : String(h.title || '').slice(0, 10)
-  // 0731 用户定：待开/补开态连成一句「召开第N次例会」（逾期已由卡内胶囊表达，按钮不再分补开）；
+  // 0731 设计师定：动词统一——逾期「补开第N次例会」、待开「召开第N次例会」，一句连读；
   // 进行中/编辑中等其它状态仍「状态 · 场次」
-  if (h.statusLabel === '去召开' || h.statusLabel === '去补开') return '召开' + short
+  if (h.statusLabel === '去补开') return '补开' + short
+  if (h.statusLabel === '去召开') return '召开' + short
   return h.statusLabel + ' · ' + short
 })
 // 驾驶舱会议卡改两行（0731 用户定：「应于 5-6月」拗口）：第一行「2026年第N次例会」，
@@ -4838,9 +4827,12 @@ onActivated(show)
 /* 状态字三级样式（0730 设计师定，全 app 通用，见 dueStatusTier）：
    ① 逾期＝暖色胶囊(有底)，一屏唯一异常；② 今日/进行中＝蓝字；③ 其余＝灰字。
    常态「待召开」绝不给底色，否则异常(逾期)就不显眼了 */
-/* 右侧动词（0731 用户定重排：状态词挪到第二行，右侧改动词）——与首页 .pt-verb 同款重量 */
-.mr-verb { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8rpx; font-size: 31rpx; font-weight: 700; color: #1F2937; white-space: nowrap; }
-.mr-row-sub.warn { color: #9A5B12; font-weight: 600; }   /* 已逾期＝暖色字（异常仍要跳出来） */
+/* 右侧状态签（0731 设计师定稿回归：卡内只报状态不放动词，动作全交底部主按钮）——
+   三级色：逾期暖胶囊 / 进行中蓝字 / 其余灰字 */
+.mtg-due-status { flex-shrink: 0; align-self: center; padding: 0; font-size: 25rpx; font-weight: 500; white-space: nowrap; }
+.mtg-due-status.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; font-weight: 600; }
+.mtg-due-status.st-today { color: #2b5589; }
+.mtg-due-status.st-muted { color: #6B7280; }
 /* 文字两档制（0731 用户定收敛）：正文黑 #1F2937 / 次要灰 #6B7280，中间灰全部归档——
    节标题=灰档加粗；列表正文=黑；层级靠字号字重，不靠灰阶渐变 */
 /* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
