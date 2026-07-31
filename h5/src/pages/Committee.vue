@@ -6,7 +6,8 @@
         <!-- 0731 设计师定：页头与底栏同名「业主接待」——底栏是用户的定位锚，页头跟着走；「中心」是无信息后缀。
              驾驶舱页头＝小区业委会全称（0731 定稿：首页说明"这是谁的系统"，比"智能助手"有信息量） -->
         <span class="hd-title">{{ homeLayout === 'portal' && planTab === 'meeting' ? ((activeRole.communityName || '阳光花园') + '业主委员会') : (planTab === 'reception' ? '业主接待' : '业委会会议') }}</span>
-        <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
+        <!-- 身份行＝个人中心入口（0731 设计师定：底栏第四格让给「首页」，个人中心挪这儿——点名字进资料是通用心智） -->
+        <span class="hd-sub hd-sub-link" @click="goProfilePage">{{ activeRole.realName }} · {{ activeRole.role }} ›</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
@@ -1834,6 +1835,8 @@ function goScore() {
   navigateTo('/profile')
   setTimeout(() => { if (!document.querySelector('.profile-scroll')) window.location.href = '/profile' }, 300)
 }
+// 页头身份行（张建国 · 主任）→ 个人中心（0731 设计师定：个人中心从底栏挪页头）
+function goProfilePage() { goScore() }
 // 欢迎页落款/日期（0724 用户定，极淡）
 const welcomeFootText = computed(() => {
   const org = activeRole.value && activeRole.value.communityName ? activeRole.value.communityName + '业主委员会' : '业委会智能助手'
@@ -4403,6 +4406,8 @@ onActivated(show)
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #c5cede; margin-top: 4rpx; line-height: 1.3; }   /* 会议页头副文字（规范） */
+.hd-sub-link { cursor: pointer; }   /* 身份行＝个人中心入口（0731）；点按反馈轻微即可，不做按钮化 */
+.hd-sub-link:active { opacity: .65; }
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }

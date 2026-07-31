@@ -1,13 +1,13 @@
 <template>
   <!-- 「返回驾驶舱」已移入各页顶栏右上角（0730 用户定，图一骨架），不再浮在底栏上方 -->
   <!-- merged 只给上方钉着固定操作条的工作页（驾驶舱无固定条，active 为空自然排除） -->
-  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden, merged: active === '/main' || active === '/reception-center' }">
+  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden, merged: activeKey === 'committee' || activeKey === 'reception' }">
     <div
       v-for="t in tabs"
-      :key="t.path"
+      :key="t.key"
       class="tab"
-      :class="[t.tone, { active: active === t.path }]"
-      @click="go(t.path)"
+      :class="[t.tone, { active: activeKey === t.key }]"
+      @click="go(t)"
     >
       <!-- 图标底栏（0730 用户定：与驾驶舱底栏同款画风）——内联 SVG 线性图标 + 色块 -->
       <span class="tab-ico" :class="t.tone">
@@ -22,6 +22,9 @@
         </svg>
         <svg v-else-if="t.key === 'seal'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9.5 10.5c-.8-.9-1.3-2-1.3-3.2C8.2 5 9.9 3.4 12 3.4s3.8 1.6 3.8 3.9c0 1.2-.5 2.3-1.3 3.2l-.6.7c-.3.4-.3.9 0 1.3h2.9c1.4 0 2.6 1.1 2.6 2.6v1.5H4.6v-1.5c0-1.4 1.2-2.6 2.6-2.6h2.9c.3-.4.3-.9 0-1.3l-.6-.7z"/><line x1="5.5" y1="20" x2="18.5" y2="20"/>
+        </svg>
+        <svg v-else-if="t.key === 'home'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 11.2 12 4.4l8 6.8"/><path d="M6.2 9.6V19a1 1 0 0 0 1 1h3.1v-4.8h3.4V20h3.1a1 1 0 0 0 1-1V9.6"/>
         </svg>
         <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.5-5.8 7-5.8s6.2 2 7 5.8"/>
@@ -39,31 +42,40 @@ import { redirectTo } from '@/utils/navigate'
 import { homeShell } from '@/composables/homeShell'
 
 const route = useRoute()
-// 四项底栏（0731 设计师定稿：印章 tab 撤销——五格对老人太小不好点，印章入口收进驾驶舱轻列表行）
+// 四项底栏（0731 设计师二改：第四格「个人中心」→「首页」。个人中心是低频入口不占底栏 1/4，
+// 挪到页头身份行（张建国 · 主任，点击即进）；首页(驾驶舱)才是每天要回的地方，给常驻格）
 const tabs = [
   { path: '/main', label: '业委会', key: 'committee', tone: 'blue' },
   { path: '/reception-center', label: '业主接待', key: 'reception', tone: 'green' },
   { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' },
-  { path: '/profile', label: '个人中心', key: 'profile', tone: 'blue' }   /* 0731 用户定：个人中心＝会议同款蓝系 */
+  { path: '/main', label: '首页', key: 'home', tone: 'slate' }   /* 驾驶舱＝中性岩灰，不属于任何模块色 */
 ]
-// 驾驶舱也显示底栏（0731 定稿），但不高亮任何 tab——驾驶舱是各板块之上的首页，不属于哪一格。
+// 高亮按 key（两格共用 /main）：驾驶舱亮「首页」，工作态 /main 亮「业委会」。
 // welcomeVisible（=驾驶舱态）与 URL 双判定，防开发期热更新时挂载顺序造成误亮。
 const routeIsCockpit = computed(() => route.path === '/main' && route.query.home === 'portal')
-const active = computed(() => (homeShell.welcomeVisible || routeIsCockpit.value) ? '' : route.path)
+const activeKey = computed(() => {
+  if (homeShell.welcomeVisible || routeIsCockpit.value) return 'home'
+  const hit = tabs.find((t) => t.path === route.path && t.key !== 'home')
+  return hit ? hit.key : ''
+})
 const isTab = computed(() => tabs.some((t) => t.path === route.path))
 // 标签切换用 replace(0725 用户报的 bug):底部四个 tab 是平级页,不应堆进历史。
 // 原来用 push/location.assign,历史会累积「接待中心→业委会→详情页」,从详情页逐级返回时
 // 会穿过 /main 再退回接待中心(用户遇到的"返回错误进入接待页面")。改 replace 后 tab 不占历史栈。
-function go(path) {
-  if (path === '/main') {
-    // “业委会会议”是工作页入口；驾驶舱只能由单独的“返回驾驶舱”按钮进入。
-    // Committee.vue 在 /main 与 /reception-center 间会复用实例，因此这里显式带 tabs 并刷新，
-    // 避免沿用 localStorage 中的 portal 布局而误入驾驶舱。
+// /main 两格靠 home_layout + query 显式区分（Committee.vue 复用实例，必须带参刷新防误入另一态）。
+function go(t) {
+  if (t.key === activeKey.value) return
+  if (t.key === 'home') {
+    localStorage.setItem('home_layout', JSON.stringify('portal'))
+    window.location.replace('/main?home=portal')
+    return
+  }
+  if (t.key === 'committee') {
     localStorage.setItem('home_layout', JSON.stringify('tabs'))
     window.location.replace('/main?home=tabs')
     return
   }
-  if (path !== route.path) redirectTo(path)
+  if (t.path !== route.path) redirectTo(t.path)
 }
 </script>
 
@@ -86,7 +98,7 @@ function go(path) {
 .tab-ico { width: 52rpx; height: 52rpx; border-radius: 14rpx; display: flex; align-items: center; justify-content: center; transition: box-shadow .15s; }
 .tab-ico svg { width: 32rpx; height: 32rpx; }
 /* 配色（0730 用户定点6 + 规范三色制）：未选中统一灰；选中态点亮——三个工作模块用规范模块色
-   （会议蓝#2f5f9e／接待绿#2f6b45／学习深青#2a6b73），印章/个人中心非模块，保留印泥红/岩灰。
+   （会议蓝#2f5f9e／接待绿#2f6b45／学习深青#2a6b73），首页(驾驶舱)非模块＝中性岩灰(slate)。
    注：learning 的 tone 类名仍叫 amber（沿用），色值已改为模块深青，橙不再作模块色 */
 .tab-ico { color: #7E8794; background: #F1F3F6; }
 .tab.active .tab-ico.blue { color: #2f5f9e; background: #E6EDF8; }
