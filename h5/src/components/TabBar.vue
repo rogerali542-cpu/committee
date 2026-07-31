@@ -88,10 +88,12 @@ function go(t) {
   display: flex; background: #fff; border-top: 1rpx solid #ececec;
   padding: 8rpx 0 calc(6rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -6rpx 18rpx rgba(24, 51, 76, .05);
-  transition: transform .22s ease, margin-bottom .22s ease;
+  transition: transform .22s ease;
 }
-/* 向下滚动时收起（0730 用户定，点8）：让出被操作条+导航栏叠占的高度 */
-.tabbar.hidden { transform: translateY(120%); margin-bottom: calc(-110rpx - env(safe-area-inset-bottom)); }
+/* 向下滚动时收起（0730 用户定，点8）。⚠ 只准 transform 滑出、不许动布局（margin/height）：
+   隐藏若塌掉占位会改变 .app-scroll 高度 → 滚动重算 → 又触发显示/隐藏，来回抖（0731 踩过：
+   打开全年例会平滑滚动时疯狂抖动）。占位常驻，滑出后的空条由壳底色兜住。 */
+.tabbar.hidden { transform: translateY(120%); }
 /* 上方钉着固定操作条的页（/main 会议操作条、/reception-center 接待动作区）：
    底栏去掉顶部描边+阴影，两片白连成一整片、共用一个背景（0730 用户定） */
 .tabbar.merged { border-top: 0; box-shadow: none; }

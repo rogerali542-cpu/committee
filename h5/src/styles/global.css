@@ -29,7 +29,7 @@ html, body, #app { margin: 0; padding: 0; height: 100%; }
 /* App 壳（0731 用户定：底栏/主按钮条不能被滚走）——body 不再滚动，滚动只发生在 .app-scroll；
    底栏是它的 flex:none 兄弟。手机浏览器地址栏伸缩/橡皮筋不再影响任何"固定"元素 */
 html, body { overflow: hidden; }
-.app-shell { height: 100%; display: flex; flex-direction: column; }
+.app-shell { height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--c-bg-page); }   /* overflow:hidden 裁掉滑出的底栏；背景=页面底色，底栏滑出后的空条不突兀 */
 .app-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
 body {
