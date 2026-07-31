@@ -64,10 +64,15 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   if (to.meta.noAuth) return true
+  // 每次新开软件先过登录页（0731 用户定）：登录标记放 sessionStorage，只活在本次浏览器会话——
+  // 关闭再打开即失效→回登录页；应用内 location.replace 整页跳转同会话仍有效，不会反复要求登录。
+  // 取不到 sessionStorage（极老 WebView/隐私模式）时不拦，退回仅 localStorage 判定。
+  let sessionAuthed = true
+  try { sessionAuthed = sessionStorage.getItem('demo_authed') === '1' } catch (e) {}
   const token = getStorage('token', '')
   const activeRole = getStorage('activeRole', null)
   const logged = !!(token || (activeRole && activeRole.id))
-  if (!logged) return { path: '/login' }
+  if (!logged || !sessionAuthed) return { path: '/login' }
   if (activeRole && activeRole.enabled === false) return { path: '/login' }
   const governmentManager = activeRole && (activeRole.role === '街道管理员' || activeRole.role === '区级管理员')
   if (governmentManager && to.path !== '/management' && to.path !== '/login') return { path: '/management' }

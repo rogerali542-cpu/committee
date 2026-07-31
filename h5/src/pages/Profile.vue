@@ -171,6 +171,8 @@ async function doLogout() {
     await discardMeetingRecording(meetingRecordingSession.meetingId)
   }
   auth.logout()
+  // 清本次会话登录标记（0731 登录页改造）：退出后守卫立即拦回登录页
+  try { sessionStorage.removeItem('demo_authed') } catch (e) {}
   redirectTo('/pages/login/login')
 }
 
