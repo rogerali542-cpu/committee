@@ -1062,7 +1062,7 @@ const yearPanelRows = computed(() => {
     } else if (r.status === 'upcoming') {
       rows.push({
         key: 'yp-' + r.period, period: r.monthLabel,
-        title: '第' + r.period + '次业委会例会',
+        title: '第' + r.period + '次例会',
         statusText: r.past ? '未开' : '未排', done: false,
         onTap: () => onPlanRow(r)
       })
@@ -1966,10 +1966,11 @@ const meetingCardList = computed(() => {
   return [...meetingRecordList.value.immediate].sort((a, b) => rank(a) - rank(b))
 })
 const mtgIdx = ref(0)   // 当前翻到第几场；越界在渲染时 clamp，翻页函数也按 clamp 后基准增减
-// 短名（点6）：列表统一「第N次业委会例会」；非例会（专项议事会等）保留原名；长名只在全年一览
+// 短名（0731 用户定：去掉「业委会」三字，就叫「第N次例会」——页头已写业委会会议，视觉压力小）；
+// 非例会（专项议事会等）保留原名
 function shortMeetingName(title) {
   const m = String(title || '').match(/第\s*(\d+)\s*次/)
-  return m ? ('第' + m[1] + '次业委会例会') : String(title || '')
+  return m ? ('第' + m[1] + '次例会') : String(title || '')
 }
 // 右侧常驻状态标签（点2/4：无边框浅底文字，与"选中"分离）
 function dueStatusText(row) {
