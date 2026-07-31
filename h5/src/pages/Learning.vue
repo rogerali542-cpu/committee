@@ -25,25 +25,50 @@
       </div>
       <div class="annual-row">
         <span class="annual-name">内部学习</span>
-        <span class="annual-status" :class="annualStudyCount >= target ? 'ok' : 'warn'">已完成 {{ annualStudyCount }} / {{ target }} 次</span>
+        <span v-if="isLoading" class="annual-status ok">读取中…</span>
+        <span v-else class="annual-status" :class="annualStudyCount >= target ? 'ok' : 'warn'">已完成 {{ annualStudyCount }} / {{ target }} 次</span>
       </div>
       <div class="annual-row">
         <span class="annual-name">外部培训</span>
-        <span class="annual-status" :class="annualExternalCount >= 1 ? 'ok' : 'warn'">{{ annualExternalCount >= 1 ? ('已参加 ' + annualExternalCount + ' / 1 次') : '待参加 0 / 1 次' }}</span>
+        <span v-if="isLoading" class="annual-status ok">读取中…</span>
+        <span v-else class="annual-status" :class="annualExternalCount >= 1 ? 'ok' : 'warn'">{{ annualExternalCount >= 1 ? ('已参加 ' + annualExternalCount + ' / 1 次') : '待参加 0 / 1 次' }}</span>
       </div>
     </div>
 
-    <!-- 轻列表（0731 定稿骨架）：在办事项（有才出）→ 培训记录 → 登记外部培训 -->
+    <!-- 最近一项：只表达近期安排；没有安排是正常业务空态，不与数据加载失败混淆 -->
+    <section class="learn-section">
+      <h2>当前安排</h2>
+      <div v-if="isLoading" class="learning-empty">正在读取近期安排…</div>
+      <div v-else-if="nextItem" class="next-learning" @click="tapItem(nextItem)">
+        <span class="record-tag" :class="nextItem.category === 'external' ? 'external' : 'internal'">{{ recordType(nextItem) }}</span>
+        <strong>{{ nextItem.title }}</strong>
+        <p>{{ fmtD(nextItem.date) }}<span v-if="nextItem.location"> · {{ nextItem.location }}</span> · {{ stageText(nextItem) }}</p>
+        <i class="ll-arr"></i>
+      </div>
+      <div v-else class="learning-empty">暂无近期学习培训安排</div>
+    </section>
+
+    <!-- 内部学习与外部培训共用一套记录，不再拆成两个入口 -->
+    <section class="learn-section records-section">
+      <div class="section-head">
+        <h2>学习培训记录</h2>
+        <span>{{ isLoading ? '读取中…' : (recordItems.length + '条') }}</span>
+      </div>
+      <div v-for="it in recordItems.slice(0, 4)" :key="it.id" class="record-row" @click="openDetail(it)">
+        <span class="record-tag" :class="it.category === 'external' ? 'external' : 'internal'">{{ recordType(it) }}</span>
+        <span class="record-main">
+          <b>{{ it.title }}</b>
+          <em>{{ fmtD(it.date) }} · {{ it.category === 'external' ? '已登记' : '已完成' }}</em>
+        </span>
+        <i class="ll-arr"></i>
+      </div>
+      <div v-if="isLoading" class="learning-empty compact">正在读取学习培训记录…</div>
+      <div v-else-if="!recordItems.length" class="learning-empty compact">暂无学习培训记录</div>
+      <button v-if="recordItems.length" type="button" class="view-records" @click="goArchive('learning')">查看全部记录</button>
+    </section>
+
+    <!-- 现有两个操作入口保持分工：内部学习走发起，外部培训走补录 -->
     <div class="learn-links">
-      <!-- 在办/已通知的学习：mock 的极简态即"当前无在办"；有在办时以轻行呈现，不再上大卡 -->
-      <div v-for="it in items" :key="it.id" class="learn-link" @click="tapItem(it)">
-        <span class="ll-text"><b>{{ fmtD(it.date) }} · {{ it.title }}</b><em> · {{ stageText(it) }}</em></span>
-        <i class="ll-arr"></i>
-      </div>
-      <div class="learn-link" @click="goArchive('learning')">
-        <span class="ll-text">培训记录<em> · {{ allItems.length }} 条</em></span>
-        <i class="ll-arr"></i>
-      </div>
       <div v-if="canCreate" class="learn-link" @click="openCreate">
         <span class="ll-text">＋ 登记外部培训</span>
         <i class="ll-arr"></i>
@@ -85,6 +110,7 @@ const currentYear = new Date().getFullYear();
 const canCreate = ref(false);
 const undoVisible = ref(false);
 const undoText = ref('');
+const isLoading = ref(true);
 
 let undoTimer = null;
 let undoData = null;
@@ -102,6 +128,7 @@ function goArchive(tab) {
 }
 
 async function loadAll() {
+  isLoading.value = true;
   try {
     const [allInternal, allTraining] = await Promise.all([
       api.learningList('internal', null).catch(() => []),
@@ -122,7 +149,21 @@ async function loadAll() {
   } catch (e) {
     allItems.value = [];
     items.value = [];
+  } finally {
+    isLoading.value = false;
   }
+}
+
+const nextItem = computed(() => {
+  return allItems.value
+    .filter(i => i.stage !== 'ended')
+    .slice()
+    .sort((a, b) => String(a.date || '9999-12-31').localeCompare(String(b.date || '9999-12-31')))[0] || null
+})
+const recordItems = computed(() => allItems.value.filter(i => i.stage === 'ended'))
+function recordType(it) {
+  if (it.type === 'special') return '专项培训'
+  return it.category === 'external' ? '外部培训' : '内部学习'
 }
 
 // "2026-08-12" → "8月12日"
@@ -189,15 +230,15 @@ onUnmounted(() => {
 .hd-sub-link:active { opacity: .65; }
 
 /* 年度学习情况卡（0731 定稿骨架）：图标+标题头 + 两行大间距；行高对齐 62px 拇指区标准 */
-.learn-target { margin: 20rpx 0 10rpx; background: #fff; border-radius: 24rpx; padding: 10rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); }
+.learn-target { margin: 20rpx 0 10rpx; overflow: hidden; background: #fff; border-radius: 24rpx; padding: 10rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); }
 .lt-head { display: flex; align-items: center; gap: 14rpx; min-height: 96rpx; }
 .lt-ico { flex-shrink: 0; width: 34rpx; height: 34rpx; color: #2a6b73; display: inline-flex; }
 .lt-ico svg { width: 34rpx; height: 34rpx; }
 .lt-title { font-size: 31rpx; font-weight: 700; color: #1f2329; }
-.annual-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 124rpx; border-top: 2rpx solid #F0F2F5; }
+.annual-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 124rpx; border-top: 2rpx solid #F0F2F5; }
 .annual-name { font-size: 33rpx; font-weight: 700; color: #1F2937; }
 /* 三级色（规范§四）：未达标=暖胶囊（唯一跳出来的），达标=无底灰字 */
-.annual-status { flex-shrink: 0; font-size: 27rpx; font-weight: 600; }
+.annual-status { flex-shrink: 0; max-width: 43%; font-size: 27rpx; font-weight: 600; text-align: right; }
 .annual-status.ok { color: #6B7280; font-weight: 500; }
 .annual-status.warn { color: #9A5B12; background: #F7E4C6; padding: 8rpx 18rpx; border-radius: 10rpx; }
 
@@ -210,6 +251,25 @@ onUnmounted(() => {
 .ll-text b { font-weight: 600; }
 .ll-text em { font-style: normal; font-weight: 500; color: #6B7280; font-size: 28rpx; }
 .ll-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
+
+.learn-section { margin-top: 24rpx; padding: 26rpx 28rpx; background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.04), 0 10rpx 24rpx rgba(31,41,55,.06); }
+.learn-section h2 { margin: 0; font-size: 32rpx; line-height: 1.4; color: #1F2937; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
+.section-head > span { font-size: 25rpx; color: #8792A2; }
+.next-learning { position: relative; margin-top: 20rpx; padding: 20rpx 40rpx 4rpx 0; cursor: pointer; }
+.next-learning:active, .record-row:active { opacity: .68; }
+.next-learning strong { display: block; margin-top: 13rpx; font-size: 33rpx; line-height: 1.4; color: #1F2937; }
+.next-learning p { margin: 10rpx 0 0; font-size: 27rpx; line-height: 1.5; color: #7A8594; }
+.next-learning .ll-arr { position: absolute; top: 50%; right: 4rpx; margin-top: -7rpx; }
+.record-tag { display: inline-flex; align-items: center; min-height: 42rpx; padding: 0 14rpx; border-radius: 9rpx; background: #E6F2F3; color: #28636A; font-size: 23rpx; font-weight: 650; }
+.record-tag.external { background: #F3EADB; color: #94601F; }
+.record-row { display: flex; align-items: center; gap: 16rpx; min-height: 116rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+.record-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; }
+.record-main b { overflow: hidden; color: #1F2937; font-size: 29rpx; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
+.record-main em { color: #7A8594; font-size: 25rpx; font-style: normal; }
+.learning-empty { margin-top: 18rpx; padding: 27rpx 0 12rpx; color: #8792A2; font-size: 28rpx; text-align: center; }
+.learning-empty.compact { margin-top: 4rpx; padding: 38rpx 0 24rpx; }
+.view-records { display: block; width: 100%; min-height: 76rpx; border: 0; border-top: 2rpx solid #F0F2F5; background: transparent; color: #2A6B73; font-size: 27rpx; font-weight: 600; }
 
 /* 底部主按钮条（CLAUDE.md 配方：fixed 钉底栏上沿；规格对齐会议/接待页主按钮） */
 .learn-bar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
