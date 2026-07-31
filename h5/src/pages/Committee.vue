@@ -4541,7 +4541,7 @@ onActivated(show)
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 27rpx; }
 .welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 150rpx; /* 给全局 TabBar 让位 */ }
 /* ── 驾驶舱 0731 定稿：日期行 + 三模块聚合卡 + 轻列表 ── */
-.pt-date { padding: 26rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
+.pt-date { padding: 6rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }   /* 上内边距 26→6：与顶栏的间隙收紧（0731 用户定），外层 plan-stack 已有 20rpx */
 .pt-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); padding: 8rpx 30rpx; }
 .pt-sec { padding: 40rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; touch-action: pan-y; }   /* 内边距 20px（0731 设计师定：拇指区不塞假主按钮，放大行让内容下长+触区变大）；pan-y：竖向留给页面滚动，横向手势交给 JS 翻页 */
 .pt-sec:first-child { border-top: 0; }
