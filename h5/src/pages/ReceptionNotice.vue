@@ -283,12 +283,17 @@ async function pickTime(field) {
     itemList: TIME_OPTS.map(t => ({ label: t, selected: t === form[field] })) })
   if (res && res.tapIndex >= 0) form[field] = TIME_OPTS[res.tapIndex]
 }
+// 接待人员=多选（0731 设计师定：可能两人值班；点名字切换选中，底部 取消/确定 落定）。
+// 只列名字不带职务——七个人互相都认识，职务在公告署名时才有意义
 async function pickPerson() {
   if (!canManage.value) return
   if (!receptionMembers.value.length) { toast({ title: '暂无可选成员', icon: 'none' }); return }
-  const res = await showActionSheet({ title: '接待人员', variant: 'picker',
-    itemList: receptionMembers.value.map(m => ({ label: m.name + (m.role ? ' · ' + m.role : ''), selected: m.name === form.person })) })
-  if (res && res.tapIndex >= 0) form.person = receptionMembers.value[res.tapIndex].name
+  const chosen = String(form.person || '').split(/[、，,\s]+/).filter(Boolean)
+  const res = await showActionSheet({ title: '接待人员', variant: 'picker', multi: true, confirmText: '确定',
+    itemList: receptionMembers.value.map(m => ({ label: m.name, selected: chosen.includes(m.name) })) })
+  if (res && res.confirm && Array.isArray(res.tapIndexes)) {
+    form.person = res.tapIndexes.map(i => receptionMembers.value[i].name).join('、')
+  }
 }
 // ── 接待地点（0731 设计师定）：弹层放已有地点，最后一行「＋ 填写其他地点」进独立输入层；
 //    手填过的存 localStorage 下次出现在列表；排序按使用频率（保存公告时 +1），不按拼音 ──

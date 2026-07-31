@@ -52,7 +52,9 @@ export function resolveModal(result) {
   if (m && m._resolve) m._resolve(result)
 }
 
-// 返回 Promise，resolve({ tapIndex })，对齐 wx.showActionSheet
+// 返回 Promise，resolve({ tapIndex })，对齐 wx.showActionSheet。
+// multi:true 为多选模式（0731 仅接待人员用）：点行只切换选中，底部「取消/确定」才落定，
+// resolve({ confirm:true, tapIndexes:[...] })——这是唯一需要「确定」按钮的弹层场合
 export function showActionSheet(opts = {}) {
   return new Promise((resolve) => {
     uiState.actionSheet = {
@@ -60,6 +62,8 @@ export function showActionSheet(opts = {}) {
       description: opts.description || '',
       itemList: opts.itemList || [],
       cancelText: opts.cancelText || '取消',
+      confirmText: opts.confirmText || '确定',
+      multi: !!opts.multi,
       variant: opts.variant || '',
       _resolve: resolve
     }

@@ -48,7 +48,12 @@
         <!-- picker 变体默认不带箭头；item.arrow=true 的行是「去别处」的入口（如 ＋填写其他地点），照常给 › -->
         <span v-else-if="typeof item === 'object' && (item.arrow || uiState.actionSheet.variant !== 'picker')" class="ui-sheet-arrow">›</span>
       </button>
-      <button class="ui-sheet-item cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
+      <!-- 多选（multi）：点行只切换选中，这里才需要「确定」——取消/确定按 1:2 分宽，sticky 常驻 -->
+      <div v-if="uiState.actionSheet.multi" class="ui-sheet-foot">
+        <button class="ui-sheet-foot-btn cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
+        <button class="ui-sheet-foot-btn confirm" @click="onSheetConfirm">{{ uiState.actionSheet.confirmText }}</button>
+      </div>
+      <button v-else class="ui-sheet-item cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
     </div>
   </div>
 </template>
@@ -63,7 +68,21 @@ watch(() => uiState.modal, (m) => { editText.value = m && m.editable ? (m.conten
 function onConfirm() { resolveModal({ confirm: true, content: editText.value }) }
 function onCancel() { resolveModal({ confirm: false, cancel: true }) }
 function onClose() { resolveModal({ confirm: false, close: true }) }
-function onSheetTap(idx) { resolveActionSheet({ tapIndex: idx }) }
+function onSheetTap(idx) {
+  const sheet = uiState.actionSheet
+  // 多选：点行只切换选中态（浅绿底+绿勾），不关弹层；「确定」才落定
+  if (sheet && sheet.multi) {
+    const item = sheet.itemList[idx]
+    if (item && typeof item === 'object') item.selected = !item.selected
+    return
+  }
+  resolveActionSheet({ tapIndex: idx })
+}
+function onSheetConfirm() {
+  const list = (uiState.actionSheet && uiState.actionSheet.itemList) || []
+  const tapIndexes = list.map((it, i) => (typeof it === 'object' && it.selected) ? i : -1).filter(i => i >= 0)
+  resolveActionSheet({ confirm: true, tapIndex: -1, tapIndexes })
+}
 function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 </script>
 
@@ -153,6 +172,13 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-sheet.picker .ui-sheet-item.selected .ui-sheet-copy b { font-weight: 750; }
 .ui-sheet-check { flex-shrink: 0; font-size: 38rpx; font-weight: 800; color: #2f6b45; }
 .ui-sheet.picker .ui-sheet-item.cancel { position: sticky; bottom: 0; margin: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); min-height: 96rpx; justify-content: center; border-radius: 18rpx; background: #F1F3F6; color: #4A5560; font-weight: 650; border-bottom: 0; }
+/* 多选底部条（唯一需要「确定」的弹层）：取消/确定 1:2 分宽，sticky 常驻不被列表滚走 */
+.ui-sheet-foot { position: sticky; bottom: 0; display: flex; gap: 20rpx; padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -6rpx 18rpx rgba(31,35,41,.05); }
+.ui-sheet-foot-btn { min-height: 96rpx; border: 0; border-radius: 18rpx; font-size: 33rpx; display: flex; align-items: center; justify-content: center; }
+.ui-sheet-foot-btn.cancel { flex: 1; background: #F1F3F6; color: #4A5560; font-weight: 650; }
+.ui-sheet-foot-btn.cancel:active { background: #E5E9EE; }
+.ui-sheet-foot-btn.confirm { flex: 2; background: #2f6b45; color: #fff; font-weight: 700; }
+.ui-sheet-foot-btn.confirm:active { background: #285f3d; }
 .ui-sheet-head { padding: 34rpx 20rpx 26rpx; text-align: left; }
 .ui-sheet-title { font-size: 36rpx; line-height: 1.35; font-weight: 700; color: #1F2329; }
 .ui-sheet-desc { margin-top: 10rpx; font-size: 27rpx; line-height: 1.55; color: #7A7F87; }
