@@ -324,11 +324,16 @@ function backFromFill() {
   if (cfg && cfg.onBack) cfg.onBack()
 }
 
+// 手填地点封顶（0731 设计师定）：固定常用地点＋最近手填的 3 个，全列表 6 行以内；
+// 满了挤掉最久没用的（LRU），不需要用户管理——所以也不做删除功能
+const CUSTOM_PLACE_MAX = 3
 function loadPlaceStore() {
   const s = getStorage(PLACE_STORE_KEY)
-  return (s && typeof s === 'object')
-    ? { custom: Array.isArray(s.custom) ? s.custom : [], freq: (s.freq && typeof s.freq === 'object') ? s.freq : {} }
-    : { custom: [], freq: {} }
+  if (!s || typeof s !== 'object') return { custom: [], freq: {} }
+  let custom = Array.isArray(s.custom) ? s.custom : []
+  // 兼容旧版存法（曾留 8 个、先进先出序）：超限即旧数据，取最新 3 个转成「最近在前」
+  if (custom.length > CUSTOM_PLACE_MAX) custom = custom.slice(-CUSTOM_PLACE_MAX).reverse()
+  return { custom, freq: (s.freq && typeof s.freq === 'object') ? s.freq : {} }
 }
 function placeOptions() {
   const store = loadPlaceStore()
@@ -342,9 +347,15 @@ function placeOptions() {
 }
 function rememberPlace(name, bump) {
   const store = loadPlaceStore()
-  if (!DEFAULT_PLACES.includes(name) && !store.custom.includes(name)) {
-    store.custom.push(name)
-    if (store.custom.length > 8) store.custom.shift()   // 手填最多留 8 个，太长反而难选
+  // custom 按「最近用过在前」排：用到（手填/保存）就提到最前；超 3 个从队尾挤掉最久没用的
+  if (!DEFAULT_PLACES.includes(name)) {
+    const i = store.custom.indexOf(name)
+    if (i >= 0) store.custom.splice(i, 1)
+    store.custom.unshift(name)
+    while (store.custom.length > CUSTOM_PLACE_MAX) {
+      const dropped = store.custom.pop()
+      delete store.freq[dropped]   // 被挤掉的连频次一起清，freq 不会无限膨胀
+    }
   }
   if (bump) store.freq[name] = (store.freq[name] || 0) + 1
   setStorage(PLACE_STORE_KEY, store)
