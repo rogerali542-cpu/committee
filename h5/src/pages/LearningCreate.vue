@@ -41,11 +41,18 @@
           <input class="form-input" v-model="form.attendees" />
         </div>
 
-        <div class="form-group">
+        <div v-if="defaultCategory === 'external'" class="form-group">
+          <span class="form-label">培训类型 *</span>
+          <div class="type-row">
+            <span class="type-chip" :class="{ on: form.type === 'street' }" @click="form.type = 'street'">街镇业务培训</span>
+            <span class="type-chip" :class="{ on: form.type === 'special' }" @click="form.type = 'special'">专项业务培训</span>
+          </div>
+          <span v-if="form.type === 'special'" class="form-hint">请登记主任、副主任或印章保管委员的参加情况</span>
+        </div>
+        <div v-else class="form-group">
           <span class="form-label">学习分类</span>
           <div class="type-row">
-            <span class="type-chip" :class="{ on: form.category === 'internal' }" @click="form.category = 'internal'">内部学习</span>
-            <span class="type-chip" :class="{ on: form.category === 'external' }" @click="form.category = 'external'">外部培训</span>
+            <span class="type-chip on">内部学习</span>
           </div>
         </div>
 
@@ -82,7 +89,7 @@ function todayStr() {
   const d = new Date()
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
-const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', category: defaultCategory, description: '' })
+const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '', trainer: '', attendees: '', category: defaultCategory, type: defaultCategory === 'external' ? 'street' : 'internal', description: '' })
 const saving = ref(false)
 
 // 导航新规(0725 用户定):返回=历史上一页(本页只从学习列表 push 进入)
@@ -102,8 +109,7 @@ async function submit() {
   if (saving.value) return
   saving.value = true
   try {
-    // type 由 category 派生以兼容按 type 拉取的列表：内部→internal，外部→street
-    const result = await api.learningCreate({ ...form, type: form.category === 'internal' ? 'internal' : 'street' })
+    const result = await api.learningCreate({ ...form })
     toast({ title: '已登记', icon: 'success' })
     // replace:不把已提交的表单页留在历史里,详情页按返回直接回学习列表
     window.location.replace('/learning-detail?id=' + result.id)
@@ -130,6 +136,7 @@ async function submit() {
 .type-row { display: flex; gap: 16rpx; flex-wrap: wrap; }
 .type-chip { min-height: 60rpx; display: inline-flex; align-items: center; padding: 0 24rpx; border-radius: 999rpx; background: #F1F3F5; color: #5B6570; font-size: 28rpx; }
 .type-chip.on { background: var(--c-primary-dark); color: #fff; font-weight: 700; }
+.form-hint { display: block; margin-top: 12rpx; color: #7A8594; font-size: 25rpx; line-height: 1.45; }
 .create-actions { display: flex; gap: 20rpx; margin-top: 32rpx; }
 .btn-ghost { flex: 1; height: 92rpx; border: 2rpx solid #C9D0D6; border-radius: 20rpx; background: #fff; color: #5B6570; font-size: 32rpx; }
 .btn-primary { flex: 2; height: 92rpx; border: 0; border-radius: 20rpx; background: var(--c-primary); color: #fff; font-size: 32rpx; font-weight: 700; }

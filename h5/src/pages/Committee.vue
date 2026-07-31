@@ -51,8 +51,8 @@
               接待安排
             </span>
             <!-- 0731 设计师定稿：中性灰胶囊次级钮——绿描边会和底部「登记接待」抢；
-                 靠位置（贴着接待卡）+胶囊形取重量，不占用颜色 -->
-            <button v-if="canManageReception" type="button" class="rnh-adj-btn" @click.stop="goReceptionNotice">{{ receptionHero.set ? '调整安排' : '去设置' }}</button>
+                 靠位置（贴着接待卡）+胶囊形取重量，不占用颜色；保留加载失败时的重试入口 -->
+            <button v-if="canManageReception && receptionHero.status !== 'loading'" type="button" class="rnh-adj-btn" @click.stop="receptionHero.status === 'error' ? retryReceptionSystem() : goReceptionNotice()">{{ receptionHero.status === 'error' ? '重新加载' : (receptionHero.set ? '调整安排' : '去设置') }}</button>
           </div>
           <template v-if="receptionHero.set">
             <div class="rnh-date">{{ receptionHero.dateLine }}</div>
@@ -63,8 +63,14 @@
             <!-- 值班人（0731 用户定）：轮值按周自动算，卡上直接看到下一场轮到谁 -->
             <div v-if="receptionDutyLine" class="rnh-duty">{{ receptionDutyLine }}</div>
           </template>
+          <template v-else-if="receptionHero.status === 'loading'">
+            <div class="rnh-time loading">正在读取接待安排…</div>
+          </template>
+          <template v-else-if="receptionHero.status === 'error'">
+            <div class="rnh-time error">接待安排加载失败</div>
+          </template>
           <template v-else>
-            <div class="rnh-time none">还没设置接待时间</div>
+            <div class="rnh-time none">尚未安排接待时间</div>
           </template>
         </div>
 
@@ -1186,6 +1192,8 @@ function receptionNeedsAction(r) {
 // 接待日安排（0717）：接待 tab 上那张入口卡要显示当前接待时间和地点。
 // 卡上只读，编辑和导出都在 /reception-notice 里
 const recSystem = ref(null)
+// 接口尚未返回、接口失败和“确实没有设置”必须分开，避免冷启动时误报“还没设置”。
+const recSystemStatus = ref('loading') // loading | ready | error
 const cockpitLearningTasks = ref([])
 const receptionTimeText = computed(() => {
   return String((recSystem.value && recSystem.value.timeDesc) || '')
@@ -1204,7 +1212,9 @@ const receptionDutyLine = computed(() => {
 // 接待安排卡（0730 设计师定稿）：顶行统一灰字「M月D日 周四」（下一个接待日）；
 // 语气只落在标题——今天「今晚 19:00 接待」/明天「明晚…」/其他日子制度句「每周四 起—止 接待」。
 const receptionHero = computed(() => {
-  if (!receptionTimeText.value) return { set: false }
+  if (recSystemStatus.value === 'loading') return { status: 'loading', set: false }
+  if (recSystemStatus.value === 'error') return { status: 'error', set: false }
+  if (!receptionTimeText.value) return { status: 'empty', set: false }
   const info = nextReceptionInfo()   // {days, dateText:'M月D日 周四', startTime, range}
   const hour = parseInt(String(info.startTime).split(':')[0], 10) || 19
   const part = hour >= 18 ? '晚' : (hour >= 12 ? '下午' : '上午')
@@ -1223,7 +1233,7 @@ const receptionHero = computed(() => {
   const timeLine = info.days === 0 ? ('今' + part + ' ' + info.range)
     : info.days === 1 ? ('明' + part + ' ' + info.range)
       : info.range
-  return { set: true, dateLine: info.dateText, title, timeLine, days: info.days }   // days 供驾驶舱「今日/明日」状态用
+  return { status: 'ready', set: true, dateLine: info.dateText, title, timeLine, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
 const recPendingList = computed(() => (calRecs.value || []).filter(r => !r.done && r.visitorName !== '无人来访'))
@@ -1281,13 +1291,25 @@ function goArchive(tab) {
 }
 
 async function loadCalExtras() {
-  const [recs, sys] = await Promise.all([
-    api.receptionRecords('all').catch(() => []),
-    api.receptionSystem().catch(() => null)
+  if (recSystemStatus.value !== 'ready') recSystemStatus.value = 'loading'
+  const [recsResult, sysResult] = await Promise.allSettled([
+    api.receptionRecords('all'),
+    api.receptionSystem()
   ])
-  calRecs.value = recs || []
-  recSystem.value = sys || null
+  if (recsResult.status === 'fulfilled') calRecs.value = recsResult.value || []
+  if (sysResult.status === 'fulfilled') {
+    recSystem.value = sysResult.value || null
+    recSystemStatus.value = 'ready'
+  } else {
+    recSystem.value = null
+    recSystemStatus.value = 'error'
+    console.error('[接待安排] 加载失败：', sysResult.reason)
+  }
   loadCommitteeRoster()   // 值班行要按名册顺序算轮值到谁（有缓存，只拉一次）
+}
+function retryReceptionSystem() {
+  recSystemStatus.value = 'loading'
+  loadCalExtras()
 }
 async function loadCockpitLearningTasks() {
   const [internal, training] = await Promise.all([
@@ -1625,6 +1647,14 @@ const cockpitTodos = computed(() => {
       title: pendingReceptions.length + '件接待事项待处理', sub: detail, cta: '去处理', actionable: true,
       summaryLabel: '接待任务', daysUntil: 0,
       onTap: enterReceptionArea })
+  } else if (recSystemStatus.value === 'loading') {
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'calm', timeScope: 'recent',
+      title: '正在读取接待安排', sub: '请稍候…', cta: '', actionable: false,
+      summaryLabel: '业主接待', daysUntil: null, onTap: () => {} })
+  } else if (recSystemStatus.value === 'error') {
+    items.push({ key: 'reception', tag: '接待', tone: 'green', level: 'urgent', timeScope: 'recent',
+      title: '接待安排加载失败', sub: '请检查网络后重新加载', cta: '重新加载', actionable: true,
+      summaryLabel: '业主接待', daysUntil: null, onTap: retryReceptionSystem })
   } else if (receptionTimeText.value) {
     const next = nextReceptionInfo()
     const place = String((recSystem.value && recSystem.value.place) || '').trim()
@@ -1834,10 +1864,22 @@ const portalCards = computed(() => {
       // 非当日标题带「下次接待」前缀自明为日程信息，不再像按钮的操作对象
       verb: '去登记', onTap: () => openReceptionCreate()
     })
+  } else if (rh.status === 'loading') {
+    cards.push({
+      key: 'reception', tag: '业主接待', empty: true,
+      idleText: '正在读取接待安排…',
+      onTap: () => {}
+    })
+  } else if (rh.status === 'error') {
+    cards.push({
+      key: 'reception', tag: '业主接待', empty: true,
+      idleText: '接待安排加载失败，点击重试',
+      onTap: retryReceptionSystem
+    })
   } else {
     cards.push({
       key: 'reception', tag: '业主接待', empty: true,
-      idleText: '还没设置接待时间',
+      idleText: '尚未安排接待时间',
       onTap: enterReceptionArea
     })
   }
@@ -5138,6 +5180,8 @@ onActivated(show)
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
   color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rnh-time.none { color: #9A3412; }
+.rnh-time.loading { color: #7A8594; font-size: 30rpx; font-weight: 500; }
+.rnh-time.error { color: #B45309; font-size: 30rpx; font-weight: 550; }
 .rnh-place { margin-top: 10rpx; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
   -webkit-line-clamp: 2; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid); }
 .rnh-place-name { display: inline-block; max-width: 100%; }  /* 地名整体折行,不从中间掰断 */
