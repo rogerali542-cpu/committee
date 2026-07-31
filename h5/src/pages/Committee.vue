@@ -261,7 +261,7 @@
               </template>
               <!-- 历史记录（0731 用户定：并入全年展开面板收尾）：今年之外的历年归档去历史记录页 -->
               <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
-                <b>历史记录 · 往期会议</b>
+                <b>查看全部历史</b>
                 <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
               </div>
             </div>
