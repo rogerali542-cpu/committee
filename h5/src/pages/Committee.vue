@@ -119,8 +119,8 @@
         <!-- 三节快捷工作卡（0731 与设计师讨论定稿）：模块名+状态在小字行，主行=当前事项，
              右侧固定动词（去补开/去登记/进入）——同一行不同状态去不同地方，动词写出来老人不用记规则。
              整节点击（spec §6），动作由状态驱动。底部主按钮已删（分派台不硬选主操作，空白留着）。 -->
-        <div class="pt-card">
-          <div v-for="c in portalCards" :key="c.key" class="pt-sec"
+        <div v-if="portalWork.length" class="pt-card">
+          <div v-for="c in portalWork" :key="c.key" class="pt-sec"
                @click="onCardTap(c)"
                @touchstart.passive="onCardTouchStart"
                @touchend="onCardTouchEnd($event, c)">
@@ -159,6 +159,11 @@
         </div>
         <!-- 页脚轻列表组（0731 设计师定点4：待办大部分时间为空、不当白卡；0 时写「无」别隐藏） -->
         <div class="pt-links">
+          <!-- 无安排模块的轻行（0731 设计师定点2）：只需知晓不配动词，点击进对应板块 -->
+          <div v-for="c in portalIdle" :key="'idle-' + c.key" class="pt-link" @click="c.onTap()">
+            <span class="pt-link-t">{{ c.tag }}<em> · {{ c.idleText }}</em></span>
+            <i class="pt-arr"></i>
+          </div>
           <div class="pt-link" @click="goTodos()">
             <span class="pt-link-t">待办事项<em> · {{ ptTodoCount > 0 ? ptTodoCount + ' 项' : '无' }}</em></span>
             <i class="pt-arr"></i>
@@ -1750,10 +1755,12 @@ const portalCards = computed(() => {
       } : null
     })
   } else {
+    // 无会议安排：不占白卡，降到下方轻列表行（0731 设计师定点2）；有后续计划就顺带提一句
+    const n = nextRows.value[0]
     cards.push({
-      key: 'meeting', tag: '业委会会议', badge: '', tier: '',
-      title: '当前无会议安排', sub: '',
-      verb: '进入', onTap: enterCommitteeArea
+      key: 'meeting', tag: '业委会会议', empty: true,
+      idleText: n ? ('下一场 ' + nextWhen(n)) : '当前无安排',
+      onTap: enterCommitteeArea
     })
   }
   // 接待节
@@ -1768,9 +1775,9 @@ const portalCards = computed(() => {
     })
   } else {
     cards.push({
-      key: 'reception', tag: '业主接待', badge: '', tier: '',
-      title: '还没设置接待时间', sub: '',
-      verb: '进入', onTap: enterReceptionArea
+      key: 'reception', tag: '业主接待', empty: true,
+      idleText: '还没设置接待时间',
+      onTap: enterReceptionArea
     })
   }
   // 学习节
@@ -1785,13 +1792,17 @@ const portalCards = computed(() => {
   } else {
     // 「上次 X月X日 …」副行已删（0731 用户定：意义不大）——往期培训看历史记录
     cards.push({
-      key: 'learning', tag: '学习培训', badge: '', tier: '',
-      title: '近期无安排', sub: '',
-      verb: '进入', onTap: goLearningHome
+      key: 'learning', tag: '学习培训', empty: true,
+      idleText: '近期无安排',
+      onTap: goLearningHome
     })
   }
   return cards
 })
+// 白卡=要办的事（0731 设计师定点2，用户同意）：无安排的模块不占白卡、降为下方轻列表行；
+// 卡片行数=今天要办的件数，随之自适应收缩，全空则整卡消失（卡一空就真是没事）
+const portalWork = computed(() => portalCards.value.filter(c => !c.empty))
+const portalIdle = computed(() => portalCards.value.filter(c => c.empty))
 // 直达某条学习任务详情（登记在详情里）；硬跳保证必达
 function goLearningTask(lt) {
   setStorage('home_layout', 'tabs')
