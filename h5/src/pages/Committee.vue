@@ -117,10 +117,13 @@
              右侧固定动词（去补开/去登记/进入）——同一行不同状态去不同地方，动词写出来老人不用记规则。
              整节点击（spec §6），动作由状态驱动。底部主按钮已删（分派台不硬选主操作，空白留着）。 -->
         <div class="pt-card">
-          <div v-for="c in portalCards" :key="c.key" class="pt-sec" @click="c.onTap()">
+          <div v-for="c in portalCards" :key="c.key" class="pt-sec"
+               @click="onCardTap(c)"
+               @touchstart.passive="onCardTouchStart"
+               @touchend="onCardTouchEnd($event, c)">
             <div class="pt-sec-tag-row">
-              <!-- 工作类型小图标（0731 设计师定：与底栏同款线性图标，色浅一档，配合浅字减轻"黑字墙"） -->
-              <span class="pt-sec-ico">
+              <!-- 工作类型小图标（0731 设计师定：与底栏同款线性图标；0731 用户定：上模块色，会议蓝/接待绿/学习深青） -->
+              <span class="pt-sec-ico" :class="'ico-' + c.key">
                 <svg v-if="c.key === 'meeting'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9" r="2.4"/><path d="M15.6 13.6c2.3.2 4.1 1.7 4.7 4.4"/>
                 </svg>
@@ -132,7 +135,9 @@
                 </svg>
               </span>
               <span class="pt-sec-tag">{{ c.tag }}</span>
-              <span v-if="c.badge" class="pt-badge" :class="c.tier">{{ c.badge }}</span>
+              <!-- 徽章只在「异常/须现在办」时出现（逾期暖/进行中蓝/今明日绿）；常态（待召开/计划中/编辑中=st-muted）
+                   不再挂灰字徽章——0731 用户定：「待召开」摆在标题旁看着怪且与右侧动词「去召开」重复，删掉 -->
+              <span v-if="c.badge && c.tier !== 'st-muted'" class="pt-badge" :class="c.tier">{{ c.badge }}</span>
               <!-- 会议多期翻页器（0731 用户定）：靠右，点钮切当前场次；@click.stop 防触发整节跳转 -->
               <span v-if="c.pager" class="pt-pager" @click.stop>
                 <span class="pt-pg-btn" :class="{ disabled: c.pager.idx === 0 }" @click.stop="c.pager.prev()"><i class="pt-pg-chev left"></i></span>
@@ -1787,6 +1792,32 @@ const portalCards = computed(() => {
 function goLearningTask(lt) {
   setStorage('home_layout', 'tabs')
   window.location.assign('/learning-detail?id=' + lt.id)
+}
+// 驾驶舱卡片：点击进入 + 手机端左右滑动翻页（0731 用户定：会议多期时按住左右拖动换页）。
+// 滑动阈值远大于点击抖动，据此区分"滑"与"点"；滑动后置 flag 抑制随后合成的 click，避免误跳转。
+let cardTouchX = 0, cardTouchY = 0, cardSwiped = false
+function onCardTouchStart(e) {
+  const t = e.changedTouches && e.changedTouches[0]
+  cardTouchX = t ? t.clientX : 0
+  cardTouchY = t ? t.clientY : 0
+  cardSwiped = false
+}
+function onCardTouchEnd(e, c) {
+  if (!c || !c.pager) return
+  const t = e.changedTouches && e.changedTouches[0]
+  if (!t) return
+  const dx = t.clientX - cardTouchX
+  const dy = t.clientY - cardTouchY
+  // 横向位移够大且明显偏横（非竖滑翻页）才判定为翻页
+  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+    cardSwiped = true
+    if (dx < 0) c.pager.next(); else c.pager.prev()   // 左滑下一页 / 右滑上一页
+    if (e.cancelable) e.preventDefault()
+  }
+}
+function onCardTap(c) {
+  if (cardSwiped) { cardSwiped = false; return }   // 刚才是滑动翻页，不触发整节跳转
+  c.onTap()
 }
 // 驾驶舱轻列表：聚合待办计数（会议未办 + 接待未办）
 const portalTodos = ref([])
@@ -4444,12 +4475,16 @@ onActivated(show)
 /* ── 驾驶舱 0731 定稿：日期行 + 三模块聚合卡 + 轻列表 ── */
 .pt-date { padding: 26rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .pt-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); padding: 8rpx 30rpx; }
-.pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; }
+.pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; touch-action: pan-y; }   /* pan-y：竖向留给页面滚动，横向手势交给 JS 翻页 */
 .pt-sec:first-child { border-top: 0; }
 .pt-sec:active { background: #FAFBFC; }
 /* 模块名行＝小图标+类型名+状态徽章。0731 设计师定：类型名调浅一档（黑字墙太重），靠图标补存在感 */
 .pt-sec-tag-row { display: flex; align-items: center; gap: 12rpx; }
 .pt-sec-ico { flex-shrink: 0; width: 34rpx; height: 34rpx; color: #8A94A6; display: inline-flex; align-items: center; justify-content: center; }
+/* 图标上模块色（0731 用户定）：会议蓝/接待绿/学习深青，与底栏选中态同色，做工作类型的视觉锚 */
+.pt-sec-ico.ico-meeting { color: #2f5f9e; }
+.pt-sec-ico.ico-reception { color: #2f6b45; }
+.pt-sec-ico.ico-learning { color: #2a6b73; }
 .pt-sec-ico svg { width: 34rpx; height: 34rpx; }
 .pt-sec-tag { font-size: 34rpx; font-weight: 700; color: #4A5560; margin-left: -2rpx; }
 .pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 26rpx; }
