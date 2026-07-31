@@ -1,114 +1,87 @@
 <template>
-  <!-- 根类 .recep-notice 是软路由硬跳兜底的落地哨兵（同 ReceptionDetail 的 .recep-detail）：
-       挂在根上，进页即有、不等接口 -->
+  <!-- 调整接待安排（0731 设计师稿重做）：设置行版式——每行「灰标签 + 黑值 +（原值提示）+ ›」，
+       点行改值（周几/人员=选择单，时间=时刻选择单，地点/原因=编辑弹窗）。
+       根类 .recep-notice 是软路由硬跳兜底的落地哨兵 -->
   <div class="page recep-notice" style="overflow-y:auto;">
-    <PageNav title="接待安排">
-      <template #left><button class="notice-back" type="button" aria-label="返回上一页" @click="backToReception">‹</button></template>
-      <template #right><button class="nav-home-btn" @click="goModuleHome('reception')">首页</button></template>
-    </PageNav>
+    <div class="rn-hd">
+      <div class="rn-hd-bar" @click="backToReception">
+        <i class="rn-back"></i>
+        <span class="rn-hd-title">调整接待安排</span>
+      </div>
+    </div>
 
     <div v-if="loadErr" class="page-empty">{{ loadErr }}</div>
     <template v-else>
-      <!-- 0717 用户重定位：接待时间/地点在制度里有基本值（首页卡片展示的就是它），
-           本页只干一件事——临时调整时改时间/地点，预览生成的公告并导出去张贴。
-           0717 追加：时间拆成「周几单选 + 起止时间」两个结构化的框（自由文本老人写不齐格式）；
-           公告正文改说话口吻（类会议通知），所以多了个「调整原因（选填）」。 -->
-      <div class="sec-card">
-        <div class="field">
-          <label class="f-label">接待时间</label>
-          <div class="reception-time-line">
-            <select v-model="form.day" class="f-select day-select" :disabled="!canManage">
-              <option value="">周几</option>
-              <option v-for="d in DAYS" :key="d" :value="d">{{ d }}</option>
-            </select>
-            <!-- 小时与分钟分开选择，避免手机端出现过长的时间列表。 -->
-            <div class="time-range">
-              <div class="time-pair">
-                <select v-model="startHour" class="f-select t-part" aria-label="开始小时" :disabled="!canManage">
-                  <option value="">时</option>
-                  <option v-for="h in HOUR_OPTS" :key="'sh-' + h" :value="h">{{ h }}</option>
-                </select>
-                <span class="time-colon">:</span>
-                <select v-model="startMinute" class="f-select t-part minute-part" aria-label="开始分钟" :disabled="!canManage">
-                  <option value="">分</option>
-                  <option v-for="m in MINUTE_OPTS" :key="'sm-' + m" :value="m">{{ m }}</option>
-                </select>
-              </div>
-              <span class="tr-sep">至</span>
-              <div class="time-pair">
-                <select v-model="endHour" class="f-select t-part" aria-label="结束小时" :disabled="!canManage">
-                  <option value="">时</option>
-                  <option v-for="h in HOUR_OPTS" :key="'eh-' + h" :value="h">{{ h }}</option>
-                </select>
-                <span class="time-colon">:</span>
-                <select v-model="endMinute" class="f-select t-part minute-part" aria-label="结束分钟" :disabled="!canManage">
-                  <option value="">分</option>
-                  <option v-for="m in MINUTE_OPTS" :key="'em-' + m" :value="m">{{ m }}</option>
-                </select>
-              </div>
-            </div>
-          </div>
+      <div class="rn-card">
+        <div class="rn-row" :class="{ ro: !canManage }" @click="pickDay">
+          <span class="rn-k">每周</span>
+          <span class="rn-v">{{ form.day || '未选择' }}</span>
+          <span v-if="orig.day && form.day !== orig.day" class="rn-orig">原 {{ orig.day }}</span>
+          <i v-if="canManage" class="rn-arr"></i>
         </div>
-
-        <div class="field">
-          <label class="f-label">接待地点</label>
-          <input v-model="form.place" class="f-input" maxlength="60" :disabled="!canManage" />
+        <div class="rn-row" :class="{ ro: !canManage }" @click="pickTime('start')">
+          <span class="rn-k">开始时间</span>
+          <span class="rn-v">{{ form.start || '未选择' }}</span>
+          <span v-if="orig.start && form.start !== orig.start" class="rn-orig">原 {{ orig.start }}</span>
+          <i v-if="canManage" class="rn-arr"></i>
         </div>
-
-        <div class="field">
-          <label class="f-label">接待人员</label>
-          <select v-model="form.person" class="f-select" :class="{ placeholder: !form.person }" :disabled="!canManage">
-            <!-- hidden:仅作占位提示,不出现在下拉列表里(0725 用户定) -->
-            <option value="" disabled hidden>请选择接待人员</option>
-            <option v-for="m in receptionMembers" :key="m.id || m.name" :value="m.name">
-              {{ m.name }}<template v-if="m.role"> · {{ m.role }}</template>
-            </option>
-          </select>
+        <div class="rn-row" :class="{ ro: !canManage }" @click="pickTime('end')">
+          <span class="rn-k">结束时间</span>
+          <span class="rn-v">{{ form.end || '未选择' }}</span>
+          <span v-if="orig.end && form.end !== orig.end" class="rn-orig">原 {{ orig.end }}</span>
+          <i v-if="canManage" class="rn-arr"></i>
         </div>
-
-        <div class="field">
-          <label class="f-label">调整原因（选填）</label>
-          <input v-model="form.reason" class="f-input" maxlength="60" :disabled="!canManage" />
+        <div class="rn-row" :class="{ ro: !canManage }" @click="editPlace">
+          <span class="rn-k">接待地点</span>
+          <span class="rn-v" :class="{ empty: !form.place }">{{ form.place || '未填写' }}</span>
+          <i v-if="canManage" class="rn-arr"></i>
         </div>
-        <!-- 提前 1 天惯例（0731 用户定；制度汇编未规定时限，此为产品自定规则） -->
-        <div v-if="canManage" class="sec-hint rule-hint">按惯例，接待安排调整请至少提前 1 天公示业主。</div>
-        <div v-if="!canManage" class="sec-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
-        <!-- 灰态给出原因文案（0723）：老人首次进页看到灰按钮不知为何点不动 -->
-        <button v-if="canManage" class="confirm-adjust" type="button"
-                :disabled="saving || !dirty || !timeText" @click="confirmAdjustment">
-          {{ saving ? '正在保存…' : (!dirty ? '未做修改' : '保存') }}
-        </button>
+        <div class="rn-row" :class="{ ro: !canManage }" @click="pickPerson">
+          <span class="rn-k">接待人员</span>
+          <span class="rn-v" :class="{ empty: !form.person }">{{ form.person || '未指定' }}</span>
+          <i v-if="canManage" class="rn-arr"></i>
+        </div>
+        <div class="rn-row" :class="{ ro: !canManage }" @click="editReason">
+          <span class="rn-k">调整原因</span>
+          <span class="rn-v" :class="{ empty: !form.reason }">{{ form.reason || '未填写' }}</span>
+          <i v-if="canManage" class="rn-arr"></i>
+        </div>
       </div>
 
-      <!-- 公告预览：本页的主体。跟着上面的框实时变，所见即所出。
-           ⚠ 句子必须跟后端 ReceptionNoticePdfService 逐字一致——预览就是那张纸 -->
-      <div class="sec-card">
-        <div class="preview-card-head">
-          <div class="sec-title">公告预览</div>
-          <button class="preview-toggle" type="button" @click="previewOpen = !previewOpen">
-            {{ previewOpen ? '收起' : '查看' }}
-          </button>
+      <!-- 提前 1 天惯例（0731 用户定；制度汇编未规定时限，此为产品自定规则） -->
+      <div v-if="canManage" class="rn-hint">按惯例，接待安排调整请至少提前 1 天公示业主。</div>
+      <div v-if="!canManage" class="rn-hint">你没有接待管理权限，只能查看。如需修改请联系主任。</div>
+
+      <!-- 公告预览：轻列表行，点开展开（0731 设计师稿）。⚠ 句子与后端 PDF 逐字一致 -->
+      <div class="rn-links">
+        <div class="rn-link" @click="previewOpen = !previewOpen">
+          <span class="rn-link-t">公告预览</span>
+          <i class="rn-chev" :class="{ open: previewOpen }"></i>
         </div>
-        <div v-if="previewOpen" class="preview">
-          <div class="pv-title">业主接待日公告</div>
-          <div class="pv-org">{{ orgName }}</div>
-          <div class="pv-line"></div>
-          <div class="pv-greet">敬告各位业主：</div>
-          <div v-for="(p, i) in noticeParas" :key="i" class="pv-para" :class="{ 'no-indent': p.noIndent }">{{ p.text }}</div>
-          <div class="pv-para">欢迎广大业主届时前来反映问题、提出建议。</div>
-          <div class="pv-sign">
-            <div>{{ orgFullName }}</div>
-            <div>{{ todayText }}</div>
-          </div>
+      </div>
+      <div v-if="previewOpen" class="rn-card rn-preview">
+        <div class="pv-title">业主接待日公告</div>
+        <div class="pv-org">{{ orgName }}</div>
+        <div class="pv-line"></div>
+        <div class="pv-greet">敬告各位业主：</div>
+        <div v-for="(p, i) in noticeParas" :key="i" class="pv-para" :class="{ 'no-indent': p.noIndent }">{{ p.text }}</div>
+        <div class="pv-para">欢迎广大业主届时前来反映问题、提出建议。</div>
+        <div class="pv-sign">
+          <div>{{ orgFullName }}</div>
+          <div>{{ todayText }}</div>
         </div>
-        <!-- 导出前自动保存改动：填完直接导出是老人最自然的路径，不该被「先保存」拦一道 -->
         <div v-if="exportSuccess" class="export-success">已导出PDF文件，可打印通知</div>
-        <button v-if="canManage" class="big-action" :disabled="exporting || !saved.timeDesc" @click="exportPdf">
+        <button v-if="canManage" class="pv-export" :disabled="exporting || !saved.timeDesc" @click="exportPdf">
           {{ exporting ? '正在生成…' : '导出为 PDF' }}
         </button>
       </div>
 
-      <div class="bottom-space"></div>
+      <!-- 底部主按钮（0731 设计师稿）：保存并生成公告——保存成功自动展开公告预览 -->
+      <div v-if="canManage" class="rn-bar">
+        <button type="button" class="rn-primary" :disabled="saving || !dirty || !timeText" @click="confirmAdjustment">
+          {{ saving ? '正在保存…' : (!dirty ? '未做修改' : '保存并生成公告') }}
+        </button>
+      </div>
     </template>
   </div>
 </template>
@@ -116,9 +89,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import api from '@/api'
-import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
-import { toast, showModal } from '@/utils/ui'
+import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { goModuleHome } from '@/utils/navigate'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
@@ -175,6 +147,8 @@ watch(() => form.start, (val) => {
 })
 // saved 是已点击「确定」的公告快照；编辑 form 不会直接改变下方公告。
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
+// 载入时的原值快照（0731 设计师稿：改动行旁标「原 19:00」，老人看得见改了什么）
+const orig = reactive({ day: '', start: '', end: '' })
 
 
 // 导航新规(0725 用户定):返回=历史上一页(驾驶舱「修改安排」/接待首页 push 进入,回退天然回来处)
@@ -267,11 +241,43 @@ async function load() {
   } catch (e) {
     loadErr.value = (e && e.message) || '接待安排加载失败'
   } finally {
+    // 原值快照：改动后行旁显示「原 X」
+    orig.day = form.day; orig.start = form.start; orig.end = form.end
     // 数据回填完成后再启用"改起始自动调结束",避免加载已存时长时被 1 小时覆盖
     nextTick(() => { formLoaded = true })
   }
 }
 onMounted(load)
+
+// ── 行点击（0731 设计师稿：行版式，点行改值） ──
+const TIME_OPTS = HOUR_OPTS.flatMap(h => MINUTE_OPTS.map(m => h + ':' + m))
+async function pickDay() {
+  if (!canManage.value) return
+  const res = await showActionSheet({ title: '每周哪天接待', itemList: DAYS })
+  if (res && res.tapIndex >= 0) form.day = DAYS[res.tapIndex]
+}
+async function pickTime(field) {
+  if (!canManage.value) return
+  const res = await showActionSheet({ title: field === 'start' ? '开始时间' : '结束时间', itemList: TIME_OPTS })
+  if (res && res.tapIndex >= 0) form[field] = TIME_OPTS[res.tapIndex]
+}
+async function pickPerson() {
+  if (!canManage.value) return
+  const names = receptionMembers.value.map(m => m.name + (m.role ? ' · ' + m.role : ''))
+  if (!names.length) { toast({ title: '暂无可选成员', icon: 'none' }); return }
+  const res = await showActionSheet({ title: '接待人员', itemList: names })
+  if (res && res.tapIndex >= 0) form.person = receptionMembers.value[res.tapIndex].name
+}
+async function editPlace() {
+  if (!canManage.value) return
+  const res = await showModal({ title: '接待地点', content: form.place, editable: true, placeholderText: '请输入接待地点', confirmText: '确定' })
+  if (res && res.confirm) form.place = String(res.content || '').trim().slice(0, 60)
+}
+async function editReason() {
+  if (!canManage.value) return
+  const res = await showModal({ title: '调整原因（选填）', content: form.reason, editable: true, placeholderText: '如：本周主任外出，接待顺延', confirmText: '确定' })
+  if (res && res.confirm) form.reason = String(res.content || '').trim().slice(0, 60)
+}
 
 // 距「当前已公示安排」的下一场接待不足 1 天？（0731 提前 1 天惯例的守门）
 // 从 saved.timeDesc 解析周几与结束时刻；解析不出（如未设置过）不拦
@@ -355,76 +361,57 @@ async function exportPdf() {
 </script>
 
 <style scoped>
-:deep(.page-nav) { background: #2f6b45; }  /* 接待模块页头（规范三色制） */
-.page { background: var(--c-bg-page); min-height: 100vh; }
-.notice-back { width: 96rpx; height: 124rpx; display: flex; align-items: center; justify-content: center;
-  padding: 0; border: 0; background: transparent; color: #fff; font-size: 66rpx; font-weight: 700; }
-.nav-home-btn { display: inline-flex; align-items: center; height: 64rpx; margin-right: 20rpx; padding: 0 24rpx; border: 2rpx solid rgba(255,255,255,0.6); border-radius: 34rpx; background: rgba(255,255,255,0.12); color: #fff; font-size: 30rpx; font-weight: 600; line-height: 1; }
-.nav-home-btn:active { background: rgba(255,255,255,0.28); }
+.page { background: var(--c-bg-page); min-height: 100%; padding-bottom: 184rpx; }   /* 底部给 fixed 主按钮条让位 */
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
-/* 本页字号一律 ≥28rpx(14px)，跟接待处理页同口径 */
-.sec-card { margin: 20rpx 24rpx; padding: 26rpx 28rpx; background: var(--c-bg-card);
-  border: 2rpx solid #EEF2F4; border-radius: 22rpx; box-shadow: 0 10rpx 28rpx rgba(20,42,58,0.07); }
-.sec-title { font-size: 32rpx; font-weight: 700; color: var(--c-text-strong); margin-bottom: 16rpx; }
-.preview-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
-.preview-card-head .sec-title { margin-bottom: 0; }
-.preview-toggle { display: inline-flex; align-items: center; gap: 6rpx; padding: 8rpx 4rpx 8rpx 18rpx;
-  border: 0; background: transparent; color: var(--c-primary-dark); font-size: 28rpx; font-weight: 600; }
-.sec-hint { margin-top: 4rpx; font-size: 28rpx; line-height: 1.5; color: var(--c-text-weak); }
 
-.field { margin-bottom: 24rpx; }
-.field:last-of-type { margin-bottom: 6rpx; }
-.f-label { display: block; margin-bottom: 10rpx; font-size: 28rpx; font-weight: 700; color: var(--c-text-mid); }
-.f-input { width: 100%; box-sizing: border-box; height: 88rpx; padding: 0 20rpx;
-  border: 2rpx solid #E3E8EB; border-radius: 16rpx; background: #FCFDFD;
-  font-size: 30rpx; color: var(--c-text-strong); outline: none; }
-.f-input:focus { border-color: var(--c-border-focus); }
-.f-input:disabled { background: #F4F5F7; color: var(--c-text-weak); }
-.f-select { width:100%; box-sizing:border-box; height:88rpx; padding:0 20rpx; border:2rpx solid #E3E8EB;
-  border-radius:16rpx; background:#FCFDFD; font-size:30rpx; color:var(--c-text-strong); outline:none; }
-.f-select.placeholder { color: var(--c-text-weak); }
-.f-select:disabled { background:#F4F5F7; color:var(--c-text-weak); }
-.reception-time-line { display: flex; align-items: center; gap: 12rpx; }
-.reception-time-line .day-select { flex: 0 0 29%; min-width: 0; }
-.reception-time-line .time-range { flex: 1; min-width: 0; }
-.confirm-adjust { display: block; width: 42%; height: 76rpx; margin: 24rpx 0 2rpx auto; border: 0;
-  border-radius: 16rpx; background: var(--c-primary-dark); color: #fff; font-size: 30rpx; font-weight: 700; }
-.confirm-adjust:disabled { opacity: 0.42; }
-.confirm-adjust:active:not(:disabled) { background: var(--c-primary-strong); }
+/* 页头：接待模块绿，‹ + 标题（0731 设计师稿） */
+.rn-hd { background: #2f6b45; padding: calc(env(safe-area-inset-top) + 18rpx) 32rpx 26rpx; color: #fff; }
+.rn-hd-bar { display: flex; align-items: center; gap: 18rpx; min-height: 72rpx; cursor: pointer; }
+.rn-hd-bar:active { opacity: .75; }
+.rn-back { display: inline-block; width: 18rpx; height: 18rpx; border-left: 4rpx solid #fff; border-bottom: 4rpx solid #fff; transform: rotate(45deg); }
+.rn-hd-title { font-size: 34rpx; font-weight: 700; }
 
+/* 设置行白卡：每行 灰标签+黑值+（原值）+›，62px 行高标准 */
+.rn-card { margin: 24rpx; background: #fff; border-radius: 24rpx; padding: 4rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); }
+.rn-row { display: flex; align-items: center; gap: 20rpx; min-height: 124rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+.rn-row:first-child { border-top: 0; }
+.rn-row:active { background: #FAFBFC; }
+.rn-row.ro { cursor: default; }
+.rn-row.ro:active { background: transparent; }
+.rn-k { flex-shrink: 0; width: 150rpx; font-size: 29rpx; color: #6B7280; }
+.rn-v { flex: 1; min-width: 0; font-size: 33rpx; font-weight: 700; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rn-v.empty { color: #9AA4B0; font-weight: 500; }
+/* 原值提示（0731 设计师稿）：改了才出现，灰字 */
+.rn-orig { flex-shrink: 0; font-size: 27rpx; color: #6B7280; }
+.rn-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
 
-/* .day-chips/.day-chip* 死样式已删（0723）：周几为单选下拉，多选胶囊从未上线 */
+.rn-hint { margin: 0 32rpx; font-size: 27rpx; line-height: 1.6; color: #8A94A6; }
 
-/* 起止时间：两个 time 输入并排，中间「至」 */
-.time-range { display: flex; align-items: center; gap: 14rpx; }
-.time-pair { display: flex; flex: 1; min-width: 0; align-items: center; gap: 5rpx; }
-.t-part { flex: 1; min-width: 0; padding: 0 8rpx; text-align: center; }
-.minute-part { flex: 0 0 43%; }
-.time-colon { flex-shrink: 0; color: var(--c-text-mid); font-size: 30rpx; }
-.tr-sep { flex-shrink: 0; font-size: 28rpx; color: var(--c-text-mid); }
+/* 公告预览轻行 + 展开卡 */
+.rn-links { margin: 28rpx 24rpx 0; padding: 0 8rpx; }
+.rn-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 124rpx; border-top: 2rpx solid #E2E5EA; border-bottom: 2rpx solid #E2E5EA; cursor: pointer; }
+.rn-link:active { opacity: .65; }
+.rn-link-t { font-size: 32rpx; color: #1F2937; }
+.rn-chev { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .2s ease, top .2s ease; }
+.rn-chev.open { transform: rotate(-135deg); top: 2rpx; }
+.rn-preview { padding: 34rpx 30rpx; }
 
-/* 0717 用户定：导出按钮缩小 20%（高 96→76）、宽度 60% 居中。
-   字号 32→28 没砍满 20%——28rpx 是本页字号下限，破线老人看不清 */
-.big-action { display: block; width: 60%; height: 76rpx; margin: 48rpx auto 0; border: none; border-radius: 18rpx;
-  font-size: 30rpx; font-weight: 700; color: #fff; background: #A94832;
-  box-shadow: 0 6rpx 16rpx rgba(114,48,34,0.18); }
-.big-action:active { background: #8F3B2A; }
-.big-action:disabled { opacity: 0.5; }
-.export-success { margin: 18rpx 0 -6rpx; text-align: center; color: #278653; font-size: 28rpx; line-height: 1.5; }
-
-/* 纸样预览：让委员在按下导出前就知道印出来长什么样。
-   白底居中排版，刻意跟 App 的卡片风格不一样——它代表"那张纸"。
-   0717 用户定：做高一点（min-height + flex 让落款沉底），更像一页纸 */
-.preview { display: flex; flex-direction: column; min-height: 640rpx; padding: 44rpx 32rpx; background: #fff;
-  border: 2rpx solid #E3E8EB; border-radius: 12rpx; }
-.pv-title { text-align: center; font-size: 34rpx; font-weight: 800; color: #1F2329; letter-spacing: 2rpx; }
-.pv-org { margin-top: 8rpx; text-align: center; font-size: 28rpx; color: var(--c-text-mid); }
-.pv-line { margin: 14rpx 0 22rpx; height: 2rpx; background: #1F2329; }
-.pv-greet { font-size: 29rpx; line-height: 1.7; color: var(--c-text-strong); }
-/* 正文首行缩进两字 + 1.7 行距，念出来像一封告示 */
-.pv-para { margin-top: 10rpx; font-size: 29rpx; line-height: 1.7; color: var(--c-text-strong); text-indent: 2em; }
+/* 公告纸样式（沿用：句子与后端 PDF 逐字一致） */
+.pv-title { text-align: center; font-size: 38rpx; font-weight: 800; color: #1F2937; }
+.pv-org { text-align: center; margin-top: 8rpx; font-size: 28rpx; color: #6B7280; }
+.pv-line { height: 2rpx; background: #E2E5EA; margin: 22rpx 0; }
+.pv-greet { font-size: 30rpx; color: #1F2937; }
+.pv-para { margin-top: 14rpx; font-size: 30rpx; line-height: 1.8; color: #1F2937; text-indent: 2em; }
 .pv-para.no-indent { text-indent: 0; }
-.pv-sign { margin-top: auto; padding-top: 40rpx; text-align: right; font-size: 28rpx; line-height: 1.8; color: var(--c-text-mid); }
+.pv-sign { margin-top: 30rpx; text-align: right; font-size: 29rpx; color: #1F2937; line-height: 1.9; }
+.export-success { margin-top: 20rpx; font-size: 28rpx; color: #2E7D50; text-align: center; }
+.pv-export { display: block; width: 100%; margin-top: 26rpx; min-height: 96rpx; border: 0; border-radius: 18rpx; background: #E4F0E8; color: #2f6b45; font-size: 32rpx; font-weight: 700; }
+.pv-export:active { background: #D6E9DD; }
+.pv-export:disabled { opacity: .55; }
 
-.bottom-space { height: 60rpx; }
+/* 底部主按钮条（本页无底栏，钉视口底） */
+.rn-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; padding: 12rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
+.rn-primary { width: 100%; min-height: 120rpx; border: 0; border-radius: 20rpx; background: #2f6b45; color: #fff; font-size: 38rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.rn-primary:active { background: #285f3d; }
+.rn-primary:disabled { background: #A8BEB0; }
 </style>
