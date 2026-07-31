@@ -1169,14 +1169,15 @@ const receptionHero = computed(() => {
   const info = nextReceptionInfo()   // {days, dateText:'M月D日 周四', startTime, range}
   const hour = parseInt(String(info.startTime).split(':')[0], 10) || 19
   const part = hour >= 18 ? '晚' : (hour >= 12 ? '下午' : '上午')
-  // 非当日不写规律「每周四」而写具体这一次（0731 设计师点1×用户定）：周一~周三看＝本周四，
-  // 周四结束后/周五~周日看＝下周四（中国周一起算，周日属上一周）。
+  // 非当日不写规律「每周X」而写具体这一次（0731 设计师点1×用户定），且周几随制度动态解析。
+  // 本周X/下周X 通用判法（周一起算）：今天的周一序号+间隔天数仍落在本周 7 格内＝本周，否则下周。
   // 加「下次接待」前缀（0731 用户定）：把这行定性为日程信息，与右侧常驻「去登记」入口语义解耦——
   // 否则「下周四接待 · 去登记」像在给下周预登记
-  const dow = new Date().getDay()
+  const mondayIdx = (new Date().getDay() + 6) % 7
+  const weekWord = (mondayIdx + info.days <= 6 ? '本周' : '下周') + info.recDowChar
   const title = info.days === 0 ? ('今' + part + ' ' + info.startTime + ' 接待')
     : info.days === 1 ? ('明' + part + ' ' + info.startTime + ' 接待')
-      : ('下次接待 ' + ((dow >= 1 && dow <= 3) ? '本周四' : '下周四') + ' ' + info.range)
+      : ('下次接待 ' + weekWord + ' ' + info.range)
   return { set: true, dateLine: info.dateText, title, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
@@ -1455,7 +1456,13 @@ const portalDomains = computed(() => {
 function nextReceptionInfo() {
   const now = new Date()
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  let days = (4 - now.getDay() + 7) % 7
+  // 接待是周几不写死（0731 用户定）：从制度文本解析（每周四/每周二/周六…），改了制度首页跟着变；
+  // 解析不到兜底周四（当前制度默认值）
+  const dowMap = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 0, '天': 0 }
+  const dowMatch = String(receptionTimeText.value || '').match(/周([一二三四五六日天])/)
+  const recDowChar = dowMatch ? (dowMatch[1] === '天' ? '日' : dowMatch[1]) : '四'
+  const recDow = dowMatch ? dowMap[dowMatch[1]] : 4
+  let days = (recDow - now.getDay() + 7) % 7
   const rangeMatch = String(receptionTimeText.value || '').match(/(\d{1,2}:\d{2})\s*[—–-]\s*(\d{1,2}:\d{2})/)
   const startTime = rangeMatch ? rangeMatch[1] : '19:00'
   const endTime = rangeMatch ? rangeMatch[2] : '20:00'
@@ -1465,10 +1472,10 @@ function nextReceptionInfo() {
     if (now > endAt) days = 7
   }
   target.setDate(target.getDate() + days)
-  const dateText = (target.getMonth() + 1) + '月' + target.getDate() + '日 周四'
+  const dateText = (target.getMonth() + 1) + '月' + target.getDate() + '日 周' + recDowChar
   const shortDateText = (target.getMonth() + 1) + '月' + target.getDate() + '日'
   const reminder = days === 0 ? '今天' : (days === 1 ? '明天' : '还有' + days + '天')
-  return { dateText, shortDateText, startTime, range: startTime + '—' + endTime, reminder, days }
+  return { dateText, shortDateText, startTime, range: startTime + '—' + endTime, reminder, days, recDowChar }
 }
 
 function daysFromToday(value) {
