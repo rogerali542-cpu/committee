@@ -1735,7 +1735,8 @@ const portalCards = computed(() => {
     cards.push({
       key: 'meeting', tag: '业委会会议',
       badge: dueStatusText(h), tier: dueStatusTier(h),
-      title: meetingRowTitle(h), sub: '',
+      // 会议卡两行：主行=年份+期次，副行=灰色小字时段（0731 用户定）；接待/学习卡仍各自单行
+      title: meetingRowName(h), sub: meetingRowWhen(h),
       verb: h.statusClass === 'overdue' ? '去补开' : (h.statusClass === 'ongoing' || isDraft) ? '继续' : '去召开',
       onTap: () => h.onTap(),
       // 多于一场才出翻页器；prev/next 以 clamp 后的当前页为基准增减，列表变短也不会翻空
@@ -1973,6 +1974,28 @@ function meetingRowTitle(h) {
   return [timeSeg, short].filter(Boolean).join(' · ')
 }
 const heroBarSub = computed(() => meetingRowTitle(heroMeeting.value))
+// 驾驶舱会议卡改两行（0731 用户定：「应于 5-6月」拗口）：第一行「2026年第N次例会」，
+// 第二行灰色小字说明时段。只会议卡用；接待/学习仍单行。heroBarSub（会议 tab 动作条）不动。
+function meetingRowName(h) {
+  if (!h) return ''
+  const m = String(h.title || '').match(/第\s*(\d+)\s*次/)
+  const short = m ? ('第' + m[1] + '次例会') : String(h.title || '').slice(0, 12)
+  return viewYear.value + '年' + short
+}
+function meetingRowWhen(h) {
+  if (!h) return ''
+  if (String(h.key).indexOf('mr-draft') === 0) return '会议通知编辑中'
+  if (h.statusClass === 'ongoing' || h.statusLabel === '进行中' || h.statusLabel === '会后整理') return '会议进行中'
+  if (!h.range && h.meetingDate) {
+    const d = String(h.meetingDate).split('-')
+    if (d.length === 3) return Number(d[1]) + '月' + Number(d[2]) + '日召开'
+  }
+  const period = String(h.badgeTop || '') + String(h.badgeBot || '')
+  if (!period) return ''
+  if (h.statusClass === 'overdue') return '原计划' + period + '召开'          // 逾期：原计划 5-6月 召开
+  if (h.statusClass === 'current' || String(h.key).indexOf('mr-current-') === 0) return '本期' + period + '召开'
+  return '计划' + period + '召开'
+}
 // 后续行的时段：有日期「8月5日」；没定日期给期次「11-12月」（0731 用户定：「预计」冗余不写——
 // 右侧「计划中」已表达未定性）
 function nextWhen(row) {
