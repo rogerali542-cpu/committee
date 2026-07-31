@@ -31,7 +31,7 @@
           <span v-if="orig.end && form.end !== orig.end" class="rn-orig">原 {{ orig.end }}</span>
           <i v-if="canManage" class="rn-arr"></i>
         </div>
-        <div class="rn-row" :class="{ ro: !canManage }" @click="editPlace">
+        <div class="rn-row" :class="{ ro: !canManage }" @click="pickPlace">
           <span class="rn-k">接待地点</span>
           <span class="rn-v" :class="{ empty: !form.place }">{{ form.place || '未填写' }}</span>
           <i v-if="canManage" class="rn-arr"></i>
@@ -83,6 +83,24 @@
         </button>
       </div>
     </template>
+
+    <!-- 填写其他地点（0731 设计师定）：输入框不进弹层——键盘一弹会盖掉列表。
+         独立全屏层一次只做一件事：绿头 ‹ + 输入卡 + 底部「用这个地点」 -->
+    <div v-if="placeInputOpen" class="rn-place-page">
+      <div class="rn-hd">
+        <div class="rn-hd-bar" @click="placeInputOpen = false">
+          <i class="rn-back"></i>
+          <span class="rn-hd-title">填写接待地点</span>
+        </div>
+      </div>
+      <div class="pi-body">
+        <input ref="placeInputEl" v-model="placeDraft" class="pi-input" type="text" maxlength="30"
+          placeholder="例如：3号楼架空层活动室" @keyup.enter="usePlaceDraft" />
+      </div>
+      <div class="pi-bar">
+        <button type="button" class="rn-primary" :disabled="!placeDraft.trim()" @click="usePlaceDraft">用这个地点</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -92,6 +110,7 @@ import api from '@/api'
 import perm from '@/utils/perm'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { goModuleHome } from '@/utils/navigate'
+import { getStorage, setStorage } from '@/utils/storage'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -271,10 +290,57 @@ async function pickPerson() {
     itemList: receptionMembers.value.map(m => ({ label: m.name + (m.role ? ' · ' + m.role : ''), selected: m.name === form.person })) })
   if (res && res.tapIndex >= 0) form.person = receptionMembers.value[res.tapIndex].name
 }
-async function editPlace() {
+// ── 接待地点（0731 设计师定）：弹层放已有地点，最后一行「＋ 填写其他地点」进独立输入层；
+//    手填过的存 localStorage 下次出现在列表；排序按使用频率（保存公告时 +1），不按拼音 ──
+const PLACE_STORE_KEY = 'rn_places'
+const DEFAULT_PLACES = ['小区物业办公室', '2号楼架空层活动室']
+const placeInputOpen = ref(false)
+const placeDraft = ref('')
+const placeInputEl = ref(null)
+
+function loadPlaceStore() {
+  const s = getStorage(PLACE_STORE_KEY)
+  return (s && typeof s === 'object')
+    ? { custom: Array.isArray(s.custom) ? s.custom : [], freq: (s.freq && typeof s.freq === 'object') ? s.freq : {} }
+    : { custom: [], freq: {} }
+}
+function placeOptions() {
+  const store = loadPlaceStore()
+  // 当前值排最前（勾一眼可见），其余按使用频率降序；同频保持原顺序（手填的在默认前）
+  const all = [form.place, saved.place, ...store.custom, ...DEFAULT_PLACES]
+    .map(v => String(v || '').trim()).filter(Boolean)
+  const uniq = [...new Set(all)]
+  return uniq.map((name, i) => ({ name, i }))
+    .sort((a, b) => ((store.freq[b.name] || 0) - (store.freq[a.name] || 0)) || (a.i - b.i))
+    .map(o => o.name)
+}
+function rememberPlace(name, bump) {
+  const store = loadPlaceStore()
+  if (!DEFAULT_PLACES.includes(name) && !store.custom.includes(name)) {
+    store.custom.push(name)
+    if (store.custom.length > 8) store.custom.shift()   // 手填最多留 8 个，太长反而难选
+  }
+  if (bump) store.freq[name] = (store.freq[name] || 0) + 1
+  setStorage(PLACE_STORE_KEY, store)
+}
+async function pickPlace() {
   if (!canManage.value) return
-  const res = await showModal({ title: '接待地点', content: form.place, editable: true, placeholderText: '请输入接待地点', confirmText: '确定' })
-  if (res && res.confirm) form.place = String(res.content || '').trim().slice(0, 60)
+  const opts = placeOptions()
+  const res = await showActionSheet({ title: '接待地点', variant: 'picker',
+    itemList: [...opts.map(p => ({ label: p, selected: p === form.place })), { label: '＋ 填写其他地点', arrow: true }] })
+  if (!res || res.tapIndex < 0) return
+  if (res.tapIndex < opts.length) { form.place = opts[res.tapIndex]; return }
+  // 最后一行：进全屏输入层（输入框不进弹层，键盘不盖列表）
+  placeDraft.value = ''
+  placeInputOpen.value = true
+  nextTick(() => { try { placeInputEl.value && placeInputEl.value.focus() } catch (e) { /* 自动聚焦失败无妨 */ } })
+}
+function usePlaceDraft() {
+  const v = placeDraft.value.trim().slice(0, 30)
+  if (!v) return
+  form.place = v
+  rememberPlace(v, false)   // 手填过的立即存下来——这类用户最怕重复输入
+  placeInputOpen.value = false
 }
 async function editReason() {
   if (!canManage.value) return
@@ -329,6 +395,7 @@ async function confirmAdjustment() {
     saved.place = form.place = place
     saved.person = form.person = person
     saved.reason = form.reason = reason
+    if (place) rememberPlace(place, true)   // 使用频率 +1：常用地点下次排最前
     previewOpen.value = true
     toast({ title: '接待安排已保存', icon: 'success' })
   } catch (e) {
@@ -411,6 +478,13 @@ async function exportPdf() {
 .pv-export { display: block; width: 100%; margin-top: 26rpx; min-height: 96rpx; border: 0; border-radius: 18rpx; background: #E4F0E8; color: #2f6b45; font-size: 32rpx; font-weight: 700; }
 .pv-export:active { background: #D6E9DD; }
 .pv-export:disabled { opacity: .55; }
+
+/* 填写其他地点全屏层：绿头 + 输入卡 + 底部主按钮，与本页同构（一次只做一件事） */
+.rn-place-page { position: fixed; inset: 0; z-index: 500; background: var(--c-bg-page); display: flex; flex-direction: column; }
+.pi-body { padding: 24rpx; }
+.pi-input { display: block; width: 100%; box-sizing: border-box; min-height: 112rpx; padding: 0 30rpx; background: #fff; border: 0; border-radius: 20rpx; font-size: 33rpx; font-weight: 600; color: #1F2937; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); }
+.pi-input::placeholder { color: #9AA4B0; font-weight: 400; }
+.pi-bar { margin-top: auto; padding: 12rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 
 /* 底部主按钮条（本页无底栏，钉视口底） */
 .rn-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; padding: 12rpx 24rpx calc(16rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }

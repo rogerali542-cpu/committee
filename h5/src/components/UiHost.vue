@@ -45,7 +45,8 @@
           <small v-if="typeof item === 'object' && item.description">{{ item.description }}</small>
         </span>
         <span v-if="typeof item === 'object' && item.selected" class="ui-sheet-check">✓</span>
-        <span v-else-if="typeof item === 'object' && uiState.actionSheet.variant !== 'picker'" class="ui-sheet-arrow">›</span>
+        <!-- picker 变体默认不带箭头；item.arrow=true 的行是「去别处」的入口（如 ＋填写其他地点），照常给 › -->
+        <span v-else-if="typeof item === 'object' && (item.arrow || uiState.actionSheet.variant !== 'picker')" class="ui-sheet-arrow">›</span>
       </button>
       <button class="ui-sheet-item cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
     </div>
