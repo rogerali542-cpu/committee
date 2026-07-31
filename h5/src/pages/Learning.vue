@@ -134,7 +134,7 @@ import api from '@/api';
 import perm from '@/utils/perm';
 import { toast } from '@/utils/ui';
 import { navigateTo } from '@/utils/navigate';
-import { getStorage, setStorage } from '@/utils/storage';
+import { getStorage } from '@/utils/storage';
 
 // 顶栏身份副标（业委会首页同款）：realName · role
 const activeRole = ref(getStorage('activeRole', {}) || {});
