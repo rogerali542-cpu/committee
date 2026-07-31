@@ -1174,9 +1174,11 @@ const receptionHero = computed(() => {
   // 「下次接待」前缀试过又删（0731 用户看实物定：冗长；本周X/下周X 本身已表明是日程）
   const mondayIdx = (new Date().getDay() + 6) % 7
   const weekWord = (mondayIdx + info.days <= 6 ? '本周' : '下周') + info.recDowChar
-  const title = info.days === 0 ? ('今' + part + ' ' + info.startTime + ' 接待')
-    : info.days === 1 ? ('明' + part + ' ' + info.startTime + ' 接待')
-      : (weekWord + ' ' + info.range + ' 接待')
+  // 尾词「接待」删（0731 设计师×用户定：上方标签已写「业主接待」、动词是「去登记」，语义无缺；
+  // 删掉后非当日整行回大字号也不挤）
+  const title = info.days === 0 ? ('今' + part + ' ' + info.startTime)
+    : info.days === 1 ? ('明' + part + ' ' + info.startTime)
+      : (weekWord + ' ' + info.range)
   return { set: true, dateLine: info.dateText, title, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
@@ -4558,10 +4560,11 @@ onActivated(show)
 .pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 26rpx; }
 /* 会议卡翻页器（0731 用户定：多期例会在首页直接翻页选场）——靠右，圆钮+页码，用 CSS 边框画箭头 */
 .pt-pager { margin-left: auto; display: inline-flex; align-items: center; gap: 8rpx; }
-.pt-pg-btn { width: 52rpx; height: 52rpx; border-radius: 50%; border: 2rpx solid #D7DCE3; background: #fff; color: #4B5563; display: inline-flex; align-items: center; justify-content: center; }
+/* 0731 用户定：翻页做明显一点——圆钮加大、描边/箭头/页码加深 */
+.pt-pg-btn { width: 60rpx; height: 60rpx; border-radius: 50%; border: 3rpx solid #B8C0CB; background: #fff; color: #2F3D56; display: inline-flex; align-items: center; justify-content: center; }
 .pt-pg-btn:active { background: #F1F3F6; }
 .pt-pg-btn.disabled { opacity: .3; }
-.pt-pg-ind { min-width: 60rpx; text-align: center; font-size: 26rpx; font-weight: 600; color: #6B7280; }
+.pt-pg-ind { min-width: 60rpx; text-align: center; font-size: 28rpx; font-weight: 700; color: #1F2937; }
 .pt-pg-chev { display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; }
 .pt-pg-chev.right { transform: rotate(-45deg); margin-left: -3rpx; }
 .pt-pg-chev.left { transform: rotate(135deg); margin-right: -3rpx; }
