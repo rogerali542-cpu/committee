@@ -286,7 +286,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; background: #f4f5f7; padding: 0 24rpx 160rpx; box-sizing: border-box; }
+.page { min-height: 100%; background: #f4f5f7; padding: 0 24rpx 40rpx; box-sizing: border-box; }   /* 0731 app 壳：底栏在滚动区外，100vh/160rpx 让位会多出一截空滚 */
 
 /* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 有 24rpx 横向内边距，负边距抵消让顶栏满宽 */
 .hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2a6b73; }   /* 学习页顶栏＝模块深青（规范：学习不能用橙，橙留给异常色） */

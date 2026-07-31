@@ -4452,9 +4452,9 @@ onActivated(show)
 
 <style scoped>
 .home {
-  min-height: 100vh; background: var(--c-bg-page);
+  min-height: 100%; background: var(--c-bg-page);   /* 0731 app 壳：滚动区=视口-底栏，100vh 会多出一截空滚 */
   /* 底部留空：清开固定 TabBar(100rpx) 再留一点缝隙；更多功能靠 margin-top:auto 贴底 */
-  padding-bottom: calc(132rpx + env(safe-area-inset-bottom));
+  padding-bottom: 24rpx;   /* 底栏已移出滚动区（app 壳），不再需要为它让位；safe-area 由底栏自己吃 */
   display: flex; flex-direction: column; box-sizing: border-box;
 }
 /* 顶栏 */
@@ -4562,7 +4562,7 @@ onActivated(show)
 }
 .portal-home .hd-title { font-size: 38rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 27rpx; }
-.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 150rpx; /* 给全局 TabBar 让位 */ }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 280rpx); box-sizing: border-box; padding-bottom: 40rpx; /* app 壳：底栏在滚动区外，只留呼吸空隙；min-height 扣掉页头+底栏 */ }
 /* ── 驾驶舱 0731 定稿：日期行 + 三模块聚合卡 + 轻列表 ── */
 .pt-date { padding: 6rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }   /* 上内边距 26→6：与顶栏的间隙收紧（0731 用户定），外层 plan-stack 已有 20rpx */
 .pt-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); padding: 8rpx 30rpx; }
@@ -4873,7 +4873,7 @@ onActivated(show)
 .mtg-primary:active { background: #35608F; }
 /* 会议 tab 内容区给动作条+底栏让位 */
 /* 动作条只剩单钮：底部清开「固定动作条(约148rpx) + 底栏(约102rpx)」两层 */
-.home.has-mtg-bar { padding-bottom: calc(266rpx + env(safe-area-inset-bottom)); }
+.home.has-mtg-bar { padding-bottom: 184rpx; }   /* fixed 动作条≈148rpx + 缝隙；底栏部分不再计（app 壳） */
 
 /* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
@@ -5126,7 +5126,7 @@ onActivated(show)
    白底全宽与底栏连成整片（TabBar 在 /reception-center 加 .merged 去顶描边） */
 .rec-actions { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 固定动作区(两钮约224rpx)+底栏(约102rpx)两层让位，内容不被挡 */
-.home.has-rec-bar { padding-bottom: calc(400rpx + env(safe-area-inset-bottom)); }   /* 0731：多留一截，历史记录行不贴按钮 */
+.home.has-rec-bar { padding-bottom: 250rpx; }   /* 两钮动作条≈216rpx + 缝隙；底栏部分不再计（app 壳） */
 /* 0731 设计师定：间距压到 8px(16rpx)、次级矮一档——对齐会议页既定规格（mtg-secondary 72 / mtg-primary 100），主次不只靠颜色 */
 .rec-adjust-btn { min-height: 72rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 28rpx; font-weight: 600; }
 .rec-adjust-btn:active { background: #D6E9DD; }
