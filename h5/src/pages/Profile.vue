@@ -55,10 +55,7 @@
           <div v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</div>
           <i class="pf-arr"></i>
         </div>
-        <div class="pf-link" @click="showWip">
-          <span class="pf-link-t">业委会信息</span>
-          <i class="pf-arr"></i>
-        </div>
+        <!-- 「业委会信息」行已删（0731 用户定：页面长、该行又只是 WIP 占位没有落地页，等有页面再加回） -->
         <div class="pf-link" @click="doLogout">
           <span class="pf-link-t">退出登录</span>
           <i class="pf-arr"></i>
@@ -168,7 +165,6 @@ async function switchRole(item) {
 }
 
 function goSecretaryManagement() { navigateTo('/secretary-management') }
-function showWip() { toast({ title: '功能开发中', icon: 'none' }) }
 async function doLogout() {
   if (meetingRecordingSession.meetingId) {
     await discardMeetingRecording(meetingRecordingSession.meetingId)
@@ -223,13 +219,14 @@ onActivated(() => { if (mounted) refresh() })
 
 /* 身份白卡：中性头像 + 姓名 + 右侧灰角色；当前项浅蓝底+蓝勾（个人中心蓝系） */
 .pf-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); overflow: hidden; }
-.pf-row { display: flex; align-items: center; gap: 20rpx; min-height: 124rpx; padding: 0 28rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+/* 身份行压矮（0731 用户定：8 人列表占了整屏半，62→48px）——切身份是低频测试功能，不吃拇指区标准 */
+.pf-row { display: flex; align-items: center; gap: 18rpx; min-height: 96rpx; padding: 0 28rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
 .pf-row:first-child { border-top: 0; }
 .pf-row:active { background: #FAFBFC; }
 .pf-row.active { background: #EDF3FB; }
-.pf-row-avatar { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #EDEFF3; color: #4A5560; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-.pf-row-name { flex: 1; min-width: 0; font-size: 33rpx; font-weight: 700; color: #1F2937; }
-.pf-row-role { flex-shrink: 0; font-size: 28rpx; color: #6B7280; }
+.pf-row-avatar { flex-shrink: 0; width: 60rpx; height: 60rpx; border-radius: 50%; background: #EDEFF3; color: #4A5560; font-size: 27rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.pf-row-name { flex: 1; min-width: 0; font-size: 31rpx; font-weight: 700; color: #1F2937; }
+.pf-row-role { flex-shrink: 0; font-size: 27rpx; color: #6B7280; }
 .pf-check { flex-shrink: 0; font-size: 36rpx; font-weight: 800; color: #2f5f9e; }
 
 /* 轻列表：透明底+分隔线（62px 行高标准，与驾驶舱一致） */
