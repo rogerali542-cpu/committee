@@ -4810,10 +4810,10 @@ onActivated(show)
 .mtg-due-card { margin-top: 4rpx; margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
 /* 待召开卡放大（0730 用户+设计师定，加对地方）：行内距 26→34rpx(两行更松)；会议名(本行最重要
    信息)31→34rpx；标题↔副行间距 7→10rpx；日期块 94→108rpx / range 132→152rpx，字号同步加大 */
-.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 34rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 44rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }   /* 0731 用户定：内容占屏 50%→70%，行随首页经验加高 */
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
-.mtg-due-row .mr-row-title { font-size: 34rpx; }
+.mtg-due-row .mr-row-title { font-size: 36rpx; }
 .mtg-due-row .mr-row-sub { margin-top: 10rpx; }
 .mtg-due-row .mr-badge { width: 108rpx; min-height: 90rpx; }
 .mtg-due-row .mr-badge b { font-size: 33rpx; }
@@ -4838,13 +4838,13 @@ onActivated(show)
 .mtg-next-list { padding: 0 8rpx; }
 /* 首行去掉顶分隔线：有「接下来」头时头已作分隔，无头时（无后续场次）也不留孤零零一条线 */
 .mtg-next-list > :first-child { border-top: 0 !important; }
-.mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
+.mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 112rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
 .mtg-next-row:active { opacity: .6; }   /* 状态签删后整行可点（原入口在签上），给点按反馈 */
 .mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 「还有 N 场 ›」截断展开行（0730 设计师定）：与「全年会议」同为页内揭示、非跳转，用深灰；
    › 示意可展开更多。前 2 场恒在，展开后本行消失 */
 /* 状态签（点2 + 设计师三级③）：无底灰字，灰＝#6B7280；「计划中/待确认」都是常态 */
-.mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 108rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
+.mtg-next-foot { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 124rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }   /* 62px 拇指区标准，与首页轻列表一致（0731） */
 .mtg-next-foot:active { opacity: .7; }
 /* 0731 用户定：全年会议/档案馆两行加大两号、颜色更明显（29→33rpx、灰→正文深色），行高随之加大方便点按；
    展开▾/› 辅助符仍灰。仍不用蓝——展开行非跳转，蓝只留给链接类 */
