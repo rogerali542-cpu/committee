@@ -229,15 +229,25 @@
                 <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
               </span>
             </div>
-            <!-- 全年展开＝单列行式（0731 用户×设计师定稿第二版，宫格版否决）：期次+会议名+状态一行直读；
-                 逾期/本期在上方待召开卡里，这里不重复出现；已开=完成绿，缓解整页灰字视觉疲劳 -->
+            <!-- 全年展开（0731 设计师三版定稿）：已开/待排分组，轻重区分——已开整组压浅（连箭头），
+                 待排整组文字深；逐行状态词删，组头「已开·N场」说一次就够 -->
             <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
-              <div v-for="row in yearPanelRows" :key="row.key" class="mtg-next-row yp-row" @click="row.onTap()">
-                <span class="yp-period" :class="{ done: row.done }">{{ row.period }}</span>
-                <span class="mtg-next-line">{{ row.title }}</span>
-                <span class="yp-status" :class="{ done: row.done }">{{ row.statusText }}</span>
-                <i class="yp-arr"></i>
-              </div>
+              <template v-if="yearPanelGroups.done.length">
+                <div class="yp-group muted">已开<em>{{ yearPanelGroups.done.length }} 场</em></div>
+                <div v-for="row in yearPanelGroups.done" :key="row.key" class="mtg-next-row yp-row muted" @click="row.onTap()">
+                  <span class="yp-period">{{ row.period }}</span>
+                  <span class="mtg-next-line">{{ row.title }}</span>
+                  <i class="yp-arr"></i>
+                </div>
+              </template>
+              <template v-if="yearPanelGroups.todo.length">
+                <div class="yp-group">待排<em>{{ yearPanelGroups.todo.length }} 场</em></div>
+                <div v-for="row in yearPanelGroups.todo" :key="row.key" class="mtg-next-row yp-row" @click="row.onTap()">
+                  <span class="yp-period">{{ row.period }}</span>
+                  <span class="mtg-next-line">{{ row.title }}</span>
+                  <i class="yp-arr"></i>
+                </div>
+              </template>
             </div>
             <!-- 查看全部历史（0731 用户定：移出全年面板，与发起临时会议同级同重量）——历年归档入口 -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
@@ -1043,32 +1053,33 @@ function buildYearPlan(year) {
   return rows
 }
 const yearPlan = computed(() => buildYearPlan(viewYear.value))   // 日历：跟年份箭头走
-// 全年展开列表（0731 用户×设计师定稿第二版）：已开（完成绿）/未排 单列行式，含会议名；
-// current/overdue 期次不进列表——它们已在上方待召开卡，重复出现会让人疑惑是不是同一场
-const yearPanelRows = computed(() => {
-  const rows = []
+// 全年展开列表（0731 设计师三版定稿：分组+轻重代替状态词/绿色）——「已开」整组压浅、
+// 「待排」整组文字深，哪一块不用管由整块颜色一次说清；右列逐行状态词删（组头说一次就够）。
+// 绿色否决：会把注意力吸到"最不需要注意"的已办行，且与接待模块绿撞色。
+// current/overdue 期次仍不进列表——它们已在上方待召开卡，重复出现会让人疑惑是不是同一场
+const yearPanelGroups = computed(() => {
+  const done = []
+  const todo = []
   for (const r of (yearPlan.value || [])) {
     if (r.status === 'done') {
       const held = r.meeting
       // 已开且有具体日期：期次列直接写「1月16日」（0731 用户定）；没日期兜底期次「1-2月」
       const d = String((held && held.meetingDate) || '').split('-')
-      rows.push({
+      done.push({
         key: 'yp-' + r.period,
         period: d.length === 3 ? (Number(d[1]) + '月' + Number(d[2]) + '日') : r.monthLabel,
-        title: shortMeetingName((held && held.title) || ('第' + r.period + '次业委会例会')),
-        statusText: '已开', done: true,
+        title: shortMeetingName((held && held.title) || ('第' + r.period + '次例会')),
         onTap: () => { if (held && held.id) { saveYearPanelRestore(); openMeetingTap(held) } }
       })
     } else if (r.status === 'upcoming') {
-      rows.push({
+      todo.push({
         key: 'yp-' + r.period, period: r.monthLabel,
         title: '第' + r.period + '次例会',
-        statusText: r.past ? '未开' : '未排', done: false,
         onTap: () => onPlanRow(r)
       })
     }
   }
-  return rows
+  return { done, todo }
 })
 const yearDoneCount = computed(() => (yearPlan.value || []).filter(r => r.status === 'done').length)
 // App 壳改造后（0731）滚动发生在 #app-scroll 内层，不再是 window——取滚动都走这个容器
@@ -1996,7 +2007,8 @@ function dueSubFor(row) {
   if (String(row.key).indexOf('mr-draft') === 0) return '通知尚未填写完成'
   if (row.statusClass === 'overdue') return ''   // 0731 设计师点1：卡片只报事实——「请尽快补开」在下指令、抢底部主按钮的活；逾期胶囊+日期块已足够
   if (row.statusClass === 'ongoing') return '会议进行中，点击继续'
-  const info = (row.range || !row.meetingDate) ? '本期内 · 日期未定' : (String(row.sub || '').split(' · ')[0] || '')
+  // 「本期内 · 日期未定」删（0731 用户定）：期次由左侧日期块（7-8月）已表达，这行是重复信息
+  const info = (row.range || !row.meetingDate) ? '' : (String(row.sub || '').split(' · ')[0] || '')
   return info
 }
 // 底部主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」——动词领队一句话，不再两行分散重量。
@@ -4918,13 +4930,15 @@ onActivated(show)
 /* 全年月历弹层(0725):原地展开在列表底部看不全,改浮层居中,看完即关 */
 /* 弹窗样式(mr-cal-mask/sheet/close)已删(0725):月历改原地展开 .mr-calendar-panel */
 .mr-calendar-panel { margin: 4rpx 0 24rpx; padding: 6rpx 20rpx 4rpx; border: 2rpx solid #DCE5EE; border-radius: 18rpx; background: #F7F9FC; scroll-margin-top: 20rpx; }
-/* 全年展开行（0731 定稿第二版）：期次列 + 会议名 + 状态 + ›，单列直读 */
-.mr-calendar-panel .mtg-next-row:first-child { border-top: 0; }
-.yp-period { flex-shrink: 0; width: 122rpx; font-size: 28rpx; color: #6B7280; }
-.yp-period.done { color: #2E7D50; }   /* 已开行的具体日期同用完成绿（0731 用户定），与右侧「已开」呼应 */
-.yp-status { flex-shrink: 0; font-size: 27rpx; font-weight: 600; color: #6B7280; }
-.yp-status.done { color: #2E7D50; }   /* 完成绿（0731 用户定：已开上绿，缓解整页灰字视觉疲劳）；沿用 app 既有完成绿 */
-.yp-arr { flex-shrink: 0; display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
+/* 全年展开行（0731 设计师三版定稿）：分组+轻重——已开整组压浅（连箭头一起），待排整组文字深；
+   绿色否决（吸注意到最不用注意的已办行，且撞接待模块绿），状态词由组头一次说清 */
+.yp-group { padding: 20rpx 0 4rpx; font-size: 28rpx; font-weight: 650; color: #1F2937; }
+.yp-group em { font-style: normal; margin-left: 10rpx; font-size: 26rpx; font-weight: 500; color: #6B7280; }
+.yp-group.muted { color: #6B7280; }
+.yp-period { flex-shrink: 0; width: 122rpx; font-size: 28rpx; font-weight: 600; color: #1F2937; }
+.yp-arr { flex-shrink: 0; display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid #8A94A6; border-bottom: 3rpx solid #8A94A6; transform: rotate(-45deg); }
+.yp-row.muted .yp-period, .yp-row.muted .mtg-next-line { color: #6B7280; font-weight: 400; }
+.yp-row.muted .yp-arr { border-color: #C9CFD8; }
 .yp-head-right { display: inline-flex; align-items: center; gap: 16rpx; }
 .yp-count { font-size: 27rpx; font-weight: 500; color: #6B7280; }
 /* 弹层内「已完成」清单:宫格下方的档案区,与宫格用分隔线区隔 */
