@@ -121,6 +121,12 @@
             <div class="pt-sec-tag-row">
               <span class="pt-sec-tag">{{ c.tag }}</span>
               <span v-if="c.badge" class="pt-badge" :class="c.tier">{{ c.badge }}</span>
+              <!-- 会议多期翻页器（0731 用户定）：靠右，点钮切当前场次；@click.stop 防触发整节跳转 -->
+              <span v-if="c.pager" class="pt-pager" @click.stop>
+                <span class="pt-pg-btn" :class="{ disabled: c.pager.idx === 0 }" @click.stop="c.pager.prev()"><i class="pt-pg-chev left"></i></span>
+                <span class="pt-pg-ind">{{ c.pager.idx + 1 }}/{{ c.pager.total }}</span>
+                <span class="pt-pg-btn" :class="{ disabled: c.pager.idx === c.pager.total - 1 }" @click.stop="c.pager.next()"><i class="pt-pg-chev right"></i></span>
+              </span>
             </div>
             <div class="pt-sec-row">
               <div class="pt-sec-main">
@@ -1702,23 +1708,31 @@ const cockpitDateText = computed(() => {
 //   学习：有已通知任务→去登记（直达该任务详情）；没有→进入学习页
 const portalCards = computed(() => {
   const cards = []
-  // 会议节
-  const h = heroMeeting.value
-  if (h) {
+  // 会议节（0731 用户定：多期可翻页）——翻到想召开的那一场直接在首页操作，动作/状态随当前页变。
+  const mlist = meetingCardList.value
+  if (mlist.length) {
+    const idx = Math.min(mtgIdx.value, mlist.length - 1)
+    const h = mlist[idx]
     const isDraft = String(h.key).indexOf('mr-draft') === 0
+    const future = h.statusClass === 'upcoming' && String(h.key).indexOf('mr-current-') !== 0
     cards.push({
       key: 'meeting', tag: '业委会会议',
-      badge: dueStatusText(h), tier: dueStatusTier(h),
-      title: heroBarSub.value, sub: '',
+      badge: future ? '计划中' : dueStatusText(h),
+      tier: future ? 'st-muted' : dueStatusTier(h),
+      title: meetingRowTitle(h), sub: '',
       verb: h.statusClass === 'overdue' ? '去补开' : (h.statusClass === 'ongoing' || isDraft) ? '继续' : '去召开',
-      onTap: () => h.onTap()
+      onTap: () => h.onTap(),
+      // 多于一场才出翻页器；prev/next 以 clamp 后的当前页为基准增减，列表变短也不会翻空
+      pager: mlist.length > 1 ? {
+        idx, total: mlist.length,
+        prev: () => { mtgIdx.value = Math.max(0, Math.min(mtgIdx.value, mlist.length - 1) - 1) },
+        next: () => { mtgIdx.value = Math.min(mlist.length - 1, Math.min(mtgIdx.value, mlist.length - 1) + 1) }
+      } : null
     })
   } else {
-    const n = nextRows.value[0]
     cards.push({
       key: 'meeting', tag: '业委会会议', badge: '', tier: '',
-      title: '当前无会议安排',
-      sub: n ? ('下一场 ' + nextWhen(n) + ' · ' + shortMeetingName(n.title)) : '',
+      title: '当前无会议安排', sub: '',
       verb: '进入', onTap: enterCommitteeArea
     })
   }
@@ -1854,6 +1868,14 @@ const heroMeeting = computed(() => {
   const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
   return [...list].sort((a, b) => rank(a) - rank(b))[0]
 })
+// 驾驶舱会议卡可翻页（0731 用户定）：同时存在多期例会时，在首页就能翻到想召开的那一场直接操作，
+// 不必先进业委会页。顺序＝紧急项（与主卡同序）在前、未来计划期次在后；第 0 页即 heroMeeting。
+const meetingCardList = computed(() => {
+  const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
+  const imm = [...meetingRecordList.value.immediate].sort((a, b) => rank(a) - rank(b))
+  return [...imm, ...meetingRecordList.value.planned]
+})
+const mtgIdx = ref(0)   // 当前翻到第几场；越界在渲染时 clamp，翻页函数也按 clamp 后基准增减
 // 短名（点6）：列表统一「第N次业委会例会」；非例会（专项议事会等）保留原名；长名只在全年一览
 function shortMeetingName(title) {
   const m = String(title || '').match(/第\s*(\d+)\s*次/)
@@ -1886,19 +1908,28 @@ function dueSubFor(row) {
 // 底部主按钮副行（0730 点5）：状态词由待召开卡的标签承担，这里只写「哪场 · 什么时候」，
 // 不再出现「已逾期未召开」这类与卡内副行重复的话。有确切日期＝「9月26日 · 第5次例会」；
 // 没定日期＝「第3次例会 · 应于 5-6月」（逾期）/「第4次例会 · 本期 7-8月」
-const heroBarSub = computed(() => {
-  const h = heroMeeting.value
+// 抽成函数供「主卡翻页」复用：给任意一场会议算出「哪场 · 什么时候」主行。
+// 时段前缀：逾期「应于」/本期(当前期次)「本期」/未来计划期次「计划」。
+// 注：heroMeeting 只可能来自 immediate（当前期次或非 upcoming），永远走不到「计划」分支，故 heroBarSub 文案不变。
+function meetingRowTitle(h) {
   if (!h) return ''
   const m = String(h.title || '').match(/第\d+次/)
   const short = m ? m[0] + '例会' : String(h.title || '').slice(0, 10)
   if (h.range || !h.meetingDate) {
     const period = String(h.badgeTop || '') + String(h.badgeBot || '')
-    const when = period ? ((h.statusClass === 'overdue' ? '应于 ' : '本期 ') + period) : ''
+    let when = ''
+    if (period) {
+      const pre = h.statusClass === 'overdue' ? '应于 '
+        : (h.statusClass === 'current' || String(h.key).indexOf('mr-current-') === 0) ? '本期 '
+          : '计划 '
+      when = pre + period
+    }
     return [short, when].filter(Boolean).join(' · ')
   }
   const timeSeg = (String(h.sub || '').split(' · ')[0] || '').split(' ')[0]
   return [timeSeg, short].filter(Boolean).join(' · ')
-})
+}
+const heroBarSub = computed(() => meetingRowTitle(heroMeeting.value))
 // 后续行的时段：有日期「8月5日」；没定日期给期次「11-12月」（0731 用户定：「预计」冗余不写——
 // 右侧「计划中」已表达未定性）
 function nextWhen(row) {
@@ -4408,6 +4439,15 @@ onActivated(show)
 .pt-sec-tag-row { display: flex; align-items: center; gap: 12rpx; }
 .pt-sec-tag { font-size: 36rpx; font-weight: 800; color: #1F2937; }
 .pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 26rpx; }
+/* 会议卡翻页器（0731 用户定：多期例会在首页直接翻页选场）——靠右，圆钮+页码，用 CSS 边框画箭头 */
+.pt-pager { margin-left: auto; display: inline-flex; align-items: center; gap: 8rpx; }
+.pt-pg-btn { width: 52rpx; height: 52rpx; border-radius: 50%; border: 2rpx solid #D7DCE3; background: #fff; color: #4B5563; display: inline-flex; align-items: center; justify-content: center; }
+.pt-pg-btn:active { background: #F1F3F6; }
+.pt-pg-btn.disabled { opacity: .3; }
+.pt-pg-ind { min-width: 60rpx; text-align: center; font-size: 26rpx; font-weight: 600; color: #6B7280; }
+.pt-pg-chev { display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; }
+.pt-pg-chev.right { transform: rotate(-45deg); margin-left: -3rpx; }
+.pt-pg-chev.left { transform: rotate(135deg); margin-right: -3rpx; }
 .pt-sec-tag-row .pt-badge.st-warn { margin-top: 0; padding: 4rpx 14rpx; }
 .pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 12rpx; }
 /* 右侧固定动词（0731 设计师定：状态驱动跳转必须把动词写出来，老人只读字不记规则） */
