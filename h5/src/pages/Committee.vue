@@ -119,6 +119,18 @@
         <div class="pt-card">
           <div v-for="c in portalCards" :key="c.key" class="pt-sec" @click="c.onTap()">
             <div class="pt-sec-tag-row">
+              <!-- 工作类型小图标（0731 设计师定：与底栏同款线性图标，色浅一档，配合浅字减轻"黑字墙"） -->
+              <span class="pt-sec-ico">
+                <svg v-if="c.key === 'meeting'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9" r="2.4"/><path d="M15.6 13.6c2.3.2 4.1 1.7 4.7 4.4"/>
+                </svg>
+                <svg v-else-if="c.key === 'reception'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.2 3.4c-.4.3-.8 0-.8-.4V6.5z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 6.5C10.5 5 8.2 4.4 5.5 4.4c-.8 0-1.5.6-1.5 1.4v11c0 .8.7 1.4 1.5 1.4 2.7 0 5 .6 6.5 2.1 1.5-1.5 3.8-2.1 6.5-2.1.8 0 1.5-.6 1.5-1.4v-11c0-.8-.7-1.4-1.5-1.4-2.7 0-5 .6-6.5 2.1z"/><line x1="12" y1="6.5" x2="12" y2="20.3"/>
+                </svg>
+              </span>
               <span class="pt-sec-tag">{{ c.tag }}</span>
               <span v-if="c.badge" class="pt-badge" :class="c.tier">{{ c.badge }}</span>
               <!-- 会议多期翻页器（0731 用户定）：靠右，点钮切当前场次；@click.stop 防触发整节跳转 -->
@@ -4435,9 +4447,11 @@ onActivated(show)
 .pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; }
 .pt-sec:first-child { border-top: 0; }
 .pt-sec:active { background: #FAFBFC; }
-/* 模块名＝这张卡的标题（0731 用户定：原来太小太浅形同虚设，加大加粗变主角）+状态徽章同行 */
+/* 模块名行＝小图标+类型名+状态徽章。0731 设计师定：类型名调浅一档（黑字墙太重），靠图标补存在感 */
 .pt-sec-tag-row { display: flex; align-items: center; gap: 12rpx; }
-.pt-sec-tag { font-size: 36rpx; font-weight: 800; color: #1F2937; }
+.pt-sec-ico { flex-shrink: 0; width: 34rpx; height: 34rpx; color: #8A94A6; display: inline-flex; align-items: center; justify-content: center; }
+.pt-sec-ico svg { width: 34rpx; height: 34rpx; }
+.pt-sec-tag { font-size: 34rpx; font-weight: 700; color: #4A5560; margin-left: -2rpx; }
 .pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 26rpx; }
 /* 会议卡翻页器（0731 用户定：多期例会在首页直接翻页选场）——靠右，圆钮+页码，用 CSS 边框画箭头 */
 .pt-pager { margin-left: auto; display: inline-flex; align-items: center; gap: 8rpx; }
