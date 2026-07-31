@@ -233,7 +233,7 @@
                  逾期/本期在上方待召开卡里，这里不重复出现；已开=完成绿，缓解整页灰字视觉疲劳 -->
             <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
               <div v-for="row in yearPanelRows" :key="row.key" class="mtg-next-row yp-row" @click="row.onTap()">
-                <span class="yp-period">{{ row.period }}</span>
+                <span class="yp-period" :class="{ done: row.done }">{{ row.period }}</span>
                 <span class="mtg-next-line">{{ row.title }}</span>
                 <span class="yp-status" :class="{ done: row.done }">{{ row.statusText }}</span>
                 <i class="yp-arr"></i>
@@ -4914,6 +4914,7 @@ onActivated(show)
 /* 全年展开行（0731 定稿第二版）：期次列 + 会议名 + 状态 + ›，单列直读 */
 .mr-calendar-panel .mtg-next-row:first-child { border-top: 0; }
 .yp-period { flex-shrink: 0; width: 122rpx; font-size: 28rpx; color: #6B7280; }
+.yp-period.done { color: #2E7D50; }   /* 已开行的具体日期同用完成绿（0731 用户定），与右侧「已开」呼应 */
 .yp-status { flex-shrink: 0; font-size: 27rpx; font-weight: 600; color: #6B7280; }
 .yp-status.done { color: #2E7D50; }   /* 完成绿（0731 用户定：已开上绿，缓解整页灰字视觉疲劳）；沿用 app 既有完成绿 */
 .yp-arr { flex-shrink: 0; display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
