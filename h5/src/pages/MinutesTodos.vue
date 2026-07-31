@@ -601,6 +601,9 @@ onMounted(() => {
   if (!meetingId) {
     // 不带 meetingId＝独立聚合页（0730 用户定），不再是「缺少会议参数」错误
     aggMode.value = true
+    // tab 预选（0731）：接待页「接待待办」卡带 ?tab=reception 进来，直接落业主接待页签，口径一致
+    const qtab = route.query.tab
+    if (qtab && AGG_TABS.some(t => t.key === qtab)) aggTab.value = qtab
     loadAll()
     return
   }

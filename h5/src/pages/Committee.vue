@@ -50,8 +50,8 @@
               </svg>
               接待安排
             </span>
-            <!-- 0731 用户定：灰字链接不显眼——升级为浅绿胶囊次级钮（规范§7 次按钮=浅底模块色），
-                 有色块可辨认，又压不过底部「登记接待」实心主按钮 -->
+            <!-- 0731 设计师定稿：中性灰胶囊次级钮——绿描边会和底部「登记接待」抢；
+                 靠位置（贴着接待卡）+胶囊形取重量，不占用颜色；保留加载失败时的重试入口 -->
             <button v-if="canManageReception && receptionHero.status !== 'loading'" type="button" class="rnh-adj-btn" @click.stop="receptionHero.status === 'error' ? retryReceptionSystem() : goReceptionNotice()">{{ receptionHero.status === 'error' ? '重新加载' : (receptionHero.set ? '调整安排' : '去设置') }}</button>
           </div>
           <template v-if="receptionHero.set">
@@ -74,18 +74,19 @@
           </template>
         </div>
 
-        <!-- 待办（0731 设计师定：白卡=要办的事，只在有内容时上白卡；0 项降级为轻列表一行
-             ——空白卡比灰字更糟，但入口常驻不消失（0731 用户底线）。副行列全量摘要：
-             计数是全委口径（会议+接待），副行只写接待会像漏了 -->
-        <div v-if="planTab === 'reception' && ptTodoCount" class="rec-todo-entry" @click="goTodos()">
+        <!-- 接待待办（0731 设计师定：白卡=要办的事，只在有内容时上白卡；0 项降级为轻列表一行
+             ——空白卡比灰字更糟，但入口常驻不消失（0731 用户底线）。
+             只放「接待来源」的待办，与首页全局「待办事项」不同名不同范围，避免口径错乱：
+             接待记录里那条即便已办结，全局待办含会议来源也会对不上——所以这里只数接待未办 -->
+        <div v-if="planTab === 'reception' && recTodoCount" class="rec-todo-entry" @click="goTodos('reception')">
           <div class="rte-top">
-            <b>待办 · {{ ptTodoCount }} 项</b>
+            <b>接待待办 · {{ recTodoCount }} 项</b>
             <i class="rte-arr"></i>
           </div>
-          <div class="rte-sub">{{ combinedPendingSummary }}</div>
+          <div class="rte-sub">{{ recTodoSummary }}</div>
         </div>
-        <div v-if="planTab === 'reception' && !ptTodoCount" class="rec-todo-entry empty" @click="goTodos()">
-          <span class="rte-none"><b>待办</b><em> · 无</em></span>
+        <div v-if="planTab === 'reception' && !recTodoCount" class="rec-todo-entry empty" @click="goTodos('reception')">
+          <span class="rte-none"><b>接待待办</b><em> · 无</em></span>
           <i class="rte-arr"></i>
         </div>
 
@@ -1236,20 +1237,23 @@ const receptionHero = computed(() => {
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
 const recPendingList = computed(() => (calRecs.value || []).filter(r => !r.done && r.visitorName !== '无人来访'))
-// 待办卡副行摘要（0731 设计师定：计数是全委口径，副行也得列全量——只写接待会像漏了）：
-// 接待未办取首短句 + 会议未办取标题，前 2 条 + 等
-const combinedPendingSummary = computed(() => {
-  const parts = [
-    ...recPendingList.value.map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0]),
-    ...portalTodos.value.filter(t => t.status !== 'done').map(t => String(t.title || ''))
-  ].filter(Boolean)
-  return parts.slice(0, 2).join('、') + (parts.length > 2 ? ' 等' : '')
+// 接待待办卡（0731 设计师定）：只放接待来源——计数/摘要都只看接待未办结，不掺会议来源。
+const recTodoCount = computed(() => recPendingList.value.length)
+const recTodoSummary = computed(() => {
+  const parts = recPendingList.value
+    .map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0])
+    .filter(Boolean)
+  if (!parts.length) return ''
+  // 完整短句、不半切不留孤字（0731 用户 no-ellipsis 规则）：首条 +「等 N 项」
+  return parts.length > 1 ? (parts[0] + ' 等 ' + parts.length + ' 项') : parts[0]
 })
-// 进「业委会待办」聚合页（/minutes-todos 无参＝聚合模式）；软路由坑同款硬跳兜底
-function goTodos() {
-  navigateTo('/minutes-todos')
+// 进「业委会待办」聚合页（/minutes-todos 无参＝聚合模式）；软路由坑同款硬跳兜底。
+// tab 可选：接待卡传 'reception' 直接落到「业主接待」页签，与卡口径一致
+function goTodos(tab) {
+  const url = '/minutes-todos' + (tab ? '?tab=' + tab : '')
+  navigateTo(url)
   setTimeout(() => {
-    if (!document.querySelector('.todos-page')) window.location.href = '/minutes-todos'
+    if (!document.querySelector('.todos-page')) window.location.href = url
   }, 300)
 }
 // 近期行副行（0730 定稿图）：列内容短摘要「反映 下水管返味、门禁卡失灵」，比「反映 2 项」信息量大。
@@ -5166,10 +5170,11 @@ onActivated(show)
 /* 卡头标签（0731 设计师定稿）：模块绿小图标 + 深色标签字 */
 .rnh-label { display: inline-flex; align-items: center; gap: 12rpx; font-size: 30rpx; font-weight: 700; color: #1F2937; }
 .rnh-label svg { width: 34rpx; height: 34rpx; color: #2f6b45; flex-shrink: 0; }
-/* 右上角「调整安排」次级钮（0731 用户二调：浅绿底还不够显眼）——加模块绿描边+放大一号，
-   描边是"可点"的强信号；仍不与底部实心主按钮同级 */
-.rnh-adj-btn { flex-shrink: 0; min-height: 68rpx; padding: 0 28rpx; border: 3rpx solid #2f6b45; border-radius: 999rpx; background: #E4F0E8; color: #2f6b45; font-size: 30rpx; font-weight: 700; }
-.rnh-adj-btn:active { background: #D6E9DD; }
+/* 右上角「调整安排」次级钮（0731 设计师定稿）：改中性灰底——绿描边+浅绿底和底部「登记接待」
+   两个绿在争，视线先落它上面。三色制里模块色只给页头/导航选中/主按钮；次级按钮=中性灰底，
+   靠位置（贴着要改的卡）+胶囊形取重量，不用颜色（暖橙只留异常态、颜色是稀缺资源） */
+.rnh-adj-btn { flex-shrink: 0; min-height: 68rpx; padding: 0 28rpx; border: 0; border-radius: 999rpx; background: #f4f6f9; color: #374151; font-size: 30rpx; font-weight: 700; }
+.rnh-adj-btn:active { background: #E8ECF1; }
 .rnh-date { margin-top: 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .rnh-title { margin-top: 12rpx; font-size: 43rpx; line-height: 1.3; font-weight: 700; color: var(--c-text-strong); }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
