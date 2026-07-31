@@ -1,7 +1,7 @@
 <template>
   <!-- 「返回驾驶舱」已移入各页顶栏右上角（0730 用户定，图一骨架），不再浮在底栏上方 -->
-  <!-- merged 用 route.path 判定（含驾驶舱——它 active 为空但上方也钉着首页主操作条） -->
-  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden, merged: route.path === '/main' || route.path === '/reception-center' }">
+  <!-- merged 只给上方钉着固定操作条的工作页（驾驶舱无固定条，active 为空自然排除） -->
+  <nav v-if="isTab" class="tabbar" :class="{ hidden: homeShell.navHidden, merged: active === '/main' || active === '/reception-center' }">
     <div
       v-for="t in tabs"
       :key="t.path"
