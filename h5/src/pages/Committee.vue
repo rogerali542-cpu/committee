@@ -1215,11 +1215,7 @@ async function loadCockpitLearningTasks() {
   // Array.isArray 防御：接口异常返回对象时不至于让整页崩掉（学习任务缺失可接受，白屏不可接受）
   const all = [...(Array.isArray(internal) ? internal : []), ...(Array.isArray(training) ? training : [])]
   cockpitLearningTasks.value = all.filter(item => item && item.stage !== 'ended')
-  // 0731 定稿：学习节空态要写「上次 X月X日 …」——留最近一条已完成的
-  lastEndedLearning.value = all.filter(item => item && item.stage === 'ended')
-    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || null
 }
-const lastEndedLearning = ref(null)
 // 12 个月宫格（随分类切换，每格一眼看该月该类状态）：
 // 开会=该月所在双月期例会状态（已开绿✓/本期橙/逾期红!/待排灰）
 // 接待=该月接待汇总（N件待办橙/已办结绿✓/无灰—）
@@ -1758,11 +1754,10 @@ const portalCards = computed(() => {
       verb: '去登记', onTap: () => goLearningTask(lt)
     })
   } else {
-    const last = lastEndedLearning.value
+    // 「上次 X月X日 …」副行已删（0731 用户定：意义不大）——往期培训看历史记录
     cards.push({
       key: 'learning', tag: '学习培训', badge: '', tier: '',
-      title: '近期无安排',
-      sub: last ? ('上次 ' + fmtPlanDate(last.date) + (last.title ? ' ' + last.title : '')) : '',
+      title: '近期无安排', sub: '',
       verb: '进入', onTap: goLearningHome
     })
   }
