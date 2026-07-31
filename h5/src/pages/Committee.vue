@@ -1,5 +1,5 @@
 <template>
-  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs', 'has-rec-bar': planTab === 'reception' && canManageReception }">
+  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs' && !!heroMeeting, 'has-rec-bar': planTab === 'reception' && canManageReception }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <!-- 驾驶舱态整个左侧（机构名+身份行）都是个人中心入口（0731 用户定：机构名也可点，触区更大）；
@@ -206,7 +206,7 @@
                 </div>
                 <div class="mr-info">
                   <div class="mr-row-title">{{ shortMeetingName(row.title) }}</div>
-                  <div class="mr-row-sub">{{ dueSubFor(row) }}</div>
+                  <div v-if="dueSubFor(row)" class="mr-row-sub">{{ dueSubFor(row) }}</div>
                 </div>
                 <span class="mtg-due-status" :class="dueStatusTier(row)">{{ dueStatusText(row) }}</span>
               </div>
@@ -272,20 +272,19 @@
               <b>历史记录 · 往期会议</b>
               <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
             </div>
+            <!-- ＋ 发起临时会议（0731 设计师点2）：一年用几次的低频动作按规则收进列表末行、与历史记录并列，
+                 底部动作条只留主按钮一个实心色块 -->
+            <div v-if="canCreate" class="mtg-next-foot" @click="openNewMeeting()">
+              <b>＋ 发起临时会议</b>
+              <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
+            </div>
           </div>
           </div>
-          <!-- 底部动作条（0730 点2三改）：上下叠放，主次分明且都在拇指区——
-               次级「＋ 发起临时会议」浅蓝底在上（低频，一两月一次），主按钮（指向最急项）实蓝在下。
-               无最急项时主按钮直接变「发起会议」、上方次级按钮省略（不重复） -->
-          <div v-if="heroMeeting || canCreate" class="mtg-actionbar">
-            <button v-if="heroMeeting && canCreate" type="button" class="mtg-secondary" @click="openNewMeeting()">＋ 发起临时会议</button>
-            <button v-if="heroMeeting" type="button" class="mtg-primary" @click="heroMeeting.onTap()">
-              <span v-if="heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
-              <span class="mtg-primary-main">{{ heroMeeting.statusLabel }}</span>
-            </button>
-            <button v-else-if="canCreate" type="button" class="mtg-primary" @click="openNewMeeting()">
-              <span class="mtg-primary-main">＋ 发起会议</span>
-            </button>
+          <!-- 底部动作条（0731 设计师三点改）：只剩主按钮一个实心色块——次级「发起临时会议」已收进
+               上方列表末行；按钮一行式「去补开 · 第3次例会」19px/600 高 60px，不再两行分散重量。
+               无最急项时不出条（发起会议走列表行，不重复） -->
+          <div v-if="heroMeeting" class="mtg-actionbar">
+            <button type="button" class="mtg-primary" @click="heroMeeting.onTap()">{{ heroBarLine }}</button>
           </div>
         </div>
 
@@ -1987,38 +1986,22 @@ function dueStatusTier(row) {
 // 副行：具体信息/下一步提示（状态词已在右侧标签，这里不重复）
 function dueSubFor(row) {
   if (String(row.key).indexOf('mr-draft') === 0) return '通知尚未填写完成'
-  if (row.statusClass === 'overdue') return '已超期，请尽快补开'
+  if (row.statusClass === 'overdue') return ''   // 0731 设计师点1：卡片只报事实——「请尽快补开」在下指令、抢底部主按钮的活；逾期胶囊+日期块已足够
   if (row.statusClass === 'ongoing') return '会议进行中，点击继续'
   const info = (row.range || !row.meetingDate) ? '本期内 · 日期未定' : (String(row.sub || '').split(' · ')[0] || '')
   return info
 }
-// 底部主按钮副行（0730 点5）：状态词由待召开卡的标签承担，这里只写「哪场 · 什么时候」，
-// 不再出现「已逾期未召开」这类与卡内副行重复的话。有确切日期＝「9月26日 · 第5次例会」；
-// 没定日期＝「第3次例会 · 应于 5-6月」（逾期）/「第4次例会 · 本期 7-8月」
-// 抽成函数供「主卡翻页」复用：给任意一场会议算出「哪场 · 什么时候」主行。
-// 时段前缀：逾期「应于」/本期(当前期次)「本期」/未来计划期次「计划」。
-// 注：heroMeeting 只可能来自 immediate（当前期次或非 upcoming），永远走不到「计划」分支，故 heroBarSub 文案不变。
-function meetingRowTitle(h) {
+// 底部主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」——动词领队一句话，不再两行分散重量。
+// （原两行式的 heroBarSub/meetingRowTitle 随之退役）
+const heroBarLine = computed(() => {
+  const h = heroMeeting.value
   if (!h) return ''
   const m = String(h.title || '').match(/第\d+次/)
   const short = m ? m[0] + '例会' : String(h.title || '').slice(0, 10)
-  if (h.range || !h.meetingDate) {
-    const period = String(h.badgeTop || '') + String(h.badgeBot || '')
-    let when = ''
-    if (period) {
-      const pre = h.statusClass === 'overdue' ? '应于 '
-        : (h.statusClass === 'current' || String(h.key).indexOf('mr-current-') === 0) ? '本期 '
-          : '计划 '
-      when = pre + period
-    }
-    return [short, when].filter(Boolean).join(' · ')
-  }
-  const timeSeg = (String(h.sub || '').split(' · ')[0] || '').split(' ')[0]
-  return [timeSeg, short].filter(Boolean).join(' · ')
-}
-const heroBarSub = computed(() => meetingRowTitle(heroMeeting.value))
+  return h.statusLabel + ' · ' + short
+})
 // 驾驶舱会议卡改两行（0731 用户定：「应于 5-6月」拗口）：第一行「2026年第N次例会」，
-// 第二行灰色小字说明时段。只会议卡用；接待/学习仍单行。heroBarSub（会议 tab 动作条）不动。
+// 第二行灰色小字说明时段。只会议卡用；接待/学习仍单行。
 function meetingRowName(h) {
   if (!h) return ''
   const m = String(h.title || '').match(/第\s*(\d+)\s*次/)
@@ -4854,19 +4837,14 @@ onActivated(show)
    阴影来配合，见 TabBar.vue .tabbar.merged），中间只留一条小缝。z-index 90 < 底栏 100，
    重叠的几像素落在底栏空白内边距里，白叠白无缝。 */
 /* gap 16rpx＝8px（0730 用户定）：两钮原来 12rpx 贴太近、像一个大按钮，拉开到 8px 才是两块 */
-.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
-/* 次级「＋ 发起临时会议」（0730 点2三改）：浅蓝底、叠在主按钮上方，主次分明 */
-/* 次级按钮压到 72rpx(≈46px，0730 用户+设计师定)：比主按钮矮一档，主按钮独占饱和实心；
-   仍保浅蓝底(规范§7「次按钮浅底」)，不改白底描边 */
-.mtg-secondary { min-height: 72rpx; border: 0; border-radius: 18rpx; background: #EAF0F7; color: #3E6BA8; font-size: 28rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; }
-.mtg-secondary:active { background: #DCE6F1; }
-.mtg-primary { width: 100%; min-height: 100rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; box-sizing: border-box; }
+.mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }   /* 0731 设计师点2：只剩主按钮一个实心色块，次级已收进列表末行 */
+/* 主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」19px(38rpx)/600、高 60px(120rpx)——
+   两行结构重量分散、54px 在最底部偏矮，改一行大字。次级按钮已收进列表末行，样式退役 */
+.mtg-primary { width: 100%; min-height: 120rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; font-size: 38rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .mtg-primary:active { background: #35608F; }
-.mtg-primary-sub { font-size: 24rpx; opacity: .85; line-height: 1.3; }
-.mtg-primary-main { font-size: 33rpx; font-weight: 800; line-height: 1.3; }
 /* 会议 tab 内容区给动作条+底栏让位 */
-/* 动作条回到 fixed 且叠成两钮：底部要清开「固定动作条(约218rpx) + 底栏(约102rpx)」两层 */
-.home.has-mtg-bar { padding-bottom: calc(330rpx + env(safe-area-inset-bottom)); }
+/* 动作条只剩单钮：底部清开「固定动作条(约148rpx) + 底栏(约102rpx)」两层 */
+.home.has-mtg-bar { padding-bottom: calc(266rpx + env(safe-area-inset-bottom)); }
 
 /* 0730 移动习惯重排：卡改纵排（信息行+通宽大按钮），全卡可点 */
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
