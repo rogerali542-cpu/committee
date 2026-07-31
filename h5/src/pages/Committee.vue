@@ -18,13 +18,7 @@
         <span class="hd-score-label">综合评分 ›</span>
       </div>
     </div>
-    <!-- 归因条（0731 设计师定点5）：评分和"没按时"同框才叫驱动力——有逾期就在页头下挂一条，
-         点击直达最急的逾期事项 -->
-    <div v-if="planTab === 'meeting' && homeLayout === 'portal' && overduePeriodRows.length" class="hd-alert"
-         @click="heroMeeting && heroMeeting.onTap()">
-      <span>逾期 {{ overduePeriodRows.length }} 项 · 影响本月评分</span>
-      <i class="hd-alert-arr"></i>
-    </div>
+    <!-- 归因条「逾期 N 项 · 影响本月评分」已删（0731 用户定）：逾期信息卡片内已有，页头下这条重复 -->
 
     <!-- 「会议｜印章」二级切换已删（0730 用户定：印章独立成底栏第五个 tab，与会议分开） -->
 
@@ -4322,9 +4316,6 @@ onActivated(show)
 .hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; color: #fff; }
 .hd-score-label { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
 /* 归因条：贴页头下沿的浅一档色带，有逾期才出，点击直达逾期事项 */
-.hd-alert { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; padding: 16rpx 32rpx; background: #4E5D73; color: #C9D6E8; font-size: 27rpx; font-weight: 500; cursor: pointer; }
-.hd-alert:active { opacity: .82; }
-.hd-alert-arr { flex-shrink: 0; display: inline-block; width: 12rpx; height: 12rpx; border-right: 3rpx solid #C9D6E8; border-bottom: 3rpx solid #C9D6E8; transform: rotate(-45deg); }
 /* 当前会议主卡片 */
 /* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
    适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
