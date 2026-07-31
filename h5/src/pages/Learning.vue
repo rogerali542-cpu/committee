@@ -9,7 +9,7 @@
         <span class="hd-sub">{{ activeRole.realName }} · {{ activeRole.role }}</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定） -->
-      <button type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
+      <!-- 页头「返回首页」已删（0731 设计师定）：标签页回家走底栏「首页」格，按钮重复 -->
     </div>
 
     <!-- 年度履职摘要：只保留成员需要确认的两项 -->
@@ -139,10 +139,6 @@ import { getStorage, setStorage } from '@/utils/storage';
 // 顶栏身份副标（业委会首页同款）：realName · role
 const activeRole = ref(getStorage('activeRole', {}) || {});
 // 顶栏「返回驾驶舱」（0730：由 TabBar 浮球移入顶栏）
-function goCockpitFromHd() {
-  setStorage('home_layout', 'portal')
-  window.location.replace('/main?home=portal')
-}
 
 const recordFilter = ref('all');
 const allItems = ref([]);
@@ -295,8 +291,6 @@ onUnmounted(() => {
 /* 顶栏：业委会首页同款（深青灰底 + 白色标题 + 身份副标）。.page 有 24rpx 横向内边距，负边距抵消让顶栏满宽 */
 .hd { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 -24rpx; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2a6b73; }   /* 学习页顶栏＝模块深青（规范：学习不能用橙，橙留给异常色） */
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
-.hd-cockpit { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 500; }
-.hd-cockpit:active { background: rgba(255,255,255,.2); }
 .hd-title { font-size: 42rpx; font-weight: 700; color: #fff; line-height: 1.25; }
 .hd-sub { font-size: 28rpx; color: #bdd8db; margin-top: 4rpx; line-height: 1.3; }   /* 学习页头副文字（规范） */
 

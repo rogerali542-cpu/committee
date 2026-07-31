@@ -12,7 +12,8 @@
         <span class="hd-sub hd-sub-link" @click.stop="goProfilePage">{{ activeRole.realName }} · {{ activeRole.role }} ›</span>
       </div>
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
-      <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
+      <!-- 页头「返回首页」按钮已删（0731 设计师定）：业委会/接待是标签页非二级页，
+           底栏「首页」格就是回家的路，页头按钮与之重复；空间还给标题 -->
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
       <!-- 评分（0731 用户定：改回绿色且与分数挂钩）：大数字用 scoreGradient 渐变字，
            ≥90薄荷绿 / 80-89草绿 / 70-79黄绿 / 60-69琥珀 / <60朱红，压在深色页头 #3f4653 上对比足；点击进个人中心看履职统计 -->
@@ -226,7 +227,7 @@
               <span class="yp-head-right">
                 <span class="yp-count">已开 {{ yearDoneCount }} / 共 {{ yearPlan.length }}</span>
                 <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
-                <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
+                <i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i>
               </span>
             </div>
             <!-- 全年展开（0731 设计师三版定稿）：已开/待排分组，轻重区分——已开整组压浅（连箭头），
@@ -252,13 +253,13 @@
             <!-- 查看全部历史（0731 用户定：移出全年面板，与发起临时会议同级同重量）——历年归档入口 -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
               <b>查看全部历史</b>
-              <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
+              <i class="mfb-chev right"></i>
             </div>
             <!-- ＋ 发起临时会议（0731 设计师点2）：一年用几次的低频动作收进列表末行，
                  底部动作条只留主按钮一个实心色块 -->
             <div v-if="canCreate" class="mtg-next-foot" @click="openNewMeeting()">
               <b>＋ 发起临时会议</b>
-              <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
+              <i class="mfb-chev right"></i>
             </div>
           </div>
           </div>
@@ -1424,11 +1425,7 @@ const welcomeVisible = computed(() => homeLayout.value === 'portal' && planTab.v
 watch(welcomeVisible, (v) => { homeShell.welcomeVisible = v }, { immediate: true })
 // 选业务即"进入 App"：homeLayout 置 tabs，欢迎页从此让位，底栏出现
 function enterWorkArea() { homeLayout.value = 'tabs'; setStorage('home_layout', 'tabs') }
-// 顶栏「返回驾驶舱」（0730：由 TabBar 浮球移入各页顶栏）
-function goCockpitFromHd() {
-  setStorage('home_layout', 'portal')
-  window.location.replace('/main?home=portal')
-}
+// （页头「返回首页」按钮已删 0731——回首页走底栏「首页」格，goCockpitFromHd 随之退役）
 function enterCommitteeArea() {
   // 驾驶舱 URL 仍带 home=portal 时，TabBar 会据此继续隐藏。
   // 明确进入会议工作页并同步 URL，保证底栏和“返回驾驶舱”稳定出现。
@@ -4795,8 +4792,6 @@ onActivated(show)
 .mr-row:last-child { border-bottom: none; }
 .mr-row:active { background: #F7F9FB; }
 /* 顶栏「返回驾驶舱」胶囊（0730 图一骨架）：白描边适配深色顶栏 */
-.hd-cockpit { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid rgba(255,255,255,.55); border-radius: 999rpx; background: rgba(255,255,255,.08); color: #fff; font-size: 26rpx; font-weight: 500; }
-.hd-cockpit:active { background: rgba(255,255,255,.2); }
 
 /* ── 图一骨架（0730 用户定）：主卡 + 接下来 + 底部动作条 ── */
 /* 主卡横滑（0730 三改）：scroll-snap 逐页吸附，多张待处理左右滑切换 */
@@ -4851,11 +4846,11 @@ onActivated(show)
 .mtg-next-foot b { font-size: 31rpx; font-weight: 650; color: #1F2937; }
 /* 纯图形展开按钮（0731 用户定二改：去文字）：圆形浅底+CSS 边框箭头（见 CLAUDE.md 配方），
    向下=可展开、向上=可收起；档案馆行的 › 保持裸箭头不套壳 */
-.mtg-fold-btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 68rpx; height: 68rpx; border-radius: 50%; background: #EEF2F7; }
-.mtg-next-foot:active .mtg-fold-btn { background: #E2E8EF; }
-.mfb-chev { display: inline-block; width: 16rpx; height: 16rpx; border-right: 4rpx solid #4A5B70; border-bottom: 4rpx solid #4A5B70; transform: rotate(45deg); position: relative; top: -4rpx; transition: transform .2s ease, top .2s ease; }
-.mfb-chev.open { transform: rotate(-135deg); top: 4rpx; }
-.mfb-chev.right { transform: rotate(-45deg); top: 0; left: -3rpx; }   /* 右指＝跳转（档案馆行），与展开钮同款仅换向 */
+/* 裸箭头（0731 设计师定：与首页 .pt-arr 同款，圆底灰钮退役——同一套列表跨页要长一样）：
+   下指=可展开、上指=可收起、右指=跳转；配方见 CLAUDE.md */
+.mfb-chev { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(45deg); position: relative; top: -2rpx; transition: transform .2s ease, top .2s ease; }
+.mfb-chev.open { transform: rotate(-135deg); top: 2rpx; }
+.mfb-chev.right { transform: rotate(-45deg); top: 0; }
 /* 底部动作条（0730 点4四改，回到 fixed）：flex sticky-footer 在这套嵌套下没能真正撑满，
    按钮仍浮在页面中间、下方一大片空白——索性回到最稳的 position:fixed，钉死在底栏
    （TabBar≈102rpx）上沿。白底，与底栏共用一整片白色背景（TabBar 在 /main 去掉顶部描边+
