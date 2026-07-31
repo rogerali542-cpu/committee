@@ -1071,9 +1071,12 @@ const yearPanelRows = computed(() => {
   return rows
 })
 const yearDoneCount = computed(() => (yearPlan.value || []).filter(r => r.status === 'done').length)
+// App 壳改造后（0731）滚动发生在 #app-scroll 内层，不再是 window——取滚动都走这个容器
+function appScrollEl() { return document.getElementById('app-scroll') }
 // 离开前存「展开+滚动位置」一次性标记（0731 用户定：从面板点进详情/历史，返回时原状原位）
 function saveYearPanelRestore() {
-  try { sessionStorage.setItem('mtg_year_restore', JSON.stringify({ y: window.scrollY || 0 })) } catch (e) { /* 忽略 */ }
+  const el = appScrollEl()
+  try { sessionStorage.setItem('mtg_year_restore', JSON.stringify({ y: (el && el.scrollTop) || 0 })) } catch (e) { /* 忽略 */ }
 }
 const thisYearPlan = computed(() => buildYearPlan(curYear))      // 待办/逾期红条：恒今年，不受翻年影响
 
@@ -2597,14 +2600,14 @@ function show() {
       meetingCalendarOpen.value = true
       restored = true
       // 数据异步加载，页面高度晚到：分两次尝试滚回（60ms 软路由即中；400ms 兜整页重载）
-      const back = () => { try { window.scrollTo(0, st.y || 0) } catch (e) { /* 忽略 */ } }
+      const back = () => { try { const el = appScrollEl(); if (el) el.scrollTo(0, st.y || 0) } catch (e) { /* 忽略 */ } }
       setTimeout(back, 60)
       setTimeout(back, 400)
     }
   } catch (e) { /* 忽略 */ }
   if (!restored) {
     meetingCalendarOpen.value = false
-    try { window.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
+    try { const el = appScrollEl(); if (el) el.scrollTo(0, 0) } catch (e) { /* 忽略 */ }
   }
   homeShell.navHidden = false   // 回首页恢复导航栏
   isChair.value = perm.isChair()
@@ -3618,20 +3621,23 @@ function realUsePhoto() {
   _realShotFile = null
   bindStreamToVideo()
 }
-// 底部导航栏随滚动收起（0730 用户定，点8）：向下滚→隐藏一级导航栏（操作条落到屏底），向上滚/近顶→复现
+// 底部导航栏随滚动收起（0730 用户定，点8）：向下滚→隐藏一级导航栏（操作条落到屏底），向上滚/近顶→复现。
+// 0731 App 壳改造：滚动发生在 #app-scroll，监听它而非 window（body 已不滚，window 不再发 scroll）
 let _lastScrollY = 0
 function _onWinScroll() {
-  const y = window.scrollY || document.documentElement.scrollTop || 0
+  const el = appScrollEl()
+  const y = (el && el.scrollTop) || 0
   if (y < 60) { homeShell.navHidden = false; _lastScrollY = y; return }
   if (Math.abs(y - _lastScrollY) < 10) return
   homeShell.navHidden = y > _lastScrollY
   _lastScrollY = y
 }
-onMounted(() => window.addEventListener('scroll', _onWinScroll, { passive: true }))
+onMounted(() => { const el = appScrollEl(); if (el) el.addEventListener('scroll', _onWinScroll, { passive: true }) })
 // 离开页面/组件卸载时务必释放摄像头；顺带复位欢迎页标记，避免离开后底栏一直被隐藏
 onUnmounted(() => {
   stopRealStream()
-  window.removeEventListener('scroll', _onWinScroll)
+  const _sel = appScrollEl()
+  if (_sel) _sel.removeEventListener('scroll', _onWinScroll)
   homeShell.navHidden = false
   // 开发期热更新会先挂载新页面、再卸载旧页面；同在 /main 时不回写 false，避免驾驶舱底栏误显。
   if (window.location.pathname !== '/main') homeShell.welcomeVisible = false

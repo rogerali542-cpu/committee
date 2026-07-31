@@ -80,16 +80,18 @@ function go(t) {
 </script>
 
 <style scoped>
-/* 图标底栏（0730 用户定：驾驶舱同款画风）——高度约 110rpx，各页 132rpx 留白仍够 */
+/* 图标底栏（0730 用户定：驾驶舱同款画风）——高度约 110rpx，各页 132rpx 留白仍够。
+   0731 用户定：不再 position:fixed，改为 app-shell 滚动区外的 flex:none 兄弟（App.vue），
+   物理上滚不走；hidden 态用 transform+负 margin 同步塌掉占位，让滚动区吃回这块高度 */
 .tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+  flex: none;
   display: flex; background: #fff; border-top: 1rpx solid #ececec;
   padding: 8rpx 0 calc(6rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -6rpx 18rpx rgba(24, 51, 76, .05);
-  transition: transform .22s ease;
+  transition: transform .22s ease, margin-bottom .22s ease;
 }
 /* 向下滚动时收起（0730 用户定，点8）：让出被操作条+导航栏叠占的高度 */
-.tabbar.hidden { transform: translateY(120%); }
+.tabbar.hidden { transform: translateY(120%); margin-bottom: calc(-110rpx - env(safe-area-inset-bottom)); }
 /* 上方钉着固定操作条的页（/main 会议操作条、/reception-center 接待动作区）：
    底栏去掉顶部描边+阴影，两片白连成一整片、共用一个背景（0730 用户定） */
 .tabbar.merged { border-top: 0; box-shadow: none; }

@@ -59,7 +59,12 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior() { return { top: 0 } }
+  // App 壳改造（0731）：滚动在 #app-scroll 内层，body 不滚——window 版 {top:0} 失效，手动滚容器
+  scrollBehavior() {
+    const el = document.getElementById('app-scroll')
+    if (el) el.scrollTo(0, 0)
+    return false
+  }
 })
 
 router.beforeEach((to) => {

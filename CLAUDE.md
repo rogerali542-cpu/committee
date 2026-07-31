@@ -26,6 +26,10 @@
   ```
   并且：① 内容容器加 `padding-bottom` 给「操作条+底栏」两层让位；② TabBar 对应路由加 `.merged`（去顶部描边/阴影），两片白连成整片。参考 `.mtg-actionbar`（Committee.vue 会议 tab）与 `.rec-actions`（接待 tab）。
 
+### App 壳：滚动只在 `#app-scroll`，别监听/滚 window
+- **背景**（0731）：手机浏览器 body 滚动 + fixed 底栏会被地址栏伸缩/橡皮筋带走。已改 app-shell：`html/body overflow:hidden`，`.app-shell` 锁 100% 高，滚动只发生在内层 `#app-scroll`；TabBar 是它的 flex:none 兄弟（App.vue），物理滚不走。页内操作条仍按上节 `position:fixed`（body 不滚后 fixed 天然稳）。
+- **规矩**：任何「滚到顶/记滚动位置/监听滚动」都操作 `document.getElementById('app-scroll')`（`.scrollTo/.scrollTop/addEventListener('scroll')`），**window 上的滚动 API 全部失效**（router scrollBehavior 已改）。参考 Committee.vue `appScrollEl()`。
+
 ## Git（本仓库工作流）
 
 - 提交前先 `cd /home/user/committee`（在 `h5/` 里跑 `git add h5/src/...` 会 pathspec 不匹配）。
