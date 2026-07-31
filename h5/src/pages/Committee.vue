@@ -1734,7 +1734,8 @@ const portalCards = computed(() => {
     cards.push({
       key: 'reception', tag: '业主接待',
       badge: rh.days === 0 ? '今日' : (rh.days === 1 ? '明日' : ''), tier: 'st-green',
-      title: rh.title, sub: String((recSystem.value && recSystem.value.place) || ''),
+      // 副行不再显示接待地点（0731 用户定）：首页这张卡的操作是「去登记」而非「改安排」，地点是安排属性、登记时用不到
+      title: rh.title, sub: '',
       verb: '去登记', onTap: () => openReceptionCreate()
     })
   } else {
@@ -4421,7 +4422,7 @@ onActivated(show)
 /* 右侧固定动词（0731 设计师定：状态驱动跳转必须把动词写出来，老人只读字不记规则） */
 .pt-verb { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8rpx; font-size: 31rpx; font-weight: 700; color: #1F2937; white-space: nowrap; }
 .pt-sec-main { flex: 1; min-width: 0; }
-.pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 长标题（如培训名）窄屏截断不溢出 */
+.pt-sec-title { font-size: 42rpx; font-weight: 800; color: #1F2937; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 0731 用户定：三张工作卡标题加大加粗更醒目（36→42rpx、750→800）；长标题（如培训名）窄屏仍截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=蓝、其余=灰 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
