@@ -88,7 +88,7 @@
          独立全屏层一次只做一件事：绿头 ‹ + 输入卡 + 底部「用这个地点」 -->
     <div v-if="placeInputOpen" class="rn-place-page">
       <div class="rn-hd">
-        <div class="rn-hd-bar" @click="placeInputOpen = false">
+        <div class="rn-hd-bar" @click="backFromPlaceInput">
           <i class="rn-back"></i>
           <span class="rn-hd-title">填写接待地点</span>
         </div>
@@ -346,6 +346,11 @@ function usePlaceDraft() {
   form.place = v
   rememberPlace(v, false)   // 手填过的立即存下来——这类用户最怕重复输入
   placeInputOpen.value = false
+}
+// 左上角返回＝回到进入前的状态：地点弹层保持打开（0731 用户定）；「用这个地点」才算选完收层
+function backFromPlaceInput() {
+  placeInputOpen.value = false
+  pickPlace()
 }
 async function editReason() {
   if (!canManage.value) return
