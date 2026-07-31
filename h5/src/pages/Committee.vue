@@ -50,7 +50,9 @@
               </svg>
               接待安排
             </span>
-            <span v-if="canManageReception" class="rnh-adj-link" @click.stop="goReceptionNotice">{{ receptionHero.set ? '调整' : '去设置' }}<i class="pt-arr"></i></span>
+            <!-- 0731 用户定：灰字链接不显眼——升级为浅绿胶囊次级钮（规范§7 次按钮=浅底模块色），
+                 有色块可辨认，又压不过底部「登记接待」实心主按钮 -->
+            <button v-if="canManageReception" type="button" class="rnh-adj-btn" @click.stop="goReceptionNotice">{{ receptionHero.set ? '调整安排' : '去设置' }}</button>
           </div>
           <template v-if="receptionHero.set">
             <div class="rnh-date">{{ receptionHero.dateLine }}</div>
@@ -5104,9 +5106,9 @@ onActivated(show)
 /* 卡头标签（0731 设计师定稿）：模块绿小图标 + 深色标签字 */
 .rnh-label { display: inline-flex; align-items: center; gap: 12rpx; font-size: 30rpx; font-weight: 700; color: #1F2937; }
 .rnh-label svg { width: 34rpx; height: 34rpx; color: #2f6b45; flex-shrink: 0; }
-/* 右上角「调整 ›」小链接：低调但常驻（月频动作，角落即可） */
-.rnh-adj-link { display: inline-flex; align-items: center; gap: 8rpx; font-size: 28rpx; font-weight: 500; color: #6B7280; cursor: pointer; padding: 8rpx 0 8rpx 16rpx; }
-.rnh-adj-link:active { opacity: .6; }
+/* 右上角「调整安排」浅绿胶囊次级钮（0731 用户定：灰字不显眼）：规范§7 次按钮=浅底模块色 */
+.rnh-adj-btn { flex-shrink: 0; min-height: 60rpx; padding: 0 26rpx; border: 0; border-radius: 999rpx; background: #E4F0E8; color: #2f6b45; font-size: 28rpx; font-weight: 650; }
+.rnh-adj-btn:active { background: #D6E9DD; }
 .rnh-date { margin-top: 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .rnh-title { margin-top: 12rpx; font-size: 43rpx; line-height: 1.3; font-weight: 700; color: var(--c-text-strong); }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
