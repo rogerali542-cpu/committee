@@ -1,93 +1,75 @@
 <template>
   <div class="profile-scroll" style="overflow-y:auto;">
-    <!-- Header -->
-    <div class="profile-header" :style="{ background: headerGrad, paddingTop: (statusBarHeight + 24) + 'px' }">
-      <!-- 返回驾驶舱移入顶栏右上角（0730 用户定） -->
-      <button type="button" class="ph-cockpit" :style="{ color: textColor, borderColor: textColor }" @click="goCockpitFromHd">返回首页</button>
-      <div class="ph-avatar" :style="{ color: textColor }">{{ activeRole.realName && activeRole.realName[0] }}</div>
-      <span class="ph-name" :style="{ color: textColor }">{{ activeRole.realName }}</span>
-      <span class="ph-role-chip" :style="{ background: 'rgba(255,255,255,0.3)', color: textColor }">{{ activeRole.role }}</span>
-      <span class="ph-desc" :style="{ color: textColor, opacity: 0.82 }">{{ roleDesc }}</span>
-    </div>
-
-    <!-- Stats Row (委员会成员) -->
-    <div class="stats-row" v-if="showStats">
-      <div class="stat-item">
-        <span class="stat-num">{{ stats.total }}</span>
-        <span class="stat-label">参会记录</span>
+    <!-- 页头（0731 用户×设计师骨架）：中性深灰（与待办聚合/历史记录同族），‹ 返回首页 + 标题，
+         下排 头像 + 姓名 + 机构·角色。原大头像居中 hero、角色说明句、参会统计卡整体退役——
+         统计入口由下方「我的参会与接待记录」行承接 -->
+    <div class="pf-hd">
+      <div class="pf-hd-bar" @click="goCockpitFromHd">
+        <i class="pf-back"></i>
+        <span class="pf-hd-title">个人中心</span>
       </div>
-      <div class="stat-item">
-        <span class="stat-num">{{ stats.voted }}</span>
-        <span class="stat-label">参与表决</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-num">{{ stats.attended }}</span>
-        <span class="stat-label">已参会</span>
-      </div>
-    </div>
-
-    <!-- 身份切换 -->
-    <div class="section-header">切换身份</div>
-    <div class="section">
-      <div
-        class="menu-row"
-        :class="{ active: item.id === activeRole.id }"
-        v-for="item in internalRoles"
-        :key="item.id"
-        @click="switchRole(item)"
-      >
-        <div class="menu-icon" :class="'id-avatar-' + item.roleClass">{{ item.realName[0] }}</div>
-        <span class="menu-label">{{ item.realName }}</span>
-        <span class="menu-role-tag" :class="item.roleClass">{{ item.role }}</span>
-        <span v-if="item.id === activeRole.id" class="menu-check">✓</span>
-        <span v-else class="menu-arrow">›</span>
-      </div>
-    </div>
-
-    <!-- 系统管理（仅管理员） -->
-    <template v-if="recordsList.length">
-      <div class="section-header">{{ recordsTitle }}</div>
-      <div class="section">
-        <div
-          class="menu-row"
-          v-for="item in recordsList"
-          :key="item.label"
-          @click="item.action === 'secretary' ? goSecretaryManagement() : showWip()"
-        >
-          <div class="menu-icon" :style="{ background: item.bg }">{{ item.icon }}</div>
-          <span class="menu-label">{{ item.label }}</span>
-          <span class="menu-arrow">›</span>
+      <div class="pf-id">
+        <div class="pf-avatar">{{ activeRole.realName && activeRole.realName[0] }}</div>
+        <div class="pf-id-main">
+          <div class="pf-name">{{ activeRole.realName }}</div>
+          <div class="pf-org">{{ orgLine }}</div>
         </div>
       </div>
-    </template>
-
-    <!-- 印章管理（0731 用户定：低频入口从驾驶舱撤下，归个人中心） -->
-    <div class="section-header">业委会事务</div>
-    <div class="section">
-      <div class="menu-row" @click="goSeal">
-        <div class="menu-icon" style="background:#E6EDF8;">章</div>
-        <span class="menu-label">印章管理</span>
-        <span class="menu-arrow">›</span>
-      </div>
     </div>
 
-    <!-- 消息通知 -->
-    <div class="section-header">消息通知</div>
-    <div class="section">
-      <div class="menu-row" @click="openNotifications">
-        <div class="menu-icon" style="background:#E6EDF8;">🔔</div>
-        <span class="menu-label">系统通知</span>
-        <div v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</div>
-        <span class="menu-arrow">›</span>
+    <div class="pf-wrap">
+      <!-- 切换身份（演示能力，标「测试用」防误会是正式功能） -->
+      <div class="pf-sec-label">切换身份<span class="pf-sec-note"> · 测试用</span></div>
+      <div class="pf-card">
+        <div
+          v-for="item in internalRoles"
+          :key="item.id"
+          class="pf-row"
+          :class="{ active: item.id === activeRole.id }"
+          @click="switchRole(item)"
+        >
+          <div class="pf-row-avatar">{{ item.realName[0] }}</div>
+          <span class="pf-row-name">{{ item.realName }}</span>
+          <span class="pf-row-role">{{ item.role }}</span>
+          <span v-if="item.id === activeRole.id" class="pf-check">✓</span>
+          <i v-else class="pf-arr"></i>
+        </div>
+      </div>
+
+      <!-- 轻列表（骨架：透明底+分隔线，62px 行高标准）；原分组卡里的功能入口全数保留 -->
+      <div class="pf-links">
+        <div class="pf-link" @click="goMyRecords">
+          <span class="pf-link-t">我的参会与接待记录</span>
+          <i class="pf-arr"></i>
+        </div>
+        <div class="pf-link" @click="goSeal">
+          <span class="pf-link-t">印章管理</span>
+          <i class="pf-arr"></i>
+        </div>
+        <div v-if="isChair" class="pf-link" @click="goSecretaryManagement">
+          <span class="pf-link-t">秘书授权管理</span>
+          <i class="pf-arr"></i>
+        </div>
+        <div class="pf-link" @click="openNotifications">
+          <span class="pf-link-t">系统通知</span>
+          <div v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</div>
+          <i class="pf-arr"></i>
+        </div>
+        <div class="pf-link" @click="showWip">
+          <span class="pf-link-t">业委会信息</span>
+          <i class="pf-arr"></i>
+        </div>
+        <div class="pf-link" @click="doLogout">
+          <span class="pf-link-t">退出登录</span>
+          <i class="pf-arr"></i>
+        </div>
       </div>
     </div>
-
-    <button class="logout-btn" @click="doLogout">退出登录</button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import api from '@/api'
 import { toast } from '@/utils/ui'
 import { navigateTo, redirectTo } from '@/utils/navigate'
@@ -97,81 +79,36 @@ import { meetingRecordingSession, discardMeetingRecording } from '@/composables/
 
 const auth = useAuthStore()
 
-const statusBarHeight = ref(0)
 const activeRole = ref({})
-// 顶栏「返回驾驶舱」（0730：由 TabBar 浮球移入顶栏）
+// 顶栏 ‹ 返回首页（骨架：返回胶囊撤销，整行可点）
 function goCockpitFromHd() {
   setStorage('home_layout', 'portal')
   window.location.replace('/main?home=portal')
 }
-const headerGrad = ref('')
-const textColor = ref('#5C3D00')
-const roleDesc = ref('')
-const roleClass = ref('')
-const showStats = ref(false)
-const stats = ref({ total: 0, voted: 0, attended: 0 })
-const recordsTitle = ref('')
-const recordsList = ref([])
 const internalRoles = ref([])
 const unreadCount = ref(0)
+const isChair = computed(() => activeRole.value.role === '主任')
+// 「阳光花园业委会 · 主任」——机构名+角色一行（骨架样式）
+const orgLine = computed(() =>
+  ((activeRole.value.communityName || '阳光花园') + '业委会 · ' + (activeRole.value.role || '')))
 
 function refresh() {
-  statusBarHeight.value = 20
-
   const role = getStorage('activeRole', null)
   if (!role) { redirectTo('/pages/login/login'); return }
 
   // 切换身份名单：优先用后端 user_roles（onMounted 拉取，根治写死名单与库脱节），兜底旧写死名单
   const allIdentities = serverIdentities.value || [
-    { id: 1, realName: '张建国', role: '主任', roleClass: 'chair' },
-    { id: 2, realName: '李秀英', role: '副主任', roleClass: 'chair' },
-    { id: 3, realName: '王志强', role: '委员', roleClass: 'member' },
-    { id: 4, realName: '赵丽娟', role: '委员', roleClass: 'member' },
-    { id: 5, realName: '刘海涛', role: '委员', roleClass: 'member' },
-    { id: 6, realName: '陈晓梅', role: '委员', roleClass: 'member' },
-    { id: 7, realName: '杨国华', role: '委员', roleClass: 'member' },
-    { id: 8, realName: '秘书小李', role: '业委会秘书', roleClass: 'secretary', enabled: true }
+    { id: 1, realName: '张建国', role: '主任' },
+    { id: 2, realName: '李秀英', role: '副主任' },
+    { id: 3, realName: '王志强', role: '委员' },
+    { id: 4, realName: '赵丽娟', role: '委员' },
+    { id: 5, realName: '刘海涛', role: '委员' },
+    { id: 6, realName: '陈晓梅', role: '委员' },
+    { id: 7, realName: '杨国华', role: '委员' },
+    { id: 8, realName: '秘书小李', role: '业委会秘书', enabled: true }
   ]
 
-  const gradMap = {
-    '主任': 'linear-gradient(160deg,#4470a5,#2f5f9e)',
-    '副主任': 'linear-gradient(160deg,#4470a5,#2f5f9e)',
-    '委员': 'linear-gradient(160deg,#4470a5,#2f5f9e)',
-    '业委会秘书': 'linear-gradient(160deg,#4470a5,#2f5f9e)'
-  }
-  const descMap = {
-    '主任': '负责召集主持会议，具有最高操作权限',
-    '副主任': '协助主任开展工作，享有同等会议权限',
-    '委员': '确认参会，参与表决，查看会议资料',
-    '业委会秘书': '经主任授权，协助处理通知、材料与日常工作'
-  }
-  const roleClassMap = {
-    '主任': '', '副主任': '', '委员': ''
-  }
-
-  const isCommittee = ['主任', '副主任', '委员'].includes(role.role)
-
-  // Records menu by role
-  let rTitle = ''
-  let rList = []
-  if (role.role === '主任') {
-    rTitle = '人员与授权'
-    rList = [
-      { icon: '秘', bg: '#E8EEF8', label: '秘书授权管理', action: 'secretary' }
-    ]
-  }
-
-  const s = { total: isCommittee ? 3 : 0, voted: isCommittee ? 2 : 0, attended: isCommittee ? 3 : 0 }
-
   activeRole.value = role
-  headerGrad.value = gradMap[role.role] || gradMap['主任']
-  textColor.value = '#fff'
-  roleDesc.value = descMap[role.role] || ''
-  roleClass.value = roleClassMap[role.role] || ''
-  showStats.value = isCommittee
-  stats.value = s
-  recordsTitle.value = rTitle
-  recordsList.value = rList
   internalRoles.value = allIdentities.filter(i => ['主任', '副主任', '委员', '业委会秘书'].includes(i.role))
 
   loadUnread()
@@ -186,6 +123,14 @@ async function loadUnread() {
 
 function openNotifications() {
   navigateTo('/pages/notifications/notifications')
+}
+
+// 我的参会与接待记录 → 历史记录页（会议/接待归档）；软路由坑同款硬跳兜底
+function goMyRecords() {
+  navigateTo('/library')
+  setTimeout(() => {
+    if (!document.querySelector('.arch-page')) window.location.href = '/library'
+  }, 300)
 }
 
 // 印章管理（0731 用户定：低频入口从驾驶舱撤下归此处）；硬跳保证必达（软路由偶发不切视图）
@@ -240,7 +185,6 @@ async function loadServerIdentities() {
     if (Array.isArray(list) && list.length) {
       serverIdentities.value = list.map(r => ({
           id: r.id, realName: r.realName, role: r.role,
-          roleClass: r.role === '委员' ? 'member' : r.role === '业委会秘书' ? 'secretary' : 'chair',
           communityId: r.communityId, communityName: r.communityName,
           enabled: r.enabled !== false,
           scopeLevel: r.scopeLevel, scopeRegionCode: r.scopeRegionCode, scopeRegionName: r.scopeRegionName
@@ -256,109 +200,50 @@ onActivated(() => { if (mounted) refresh() })
 </script>
 
 <style scoped>
-.profile-scroll { min-height: 100vh; background: #f4f5f7; }
+.profile-scroll { min-height: 100vh; background: #f2f3f5; }
 
-/* Header */
-.profile-header {
-  position: relative;
-  padding: 0 40rpx 56rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.ph-cockpit { position: absolute; top: calc(env(safe-area-inset-top) + 18rpx); right: 24rpx; min-height: 56rpx; padding: 0 26rpx; border: 2rpx solid currentColor; border-radius: 999rpx; background: rgba(255,255,255,.14); font-size: 26rpx; font-weight: 500; }
-.ph-cockpit:active { opacity: .7; }
-.ph-avatar {
-  width: 160rpx; height: 160rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.35);
-  font-size: 64rpx; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 20rpx;
-  border: 4rpx solid rgba(255,255,255,0.6);
-}
-.ph-name { font-size: 44rpx; font-weight: 700; margin-bottom: 12rpx; }
-.ph-role-chip {
-  font-size: 28rpx; font-weight: 600;
-  padding: 6rpx 24rpx; border-radius: 30rpx;
-}
-.ph-desc { font-size: 28rpx; margin-top: 14rpx; text-align: center; padding: 0 40rpx; line-height: 1.5; }
+/* 页头：中性深灰渐变（个人中心不属于任何模块，与待办聚合页/历史记录同族色） */
+.pf-hd { background: linear-gradient(160deg, #55606e 0%, #434d5a 100%); padding: calc(env(safe-area-inset-top) + 18rpx) 32rpx 40rpx; color: #fff; }
+.pf-hd-bar { display: flex; align-items: center; gap: 18rpx; min-height: 72rpx; cursor: pointer; }
+.pf-hd-bar:active { opacity: .75; }
+/* CSS 边框画返回箭头（项目规约：不用字符箭头） */
+.pf-back { display: inline-block; width: 18rpx; height: 18rpx; border-left: 4rpx solid #fff; border-bottom: 4rpx solid #fff; transform: rotate(45deg); }
+.pf-hd-title { font-size: 34rpx; font-weight: 700; }
+.pf-id { display: flex; align-items: center; gap: 24rpx; margin-top: 20rpx; }
+.pf-avatar { flex-shrink: 0; width: 112rpx; height: 112rpx; border-radius: 50%; background: rgba(255,255,255,.28); display: flex; align-items: center; justify-content: center; font-size: 48rpx; font-weight: 700; }
+.pf-id-main { min-width: 0; }
+.pf-name { font-size: 40rpx; font-weight: 750; line-height: 1.2; }
+.pf-org { margin-top: 8rpx; font-size: 27rpx; color: rgba(255,255,255,.75); }
 
-/* Stats */
-.stats-row {
-  display: flex;
-  margin: -28rpx 24rpx 0;
-  background: #fff; border-radius: 24rpx;
-  box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06);
-  overflow: hidden;
-  position: relative; z-index: 2;
-}
-.stat-item {
-  flex: 1;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 28rpx 0; gap: 8rpx;
-}
-.stat-item:not(:last-child) { border-right: 2rpx solid #f0f0f0; }
-.stat-num { font-size: 44rpx; font-weight: 700; color: #1f2329; }
-.stat-label { font-size: 28rpx; color: #666; }
+.pf-wrap { padding: 0 24rpx 60rpx; }
 
-/* Section */
-.section-header {
-  font-size: 28rpx; color: #666; font-weight: 500;
-  padding: 32rpx 32rpx 12rpx;
-}
-.section {
-  margin: 0 24rpx;
-  background: #fff; border-radius: 24rpx;
-  overflow: hidden;
-  box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06);
-}
+/* 分区标签：「切换身份 · 测试用」 */
+.pf-sec-label { padding: 32rpx 8rpx 16rpx; font-size: 30rpx; font-weight: 700; color: #1F2937; }
+.pf-sec-note { font-weight: 500; font-size: 27rpx; color: #6B7280; }
 
-/* Menu row */
-.menu-row {
-  display: flex; align-items: center; gap: 20rpx;
-  padding: 28rpx 28rpx;
-  border-top: 2rpx solid #f5f5f5;
-}
-.menu-row:first-child { border-top: none; }
-.menu-row.active { background: #F0F5FB; }   /* 个人中心蓝系（0731 用户定：与会议同款蓝） */
-.menu-row:active { background: #fafbfc; }
-.menu-icon {
-  width: 72rpx; height: 72rpx; border-radius: 18rpx;
-  flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36rpx;
-}
-.menu-label { flex: 1; font-size: 34rpx; color: #1f2329; }
-.menu-arrow { font-size: 40rpx; color: #666; }
-.menu-check { font-size: 38rpx; color: #FFA800; font-weight: 700; }
+/* 身份白卡：中性头像 + 姓名 + 右侧灰角色；当前项浅蓝底+蓝勾（个人中心蓝系） */
+.pf-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); overflow: hidden; }
+.pf-row { display: flex; align-items: center; gap: 20rpx; min-height: 124rpx; padding: 0 28rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }
+.pf-row:first-child { border-top: 0; }
+.pf-row:active { background: #FAFBFC; }
+.pf-row.active { background: #EDF3FB; }
+.pf-row-avatar { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #EDEFF3; color: #4A5560; font-size: 32rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.pf-row-name { flex: 1; min-width: 0; font-size: 33rpx; font-weight: 700; color: #1F2937; }
+.pf-row-role { flex-shrink: 0; font-size: 28rpx; color: #6B7280; }
+.pf-check { flex-shrink: 0; font-size: 36rpx; font-weight: 800; color: #2f5f9e; }
 
-/* Identity group */
-.menu-role-tag { font-size: 28rpx; padding: 4rpx 16rpx; border-radius: 10rpx; background: #f0f0f0; color: #666; }
-.menu-role-tag.chair { background: #FFF3DC; color: #C77800; }
-.menu-role-tag.recorder { background: #F5EEF8; color: #9B59B6; }
-
-/* ID avatar colors */
-.id-avatar-chair { background: linear-gradient(135deg,#FFCC44,#FFA800); color: #fff; }
-.id-avatar-member { background: linear-gradient(135deg,#FFCC44,#FFA800); color: #fff; }
-.id-avatar-recorder { background: linear-gradient(135deg,#BB8FCE,#9B59B6); color: #fff; }
-
-/* Logout */
-.logout-btn {
-  margin: 32rpx 24rpx 48rpx;
-  width: calc(100% - 48rpx);
-  padding: 28rpx;
-  background: #fff; border-radius: 24rpx;
-  color: #E74C3C; font-size: 34rpx; font-weight: 600;
-  text-align: center;
-  border: none;
-  box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06);
-}
+/* 轻列表：透明底+分隔线（62px 行高标准，与驾驶舱一致） */
+.pf-links { margin-top: 36rpx; padding: 0 8rpx; }
+.pf-link { display: flex; align-items: center; gap: 12rpx; min-height: 124rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
+.pf-link:last-child { border-bottom: 2rpx solid #E2E5EA; }
+.pf-link:active { opacity: .65; }
+.pf-link-t { flex: 1; min-width: 0; font-size: 32rpx; color: #1F2937; }
+.pf-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
 
 /* 通知未读红点 */
 .badge {
   min-width: 36rpx; height: 36rpx; line-height: 36rpx; text-align: center;
-  background: #E74C3C; color: #fff; font-size: 28rpx; font-weight: 700;
-  border-radius: 18rpx; padding: 0 10rpx; margin-right: 8rpx;
+  background: #E74C3C; color: #fff; font-size: 26rpx; font-weight: 700;
+  border-radius: 18rpx; padding: 0 10rpx;
 }
 </style>
