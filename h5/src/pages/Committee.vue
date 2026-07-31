@@ -205,38 +205,40 @@
               <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
               <span class="mtg-fold-btn"><i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i></span>
             </div>
-            <!-- 档案馆入口（0730 设计师定）：全年会议是今年排期总览、可展开；档案馆是历年已归档纪要，两件事并存。
+            <!-- 展开的月历紧跟「全年会议」行（0731 用户定：原来渲染在历史记录行下方，
+                 展开内容与标题被隔开、像属于历史记录）-->
+            <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
+              <div class="mr-calendar-panel-title">
+                <span>{{ viewYear }}年月历</span>
+              </div>
+              <div class="mr-calendar-grid">
+                <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
+                        class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
+                  <b>{{ mc.m }}月</b>
+                  <span>{{ mc.label }}</span>
+                </button>
+              </div>
+              <template v-if="meetingRecordList.done.length">
+                <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
+                <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row">
+                  <div class="mr-badge" :class="row.statusClass">
+                    <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
+                  </div>
+                  <div class="mr-info">
+                    <!-- 「补开」标签已删（0729 用户定）：月历已表达各期执行情况，完成列表不再另标 -->
+                    <div class="mr-row-title">{{ row.title }}</div>
+                    <div class="mr-row-sub">{{ row.sub }}</div>
+                  </div>
+                  <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">查看 ›</button>
+                </div>
+              </template>
+            </div>
+            <!-- 历史记录入口（0730 设计师定）：全年会议是今年排期总览、可展开；历史记录是历年已归档纪要，两件事并存。
                  右侧与展开按钮同款圆底图形钮，仅方向不同（0731 用户定：右指=跳转、下指=展开） -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
               <b>历史记录 · 会议纪要</b>
               <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
             </div>
-          </div>
-          <div v-if="meetingCalendarOpen" ref="calendarPanelEl" class="mr-calendar-panel">
-            <div class="mr-calendar-panel-title">
-              <span>{{ viewYear }}年月历</span>
-            </div>
-            <div class="mr-calendar-grid">
-              <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
-                      class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
-                <b>{{ mc.m }}月</b>
-                <span>{{ mc.label }}</span>
-              </button>
-            </div>
-            <template v-if="meetingRecordList.done.length">
-              <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
-              <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row">
-                <div class="mr-badge" :class="row.statusClass">
-                  <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
-                </div>
-                <div class="mr-info">
-                  <!-- 「补开」标签已删（0729 用户定）：月历已表达各期执行情况，完成列表不再另标 -->
-                  <div class="mr-row-title">{{ row.title }}</div>
-                  <div class="mr-row-sub">{{ row.sub }}</div>
-                </div>
-                <button type="button" class="mr-cta-btn" :class="row.statusClass" @click.stop="row.onTap()">查看 ›</button>
-              </div>
-            </template>
           </div>
           </div>
           <!-- 底部动作条（0730 点2三改）：上下叠放，主次分明且都在拇指区——
