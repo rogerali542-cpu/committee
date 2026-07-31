@@ -111,7 +111,7 @@ const receptionMembers = computed(() =>
   committeeRoster.value.filter(member => RECEPTION_ROLES.includes(String(member.role || '').trim()))
 )
 
-const HOUR_OPTS = Array.from({ length: 12 }, (_, i) => String(i + 10).padStart(2, '0'))
+const HOUR_OPTS = Array.from({ length: 14 }, (_, i) => String(i + 8).padStart(2, '0'))   /* 0731 mock：时段从 08:00 起 */
 const MINUTE_OPTS = ['00', '30']
 const form = reactive({ day: '', start: '', end: '', place: '', person: '', reason: '' })
 function timePart(field, part) {
@@ -161,7 +161,7 @@ function backToReception() {
 
 /** 组合后的时间文案，如「每周二 15:00—17:00」；没填齐返回空 */
 const timeText = computed(() => {
-  const validTime = value => /^(1\d|20|21):(00|30)$/.test(value)
+  const validTime = value => /^(0[89]|1\d|2[01]):(00|30)$/.test(value)
   if (!form.day || !validTime(form.start) || !validTime(form.end)) return ''
   return '每' + form.day + ' ' + form.start + '—' + form.end
 })
@@ -251,21 +251,24 @@ onMounted(load)
 
 // ── 行点击（0731 设计师稿：行版式，点行改值） ──
 const TIME_OPTS = HOUR_OPTS.flatMap(h => MINUTE_OPTS.map(m => h + ':' + m))
+// 底部选择单（0731 用户定：每周/开始/结束都用弹层）——picker 变体：当前值浅绿高亮+绿勾
 async function pickDay() {
   if (!canManage.value) return
-  const res = await showActionSheet({ title: '每周哪天接待', itemList: DAYS })
+  const res = await showActionSheet({ title: '每周几接待', variant: 'picker',
+    itemList: DAYS.map(d => ({ label: d, selected: d === form.day })) })
   if (res && res.tapIndex >= 0) form.day = DAYS[res.tapIndex]
 }
 async function pickTime(field) {
   if (!canManage.value) return
-  const res = await showActionSheet({ title: field === 'start' ? '开始时间' : '结束时间', itemList: TIME_OPTS })
+  const res = await showActionSheet({ title: field === 'start' ? '开始时间' : '结束时间', variant: 'picker',
+    itemList: TIME_OPTS.map(t => ({ label: t, selected: t === form[field] })) })
   if (res && res.tapIndex >= 0) form[field] = TIME_OPTS[res.tapIndex]
 }
 async function pickPerson() {
   if (!canManage.value) return
-  const names = receptionMembers.value.map(m => m.name + (m.role ? ' · ' + m.role : ''))
-  if (!names.length) { toast({ title: '暂无可选成员', icon: 'none' }); return }
-  const res = await showActionSheet({ title: '接待人员', itemList: names })
+  if (!receptionMembers.value.length) { toast({ title: '暂无可选成员', icon: 'none' }); return }
+  const res = await showActionSheet({ title: '接待人员', variant: 'picker',
+    itemList: receptionMembers.value.map(m => ({ label: m.name + (m.role ? ' · ' + m.role : ''), selected: m.name === form.person })) })
   if (res && res.tapIndex >= 0) form.person = receptionMembers.value[res.tapIndex].name
 }
 async function editPlace() {

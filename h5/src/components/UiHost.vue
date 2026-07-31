@@ -38,13 +38,14 @@
         <div v-if="uiState.actionSheet.title" class="ui-sheet-title">{{ uiState.actionSheet.title }}</div>
         <div v-if="uiState.actionSheet.description" class="ui-sheet-desc">{{ uiState.actionSheet.description }}</div>
       </div>
-      <button v-for="(item, idx) in uiState.actionSheet.itemList" :key="idx" class="ui-sheet-item" :class="typeof item === 'object' ? item.tone : ''" @click="onSheetTap(idx)">
+      <button v-for="(item, idx) in uiState.actionSheet.itemList" :key="idx" class="ui-sheet-item" :class="[typeof item === 'object' ? item.tone : '', { selected: typeof item === 'object' && item.selected }]" @click="onSheetTap(idx)">
         <span v-if="typeof item === 'object' && item.icon" class="ui-sheet-icon">{{ item.icon }}</span>
         <span class="ui-sheet-copy">
           <b>{{ typeof item === 'object' ? item.label : item }}</b>
           <small v-if="typeof item === 'object' && item.description">{{ item.description }}</small>
         </span>
-        <span v-if="typeof item === 'object'" class="ui-sheet-arrow">›</span>
+        <span v-if="typeof item === 'object' && item.selected" class="ui-sheet-check">✓</span>
+        <span v-else-if="typeof item === 'object' && uiState.actionSheet.variant !== 'picker'" class="ui-sheet-arrow">›</span>
       </button>
       <button class="ui-sheet-item cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
     </div>
@@ -140,6 +141,17 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-sheet-item { display: block; width: 100%; padding: 32rpx 0; font-size: 32rpx; background: #fff; border-bottom: 1rpx solid #eee; color: #1a1a1a; }
 .ui-sheet-item.cancel { margin-top: 14rpx; color: #666; font-weight: 600; border-bottom: none; }
 .ui-sheet.opinion-change { padding: 0 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #F5F3EF; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.12); }
+/* 底部选择单（variant:'picker'，0731 设计师定）：>5 项/需滚动的选择用底部弹层——选项落在拇指区；
+   列表弹层内滚动、选中项浅绿底+绿勾、取消胶囊 sticky 常驻 */
+.ui-sheet.picker { max-height: 78vh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.14); }
+.ui-sheet.picker .ui-sheet-head { padding: 32rpx 32rpx 24rpx; border-bottom: 2rpx solid #F0F2F5; }
+.ui-sheet.picker .ui-sheet-title { font-size: 33rpx; }
+.ui-sheet.picker .ui-sheet-item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 112rpx; padding: 0 32rpx; text-align: left; font-size: 33rpx; color: #1F2937; border-bottom: 2rpx solid #F0F2F5; }
+.ui-sheet.picker .ui-sheet-item .ui-sheet-copy b { font-size: 33rpx; font-weight: 500; color: #1F2937; }
+.ui-sheet.picker .ui-sheet-item.selected { background: #E8F4EC; }
+.ui-sheet.picker .ui-sheet-item.selected .ui-sheet-copy b { font-weight: 750; }
+.ui-sheet-check { flex-shrink: 0; font-size: 38rpx; font-weight: 800; color: #2f6b45; }
+.ui-sheet.picker .ui-sheet-item.cancel { position: sticky; bottom: 0; margin: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); min-height: 96rpx; justify-content: center; border-radius: 18rpx; background: #F1F3F6; color: #4A5560; font-weight: 650; border-bottom: 0; }
 .ui-sheet-head { padding: 34rpx 20rpx 26rpx; text-align: left; }
 .ui-sheet-title { font-size: 36rpx; line-height: 1.35; font-weight: 700; color: #1F2329; }
 .ui-sheet-desc { margin-top: 10rpx; font-size: 27rpx; line-height: 1.55; color: #7A7F87; }
