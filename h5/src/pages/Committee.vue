@@ -1709,16 +1709,15 @@ const cockpitDateText = computed(() => {
 const portalCards = computed(() => {
   const cards = []
   // 会议节（0731 用户定：多期可翻页）——翻到想召开的那一场直接在首页操作，动作/状态随当前页变。
+  // 只有「到点该开」的期次（见 meetingCardList），未来计划期次不在此翻页。
   const mlist = meetingCardList.value
   if (mlist.length) {
     const idx = Math.min(mtgIdx.value, mlist.length - 1)
     const h = mlist[idx]
     const isDraft = String(h.key).indexOf('mr-draft') === 0
-    const future = h.statusClass === 'upcoming' && String(h.key).indexOf('mr-current-') !== 0
     cards.push({
       key: 'meeting', tag: '业委会会议',
-      badge: future ? '计划中' : dueStatusText(h),
-      tier: future ? 'st-muted' : dueStatusTier(h),
+      badge: dueStatusText(h), tier: dueStatusTier(h),
       title: meetingRowTitle(h), sub: '',
       verb: h.statusClass === 'overdue' ? '去补开' : (h.statusClass === 'ongoing' || isDraft) ? '继续' : '去召开',
       onTap: () => h.onTap(),
@@ -1868,12 +1867,13 @@ const heroMeeting = computed(() => {
   const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
   return [...list].sort((a, b) => rank(a) - rank(b))[0]
 })
-// 驾驶舱会议卡可翻页（0731 用户定）：同时存在多期例会时，在首页就能翻到想召开的那一场直接操作，
-// 不必先进业委会页。顺序＝紧急项（与主卡同序）在前、未来计划期次在后；第 0 页即 heroMeeting。
+// 驾驶舱会议卡可翻页（0731 用户定）：同时存在多期「到点该开」的例会（逾期/本期/进行中/草稿）时，
+// 在首页就能翻到想召开的那一场直接操作，不必先进业委会页。
+// 只收 immediate——9-10月/11-12月这类还没到时间的未来计划期次不进首页卡（0731 用户定）；
+// 要看/提前起未来期次仍到业委会页。顺序与主卡同序，第 0 页即 heroMeeting。
 const meetingCardList = computed(() => {
   const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
-  const imm = [...meetingRecordList.value.immediate].sort((a, b) => rank(a) - rank(b))
-  return [...imm, ...meetingRecordList.value.planned]
+  return [...meetingRecordList.value.immediate].sort((a, b) => rank(a) - rank(b))
 })
 const mtgIdx = ref(0)   // 当前翻到第几场；越界在渲染时 clamp，翻页函数也按 clamp 后基准增减
 // 短名（点6）：列表统一「第N次业委会例会」；非例会（专项议事会等）保留原名；长名只在全年一览
