@@ -288,7 +288,7 @@ onMounted(() => {
 
 <style scoped>
 /* 顶栏统一为纯深橙（覆盖 PageNav 默认渐变） */
-:deep(.page-nav) { background: #2f5f9e; }  /* 会议模块页头（规范三色制） */
+:deep(.page-nav) { background: #2b5589; }  /* 会议模块页头（规范三色制） */
 .mv-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
 /* 正文格式与老纪要页保持一致 */
 .doc { background: #fff; border-radius: 24rpx; padding: 36rpx 32rpx; box-shadow: 0 8rpx 28rpx rgba(0,0,0,0.06); }

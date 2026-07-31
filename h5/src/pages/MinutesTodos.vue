@@ -607,7 +607,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-:deep(.page-nav) { background: #2f5f9e; }  /* 会议模块页头（规范三色制） */
+:deep(.page-nav) { background: #2b5589; }  /* 会议模块页头（规范三色制） */
 .todos-page { min-height: 100vh; background: #f4f5f7; padding: 24rpx 24rpx 100rpx; box-sizing: border-box; }
 
 /* 人工确认清单（0724）：AI 建议 → 主任编辑/删除/增补后固化。留下即保留、删除即弃用（去掉重复的「保留」勾选） */

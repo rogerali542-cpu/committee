@@ -420,7 +420,7 @@ onUnmounted(() => {
 
 <style scoped>
 /* 顶栏统一为纯深橙（与 CommitteeDetail 一致，覆盖 PageNav 默认黄橙渐变） */
-:deep(.page-nav) { background: #2f5f9e; }  /* 会议模块页头（规范三色制） */
+:deep(.page-nav) { background: #2b5589; }  /* 会议模块页头（规范三色制） */
 .mm { padding: 12px 12px calc(60rpx + env(safe-area-inset-bottom)); background: #f4f5f7; min-height: 100vh; }
 /* 准备阶段有底部固定确认栏：留足底部空间，材料多时也不会被遮住 */
 .mm--with-footer { padding-bottom: calc(320rpx + env(safe-area-inset-bottom)); }

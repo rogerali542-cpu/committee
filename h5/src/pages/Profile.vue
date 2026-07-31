@@ -230,7 +230,7 @@ onActivated(() => { if (mounted) refresh() })
 .pf-row-avatar { flex-shrink: 0; width: 60rpx; height: 60rpx; border-radius: 50%; background: #EDEFF3; color: #4A5560; font-size: 27rpx; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .pf-row-name { flex: 1; min-width: 0; font-size: 31rpx; font-weight: 700; color: #1F2937; }
 .pf-row-role { flex-shrink: 0; font-size: 27rpx; color: #6B7280; }
-.pf-check { flex-shrink: 0; font-size: 36rpx; font-weight: 800; color: #2f5f9e; }
+.pf-check { flex-shrink: 0; font-size: 36rpx; font-weight: 800; color: #2b5589; }
 
 /* 轻列表：透明底+分隔线（62px 行高标准，与驾驶舱一致） */
 .pf-links { margin-top: 36rpx; padding: 0 8rpx; }

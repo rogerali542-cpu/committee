@@ -3915,7 +3915,7 @@ async function returnToRecordingPage() {
 .live-page :deep(.page-nav) { height:calc(100rpx + env(safe-area-inset-top)); }
 .live-page :deep(.page-nav .nav-back) { height:100rpx; }
 /* 顶栏＝会议模块蓝（规范三色制，覆盖 PageNav 默认橙） */
-:deep(.page-nav) { background: #2f5f9e; }
+:deep(.page-nav) { background: #2b5589; }
 
 /* 步骤指示器 */
 /* 首屏容器：至少撑满一屏（100vh 减 顶栏+页面上下留白），参会名单被顶到首屏之下，往下拉才看到 */

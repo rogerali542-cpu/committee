@@ -785,7 +785,7 @@ function viewTodoList() {
 <style scoped>
 .minutes-nav-back { width:96rpx; height:124rpx; display:flex; align-items:center; justify-content:center; color:#fff; font-size:66rpx; font-weight:700; }
 /* 顶栏统一为纯深橙（与其他页一致，覆盖 PageNav 默认黄橙渐变） */
-:deep(.page-nav) { background: #2f5f9e; }  /* 会议模块页头（规范三色制） */
+:deep(.page-nav) { background: #2b5589; }  /* 会议模块页头（规范三色制） */
 .page { min-height:100vh; background:#f4f5f7; padding:24rpx 24rpx 100rpx; box-sizing:border-box; }
 /* 顶栏右上角「首页」：白描边药丸，适配深橙 PageNav 头 */
 .nav-home { display:inline-flex; align-items:center; height:64rpx; margin-right:20rpx; padding:0 24rpx; border:2rpx solid rgba(255,255,255,0.6); border-radius:34rpx; background:rgba(255,255,255,0.12); color:#fff; font-size:30rpx; font-weight:600; line-height:1; }

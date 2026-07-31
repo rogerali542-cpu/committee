@@ -1837,7 +1837,7 @@ async function removeMaterial(item) {
 </script>
 
 <style scoped>
-:deep(.page-nav) { background: #2f5f9e; }  /* 会议模块页头（规范三色制） */
+:deep(.page-nav) { background: #2b5589; }  /* 会议模块页头（规范三色制） */
 .del-meeting-link { color:#ccc; font-size:12px; border:1px solid #e8e8e8; border-radius:6px; padding:3px 10px; cursor:pointer; }
 .del-meeting-link:active { background:#f5f5f5; }
 /* overflow-x:hidden 兜底（0723）：任何子元素越界都不再把页面撑宽导致真机横向晃动 */

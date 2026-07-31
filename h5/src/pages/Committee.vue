@@ -15,7 +15,7 @@
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
       <!-- 评分（0731 用户定：改回绿色且与分数挂钩）：大数字用 scoreGradient 渐变字，
-           ≥90薄荷绿 / 80-89草绿 / 70-79黄绿 / 60-69琥珀 / <60朱红，压在深色页头 #43546F 上对比足；点击进个人中心看履职统计 -->
+           ≥90薄荷绿 / 80-89草绿 / 70-79黄绿 / 60-69琥珀 / <60朱红，压在深色页头 #3f4653 上对比足；点击进个人中心看履职统计 -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
         <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
         <span class="hd-score-label">综合评分 ›</span>
@@ -4439,8 +4439,8 @@ onActivated(show)
 }
 /* 顶栏 */
 /* 顶栏加高（0716 用户定），评分徽章 align-self:center 在栏内垂直居中 */
-/* 页头三色制（规范二）：会议蓝#2f5f9e／接待绿#2f6b45（模块色仅用于页头/底栏选中/主按钮） */
-.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2f5f9e; }
+/* 页头三色制（规范二）：会议蓝#2b5589／接待绿#2f6b45（模块色仅用于页头/底栏选中/主按钮） */
+.hd { display: flex; align-items: flex-end; justify-content: space-between; padding: calc(env(safe-area-inset-top) + 14rpx) 32rpx 18rpx; background: #2b5589; }
 .reception-home > .hd { background: #2f6b45; }   /* 接待页顶栏＝模块绿 */
 .reception-home .hd-sub { color: #c6ddcf; }      /* 接待页头副文字（规范） */
 .hd-left { display: flex; flex-direction: column; padding-top: 4rpx; }
@@ -4536,7 +4536,8 @@ onActivated(show)
 .portal-home .hd {
   align-items: center;
   padding: calc(env(safe-area-inset-top) + 18rpx) 34rpx 22rpx;
-  background: #43546F;
+  background: #3f4653;   /* 0731 设计师定：首页是"无模块"页，页头改中性石墨灰（几乎不含蓝）——
+                            与压深后的会议蓝 #2b5589 靠彩度分开（灰 vs 蓝），不再靠明度区分 */
   box-shadow: 0 6rpx 18rpx rgba(24, 51, 76, .12);
 }
 .portal-home .hd-title { font-size: 38rpx; font-weight: 700; letter-spacing: .5rpx; }
@@ -4552,7 +4553,7 @@ onActivated(show)
 .pt-sec-tag-row { display: flex; align-items: center; gap: 12rpx; }
 .pt-sec-ico { flex-shrink: 0; width: 34rpx; height: 34rpx; color: #8A94A6; display: inline-flex; align-items: center; justify-content: center; }
 /* 图标上模块色（0731 用户定）：会议蓝/接待绿/学习深青，与底栏选中态同色，做工作类型的视觉锚 */
-.pt-sec-ico.ico-meeting { color: #2f5f9e; }
+.pt-sec-ico.ico-meeting { color: #2b5589; }
 .pt-sec-ico.ico-reception { color: #2f6b45; }
 .pt-sec-ico.ico-learning { color: #2a6b73; }
 .pt-sec-ico svg { width: 34rpx; height: 34rpx; }
@@ -4583,7 +4584,7 @@ onActivated(show)
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
 .pt-badge.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; margin-top: 2rpx; }   /* 胶囊带高度，微调与标题行居中对齐 */
 .pt-badge.st-green { color: #2f6b45; font-weight: 700; }
-.pt-badge.st-blue, .pt-badge.st-today { color: #2f5f9e; font-weight: 700; }
+.pt-badge.st-blue, .pt-badge.st-today { color: #2b5589; font-weight: 700; }
 .pt-badge.st-muted { color: #6B7280; font-weight: 500; }
 /* （主操作条已删——0731 与设计师定：首页是分派台不硬选主操作，空白留着比塞一个假主操作好） */
 /* 轻列表（spec §5；0731 设计师定：行压矮、去粗——"轻"列表不与白卡标题抢重量，和卡片更连贯 */
