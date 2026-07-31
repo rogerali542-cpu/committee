@@ -222,7 +222,7 @@
             <!-- 标题行右侧「已开 N / 共 6」计数（0731 用户×设计师定稿）：总览由数字承担，
                  面板里不再放宫格（原「不写具体数字」的顾虑被计数式取代） -->
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
-              <b>{{ viewYear }}全年例会</b>
+              <b>{{ viewYear }}年全年例会</b>
               <span class="yp-head-right">
                 <span class="yp-count">已开 {{ yearDoneCount }} / 共 {{ yearPlan.length }}</span>
                 <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
