@@ -5200,7 +5200,7 @@ onActivated(show)
 /* 右箭头：CSS 边框画（CLAUDE.md），示意可进入 */
 .rte-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx;
   border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
-.rte-sub { margin-top: 12rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rte-sub { margin-top: 12rpx; font-size: 27rpx; color: #6B7280; line-height: 1.55; }   /* 0731 用户定：不许单行截断——折行写全，条数超限由「等」收尾（每条完整） */
 .plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
 .plan-stack.reception-mode .plan-todo-card.empty-compact { padding: 0 24rpx; }
 .plan-stack.reception-mode .plan-todo-card.empty-compact .yc-list-head { display: none; }

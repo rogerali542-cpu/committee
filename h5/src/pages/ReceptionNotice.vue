@@ -119,7 +119,7 @@ import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import perm from '@/utils/perm'
 import { toast, showModal } from '@/utils/ui'
-import { navigateBack, goModuleHome } from '@/utils/navigate'
+import { goModuleHome } from '@/utils/navigate'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -179,7 +179,10 @@ const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
 
 // 导航新规(0725 用户定):返回=历史上一页(驾驶舱「修改安排」/接待首页 push 进入,回退天然回来处)
 function backToReception() {
-  navigateBack()
+  // 0731 修 BUG：进本页时软路由偶发「push 了 URL 但视图没切」+300ms 硬跳补层，历史栈被弄脏，
+  // history.back() 有时落到夹在中间的 /main（业委会首页）。返回改确定性直达接待首页，
+  // 不依赖历史栈（replace 不叠层，落地后再按返回是更早的上一页）
+  goModuleHome('reception')
 }
 
 /** 组合后的时间文案，如「每周二 15:00—17:00」；没填齐返回空 */
