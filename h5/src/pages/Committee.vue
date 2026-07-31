@@ -4486,7 +4486,7 @@ onActivated(show)
 .pt-sec-ico.ico-reception { color: #2f6b45; }
 .pt-sec-ico.ico-learning { color: #2a6b73; }
 .pt-sec-ico svg { width: 34rpx; height: 34rpx; }
-.pt-sec-tag { font-size: 34rpx; font-weight: 700; color: #4A5560; margin-left: -2rpx; }
+.pt-sec-tag { font-size: 30rpx; font-weight: 500; color: #6B7280; margin-left: -2rpx; }   /* 0731 用户定：模块名退成浅灰小标签，色/字重/字号都弱于正文——彩色图标已做锚，避免俩深色行打架看着眩晕 */
 .pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 26rpx; }
 /* 会议卡翻页器（0731 用户定：多期例会在首页直接翻页选场）——靠右，圆钮+页码，用 CSS 边框画箭头 */
 .pt-pager { margin-left: auto; display: inline-flex; align-items: center; gap: 8rpx; }
@@ -4502,7 +4502,7 @@ onActivated(show)
 /* 右侧固定动词（0731 设计师定：状态驱动跳转必须把动词写出来，老人只读字不记规则） */
 .pt-verb { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8rpx; font-size: 31rpx; font-weight: 700; color: #1F2937; white-space: nowrap; }
 .pt-sec-main { flex: 1; min-width: 0; }
-.pt-sec-title { font-size: 31rpx; font-weight: 600; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 主行＝具体信息（会议名/时间/培训名），从属于上方模块名标题；长标题窄屏截断不溢出 */
+.pt-sec-title { font-size: 32rpx; font-weight: 600; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 正文＝该卡主读信息，明确比模块名大且深，层级唯一不含糊；长标题窄屏截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=蓝、其余=灰 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
