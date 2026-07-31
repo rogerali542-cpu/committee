@@ -482,17 +482,24 @@
       <div class="create-panel" @click.stop>
         <div class="create-head">
           <span class="create-back" @click="closeCreate">‹</span>
-          <span class="create-title">发起业委会</span>
+          <span class="create-title">{{ createHeadTitle }}</span>
           <span class="create-nav-ph"></span>
         </div>
 
         <div class="create-body" style="overflow-y:auto;">
-          <!-- 顶部分段切换：手动填写 / 拍照上传（两者平级，拍照入口更醒目） -->
-          <div class="create-tabs">
-            <div class="create-tab" :class="{ active: createTab === 'manual' }" @click="createTab = 'manual'">手动填写</div>
-            <div class="create-tab" :class="{ active: createTab === 'scan' }" @click="createTab = 'scan'">
-              {{ scanItems.length && createTab !== 'scan' ? '已识别 ' + scanItems.length + ' 份文件' : '拍照 / 上传' }}
-            </div>
+          <!-- 拍照进流程入口（0731 设计师点3）：线性相机图标（不套灰块）+ 说明 + ›（这是进流程）。
+               点开在下方展开拍照/上传面板；识别完成自动收起回表单 -->
+          <div class="scan-entry" :class="{ open: createTab === 'scan' }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
+            <svg class="se-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.1-1.7a1 1 0 0 1 .84-.45h5.12a1 1 0 0 1 .84.45L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9z"/>
+              <circle cx="12" cy="13" r="3.1"/>
+            </svg>
+            <span class="se-copy">
+              <b>拍通知照片自动填写</b>
+              <small v-if="scanItems.length && createTab !== 'scan'">已识别 {{ scanItems.length }} 份文件</small>
+              <small v-else>支持拍照、图片、PDF 或 Word 文件</small>
+            </span>
+            <i class="se-chev"></i>
           </div>
 
           <!-- 拍照/上传面板：拍通知照片或传文件，AI 识别后在当前面板展示结果，并把识别内容预填到下方表单 -->
@@ -685,7 +692,8 @@
         <!-- 添加议题时隐藏底部主按钮，避免真机键盘弹起时「取消/生成通知」压住「确定添加议题」 -->
         <div v-show="!topicDialogOpen" class="sheet-actions fixed">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
-          <button class="btn btn-primary" @click="submitNewMeeting">生成通知<span class="btn-arrow">›</span></button>
+          <!-- 0731 设计师点2：日期/时间/议题未齐则置灰（仍可点→提示缺什么），齐了才亮 -->
+          <button class="btn btn-primary" :class="{ disabled: !createCanSubmit }" @click="onSubmitClick">生成会议通知<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -2568,6 +2576,19 @@ const createForm = reactive({
   locationLat: null,   // 地图选点回传的经纬度（0723）：随建会落库，详情页导航用精确坐标
   locationLng: null
 })
+// 页头标题随会议期数动态（0731 设计师稿）：「第N次例会」→「发起第N次例会」，否则退回通用名
+const createHeadTitle = computed(() => {
+  const m = String(createForm.title || prefilledCreateTitle.value || '').match(/第\s*(\d+)\s*次/)
+  return m ? ('发起第' + m[1] + '次例会') : '发起业委会'
+})
+// 主按钮可提交门槛（0731 设计师点2）：日期+时间+至少一条议题齐了才亮；缺则置灰、点了提示
+const createCanSubmit = computed(() =>
+  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.length)))
+function onSubmitClick() {
+  if (!createCanSubmit.value) { toast({ title: '请填写日期、时间和至少一条议题', icon: 'none' }); return }
+  submitNewMeeting()
+}
+
 // 地点被手填/选常用地点覆盖时，清掉不再匹配的旧坐标（地图选点回填的那次除外）
 let _mapJustSet = false
 watch(() => createForm.location, () => {
@@ -5687,12 +5708,16 @@ onActivated(show)
 .quick-fill-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
 .quick-fill-bar .ai-fill-btn { margin: 0 auto 10rpx; }
 .quick-fill-bar .ai-fill-hint { margin: 0; }
-/* 顶部分段切换：手动填写 / 拍照上传（灰底圆角胶囊 + active 橙底白字） */
-.create-tabs { display: flex; gap: 8rpx; background: #F2F6F7; border-radius: 16rpx; padding: 4rpx; margin-bottom: 22rpx; }
-.create-tab { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14rpx 0; font-size: 36rpx; line-height: 1.2; font-weight: 700; color: #40545C; background:#E7EEF0; border:1rpx solid #D5E0E3; border-radius: 12rpx; cursor: pointer; }
-.create-tab.active { background: #D97706; border-color:#D97706; color: #fff; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
-.create-tab:active { opacity: 0.8; }
-.ct-ico { font-size: 32rpx; line-height: 1; }
+/* 拍照进流程入口卡（0731 设计师点3）：线性相机图标不套灰块 + 说明 + ›，风格与下方字段卡一致 */
+.scan-entry { display: flex; align-items: center; gap: 18rpx; padding: 22rpx 20rpx; margin-bottom: 22rpx; background: #fff; border: 2rpx solid #ececec; border-radius: 16rpx; box-shadow: 0 2rpx 10rpx rgba(30,40,60,0.05); cursor: pointer; }
+.scan-entry:active { background: #FAFBFC; }
+.se-cam { width: 46rpx; height: 46rpx; flex-shrink: 0; color: #3E6BA8; }
+.se-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
+.se-copy b { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
+.se-copy small { font-size: 26rpx; color: #8a9099; line-height: 1.3; }
+/* › 收起态右指、展开态下指（CSS 边框箭头，见 CLAUDE.md，不用字符箭头） */
+.se-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #b4bcc7; border-bottom: 3rpx solid #b4bcc7; transform: rotate(-45deg); transition: transform .2s ease; }
+.scan-entry.open .se-chev { transform: rotate(45deg); }
 /* 拍照/上传面板 */
 .scan-pane { margin-bottom: 12rpx; }
 /* 时间/地点设置项列表（iOS 日历式）：标签左、值右、点整行展开选择器 */
@@ -6003,6 +6028,9 @@ onActivated(show)
 /* 主按钮统一深橙（与顶栏同色），按下更深 */
 .btn-primary { color: #fff; background: var(--c-primary-dark); }
 .btn-primary:active { background: var(--c-primary-strong); }
+/* 0731 设计师点2：未填齐的置灰态（仍可点，点了 onSubmitClick 提示缺什么，不用 disabled 属性） */
+.btn-primary.disabled { background: #C3CAD3; color: #fff; box-shadow: none; }
+.btn-primary.disabled:active { background: #C3CAD3; }
 
 /* 议题构建 */
 .topic-empty { text-align: center; padding: 28rpx 0; font-size: 28rpx; color: #666; line-height: 1.6; }
@@ -6015,9 +6043,11 @@ onActivated(show)
 /* 会议议题：标题与添加条贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
 /* 添加议题触发条：点它弹出议题弹窗（输入/类型/确定都在弹窗内），单独一条大按钮，远离右下角「生成通知」防误触 */
-.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
-.topic-add-trigger:active { background: #F1F3F5; }
-.topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
+/* 0731 设计师点4：虚线框（本设计里独一份的新形状）改成与卡内其他行一致的一行「＋ 添加议题」，
+   上面用分隔线断开、蓝字，不再用虚线 */
+.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 4rpx; min-height: 112rpx; border: 0; border-top: 2rpx solid #EEF0F2; border-radius: 0; background: transparent; color: #3E6BA8; font-size: 30rpx; }
+.topic-add-trigger:active { background: #F6F8FB; }
+.topic-add-trigger.field-error { border-top-color: #E5533C; background: #FFF3F1; color: #C0392B; }
 /* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40%；
    「议题内容+取消」「议题类型/表决方式+chips」各并成一行 */
 .topic-inline-editor { margin-top: 16rpx; padding: 22rpx 24rpx 26rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
@@ -6289,18 +6319,19 @@ onActivated(show)
 .create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }
 .create-panel .tie-notice-toggle { display: inline-block; padding: 12rpx 0; font-size: 30rpx; color: #5B7C96; }
-/* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
-.create-panel .field-line { padding: 14rpx 20rpx; }
+/* — 行距/卡片间距整体收紧，把「含重大事项」挤进短屏首屏 + 三行灰字左对齐 —
+   0731 设计师：三行 66px 收到 62px（padding 14→12rpx），配合去虚线框/收 section 间距把勾选框顶进首屏 */
+.create-panel .field-line { padding: 12rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
-.create-panel .meeting-info-card .fl-part { padding: 14rpx 20rpx; gap: 12rpx; }
+.create-panel .meeting-info-card .fl-part { padding: 12rpx 20rpx; gap: 12rpx; }
 .create-panel .meeting-info-card .fl-part .fl-label { width: 100rpx; flex-shrink: 0; }
 .create-panel .fl-loc-main { padding: 0; gap: 12rpx; }
 .create-panel .fl-loc-main .fl-label { width: 100rpx; flex-shrink: 0; }
 /* 卡片间距/输入框高度收紧（省高度大头：原 section 间距 31rpx → 16rpx） */
 .create-panel .create-body { padding-top: 10rpx; padding-bottom: 28rpx; }
-.create-panel .create-tabs { margin-bottom: 12rpx; }
+.create-panel .scan-entry { margin-bottom: 16rpx; }
 .create-panel .create-section,
-.create-panel .create-section.meeting-info-card { margin-bottom: 22rpx; padding-top: 14rpx; padding-bottom: 14rpx; }
+.create-panel .create-section.meeting-info-card { margin-bottom: 16rpx; padding-top: 12rpx; padding-bottom: 12rpx; }
 .create-panel .meeting-info-card .form-group { margin-bottom: 6rpx; }
 .create-panel .meeting-info-card .caption-as-title { margin-bottom: 6rpx; }
 .create-panel .meeting-info-card .field-list { gap: 10rpx; }
@@ -6312,7 +6343,7 @@ onActivated(show)
 .create-panel .method-switch button { min-height: 76rpx; padding: 14rpx 26rpx; font-size: 32rpx; }      /* 线下/线上 38px */
 .create-panel .platform-select { height: 88rpx; font-size: 32rpx; flex-basis: 330rpx; padding: 0 40rpx 0 24rpx; }  /* 线上平台下拉 44px；加宽+减右留白，让「微信工作群」完整显示 */
 .create-panel .field-map-btn { width: 84rpx; height: 76rpx; min-height: 76rpx; } /* 地图键 38px */
-.create-panel .topic-add-trigger { min-height: 92rpx; }        /* 添加议题条 46px */
+.create-panel .topic-add-trigger { min-height: 112rpx; }       /* 添加议题一行（56px，分隔线+蓝字，去虚线框） */
 /* — bug修复：议题列表去掉内层限高(原200rpx裁掉换行议题)，交给弹层整体滚动 — */
 .create-panel .topic-list { max-height: none; overflow: visible; }
 /* — 精简·扁平化：浅灰底衬白卡、去边框留微阴影；字段行去内框、改细分隔线，消除「盒套盒」 — */
