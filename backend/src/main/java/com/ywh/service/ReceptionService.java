@@ -51,6 +51,10 @@ public class ReceptionService {
         result.put("person", sys.getPerson());
         result.put("adjustReason", sys.getAdjustReason());
         result.put("updatedAt", sys.getUpdatedAt() != null ? sys.getUpdatedAt().toString() : null);
+        // 「调整通知」上下文（0731）：本轮不改时间/地点时前端预览据此回落，与 PDF 一致
+        result.put("prevTimeDesc", sys.getPrevTimeDesc());
+        result.put("prevPlace", sys.getPrevPlace());
+        result.put("effectiveDate", sys.getEffectiveDate());
         return result;
     }
 
@@ -112,8 +116,17 @@ public class ReceptionService {
         if (req.containsKey("person")) sys.setPerson((String) req.get("person"));
         if (req.containsKey("adjustReason")) sys.setAdjustReason((String) req.get("adjustReason"));
         if (req.containsKey("published")) sys.setPublished((Boolean) req.get("published"));
+        // 「调整通知」上下文（0731）：前端把本次原安排+生效日期一并送来，空串归一为 null
+        if (req.containsKey("prevTimeDesc")) sys.setPrevTimeDesc(blankToNull((String) req.get("prevTimeDesc")));
+        if (req.containsKey("prevPlace")) sys.setPrevPlace(blankToNull((String) req.get("prevPlace")));
+        if (req.containsKey("effectiveDate")) sys.setEffectiveDate(blankToNull((String) req.get("effectiveDate")));
         sys.setUpdatedAt(LocalDateTime.now());
         sysRepo.save(sys);
+    }
+
+    /** 空串/纯空白归一为 null——存量列干净，PDF 侧只需判 null */
+    private static String blankToNull(String v) {
+        return (v == null || v.trim().isEmpty()) ? null : v.trim();
     }
 
     public List<Map<String, Object>> listRecords(String filter) {

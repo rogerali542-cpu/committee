@@ -51,4 +51,19 @@ public class ReceptionSystem {
      */
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    /**
+     * 「接待时间调整通知」上下文（0731 用户定：公告改对比框样式）。存本次调整的「原安排」
+     * 时间/地点 + 生效日期，供 PDF 渲染「原安排 vs 现调整为」对比框、与前端预览逐字一致。
+     * 三者均可空（ddl-auto:update 启动时自动加列；仅换人/首次设置时为空 → 退回平铺公告）。
+     */
+    @Column(name = "prev_time_desc", length = 100)
+    private String prevTimeDesc;
+
+    @Column(name = "prev_place", length = 200)
+    private String prevPlace;
+
+    /** 生效日期，已格式化成中文串（如「2026年8月6日」）直接印到纸上，重印不漂移。 */
+    @Column(name = "effective_date", length = 40)
+    private String effectiveDate;
 }

@@ -63,12 +63,41 @@
         </div>
       </div>
       <div v-if="previewOpen" class="rn-card rn-preview">
-        <div class="pv-title">业主接待日公告</div>
-        <div class="pv-org">{{ orgName }}</div>
-        <div class="pv-line"></div>
+        <!-- 抬头：小区名在上、粗分隔线、自适应大标题（0731 用户定：接待时间调整通知样式） -->
+        <div class="pv-org-top">{{ orgName }}</div>
+        <div class="pv-rule"></div>
+        <div class="pv-title">{{ noticeTitle }}</div>
         <div class="pv-greet">敬告各位业主：</div>
-        <div v-for="(p, i) in noticeParas" :key="i" class="pv-para" :class="{ 'no-indent': p.noIndent }">{{ p.text }}</div>
-        <div class="pv-para">欢迎广大业主届时前来反映问题、提出建议。</div>
+
+        <!-- 调整通知：正文一句（原因/生效日期加粗）+「原安排 vs 现调整为」对比框 -->
+        <template v-if="isAdjustment">
+          <div class="pv-para"><template v-if="form.reason.trim()">因<b>{{ form.reason.trim() }}</b>，</template>业主接待安排<template v-if="effectiveDateText">自 <b>{{ effectiveDateText }}</b> 起</template>调整如下，请留意。</div>
+          <div class="pv-box">
+            <div class="pv-box-row">
+              <span class="pv-box-k">原安排</span>
+              <span class="pv-box-v">
+                <span>{{ beforeTimeDesc || '未填写' }}</span>
+                <span v-if="beforePlace" class="pv-box-place">{{ beforePlace }}</span>
+              </span>
+            </div>
+            <div class="pv-box-row now">
+              <span class="pv-box-k">现调整为</span>
+              <span class="pv-box-v strong">
+                <span>{{ afterTimeDesc || '未填写' }}</span>
+                <span v-if="afterPlace" class="pv-box-place">{{ afterPlace }}</span>
+              </span>
+            </div>
+          </div>
+          <div v-if="dutyMembersText" class="pv-duty">值班委员：{{ dutyMembersText }}</div>
+          <div class="pv-para">给您带来不便，敬请谅解。欢迎广大业主届时前来反映问题、提出建议。</div>
+        </template>
+
+        <!-- 平铺公告（首次设置/仅换人等非时间地点变更）：沿用旧句式 -->
+        <template v-else>
+          <div v-for="(p, i) in noticeParas" :key="i" class="pv-para">{{ p.text }}</div>
+          <div class="pv-para">欢迎广大业主届时前来反映问题、提出建议。</div>
+        </template>
+
         <div class="pv-sign">
           <div>{{ orgFullName }}</div>
           <div>{{ todayText }}</div>
@@ -114,7 +143,7 @@ import perm from '@/utils/perm'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { goModuleHome } from '@/utils/navigate'
 import { getStorage, setStorage } from '@/utils/storage'
-import { ROTATION, isRotation, dutyPersonFor, RECEPTION_ROLES } from '@/utils/rotation'
+import { ROTATION, isRotation, dutyPersonFor, nextSessionDate, RECEPTION_ROLES } from '@/utils/rotation'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -174,8 +203,12 @@ watch(() => form.start, (val) => {
 // saved 是「已保存到后端」的基线：算 dirty、导出 PDF 门槛、下次接待时间判定用。
 // 公告预览不再用它——0731 用户定：预览实时跟当前选择（见 noticeParas）
 const saved = reactive({ timeDesc: '', place: '', person: '', reason: '' })
-// 载入时的原值快照（0731 设计师稿：改动行旁标「原 19:00」，老人看得见改了什么）
-const orig = reactive({ day: '', start: '', end: '' })
+// 本次进页面时的原值快照（这一轮编辑的「原安排」基线）：改动行旁标「原 19:00」，
+// 也是「调整通知」对比框里「原安排」的来源
+const orig = reactive({ day: '', start: '', end: '', place: '', timeDesc: '' })
+// 上次已保存的「调整通知」上下文（后端带回）：本轮没改时间/地点时，对比框回落到它——
+// 保证「刷新后不编辑直接导出」的预览与后端 PDF 一致
+const storedPrev = reactive({ timeDesc: '', place: '', effectiveDate: '' })
 
 
 // 导航新规(0725 用户定):返回=历史上一页(驾驶舱「修改安排」/接待首页 push 进入,回退天然回来处)
@@ -197,28 +230,52 @@ const dirty = computed(() =>
   timeText.value !== saved.timeDesc || form.place !== saved.place ||
   form.person !== saved.person || form.reason !== saved.reason)
 
-/** 公告段落（0731 用户定：预览实时跟当前选择变，不等保存）。
- *  句式与后端 PDF 模板逐字一致；导出 PDF 前强制先保存（exportPdf 里把关），
- *  所以印出来的永远和看到的相同。 */
+// ── 公告模型（0731 用户定：改「接待时间调整通知」样式——原安排 vs 现调整为 对比框） ──
+// 预览实时跟当前选择；句式与后端 PDF 逐字一致，导出前强制先保存（exportPdf 把关），纸上=眼前。
+// 现安排（调整后）
+const afterTimeDesc = computed(() => timeText.value || saved.timeDesc || '')
+const afterPlace = computed(() => form.place.trim())
+// 本轮是否改了时间/地点（相对进页面时的基线 orig）
+const tpChangedThisSession = computed(() =>
+  afterTimeDesc.value !== orig.timeDesc || afterPlace.value !== orig.place)
+// 原安排：本轮改过→用进页面基线 orig；本轮没改→回落到后端带回的上次调整上下文
+const beforeTimeDesc = computed(() => tpChangedThisSession.value ? orig.timeDesc : storedPrev.timeDesc)
+const beforePlace = computed(() => tpChangedThisSession.value ? orig.place : storedPrev.place)
+// 生效日期「自 X 起」：新排期的下一场接待日（本轮没改则用上次存的，避免重印时日期漂移）
+function nextSessionDateText(td) {
+  const d = nextSessionDate(td)
+  return d ? (d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日') : ''
+}
+const effectiveDateText = computed(() =>
+  tpChangedThisSession.value ? nextSessionDateText(afterTimeDesc.value) : storedPrev.effectiveDate)
+// 走「调整通知」格式：有原安排、且时间或地点确有变化（否则退回平铺公告）
+const isAdjustment = computed(() => {
+  const bt = beforeTimeDesc.value, bp = beforePlace.value
+  if (!bt && !bp) return false
+  return bt !== afterTimeDesc.value || bp !== afterPlace.value
+})
+// 自适应标题：时间是头条轴——时间变了就叫「时间调整」（哪怕地点也一起变）；仅地点变才叫「地点调整」
+const noticeTitle = computed(() => {
+  if (!isAdjustment.value) return '业主接待日公告'
+  if (beforeTimeDesc.value !== afterTimeDesc.value) return '业主接待时间调整通知'
+  if (beforePlace.value !== afterPlace.value) return '业主接待地点调整通知'
+  return '业主接待安排调整通知'
+})
+// 值班委员行：仅指定了具体人（非轮值）时出现——轮值是常态、不写进这张告示
+const dutyMembersText = computed(() => {
+  const p = form.person.trim()
+  return (p && !isRotation(p)) ? p : ''
+})
+// 平铺公告（首次设置/仅换人等非时间地点变更时）——沿用旧句式
 const noticeParas = computed(() => {
-  const time = timeText.value || '未填写'
-  const place = form.place.trim() || '未填写'
+  const time = afterTimeDesc.value || '未填写'
+  const place = afterPlace.value || '未填写'
   const person = form.person.trim() || '未填写'
-  const reason = form.reason.trim()
-  if (reason) {
-    return [
-      { text: orgName.value + '因' + reason + '，需要调整近期的业主接待安排。', noIndent: false },
-      { text: '接待时间调整为：' + time, noIndent: false },
-      { text: '接待地点为：' + place, noIndent: false },
-      { text: '接待人员为：' + person, noIndent: false },
-      { text: '给您带来不便，敬请谅解。', noIndent: false }
-    ]
-  }
   return [
-    { text: orgName.value + '现将业主接待安排公告如下：', noIndent: false },
-    { text: '接待时间为：' + time, noIndent: false },
-    { text: '接待地点为：' + place, noIndent: false },
-    { text: '接待人员为：' + person, noIndent: false }
+    { text: orgName.value + '现将业主接待安排公告如下：' },
+    { text: '接待时间为：' + time },
+    { text: '接待地点为：' + place },
+    { text: '接待人员为：' + person }
   ]
 })
 
@@ -269,11 +326,16 @@ async function load() {
     //   前端拼就会显示「????业主委员会」，而 PDF 那边被兜底成了「业主委员会」）
     if (sys && sys.orgName) orgName.value = sys.orgName
     orgFullName.value = (sys && sys.orgFullName) || orgName.value
+    // 上次已保存的「调整通知」上下文（后端可空字段）：本轮不改时间/地点时对比框回落到它
+    storedPrev.timeDesc = (sys && sys.prevTimeDesc) || ''
+    storedPrev.place = (sys && sys.prevPlace) || ''
+    storedPrev.effectiveDate = (sys && sys.effectiveDate) || ''
   } catch (e) {
     loadErr.value = (e && e.message) || '接待安排加载失败'
   } finally {
-    // 原值快照：改动后行旁显示「原 X」
+    // 本轮基线快照：改动后行旁显示「原 X」，也是对比框「原安排」的来源
     orig.day = form.day; orig.start = form.start; orig.end = form.end
+    orig.place = form.place; orig.timeDesc = saved.timeDesc
     // 数据回填完成后再启用"改起始自动调结束",避免加载已存时长时被 1 小时覆盖
     nextTick(() => { formLoaded = true })
   }
@@ -439,18 +501,30 @@ async function confirmAdjustment() {
     const place = form.place.trim()
     const person = form.person.trim()
     const reason = form.reason.trim()
+    // 「调整通知」上下文随本次保存一起落库：原安排(prev*)+生效日期，供后端 PDF 渲染对比框、
+    // 且下次刷新回读时预览与 PDF 一致（走 isAdjustment 判定要用到）
+    const prevTimeDesc = isAdjustment.value ? beforeTimeDesc.value : ''
+    const prevPlace = isAdjustment.value ? beforePlace.value : ''
+    const effectiveDate = isAdjustment.value ? effectiveDateText.value : ''
     await api.receptionUpdateSystem({
       timeDesc: timeText.value,
       place,
       person,
       adjustReason: reason,
-      published: true
+      published: true,
+      prevTimeDesc,
+      prevPlace,
+      effectiveDate
     })
     saved.timeDesc = timeText.value
     saved.place = form.place = place
     saved.person = form.person = person
     saved.reason = form.reason = reason
     if (place) rememberPlace(place, true)   // 使用频率 +1：常用地点下次排最前
+    // 落库后基线归位：storedPrev=本次原安排，orig=本次现安排——刷新前预览仍与 PDF 一致
+    storedPrev.timeDesc = prevTimeDesc; storedPrev.place = prevPlace; storedPrev.effectiveDate = effectiveDate
+    orig.timeDesc = timeText.value; orig.place = place
+    orig.day = form.day; orig.start = form.start; orig.end = form.end
     previewOpen.value = true
     toast({ title: '接待安排已保存', icon: 'success' })
   } catch (e) {
@@ -523,13 +597,21 @@ async function exportPdf() {
 .rn-chev.open { transform: rotate(-135deg); top: 2rpx; }
 .rn-preview { padding: 34rpx 30rpx; }
 
-/* 公告纸样式（沿用：句子与后端 PDF 逐字一致） */
-.pv-title { text-align: center; font-size: 38rpx; font-weight: 800; color: #1F2937; }
-.pv-org { text-align: center; margin-top: 8rpx; font-size: 28rpx; color: #6B7280; }
-.pv-line { height: 2rpx; background: #E2E5EA; margin: 22rpx 0; }
+/* 公告纸样式（0731 用户定：接待时间调整通知——小区名在上、粗线、大标题；句子与后端 PDF 逐字一致） */
+.pv-org-top { text-align: center; font-size: 34rpx; font-weight: 700; letter-spacing: 6rpx; color: #1F2937; }
+.pv-rule { height: 5rpx; background: #1F2937; margin: 18rpx 0 30rpx; }
+.pv-title { text-align: center; font-size: 46rpx; font-weight: 800; color: #1F2937; margin-bottom: 34rpx; }
 .pv-greet { font-size: 30rpx; color: #1F2937; }
-.pv-para { margin-top: 14rpx; font-size: 30rpx; line-height: 1.8; color: #1F2937; text-indent: 2em; }
-.pv-para.no-indent { text-indent: 0; }
+.pv-para { margin-top: 16rpx; font-size: 30rpx; line-height: 1.8; color: #1F2937; text-indent: 2em; }
+.pv-para b { font-weight: 800; }
+/* 原安排 vs 现调整为 对比框 */
+.pv-box { margin: 24rpx 0 6rpx; border: 3rpx solid #1F2937; border-radius: 8rpx; }
+.pv-box-row { display: flex; gap: 24rpx; padding: 24rpx 26rpx; }
+.pv-box-row.now { border-top: 2rpx solid #D5DAE0; }
+.pv-box-k { flex-shrink: 0; width: 132rpx; font-size: 30rpx; color: #6B7280; line-height: 1.55; }
+.pv-box-v { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; font-size: 31rpx; color: #6B7280; line-height: 1.55; }
+.pv-box-v.strong { font-size: 34rpx; font-weight: 800; color: #1F2937; }
+.pv-duty { margin-top: 24rpx; font-size: 31rpx; color: #1F2937; }
 .pv-sign { margin-top: 30rpx; text-align: right; font-size: 29rpx; color: #1F2937; line-height: 1.9; }
 .export-success { margin-top: 20rpx; font-size: 28rpx; color: #2E7D50; text-align: center; }
 .pv-export { display: block; width: 100%; margin-top: 26rpx; min-height: 96rpx; border: 0; border-radius: 18rpx; background: #E4F0E8; color: #2f6b45; font-size: 32rpx; font-weight: 700; }

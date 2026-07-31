@@ -79,43 +79,69 @@ public class ReceptionNoticePdfService {
             float left = 62, right = 62;
             float contentW = pageW - left - right;
 
+            // 归一化「调整通知」上下文（0731 用户定）。⚠ 判定/句式必须与 ReceptionNotice.vue 逐字一致——
+            // 预览就是这张纸：isAdjustment、自适应标题、lead 句、对比框全部照抄前端 computed。
+            String reason = isBlank(sys.getAdjustReason()) ? null : sys.getAdjustReason().trim();
+            String beforeTime = norm(sys.getPrevTimeDesc());
+            String beforePlace = norm(sys.getPrevPlace());
+            String afterTime = norm(sys.getTimeDesc());
+            String afterPlace = norm(sys.getPlace());
+            String effDate = isBlank(sys.getEffectiveDate()) ? null : sys.getEffectiveDate().trim();
+            boolean timeChanged = !beforeTime.equals(afterTime);
+            boolean placeChanged = !beforePlace.equals(afterPlace);
+            boolean adjustment = (!beforeTime.isEmpty() || !beforePlace.isEmpty()) && (timeChanged || placeChanged);
+            String person = norm(sys.getPerson());
+            boolean rotation = person.isEmpty() || person.contains("轮值");
+
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
-                float y = 760;
-                textCentered(cs, font, 24, "业主接待日公告", pageW / 2, y);
-                y -= 26;
-                textCentered(cs, font, 13, org, pageW / 2, y);
-                y -= 18;
-                line(cs, left, y, pageW - right, y);            // 抬头下的分隔线，公文常规
-
-                y -= 46;
-                text(cs, font, 16, "敬告各位业主：", left, y);
-
-                y -= 34;
-                // 0717 用户定：正文改说话口吻（类会议通知），不再是「一、二、」条款体。
-                // ⚠ 句子必须跟 ReceptionNotice.vue 的 noticeBody 逐字一致——预览就是这张纸
-                String reason = isBlank(sys.getAdjustReason()) ? null : sys.getAdjustReason().trim();
-                String lead = reason != null
-                        ? org + "因" + reason + "，需要调整近期的业主接待安排。"
-                        : org + "现将业主接待安排公告如下：";
-                String timeLine = (reason != null ? "接待时间调整为：" : "接待时间为：")
-                        + value(sys.getTimeDesc());
-                String placeLine = "接待地点为：" + value(sys.getPlace());
-                String personLine = "接待人员为：" + value(sys.getPerson());
-                // 说明段及时间、地点、人员行均首行缩进两字。
-                y = paragraph(cs, font, 16, left, y, contentW, 28, lead, 32);
-                y -= 4;
-                y = paragraph(cs, font, 16, left, y, contentW, 28, timeLine, 32);
-                y = paragraph(cs, font, 16, left, y, contentW, 28, placeLine, 32);
-                y = paragraph(cs, font, 16, left, y, contentW, 28, personLine, 32);
-                if (reason != null) {
-                    y -= 4;
-                    y = paragraph(cs, font, 16, left, y, contentW, 28,
-                            "给您带来不便，敬请谅解。", 32);
-                }
-
+                float y = 785;
+                // 抬头：小区名在上、粗分隔线、自适应大标题（0731 用户定，接待时间调整通知样式）
+                textCentered(cs, font, 20, org, pageW / 2, y);
                 y -= 16;
-                y = paragraph(cs, font, 16, left, y, contentW, 28,
-                        "欢迎广大业主届时前来反映问题、提出建议。", 32);
+                thickLine(cs, left, y, pageW - right, y);
+                y -= 48;
+                // 时间是头条轴：时间变了就叫「时间调整」（哪怕地点也变）；仅地点变才叫「地点调整」
+                String title = !adjustment ? "业主接待日公告"
+                        : timeChanged ? "业主接待时间调整通知"
+                        : placeChanged ? "业主接待地点调整通知"
+                        : "业主接待安排调整通知";
+                textCentered(cs, font, 28, title, pageW / 2, y);
+
+                y -= 52;
+                text(cs, font, 16, "敬告各位业主：", left, y);
+                y -= 34;
+
+                if (adjustment) {
+                    StringBuilder lead = new StringBuilder();
+                    if (reason != null) lead.append("因").append(reason).append("，");
+                    lead.append("业主接待安排");
+                    if (effDate != null) lead.append("自 ").append(effDate).append(" 起");
+                    lead.append("调整如下，请留意。");
+                    y = paragraph(cs, font, 16, left, y, contentW, 28, lead.toString(), 32);
+                    y -= 12;
+                    y = drawCompareBox(cs, font, left, y, contentW,
+                            beforeTime.isEmpty() ? "未填写" : beforeTime, beforePlace,
+                            afterTime.isEmpty() ? "未填写" : afterTime, afterPlace);
+                    y -= 14;
+                    if (!rotation) {
+                        // 值班委员行顶格（不缩进），与「敬告各位业主：」同列，正文段落才缩进
+                        y = paragraph(cs, font, 16, left, y, contentW, 28, "值班委员：" + person, 0);
+                        y -= 2;
+                    }
+                    y = paragraph(cs, font, 16, left, y, contentW, 28,
+                            "给您带来不便，敬请谅解。欢迎广大业主届时前来反映问题、提出建议。", 32);
+                } else {
+                    // 平铺公告（首次设置/仅换人）：沿用旧句式
+                    y = paragraph(cs, font, 16, left, y, contentW, 28,
+                            org + "现将业主接待安排公告如下：", 32);
+                    y -= 4;
+                    y = paragraph(cs, font, 16, left, y, contentW, 28, "接待时间为：" + value(sys.getTimeDesc()), 32);
+                    y = paragraph(cs, font, 16, left, y, contentW, 28, "接待地点为：" + value(sys.getPlace()), 32);
+                    y = paragraph(cs, font, 16, left, y, contentW, 28, "接待人员为：" + value(sys.getPerson()), 32);
+                    y -= 16;
+                    y = paragraph(cs, font, 16, left, y, contentW, 28,
+                            "欢迎广大业主届时前来反映问题、提出建议。", 32);
+                }
 
                 // 落款：右下角，公文规矩。位置固定在页面下方，不跟着正文长度飘——
                 // 正文再短也不能让落款吊在半空
@@ -134,6 +160,47 @@ public class ReceptionNoticePdfService {
         } catch (IOException e) {
             throw new IllegalStateException("接待日公告生成失败", e);
         }
+    }
+
+    /**
+     * 「原安排 vs 现调整为」对比框（0731 用户定）：外框 + 两行（原安排灰、现调整为黑加大），
+     * 每行 label + 值（时间一行、地点另起一行）。返回框底 y。
+     */
+    private float drawCompareBox(PDPageContentStream cs, PDFont font, float left, float yTop, float contentW,
+                                 String beforeTime, String beforePlace, String afterTime, String afterPlace) throws IOException {
+        float boxRight = left + contentW;
+        float padX = 18, padY = 16, lineH = 25, labelW = 92;
+        float valX = left + padX + labelW + 12;
+        float valW = boxRight - valX - padX;
+
+        List<String> beforeLines = new ArrayList<>(wrap(font, 15, beforeTime, valW));
+        if (!beforePlace.isEmpty()) beforeLines.addAll(wrap(font, 15, beforePlace, valW));
+        List<String> afterLines = new ArrayList<>(wrap(font, 17, afterTime, valW));
+        if (!afterPlace.isEmpty()) afterLines.addAll(wrap(font, 17, afterPlace, valW));
+
+        float row1H = padY + beforeLines.size() * lineH + padY - 4;
+        float row2H = padY + afterLines.size() * lineH + padY - 4;
+        float boxH = row1H + row2H;
+
+        // 外框 + 两行间分隔线
+        cs.setLineWidth(1.4f);
+        cs.addRect(left, yTop - boxH, contentW, boxH);
+        cs.stroke();
+        line(cs, left, yTop - row1H, boxRight, yTop - row1H);
+
+        // 原安排（灰、15pt）
+        float ty = yTop - padY - 13;
+        cs.setNonStrokingColor(107, 114, 128);
+        text(cs, font, 15, "原安排", left + padX, ty);
+        for (int i = 0; i < beforeLines.size(); i++) text(cs, font, 15, beforeLines.get(i), valX, ty - i * lineH);
+        // 现调整为（黑、加大 17pt）
+        float ty2 = yTop - row1H - padY - 14;
+        cs.setNonStrokingColor(31, 41, 55);
+        text(cs, font, 15, "现调整为", left + padX, ty2);
+        for (int i = 0; i < afterLines.size(); i++) text(cs, font, 17, afterLines.get(i), valX, ty2 - i * lineH);
+        cs.setNonStrokingColor(0, 0, 0);   // 复位，后续正文回黑
+
+        return yTop - boxH;
     }
 
     private float paragraph(PDPageContentStream cs, PDFont font, float size, float left, float y,
@@ -200,8 +267,14 @@ public class ReceptionNoticePdfService {
     private void line(PDPageContentStream cs, float x1, float y1, float x2, float y2) throws IOException {
         cs.setLineWidth(0.8f); cs.moveTo(x1, y1); cs.lineTo(x2, y2); cs.stroke();
     }
+    /** 抬头下的粗分隔线（0731：接待时间调整通知样式，公文抬头下常规粗线） */
+    private void thickLine(PDPageContentStream cs, float x1, float y1, float x2, float y2) throws IOException {
+        cs.setLineWidth(2.6f); cs.moveTo(x1, y1); cs.lineTo(x2, y2); cs.stroke();
+    }
     private String value(String v) { return isBlank(v) ? "未填写" : v.trim(); }
     private boolean isBlank(String v) { return v == null || v.trim().isEmpty(); }
+    /** null/空白归一为空串，用于对比框「变没变」判定（与前端一致，null 视作 ''） */
+    private String norm(String v) { return v == null ? "" : v.trim(); }
 
     public record PdfFile(String fileName, byte[] bytes) {}
 }
