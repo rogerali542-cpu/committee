@@ -215,9 +215,11 @@ async function switchRole(item) {
   }
   auth.switchRole(newRole)
   toast({ title: '已切换为 ' + item.realName, icon: 'success' })
-  // 切完整页重载：KeepAlive 缓存的会议页（连同上一身份的 MediaRecorder、beforeunload 守卫、
-  // 内存状态）全部销毁，新身份从干净状态启动——否则旧身份的残留会拦跳转/串状态（真机踩过）
-  setTimeout(() => window.location.reload(), 600)
+  // 切完整页跳驾驶舱首页（0731 用户定：换身份后回首页开始新身份的工作，不停留在个人中心）。
+  // 整页跳转与原先 reload 一样把 KeepAlive 缓存的会议页（上一身份的 MediaRecorder、
+  // beforeunload 守卫、内存状态）全部销毁，新身份从干净状态启动——否则旧残留会拦跳转/串状态（真机踩过）
+  setStorage('home_layout', 'portal')
+  setTimeout(() => window.location.replace('/main?home=portal'), 600)
 }
 
 function goSecretaryManagement() { navigateTo('/secretary-management') }
