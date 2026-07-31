@@ -47,7 +47,8 @@
             <div class="rnh-top">
               <span class="rnh-date">{{ receptionHero.dateLine }}</span>
             </div>
-            <div class="rnh-title">{{ receptionHero.title }}</div>
+            <!-- 主行只写时间（0731 设计师点2：上行小字已是具体日期，「下周四」与之重复；具体日期更可靠） -->
+            <div class="rnh-title">{{ receptionHero.timeLine }}</div>
             <!-- 地址整体不拆:放不下就整体换到第二行,不从地名中间掰断 -->
             <div v-if="recSystem && recSystem.place" class="rnh-place"><span class="rnh-place-name">{{ recSystem.place }}</span></div>
           </template>
@@ -62,16 +63,16 @@
              聚合页的固定入口，不随有无待办出没）：标题「待办事项 · N 项待跟进」+内容短摘要 -->
         <div v-if="planTab === 'reception'" class="rec-todo-entry" @click="goTodos()">
           <div class="rte-top">
-            <b>待办事项{{ recPendingList.length ? ' · ' + recPendingList.length + ' 项待跟进' : '' }}</b>
+            <!-- 0731 设计师点4：与首页「待办事项」重名但范围不同（这里只有业主反馈转来的），改名区分 -->
+            <b>业主反馈{{ recPendingList.length ? ' · ' + recPendingList.length + ' 项待跟进' : '' }}</b>
             <i class="rte-arr"></i>
           </div>
           <div class="rte-sub">{{ recPendingList.length ? recPendingSummary : '暂无待跟进事项' }}</div>
         </div>
 
-        <!-- 底部动作区（0730 图一）：调整接待安排(浅绿) + 登记接待(绿实心CTA)，成组落在内容末尾（order:8） -->
+        <!-- 底部动作区（0731 设计师点3）：只留「登记接待」一个实心主按钮——「调整接待安排」
+             一年动几次，按低频规则收进下方列表末行（与会议页发起临时会议同一处理） -->
         <div v-if="planTab === 'reception' && canManageReception" class="rec-actions">
-          <button type="button" class="rec-adjust-btn" @click="goReceptionNotice">调整接待安排</button>
-          <!-- 定稿图：登记按钮单行、无对象副行 -->
           <button type="button" class="rec-register-btn" @click="openReceptionCreate">
             <span class="rrb-main">登记接待</span>
           </button>
@@ -89,7 +90,7 @@
               <div class="rec-recent-copy">
                 <strong class="rec-recent-main">{{ fmtPlanDate(session.date) }}<template v-if="session.receiver"> · {{ session.receiver }}</template></strong>
                 <!-- 副行改内容短摘要（0730 定稿图）：「反映 下水管返味、门禁卡失灵」比「反映 2 项」信息量大 -->
-                <span class="rec-recent-sub">{{ session.noVisit ? '无业主来访' : ('反映 ' + recSummaryOf(session)) }}</span>
+                <span class="rec-recent-sub">{{ session.noVisit ? '无业主来访' : recSummaryOf(session) }}</span>
               </div>
               <i class="rec-recent-chev" :class="{ open: recentOpenKey === session.key && session.displayRecords.length > 1 }"></i>
             </div>
@@ -102,7 +103,13 @@
           </div>
           <!-- 末行档案馆入口（0730 定稿图）：「档案馆」深色、说明灰色 -->
           <div class="rec-recent-arch" @click="goArchive('reception')">
-            <span class="rra-text"><b>历史记录</b> · 往期接待与已办事项</span>
+            <!-- 副题删（0731 设计师点5：把两个上级栏目名念了一遍，太长） -->
+            <span class="rra-text"><b>历史记录</b></span>
+            <span class="rec-recent-arch-arr">›</span>
+          </div>
+          <!-- 调整接待安排（0731 设计师点3）：低频动作收列表末行，底部只留登记主按钮 -->
+          <div v-if="canManageReception" class="rec-recent-arch" @click="goReceptionNotice">
+            <span class="rra-text"><b>调整接待安排</b></span>
             <span class="rec-recent-arch-arr">›</span>
           </div>
         </div>
@@ -1195,7 +1202,12 @@ const receptionHero = computed(() => {
   const title = info.days === 0 ? ('今' + part + ' ' + info.startTime)
     : info.days === 1 ? ('明' + part + ' ' + info.startTime)
       : (weekWord + ' ' + info.range)
-  return { set: true, dateLine: info.dateText, title, days: info.days }   // days 供驾驶舱「今日/明日」状态用
+  // 接待页 hero 主行（0731 设计师点2）：小字已有「8月6日 周四」，主行只写时间不再重说「下周四」；
+  // 今/明天保留语气词。cockpit 卡无小字日期行，仍用上面的 title
+  const timeLine = info.days === 0 ? ('今' + part + ' ' + info.range)
+    : info.days === 1 ? ('明' + part + ' ' + info.range)
+      : info.range
+  return { set: true, dateLine: info.dateText, title, timeLine, days: info.days }   // days 供驾驶舱「今日/明日」状态用
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
 const recPendingList = computed(() => (calRecs.value || []).filter(r => !r.done && r.visitorName !== '无人来访'))
@@ -5085,8 +5097,8 @@ onActivated(show)
 /* 接待页按真实使用频率分级：通知维护最醒目，登记来访其次，处理清单随后。 */
 /* 接待页整体转绿色系（0730 用户定：接待=绿，与底栏/驾驶舱一致） */
 .rec-notice-hero { order: 1; box-sizing: border-box; padding: 34rpx;
-  background: linear-gradient(145deg, #FDFFFE 0%, #EFF7F1 100%);
-  border: 2rpx solid #D3E4D9; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(40,96,64,0.08); }
+  background: #fff;
+  border: 2rpx solid #E3E8EE; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(31,41,55,0.06); }   /* 0731 设计师点1：卡不带模块色，绿只留页头/底栏选中/主按钮 */
 .rec-notice-hero-head { display: flex; align-items: flex-start; gap: 26rpx; }
 .rnh-copy { flex: 1; min-width: 0; }
 .rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #3B7150; }
@@ -5126,13 +5138,11 @@ onActivated(show)
    白底全宽与底栏连成整片（TabBar 在 /reception-center 加 .merged 去顶描边） */
 .rec-actions { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 固定动作区(两钮约224rpx)+底栏(约102rpx)两层让位，内容不被挡 */
-.home.has-rec-bar { padding-bottom: 250rpx; }   /* 两钮动作条≈216rpx + 缝隙；底栏部分不再计（app 壳） */
+.home.has-rec-bar { padding-bottom: 184rpx; }   /* 单钮动作条≈148rpx + 缝隙（0731 点3：调整安排移入列表） */
 /* 0731 设计师定：间距压到 8px(16rpx)、次级矮一档——对齐会议页既定规格（mtg-secondary 72 / mtg-primary 100），主次不只靠颜色 */
-.rec-adjust-btn { min-height: 72rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 28rpx; font-weight: 600; }
-.rec-adjust-btn:active { background: #D6E9DD; }
-.rec-register-btn { min-height: 100rpx; border: 0; border-radius: 16rpx; background: #2f6b45; color: #fff; display: flex; align-items: center; justify-content: center; }
+.rec-register-btn { min-height: 120rpx; border: 0; border-radius: 20rpx; background: #2f6b45; color: #fff; display: flex; align-items: center; justify-content: center; }   /* 规格对齐会议页主按钮（60px 高） */
 .rec-register-btn:active { background: #285f3d; }
-.rrb-main { font-size: 33rpx; font-weight: 700; }
+.rrb-main { font-size: 38rpx; font-weight: 700; }
 /* 接待 tab：待办移到近期接待上方（图一顺序 hero→待办→近期→档案→动作区） */
 .reception-mode .plan-todo-card { order: 2; }
 /* 近期接待轻列表化（0730 图一/spec §5）：只需知晓的记录＝透明底+分隔线，不再套白卡 */
