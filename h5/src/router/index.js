@@ -20,6 +20,8 @@ const routes = [
   { path: '/minutes-public', component: () => import('@/pages/MinutesPublic.vue'), meta: { title: '公开纪要' } },
   { path: '/minutes-internal', component: () => import('@/pages/MinutesInternal.vue'), meta: { title: '内部总结' } },
   { path: '/minutes-todos', component: () => import('@/pages/MinutesTodos.vue'), meta: { title: '待办事项' } },
+  // 待办详情（0731）：聚合待办页每项自己的处理页；单场会议待办管理页只留给会后确认流程
+  { path: '/todo-detail', component: () => import('@/pages/TodoDetail.vue'), meta: { title: '待办详情' } },
   // 会议记录/纪要 PDF 预览页（kind=record|minutes）：页内预览+导出
   { path: '/doc-preview', component: () => import('@/pages/DocPreview.vue'), meta: { title: '文档预览' } },
 

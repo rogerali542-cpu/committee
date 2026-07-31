@@ -363,7 +363,8 @@ const aggItems = computed(() => {
     source: [shortMeetingName(t.meetingTitle), t.sourceRef ? String(t.sourceRef).slice(0, 12) : ''].filter(Boolean).join(' · '),
     progress: t.owner ? ('负责人 ' + t.owner) : (t.dueText ? ('截止 ' + t.dueText) : ''),
     doing: t.status === 'doing',
-    onTap: () => goMeetingTodos(t.meetingId)
+    // 0731 用户定：不再跳单场会议待办管理页（编号卡+编辑删除那页），每项进自己的详情页处理
+    onTap: () => goTodoDetail(t)
   }))
   const rec = (aggReception.value || []).filter(r => !r.done && r.visitorName !== '无人来访').map(r => ({
     key: 'r-' + r.id, kind: 'reception',
@@ -400,7 +401,8 @@ async function loadAll() {
 function goBack() { navigateBack() }
 // 同组件带参自跳（/minutes-todos → /minutes-todos?meetingId=N）：vue-router 复用实例不触发
 // onMounted，直接整页跳转最稳
-function goMeetingTodos(id) { window.location.href = '/minutes-todos?meetingId=' + id }
+// 待办详情（0731）：整页硬跳最稳（同组件带参自跳的软路由坑同理）
+function goTodoDetail(t) { window.location.href = '/todo-detail?id=' + t.id + '&meetingId=' + t.meetingId }
 function goReception(r) {
   navigateTo('/pages/reception-detail/reception-detail?id=' + r.id)
   // 软路由偶发不切视图（本仓已知坑）：0.3s 后没见到接待详情哨兵就硬跳

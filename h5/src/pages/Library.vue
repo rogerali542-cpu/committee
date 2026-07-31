@@ -145,9 +145,9 @@ function switchTab(t) { tab.value = t; yearFilter.value = '' }
 
 function openDetail(item) {
   // 会议/学习归档详情走 ArchiveDetail；接待有自己的详情页（ArchiveDetail 不含 reception 分支）；
-  // 已办的会议待办回到该场会议的待办页（整页跳转最稳）
+  // 已办的会议待办进待办详情页（0731 用户定：单场待办管理页不再作为跳转目标）
   if (item.kind === 'todo-meeting') {
-    window.location.href = '/minutes-todos?meetingId=' + item.meetingId
+    window.location.href = '/todo-detail?id=' + item.id + '&meetingId=' + item.meetingId
   } else if (item.kind === 'reception') {
     navigateTo('/pages/reception-detail/reception-detail?id=' + item.id + '&from=archive')
   } else {
