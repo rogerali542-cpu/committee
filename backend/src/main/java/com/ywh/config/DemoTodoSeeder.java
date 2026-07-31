@@ -50,6 +50,27 @@ public class DemoTodoSeeder implements CommandLineRunner {
             seedPendingReceptions(c);
             seedMeetingTodos(c);
         }
+        logPendingSummary();
+    }
+
+    /** 自检日志（0731）：打印收敛后仍未办结的待办明细与合计，直接对上首页「待办 · N 项」。
+     *  重启后端后在控制台看这几行——若合计不是 2，明细会指出多出来的是哪条（含真实数据/新增项）。 */
+    private void logPendingSummary() {
+        int rec = 0, mtg = 0;
+        for (ReceptionRecord r : receptionRepo.findAll()) {
+            if ("无人来访".equals(r.getVisitorName())) continue;
+            if (r.getResolution() == null || r.getResolution().trim().isEmpty()) {
+                rec++;
+                log.info("[DemoTodoSeeder]   · 接待未办：{} / {}", r.getVisitorName(), r.getContent());
+            }
+        }
+        for (MeetingTodo t : todoRepo.findAll()) {
+            if (!"done".equals(t.getStatus())) {
+                mtg++;
+                log.info("[DemoTodoSeeder]   · 会议未办：{}（{}）", t.getTitle(), t.getStatus());
+            }
+        }
+        log.info("[DemoTodoSeeder] ===== 收敛后待办自检：接待未办 {} + 会议未办 {} = 合计 {} 项 =====", rec, mtg, rec + mtg);
     }
 
     /** 接待时间安排默认预置（0731）：此前无任何 seeder 种它，库重建后「每周四接待」就消失，
