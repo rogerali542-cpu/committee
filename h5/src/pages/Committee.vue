@@ -4413,16 +4413,16 @@ onActivated(show)
 .pt-sec { padding: 30rpx 0; border-top: 2rpx solid #EFF1F4; cursor: pointer; }
 .pt-sec:first-child { border-top: 0; }
 .pt-sec:active { background: #FAFBFC; }
-/* 模块名+状态小字行（0731 定稿回归）：归属与状态一眼可辨；主行下排 */
+/* 模块名＝这张卡的标题（0731 用户定：原来太小太浅形同虚设，加大加粗变主角）+状态徽章同行 */
 .pt-sec-tag-row { display: flex; align-items: center; gap: 12rpx; }
-.pt-sec-tag { font-size: 26rpx; color: #6B7280; }
-.pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 24rpx; }
+.pt-sec-tag { font-size: 36rpx; font-weight: 800; color: #1F2937; }
+.pt-sec-tag-row .pt-badge { margin-top: 0; font-size: 26rpx; }
 .pt-sec-tag-row .pt-badge.st-warn { margin-top: 0; padding: 4rpx 14rpx; }
-.pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 10rpx; }
+.pt-sec-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 12rpx; }
 /* 右侧固定动词（0731 设计师定：状态驱动跳转必须把动词写出来，老人只读字不记规则） */
 .pt-verb { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8rpx; font-size: 31rpx; font-weight: 700; color: #1F2937; white-space: nowrap; }
 .pt-sec-main { flex: 1; min-width: 0; }
-.pt-sec-title { font-size: 42rpx; font-weight: 800; color: #1F2937; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 0731 用户定：三张工作卡标题加大加粗更醒目（36→42rpx、750→800）；长标题（如培训名）窄屏仍截断不溢出 */
+.pt-sec-title { font-size: 31rpx; font-weight: 600; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 主行＝具体信息（会议名/时间/培训名），从属于上方模块名标题；长标题窄屏截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=蓝、其余=灰 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
