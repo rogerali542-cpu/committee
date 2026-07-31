@@ -11,11 +11,10 @@
       <!-- 返回驾驶舱移入顶栏右上角（0730 用户定，图一骨架）；驾驶舱布局(portal)本身不显示 -->
       <button v-if="homeLayout === 'tabs'" type="button" class="hd-cockpit" @click="goCockpitFromHd">返回首页</button>
       <!-- 0731 定稿：评分竖排右上——大数字在上、「综合评分 ›」在下（用户定：文本用"综合评分"），点击进个人中心看履职统计 -->
-      <!-- 评分（0731 用户定四改）：数字恢复红绿灯渐变——颜色与得分高低挂钩是它的语义，不是模块色；
-           标签「当前综合评分」，数字在标签宽度内水平居中 -->
+      <!-- 评分降级为一行小字（0731 设计师点5：大数字与「逾期」抢第一眼，而它一年看几次）；
+           数字保留分数挂钩渐变色（用户定：颜色是评分语义） -->
       <div v-if="isChair && planTab === 'meeting' && homeLayout === 'portal'" class="hd-score" @click="goScore">
-        <span class="hd-score-label">当前综合评分 ›</span>
-        <span class="hd-score-num" :style="{ backgroundImage: scoreGradient }">{{ score }}</span>
+        <span class="hd-score-line">当前综合评分 <b :style="{ backgroundImage: scoreGradient }">{{ score }}</b> ›</span>
       </div>
     </div>
 
@@ -112,34 +111,36 @@
            原欢迎语/智能摘要/三栏任务板/工作板块 dock 整体退役；底栏改用全局 TabBar 四项 -->
       <div v-if="planTab === 'meeting' && homeLayout === 'portal'" class="welcome">
         <div class="pt-date">{{ cockpitDateText }}</div>
-        <!-- 三模块聚合卡：每节＝模块名(灰) + 主行(黑) + 副行(灰) + 状态（三级：逾期暖胶囊/今日绿/进行中蓝）；
-             整节点击进对应模块页（spec §6 行点击=进入） -->
-        <div class="pt-card">
-          <!-- 模块名标签已删（0731 用户定三改：上色仍不够明显，索性删）：各节标题自明——
-               例会/接待字样自带归属，学习空态文案改「近期无学习培训」补上下文 -->
-          <div v-for="sec in portalSections" :key="sec.key" class="pt-sec" @click="sec.onTap()">
+        <!-- 「今日要办」白卡（0731 设计师五点批评后改良）：只装要办的事，有才出行、点击直达流程——
+             不再是三节板播（那是底栏进板块导航的复制）。待办聚合升入白卡（点4）。 -->
+        <div v-if="todayTasks.length" class="pt-card">
+          <div v-for="t in todayTasks" :key="t.key" class="pt-sec" @click="t.onTap()">
             <div class="pt-sec-row">
               <div class="pt-sec-main">
-                <div class="pt-sec-title">{{ sec.title }}</div>
-                <div v-if="sec.sub" class="pt-sec-sub">{{ sec.sub }}</div>
+                <div class="pt-sec-title">{{ t.title }}</div>
+                <div v-if="t.sub" class="pt-sec-sub">{{ t.sub }}</div>
               </div>
-              <span v-if="sec.badge" class="pt-badge" :class="sec.tier">{{ sec.badge }}</span>
+              <span v-if="t.badge" class="pt-badge" :class="t.tier">{{ t.badge }}</span>
             </div>
           </div>
         </div>
-        <!-- 轻列表（spec §5：非"当下要办"的入口用透明底+分隔线）：聚合待办 / 印章 / 档案馆 -->
+        <!-- 全空：一句轻空态（spec §9 空白比塞满好），不硬凑内容 -->
+        <div v-else class="pt-empty">今天没有要办的事</div>
+        <!-- 轻列表只剩历史记录（点4：要办的进白卡，轻列表留给"只需知晓"） -->
         <div class="pt-links">
-          <!-- 计数恒显（0731 设计师定：没数字这行信息量为零，0 项也要能看出"没有事要办"） -->
-          <div class="pt-link" @click="goTodos()">
-            <span class="pt-link-t">待办事项<em> · {{ ptTodoCount }} 项</em></span>
-            <i class="pt-arr"></i>
-          </div>
-          <!-- 印章管理行已删（0731 用户定：低频），入口移入个人中心菜单 -->
           <div class="pt-link" @click="goArchive()">
             <span class="pt-link-t">历史记录</span>
             <i class="pt-arr"></i>
           </div>
         </div>
+      </div>
+      <!-- 首页主操作（0731 设计师点2：全项目唯一没底部按钮的页；最该做的事只能被读到不能被按）：
+           固定在底栏上沿，指向最急会议（去补开/去召开/继续），无急事不显示。fixed 规矩见 CLAUDE.md -->
+      <div v-if="planTab === 'meeting' && homeLayout === 'portal' && heroMeeting" class="pt-actionbar">
+        <button type="button" class="mtg-primary" @click="heroMeeting.onTap()">
+          <span v-if="heroBarSub" class="mtg-primary-sub">{{ heroBarSub }}</span>
+          <span class="mtg-primary-main">{{ heroMeeting.statusLabel }}</span>
+        </button>
       </div>
 
       <!-- 会议工作页：驾驶舱负责提醒和直达，这里只保留近期安排与年度记录，避免同一场会议重复出现。 -->
@@ -1697,47 +1698,62 @@ const cockpitDateText = computed(() => {
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + weekdays[d.getDay()]
 })
-// ── 驾驶舱三模块聚合卡（0731 设计师定稿）──
-// 每节：模块名 + 主行 + 副行 + 状态（三级：逾期=暖胶囊、今日/明日=接待绿、进行中=会议蓝）
-const portalSections = computed(() => {
-  // 会议节：最急项（heroBarSub＝「第3次例会 · 应于 5-6月」式）；无急项给下一场计划
-  let mTitle, mSub = '', mBadge = '', mTier = ''
+// ── 驾驶舱「今日要办」清单（0731 设计师五点批评后改良版）──
+// 与三节板播的区别：只装"要办的事"（有才出行），点击直达那件事的流程，不再复制底栏的进板块导航；
+// 待办聚合也升入白卡（要办的事=白卡层级，spec §5）。全空给一句轻空态。
+const todayTasks = computed(() => {
+  const items = []
+  // 会议：最急项（逾期/进行中/本期待召开/草稿），点击直达对应流程（补开/继续会议/去召开）
   const h = heroMeeting.value
   if (h) {
-    mTitle = heroBarSub.value
-    if (h.statusClass === 'overdue') { mTitle += '召开'; mSub = '请尽快补开'; mBadge = '逾期'; mTier = 'st-warn' }   // 「应于 5-6月召开」语义完整（0731 用户定）；副行行动导向
-    else if (h.statusClass === 'ongoing') { mSub = '会议进行中'; mBadge = '进行中'; mTier = 'st-blue' }
-    else { mSub = dueSubFor(h) }
-  } else {
-    const n = nextRows.value[0]
-    mTitle = n ? (nextWhen(n) + ' · ' + shortMeetingName(n.title)) : '近期无会议安排'
-    if (n) mSub = '计划中'
+    items.push({
+      key: 'meeting',
+      title: heroBarSub.value + (h.statusClass === 'overdue' ? '召开' : ''),
+      sub: h.statusClass === 'overdue' ? '请尽快补开' : dueSubFor(h),
+      badge: dueStatusText(h), tier: dueStatusTier(h),
+      onTap: () => h.onTap()
+    })
   }
-  // 接待节
-  let rTitle, rSub = '', rBadge = '', rTier = ''
-  if (receptionHero.value.set) {
-    rTitle = receptionHero.value.title
-    rSub = String((recSystem.value && recSystem.value.place) || '')
-    if (receptionHero.value.days === 0) { rBadge = '今日'; rTier = 'st-green' }
-    else if (receptionHero.value.days === 1) { rBadge = '明日'; rTier = 'st-green' }
-  } else { rTitle = '还没设置接待时间' }
-  // 学习节：有在办给在办；没有＝「近期无安排」+「上次 X月X日 …」
+  // 接待：只在今天/明天有接待时出（非接待日不属于"要办"，安排看接待页）
+  if (receptionHero.value.set && (receptionHero.value.days === 0 || receptionHero.value.days === 1)) {
+    items.push({
+      key: 'reception',
+      title: receptionHero.value.title,
+      sub: String((recSystem.value && recSystem.value.place) || ''),
+      badge: receptionHero.value.days === 0 ? '今日' : '明日', tier: 'st-green',
+      onTap: enterReceptionArea
+    })
+  }
+  // 学习：有在办任务才出
   const lt = cockpitLearningTasks.value[0]
-  let lTitle, lSub = ''
   if (lt) {
-    lTitle = lt.title
-    lSub = [fmtPlanDate(lt.date), lt.stage === 'ongoing' ? '待整理' : (lt.notified ? '已通知' : '待通知')].filter(Boolean).join(' · ')
-  } else {
-    // 模块名标签已删（0731），空态标题自带「学习培训」四字补上下文
-    lTitle = '近期无学习培训'
-    const last = lastEndedLearning.value
-    if (last) lSub = '上次 ' + fmtPlanDate(last.date) + (last.title ? ' ' + last.title : '')
+    items.push({
+      key: 'learning',
+      title: lt.title,
+      sub: [fmtPlanDate(lt.date), lt.stage === 'ongoing' ? '待整理' : (lt.notified ? '已通知' : '待通知')].filter(Boolean).join(' · '),
+      badge: '', tier: '',
+      onTap: goLearningHome
+    })
   }
-  return [
-    { key: 'meeting', title: mTitle, sub: mSub, badge: mBadge, tier: mTier, onTap: enterCommitteeArea },
-    { key: 'reception', title: rTitle, sub: rSub, badge: rBadge, tier: rTier, onTap: enterReceptionArea },
-    { key: 'learning', title: lTitle, sub: lSub, badge: '', tier: '', onTap: goLearningHome }
-  ]
+  // 聚合待办（0731 设计师点4：要办的事应在白卡层级，不放轻列表）
+  if (ptTodoCount.value > 0) {
+    items.push({
+      key: 'todos',
+      title: '待办事项 · ' + ptTodoCount.value + ' 项待跟进',
+      sub: ptTodoSummary.value,
+      badge: '', tier: '',
+      onTap: goTodos
+    })
+  }
+  return items
+})
+// 待办摘要：会议+接待未办各取首短句
+const ptTodoSummary = computed(() => {
+  const parts = [
+    ...portalTodos.value.filter(t => t.status !== 'done').map(t => String(t.title || '').split(/[，。；、,.;]/)[0]),
+    ...recPendingList.value.map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0])
+  ].filter(Boolean)
+  return parts.slice(0, 2).join('、') + (parts.length > 2 ? ' 等' : '')
 })
 // 驾驶舱轻列表：聚合待办计数（会议未办 + 接待未办）
 const portalTodos = ref([])
@@ -4285,12 +4301,11 @@ onActivated(show)
 .hd-bell { position: relative; padding: 8rpx; align-self: center; }
 .hd-bell-ico { font-size: 52rpx; }
 .hd-badge { position: absolute; top: -2rpx; right: -6rpx; min-width: 34rpx; height: 34rpx; padding: 0 8rpx; background: var(--c-danger); color: #fff; font-size: 28rpx; border-radius: 17rpx; line-height: 34rpx; text-align: center; }
-/* 顶栏右上角评分（0731 四改）：大数字在上并在标签宽度内水平居中、「当前综合评分 ›」在下，可点进个人中心 */
-.hd-score { display: inline-flex; flex-direction: column; align-items: center; gap: 6rpx; align-self: center; cursor: pointer; }
+/* 顶栏右上角评分（0731 五改·设计师点5）：降为一行小字，不与「逾期」抢第一眼；数字保留分数渐变色 */
+.hd-score { display: inline-flex; align-items: center; align-self: center; cursor: pointer; }
 .hd-score:active { opacity: .7; }
-.hd-score-label { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
-/* 数字随分数高低红绿灯渐变（0731 用户定：颜色与得分挂钩是评分语义，恢复；backgroundImage 由 scoreGradient 注入） */
-.hd-score-num { font-size: 52rpx; font-weight: 800; line-height: 1; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+.hd-score-line { font-size: 25rpx; font-weight: 500; color: rgba(255,255,255,0.85); }
+.hd-score-line b { font-size: 31rpx; font-weight: 800; margin: 0 4rpx; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 /* 当前会议主卡片 */
 /* 当前重点横幅（0724 首页改版）：整屏第一视觉。配色取沉稳低饱和的哑光色（0724 用户定：原橙红太刺眼，
    适老要柔和），纯色不用渐变、不用脉动动画——active 深藏青 / urgent 哑光砖红 / calm 沉稳墨绿。白字高对比。 */
@@ -4372,7 +4387,7 @@ onActivated(show)
 }
 .portal-home .hd-title { font-size: 38rpx; font-weight: 700; letter-spacing: .5rpx; }
 .portal-home .hd-sub { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 27rpx; }
-.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 150rpx; /* 给全局 TabBar 让位（ck-dock 已退役） */ }
+.welcome { display: flex; flex-direction: column; min-height: calc(100dvh - 162rpx); box-sizing: border-box; padding-bottom: 300rpx; /* 给「固定主操作条+全局 TabBar」两层让位 */ }
 /* ── 驾驶舱 0731 定稿：日期行 + 三模块聚合卡 + 轻列表 ── */
 .pt-date { padding: 26rpx 6rpx 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .pt-card { background: #fff; border-radius: 24rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); padding: 8rpx 30rpx; }
@@ -4384,11 +4399,16 @@ onActivated(show)
 .pt-sec-main { flex: 1; min-width: 0; }
 .pt-sec-title { font-size: 36rpx; font-weight: 750; color: #1F2937; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* 长标题（如培训名）窄屏截断不溢出 */
 .pt-sec-sub { margin-top: 8rpx; font-size: 27rpx; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=会议蓝 */
+/* 状态三级（规范§四）：逾期=暖胶囊、今日/明日=接待绿、进行中=蓝、其余=灰 */
 .pt-badge { flex-shrink: 0; margin-top: 6rpx; font-size: 26rpx; font-weight: 600; }
 .pt-badge.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; margin-top: 2rpx; }   /* 胶囊带高度，微调与标题行居中对齐 */
 .pt-badge.st-green { color: #2f6b45; font-weight: 700; }
-.pt-badge.st-blue { color: #2f5f9e; font-weight: 700; }
+.pt-badge.st-blue, .pt-badge.st-today { color: #2f5f9e; font-weight: 700; }
+.pt-badge.st-muted { color: #6B7280; font-weight: 500; }
+/* 空态：一句轻语，不占版面 */
+.pt-empty { padding: 60rpx 8rpx; text-align: center; font-size: 29rpx; color: #6B7280; }
+/* 首页主操作条（0731 设计师点2）：fixed 钉底栏上沿（CLAUDE.md 规矩），与底栏连成整片白 */
+.pt-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 轻列表（spec §5；0731 设计师定：行压矮、去粗——"轻"列表不与白卡标题抢重量，和卡片更连贯 */
 .pt-links { margin-top: 20rpx; padding: 0 6rpx; }
 .pt-link { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 76rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
