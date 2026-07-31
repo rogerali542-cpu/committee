@@ -1998,6 +1998,9 @@ const heroBarLine = computed(() => {
   if (!h) return ''
   const m = String(h.title || '').match(/第\d+次/)
   const short = m ? m[0] + '例会' : String(h.title || '').slice(0, 10)
+  // 0731 用户定：待开/补开态连成一句「召开第N次例会」（逾期已由卡内胶囊表达，按钮不再分补开）；
+  // 进行中/编辑中等其它状态仍「状态 · 场次」
+  if (h.statusLabel === '去召开' || h.statusLabel === '去补开') return '召开' + short
   return h.statusLabel + ' · ' + short
 })
 // 驾驶舱会议卡改两行（0731 用户定：「应于 5-6月」拗口）：第一行「2026年第N次例会」，
