@@ -66,16 +66,19 @@
           </template>
         </div>
 
-        <!-- 待办入口卡（0730 设计师定稿；0731 用户定：入口常驻，0 项也保留——它是「业委会待办」
-             聚合页的固定入口，不随有无待办出没）：标题「待办事项 · N 项待跟进」+内容短摘要 -->
-        <div v-if="planTab === 'reception'" class="rec-todo-entry" @click="goTodos()">
+        <!-- 待办（0731 设计师定：白卡=要办的事，只在有内容时上白卡；0 项降级为轻列表一行
+             ——空白卡比灰字更糟，但入口常驻不消失（0731 用户底线）。副行列全量摘要：
+             计数是全委口径（会议+接待），副行只写接待会像漏了 -->
+        <div v-if="planTab === 'reception' && ptTodoCount" class="rec-todo-entry" @click="goTodos()">
           <div class="rte-top">
-            <!-- 0731 用户定：就叫「待办」——这卡点进去是全委待办聚合页，计数也用全量（与首页对齐），
-                 「业主反馈」名不副实且太长 -->
-            <b>待办{{ ptTodoCount ? ' · ' + ptTodoCount + ' 项' : '' }}</b>
+            <b>待办 · {{ ptTodoCount }} 项</b>
             <i class="rte-arr"></i>
           </div>
-          <div class="rte-sub">{{ recPendingList.length ? recPendingSummary : '暂无待跟进事项' }}</div>
+          <div class="rte-sub">{{ combinedPendingSummary }}</div>
+        </div>
+        <div v-if="planTab === 'reception' && !ptTodoCount" class="rec-todo-entry empty" @click="goTodos()">
+          <span class="rte-none"><b>待办</b><em> · 无</em></span>
+          <i class="rte-arr"></i>
         </div>
 
         <!-- 底部动作区（0731 设计师点3）：只留「登记接待」一个实心主按钮——「调整接待安排」
@@ -93,9 +96,9 @@
           <div v-for="session in recentReceptionRecords" :key="session.key" class="rec-recent-session">
             <div class="rec-recent-row" @click="openRecentSession(session)">
               <div class="rec-recent-copy">
-                <strong class="rec-recent-main">{{ fmtPlanDate(session.date) }}<template v-if="session.receiver"> · {{ session.receiver }}</template></strong>
-                <!-- 副行改内容短摘要（0730 定稿图）：「反映 下水管返味、门禁卡失灵」比「反映 2 项」信息量大 -->
-                <span class="rec-recent-sub">{{ session.noVisit ? '无业主来访' : recSummaryOf(session) }}</span>
+                <!-- 0731 设计师定：一行只留两种字重——日期黑，姓名+内容一起灰，眼睛只跟日期 -->
+                <strong class="rec-recent-main">{{ fmtPlanDate(session.date) }}</strong>
+                <span class="rec-recent-sub">{{ session.noVisit ? '无业主来访' : ((session.receiver ? session.receiver + ' · ' : '') + recSummaryOf(session)) }}</span>
               </div>
               <i class="rec-recent-chev" :class="{ open: recentOpenKey === session.key && session.displayRecords.length > 1 }"></i>
             </div>
@@ -1211,11 +1214,13 @@ const receptionHero = computed(() => {
 })
 // 待办入口卡（0730 定稿）：未办结接待事项（排除无人来访占位）计数 + 内容短摘要
 const recPendingList = computed(() => (calRecs.value || []).filter(r => !r.done && r.visitorName !== '无人来访'))
-const recPendingSummary = computed(() => {
-  // 首个标点前的完整短句（0731：不半句硬切），超宽由 CSS 省略号兜底
-  const parts = recPendingList.value
-    .map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0])
-    .filter(Boolean)
+// 待办卡副行摘要（0731 设计师定：计数是全委口径，副行也得列全量——只写接待会像漏了）：
+// 接待未办取首短句 + 会议未办取标题，前 2 条 + 等
+const combinedPendingSummary = computed(() => {
+  const parts = [
+    ...recPendingList.value.map(r => String(r.content || '').replace(/\s+/g, '').split(/[，。；、,.;]/)[0]),
+    ...portalTodos.value.filter(t => t.status !== 'done').map(t => String(t.title || ''))
+  ].filter(Boolean)
   return parts.slice(0, 2).join('、') + (parts.length > 2 ? ' 等' : '')
 })
 // 进「业委会待办」聚合页（/minutes-todos 无参＝聚合模式）；软路由坑同款硬跳兜底
@@ -5151,8 +5156,8 @@ onActivated(show)
 /* 接待 tab：待办移到近期接待上方（图一顺序 hero→待办→近期→档案→动作区） */
 .reception-mode .plan-todo-card { order: 2; }
 /* 近期接待轻列表化（0730 图一/spec §5）：只需知晓的记录＝透明底+分隔线，不再套白卡 */
-.rec-recent-card { order: 3; margin-top: 8rpx; padding: 0 8rpx; box-sizing: border-box;
-  background: transparent; border: 0; box-shadow: none; }   /* 0731 用户定：整块上移一点 */
+.rec-recent-card { order: 3; margin-top: 40rpx; padding: 0 8rpx; box-sizing: border-box;
+  background: transparent; border: 0; box-shadow: none; }   /* 0731 设计师定：与待办白卡隔 20px，两组别粘连 */
 /* 末行档案馆入口（0730 定稿图）：「档案馆」深色粗、说明灰 */
 .rec-recent-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
 .rec-recent-arch:active { opacity: .65; }
@@ -5185,6 +5190,11 @@ onActivated(show)
 .rec-todo-entry { order: 2; margin-top: 26rpx; padding: 28rpx 30rpx; background: #fff; border-radius: 22rpx;
   box-shadow: 0 2rpx 6rpx rgba(20,33,61,.04), 0 10rpx 24rpx rgba(20,33,61,.07); cursor: pointer; }
 .rec-todo-entry:active { background: #F7F9FB; }
+/* 0 项降级态：轻列表行（透明底+上下线），入口常驻但不摆空白卡 */
+.rec-todo-entry.empty { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; margin-top: 20rpx; padding: 0 8rpx; background: transparent; border-radius: 0; box-shadow: none; border-top: 2rpx solid #E2E5EA; border-bottom: 2rpx solid #E2E5EA; }
+.rec-todo-entry.empty:active { background: transparent; opacity: .65; }
+.rte-none b { font-size: 31rpx; font-weight: 500; color: #1F2937; }
+.rte-none em { font-style: normal; font-size: 28rpx; font-weight: 500; color: #6B7280; }
 .rte-top { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; }
 .rte-top b { font-size: 32rpx; font-weight: 700; color: #1F2937; }
 /* 右箭头：CSS 边框画（CLAUDE.md），示意可进入 */
