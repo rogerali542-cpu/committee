@@ -235,16 +235,7 @@
                   <span class="mtg-next-line">{{ nextWhen(row) }} · {{ shortMeetingName(row.title) }}</span>
                 </div>
               </template>
-              <div class="mr-calendar-panel-title">
-                <span>{{ viewYear }}年月历</span>
-              </div>
-              <div class="mr-calendar-grid">
-                <button v-for="mc in monthCells" :key="'meeting-month-' + mc.m" type="button"
-                        class="mr-calendar-month" :class="mc.status" @click.stop="onMeetingCalendarMonth(mc.m)">
-                  <b>{{ mc.m }}月</b>
-                  <span>{{ mc.label }}</span>
-                </button>
-              </div>
+              <!-- 12 月月历宫格已删（0731 用户定：展开内容太多）——后续会议+已完成+历史入口已覆盖全年信息 -->
               <template v-if="meetingRecordList.done.length">
                 <div class="mr-cal-done-title">已完成 {{ meetingRecordList.done.length }} 场</div>
                 <div v-for="row in meetingRecordList.done" :key="row.key" class="mr-row done mr-cal-done-row">
@@ -2115,10 +2106,7 @@ function toggleMeetingCalendar() {
     })
   }
 }
-function onMeetingCalendarMonth(month) {
-  const row = yearPlan.value[Math.ceil(Number(month) / 2) - 1]
-  if (row) onPlanRow(row)
-}
+// （onMeetingCalendarMonth 已删——0731 会议月历宫格随「展开内容太多」下线）
 
 const calAlert = computed(() => {
   if (planTab.value === 'meeting') {
@@ -4900,14 +4888,6 @@ onActivated(show)
 .mr-cal-done-row { padding-left: 2rpx; padding-right: 2rpx; }
 .mr-cal-done-row .mr-row-sub { display: none; }   /* 每行都是同一句"可查看会议记录",抽屉里省掉,行更紧凑 */
 .mr-calendar-panel-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; padding: 0 2rpx 18rpx; color: #34465C; font-size: 30rpx; font-weight: 700; }
-.mr-calendar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12rpx; }
-.mr-calendar-month { min-height: 86rpx; padding: 9rpx 4rpx; border: 0; border-radius: 13rpx; background: #EEF1F4; color: #627083; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5rpx; }
-.mr-calendar-month b { font-size: 26rpx; line-height: 1.1; }
-.mr-calendar-month span { font-size: 21rpx; line-height: 1.1; }
-.mr-calendar-month.done { background: #EDF6F0; color: #397356; }
-.mr-calendar-month.overdue { background: #FAEBE8; color: #A94B40; }
-.mr-calendar-month.current { background: #EAF0F7; color: #3B6593; }
-.mr-calendar-month:active { filter: brightness(.96); }
 .meet-card { margin: 14rpx 24rpx 14rpx; background: var(--c-bg-card); border-radius: 22rpx; padding: 26rpx 26rpx 22rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.05); }
 /* .meet-collapsed / .mc-ico / .mc-text / .mc-act / .meet-collapse-chip / .meet-collapse-foot
    全删（0717 用户定：会议进行中那一栏撤掉，接待日安排顶上）。
