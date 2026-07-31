@@ -5111,8 +5111,9 @@ onActivated(show)
 /* 卡头标签（0731 设计师定稿）：模块绿小图标 + 深色标签字 */
 .rnh-label { display: inline-flex; align-items: center; gap: 12rpx; font-size: 30rpx; font-weight: 700; color: #1F2937; }
 .rnh-label svg { width: 34rpx; height: 34rpx; color: #2f6b45; flex-shrink: 0; }
-/* 右上角「调整安排」浅绿胶囊次级钮（0731 用户定：灰字不显眼）：规范§7 次按钮=浅底模块色 */
-.rnh-adj-btn { flex-shrink: 0; min-height: 60rpx; padding: 0 26rpx; border: 0; border-radius: 999rpx; background: #E4F0E8; color: #2f6b45; font-size: 28rpx; font-weight: 650; }
+/* 右上角「调整安排」次级钮（0731 用户二调：浅绿底还不够显眼）——加模块绿描边+放大一号，
+   描边是"可点"的强信号；仍不与底部实心主按钮同级 */
+.rnh-adj-btn { flex-shrink: 0; min-height: 68rpx; padding: 0 28rpx; border: 3rpx solid #2f6b45; border-radius: 999rpx; background: #E4F0E8; color: #2f6b45; font-size: 30rpx; font-weight: 700; }
 .rnh-adj-btn:active { background: #D6E9DD; }
 .rnh-date { margin-top: 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .rnh-title { margin-top: 12rpx; font-size: 43rpx; line-height: 1.3; font-weight: 700; color: var(--c-text-strong); }
