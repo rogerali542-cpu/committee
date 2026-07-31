@@ -60,6 +60,8 @@
             <div class="rnh-title">{{ receptionHero.timeLine }}</div>
             <!-- 地址整体不拆:放不下就整体换到第二行,不从地名中间掰断 -->
             <div v-if="recSystem && recSystem.place" class="rnh-place"><span class="rnh-place-name">{{ recSystem.place }}</span></div>
+            <!-- 值班人（0731 用户定）：轮值按周自动算，卡上直接看到下一场轮到谁 -->
+            <div v-if="receptionDutyLine" class="rnh-duty">{{ receptionDutyLine }}</div>
           </template>
           <template v-else>
             <div class="rnh-time none">还没设置接待时间</div>
@@ -952,6 +954,7 @@ import { applyHotwords } from '@/utils/helpers'
 import { openMaterialViewer } from '@/composables/materialViewer'
 import { aiTask } from '@/composables/aiTask'
 import { homeShell } from '@/composables/homeShell'
+import { isRotation, dutyPersonFor } from '@/utils/rotation'
 
 const props = defineProps({
   section: { type: String, default: 'meeting' }
@@ -1188,6 +1191,15 @@ const receptionTimeText = computed(() => {
     .replace(/[，,、]?\s*法定节假日暂停.*$/, '')
     .trim()
 })
+// 接待卡「值班」行（0731 用户定：轮值自动轮转）：轮值模式按周数算出下一场轮到谁；
+// 手动指定过具体人则显示指定名单
+const receptionDutyLine = computed(() => {
+  const sys = recSystem.value
+  if (!sys || !sys.timeDesc) return ''
+  const p = String(sys.person || '').trim()
+  const name = isRotation(p) ? dutyPersonFor(sys.timeDesc, committeeRoster.value) : p
+  return name ? '值班 · ' + name : ''
+})
 // 接待安排卡（0730 设计师定稿）：顶行统一灰字「M月D日 周四」（下一个接待日）；
 // 语气只落在标题——今天「今晚 19:00 接待」/明天「明晚…」/其他日子制度句「每周四 起—止 接待」。
 const receptionHero = computed(() => {
@@ -1271,6 +1283,7 @@ async function loadCalExtras() {
   ])
   calRecs.value = recs || []
   recSystem.value = sys || null
+  loadCommitteeRoster()   // 值班行要按名册顺序算轮值到谁（有缓存，只拉一次）
 }
 async function loadCockpitLearningTasks() {
   const [internal, training] = await Promise.all([
@@ -5123,6 +5136,8 @@ onActivated(show)
 .rnh-place { margin-top: 10rpx; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical;
   -webkit-line-clamp: 2; font-size: 34rpx; line-height: 1.45; color: var(--c-text-mid); }
 .rnh-place-name { display: inline-block; max-width: 100%; }  /* 地名整体折行,不从中间掰断 */
+/* 值班人行（0731 用户定：轮值按周自动轮转，卡上直接看到下一场轮到谁） */
+.rnh-duty { margin-top: 10rpx; font-size: 34rpx; color: var(--c-text-mid); }
 /* 白底+深描边+投影(0725 用户定:原奶油底和卡片底融在一起,不像按钮) */
 .rec-notice-primary { display: block; width: 60%; height: 84rpx; margin: 29rpx auto 0;
   border: 2rpx solid #9CC0AA; border-radius: 18rpx; background: #fff;

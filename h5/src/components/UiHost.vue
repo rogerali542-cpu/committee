@@ -73,7 +73,18 @@ function onSheetTap(idx) {
   // 多选：点行只切换选中态（浅绿底+绿勾），不关弹层；「确定」才落定
   if (sheet && sheet.multi) {
     const item = sheet.itemList[idx]
-    if (item && typeof item === 'object') item.selected = !item.selected
+    if (item && typeof item === 'object') {
+      if (item.exclusive) {
+        // 互斥项（如「按顺序每周轮值」）：选中即清掉其它所有选择
+        const on = !item.selected
+        sheet.itemList.forEach(it => { if (typeof it === 'object') it.selected = false })
+        item.selected = on
+      } else {
+        item.selected = !item.selected
+        // 选了具体项就退掉互斥项
+        if (item.selected) sheet.itemList.forEach(it => { if (typeof it === 'object' && it.exclusive) it.selected = false })
+      }
+    }
     return
   }
   resolveActionSheet({ tapIndex: idx })

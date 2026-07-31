@@ -36,9 +36,12 @@
           <span class="rn-v" :class="{ empty: !form.place }">{{ form.place || '未填写' }}</span>
           <i v-if="canManage" class="rn-arr"></i>
         </div>
+        <!-- 接待人员（0731 用户定）：默认按成员顺序每周轮值——场次结束自动轮到下一人，
+             行上直接标出下次轮到谁；特殊周才手动指定具体人 -->
         <div class="rn-row" :class="{ ro: !canManage }" @click="pickPerson">
           <span class="rn-k">接待人员</span>
-          <span class="rn-v" :class="{ empty: !form.person }">{{ form.person || '未指定' }}</span>
+          <span class="rn-v">{{ isRotationMode ? '按顺序轮值' : form.person }}</span>
+          <span v-if="isRotationMode && dutyName" class="rn-orig">下次 {{ dutyName }}</span>
           <i v-if="canManage" class="rn-arr"></i>
         </div>
         <div class="rn-row" :class="{ ro: !canManage }" @click="pickReason">
@@ -111,6 +114,7 @@ import perm from '@/utils/perm'
 import { toast, showModal, showActionSheet } from '@/utils/ui'
 import { goModuleHome } from '@/utils/navigate'
 import { getStorage, setStorage } from '@/utils/storage'
+import { ROTATION, isRotation, dutyPersonFor, RECEPTION_ROLES } from '@/utils/rotation'
 
 const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
@@ -125,10 +129,13 @@ const orgName = ref('业主委员会')
 const orgFullName = ref('业主委员会')
 const committeeRoster = ref([])
 // 接待人员=业委会成员(0725 用户定:主任/副主任/委员都算,不只委员),排除秘书等非成员岗
-const RECEPTION_ROLES = ['主任', '副主任', '委员']
 const receptionMembers = computed(() =>
   committeeRoster.value.filter(member => RECEPTION_ROLES.includes(String(member.role || '').trim()))
 )
+// 轮值模式（0731 用户定：轮值是默认，本周场次结束自动轮到下一人，不用每周手动改）
+const isRotationMode = computed(() => isRotation(form.person))
+// 下一场轮到谁：按当前表单周几（没选齐退已保存安排）+ 成员名册顺序算
+const dutyName = computed(() => dutyPersonFor(timeText.value || saved.timeDesc, committeeRoster.value))
 
 const HOUR_OPTS = Array.from({ length: 14 }, (_, i) => String(i + 8).padStart(2, '0'))   /* 0731 mock：时段从 08:00 起 */
 const MINUTE_OPTS = ['00', '30']
@@ -249,8 +256,10 @@ async function load() {
     committeeRoster.value = members || []
     saved.timeDesc = conciseTimeDesc(sys && sys.timeDesc)
     form.place = saved.place = (sys && sys.place) || ''
-    // “业委会委员轮值”只作为占位提示，进入页面后由用户选择具体轮值委员。
-    form.person = saved.person = ''
+    // 轮值为默认（0731 用户定：接待本该按顺序自动轮转，不需要每周手动改）——
+    // 后端 person 含「轮值」或为空 → 轮值模式（种子「当值委员轮值」即命中）；具体名单=手动指定
+    const rawPerson = String((sys && sys.person) || '').trim()
+    form.person = saved.person = isRotation(rawPerson) ? ROTATION : rawPerson
     // 调整原因只针对本次公告，不沿用上一次保存的临时原因。
     form.reason = saved.reason = ''
     parseTimeDesc(saved.timeDesc)
@@ -286,17 +295,21 @@ async function pickTime(field) {
     itemList: TIME_OPTS.map(t => ({ label: t, selected: t === form[field] })) })
   if (res && res.tapIndex >= 0) form[field] = TIME_OPTS[res.tapIndex]
 }
-// 接待人员=多选（0731 设计师定：可能两人值班；点名字切换选中，底部 取消/确定 落定）。
-// 只列名字不带职务——七个人互相都认识，职务在公告署名时才有意义
+// 接待人员（0731 用户定：默认按成员顺序每周轮值，场次结束自动到下一人；特殊周可指定
+// 具体一或多人，与轮值互斥）。只列名字不带职务——七个人互相都认识，职务在公告署名时才有意义
 async function pickPerson() {
   if (!canManage.value) return
   if (!receptionMembers.value.length) { toast({ title: '暂无可选成员', icon: 'none' }); return }
-  const chosen = String(form.person || '').split(/[、，,\s]+/).filter(Boolean)
+  const chosen = isRotationMode.value ? [] : String(form.person || '').split(/[、，,\s]+/).filter(Boolean)
   const res = await showActionSheet({ title: '接待人员', variant: 'picker', multi: true, confirmText: '确定',
-    itemList: receptionMembers.value.map(m => ({ label: m.name, selected: chosen.includes(m.name) })) })
-  if (res && res.confirm && Array.isArray(res.tapIndexes)) {
-    form.person = res.tapIndexes.map(i => receptionMembers.value[i].name).join('、')
-  }
+    itemList: [
+      { label: '按顺序每周轮值', selected: isRotationMode.value, exclusive: true },
+      ...receptionMembers.value.map(m => ({ label: m.name, selected: chosen.includes(m.name) }))
+    ] })
+  if (!res || !res.confirm || !Array.isArray(res.tapIndexes)) return
+  // 选了轮值或什么都没选 → 轮值；否则为指定名单（下标 0 是轮值项，成员从 1 起）
+  if (!res.tapIndexes.length || res.tapIndexes.includes(0)) form.person = ROTATION
+  else form.person = res.tapIndexes.map(i => receptionMembers.value[i - 1].name).join('、')
 }
 // ── 接待地点（0731 设计师定）：弹层放已有地点，最后一行「＋ 填写其他地点」进独立输入层；
 //    手填过的存 localStorage 下次出现在列表；排序按使用频率（保存公告时 +1），不按拼音 ──
