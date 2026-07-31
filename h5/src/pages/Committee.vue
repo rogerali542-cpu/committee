@@ -41,29 +41,27 @@
              清单，再逐条处理——所以位置就卡在「概览 → 登记 → 待处理清单」这个工作流顺序上。
              原先它是待办卡头里的一个小 chip，和「主要功能之一」的分量不符。 -->
         <div v-if="planTab === 'reception'" class="rec-notice-hero">
-          <!-- 时间显示（0730 设计师定稿）：顶行统一灰字「M月D日 周四」；语气只落在标题
-               （今天「今晚…」/明天「明晚…」/其他日子制度句「每周四 起—止 接待」） -->
+          <!-- 卡头（0731 设计师定稿）：模块绿图标+「接待安排」标签，右上角「调整 ›」小链接——
+               调整入口从卡底行上移到角落，卡身只剩 日期/时间/地点 三行信息 -->
+          <div class="rnh-top">
+            <span class="rnh-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-4.2 3.4c-.4.3-.8 0-.8-.4V6.5z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="12.5" x2="13" y2="12.5"/>
+              </svg>
+              接待安排
+            </span>
+            <span v-if="canManageReception" class="rnh-adj-link" @click.stop="goReceptionNotice">{{ receptionHero.set ? '调整' : '去设置' }}<i class="pt-arr"></i></span>
+          </div>
           <template v-if="receptionHero.set">
-            <div class="rnh-top">
-              <!-- 0731 用户定：去绿底后卡失语——左上小标签一词定性，右侧仍是具体日期 -->
-              <span class="rnh-kicker-sm">接待安排</span>
-              <span class="rnh-date">{{ receptionHero.dateLine }}</span>
-            </div>
+            <div class="rnh-date">{{ receptionHero.dateLine }}</div>
             <!-- 主行只写时间（0731 设计师点2：上行小字已是具体日期，「下周四」与之重复；具体日期更可靠） -->
             <div class="rnh-title">{{ receptionHero.timeLine }}</div>
             <!-- 地址整体不拆:放不下就整体换到第二行,不从地名中间掰断 -->
             <div v-if="recSystem && recSystem.place" class="rnh-place"><span class="rnh-place-name">{{ recSystem.place }}</span></div>
           </template>
           <template v-else>
-            <div class="rnh-kicker">接待安排</div>
             <div class="rnh-time none">还没设置接待时间</div>
           </template>
-          <!-- 0731 用户定：调整安排≈月频（比待办高），从列表末行上移为本卡底行——
-               它操作的正是卡里显示的内容，"看到安排→改安排"同一动线；底部仍只留登记主按钮 -->
-          <div v-if="canManageReception" class="rnh-adjust" @click="goReceptionNotice">
-            <span>{{ receptionHero.set ? '调整接待安排' : '去设置接待时间' }}</span>
-            <i class="pt-arr"></i>
-          </div>
         </div>
 
         <!-- 待办入口卡（0730 设计师定稿；0731 用户定：入口常驻，0 项也保留——它是「业委会待办」
@@ -86,10 +84,7 @@
           </button>
         </div>
         <div v-if="planTab === 'reception'" class="rec-recent-card">
-          <!-- 「接待记录」改称「近期接待」，「查看全部」重复入口删掉——往期/已办统一收进档案馆（0730 设计师定） -->
-          <div class="rec-recent-head">
-            <span>近期接待</span>
-          </div>
+          <!-- 「近期接待」小标题已删（0731 设计师定：行内日期+人名+内容自明，标题是冗余）；列表直接开始 -->
           <div v-if="!recentReceptionRecords.length" class="rec-recent-empty">暂无接待记录</div>
           <!-- 行式照图一（spec §11）：记录只是记录，不挂状态标签——事项状态由上方待办卡承担；
                行上的删除 × 已撤（spec §10：删除移入详情页，ReceptionDetail 有「删除这条接待记录」） -->
@@ -5104,13 +5099,15 @@ onActivated(show)
   border: 2rpx solid #E3E8EE; border-radius: 26rpx; box-shadow: 0 10rpx 26rpx rgba(31,41,55,0.06); }   /* 0731 设计师点1：卡不带模块色，绿只留页头/底栏选中/主按钮 */
 .rec-notice-hero-head { display: flex; align-items: flex-start; gap: 26rpx; }
 .rnh-copy { flex: 1; min-width: 0; }
-.rnh-kicker { font-size: 37rpx; line-height: 1.35; font-weight: 650; color: #3B7150; }
 /* 顶行（0730 设计师定稿）：统一灰字「M月D日 周四」，语气只落在标题 */
-.rnh-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12rpx; }
-.rnh-kicker-sm { font-size: 29rpx; font-weight: 650; color: #6B7280; }   /* 卡片身份标签（0731：白卡后一词定性） */
-.rnh-adjust { margin-top: 24rpx; padding-top: 22rpx; border-top: 2rpx solid #F0F2F5; min-height: 64rpx; display: flex; align-items: center; justify-content: space-between; gap: 12rpx; font-size: 30rpx; font-weight: 600; color: #1F2937; cursor: pointer; }
-.rnh-adjust:active { opacity: .65; }
-.rnh-date { font-size: 30rpx; font-weight: 500; color: #6B7280; }
+.rnh-top { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
+/* 卡头标签（0731 设计师定稿）：模块绿小图标 + 深色标签字 */
+.rnh-label { display: inline-flex; align-items: center; gap: 12rpx; font-size: 30rpx; font-weight: 700; color: #1F2937; }
+.rnh-label svg { width: 34rpx; height: 34rpx; color: #2f6b45; flex-shrink: 0; }
+/* 右上角「调整 ›」小链接：低调但常驻（月频动作，角落即可） */
+.rnh-adj-link { display: inline-flex; align-items: center; gap: 8rpx; font-size: 28rpx; font-weight: 500; color: #6B7280; cursor: pointer; padding: 8rpx 0 8rpx 16rpx; }
+.rnh-adj-link:active { opacity: .6; }
+.rnh-date { margin-top: 20rpx; font-size: 30rpx; font-weight: 500; color: #6B7280; }
 .rnh-title { margin-top: 12rpx; font-size: 43rpx; line-height: 1.3; font-weight: 700; color: var(--c-text-strong); }
 .rnh-time { margin-top: 12rpx; font-size: 43rpx; line-height: 1.35; font-weight: 650;
   color: var(--c-text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -5154,8 +5151,6 @@ onActivated(show)
 /* 近期接待轻列表化（0730 图一/spec §5）：只需知晓的记录＝透明底+分隔线，不再套白卡 */
 .rec-recent-card { order: 3; margin-top: 8rpx; padding: 0 8rpx; box-sizing: border-box;
   background: transparent; border: 0; box-shadow: none; }   /* 0731 用户定：整块上移一点 */
-.rec-recent-head { display: flex; align-items: center; justify-content: space-between;
-  min-height: 84rpx; padding: 0 2rpx; font-size: 30rpx; font-weight: 700; color: #6B7280; }   /* 两档制：节标题=灰档加粗 */
 /* 末行档案馆入口（0730 定稿图）：「档案馆」深色粗、说明灰 */
 .rec-recent-arch { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; min-height: 96rpx; border-top: 2rpx solid #E2E5EA; cursor: pointer; }
 .rec-recent-arch:active { opacity: .65; }
