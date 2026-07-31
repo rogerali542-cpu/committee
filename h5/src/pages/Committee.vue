@@ -236,7 +236,7 @@
             <!-- 历史记录入口（0730 设计师定）：全年会议是今年排期总览、可展开；历史记录是历年已归档纪要，两件事并存。
                  右侧与展开按钮同款圆底图形钮，仅方向不同（0731 用户定：右指=跳转、下指=展开） -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
-              <b>历史记录 · 会议纪要</b>
+              <b>历史记录 · 往期会议</b>
               <span class="mtg-fold-btn"><i class="mfb-chev right"></i></span>
             </div>
           </div>
