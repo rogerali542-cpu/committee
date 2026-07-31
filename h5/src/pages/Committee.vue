@@ -194,11 +194,9 @@
 
         <!-- 近期安排优先，后续计划弱化，已完成记录折叠。 -->
         <div v-if="planTab === 'meeting'" class="mr-list">
-          <!-- 待召开卡（0730 五改）：竖排；行=左选中竖条+日期叶+标题(短名)+副行+右侧「常驻状态标签」；
-               状态与选中分离——选中(底部按钮指向的最急项)用整行浅底+左竖条，状态用无边框浅底文字标签。
-               整行可点进入各自流程；底部动作条默认落在最急项（欠账优先）。 -->
+          <!-- 待召开卡（0731 用户定重排）：标题写全称、第二行状态文字（已逾期/待召开），
+               右侧动词（去补开/去召开）——与首页卡片同构；整行可点进入各自流程 -->
           <template v-if="meetingRecordList.immediate.length">
-            <!-- 「待召开 N 场」小标题已删（0730 用户定：下方卡片自明是几场） -->
             <div class="mtg-due-card">
               <div v-for="row in meetingRecordList.immediate" :key="row.key"
                    class="mtg-due-row" @click="row.onTap()">
@@ -206,10 +204,10 @@
                   <b>{{ row.badgeTop }}</b><span v-if="row.badgeBot">{{ row.badgeBot }}</span>
                 </div>
                 <div class="mr-info">
-                  <div class="mr-row-title">{{ shortMeetingName(row.title) }}</div>
-                  <div v-if="dueSubFor(row)" class="mr-row-sub">{{ dueSubFor(row) }}</div>
+                  <div class="mr-row-title">{{ row.title }}</div>
+                  <div class="mr-row-sub" :class="{ warn: row.statusClass === 'overdue' }">{{ dueRowStatus(row) }}</div>
                 </div>
-                <span class="mtg-due-status" :class="dueStatusTier(row)">{{ dueStatusText(row) }}</span>
+                <span class="mr-verb">{{ dueRowVerb(row) }}<i class="pt-arr"></i></span>
               </div>
             </div>
           </template>
@@ -1999,14 +1997,22 @@ function dueStatusTier(row) {
   if (row.statusClass === 'ongoing' || dueStatusText(row) === '进行中') return 'st-today'
   return 'st-muted'
 }
-// 副行：具体信息/下一步提示（状态词已在右侧标签，这里不重复）
-function dueSubFor(row) {
-  if (String(row.key).indexOf('mr-draft') === 0) return '通知尚未填写完成'
-  if (row.statusClass === 'overdue') return ''   // 0731 设计师点1：卡片只报事实——「请尽快补开」在下指令、抢底部主按钮的活；逾期胶囊+日期块已足够
-  if (row.statusClass === 'ongoing') return '会议进行中，点击继续'
-  // 「本期内 · 日期未定」删（0731 用户定）：期次由左侧日期块（7-8月）已表达，这行是重复信息
-  const info = (row.range || !row.meetingDate) ? '' : (String(row.sub || '').split(' · ')[0] || '')
-  return info
+// 待召开卡行（0731 用户定重排）：第二行=状态文字，右侧=动词——与首页卡片「状态+动词」同构
+function dueRowStatus(row) {
+  if (row.statusClass === 'overdue') return '已逾期'
+  if (String(row.key).indexOf('mr-draft') === 0) return '通知编辑中'
+  if (row.statusClass === 'ongoing' || row.statusLabel === '进行中') return '会议进行中'
+  if (row.statusLabel === '会后整理' || row.statusLabel === '待整理') return '待整理'
+  if (row.statusLabel === '纪要生成中') return '纪要生成中'
+  return '待召开'
+}
+function dueRowVerb(row) {
+  if (row.statusClass === 'overdue') return '去补开'
+  if (String(row.key).indexOf('mr-draft') === 0) return '继续'
+  if (row.statusClass === 'ongoing' || row.statusLabel === '进行中') return '继续'
+  if (row.statusLabel === '会后整理' || row.statusLabel === '待整理') return '去整理'
+  if (row.statusLabel === '纪要生成中') return '查看'
+  return '去召开'
 }
 // 底部主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」——动词领队一句话，不再两行分散重量。
 // （原两行式的 heroBarSub/meetingRowTitle 随之退役）
@@ -2110,7 +2116,8 @@ const meetingRecordList = computed(() => {
     return { key: 'mr-' + r.period, done: false,
       // 0730 二改：计划期次徽标改「11-12 / 月」两行式，与日期叶同构
       badgeTop: String(r.monthLabel || '').replace(/月$/, ''), badgeBot: '月', range: true,
-      title: upcoming ? (viewYear.value + '年第' + r.period + '次业主委员会例会') : ('第' + r.period + '次业委会例会'),
+      // 非 upcoming（逾期/本期）走待召开卡，标题写全称（0731 用户定），与真实会议标题同构
+      title: upcoming ? (viewYear.value + '年第' + r.period + '次业主委员会例会') : (viewYear.value + '年第' + r.period + '次业委会例会'),
       sub: upcoming ? '日期未定' : r.sub,
       statusLabel: label, statusClass: r.status,
       onTap: () => onPlanRow(r) }
@@ -4820,10 +4827,9 @@ onActivated(show)
 /* 状态字三级样式（0730 设计师定，全 app 通用，见 dueStatusTier）：
    ① 逾期＝暖色胶囊(有底)，一屏唯一异常；② 今日/进行中＝蓝字；③ 其余＝灰字。
    常态「待召开」绝不给底色，否则异常(逾期)就不显眼了 */
-.mtg-due-status { flex-shrink: 0; align-self: center; padding: 0; font-size: 25rpx; font-weight: 500; white-space: nowrap; }
-.mtg-due-status.st-warn { padding: 6rpx 16rpx; border-radius: 8rpx; color: #9A5B12; background: #F7E4C6; font-weight: 600; }
-.mtg-due-status.st-today { color: #2F5F9E; }
-.mtg-due-status.st-muted { color: #6B7280; }
+/* 右侧动词（0731 用户定重排：状态词挪到第二行，右侧改动词）——与首页 .pt-verb 同款重量 */
+.mr-verb { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8rpx; font-size: 31rpx; font-weight: 700; color: #1F2937; white-space: nowrap; }
+.mr-row-sub.warn { color: #9A5B12; font-weight: 600; }   /* 已逾期＝暖色字（异常仍要跳出来） */
 /* 文字两档制（0731 用户定收敛）：正文黑 #1F2937 / 次要灰 #6B7280，中间灰全部归档——
    节标题=灰档加粗；列表正文=黑；层级靠字号字重，不靠灰阶渐变 */
 /* 接下来白卡（0730 二改）：行内分隔线；行满不透明（原 mr-planned 淡化不适用于卡内） */
