@@ -136,7 +136,8 @@ function goSeal() {
 }
 
 async function switchRole(item) {
-  if (item.id === activeRole.value.id) return
+  // 点当前已选身份＝以该身份直接回首页（0731 用户定：确认选中即进入，不是无动作）
+  if (item.id === activeRole.value.id) { goCockpitFromHd(); return }
   if (item.enabled === false) {
     toast({ title: '该秘书授权已被主任收回', icon: 'none' })
     return
