@@ -45,10 +45,10 @@ const route = useRoute()
 // 四项底栏（0731 设计师二改：第四格「个人中心」→「首页」。个人中心是低频入口不占底栏 1/4，
 // 挪到页头身份行（张建国 · 主任，点击即进）；首页(驾驶舱)才是每天要回的地方，给常驻格）
 const tabs = [
+  { path: '/main', label: '首页', key: 'home', tone: 'slate' },   /* 0731 用户定：首页放第一格；驾驶舱＝中性岩灰，不属于任何模块色 */
   { path: '/main', label: '业委会', key: 'committee', tone: 'blue' },
   { path: '/reception-center', label: '业主接待', key: 'reception', tone: 'green' },
-  { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' },
-  { path: '/main', label: '首页', key: 'home', tone: 'slate' }   /* 驾驶舱＝中性岩灰，不属于任何模块色 */
+  { path: '/learning', label: '学习培训', key: 'learning', tone: 'amber' }
 ]
 // 高亮按 key（两格共用 /main）：驾驶舱亮「首页」，工作态 /main 亮「业委会」。
 // welcomeVisible（=驾驶舱态）与 URL 双判定，防开发期热更新时挂载顺序造成误亮。
