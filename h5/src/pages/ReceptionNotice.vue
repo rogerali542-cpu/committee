@@ -41,7 +41,7 @@
           <span class="rn-v" :class="{ empty: !form.person }">{{ form.person || '未指定' }}</span>
           <i v-if="canManage" class="rn-arr"></i>
         </div>
-        <div class="rn-row" :class="{ ro: !canManage }" @click="editReason">
+        <div class="rn-row" :class="{ ro: !canManage }" @click="pickReason">
           <span class="rn-k">调整原因</span>
           <span class="rn-v" :class="{ empty: !form.reason }">{{ form.reason || '未填写' }}</span>
           <i v-if="canManage" class="rn-arr"></i>
@@ -84,21 +84,21 @@
       </div>
     </template>
 
-    <!-- 填写其他地点（0731 设计师定）：输入框不进弹层——键盘一弹会盖掉列表。
-         独立全屏层一次只做一件事：绿头 ‹ + 输入卡 + 底部「用这个地点」 -->
-    <div v-if="placeInputOpen" class="rn-place-page">
+    <!-- 全屏填写层（地点/原因共用，0731 设计师定）：输入框不进弹层——键盘一弹会盖掉列表。
+         独立层一次只做一件事：绿头 ‹ + 输入卡 + 底部「用这个地点/原因」 -->
+    <div v-if="fillCfg" class="rn-fill-page">
       <div class="rn-hd">
-        <div class="rn-hd-bar" @click="backFromPlaceInput">
+        <div class="rn-hd-bar" @click="backFromFill">
           <i class="rn-back"></i>
-          <span class="rn-hd-title">填写接待地点</span>
+          <span class="rn-hd-title">{{ fillCfg.title }}</span>
         </div>
       </div>
       <div class="pi-body">
-        <input ref="placeInputEl" v-model="placeDraft" class="pi-input" type="text" maxlength="30"
-          placeholder="例如：3号楼架空层活动室" @keyup.enter="usePlaceDraft" />
+        <input ref="fillInputEl" v-model="fillDraft" class="pi-input" type="text" :maxlength="fillCfg.maxlen || 30"
+          :placeholder="fillCfg.placeholder" @keyup.enter="useFillDraft" />
       </div>
       <div class="pi-bar">
-        <button type="button" class="rn-primary" :disabled="!placeDraft.trim()" @click="usePlaceDraft">用这个地点</button>
+        <button type="button" class="rn-primary" :disabled="!fillDraft.trim()" @click="useFillDraft">{{ fillCfg.btn }}</button>
       </div>
     </div>
   </div>
@@ -299,9 +299,30 @@ async function pickPerson() {
 //    手填过的存 localStorage 下次出现在列表；排序按使用频率（保存公告时 +1），不按拼音 ──
 const PLACE_STORE_KEY = 'rn_places'
 const DEFAULT_PLACES = ['小区物业办公室', '2号楼架空层活动室']
-const placeInputOpen = ref(false)
-const placeDraft = ref('')
-const placeInputEl = ref(null)
+
+// 全屏填写层（地点/原因共用）：cfg = { title, placeholder, btn, maxlen, onUse, onBack }
+const fillCfg = ref(null)
+const fillDraft = ref('')
+const fillInputEl = ref(null)
+function openFill(cfg, preset) {
+  fillDraft.value = preset || ''
+  fillCfg.value = cfg
+  nextTick(() => { try { fillInputEl.value && fillInputEl.value.focus() } catch (e) { /* 自动聚焦失败无妨 */ } })
+}
+function useFillDraft() {
+  const cfg = fillCfg.value
+  if (!cfg) return
+  const v = fillDraft.value.trim().slice(0, cfg.maxlen || 30)
+  if (!v) return
+  fillCfg.value = null
+  cfg.onUse(v)
+}
+// 左上角返回＝回到进入前的状态：重开对应弹层（0731 用户定）；「用这个X」才算选完收层
+function backFromFill() {
+  const cfg = fillCfg.value
+  fillCfg.value = null
+  if (cfg && cfg.onBack) cfg.onBack()
+}
 
 function loadPlaceStore() {
   const s = getStorage(PLACE_STORE_KEY)
@@ -335,27 +356,24 @@ async function pickPlace() {
     itemList: [...opts.map(p => ({ label: p, selected: p === form.place })), { label: '＋ 填写其他地点', arrow: true }] })
   if (!res || res.tapIndex < 0) return
   if (res.tapIndex < opts.length) { form.place = opts[res.tapIndex]; return }
-  // 最后一行：进全屏输入层（输入框不进弹层，键盘不盖列表）
-  placeDraft.value = ''
-  placeInputOpen.value = true
-  nextTick(() => { try { placeInputEl.value && placeInputEl.value.focus() } catch (e) { /* 自动聚焦失败无妨 */ } })
+  // 最后一行：进全屏填写层。手填过的立即存下来——这类用户最怕重复输入
+  openFill({ title: '填写接待地点', placeholder: '例如：3号楼架空层活动室', btn: '用这个地点', maxlen: 30,
+    onUse: v => { form.place = v; rememberPlace(v, false) }, onBack: pickPlace })
 }
-function usePlaceDraft() {
-  const v = placeDraft.value.trim().slice(0, 30)
-  if (!v) return
-  form.place = v
-  rememberPlace(v, false)   // 手填过的立即存下来——这类用户最怕重复输入
-  placeInputOpen.value = false
-}
-// 左上角返回＝回到进入前的状态：地点弹层保持打开（0731 用户定）；「用这个地点」才算选完收层
-function backFromPlaceInput() {
-  placeInputOpen.value = false
-  pickPlace()
-}
-async function editReason() {
+// 调整原因（0731 设计师定）：不纯手写——老年人打字慢，选填字段只给手写就会永远空着。
+// 常见原因做选项＋「自己填写」，和地点同一套做法；选完可进填写页在其基础上补充细节（预填当前值）。
+// 公告正文有原因/无原因两种写法都通（见 noticeParas），故保持选填
+const REASON_PRESETS = ['场地临时占用', '值班人员变动', '节假日调整', '会议冲突']
+async function pickReason() {
   if (!canManage.value) return
-  const res = await showModal({ title: '调整原因（选填）', content: form.reason, editable: true, placeholderText: '如：本周主任外出，接待顺延', confirmText: '确定' })
-  if (res && res.confirm) form.reason = String(res.content || '').trim().slice(0, 60)
+  const cur = form.reason.trim()
+  const opts = [...new Set([cur, ...REASON_PRESETS].filter(Boolean))]
+  const res = await showActionSheet({ title: '调整原因（选填）', variant: 'picker',
+    itemList: [...opts.map(r => ({ label: r, selected: r === cur })), { label: '＋ 自己填写', arrow: true }] })
+  if (!res || res.tapIndex < 0) return
+  if (res.tapIndex < opts.length) { form.reason = opts[res.tapIndex]; return }
+  openFill({ title: '填写调整原因', placeholder: '例如：服务站晚间闭馆，改至2号楼活动层', btn: '用这个原因', maxlen: 60,
+    onUse: v => { form.reason = v }, onBack: pickReason }, cur)
 }
 
 // 距「当前已公示安排」的下一场接待不足 1 天？（0731 提前 1 天惯例的守门）
@@ -489,8 +507,8 @@ async function exportPdf() {
 .pv-export:active { background: #D6E9DD; }
 .pv-export:disabled { opacity: .55; }
 
-/* 填写其他地点全屏层：绿头 + 输入卡 + 底部主按钮，与本页同构（一次只做一件事） */
-.rn-place-page { position: fixed; inset: 0; z-index: 500; background: var(--c-bg-page); display: flex; flex-direction: column; }
+/* 全屏填写层（地点/原因共用）：绿头 + 输入卡 + 底部主按钮，与本页同构（一次只做一件事） */
+.rn-fill-page { position: fixed; inset: 0; z-index: 500; background: var(--c-bg-page); display: flex; flex-direction: column; }
 .pi-body { padding: 24rpx; }
 .pi-input { display: block; width: 100%; box-sizing: border-box; min-height: 112rpx; padding: 0 30rpx; background: #fff; border: 0; border-radius: 20rpx; font-size: 33rpx; font-weight: 600; color: #1F2937; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); }
 .pi-input::placeholder { color: #9AA4B0; font-weight: 400; }
