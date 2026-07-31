@@ -54,8 +54,9 @@ const TABS = [
   { key: 'committee', label: '会议', emptyHint: '已归档的会议纪要会显示在这里。' },
   { key: 'reception', label: '接待', emptyHint: '往期接待记录与已办事项会显示在这里。' },
   { key: 'learning', label: '学习', emptyHint: '已完成的培训记录会显示在这里。' },
-  // 已办页签（0731 设计师稿）：业委会待办页只留未办，已办结的待办（会议+接待）统一收进这里
-  { key: 'done', label: '已办', emptyHint: '已办结的待办事项会显示在这里。' }
+  // 事项页签（0731 设计师稿；原名「已办」，0731 用户定改「事项」）：
+  // 业委会待办页只留未办，已办结的待办（会议+接待）统一收进这里
+  { key: 'done', label: '事项', emptyHint: '已办结的待办事项会显示在这里。' }
 ]
 
 const tab = ref('committee')
