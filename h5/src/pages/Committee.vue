@@ -2900,13 +2900,24 @@ async function onPlanRow(row) {
     await showModal({ title: row.monthLabel + '例会', content: tip + '请等待主任发起。', showCancel: false, confirmText: '知道了' })
     return
   }
-  // 未到期（提前召开）仍二次确认，避免误触提前起会
-  const tip = row.monthLabel + '例会按计划还没到时间。'
+  // 未到期（提前召开）仍二次确认，避免误触提前起会。
+  // 文案四改（0731 设计师定）：正文只报事实不复读标题、不解释制度；「暂不」→「取消」；
+  // 确认钮=模块蓝实心大触区（size:'action'，暖橙只留异常态）
   if (isChair.value) {
-    const res = await showModal({ title: row.monthLabel + '例会', content: tip + '是否提前召开？', confirmText: '提前召开', cancelText: '暂不', showCancel: true })
+    const res = await showModal({
+      size: 'action',
+      title: row.monthLabel + '例会',
+      content: '按计划在 ' + row.monthLabel + ' 召开',
+      confirmText: '提前召开', cancelText: '取消', showCancel: true
+    })
     if (res && res.confirm) openNewMeeting(row.period)
   } else {
-    await showModal({ title: row.monthLabel + '例会', content: tip + '请等待主任发起。', showCancel: false, confirmText: '知道了' })
+    await showModal({
+      size: 'action',
+      title: row.monthLabel + '例会',
+      content: '按计划在 ' + row.monthLabel + ' 召开，会议由主任发起。',
+      showCancel: false, confirmText: '知道了'
+    })
   }
 }
 

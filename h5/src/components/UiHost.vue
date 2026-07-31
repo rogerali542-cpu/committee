@@ -115,6 +115,17 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.attendance .ui-modal-btn.cancel { border:2rpx solid #C9CDD3; background:transparent; color:#747A82; font-weight:600; }
 .ui-modal.attendance .ui-modal-btn.confirm { border:2rpx solid #A85800; background:#A85800; color:#fff; font-weight:700; }
 .ui-modal.attendance .ui-modal-btn.confirm:active { background:#8F4A06; border-color:#8F4A06; }
+/* 常规动作确认（size:'action'，0731 设计师定）：确认=模块蓝实心（暖橙只留异常态）、高 54px，
+   取消=浅底放左边；两钮并排大触区，替代默认的纯文字按钮 */
+.ui-modal.action { padding: 44rpx 40rpx 34rpx; }
+.ui-modal.action .ui-modal-content { color: #30343A; font-size: 33rpx; }
+.ui-modal.action .ui-modal-actions { gap: 20rpx; margin-top: 40rpx; border-top: 0; }
+.ui-modal.action .ui-modal-btn { box-sizing: border-box; min-height: 108rpx; padding: 0; border-radius: 16rpx; font-size: 33rpx; }
+.ui-modal.action .ui-modal-btn.cancel { border: 0; background: #F1F3F6; color: #4A5560; font-weight: 600; }
+.ui-modal.action .ui-modal-btn.cancel:active { background: #E5E9EE; }
+.ui-modal.action .ui-modal-btn.confirm { background: #2b5589; color: #fff; font-weight: 700; }
+.ui-modal.action .ui-modal-btn.confirm:active { background: #244a79; }
+
 /* AI 帮写/润色完成卡（size:'aicard'）：轻提示，短句+清晰确认 */
 .ui-modal.aicard { width: 560rpx; max-width: 82vw; border-radius: 22rpx; padding: 36rpx 36rpx 0; box-shadow: 0 18rpx 54rpx rgba(31,35,41,0.18); }
 .ui-modal.aicard .ui-modal-content { font-size: 32rpx; font-weight: 500; color: #1f2329; line-height: 1.45; margin-top: 0; }
