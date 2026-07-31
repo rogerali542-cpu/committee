@@ -223,9 +223,9 @@
           <div class="mtg-next-list">
             <!-- 截断而非折叠：默认只出最近 2 场，首屏高度恒定。
                  行式时间在前（0731 用户定：与上方待召开卡统一「时间→名称」时间轴式） -->
-            <div v-for="row in visibleNextRows" :key="row.key" class="mtg-next-row">
+            <!-- 「计划中」状态签已删（0731 用户定）：后续会议本来就都是计划中的，逐行标注是废话；整行可点 -->
+            <div v-for="row in visibleNextRows" :key="row.key" class="mtg-next-row" @click="row.onTap()">
               <span class="mtg-next-line">{{ nextWhen(row) }} · {{ shortMeetingName(row.title) }}</span>
-              <button type="button" class="mtg-next-chip" @click.stop="row.onTap()">{{ row.statusLabel }}</button>
             </div>
             <!-- 「还有 N 场 ›」：一次展开其余；前 2 场始终在，绝不会点了什么都看不到 -->
             <div v-if="nextMoreCount && !nextExpanded" class="mtg-next-row mtg-next-more-row" @click="nextExpanded = true">
@@ -4809,7 +4809,8 @@ onActivated(show)
 .mtg-next-list { padding: 0 8rpx; }
 /* 首行去掉顶分隔线：有「接下来」头时头已作分隔，无头时（无后续场次）也不留孤零零一条线 */
 .mtg-next-list > :first-child { border-top: 0 !important; }
-.mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; }
+.mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 96rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
+.mtg-next-row:active { opacity: .6; }   /* 状态签删后整行可点（原入口在签上），给点按反馈 */
 .mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 「还有 N 场 ›」截断展开行（0730 设计师定）：与「全年会议」同为页内揭示、非跳转，用深灰；
    › 示意可展开更多。前 2 场恒在，展开后本行消失 */
