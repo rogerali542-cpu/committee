@@ -2336,13 +2336,15 @@ public class CommitteeService {
                 .thenComparing(MeetingTodo::getSortOrder));
         List<MeetingTodoVO> out = new ArrayList<>(all.size());
         for (MeetingTodo t : all) {
+            CommitteeMeeting m = meetings.get(t.getMeetingId());
+            // 会议已删的残留待办不返回：它点进去是空会议页，也不该计入「待办 N 项」（0731 用户反馈）
+            if (m == null) {
+                continue;
+            }
             MeetingTodoVO vo = toTodoVO(t);
             vo.setMeetingId(t.getMeetingId());
-            CommitteeMeeting m = meetings.get(t.getMeetingId());
-            if (m != null) {
-                vo.setMeetingTitle(m.getTitle());
-                vo.setMeetingDate(m.getMeetingDate() == null ? null : m.getMeetingDate().toString());
-            }
+            vo.setMeetingTitle(m.getTitle());
+            vo.setMeetingDate(m.getMeetingDate() == null ? null : m.getMeetingDate().toString());
             out.add(vo);
         }
         return out;
