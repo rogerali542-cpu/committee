@@ -4928,7 +4928,7 @@ onActivated(show)
    白底全宽与底栏连成整片（TabBar 在 /reception-center 加 .merged 去顶描边） */
 .rec-actions { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; display: flex; flex-direction: column; gap: 16rpx; padding: 14rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }
 /* 固定动作区(两钮约224rpx)+底栏(约102rpx)两层让位，内容不被挡 */
-.home.has-rec-bar { padding-bottom: calc(340rpx + env(safe-area-inset-bottom)); }
+.home.has-rec-bar { padding-bottom: calc(400rpx + env(safe-area-inset-bottom)); }   /* 0731：多留一截，历史记录行不贴按钮 */
 /* 0731 设计师定：间距压到 8px(16rpx)、次级矮一档——对齐会议页既定规格（mtg-secondary 72 / mtg-primary 100），主次不只靠颜色 */
 .rec-adjust-btn { min-height: 72rpx; border: 0; border-radius: 16rpx; background: #E4F0E8; color: #2F6647; font-size: 28rpx; font-weight: 600; }
 .rec-adjust-btn:active { background: #D6E9DD; }
@@ -4938,8 +4938,8 @@ onActivated(show)
 /* 接待 tab：待办移到近期接待上方（图一顺序 hero→待办→近期→档案→动作区） */
 .reception-mode .plan-todo-card { order: 2; }
 /* 近期接待轻列表化（0730 图一/spec §5）：只需知晓的记录＝透明底+分隔线，不再套白卡 */
-.rec-recent-card { order: 3; margin-top: 26rpx; padding: 0 8rpx; box-sizing: border-box;
-  background: transparent; border: 0; box-shadow: none; }
+.rec-recent-card { order: 3; margin-top: 8rpx; padding: 0 8rpx; box-sizing: border-box;
+  background: transparent; border: 0; box-shadow: none; }   /* 0731 用户定：整块上移一点 */
 .rec-recent-head { display: flex; align-items: center; justify-content: space-between;
   min-height: 84rpx; padding: 0 2rpx; font-size: 30rpx; font-weight: 700; color: #6B7280; }   /* 两档制：节标题=灰档加粗 */
 /* 末行档案馆入口（0730 定稿图）：「档案馆」深色粗、说明灰 */
