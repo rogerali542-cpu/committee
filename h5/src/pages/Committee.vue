@@ -4807,10 +4807,10 @@ onActivated(show)
 /* 卡头删除后，会议 tab 列表直接起头：给点上间距，别贴着深色顶栏 */
 .mr-list { padding: 16rpx 4rpx 0; }
 /* 待召开卡（0730 五改）：竖排列表；状态标签与选中态分离 */
-.mtg-due-card { margin-top: 4rpx; margin-bottom: 8rpx; padding: 0 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }
+.mtg-due-card { margin-top: 4rpx; margin-bottom: 8rpx; padding: 12rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #fff; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.06); overflow: hidden; }   /* 卡内上下各 +6px（0731 设计师定） */
 /* 待召开卡放大（0730 用户+设计师定，加对地方）：行内距 26→34rpx(两行更松)；会议名(本行最重要
    信息)31→34rpx；标题↔副行间距 7→10rpx；日期块 94→108rpx / range 132→152rpx，字号同步加大 */
-.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 44rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }   /* 0731 用户定：内容占屏 50%→70%，行随首页经验加高 */
+.mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 52rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }   /* 行高 86px（0731 设计师定：三处加高凑约 72% 占屏，点击区同步变大） */
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
 .mtg-due-row .mr-row-title { font-size: 36rpx; }
@@ -4841,7 +4841,7 @@ onActivated(show)
 .mtg-next-list { padding: 0 8rpx; }
 /* 首行去掉顶分隔线：有「接下来」头时头已作分隔，无头时（无后续场次）也不留孤零零一条线 */
 .mtg-next-list > :first-child { border-top: 0 !important; }
-.mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 112rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }
+.mtg-next-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; min-height: 124rpx; border-top: 2rpx solid #E7EBEF; cursor: pointer; }   /* 62px（0731 设计师定：与页面级行拉齐） */
 .mtg-next-row:active { opacity: .6; }   /* 状态签删后整行可点（原入口在签上），给点按反馈 */
 .mtg-next-line { flex: 1; min-width: 0; font-size: 29rpx; color: #1F2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* 「还有 N 场 ›」截断展开行（0730 设计师定）：与「全年会议」同为页内揭示、非跳转，用深灰；
