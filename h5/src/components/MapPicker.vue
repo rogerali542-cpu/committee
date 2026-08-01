@@ -64,17 +64,39 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'picked'])
 
-// ── 默认落点解析（0801 设计师点10）：优先表单已有坐标 → 其次浏览器定位（限时 2.5s，拿不到不挡加载）──
+// ── 小区兜底落点（0801 用户定）：表单没坐标、浏览器定位也失败时，退到小区一带，别落到北京默认视野。
+//    坐标为上海静安区临汾路街道（阳曲路·临汾路一带，星城花苑/阳曲路391弄小区附近）的估算值（GCJ-02），
+//    精度约几百米——只作默认视野，具体点位仍由用户拖图/搜索确定。
+//    要校准：打开高德坐标拾取器搜小区名，把下面两个数换掉即可。──
+const FALLBACK_COORD = { lat: 31.3110, lng: 121.4395 }
+
+// ── WGS-84 → GCJ-02（国测局偏转，业内公开算法）：浏览器定位回的是 WGS-84，国内地图（腾讯/高德）
+//    全是 GCJ-02，不转的话在上海要偏 300~500 米，"定位到当前位置"就落到隔壁小区了。──
+const _PI = Math.PI, _A = 6378245.0, _EE = 0.00669342162296594323
+function _tLat(x, y) { let r = -100 + 2 * x + 3 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x)); r += (20 * Math.sin(6 * x * _PI) + 20 * Math.sin(2 * x * _PI)) * 2 / 3; r += (20 * Math.sin(y * _PI) + 40 * Math.sin(y / 3 * _PI)) * 2 / 3; r += (160 * Math.sin(y / 12 * _PI) + 320 * Math.sin(y * _PI / 30)) * 2 / 3; return r }
+function _tLng(x, y) { let r = 300 + x + 2 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x)); r += (20 * Math.sin(6 * x * _PI) + 20 * Math.sin(2 * x * _PI)) * 2 / 3; r += (20 * Math.sin(x * _PI) + 40 * Math.sin(x / 3 * _PI)) * 2 / 3; r += (150 * Math.sin(x / 12 * _PI) + 300 * Math.sin(x / 30 * _PI)) * 2 / 3; return r }
+function wgs2gcj(lat, lng) {
+  const dLat0 = _tLat(lng - 105, lat - 35), dLng0 = _tLng(lng - 105, lat - 35)
+  const radLat = lat / 180 * _PI
+  let magic = Math.sin(radLat); magic = 1 - _EE * magic * magic
+  const sqrtMagic = Math.sqrt(magic)
+  const dLat = (dLat0 * 180) / ((_A * (1 - _EE)) / (magic * sqrtMagic) * _PI)
+  const dLng = (dLng0 * 180) / (_A / sqrtMagic * Math.cos(radLat) * _PI)
+  return { lat: lat + dLat, lng: lng + dLng }
+}
+
+// ── 默认落点解析（0801 设计师点10）：表单已有坐标 → 浏览器定位（限时 2.5s，转 GCJ-02）→ 小区兜底 ──
 function resolveStartCoord() {
   if (props.initLat != null && props.initLng != null) return Promise.resolve(props.initLat + ',' + props.initLng)
-  if (!navigator.geolocation) return Promise.resolve('')
+  const fallback = FALLBACK_COORD.lat + ',' + FALLBACK_COORD.lng
+  if (!navigator.geolocation) return Promise.resolve(fallback)
   return new Promise((resolve) => {
     let done = false
     const finish = (v) => { if (!done) { done = true; resolve(v) } }
-    setTimeout(() => finish(''), 2500)
+    setTimeout(() => finish(fallback), 2500)
     navigator.geolocation.getCurrentPosition(
-      (pos) => finish(pos.coords.latitude + ',' + pos.coords.longitude),
-      () => finish(''),
+      (pos) => { const g = wgs2gcj(pos.coords.latitude, pos.coords.longitude); finish(g.lat + ',' + g.lng) },
+      () => finish(fallback),
       { enableHighAccuracy: true, timeout: 2400, maximumAge: 300000 }
     )
   })
@@ -197,9 +219,10 @@ async function initAmap() {
     await loadAmapScript()
     await nextTick()
     if (!amapEl.value || _amap) return
-    // 0801 设计师点10：表单已有坐标（改地点/编辑会议）直接落到该点；否则再走浏览器定位，不再默认北京
+    // 0801 设计师点10：表单已有坐标（改地点/编辑会议）直接落到该点；否则先落小区兜底、再尝试浏览器定位纠正——
+    // 任何一步失败视野都在小区一带，不再默认北京
     const hasInit = props.initLat != null && props.initLng != null
-    _amap = new window.AMap.Map(amapEl.value, { zoom: 16, resizeEnable: true, ...(hasInit ? { center: [props.initLng, props.initLat] } : {}) })
+    _amap = new window.AMap.Map(amapEl.value, { zoom: 16, resizeEnable: true, center: hasInit ? [props.initLng, props.initLat] : [FALLBACK_COORD.lng, FALLBACK_COORD.lat] })
     _geocoder = new window.AMap.Geocoder()
     _placeSearch = new window.AMap.PlaceSearch({ pageSize: 5 })
     _amap.on('moveend', regeoCenter)
