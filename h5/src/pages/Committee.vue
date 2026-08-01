@@ -749,8 +749,8 @@
     <!-- AI 识别完成：定制结果卡（识别为通知/材料、已识别/待补填字段、耗时+token） -->
     <div v-if="scanResultCard" class="scan-result-mask" @click.self="closeScanResult">
       <div class="scan-result">
+        <!-- 0801 设计师点3：绿 ✓ 删——绿是接待模块色；且标题「识别完成」四个字已经说明成功 -->
         <div class="sr-hero">
-          <div class="sr-hero-badge"><span class="sr-check">✓</span></div>
           <div class="sr-hero-title">识别完成</div>
         </div>
 
@@ -776,13 +776,20 @@
                   <span class="sr-pv-value" :class="{ miss: row.miss }">{{ row.miss ? '未识别 · 待手填' : row.value }}</span>
                 </div>
               </div>
-              <!-- 材料随通知识别出时，作为同款字段行并入列表 -->
+              <!-- 材料随通知识别出时，作为同款字段行并入列表。
+                   0801 设计师点5：传 2 个文件却只说「1 份」，用户不知道另一个去哪了——说清分工 -->
               <div v-if="scanResultCard.materialCount" class="sr-pv-row">
                 <span class="sr-pv-label">会议材料</span>
                 <div class="sr-pv-val-wrap">
                   <span class="sr-pv-value">{{ scanResultCard.materialCount }} 份</span>
+                  <span v-if="scanResultCard.fileTotal > scanResultCard.materialCount" class="sr-pv-note">另 {{ scanResultCard.fileTotal - scanResultCard.materialCount }} 份识别为会议通知，已用于填表</span>
                 </div>
               </div>
+            </div>
+            <!-- 0801 设计师点4：识别出的日期已过 → 当场提示，别等填完被底部按钮锁住才发现 -->
+            <div v-if="scanResultCard.pastDate" class="sr-past">
+              <b>日期 {{ scanResultCard.pastDate }} 已过</b>
+              <span>填入后需另选日期才能生成通知</span>
             </div>
             <div v-if="scanResultCard.conflictNote" class="sr-alert">{{ scanResultCard.conflictNote }}</div>
           </template>
@@ -819,7 +826,7 @@
           </div>
         </div>
 
-        <div class="sr-meta">耗时 {{ scanResultCard.seconds }}s<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
+        <!-- 0801 设计师点1：「耗时 Xs · 消耗 N token」是开发调试信息，委员不需要知道 token 是什么——整行删 -->
 
         <div class="sr-actions">
           <button class="sr-btn ghost" @click="onScanGhost()">{{ scanResultCard.ghostLabel }}</button>
@@ -4126,6 +4133,10 @@ function handleMultiScanResult(res) {
   // 识别为会议通知：冲突 = 新识别值与「已填写」的不同 → 才问覆盖；否则空字段直填、材料照加
   const conflicts = noticeConflicts(res)
   const hasConf = conflicts.length > 0
+  // 0801 设计师点4：识别出的日期已过（如通知是 7/25、今天 8/1），直接填进去必然触发「公告日已过」
+  // 且底部按钮会被锁住。这比会议名称冲突严重得多，必须当场说明，别等填完了才发现
+  const pastDate = (res.meetingDate && String(res.meetingDate).trim() < todayStr())
+    ? formatScanDateTime(res.meetingDate, '') : ''
   const REQUIRED = [
     { label: '标题', has: !!(res.title && res.title.trim()) },
     { label: '议题', has: !!(Array.isArray(res.topics) && res.topics.length) }
@@ -4136,9 +4147,16 @@ function handleMultiScanResult(res) {
     missingRequired: REQUIRED.filter((f) => !f.has).map((f) => f.label),
     conflictNote: (res.conflictNote || '').trim(),
     conflicts,
+    pastDate,
+    // 材料/通知分工说明（0801 设计师点5）：传了 N 个文件，其中几份当通知、几份当材料，
+    // 别让用户以为"另一个不见了"
+    fileTotal: filesArr.length,
     needOverwriteAsk: hasConf,
-    primaryLabel: hasConf ? '覆盖并填入' : '确认填入',
-    ghostLabel: hasConf ? '保留原信息' : '取消',
+    // 0801 设计师点6：「保留原信息」指代不清（是全都不填，还是只保留冲突那项？）——改对象明确的说法
+    primaryLabel: hasConf ? '全部按识别结果填入' : '确认填入',
+    ghostLabel: hasConf
+      ? (conflicts.length === 1 ? ('只保留我填的' + String(conflicts[0].label).replace(/^会议/, '')) : '保留我已填的')
+      : '取消',
     seconds, tokens, res, materials
   }
 }
@@ -4160,7 +4178,8 @@ const scanNoticeRows = computed(() => {
 function formatScanDateTime(d, t) {
   const date = (d || '').trim(), time = (t || '').trim()
   const m = date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
-  const ds = m ? (Number(m[2]) + '月' + Number(m[3]) + '日') : date
+  // 0801 设计师点8：补星期，与表单里的「8月6日 周四」写法统一（老人排会靠星期）
+  const ds = m ? fmtDateWithWeek(date) : date
   return [ds, time].filter(Boolean).join(' ')
 }
 // 把某个已落库的文件加入待挂载材料（去重：同 url 不重复加）
@@ -6132,13 +6151,21 @@ onActivated(show)
 .sr-preview { width: 100%; background: #fff; border: 1rpx solid #EEE6D8; border-radius: 16rpx; overflow: hidden; }
 .sr-pv-row { display: flex; align-items: flex-start; gap: 16rpx; padding: 22rpx 24rpx; }
 .sr-pv-row + .sr-pv-row { border-top: 1rpx solid #F3EEE4; }
-.sr-pv-label { flex-shrink: 0; width: 90rpx; color: #8A8F98; font-size: 31rpx; line-height: 1.5; }
+/* 点8：label 列原 90rpx 放不下「会议材料」四个字会折成两行 → 加宽到 126rpx */
+.sr-pv-label { flex-shrink: 0; width: 126rpx; color: #8A8F98; font-size: 31rpx; line-height: 1.5; }
+/* 材料行的补充说明（另 N 份识别为通知）：次级灰小字 */
+.sr-pv-note { display: block; margin-top: 4rpx; color: #8A8F98; font-size: 25rpx; line-height: 1.45; }
+/* 点4：识别出的日期已过 —— 全项目统一暖橙异常色，整行通栏 */
+.sr-past { display: flex; flex-direction: column; gap: 4rpx; margin-top: 18rpx; padding: 16rpx 20rpx; border-radius: 12rpx; background: #f7e4c6; text-align: left; }
+.sr-past b { color: #9a5b12; font-size: 29rpx; font-weight: 700; line-height: 1.45; }
+.sr-past span { color: #9a5b12; opacity: .72; font-size: 25rpx; line-height: 1.4; }
 .sr-pv-val-wrap { flex: 1; min-width: 0; }
 .sr-pv-value { color: #1f2329; font-size: 34rpx; font-weight: 600; line-height: 1.5; word-break: break-all; }
 .sr-pv-value.miss { color: #B0863A; }
 .sr-mat-line { display: flex; align-items: center; gap: 12rpx; font-size: 30rpx; color: #4A5560; padding: 2rpx; line-height: 1.5; }
 .sr-mat-ico { flex-shrink: 0; color: #2E86C1; font-size: 33rpx; line-height: 1; }
-.sr-row-top { display: flex; align-items: center; gap: 14rpx; }
+/* 0801 设计师点7：胶囊 + 说明句挤一行会把标题挤折行 → 胶囊单独一行，说明句整行排开 */
+.sr-row-top { display: flex; flex-direction: column; align-items: flex-start; gap: 10rpx; }
 .sr-pill { font-size: 24rpx; font-weight: 700; color: #fff; padding: 6rpx 18rpx; border-radius: 999rpx; flex-shrink: 0; }
 .sr-pill.notice { background: var(--c-primary-dark); }
 .sr-pill.material { background: #2E86C1; }
@@ -6170,8 +6197,10 @@ onActivated(show)
 .sr-btn { height: 92rpx; border: none; border-radius: 46rpx; font-size: 34rpx; font-weight: 700; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
 .sr-btn.ghost { flex: 0 0 auto; min-width: 172rpx; padding: 0 28rpx; background: #f2f2f2; color: #777; }
 .sr-btn.ghost:active { background: #e9e9e9; }
-.sr-btn.primary { flex: 1; background: var(--c-primary-dark); color: #fff; box-shadow: 0 6rpx 16rpx rgba(168, 88, 0, 0.24); }
-.sr-btn.primary:active { background: var(--c-primary-strong); }
+/* 0801 设计师点2：原 var 落到棕橙实心——暖橙是异常态专用色，不能拿来做主按钮，
+   且全 App 没有第二个橙色实心按钮。改会议蓝实心 */
+.sr-btn.primary { flex: 1; background: #3567A4; color: #fff; box-shadow: 0 6rpx 16rpx rgba(53, 103, 164, 0.24); }
+.sr-btn.primary:active { background: #2D598E; }
 
 /* 模拟手机相机（测试用） */
 .mock-cam { position: fixed; inset: 0; z-index: 3000; background: #000; display: flex; flex-direction: column; }
