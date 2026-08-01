@@ -832,7 +832,7 @@
         </div>
 
         <!-- 用量说明：产品定——要让用户知道本次识别产生了消耗，保留原样不删（设计师曾建议删，已否） -->
-        <div class="sr-meta">耗时 {{ scanResultCard.seconds }}s<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
+        <div class="sr-meta">耗时 {{ scanResultCard.seconds > 0 ? scanResultCard.seconds + 's' : '<1s' }}<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
 
         <div class="sr-actions">
           <button class="sr-btn ghost" @click="onScanGhost()">{{ scanResultCard.ghostLabel }}</button>
@@ -6201,13 +6201,16 @@ onActivated(show)
 .sr-tip { font-size: 30rpx; color: #6A7480; text-align: center; padding: 4rpx; }
 .sr-tip.warn { color: #C0392B; font-weight: 600; }
 .sr-meta { font-size: 28rpx; color: #C0A587; margin: 22rpx 0 24rpx; }
-.sr-actions { display: flex; align-items: center; gap: 18rpx; width: 100%; }
-.sr-btn { height: 92rpx; border: none; border-radius: 46rpx; font-size: 34rpx; font-weight: 700; white-space: nowrap; display: flex; align-items: center; justify-content: center; }
-.sr-btn.ghost { flex: 0 0 auto; min-width: 172rpx; padding: 0 28rpx; background: #f2f2f2; color: #777; }
+/* 0801 修：按钮文案改成对象明确的长句后，横排 + nowrap + ghost 不可收缩 → 总宽超出弹窗，
+   主按钮被挤出屏幕。改上下堆叠、各占整宽：长中文标签下不会溢出，点击区也更大（老人友好）。
+   主操作在上、次选在下 */
+.sr-actions { display: flex; flex-direction: column; align-items: stretch; gap: 14rpx; width: 100%; }
+.sr-btn { width: 100%; min-height: 92rpx; padding: 12rpx 24rpx; box-sizing: border-box; border: none; border-radius: 46rpx; font-size: 34rpx; font-weight: 700; white-space: normal; line-height: 1.3; display: flex; align-items: center; justify-content: center; }
+.sr-btn.ghost { flex: none; min-width: 0; background: #f2f2f2; color: #777; order: 2; }
 .sr-btn.ghost:active { background: #e9e9e9; }
 /* 0801 设计师点2：原 var 落到棕橙实心——暖橙是异常态专用色，不能拿来做主按钮，
    且全 App 没有第二个橙色实心按钮。改会议蓝实心 */
-.sr-btn.primary { flex: 1; background: #3567A4; color: #fff; box-shadow: 0 6rpx 16rpx rgba(53, 103, 164, 0.24); }
+.sr-btn.primary { flex: none; order: 1; background: #3567A4; color: #fff; box-shadow: 0 6rpx 16rpx rgba(53, 103, 164, 0.24); }
 .sr-btn.primary:active { background: #2D598E; }
 
 /* 模拟手机相机（测试用） */
