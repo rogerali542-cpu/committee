@@ -517,11 +517,11 @@
               <div class="ds-cards ds-cards-2">
                 <!-- 设计师点4：图标改会议蓝线性描边、去彩色底块，纳入三色制 -->
                 <button class="ds-card" :disabled="scanRecognizing" @click="chooseImageSource">
-                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#3E6BA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 15l-5-5-4 4-2-2-4 4"/></svg>
+                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#2f5f9e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 15l-5-5-4 4-2-2-4 4"/></svg>
                   <span class="ds-t">图片</span>
                 </button>
                 <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
-                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#3E6BA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h5"/></svg>
+                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#2f5f9e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h5"/></svg>
                   <span class="ds-t">文件</span>
                 </button>
               </div>
@@ -4767,7 +4767,7 @@ onActivated(show)
 .ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 26rpx 26rpx 30rpx 34rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.08); overflow: hidden; }
 .ck-todo:last-child { margin-bottom: 0; }
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
-.ck-todo.blue::before { background: #3E6BA8; }
+.ck-todo.blue::before { background: #2f5f9e; }
 .ck-todo.green::before { background: #3F7C5A; }
 .ck-todo.amber::before { background: #3f8189; }   /* 学习培训卡：青色条（规范学习深青系） */
 .ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
@@ -4859,7 +4859,7 @@ onActivated(show)
 .ck-todo-delete:active { color: #C0392B; }
 .ck-todo-pager { position: absolute; top: 20rpx; right: 26rpx; display: inline-flex; align-items: center; gap: 12rpx; color: #7B8799; }
 .ck-todo-pager button { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #64758D; font-size: 22rpx; font-weight: 500; }
-.ck-todo-pager button:active { color: #3E6BA8; }
+.ck-todo-pager button:active { color: #2f5f9e; }
 .ck-todo-pager span { min-width: 44rpx; text-align: center; font-size: 21rpx; color: #9AA4B3; font-variant-numeric: tabular-nums; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
@@ -4867,7 +4867,7 @@ onActivated(show)
 .ck-lines { display: flex; flex-direction: column; gap: 20rpx; }
 .ck-line { position: relative; display: flex; align-items: center; gap: 22rpx; min-height: 116rpx; background: #fff; border-radius: 22rpx; padding: 20rpx 26rpx 20rpx 38rpx; box-shadow: 0 2rpx 5rpx rgba(20,33,61,0.04), 0 9rpx 22rpx rgba(20,33,61,0.055); overflow: hidden; cursor: pointer; box-sizing: border-box; }
 .ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
-.ck-line.blue::before { background: #3E6BA8; }
+.ck-line.blue::before { background: #2f5f9e; }
 .ck-line.green::before { background: #3F7C5A; }
 .ck-line.amber::before { background: #4e8f98; }
 .ck-line:active { transform: translateY(2rpx); }
@@ -4963,7 +4963,7 @@ onActivated(show)
 .mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }   /* 0731 设计师点2：只剩主按钮一个实心色块，次级已收进列表末行 */
 /* 主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」19px(38rpx)/600、高 60px(120rpx)——
    两行结构重量分散、54px 在最底部偏矮，改一行大字。次级按钮已收进列表末行，样式退役 */
-.mtg-primary { width: 100%; min-height: 120rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; font-size: 38rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.mtg-primary { width: 100%; min-height: 120rpx; border: 0; border-radius: 20rpx; background: #2f5f9e; color: #fff; font-size: 38rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .mtg-primary:active { background: #35608F; }
 /* 会议 tab 内容区给动作条+底栏让位 */
 /* 动作条只剩单钮：底部清开「固定动作条(约148rpx) + 底栏(约102rpx)」两层 */
@@ -4973,7 +4973,7 @@ onActivated(show)
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
 .mr-featured:active { background: #F1F7FB; }
 .mr-feat-main { display: flex; align-items: center; gap: 26rpx; }
-.mr-cta-wide { display: block; width: 100%; margin-top: 22rpx; min-height: 88rpx; border: 0; border-radius: 16rpx; background: #3E6BA8; color: #fff; font-size: 32rpx; font-weight: 700; }
+.mr-cta-wide { display: block; width: 100%; margin-top: 22rpx; min-height: 88rpx; border: 0; border-radius: 16rpx; background: #2f5f9e; color: #fff; font-size: 32rpx; font-weight: 700; }
 .mr-cta-wide:active { background: #35608F; }
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
@@ -5708,7 +5708,7 @@ onActivated(show)
 /* 拍照进流程入口卡（0731 设计师点3）：线性相机图标不套灰块 + 说明 + ›，风格与下方字段卡一致 */
 .scan-entry { display: flex; align-items: center; gap: 18rpx; padding: 22rpx 20rpx; margin-bottom: 22rpx; background: #fff; border: 2rpx solid #ececec; border-radius: 16rpx; box-shadow: 0 2rpx 10rpx rgba(30,40,60,0.05); cursor: pointer; }
 .scan-entry:active { background: #FAFBFC; }
-.se-cam { width: 46rpx; height: 46rpx; flex-shrink: 0; color: #3E6BA8; }
+.se-cam { width: 46rpx; height: 46rpx; flex-shrink: 0; color: #2f5f9e; }
 .se-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .se-copy b { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
 .se-copy small { font-size: 26rpx; color: #8a9099; line-height: 1.3; }
@@ -6060,18 +6060,18 @@ onActivated(show)
 .ti-del:active { color: #E5533C; }
 .ti-input { width: 100%; box-sizing: border-box; min-height: 150rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; }
 .ti-input::placeholder { color: #b7bbc0; }
-.ti-input:focus { border-color: #3E6BA8; }
+.ti-input:focus { border-color: #2f5f9e; }
 .ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
 .ti-decide { margin-top: 8rpx; }
 .ti-options { margin-top: 8rpx; }
-/* 选中态统一用会议蓝 #3E6BA8（设计师点4：不再引入 #3F6078 第四色） */
-.ti-types .type-chip.on { background: #3E6BA8; color: #fff; border-color: #3E6BA8; font-weight: 700; }
+/* 选中态统一用会议模块蓝 #2f5f9e（设计师定：白底上约 6:1，去掉 #3E6BA8/#3F6078 等杂蓝） */
+.ti-types .type-chip.on { background: #2f5f9e; color: #fff; border-color: #2f5f9e; font-weight: 700; }
 /* 会议议题：标题与添加条贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
 /* 添加议题触发条：点它弹出议题弹窗（输入/类型/确定都在弹窗内），单独一条大按钮，远离右下角「生成通知」防误触 */
 /* 0731 设计师点4：虚线框（本设计里独一份的新形状）改成与卡内其他行一致的一行「＋ 添加议题」，
    上面用分隔线断开、蓝字，不再用虚线 */
-.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 4rpx; min-height: 112rpx; border: 0; border-top: 2rpx solid #EEF0F2; border-radius: 0; background: transparent; color: #3E6BA8; font-size: 30rpx; }
+.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 4rpx; min-height: 112rpx; border: 0; border-top: 2rpx solid #EEF0F2; border-radius: 0; background: transparent; color: #2f5f9e; font-size: 30rpx; }
 .topic-add-trigger:active { background: #F6F8FB; }
 .topic-add-trigger.field-error { border-top-color: #E5533C; background: #FFF3F1; color: #C0392B; }
 /* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40%；
@@ -6089,11 +6089,11 @@ onActivated(show)
 .topic-inline-editor .type-row { margin-bottom: 0; }
 .tie-content { box-sizing: border-box; height: auto; min-height: 140rpx; line-height: 1.6; resize: none; padding: 16rpx 20rpx; }
 .tie-add-option { display: block; margin-top: 12rpx; }
-.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #3F6078; font-size: 28rpx; font-weight: 600; }
+.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #2f5f9e; font-size: 28rpx; font-weight: 600; }
 .topic-title-confirm:active { opacity: .88; }
 /* 选中态加强（0723 用户定"明显一点"）：深蓝底白字，与未选的浅灰形成强对比 */
 .topic-inline-editor .type-chip { border: 2rpx solid #E2E5E9; background: #fff; }
-.topic-inline-editor .type-chip.on { background: #3F6078; color: #fff; border-color: #3F6078; font-weight: 700; box-shadow: 0 4rpx 10rpx rgba(63,96,120,0.25); }
+.topic-inline-editor .type-chip.on { background: #2f5f9e; color: #fff; border-color: #2f5f9e; font-weight: 700; box-shadow: 0 4rpx 10rpx rgba(63,96,120,0.25); }
 .topic-inline-editor .add-link { color: #5B7C96; }
 .tie-confirm { width: 100%; height: 76rpx; margin-top: 2rpx; border: 0; border-radius: 14rpx; background: #B45F18; color: #fff; font-size: 29rpx; font-weight: 600; }
 .tie-confirm:active { opacity: .88; }
@@ -6188,18 +6188,18 @@ onActivated(show)
 .cal-cell.empty { visibility: hidden; }
 .cal-cell.disabled { color: #C7CDD5; background: transparent; cursor: not-allowed; }
 /* 设计师点3：今天用会议蓝（非橙）——橙只留异常态（逾期/待留档），此处是"当前"不是异常 */
-.cal-cell.today { color: #3E6BA8; font-weight: 700; }
-.cal-cell.on { background: #3E6BA8; color: #fff; font-weight: 700; }
+.cal-cell.today { color: #2f5f9e; font-weight: 700; }
+.cal-cell.on { background: #2f5f9e; color: #fff; font-weight: 700; }
 .cal-cell:not(.empty):not(.on):not(.disabled):active { background: #E6EDF8; }
 .picker-pop { position: relative; width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 38rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
 /* 设计师点3：时间大标题用会议蓝（非橙金）——所选时间是"当前值"，不该抢异常态的橙 */
-.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #3E6BA8; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
+.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #2f5f9e; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
 .tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
 .tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
-.tg-cell.on { background: #E6EDF8; color: #2F5E96; font-weight: 700; box-shadow: inset 0 0 0 3rpx #3E6BA8; }
+.tg-cell.on { background: #E6EDF8; color: #2f5f9e; font-weight: 700; box-shadow: inset 0 0 0 3rpx #2f5f9e; }
 .tg-cell:not(.on):active { background: #E6EDF8; }
 .tg-cell.disabled { color: #C4CAD2; background: #F7F8FA; box-shadow: none; cursor: not-allowed; }
 .tg-cell.disabled:active { background: #F7F8FA; }
@@ -6214,7 +6214,7 @@ onActivated(show)
 .pp-item.on { color: #fff; background: #FFA800; font-weight: 700; }
 .pp-actions { display: flex; gap: 18rpx; margin-top: 24rpx; justify-content: center; }
 .pp-actions .btn { flex: 0 0 60%; width: 60%; }
-.picker-pop .pp-actions .btn-primary { background: #3E6BA8; border-color: #3E6BA8; color: #fff; }
+.picker-pop .pp-actions .btn-primary { background: #2f5f9e; border-color: #2f5f9e; color: #fff; }
 
 
 /* 议题摘要行 */
@@ -6344,7 +6344,7 @@ onActivated(show)
 .create-panel .topic-line-text { color: #2C3E70; font-weight: 400; }  /* 议题正文：深靛蓝(≈9:1)替代硬黑，清爽墨水感；序号仍<b>加粗保结构 */
 .create-panel .topic-line-text b { color:#B46A12; }
 /* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
-.create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
+.create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #2f5f9e; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }
 .create-panel .tie-notice-toggle { display: inline-block; padding: 12rpx 0; font-size: 30rpx; color: #5B7C96; }
 /* — 行距/卡片间距整体收紧，把「含重大事项」挤进短屏首屏 + 三行灰字左对齐 —
