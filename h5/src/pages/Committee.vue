@@ -621,10 +621,10 @@
                   <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
                 </div>
                 <div v-if="topic.decisionType === 'multi_choice'" class="ti-options">
-                  <div v-for="(opt, oi) in topic.options" :key="opt.id" class="ct-option-row">
+                  <div v-for="(opt, oi) in (topic.options || [])" :key="opt.id" class="ct-option-row">
                     <span class="ct-opt-num">{{ oi + 1 }}.</span>
                     <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
-                    <span v-if="topic.options.length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">×</span>
+                    <span v-if="(topic.options || []).length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">×</span>
                   </div>
                   <span class="add-link" @click="addTopicOption(topic)">+ 添加选项</span>
                 </div>
