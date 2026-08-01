@@ -397,22 +397,24 @@
       <div class="pf-after-send">
         <!-- 已通知（App送达全体 或 微信留痕）后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
         <button v-if="prepareMode !== 'send'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
-        <!-- 0801 设计师版：两个同款并排按钮（App内通知 / 去微信通知）看不出哪个是主操作，
-             且「App内」是实现口径不是用户语言。改上下叠放：主操作「发送通知（N 人）」实心蓝、
-             带人数与上方名单呼应；「转发到微信」浅蓝次级。没勾人时主按钮置灰 -->
-        <!-- 0801 设计师定：微信是唯一主按钮——业委会实际就是在微信工作群里通知，
-             App 内送达是补充手段。但做成第二颗按钮语义就纠缠了：「同时在 App 内通知」里的
-             "同时"说的是跟主按钮一起发生，长相却是个独立按钮——点完主按钮 App 内到底发没发，
-             用户看不出来；若真当它独立，得点两次才算通知完，老人多半只点上面那颗。
-             改成主按钮上方的可关勾选项：一个主操作 + 一个附加项。人数也跟着主按钮走
-             （原先是次按钮带人数、主按钮不带，正好反了）。 -->
+        <!-- 0801 定稿（用户提 + 设计师改）：渠道两个勾选、主操作只留一个。
+             此前把微信做成唯一主按钮、App 内送达做成附加项，等于砍掉了「只在 App 内通知」——
+             而这条路是真实需要的：微信工作群里往往还有物业和居委会的人，物业费、合同这类议题
+             不适合发进群，只想让 7 位委员看到。
+             默认两个都勾，常规情况直接点发送；只发 App 就取消微信那勾；两个都取消按钮置灰。
+             两颗实心按钮抢注意力的老问题也没有回来——底部仍是一主操作。 -->
         <div class="pf-btn-col">
-          <div class="pf-also" :class="{ off: !alsoAppNotify, disabled: !recipientSelectedCount }" @click="toggleAlsoAppNotify">
-            <div class="pf-also-check" :class="{ on: alsoAppNotify && recipientSelectedCount }">{{ alsoAppNotify && recipientSelectedCount ? '✓' : '' }}</div>
-            <!-- 0801 设计师：勾选行不再报人数——它跟主按钮走的是同一批人，一屏里「7 人」出现三次是噪音 -->
-            <span class="pf-also-txt">{{ recipientSelectedCount ? '同时在 App 内通知' : '未选委员，无法在 App 内通知' }}</span>
+          <div class="pf-ch-group">
+            <div class="pf-also" @click="chWechat = !chWechat">
+              <div class="pf-also-check" :class="{ on: chWechat }">{{ chWechat ? '✓' : '' }}</div>
+              <span class="pf-also-txt">发到微信工作群</span>
+            </div>
+            <div class="pf-also" :class="{ disabled: !recipientSelectedCount }" @click="toggleAppChannel">
+              <div class="pf-also-check" :class="{ on: appChannelOn }">{{ appChannelOn ? '✓' : '' }}</div>
+              <span class="pf-also-txt">{{ recipientSelectedCount ? 'App 内通知 ' + recipientSelectedCount + ' 位委员' : '未选委员，无法在 App 内通知' }}</span>
+            </div>
           </div>
-          <button class="pf-btn pf-btn-main" :class="{ busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在通知…' : mainSendLabel }}</button>
+          <button class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
         </div>
       </div>
     </div>
@@ -1319,28 +1321,35 @@ async function openRecipients() {
   if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
   confirmSendRecipients()
 }
-// ——— 底部主操作：发到微信工作群（可勾"同时在 App 内通知"）———
-// 0801 设计师定：合成一次操作。勾选项默认开——常态是两个渠道都通知到；
-// 不想在 App 里发就取消勾选，主操作只做微信。
-const alsoAppNotify = ref(true)
+// ——— 底部：两个渠道勾选 + 一个「发送通知」主操作 ———
+// 0801 定稿：默认两个都勾（常规情况不用管，直接发）。只发 App 就取消微信那勾——
+// 微信工作群里往往还有物业和居委会的人，物业费/合同这类议题不适合发进群。
+const chWechat = ref(true)
+const chApp = ref(true)
 const mainSending = ref(false)
-const mainSendLabel = computed(() => (
-  recipientSelectedCount.value ? '发到微信工作群（' + recipientSelectedCount.value + ' 人）' : '发到微信工作群'
-))
-function toggleAlsoAppNotify() {
+// 没勾人时 App 这条渠道无从发起，勾选框显示为未选（chApp 的值原样留着，重新选人后自动恢复）
+const appChannelOn = computed(() => chApp.value && recipientSelectedCount.value > 0)
+const canSendNotice = computed(() => chWechat.value || appChannelOn.value)
+function toggleAppChannel() {
   if (!recipientSelectedCount.value) { toast({ title: '请先在上方「通知人员」里选择要通知的委员', icon: 'none' }); return }
-  alsoAppNotify.value = !alsoAppNotify.value
+  chApp.value = !chApp.value
 }
 async function sendNoticeMain() {
   if (mainSending.value || sendSubmitting.value) return
+  const wantApp = appChannelOn.value
+  const wantWechat = chWechat.value
+  // 置灰按钮仍可点：老人点了得有反馈，光变灰不说话等于没响应
+  if (!wantApp && !wantWechat) { toast({ title: '请至少勾选一个通知渠道', icon: 'none' }); return }
   mainSending.value = true
   try {
-    // 顺序要紧：先做 App 内送达再唤起微信。反过来的话安卓会被拉去微信，回不来看 App 这步的结果。
-    if (alsoAppNotify.value && recipientSelectedCount.value) {
+    // 顺序：App 内先留档，再跳微信分享。反过来的话安卓会被拉去微信，回不来做第二步。
+    if (wantApp) {
       const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
-      const ok = await doSend(ids, { quietForward: true, silent: true })
+      // 还要跳微信时不弹 App 这步的 toast，免得和微信的"已复制"提示连着闪两条
+      const ok = await doSend(ids, { quietForward: true, silent: wantWechat })
       if (!ok) {
-        // 附加项失败不该连累主渠道（微信才是业委会实际通知委员的地方），但也不能默默跳过——问一句
+        if (!wantWechat) return   // 只发 App：doSend 已经报过错，到此为止
+        // 两条都勾时，App 这条失败不该连累微信——但也不能默默跳过，问一句
         const r = await showModal({
           title: 'App 内通知没发出去',
           content: '网络或服务出了点问题，App 内通知没能发送。是否仍要把通知发到微信工作群？',
@@ -1349,7 +1358,7 @@ async function sendNoticeMain() {
         if (!r || !r.confirm) return
       }
     }
-    await openWechat()
+    if (wantWechat) await openWechat()
   } finally { mainSending.value = false }
 }
 function toggleRecipient(id) {
@@ -1942,11 +1951,11 @@ async function removeMaterial(item) {
 /* 底部操作条改 fixed 后，内容区要给它让位，否则最后一段被挡住（准备阶段才有这条）。
    0801 设计师：轻列表和操作条之间留白过多。让位量按操作条实际高度精算 = 条高 + 40px 呼吸位，
    并把 .detail-page 自带的 40px 底 padding 在这个模式下去掉（原先两处叠加，多留了一截）。
-   条高两种：未通知时=勾选项 88rpx + 间距 16rpx + 主按钮 120rpx + 上下 32px；
-   已通知后头上多一颗「开始会议」(78rpx + 14rpx 间距)，靠 .has-start-btn 分开给量。 */
+   条高两种：未通知时=两条渠道勾选 88rpx×2 + 间距 16rpx + 主按钮 120rpx + 上下 32px ≈ 188px；
+   已通知后头上多一颗「开始会议」(78rpx + 14rpx 间距) ≈ 234px，靠 .has-start-btn 分开给量。 */
 .detail-page.has-prep-footer { padding-bottom:0; }
-.detail-page.has-prep-footer .detail-body { padding-bottom:calc(368rpx + env(safe-area-inset-bottom)); }
-.detail-page.has-prep-footer.has-start-btn .detail-body { padding-bottom:calc(460rpx + env(safe-area-inset-bottom)); }
+.detail-page.has-prep-footer .detail-body { padding-bottom:calc(456rpx + env(safe-area-inset-bottom)); }
+.detail-page.has-prep-footer.has-start-btn .detail-body { padding-bottom:calc(548rpx + env(safe-area-inset-bottom)); }
 /* 0801 设计师二提「仍空 150px」：那一片不是 padding——通知人员收起后整页不满一屏，
    .detail-body(flex:1 0 auto) 被撑满视口，内容末尾到钉死的操作条之间剩下的是视口余量，
    单纯减 padding 消不掉。改成把这片余量挪走：.detail-body 在该模式下转成 flex 列，
@@ -2397,7 +2406,8 @@ async function removeMaterial(item) {
 .pf-btn-main { background:#3567A4; color:#fff; }
 .pf-btn-main:active { background:#2D598E; }
 .pf-btn-main.disabled, .pf-btn-main.busy { background:#C3CAD3; }
-/* 附加项：整行可点（勾选框只有 36rpx，老人点不准），高度给足 88rpx 触达区 */
+/* 渠道勾选：整行可点（勾选框只有 38rpx，老人点不准），高度给足 88rpx 触达区 */
+.pf-ch-group { display:flex; flex-direction:column; }
 .pf-also { display:flex; align-items:center; gap:14rpx; min-height:88rpx; padding:0 6rpx; color:#3F4A57; font-size:29rpx; }
 .pf-also:active { opacity:.6; }
 .pf-also.disabled { color:#9AA0A6; }
