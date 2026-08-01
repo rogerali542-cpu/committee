@@ -1357,17 +1357,8 @@ async function pickOnlineWay() {
     itemList: ONLINE_WAYS.map((w) => ({ label: w, selected: cur.indexOf(w) === 0 }))
   })
   if (!res || res.tapIndex == null || res.tapIndex < 0) return ''
-  const way = ONLINE_WAYS[res.tapIndex]
-  if (way !== '腾讯会议') return way
-  // 腾讯会议必须带会议号：委员看到通知就得拨进去，只写「腾讯会议」等于没通知到
-  const r = await showModal({
-    title: '腾讯会议号', content: '', editable: true,
-    placeholderText: '如 123 456 789，暂时没有可留空',
-    confirmText: '确定', cancelText: '取消', showCancel: true
-  })
-  if (!r || !r.confirm) return ''
-  const no = String(r.content || '').trim()
-  return no ? '腾讯会议（会议号 ' + no + '）' : '腾讯会议'
+  // 0801 用户定：选完腾讯会议不再追问会议号，选中即生效（会议号弹窗已去掉）
+  return ONLINE_WAYS[res.tapIndex]
 }
 
 async function pickOfflinePlace() {
