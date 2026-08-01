@@ -6854,8 +6854,10 @@ onActivated(show)
 .create-panel .scan-card .ds-preview { padding-top: 16rpx; }
 
 /* 识别成功浮层（0801 设计师折中）：绿保留但 2.8s 即逝——成功反馈是瞬时的，不当常驻装饰、不占首屏 */
-.recog-flash { position: fixed; top: calc(150rpx + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 260; padding: 12rpx 30rpx; border-radius: 999rpx; background: #F2F8F4; border: 2rpx solid #BED8C8; color: #2F6B45; font-size: 27rpx; font-weight: 600; white-space: nowrap; box-shadow: 0 6rpx 18rpx rgba(20, 40, 30, .12); animation: recogFlashIn .25s ease; }
-@keyframes recogFlashIn { from { opacity: 0; transform: translate(-50%, -10rpx); } to { opacity: 1; transform: translate(-50%, 0); } }
+/* 0801 用户：原 top:150rpx 正好压住识别入口那行标题 → 移到底部操作条上方。
+   瞬时提示放底部是常规做法，也不遮挡用户正在核对的表单内容 */
+.recog-flash { position: fixed; bottom: calc(190rpx + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 260; max-width: 84%; padding: 14rpx 32rpx; border-radius: 999rpx; background: #F2F8F4; border: 2rpx solid #BED8C8; color: #2F6B45; font-size: 27rpx; font-weight: 600; white-space: nowrap; box-shadow: 0 6rpx 18rpx rgba(20, 40, 30, .12); animation: recogFlashIn .25s ease; }
+@keyframes recogFlashIn { from { opacity: 0; transform: translate(-50%, 12rpx); } to { opacity: 1; transform: translate(-50%, 0); } }
 /* 点6：召开方式分段按钮 active 用基线蓝（覆盖 var，避免落到全局橙） */
 .create-panel .method-switch button.active { color: #3567A4; }
 </style>
