@@ -4,6 +4,7 @@
     <PageNav title="发起内部学习" />
 
     <main class="create-body">
+      <p v-if="draftRestored" class="draft-note">已恢复上次未完成的学习通知</p>
       <section class="form-card">
         <div class="form-group">
           <span class="form-label">学习主题 *</span>
@@ -36,6 +37,8 @@
         <!-- 计划参加人员改到通知页选择（0728 用户定：与发起会议一致，通知页选通知对象） -->
       </section>
 
+      <button v-if="hasDraft" class="clear-draft" type="button" @click="clearDraftAndReset">清空重填</button>
+
       <div class="create-actions">
         <button class="btn-ghost" type="button" @click="back">取消</button>
         <button class="btn-primary" type="button" :disabled="saving" @click="submit">{{ saving ? '发起中…' : '发起并去通知' }}</button>
@@ -45,7 +48,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '@/api'
 import PageNav from '@/components/PageNav.vue'
 import PlanDateTimeField from '@/components/PlanDateTimeField.vue'
@@ -61,8 +64,14 @@ function nowHm() {
   const d = new Date()
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
 }
-const form = reactive({ title: '', date: todayStr(), time: '14:00', location: '社区活动室', description: '' })
+const DEFAULT_FORM = () => ({ title: '', date: todayStr(), time: '14:00', location: '社区活动室', description: '' })
+const DRAFT_KEY = 'learning_initiate_draft'
+const form = reactive(DEFAULT_FORM())
 const saving = ref(false)
+const draftRestored = ref(false)
+const hasDraft = ref(false)
+const draftReady = ref(false)
+let draftTimer = null
 
 // 地点：常用地点点选 + 其他地点手动输入（与发起会议一致，去掉地图选点）
 const commonLocations = ['社区活动室', '社区会议室']
@@ -75,7 +84,65 @@ async function openLocPicker() {
   else { locationPreset.value = '__other__'; form.location = '' }
 }
 
-function back() { navigateBack() }
+function draftIsMeaningful() {
+  return !!(String(form.title || '').trim() || String(form.description || '').trim())
+}
+
+function removeDraft() {
+  clearTimeout(draftTimer)
+  localStorage.removeItem(DRAFT_KEY)
+  hasDraft.value = false
+  draftRestored.value = false
+}
+
+function saveDraft() {
+  if (!draftReady.value || saving.value) return
+  if (!draftIsMeaningful()) {
+    removeDraft()
+    return
+  }
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({
+    form: { ...form },
+    locationPreset: locationPreset.value,
+    savedAt: Date.now()
+  }))
+  hasDraft.value = true
+}
+
+function scheduleDraftSave() {
+  if (!draftReady.value) return
+  clearTimeout(draftTimer)
+  draftTimer = setTimeout(saveDraft, 350)
+}
+
+function restoreDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null')
+    if (!draft || !draft.form) return false
+    Object.assign(form, DEFAULT_FORM(), draft.form)
+    locationPreset.value = draft.locationPreset || (commonLocations.includes(form.location) ? form.location : '__other__')
+    draftRestored.value = true
+    hasDraft.value = true
+    return true
+  } catch (_) {
+    localStorage.removeItem(DRAFT_KEY)
+    return false
+  }
+}
+
+function clearDraftAndReset() {
+  draftReady.value = false
+  removeDraft()
+  Object.assign(form, DEFAULT_FORM())
+  locationPreset.value = '社区活动室'
+  draftReady.value = true
+  toast({ title: '已清空，可重新填写', icon: 'none' })
+}
+
+function back() {
+  saveDraft()
+  navigateBack()
+}
 
 async function submit() {
   const missing = []
@@ -102,6 +169,8 @@ async function submit() {
       type: 'internal',
       category: 'internal'
     })
+    draftReady.value = false
+    removeDraft()
     // replace：不把表单页留在历史，通知页返回直接回学习列表
     window.location.replace('/learning-notify?id=' + result.id)
   } catch (e) {
@@ -109,12 +178,25 @@ async function submit() {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  restoreDraft()
+  draftReady.value = true
+})
+
+watch([form, locationPreset], scheduleDraftSave, { deep: true })
+
+onBeforeUnmount(() => {
+  clearTimeout(draftTimer)
+  saveDraft()
+})
 </script>
 
 <style scoped>
 :deep(.page-nav) { background: #2a6b73; }  /* 学习模块页头（规范三色制） */
 .learning-initiate { min-height: 100vh; background: #f5f5f7; }
 .create-body { padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); }
+.draft-note { margin: -4rpx 4rpx 18rpx; color: #7A8594; font-size: 25rpx; line-height: 1.5; }
 .form-card { background: #fff; border-radius: 24rpx; padding: 30rpx 28rpx 10rpx; box-shadow: 0 6rpx 18rpx rgba(31, 45, 61, .06); }
 .form-group { margin-bottom: 28rpx; }
 .form-label { display: block; margin-bottom: 12rpx; font-size: 28rpx; color: #4a5560; font-weight: 600; }
@@ -128,6 +210,8 @@ async function submit() {
 .loc-arrow { flex-shrink: 0; color: #c4c8cd; font-size: 30rpx; line-height: 1; }
 .loc-other { display: flex; flex-direction: column; gap: 12rpx; }
 .loc-switch { align-self: flex-start; font-size: 25rpx; color: var(--c-primary-dark); }
+
+.clear-draft { display: block; width: 100%; min-height: 82rpx; margin-top: 16rpx; padding: 0 12rpx; border: 0; border-bottom: 2rpx solid #DDE3E8; background: transparent; color: #8A5B54; font-size: 28rpx; text-align: left; }
 
 .create-actions { display: flex; gap: 20rpx; margin-top: 32rpx; }
 .btn-ghost { flex: 1; height: 92rpx; border: 2rpx solid #C9D0D6; border-radius: 20rpx; background: #fff; color: #5B6570; font-size: 32rpx; }

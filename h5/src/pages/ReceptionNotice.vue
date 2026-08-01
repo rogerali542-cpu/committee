@@ -154,7 +154,7 @@ const exportSuccess = ref(false)
 const saving = ref(false)
 const previewOpen = ref(false)
 const orgName = ref('业主委员会')
-// 落款全称（含区划+届别，0723 与会议文书统一）：后端 orgFullName，取不到退 orgName
+// 公告落款与纪要、公示统一使用「小区名+业主委员会」；后端 orgFullName 与 PDF 共用同一口径
 const orgFullName = ref('业主委员会')
 const committeeRoster = ref([])
 // 接待人员=业委会成员(0725 用户定:主任/副主任/委员都算,不只委员),排除秘书等非成员岗
@@ -254,11 +254,9 @@ const isAdjustment = computed(() => {
   if (!bt && !bp) return false
   return bt !== afterTimeDesc.value || bp !== afterPlace.value
 })
-// 自适应标题：时间是头条轴——时间变了就叫「时间调整」（哪怕地点也一起变）；仅地点变才叫「地点调整」
+// 统一称「安排调整」：一次调整可能同时涉及周期、时间、地点和人员，避免标题范围过窄。
 const noticeTitle = computed(() => {
   if (!isAdjustment.value) return '业主接待日公告'
-  if (beforeTimeDesc.value !== afterTimeDesc.value) return '业主接待时间调整通知'
-  if (beforePlace.value !== afterPlace.value) return '业主接待地点调整通知'
   return '业主接待安排调整通知'
 })
 // 值班委员行：仅指定了具体人（非轮值）时出现——轮值是常态、不写进这张告示
@@ -566,11 +564,11 @@ async function exportPdf() {
 .page-empty { padding: 120rpx 40rpx; text-align: center; color: var(--c-text-weak); font-size: 30rpx; }
 
 /* 页头：接待模块绿，‹ + 标题（0731 设计师稿） */
-.rn-hd { background: #2f6b45; padding: calc(env(safe-area-inset-top) + 18rpx) 32rpx 26rpx; color: #fff; }
-.rn-hd-bar { display: flex; align-items: center; gap: 18rpx; min-height: 72rpx; cursor: pointer; }
+.rn-hd { background: #2f6b45; padding: calc(env(safe-area-inset-top) + 8rpx) 32rpx 8rpx; color: #fff; }
+.rn-hd-bar { position: relative; display: flex; align-items: center; min-height: 108rpx; cursor: pointer; }
 .rn-hd-bar:active { opacity: .75; }
-.rn-back { display: inline-block; width: 18rpx; height: 18rpx; border-left: 4rpx solid #fff; border-bottom: 4rpx solid #fff; transform: rotate(45deg); }
-.rn-hd-title { font-size: 34rpx; font-weight: 700; }
+.rn-back { position: relative; z-index: 1; display: inline-block; width: 18rpx; height: 18rpx; margin-left: 18rpx; border-left: 4rpx solid #fff; border-bottom: 4rpx solid #fff; transform: rotate(45deg); }
+.rn-hd-title { position: absolute; left: 108rpx; right: 108rpx; text-align: center; font-size: 34rpx; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 
 /* 设置行白卡：每行 灰标签+黑值+（原值）+›，62px 行高标准 */
 .rn-card { margin: 24rpx; background: #fff; border-radius: 24rpx; padding: 4rpx 30rpx; box-shadow: 0 2rpx 6rpx rgba(31,41,55,.05), 0 10rpx 26rpx rgba(31,41,55,.07); }

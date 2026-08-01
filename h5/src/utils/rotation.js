@@ -39,12 +39,17 @@ export function nextSessionDate(timeDesc, now = new Date()) {
 
 /** 下一场接待的值班人姓名；成员为空/周几解析不出返回 '' */
 export function dutyPersonFor(timeDesc, roster, now = new Date()) {
-  const names = rotationNames(roster)
-  if (!names.length) return ''
   const d = nextSessionDate(timeDesc, now)
   if (!d) return ''
+  return dutyPersonForDate(d, roster)
+}
+
+/** 指定日期所在周的轮值人；用于补登记历史接待，避免周内已过接待日后误算到下一周。 */
+export function dutyPersonForDate(date, roster) {
+  const names = rotationNames(roster)
+  if (!names.length || !(date instanceof Date) || Number.isNaN(date.getTime())) return ''
   // 取该场次所在周的周一算周数：同一周内无论周几接待，结果一致
-  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7))
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7))
   const anchor = new Date(2026, 0, 5)   // 固定锚点：2026 年首个周一
   const weeks = Math.round((monday - anchor) / 604800000)
   return names[((weeks % names.length) + names.length) % names.length]
