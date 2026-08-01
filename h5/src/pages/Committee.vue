@@ -685,6 +685,9 @@
               <span class="major-checkbox" :class="{ checked: createForm.juweiWitness }">{{ createForm.juweiWitness ? '✓' : '' }}</span>
               <span class="juwei-title">含重大事项</span>
             </label>
+            <!-- 0801 设计师：线上时原先只把整张卡降透明度、页面上不写原因，看着就像"未勾选=禁用"。
+                 白卡底色不该随状态变（规则六），改为白卡恒定 + 明写为什么用不了 -->
+            <div v-if="createForm.meetingMethod === 'online'" class="juwei-na">线上会议不支持：须线下提前 7 天公告，并请居委会到场见证</div>
             <!-- 勾选后展开：会前公告截止日 = 会议日期 − 7 天。异常统一暖橙（0801 设计师点2：红不在配色表，
                  异常语言全项目只留一套 字#9a5b12/底#f7e4c6）；已过时不再挤在 label-value 行里换三行（点3），
                  改整行暖底通栏：主句一行 + 浅色小字给出路 -->
@@ -6829,7 +6832,14 @@ onActivated(show)
 /* 重大事项(居委会见证)开关：打开后为绿色 */
 .create-panel .juwei-switch.on { background: #2E8B57; }
 /* 线上会议不支持重大事项：整卡置灰（开关仍可点——点了弹提示说明原因） */
-.create-panel .juwei-card.disabled { opacity: 0.6; }
+/* 0801 设计师：白卡恒定 #fff，底色不随状态变——原先整张卡 opacity:.6，线上时整卡发灰，
+   与旁边的「会议材料」白卡不一致，也容易被读成"未勾选=禁用"。
+   禁用只表达在控件本身（勾选框/标题转灰）+ 上面那行说明，卡片保持白底 */
+.create-panel .juwei-card.disabled { opacity: 1; }
+.create-panel .juwei-card.disabled .juwei-title { color: #9aa0a6; }
+.create-panel .juwei-card.disabled .major-checkbox { border-color: #DDE1E6; background: #F7F8FA; }
+/* 说明行：与标题左对齐（勾选框 38rpx + 间距 16rpx） */
+.juwei-na { margin-top: 10rpx; padding-left: 54rpx; color: #8a9099; font-size: 25rpx; line-height: 1.45; }
 
 /* 0731 发起会议重排：蓝色居中页头 + 基础信息行卡 + 议题卡 + 单一底部主按钮。 */
 .create-panel .create-head { height: calc(116rpx + env(safe-area-inset-top)); background: #3567A4; }
