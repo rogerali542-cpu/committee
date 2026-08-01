@@ -4141,9 +4141,12 @@ function handleMultiScanResult(res) {
   if (!res) { toast({ title: '识别未完成，请重试或手动填写', icon: 'none' }); return }
   const filesArr = Array.isArray(res.files) ? res.files : []
   const hasPrefill = res.available && !!(res.title || res.meetingDate || res.meetingTime || res.location || (Array.isArray(res.topics) && res.topics.length))
-  const materials = hasPrefill
-    ? filesArr.filter((f) => f.category === 'material' && f.fileUrl)
-    : filesArr.filter((f) => f.fileUrl)
+  // 0801 用户定（方案1）：上传的文件全部进会议材料，包含被当作"通知"拿去识别的那份——
+  // 会议通知本身就是该给委员传阅的材料，不该因为被用于识别就从列表里消失。
+  // 好处：份数永远与「开始识别（N）」对得上；用户不必理解"识别源"这个概念；
+  // 后端 category 判错时影响也小（最多表单填得不准，材料一份不少）。
+  // 去重按 fileUrl（见 addScannedMaterialFromInfo），不会重复挂载。
+  const materials = filesArr.filter((f) => f.fileUrl)
   const seconds = scanSec.value || 0
   const tokens = res.tokens || 0
 
