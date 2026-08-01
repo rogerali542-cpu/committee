@@ -741,7 +741,7 @@
         <!-- 添加议题时隐藏底部主按钮，避免真机键盘弹起时「取消/生成通知」压住「确定添加议题」 -->
         <div v-show="!topicDialogOpen" class="sheet-actions fixed">
           <!-- 0801 设计师定稿：按钮不带期数（次数唯一来源在会议名称行，就在按钮上方一屏内，无歧义） -->
-          <button class="btn btn-primary" :class="{ 'form-incomplete': !createCanSubmit }" @click="onSubmitClick">生成会议通知</button>
+          <button class="btn btn-primary" :class="{ 'form-incomplete': !createCanSubmit, 'is-submitting': createSubmitting }" :disabled="createSubmitting" @click="onSubmitClick">{{ createSubmitting ? '正在生成…' : '生成会议通知' }}</button>
         </div>
       </div>
     </div>
@@ -2842,12 +2842,19 @@ const createCanSubmit = computed(() =>
   missingRequiredFields().length === 0
   && !meetingDateTimePast.value
   && !majorNoticeUnmeetable.value)
-function onSubmitClick() {
+// 提交中锁（0801 修）：建会前后有一串 await（校验弹窗、建会请求、标记/材料挂载），此前全程
+// 没有在途保护——网络一慢，老人手抖连点两下「生成会议通知」就并发发出两个 committeeCreate，
+// 建出两场一模一样的会。锁放在这一层：submitNewMeeting 里有十几处校验失败的 return，
+// 在它内部加锁必然漏掉某条路径导致按钮永久卡死；这里 try/finally 一次覆盖所有出口。
+const createSubmitting = ref(false)
+async function onSubmitClick() {
+  if (createSubmitting.value) return
   if (meetingDateTimePast.value) { toast({ title: '会议时间已过，请改到当前时间之后再生成通知', icon: 'none' }); return }
   if (majorNoticeUnmeetable.value) { toast({ title: '含重大事项须会前 7 天公告，当前距会议不足 7 天，请改到更晚日期或取消勾选重大事项', icon: 'none' }); return }
   const miss = missingRequiredFields()
   if (miss.length) { toast({ title: '还差：' + miss.join('、'), icon: 'none' }); return }
-  submitNewMeeting()
+  createSubmitting.value = true
+  try { await submitNewMeeting() } finally { createSubmitting.value = false }
 }
 // 带星期的日期（发起会议日期行用，设计师点3）：老人排会靠星期——「8月12日 周二」
 function fmtDateWithWeek(s) {
@@ -3333,6 +3340,10 @@ async function openNewMeeting(period) {
     const choice = await askDraftResume()
     if (choice === 'continue') { continueDraft(); return }
     if (choice !== 'restart') return   // 关掉弹窗 = 哪儿也不去，别硬塞一个空表单
+    // 0801 修：选「重新填一份」原先只是不加载旧草稿，并没有删它——新表单要是没填就退出，
+    // persistDraft 因无内容直接返回，首页那条旧草稿又冒出来，跟刚才"会清空上次内容"的二次确认对不上。
+    // 用户已经确认过清空，就在这里真删掉。
+    clearDraft()
   }
   createVisible.value = true
   createTab.value = 'manual'      // 每次进来默认手动填写面板
@@ -4819,12 +4830,28 @@ async function submitNewMeeting() {
         description: form.description, topics: topics
       })
       // 居委会见证态若有变，翻转标记（toggle 语义：与载入态不同才切）
+      // 0801 修：这里原是空 catch——标记没存上仍照样弹「已保存修改」。用户以为重大事项勾上了，
+      // 库里还是旧值，会前公告与居委会见证整条流程就此漏掉，直到开会当天才发现。
+      // 与建会路径同样处理：会议本身存住了就照说，只把没存上的那一项明确讲出来。
+      let flagFailed = false
       if (form.juweiWitness !== editInitialJuwei.value) {
-        try { await api.committeeToggleFlag(id, 'hasMajorIssue') } catch (e) {}
+        try { await api.committeeToggleFlag(id, 'hasMajorIssue') } catch (e) {
+          console.error('[重大事项] 编辑保存失败：', e)
+          flagFailed = true
+        }
       }
       editingMeetingId.value = null
       createVisible.value = false
-      toast({ title: '已保存修改', icon: 'success' })
+      if (flagFailed) {
+        await showModal({
+          title: '会议已保存，但「含重大事项」没保存上',
+          content: '会议的其它修改都已保存成功，只有「含重大事项」这一项保存失败。请进入会议详情页重新设置。',
+          confirmText: '知道了',
+          showCancel: false
+        })
+      } else {
+        toast({ title: '已保存修改', icon: 'success' })
+      }
       const target = '/pages/committee-detail/committee-detail?id=' + id
       const browserUrl = '/committee-detail?id=' + id
       try { await navigateTo(target) } catch (navErr) { console.error('[编辑会议] 软跳 reject：', navErr) }
@@ -6956,6 +6983,8 @@ onActivated(show)
 .create-panel .major-facts > div { display: flex; justify-content: space-between; gap: 20rpx; padding: 14rpx 2rpx 0; color: #667386; font-size: 27rpx; }
 .create-panel .major-facts b { color: #B56A1D; font-weight: 600; text-align: right; }
 .create-panel .sheet-actions .btn.form-incomplete { background: #A9B7C9; box-shadow: none; }
+/* 提交中：保持主色但明显"按不动"，让连点的人一眼看出请求已经在跑，别再戳 */
+.create-panel .sheet-actions .btn.is-submitting { opacity: .6; }
 
 .create-panel .basic-info-card { padding: 0 28rpx !important; border-radius: 22rpx; overflow: hidden; }
 .create-panel .meeting-title-line { display: grid; grid-template-columns: 148rpx minmax(0, 1fr); align-items: center; min-height: 112rpx; margin: 0 !important; border-bottom: 2rpx solid #E3E7EB; }

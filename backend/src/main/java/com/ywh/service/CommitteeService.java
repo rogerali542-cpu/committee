@@ -234,11 +234,26 @@ public class CommitteeService {
         Long communityId = SecurityUtils.getCurrentCommunityId();
         Long userId = SecurityUtils.getCurrentUserId();
         List<CreateMeetingRequest.TopicRequest> meetingTopics = normalizeCreateTopics(req.getTopics());
+        java.time.LocalTime wantTime = req.getMeetingTime() != null ? req.getMeetingTime() : java.time.LocalTime.of(10, 0);
+        // 防重复建会（0801）：前端已加在途锁挡住同一页面的连点，但请求发出后超时重试、
+        // 或两端同时提交仍会建出两场一模一样的会（老人反复戳按钮很常见）。这里做窄口径幂等：
+        // 同小区同一人、名称与日期时间完全相同、30 秒内建过且还停在准备阶段 → 直接返回那一场。
+        // 口径故意收得很窄——真要连开两场同名同日同时刻的会不存在，误判风险可忽略。
+        if (req.getTitle() != null && userId != null) {
+            List<CommitteeMeeting> recent = meetingRepo.findRecentSameTitle(
+                    communityId, userId, req.getTitle(), LocalDateTime.now().minusSeconds(30));
+            for (CommitteeMeeting dup : recent) {
+                if (Objects.equals(dup.getMeetingDate(), req.getMeetingDate())
+                        && Objects.equals(dup.getMeetingTime(), wantTime)) {
+                    return dup;
+                }
+            }
+        }
         CommitteeMeeting m = CommitteeMeeting.builder()
                 .community(Community.builder().id(communityId).build())
                 .title(req.getTitle())
                 .meetingDate(req.getMeetingDate())
-                .meetingTime(req.getMeetingTime() != null ? req.getMeetingTime() : java.time.LocalTime.of(10, 0))
+                .meetingTime(wantTime)
                 .location(req.getLocation() != null ? req.getLocation() : "待定")
                 .locationLat(req.getLocationLat())
                 .locationLng(req.getLocationLng())
