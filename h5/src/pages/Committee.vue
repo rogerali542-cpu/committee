@@ -658,15 +658,34 @@
                0723 用户定：主标题只留「含重大事项」，两条制度要求（提前 7 天公告、居委会到场见证）小字补充 -->
           <!-- 只点右侧开关才切换（0723 用户定）：整行可点容易误触 -->
           <div class="juwei-card" :class="{ disabled: createForm.meetingMethod === 'online' }">
-            <div class="juwei-text">
-              <div class="juwei-title">含重大事项</div>
-              <div class="juwei-sub">{{ createForm.meetingMethod === 'online'
-                ? '线上会议不支持重大事项（须线下提前 7 天公告并请居委会到场见证）'
-                : '需提前 7 天向业主公告，并请居委会到场见证' }}</div>
+            <div class="juwei-top">
+              <div class="juwei-text">
+                <div class="juwei-title">含重大事项</div>
+                <!-- 未勾选时给制度说明；勾选后换成下方算好的截止日明细，不重复 -->
+                <div v-if="!createForm.juweiWitness" class="juwei-sub">{{ createForm.meetingMethod === 'online'
+                  ? '线上会议不支持重大事项（须线下提前 7 天公告并请居委会到场见证）'
+                  : '需提前 7 天向业主公告，并请居委会到场见证' }}</div>
+              </div>
+              <span class="juwei-switch" :class="{ on: createForm.juweiWitness, disabled: createForm.meetingMethod === 'online' }"
+                    role="switch" :aria-checked="createForm.juweiWitness" :aria-disabled="createForm.meetingMethod === 'online'"
+                    @click="onJuweiToggle"></span>
             </div>
-            <span class="juwei-switch" :class="{ on: createForm.juweiWitness, disabled: createForm.meetingMethod === 'online' }"
-                  role="switch" :aria-checked="createForm.juweiWitness" :aria-disabled="createForm.meetingMethod === 'online'"
-                  @click="onJuweiToggle"></span>
+            <!-- 勾选后展开（设计师点9）：会前公告截止日 = 会议日期 − 7 天；紧张/已过用异常色，且已过提示改期 -->
+            <div v-if="createForm.juweiWitness && createForm.meetingMethod !== 'online'" class="juwei-detail">
+              <div class="jd-row" :class="{ 'jd-warn': majorNoticeInfo && majorNoticeInfo.tight, 'jd-error': majorNoticeInfo && majorNoticeInfo.past }">
+                <span class="jd-label">公告日期</span>
+                <span v-if="majorNoticeInfo" class="jd-value">
+                  <template v-if="majorNoticeInfo.past">公告日已过（最迟 {{ majorNoticeInfo.text }}），建议改期</template>
+                  <template v-else-if="majorNoticeInfo.days === 0">最迟今天（{{ majorNoticeInfo.text }}）前公告</template>
+                  <template v-else>最迟 {{ majorNoticeInfo.text }} 前公告（{{ majorNoticeInfo.tight ? '仅剩' : '还剩' }} {{ majorNoticeInfo.days }} 天）</template>
+                </span>
+                <span v-else class="jd-value ph">请先选择会议日期</span>
+              </div>
+              <div class="jd-row">
+                <span class="jd-label">居委会</span>
+                <span class="jd-value">需到场见证</span>
+              </div>
+            </div>
           </div>
 
           <!-- 会议材料：拍照/上传识别出材料后才在底部出现（建会后自动挂到会议供委员传阅） -->
@@ -2592,6 +2611,17 @@ const createPeriodNo = computed(() => {
 })
 const createHeadTitle = computed(() => createPeriodNo.value ? ('发起第' + createPeriodNo.value + '次例会') : '发起业委会')
 const createSubmitLabel = computed(() => createPeriodNo.value ? ('生成第' + createPeriodNo.value + '次例会通知') : '生成会议通知')
+// 会前公告截止日（设计师点9）：业委会会议须会前 7 天公告 → 最迟公告日 = 会议日期 − 7 天。
+// （7 天是业委会层规则，非业主大会的 15 天。）算出距今天数：已过→提示改期；≤3 天→紧张提醒色；否则常态。
+const majorNoticeInfo = computed(() => {
+  const p = String(createForm.meetingDate || '').split('-')
+  if (p.length !== 3) return null
+  const dl = new Date(new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getTime() - 7 * 86400000)
+  const tp = todayStr().split('-')
+  const todayMs = new Date(Number(tp[0]), Number(tp[1]) - 1, Number(tp[2])).getTime()
+  const days = Math.round((dl.getTime() - todayMs) / 86400000)
+  return { text: (dl.getMonth() + 1) + '月' + dl.getDate() + '日', days, past: days < 0, tight: days >= 0 && days <= 3 }
+})
 // 主按钮可提交门槛（0731 设计师点2）：日期+时间+至少一条议题齐了才亮；缺则置灰、点了提示
 const createCanSubmit = computed(() =>
   !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.length)))
@@ -5976,7 +6006,18 @@ onActivated(show)
 /* 居委会见证（创建页，移自通知页）：白卡 + 标题/说明 + 适老化大复选框 */
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
 /* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
-.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+.juwei-card { display: flex; flex-direction: column; align-items: stretch; gap: 0; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
+/* 开关行（标题+说明 | 开关）：卡片改纵向后，这一行仍横排 */
+.juwei-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+/* 勾选后展开的明细：公告截止日 + 居委会见证（设计师点9） */
+.juwei-detail { margin-top: 14rpx; padding-top: 12rpx; border-top: 2rpx solid #f0f0f0; display: flex; flex-direction: column; gap: 10rpx; }
+.jd-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.jd-label { flex-shrink: 0; font-size: 28rpx; color: #8a9099; }
+.jd-value { min-width: 0; text-align: right; font-size: 30rpx; color: #2d3137; font-weight: 600; }
+.jd-value.ph { color: #b7bbc0; font-weight: 400; }
+/* 三色制：紧张(≤3天)用橙、已过用红——都是"异常态"，此处才该出橙/红 */
+.jd-row.jd-warn .jd-value { color: #C76A00; }
+.jd-row.jd-error .jd-value { color: #E5533C; font-weight: 700; }
 .juwei-switch { cursor: pointer; }
 .juwei-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .juwei-title { min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
