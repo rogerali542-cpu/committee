@@ -1,8 +1,7 @@
 <template>
-  <div class="detail-page" :class="{
-        'has-prep-footer': detail && userView === 'chair' && detail.stage === 'preparing',
-        'has-start-btn': detail && userView === 'chair' && detail.stage === 'preparing' && prepareMode !== 'send'
-      }">
+  <div class="detail-page"
+       :class="{ 'has-prep-footer': detail && userView === 'chair' && detail.stage === 'preparing' }"
+       :style="prepFooterH ? { '--prep-footer-h': prepFooterH + 'px' } : null">
     <!-- 页面左右 padding 为 0，负 margin 只抵顶部（0723 修：左右 -12px 无 padding 可抵，
          把文档撑宽 12px，真机能横向晃动——Chrome 桌面测不出来） -->
     <PageNav :title="navTitle" style="margin:-12px 0 0;">
@@ -69,35 +68,8 @@
             <div class="nc-copy-sign">业主委员会</div>
           </div>
           <div v-if="detail.record && detail.record.hasMajorIssue" class="pre-notice-hint">重大事项按规定应提前 7 天张贴，告知业主会议时间和议程</div>
-          <div v-if="methodConvertOpen" class="method-convert-panel">
-            <div class="method-convert-title">
-              {{ methodConvertForm.meetingMethod === 'online' ? '选择线上平台' : '选择会议地点' }}
-            </div>
-            <select v-if="methodConvertForm.meetingMethod === 'online'" v-model="methodConvertForm.location" class="method-convert-select">
-              <option value="微信工作群">微信工作群</option>
-              <option value="腾讯会议">腾讯会议</option>
-            </select>
-            <div v-else class="method-convert-location-row">
-              <div class="method-convert-location-main">
-                <select v-model="methodConvertForm.location" class="method-convert-select">
-                  <option value="社区活动室">社区活动室</option>
-                  <option value="社区会议室">社区会议室</option>
-                  <option value="__other__">其他地点</option>
-                </select>
-                <input v-if="methodConvertForm.location === '__other__'"
-                       v-model="methodConvertOtherLocation" class="method-convert-input" placeholder="请输入会议地点" />
-              </div>
-              <button type="button" class="method-convert-map-btn" aria-label="从地图选点" @click="pickMethodConvertLocationOnMap">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-              </button>
-            </div>
-            <div class="method-convert-actions">
-              <button type="button" @click="methodConvertOpen = false">取消</button>
-              <button type="button" class="primary" :disabled="methodConvertSaving" @click="confirmMethodConversion">
-                {{ methodConvertSaving ? '转换中…' : '确认转换' }}
-              </button>
-            </div>
-          </div>
+          <!-- 0801 设计师定：线上/线下转换的选择控件已从这张白卡里移出去（改底部弹层，见 openMethodConversion）。
+               这张卡是"要发出去的通知内容"，混进编辑控件会让人以为那行也会一起发出去。 -->
         </div>
 
         <!-- 通知人员：默认收起(0725 用户定),头部有全选+计数;点头部展开调整名单 -->
@@ -111,14 +83,14 @@
           <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
             <span class="recipient-card-title">通知人员</span>
             <div class="recipient-card-right">
+              <!-- 0801 设计师：全选按钮原先独占名单上方一行，白占一行高度。放回标题行右侧；
+                   只在展开时出现（收起态那行是纯摘要，不该塞操作）。.stop 免得连带把卡片收起来 -->
+              <button v-if="recipientOpen && recipientList.length" type="button" class="rcp-head-toggle" @click.stop="toggleRecipientAll">{{ recipientAllChecked ? '取消全选' : '全选' }}</button>
               <span class="rcp-head-count" :class="{ partial: !recipientAllChecked }">{{ recipientSummary }}</span>
               <i class="rcp-head-chev" :class="{ open: recipientOpen }"></i>
             </div>
           </div>
           <div class="rcp-list page-rcp-list" v-if="recipientOpen">
-            <div class="rcp-all-row" @click="toggleRecipientAll">
-              <span class="rcp-head-toggle">{{ recipientAllChecked ? '取消全选' : '全选' }}</span>
-            </div>
             <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
               <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
               <div class="rcp-person">
@@ -393,7 +365,7 @@
     </div>
 
     <!-- 准备阶段（主任）：底部固定主操作 -->
-    <div class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
+    <div ref="prepFooterEl" class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
       <div class="pf-after-send">
         <!-- 已通知（App送达全体 或 微信留痕）后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
         <button v-if="prepareMode !== 'send'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
@@ -1250,48 +1222,103 @@ const recipientSummary = computed(() => {
   if (!sel) return total + ' 人中未选任何人'
   return total + ' 人中已选 ' + sel + ' 人'
 })
-const methodConvertOpen = ref(false)
+// 底部操作条实际高度（0801 修「展开人员后最后一位委员被条压住、看不到也点不到」）：
+// 内容区靠它让位，原先是按"勾选 88rpx×2 + 主按钮 120rpx + 上下 padding"手算的常量，
+// 条一改高就得同步改一次——已经错过一次了。改成运行时量：ResizeObserver 盯着条本身，
+// 多一颗「开始会议」、字号变化、安全区不同，让位量都自动跟上，不再有手算常量。
+const prepFooterEl = ref(null)
+const prepFooterH = ref(0)
+let _footerRO = null
+watch(prepFooterEl, (el) => {
+  if (_footerRO) { _footerRO.disconnect(); _footerRO = null }
+  if (!el) { prepFooterH.value = 0; return }
+  const measure = () => { prepFooterH.value = Math.ceil(el.getBoundingClientRect().height) }
+  measure()
+  if (typeof ResizeObserver !== 'undefined') {
+    _footerRO = new ResizeObserver(measure)
+    _footerRO.observe(el)
+  }
+}, { flush: 'post' })
+onUnmounted(() => { if (_footerRO) { _footerRO.disconnect(); _footerRO = null } })
+
+// ── 转为线上/线下会议（0801 设计师定：改底部弹层）──
+// 原先是通知白卡里的一块内联面板 + 原生 <select>，三处毛病：
+// ① 编辑控件混进"要发出去的通知正文"里，还落在署名「业主委员会」下面，用户以为这行也会发出去；
+// ② 原生下拉是本页第三种控件（行+›、分段、下拉），蓝色高亮是系统默认样式，不受设计系统控制；
+// ③ 选完还得再点「确认转换」，那颗按钮常在折叠线以下 —— 于是"选了腾讯会议、正文还写着线下会议"，
+//    其实压根没提交。改成与「地点」同款的底部弹层：选中即生效，只更新上面「方式」那一行。
+const ONLINE_WAYS = ['微信工作群', '腾讯会议', '电话']
+const OFFLINE_PLACES = ['社区活动室', '社区会议室']
 const methodConvertSaving = ref(false)
-const methodConvertOtherLocation = ref('')
-const methodConvertForm = reactive({ meetingMethod: 'online', location: '微信工作群' })
 
-function openMethodConversion() {
-  const toOnline = detail.value && detail.value.meetingMethod !== 'online'
-  methodConvertForm.meetingMethod = toOnline ? 'online' : 'offline'
-  methodConvertForm.location = toOnline ? '微信工作群' : '社区活动室'
-  methodConvertOtherLocation.value = ''
-  methodConvertOpen.value = !methodConvertOpen.value
+async function openMethodConversion() {
+  if (methodConvertSaving.value) return
+  const toOnline = !(detail.value && detail.value.meetingMethod === 'online')
+  const location = toOnline ? await pickOnlineWay() : await pickOfflinePlace()
+  if (!location) return
+  await applyMethodConversion(toOnline ? 'online' : 'offline', location)
 }
 
-async function pickMethodConvertLocationOnMap() {
+async function pickOnlineWay() {
+  const cur = (detail.value && detail.value.location) || ''
+  const res = await showActionSheet({
+    title: '转为线上会议 · 选择线上方式', variant: 'picker',
+    itemList: ONLINE_WAYS.map((w) => ({ label: w, selected: cur.indexOf(w) === 0 }))
+  })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return ''
+  const way = ONLINE_WAYS[res.tapIndex]
+  if (way !== '腾讯会议') return way
+  // 腾讯会议必须带会议号：委员看到通知就得拨进去，只写「腾讯会议」等于没通知到
+  const r = await showModal({
+    title: '腾讯会议号', content: '', editable: true,
+    placeholderText: '如 123 456 789，暂时没有可留空',
+    confirmText: '确定', cancelText: '取消', showCancel: true
+  })
+  if (!r || !r.confirm) return ''
+  const no = String(r.content || '').trim()
+  return no ? '腾讯会议（会议号 ' + no + '）' : '腾讯会议'
+}
+
+async function pickOfflinePlace() {
+  const items = OFFLINE_PLACES.concat(['其他地点（手动填写）', '从地图选点'])
+  const cur = (detail.value && detail.value.location) || ''
+  const res = await showActionSheet({
+    title: '转为线下会议 · 选择会议地点', variant: 'picker',
+    itemList: items.map((s) => ({ label: s, selected: s === cur }))
+  })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return ''
+  const i = res.tapIndex
+  if (i < OFFLINE_PLACES.length) return OFFLINE_PLACES[i]
+  if (i === OFFLINE_PLACES.length) {
+    const r = await showModal({
+      title: '会议地点', content: '', editable: true, placeholderText: '请输入会议地点',
+      confirmText: '确定', cancelText: '取消', showCancel: true
+    })
+    if (!r || !r.confirm) return ''
+    return String(r.content || '').trim()
+  }
+  return await pickPlaceOnMap()
+}
+
+async function pickPlaceOnMap() {
   const res = await showActionSheet({ itemList: ['高德地图', '百度地图'] })
-  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return ''
   const app = res.tapIndex === 0 ? '高德地图' : '百度地图'
-  methodConvertForm.location = '__other__'
-  methodConvertOtherLocation.value = '阳光家园·活动中心（' + app + '选点·演示）'
   toast({ title: '已从' + app + '选择地点（演示）', icon: 'none' })
+  return '阳光家园·活动中心（' + app + '选点·演示）'
 }
 
-async function confirmMethodConversion() {
-  let location = methodConvertForm.location
-  if (methodConvertForm.meetingMethod === 'offline' && location === '__other__') {
-    location = methodConvertOtherLocation.value.trim()
-  }
-  if (!location) {
-    toast({ title: methodConvertForm.meetingMethod === 'online' ? '请选择线上平台' : '请输入会议地点', icon: 'none' })
-    return
-  }
+async function applyMethodConversion(method, location) {
   methodConvertSaving.value = true
   try {
     await api.committeeUpdate(meetingId, {
-      meetingMethod: methodConvertForm.meetingMethod,
+      meetingMethod: method,
       location,
       // 0801：转换后地点已换（线上=群/会议软件，线下=新填地址），原地图坐标必然过期——
       // 显式清空，否则导航还指着原来那个会议室
       locationLat: null, locationLng: null, updateLocationCoords: true
     })
-    methodConvertOpen.value = false
-    toast({ title: methodConvertForm.meetingMethod === 'online' ? '已转为线上会议' : '已转为线下会议', icon: 'success' })
+    toast({ title: method === 'online' ? '已转为线上会议' : '已转为线下会议', icon: 'success' })
     await loadDetail()
   } catch (e) {
     toast({ title: e.message || '转换失败', icon: 'none' })
@@ -1956,11 +1983,10 @@ async function removeMaterial(item) {
 /* 底部操作条改 fixed 后，内容区要给它让位，否则最后一段被挡住（准备阶段才有这条）。
    0801 设计师：轻列表和操作条之间留白过多。让位量按操作条实际高度精算 = 条高 + 40px 呼吸位，
    并把 .detail-page 自带的 40px 底 padding 在这个模式下去掉（原先两处叠加，多留了一截）。
-   条高两种：未通知时=两条渠道勾选 88rpx×2 + 间距 16rpx + 主按钮 120rpx + 上下 32px ≈ 188px；
-   已通知后头上多一颗「开始会议」(78rpx + 14rpx 间距) ≈ 234px，靠 .has-start-btn 分开给量。 */
+   条高不再手算：--prep-footer-h 由 JS 用 ResizeObserver 实测写入（含安全区），这里只加 40px 呼吸位。
+   兜底 190px 供首帧（测量前）用。 */
 .detail-page.has-prep-footer { padding-bottom:0; }
-.detail-page.has-prep-footer .detail-body { padding-bottom:calc(456rpx + env(safe-area-inset-bottom)); }
-.detail-page.has-prep-footer.has-start-btn .detail-body { padding-bottom:calc(548rpx + env(safe-area-inset-bottom)); }
+.detail-page.has-prep-footer .detail-body { padding-bottom:calc(var(--prep-footer-h, 190px) + 40px); }
 /* 0801 设计师二提「仍空 150px」：那一片不是 padding——通知人员收起后整页不满一屏，
    .detail-body(flex:1 0 auto) 被撑满视口，内容末尾到钉死的操作条之间剩下的是视口余量，
    单纯减 padding 消不掉。改成把这片余量挪走：.detail-body 在该模式下转成 flex 列，
@@ -2478,7 +2504,7 @@ async function removeMaterial(item) {
 .recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:9rpx 18rpx; min-height:96rpx; box-sizing:border-box; }
 /* 页内这几行都是 div + @click 的可点行，同样吃 300ms 点击延迟、长按会变成选字（见底部勾选行的注释）。
    这里不改标签，先把触摸行为显式声明掉——大头就在这两条。 */
-.recipient-card-head, .rcp-all-row, .page-rcp-item, .prep-more-row {
+.recipient-card-head, .page-rcp-item, .prep-more-row {
   touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   -webkit-tap-highlight-color:transparent; cursor:pointer; }
 .recipient-card-head:active { background:#FAFAFA; }
@@ -2494,9 +2520,12 @@ async function removeMaterial(item) {
   border-right:3rpx solid #B4BCC7; border-bottom:3rpx solid #B4BCC7; transform:rotate(45deg);
   transition:transform .2s ease, top .2s ease; }
 .rcp-head-chev.open { transform:rotate(-135deg); top:3rpx; }
-/* 展开后第一行：全选/取消全选（收起态由摘要承担，不必常驻） */
-.rcp-all-row { display:flex; justify-content:flex-end; padding:0 22rpx; border-bottom:1px solid #F0F0F2; }
-.rcp-head-toggle { display:inline-flex; align-items:center; min-height:80rpx; padding:0 4rpx; color:#3567A4; font-size:28rpx; font-weight:700; white-space:nowrap; }
+/* 全选/取消全选：标题行右侧，展开时才出现（收起态由摘要承担）。
+   原生 button——与底部渠道勾选同理，div 在手机上长按会变选字、还吃 300ms 点击延迟 */
+.rcp-head-toggle { display:inline-flex; align-items:center; min-height:80rpx; margin:0; padding:0 4rpx;
+  border:0; background:none; font:inherit; color:#3567A4; font-size:28rpx; font-weight:700; white-space:nowrap;
+  cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
 .rcp-head-toggle:active { opacity:.6; }
 /* 0801 设计师版：名单默认展开且不再限高滚动——7 个人的名单套一个内滚动区，
    既看不全又与页面主滚动打架；直接铺开由页面统一滚 */
@@ -2526,19 +2555,6 @@ async function removeMaterial(item) {
 .detail-del-link:active { background:#FBF0EE; }
 /* 会前公告并入操作排(0725);说明小字独立在按钮组下方 */
 .pre-notice-hint { margin:0 24rpx 14rpx; font-size:23rpx; color:#8A9099; line-height:1.4; text-align:center; }
-.method-convert-panel { margin:0 28rpx 22rpx; padding:18rpx 22rpx 22rpx; border:2rpx solid #DCE4EA; border-radius:14rpx; background:#F8FAFC; }
-.method-convert-title { margin-bottom:12rpx; color:#4B5563; font-size:24rpx; }
-.method-convert-select, .method-convert-input { width:100%; box-sizing:border-box; height:72rpx; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; padding:0 18rpx; color:#263746; font-size:27rpx; }
-.method-convert-input { margin-top:12rpx; }
-.method-convert-location-row { display:flex; align-items:flex-start; gap:12rpx; }
-.method-convert-location-main { flex:1; min-width:0; }
-.method-convert-map-btn { flex:0 0 72rpx; width:72rpx; height:72rpx; padding:0; border:2rpx solid #CFDBE5; border-radius:12rpx; background:#fff; color:#5D85A3; box-shadow:none; display:flex; align-items:center; justify-content:center; }
-.method-convert-map-btn svg { width:38rpx; height:38rpx; }
-.method-convert-map-btn:active { background:#EEF4F8; }
-.method-convert-actions { display:flex; justify-content:flex-end; gap:14rpx; margin-top:18rpx; }
-.method-convert-actions button { min-width:112rpx; height:62rpx; border:0; border-radius:12rpx; background:#EDF1F4; color:#65717C; font-size:25rpx; }
-.method-convert-actions button.primary { background:#DCE8F2; color:#3F6078; border:2rpx solid #C7D8E6; font-weight:600; }
-.method-convert-actions button:disabled { opacity:.6; }
 .nc-online-emphasis { margin:8rpx 0 16rpx; padding:12rpx 18rpx; border-radius:10rpx; background:#EAF3FA; color:#315F7D; font-size:28rpx; font-weight:700; text-align:center; }
 /* 通知记录：标题 + 记录 */
 /* 通知记录：与通知人员同族的白卡容器（0723 修：原先无容器，内容裸贴屏幕左右边缘） */
