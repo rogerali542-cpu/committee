@@ -539,7 +539,10 @@
               <!-- 0801 设计师点2：三态分清——没跑过=「开始识别（N）」，跑失败才=「识别失败，重试（N）」，
                    不能一上来就说"重试"（用户根本没识别过） -->
               <button v-if="scanItems.length" class="ds-recognize" :class="{ failed: scanFailed && !scanRecognizing }" :disabled="scanRecognizing" @click="recognizeScanItems">
-                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : (scanFailed ? '识别失败，重试（' + scanItems.length + '）' : '开始识别（' + scanItems.length + '）') }}
+                {{ scanRecognizing ? '识别中 ' + docProgress + '%'
+                   : scanFailed ? '识别失败，重试（' + scanItems.length + '）'
+                   : scanDone ? '重新识别（' + scanItems.length + '）'
+                   : '开始识别（' + scanItems.length + '）' }}
               </button>
             </div>
           </div>
@@ -553,7 +556,7 @@
               <span class="field-caption caption-as-title">会议名称 <i v-if="recognizedFields.title">已识别</i></span>
               <div class="title-row">
                 <div class="title-input-wrap">
-                  <textarea ref="titleEl" class="form-input large title-ta" :class="{ 'field-error': fieldErrors.title }" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @focus="clearFieldError('title')" @keydown.enter.prevent></textarea>
+                  <textarea ref="titleEl" class="form-input large title-ta" :class="{ 'field-error': fieldErrors.title }" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle(); clearRecognizedMark('title')" @focus="clearFieldError('title')" @keydown.enter.prevent></textarea>
                   <!-- 推荐标题：半透明显示在文本框内，点文字直接填入 -->
                   <span v-if="suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle; clearFieldError('title')">{{ suggestedTitle }}</span>
                 </div>
@@ -568,13 +571,15 @@
                   <button type="button" :class="{ active: createForm.meetingMethod === 'online' }" @click="setMeetingMethod('online')">线上会议</button>
                 </div>
               </div>
-              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingDate || meetingDateTimePast }" @click="openDatePicker">
+              <!-- 0801 设计师点3：时间已过不再红框圈住——下方暖块已经说了同一件事，一件事别说两遍；
+                   且红不在配色表里。红框只留给"必填未填"（fieldErrors） -->
+              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingDate }" @click="openDatePicker">
                 <span class="fl-label">日期 <i v-if="recognizedFields.meetingDate">已识别</i></span>
                 <!-- 设计师点3：日期带星期「8月5日 周二」，老人排会靠星期 -->
                 <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtDateWithWeek(createForm.meetingDate) : '未选择' }}</span>
                 <span class="fl-arrow">›</span>
               </div>
-              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingTime || meetingDateTimePast }" @click="openTimePicker">
+              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingTime }" @click="openTimePicker">
                 <span class="fl-label">时间 <i v-if="recognizedFields.meetingTime">已识别</i></span>
                 <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime || '未选择' }}</span>
                 <span class="fl-arrow">›</span>
@@ -582,13 +587,14 @@
               <!-- 会议时间已过（多为拍照识别带入的旧时间）：保留可填，但提示 + 底部"生成通知"已置灰锁住（设计师点4） -->
               <div v-if="meetingDateTimePast" class="dt-past-warn">
                 <span class="dt-past-ico">!</span>
-                <span>会议时间已过，请点上方日期/时间改到<b>现在之后</b>，再生成通知</span>
+                <!-- 0801 设计师点4：规则二——不写位置指示。暖块就贴在日期/时间两行下面，指哪儿是清楚的 -->
+                <span>会议时间已过，请改到今天之后</span>
               </div>
               <div v-if="createForm.meetingMethod !== 'online'" class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
                 <!-- 选「其他地点」时：本行直接变输入框（不再另弹文本框）；点「地点」标签可回到常用地点选择 -->
                 <template v-if="locationPreset === '__other__'">
                   <span class="fl-label fl-label-tap" @click="openLocPicker">地点</span>
-                  <input class="fl-inline-input" v-model="createForm.location" placeholder="请输入会议地点" @focus="clearFieldError('location')" />
+                  <input class="fl-inline-input" v-model="createForm.location" placeholder="请输入会议地点" @input="clearRecognizedMark('location')" @focus="clearFieldError('location')" />
                 </template>
                 <div v-else class="fl-loc-main" @click="openLocPicker">
                   <span class="fl-label">地点 <i v-if="recognizedFields.location">已识别</i></span>
@@ -623,7 +629,7 @@
                 <span class="ti-del" @click="confirmRemoveTopic(idx)">删除</span>
               </div>
               <!-- 0801 设计师：一行起步、随内容自增高——固定三行高让一条议题占大半屏 -->
-              <textarea class="ti-input" v-model="topic.title" rows="1" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')" @input="autoGrowTopicTa"></textarea>
+              <textarea class="ti-input" v-model="topic.title" rows="1" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')" @input="autoGrowTopicTa($event); clearRecognizedMark('topics')"></textarea>
               <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision
                    0801 设计师点4：加回左侧标签——空表单时只看到"通知/讨论/表决"三个词，老人不知道在问什么 -->
               <div class="ti-type-row">
@@ -2615,6 +2621,9 @@ const createForm = reactive({
   locationLng: null
 })
 const recognizedFields = reactive({ title: false, meetingDate: false, meetingTime: false, location: false, topics: false })
+// 0801 设计师点5：用户改过/核对过的值不再是"识别结果"，标记要消失——这正是这个标签的意义
+// （标出哪些还没人核对过）。日期/时间/地点/名称/议题的写入口都调它摘标记。
+function clearRecognizedMark(key) { if (recognizedFields[key]) recognizedFields[key] = false }
 function resetRecognizedFields() {
   Object.keys(recognizedFields).forEach((key) => { recognizedFields[key] = false })
 }
@@ -3621,6 +3630,9 @@ async function startDocScan(source = 'image') {
 // 识别失败标志（0801 设计师点5）：正常流程选完即自动识别、页面上不放按钮；
 // 只有识别失败/被取消后才露出「重试识别」，避免老人卡在"我传了怎么没动静"
 const scanFailed = ref(false)
+// 已识别过一轮但用户选了「不填入」：文件留着（可能只是想改改再填），
+// 按钮改说「重新识别（N）」——不能还写「开始识别」，用户已经识别过了（0801 设计师点8）
+const scanDone = ref(false)
 // 识别中窗口点 × 取消：收起窗口、复位状态；在途请求返回后按标志丢弃，文件保留可重试
 let _recognizeCancelled = false
 function cancelRecognize() {
@@ -3641,6 +3653,7 @@ async function recognizeScanItems() {
   const files = scanItems.value.map((x) => x.file)
   _recognizeCancelled = false
   scanFailed.value = false
+  scanDone.value = false
   scanRecognizing.value = true
   scanBusy.value = 'file'
   startDocProgress()
@@ -3676,11 +3689,13 @@ async function recognizeScanItems() {
     scanBusy.value = ''
     docProgress.value = 0
     await handleMultiScanResult(res)
-    clearScanItems()
+    // 0801 设计师点8：识别完不再清空暂存文件——用户可能点「不填入」后想改改再填，
+    // 文件留着可直接「重新识别（N）」，不用重传。填入成功时在 confirmScanResult 里清
+    scanDone.value = true
   } catch (e) {
     if (_recognizeCancelled) return
     stopDocProgress()
-    scanFailed.value = true   // 失败才露出「重试识别」按钮（正常流程无按钮，选完即识别）
+    scanFailed.value = true   // 失败 → 按钮变「识别失败，重试（N）」
     const message = e && e.message && !/^HTTP\s/i.test(e.message)
       ? e.message
       : '识别失败，请重试或手动填写'
@@ -3967,7 +3982,7 @@ onUnmounted(() => {
 // AI 识别完成结果卡（自定义精美弹层，替代通用 showModal）
 const scanResultCard = ref(null)
 function closeScanResult() { scanResultCard.value = null }
-function confirmScanResult(overwrite) {
+function confirmScanResult(overwrite, keepFiles) {
   const c = scanResultCard.value
   if (!c) return
   let filled = false
@@ -3985,6 +4000,9 @@ function confirmScanResult(overwrite) {
   } else if (filled) {
     toast({ title: '已自动填写，请核对', icon: 'none' })
   }
+  // 全部按识别结果填入 → 暂存文件功成身退；选了「保留我填的」则留着文件（keepFiles），
+  // 按钮显示「重新识别（N）」，用户改完表单可直接重来，不用重传（0801 设计师点8）
+  if (!keepFiles) { clearScanItems(); scanDone.value = false }
   createTab.value = 'manual'   // 识别完成后收起上传区，右侧入口显示已识别文件数
   scanResultCard.value = null
 }
@@ -4004,7 +4022,8 @@ function onScanGhost() {
   const c = scanResultCard.value
   if (!c) return
   if (c.mode === 'multi-notice') { manualFillScanResult(); return }
-  if (c.needOverwriteAsk) { confirmScanResult(false); return }
+  // 「保留我填的」：冲突项不覆盖（空字段仍会补、材料照挂），文件留在暂存区可「重新识别」
+  if (c.needOverwriteAsk) { confirmScanResult(false, true); return }
   closeScanResult()
 }
 // 通知去重：过滤全空、按关键字段签名去重
@@ -4138,9 +4157,10 @@ function handleMultiScanResult(res) {
     conflicts,
     // pastDate 已并进「时间」行（scanNoticeRows 里算），不再单独成块（设计师·瘦身点4）
     needOverwriteAsk: hasConf,
-    // 0801 设计师·瘦身点5：文案收短——语义靠上方冲突块交代，按钮只说动作
+    // 文案收短（设计师·瘦身点5）；但次选不用「不填入」——这条路径其实仍会补空字段、挂材料，
+    // 只是不覆盖冲突项，写「不填入」与实际行为不符。用「保留我填的」，同样短且准确
     primaryLabel: hasConf ? '按识别结果填入' : '确认填入',
-    ghostLabel: hasConf ? '不填入' : '取消',
+    ghostLabel: hasConf ? '保留我填的' : '取消',
     seconds, tokens, res, materials
   }
 }
@@ -4224,9 +4244,11 @@ async function openLocPicker() {
   if (i < commonLocations.length) {
     locationPreset.value = commonLocations[i]
     createForm.location = commonLocations[i]
+    clearRecognizedMark('location')
   } else if (i === commonLocations.length) {
     locationPreset.value = '__other__'
     createForm.location = ''
+    clearRecognizedMark('location')
   } else {
     pickLocationOnMap()
   }
@@ -4241,6 +4263,7 @@ function onMapPicked(p) {
   // 地点名为主，详细地址跟在括号里；经纬度随建会落库 → 详情页导航用精确坐标
   _mapJustSet = true
   createForm.location = p.name ? (p.address ? p.name + '（' + p.address + '）' : p.name) : (p.address || '')
+  clearRecognizedMark('location')
   createForm.locationLat = p.lat
   createForm.locationLng = p.lng
   toast({ title: '已选择地点', icon: 'success' })
@@ -4305,7 +4328,7 @@ function pickCalDay(day) {
     return
   }
   if (pickerTarget.value === 'reception') recForm.date = calDateStr(day)
-  else createForm.meetingDate = calDateStr(day)
+  else { createForm.meetingDate = calDateStr(day); clearRecognizedMark('meetingDate') }
   datePickerOpen.value = false
 }
 
@@ -4354,7 +4377,7 @@ function firstAvailableTime() {
 function applyTime() {
   const v = String(tpHour.value).padStart(2, '0') + ':' + String(tpMinute.value).padStart(2, '0')
   if (pickerTarget.value === 'reception') recForm.time = v
-  else createForm.meetingTime = v
+  else { createForm.meetingTime = v; clearRecognizedMark('meetingTime') }
 }
 function setTpHour(h) {
   if (isPastTimeOption(h, 45)) return
@@ -6239,8 +6262,12 @@ onActivated(show)
 .mc-video { width: 100%; height: 100%; object-fit: cover; background: #000; border-radius: 6rpx; }
 /* 会议材料行：小图标 + 可点文件名（点开全屏预览）+ 大小 + 删除 */
 /* 会议材料折叠头：标题 + 右侧小箭头，点击展开详情 */
-.mat-head { cursor: pointer; }
-.mat-toggle { flex-shrink: 0; font-size: 40rpx; line-height: 1; color: var(--c-primary-dark); font-weight: 700; transition: transform .2s ease; }
+/* 0801 设计师点6/7 + 用户「这行太窄」：会议材料是一条入口、不是异常态——
+   去掉暖橙字（原 .section-title 在 create-panel 下被染成橙）、去掉卡感，做成轻列表行：
+   透明底 + 分隔线 + 常规深色 + ›，行高与其他字段行一致，不再又窄又像卡 */
+.mat-head { cursor: pointer; min-height: 100rpx; padding: 0 4rpx; }
+.create-panel .mat-head .section-title { color: #1f2329; font-weight: 600; }
+.mat-toggle { flex-shrink: 0; font-size: 40rpx; line-height: 1; color: #b4bcc7; font-weight: 700; transition: transform .2s ease; }
 .mat-toggle.open { transform: rotate(90deg); }
 /* 微信式文件卡：类型图标 + 文件名 + 下方大小 */
 .mat-card { display: flex; align-items: center; gap: 18rpx; background: #F7F8FA; border: 1rpx solid #ECEEF1; border-radius: 14rpx; padding: 16rpx 18rpx; margin-top: 14rpx; cursor: pointer; }
