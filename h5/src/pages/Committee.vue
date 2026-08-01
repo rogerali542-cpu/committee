@@ -610,7 +610,7 @@
                      点3：字段名「线上平台」→「线上方式」（微信群不是会议平台），选项含电话与手填混合 -->
                 <template v-if="onlineOther">
                   <span class="fl-label fl-label-tap" @click="pickOnlineWay">线上方式</span>
-                  <input class="fl-inline-input" v-model="createForm.location" placeholder="如：腾讯会议 + 微信群" @input="clearRecognizedMark('location')" @focus="clearFieldError('location')" />
+                  <input class="fl-inline-input" v-model="createForm.location" placeholder="如：腾讯会议 + 微信工作群" @input="clearRecognizedMark('location')" @focus="clearFieldError('location')" />
                 </template>
                 <div v-else class="fl-loc-main" @click="pickOnlineWay">
                   <span class="fl-label">线上方式</span>
@@ -2670,7 +2670,9 @@ const commonLocations = [defaultMeetingLocation, '社区活动室', '社区会�
 const locationPreset = ref(defaultMeetingLocation)
 // 线上方式（0801 设计师点3）：「微信工作群」严格说不是会议平台而是个群，字段名叫「线上平台」不准，
 // 改叫「线上方式」；选项覆盖群里语音/会议软件/电话，混合情况走「其他」手填（如"腾讯会议 + 微信群"）
-const onlineWays = ['微信群', '腾讯会议', '电话']
+// 「微信工作群」排第一且作切到线上时的默认值（0801 用户定：线上会议基本都在微信工作群里开）
+const onlineWays = ['微信工作群', '腾讯会议', '电话']
+const DEFAULT_ONLINE_WAY = '微信工作群'
 const onlineOther = ref(false)   // true = 本行变成手填输入框（与线下地点的「其他地点」同一套交互）
 function syncOnlineOther() {
   onlineOther.value = createForm.meetingMethod === 'online'
@@ -2702,7 +2704,7 @@ function setMeetingMethod(method) {
   // 线上会议不支持重大事项（须线下公告 + 居委会到场见证），切到线上时强制取消勾选
   if (method === 'online') {
     createForm.juweiWitness = false
-    createForm.location = _onlineLocMemo.value || '微信群'   // 回到线上：还原上次选的方式
+    createForm.location = _onlineLocMemo.value || DEFAULT_ONLINE_WAY   // 回到线上：还原上次选的方式，没填过给默认
     locationPreset.value = '__other__'
     syncOnlineOther()
   } else {
