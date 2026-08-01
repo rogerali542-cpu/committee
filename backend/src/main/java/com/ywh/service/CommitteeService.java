@@ -2727,6 +2727,11 @@ public class CommitteeService {
         }
         lines.add("");
         lines.add("请各位委员按时参加，并提前查阅会议材料。");
+        // 落款（0801 设计师）：此前会议通知没有落款，泛称「业主委员会」也分不清是哪个小区发的。
+        // 用短名「阳光花园业主委员会」，与公示正文 buildPublicNoticeContent 及纪要落款同口径。
+        String community = communityName(m);
+        lines.add("");
+        lines.add(community.isBlank() ? "业主委员会" : community + "业主委员会");
         vo.setTitle(title);
         vo.setContent(String.join("\n", lines));
         vo.setStatus("draft");

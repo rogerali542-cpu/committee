@@ -65,7 +65,7 @@
               </span>
             </div>
             <div class="nc-copy-note">请各位委员准时参加。</div>
-            <div class="nc-copy-sign">业主委员会</div>
+            <div class="nc-copy-sign">{{ signOrg }}</div>
           </div>
           <div v-if="detail.record && detail.record.hasMajorIssue" class="pre-notice-hint">重大事项按规定应提前 7 天张贴，告知业主会议时间和议程</div>
           <!-- 0801 设计师定：线上/线下转换的选择控件已从这张白卡里移出去（改底部弹层，见 openMethodConversion）。
@@ -98,7 +98,7 @@
                 <span v-if="m.role" class="rcp-role">{{ m.role }}</span>
               </div>
             </div>
-            <div v-if="!recipientList.length" class="rcp-empty">暂无可通知的委员</div>
+            <div v-if="!recipientList.length" class="rcp-empty">{{ recipientsLoading ? '正在加载委员名单…' : '暂无可通知的委员' }}</div>
           </div>
         </div>
 
@@ -405,7 +405,7 @@
           <!-- 正文与通知页同款：首行缩进，地点蓝色可点开地图，落款靠右 -->
           <div v-if="detail.meetingMethod === 'online'" class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 以线上方式召开本次会议，线上平台为{{ detail.location || '微信工作群' }}，主要议题：{{ noticeTopicsText }}，请准时参加。</div>
           <div v-else class="fw-para">各位委员：现拟于 {{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }} 在<span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>召开本次会议，主要议题：{{ noticeTopicsText }}，请准时出席。</div>
-          <div class="fw-sign">业主委员会</div>
+          <div class="fw-sign">{{ signOrg }}</div>
           <div class="fw-linkrows">
             <div class="fw-linkrow" @click="openJoin"><span class="fw-lr-ico">👉</span><span class="fw-lr-txt">进入会议</span><span class="fw-lr-go">›</span></div>
             <div class="fw-linkrow" v-if="detail.meetingMethod !== 'online' && detail.location" @click="openMap(detail.location)"><span class="fw-lr-ico">📍</span><span class="fw-lr-txt">地图导航</span><span class="fw-lr-go">›</span></div>
@@ -1211,12 +1211,15 @@ function goHome() { goModuleHome('meeting') }
 // ——— 发送通知：接收对象前置到会议通知页（默认收起、全体委员默认全选） ———
 const recipientOpen = ref(false)
 const recipientList = ref([])   // [{ userRoleId, name, role, checked }]
+const recipientsLoading = ref(false)   // 名单在途：摘要/空态据此区分「还没拉到」与「真的没有」
 const recipientSelectedCount = computed(() => recipientList.value.filter((x) => x.checked).length)
 const recipientAllChecked = computed(() => recipientList.value.length > 0 && recipientList.value.every((x) => x.checked))
 // 收起态摘要（0801）：常态是全体，就直说「全体委员 N 人」；有人被取消才写成需要警觉的写法
 const recipientSummary = computed(() => {
   const total = recipientList.value.length
-  if (!total) return '暂无委员'
+  // 0801 设计师：名单还在拉的时候原先直接写「暂无委员」——那是结论不是状态，
+  // 一闪而过看着像这个小区没有委员/出错了。加载中就说加载中。
+  if (!total) return recipientsLoading.value ? '正在加载委员名单…' : '暂无委员'
   const sel = recipientSelectedCount.value
   if (sel === total) return '全体委员 ' + total + ' 人'
   if (!sel) return total + ' 人中未选任何人'
@@ -1329,6 +1332,7 @@ async function applyMethodConversion(method, location) {
 
 async function loadRecipients(force) {
   if (!force && recipientList.value.length) return true
+  recipientsLoading.value = true
   try {
     const members = await api.committeeMembers()
     const checkedMap = new Map(recipientList.value.map((x) => [x.userRoleId, x.checked]))
@@ -1344,6 +1348,8 @@ async function loadRecipients(force) {
   } catch (e) {
     toast({ title: (e && e.message) || '加载委员名单失败', icon: 'none' })
     return false
+  } finally {
+    recipientsLoading.value = false
   }
 }
 
@@ -1521,6 +1527,9 @@ const mapNavUrl = computed(() => (
 ) ? mapSearchUrl(detail.value.location) : '')
 // 转发到微信的纯文本：学腾讯会议邀请——「会议主题/时间/地点/议题」字段各占一行、链接单独成行，清晰。
 // 注：微信聊天是纯文本，只有完整网址能自动变蓝可点，无法把"地名"做成链接——故保留网址供群里点开
+// 落款用小区全称（0801 设计师）：泛称「业主委员会」发进微信工作群里看不出是哪个小区的通知——
+// 群里还有物业和居委会的人，他们同时在好几个小区的群。与登录页/纪要页/后端公示落款同口径：小区名 + 业主委员会。
+const signOrg = computed(() => (((activeRole.value && activeRole.value.communityName) || '阳光花园') + '业主委员会'))
 const shareText = computed(() => {
   const d = detail.value || {}
   const time = (fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime)).trim()
@@ -1531,6 +1540,8 @@ const shareText = computed(() => {
   lines.push('', '点击链接入会：', joinUrl.value)
   if (mapNavUrl.value) lines.push('', '地点导航：', mapNavUrl.value)
   lines.push('', '请各位委员准时参加，点击上方会议链接即可进入')
+  // 落款：粘进微信群的这条消息也要署小区全称，否则群里分不清是哪个小区发的（预览里的落款同源）
+  lines.push('', signOrg.value)
   return lines.join('\n')
 })
 // 弹窗预览里点"进入会议"
