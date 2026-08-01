@@ -498,7 +498,8 @@
           <div class="scan-accelerator" :class="{ done: docPrefilled, open: createTab === 'scan' }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
             <span class="scan-accelerator-icon" aria-hidden="true">📷</span>
             <span class="scan-accelerator-main">
-              <b>{{ docPrefilled ? '已识别，可继续核对修改' : '拍通知照片自动填写' }}</b>
+              <!-- 0801 设计师点5：原「拍通知照片自动填写」名不副实——实际也传 PDF/Word -->
+              <b>{{ docPrefilled ? '已识别，可继续核对修改' : '拍照片或选文件自动填写' }}</b>
             </span>
             <i class="sa-chev" aria-hidden="true"></i>
           </div>
@@ -509,9 +510,16 @@
               <!-- 0801 设计师点6：去掉卡中卡——缩略图直接铺在浅蓝卡上，一行 [图|文件名|移除]，
                    「移除」做成图右侧一行文字，不再在缩略图卡里独占一行 -->
               <div v-if="scanItems.length" class="ds-preview">
+                <!-- 0801 设计师：回形针（通用"附件"）没信息量，且方框与缩略图同大，像图没加载出来。
+                     图片=真缩略图（带框）；文档=灰色文档字形（无框、略小，不伪装成图片），
+                     两者占同宽槽位，文件名才能对齐 -->
                 <div v-for="it in scanItems" :key="it.id" class="ds-thumb-row">
                   <img v-if="it.isImage && it.thumbUrl" class="ds-thumb-img" :src="it.thumbUrl" :alt="it.name" @click="openScanItemPreview(it)" />
-                  <span v-else class="ds-thumb-file" @click="openScanItemPreview(it)"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span></span>
+                  <span v-else class="ds-thumb-doc" @click="openScanItemPreview(it)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h5"/>
+                    </svg>
+                  </span>
                   <span class="ds-thumb-name" @click="openScanItemPreview(it)">{{ it.name }}</span>
                   <span class="ds-thumb-remove" @click="removeScanItem(it.id)">移除</span>
                 </div>
@@ -528,8 +536,10 @@
               <span v-else class="ds-pick-more" :class="{ disabled: scanRecognizing }" @click="scanRecognizing || choosePhotoOrFile()">＋ 再加一个</span>
               <!-- 0801 用户定：恢复「攒齐多个文件再统一识别」——一份通知常有多页/多附件，
                    选完第一个就自动识别会把后面的挤掉。按钮常驻，攒够了自己点 -->
-              <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
-                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : (scanFailed ? '重试识别（' + scanItems.length + '）' : '开始识别（' + scanItems.length + '）') }}
+              <!-- 0801 设计师点2：三态分清——没跑过=「开始识别（N）」，跑失败才=「识别失败，重试（N）」，
+                   不能一上来就说"重试"（用户根本没识别过） -->
+              <button v-if="scanItems.length" class="ds-recognize" :class="{ failed: scanFailed && !scanRecognizing }" :disabled="scanRecognizing" @click="recognizeScanItems">
+                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : (scanFailed ? '识别失败，重试（' + scanItems.length + '）' : '开始识别（' + scanItems.length + '）') }}
               </button>
             </div>
           </div>
@@ -3525,6 +3535,9 @@ let _scanId = 0
 const IMG_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']
 function addScanItem(file, thumbUrl) {
   if (!file) return
+  // 新加了文件就不再是"上次失败"的局面：按钮回到「开始识别（N）」
+  // （0801 bug：此前 scanFailed 只在识别时才复位，导致一次失败后再选文件仍显示"重试"）
+  scanFailed.value = false
   const ext = String((file.name || '').split('.').pop() || '').toLowerCase()
   const isImage = IMG_EXT.includes(ext) || String(file.type || '').startsWith('image/')
   scanItems.value = scanItems.value.concat([{
@@ -3541,7 +3554,7 @@ function clearScanItems() {
   scanItems.value.forEach((it) => { if (it.thumbUrl && it.thumbUrl.indexOf('blob:') === 0) { try { URL.revokeObjectURL(it.thumbUrl) } catch (e) {} } })
   scanItems.value = []
 }
-function scanThumbIcon(ext) { return ext === 'pdf' ? '📄' : '📎' }
+// scanThumbIcon 已退役（0801）：文档改用灰色文档字形 SVG，不再用 📄/📎 emoji（回形针无信息量）
 // 相机取景界面左下角「相册」缩略图：取最近一张有缩略图的照片（像系统相机连拍）
 const lastShotThumb = computed(() => {
   const arr = scanItems.value
@@ -6040,26 +6053,29 @@ onActivated(show)
 .ds-preview { display: flex; flex-direction: column; gap: 12rpx; padding: 4rpx 0 14rpx; }
 .ds-thumb-row { display: flex; align-items: center; gap: 18rpx; }
 .ds-thumb-img { flex-shrink: 0; width: 88rpx; height: 88rpx; object-fit: cover; display: block; border-radius: 10rpx; border: 2rpx solid #DCE4EE; background: #fff; cursor: pointer; }
-.ds-thumb-file { flex-shrink: 0; width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; border-radius: 10rpx; border: 2rpx solid #DCE4EE; background: #fff; cursor: pointer; }
-.ds-thumb-ico { font-size: 44rpx; line-height: 1; }
+/* 文档：灰色文档字形，无边框、比缩略图略小——不伪装成图片（原回形针+同大方框像图没加载出来）；
+   仍占 88rpx 槽位，保证文件名与图片行对齐 */
+.ds-thumb-doc { flex-shrink: 0; width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; color: #A8AEB6; cursor: pointer; }
+.ds-thumb-doc svg { width: 52rpx; height: 52rpx; }
 .ds-thumb-name { flex: 1; min-width: 0; font-size: 27rpx; color: #4a5158; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 「移除」：图右侧一行文字（与议题/选项的「删除」同一套语言），热区 88rpx */
 .ds-thumb-remove { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 88rpx; padding: 0 8rpx; color: #8a9099; font-size: 26rpx; }
 .ds-thumb-remove:active { color: #E5533C; }
-/* 点2：单一入口按钮（拍照/相册/文件三选一）；点3：图标随文字走会议蓝，不再用紫色 emoji */
-.ds-pick { display: flex; align-items: center; justify-content: center; gap: 12rpx; width: 100%; min-height: 96rpx; border: 2rpx solid #C7D8EE; border-radius: 16rpx; background: #fff; color: #2f5f9e; font-size: 30rpx; font-weight: 700; }
-.ds-pick:active { background: #EAF0F8; }
+/* 单一入口按钮（拍照/相册/文件三选一）。0801 设计师点4：不用描边框——浅蓝卡里再套一个框就是盒中盒，
+   全 App 也统一不用虚线；改浅蓝实底 + 蓝字，形状靠填充而非轮廓 */
+.ds-pick { display: flex; align-items: center; justify-content: center; gap: 12rpx; width: 100%; min-height: 96rpx; border: 0; border-radius: 16rpx; background: #EAF0F8; color: #2f5f9e; font-size: 30rpx; font-weight: 700; }
+.ds-pick:active { background: #DCE7F3; }
 .ds-pick:disabled { opacity: .6; }
 .ds-pick-ico { width: 40rpx; height: 40rpx; flex-shrink: 0; }
-/* 点4：已传过之后收成一行小字，位置让给识别 */
-.ds-pick-more { display: inline-flex; align-items: center; min-height: 80rpx; padding: 0 4rpx; color: #3567A4; font-size: 28rpx; font-weight: 600; }
+/* 点6：「＋ 再加一个」缩进到与文件名同一条竖线（图标槽 88rpx + 间距 18rpx），不再贴卡边像整卡操作 */
+.ds-pick-more { display: inline-flex; align-items: center; min-height: 80rpx; margin-left: 106rpx; padding: 0 4rpx; color: #3567A4; font-size: 28rpx; font-weight: 600; }
 .ds-pick-more.disabled { opacity: .5; }
-/* 「开始识别（N）」：攒齐文件后的主操作，整宽、实心会议蓝——它是这个面板里要点的那颗；
-   仍不与底部「生成会议通知」抢（在展开的浅蓝卡内、只在有待识别文件时出现）。
-   不再用原来的绿色（绿=接待模块色，且是同屏第四个颜色） */
-.ds-recognize { display: block; width: 100%; height: 88rpx; margin: 20rpx 0 2rpx; border: 0; border-radius: 16rpx; background: #3567A4; color: #fff; font-size: 30rpx; font-weight: 700; }
-.ds-recognize:active { background: #2D598E; }
+/* 「开始识别（N）」：0801 设计师点3 + 用户——实心蓝与底部「生成会议通知」长得一样、抢主操作。
+   页面主操作只有底部那一颗，这里降为浅蓝底 + 蓝字次级。失败态换暖橙（全项目统一的异常色） */
+.ds-recognize { display: block; width: 100%; height: 88rpx; margin: 20rpx 0 2rpx; border: 0; border-radius: 16rpx; background: #EAF0F8; color: #2f5f9e; font-size: 30rpx; font-weight: 700; }
+.ds-recognize:active { background: #DCE7F3; }
 .ds-recognize:disabled { opacity: 0.72; }
+.ds-recognize.failed { background: #f7e4c6; color: #9a5b12; }
 @keyframes dsGlow {
   0%, 100% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 12rpx rgba(30,180,155,0.38); }
   50% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 26rpx rgba(40,200,170,0.82); }
@@ -6645,7 +6661,7 @@ onActivated(show)
 .create-panel .create-back { width: 108rpx; height: 108rpx; font-size: 58rpx; }
 .create-panel .create-nav-ph { width: 108rpx; }
 .create-panel .create-title { font-size: 37rpx; }
-.create-panel .create-body { padding: 20rpx 28rpx 28rpx; background: #F3F5F7; }
+.create-panel .create-body { padding: 20rpx 28rpx 48rpx; background: #F3F5F7; }  /* 底部 48rpx：给按钮条留呼吸（设计师点8） */
 
 /* 上传识别保留，但退成表单上方的轻量辅助入口，不与主体白卡争抢。 */
 .create-panel .create-tabs { margin: 0 0 18rpx; padding: 0; background: transparent; gap: 16rpx; }
@@ -6723,7 +6739,9 @@ onActivated(show)
 .create-panel .tat-text { color: #3567A4; font-size: 31rpx; font-weight: 700; }
 
 /* 0801 设计师点12：按钮条与内容之间补 10px 呼吸（padding-top 20rpx）+ 一条分隔线，不再紧贴 */
-.create-panel .sheet-actions.fixed { padding: 20rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #EEF0F2; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
+/* 0801 设计师点8：分隔线原用 #EEF0F2，白底上几乎看不见 → 加深；内容侧另给 20rpx(10px) 空隙，
+   最后一张卡不再顶到按钮条上 */
+.create-panel .sheet-actions.fixed { padding: 20rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #DFE4EA; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
 .create-panel .sheet-actions.fixed .btn-primary { flex: 1; width: 100%; height: 104rpx; border-radius: 18rpx; background: #3567A4; font-size: 34rpx; }
 .create-panel .sheet-actions.fixed .btn-primary:active { background: #2D598E; }
 
@@ -6782,8 +6800,10 @@ onActivated(show)
 .jd-past-banner b { color: #9a5b12; font-size: 29rpx; font-weight: 700; line-height: 1.45; }
 .jd-past-banner small { color: #9a5b12; opacity: .72; font-size: 25rpx; line-height: 1.4; }
 /* 0801 设计师点11：上传入口一行式的右侧 ›（CSS 边框箭头，见 CLAUDE.md 不用字符箭头）；展开转为下指 */
-.sa-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #8A97A6; border-bottom: 3rpx solid #8A97A6; transform: rotate(-45deg); transition: transform .2s ease; }
-.scan-accelerator.open .sa-chev { transform: rotate(45deg); }
+/* 0801 设计师点7：两态要能一眼分清——收起=向下箭头（点我展开），展开=向上（点我收起）。
+   按 CLAUDE.md：CSS 边框画箭头，rotate(45deg)=下、rotate(-135deg)=上，top 反向补偿保持垂直居中 */
+.sa-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; position: relative; top: -3rpx; border-right: 3rpx solid #8A97A6; border-bottom: 3rpx solid #8A97A6; transform: rotate(45deg); transition: transform .2s ease, top .2s ease; }
+.scan-accelerator.open .sa-chev { transform: rotate(-135deg); top: 3rpx; }
 /* 0801 设计师点4：折叠标题栏与展开内容同卡——卡皮挪到 .scan-card，入口行变卡头，展开区带分隔线接在卡内 */
 /* flex-shrink:0 必须有：.create-body 是 column flex，而 overflow:hidden 会把 flex 项的
    自动最小尺寸(min-height:auto)算成 0 → 卡被压扁、展开内容被裁光（0801 实测 bug） */
