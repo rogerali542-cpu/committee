@@ -409,7 +409,8 @@
         <div class="pf-btn-col">
           <div class="pf-also" :class="{ off: !alsoAppNotify, disabled: !recipientSelectedCount }" @click="toggleAlsoAppNotify">
             <div class="pf-also-check" :class="{ on: alsoAppNotify && recipientSelectedCount }">{{ alsoAppNotify && recipientSelectedCount ? '✓' : '' }}</div>
-            <span class="pf-also-txt">{{ recipientSelectedCount ? '同时在 App 内通知 ' + recipientSelectedCount + ' 位委员' : '未选委员，无法在 App 内通知' }}</span>
+            <!-- 0801 设计师：勾选行不再报人数——它跟主按钮走的是同一批人，一屏里「7 人」出现三次是噪音 -->
+            <span class="pf-also-txt">{{ recipientSelectedCount ? '同时在 App 内通知' : '未选委员，无法在 App 内通知' }}</span>
           </div>
           <button class="pf-btn pf-btn-main" :class="{ busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在通知…' : mainSendLabel }}</button>
         </div>
@@ -1946,6 +1947,17 @@ async function removeMaterial(item) {
 .detail-page.has-prep-footer { padding-bottom:0; }
 .detail-page.has-prep-footer .detail-body { padding-bottom:calc(368rpx + env(safe-area-inset-bottom)); }
 .detail-page.has-prep-footer.has-start-btn .detail-body { padding-bottom:calc(460rpx + env(safe-area-inset-bottom)); }
+/* 0801 设计师二提「仍空 150px」：那一片不是 padding——通知人员收起后整页不满一屏，
+   .detail-body(flex:1 0 auto) 被撑满视口，内容末尾到钉死的操作条之间剩下的是视口余量，
+   单纯减 padding 消不掉。改成把这片余量挪走：.detail-body 在该模式下转成 flex 列，
+   .prep-more 用 margin-top:auto 吸走全部剩余空间——低频操作行于是恒定停在操作条上方 40px
+   （让位量已按条高精算），余量落到"白卡组 / 低频操作组"之间，读作分组间距而不是页面断成两截。
+   页面长到要滚时自由空间为 0，auto 自动失效，不影响长内容。
+   > * 的 flex-shrink:0 是防坑：本项目踩过"flex 子项被压缩 + overflow:hidden → 内容被裁"，
+   .notice-card 正好带 overflow:hidden。 */
+.detail-page.has-prep-footer .detail-body { display:flex; flex-direction:column; }
+.detail-page.has-prep-footer .detail-body > * { flex-shrink:0; }
+.detail-page.has-prep-footer .prep-more { margin-top:auto; }
 
 /* Task banner */
 .task-banner { padding:10px 14px; border-radius:12px; margin-bottom:12px; }
