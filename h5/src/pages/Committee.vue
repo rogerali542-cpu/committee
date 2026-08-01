@@ -840,6 +840,19 @@
       </div>
     </div>
 
+    <!-- 续写草稿询问（0801 设计师重设计）：标题直接说"这个弹窗要你做什么"（原「有未写完的会议通知」
+         只是陈述状态）；补一行"什么时候存的"；主操作实心蓝在上、破坏性操作浅灰在下，
+         「重新填一份」的后果在点击那一刻才二次确认，不提前用括号解释 -->
+    <div v-if="draftResumePrompt" class="dr-mask" @click.self="onDraftResumeClose">
+      <div class="dr-card">
+        <div class="dr-title">继续写上次的会议通知</div>
+        <div class="dr-name">{{ draftTitle }}</div>
+        <div v-if="draftSavedAtText" class="dr-time">{{ draftSavedAtText }}</div>
+        <button type="button" class="dr-primary" @click="onDraftResumeContinue">继续写</button>
+        <button type="button" class="dr-ghost" @click="onDraftResumeRestart">重新填一份</button>
+      </div>
+    </div>
+
     <!-- 模拟手机相机（测试用）：取景框对着纸质通知；拍后先进照片预览（重拍/使用照片），确认后才走识别；接真机后整块可删 -->
     <div v-if="mockCameraVisible" class="mock-cam" :class="{ preview: !!mockShotUrl }">
       <div class="mc-top">
@@ -3290,12 +3303,9 @@ async function openNewMeeting(period) {
     const draftP = meetingPeriod(draft.value || {}, curYear)
     const p = Number(period) || 0
     if (!draftP || !p || draftP === p) { continueDraft(); return }
-    const r = await showModal({
-      title: '有未写完的会议通知',
-      content: '「' + draftTitle.value + '」还没写完。继续写它，还是另起一份？\n（只保留一份草稿，另起会替换掉它）',
-      confirmText: '继续写', cancelText: '另起一份', showCancel: true
-    })
-    if (r && r.confirm) { continueDraft(); return }
+    const choice = await askDraftResume()
+    if (choice === 'continue') { continueDraft(); return }
+    if (choice !== 'restart') return   // 关掉弹窗 = 哪儿也不去，别硬塞一个空表单
   }
   createVisible.value = true
   createTab.value = 'manual'      // 每次进来默认手动填写面板
@@ -3416,6 +3426,38 @@ function clearDraft() {
 const hasDraft = computed(() => draftHasContent(draft.value))
 // 草稿卡片摘要：会议名（缺省占位）
 const draftTitle = computed(() => (draft.value && String(draft.value.title || '').trim()) || '未命名会议')
+// 「什么时候存的」（0801 设计师）：老人回来第一个疑问是"这是我什么时候写的"，
+// 比「只保留一份草稿」这种规则说明有用得多
+const draftSavedAtText = computed(() => {
+  const t = draft.value && draft.value.savedAt
+  if (!t) return ''
+  const d = new Date(t)
+  const pad = (n) => String(n).padStart(2, '0')
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ' 存'
+})
+// 续写草稿的询问弹窗（0801 设计师重设计）：通用 showModal 做不出「左对齐标题 + 两行摘要 +
+// 上下叠放按钮」，且它把破坏性操作与主操作平级摆在左右两侧——这里做成专用弹窗。
+// 破坏性后果不预告，放到点「重新填一份」的那一刻再二次确认。
+const draftResumePrompt = ref(null)
+function askDraftResume() {
+  return new Promise((resolve) => { draftResumePrompt.value = { resolve } })
+}
+function _resolveDraftResume(v) {
+  const p = draftResumePrompt.value
+  draftResumePrompt.value = null
+  if (p && p.resolve) p.resolve(v)
+}
+function onDraftResumeContinue() { _resolveDraftResume('continue') }
+function onDraftResumeClose() { _resolveDraftResume('cancel') }
+async function onDraftResumeRestart() {
+  const r = await showModal({
+    title: '重新填会清空上次的内容，确定吗？',
+    content: '',
+    confirmText: '重新填', cancelText: '取消', showCancel: true
+  })
+  if (!r || !r.confirm) return   // 不确定就留在弹窗里，草稿原样保留
+  _resolveDraftResume('restart')
+}
 // 草稿卡片摘要：日期 时间 · 地点（有啥显啥）
 const draftSummary = computed(() => {
   const d = draft.value
@@ -6950,6 +6992,18 @@ onActivated(show)
 .create-panel .scan-card .scan-accelerator { margin-bottom: 0; border: 0; border-radius: 0; background: transparent; }
 .create-panel .scan-card .scan-pane { margin-bottom: 0; padding: 0 20rpx 18rpx; border-top: 2rpx solid #E2EAF3; }
 .create-panel .scan-card .ds-preview { padding-top: 16rpx; }
+
+/* 续写草稿询问弹窗（0801 设计师重设计）：左对齐标题 + 名称 + 存的时间 + 上下叠放按钮。
+   蓝取本页页头/底部主按钮同色 #3567A4（设计师稿标 #2f5f9e，全页统一优先） */
+.dr-mask { position: fixed; inset: 0; z-index: 3070; background: rgba(10, 20, 35, 0.42); display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; }
+.dr-card { width: 100%; max-width: 620rpx; background: #fff; border-radius: 26rpx; padding: 40rpx 36rpx 32rpx; box-sizing: border-box; box-shadow: 0 20rpx 60rpx rgba(20, 40, 70, 0.24); }
+.dr-title { font-size: 40rpx; font-weight: 700; color: #1f2329; line-height: 1.35; text-align: left; }   /* 20px 粗，左对齐 */
+.dr-name { margin-top: 22rpx; font-size: 35rpx; color: #2d3137; font-weight: 600; line-height: 1.4; text-align: left; word-break: break-all; }  /* 17.5px 深色 */
+.dr-time { margin-top: 8rpx; font-size: 30rpx; color: #6b7280; line-height: 1.4; text-align: left; }     /* 15px 灰 */
+.dr-primary { display: block; width: 100%; min-height: 112rpx; margin-top: 34rpx; border: 0; border-radius: 18rpx; background: #3567A4; color: #fff; font-size: 34rpx; font-weight: 700; }  /* 56px 蓝实心 */
+.dr-primary:active { background: #2D598E; }
+.dr-ghost { display: block; width: 100%; min-height: 108rpx; margin-top: 16rpx; border: 0; border-radius: 18rpx; background: #f4f6f9; color: #55606E; font-size: 32rpx; font-weight: 600; }  /* 54px 浅灰底 */
+.dr-ghost:active { background: #E9EDF2; }
 
 /* 识别成功浮层（0801 设计师折中）：绿保留但 2.8s 即逝——成功反馈是瞬时的，不当常驻装饰、不占首屏 */
 /* 0801 用户：原 top:150rpx 正好压住识别入口那行标题 → 移到底部操作条上方。
