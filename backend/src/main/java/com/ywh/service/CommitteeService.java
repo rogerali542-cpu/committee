@@ -278,6 +278,10 @@ public class CommitteeService {
         if (req.getMeetingDate() != null) m.setMeetingDate(req.getMeetingDate());
         if (req.getMeetingTime() != null) m.setMeetingTime(req.getMeetingTime());
         if (req.getLocation() != null) m.setLocation(req.getLocation());
+        // 0801 修：编辑会议时地图选点的新坐标原先不落库（只更新地点文字），详情页导航仍指旧位置。
+        // 沿用 != null 才覆盖：不传坐标的调用方（如通知草稿编辑弹窗）不受影响。
+        if (req.getLocationLat() != null) m.setLocationLat(req.getLocationLat());
+        if (req.getLocationLng() != null) m.setLocationLng(req.getLocationLng());
         if (req.getMeetingMethod() != null) {
             m.setMeetingMethod(req.getMeetingMethod());
             if (req.getMeetingMethod() == com.ywh.enums.MeetingMethod.online

@@ -2817,14 +2817,26 @@ const majorNoticeUnmeetable = computed(() =>
   && !!(majorNoticeInfo.value && majorNoticeInfo.value.past))
 // 主按钮可提交门槛（设计师点4）：日期+时间+至少一条非空议题齐了才亮；缺则置灰、点了提示；
 // 会议时间已过、或含重大事项公告来不及，也锁住。
+// 0801 修：亮起条件必须与提交时的校验一致，否则出现"按钮看着能点，点了却说没填完"。
+// 提交时校验的是 会议名称/日期/时间/地点/议题，这里补齐名称与地点（线上时地点=线上方式）。
+function missingRequiredFields() {
+  const miss = []
+  if (!String(createForm.title || '').trim()) miss.push('会议名称')
+  if (!createForm.meetingDate) miss.push('日期')
+  if (!createForm.meetingTime) miss.push('时间')
+  if (!String(createForm.location || '').trim()) miss.push(createForm.meetingMethod === 'online' ? '线上方式' : '地点')
+  if (!(createForm.topics || []).some((t) => t.title && t.title.trim())) miss.push('议题')
+  return miss
+}
 const createCanSubmit = computed(() =>
-  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.some((t) => t.title && t.title.trim())))
+  missingRequiredFields().length === 0
   && !meetingDateTimePast.value
   && !majorNoticeUnmeetable.value)
 function onSubmitClick() {
   if (meetingDateTimePast.value) { toast({ title: '会议时间已过，请改到当前时间之后再生成通知', icon: 'none' }); return }
   if (majorNoticeUnmeetable.value) { toast({ title: '含重大事项须会前 7 天公告，当前距会议不足 7 天，请改到更晚日期或取消勾选重大事项', icon: 'none' }); return }
-  if (!createCanSubmit.value) { toast({ title: '请填写日期、时间和至少一条议题', icon: 'none' }); return }
+  const miss = missingRequiredFields()
+  if (miss.length) { toast({ title: '还差：' + miss.join('、'), icon: 'none' }); return }
   submitNewMeeting()
 }
 // 带星期的日期（发起会议日期行用，设计师点3）：老人排会靠星期——「8月12日 周二」
@@ -3305,7 +3317,9 @@ async function openNewMeeting(period) {
   if (hasDraft.value && !editingMeetingId.value) {
     const draftP = meetingPeriod(draft.value || {}, curYear)
     const p = Number(period) || 0
-    if (!draftP || !p || draftP === p) { continueDraft(); return }
+    // 只有「明确是同一期」才无声续写；期次对不上或任一方判不出来（如「＋发起临时会议」没有期次）
+    // 一律弹窗让用户选——否则点"发起临时会议"却打开上次那份例会草稿，用户以为自己在新建临时会议
+    if (draftP && p && draftP === p) { continueDraft(); return }
     const choice = await askDraftResume()
     if (choice === 'continue') { continueDraft(); return }
     if (choice !== 'restart') return   // 关掉弹窗 = 哪儿也不去，别硬塞一个空表单
@@ -3387,6 +3401,9 @@ function snapshotDraft() {
     juweiWitness: !!createForm.juweiWitness,
     topics: JSON.parse(JSON.stringify(createForm.topics || [])),
     firstTopicText: firstTopicText.value || '',
+    // 0801 修：地图选点的经纬度也随草稿保存，否则续写后导航位置退化成普通文字地址
+    locationLat: createForm.locationLat == null ? null : createForm.locationLat,
+    locationLng: createForm.locationLng == null ? null : createForm.locationLng,
     locationPreset: locationPreset.value || '',
     pendingMaterials: JSON.parse(JSON.stringify(pendingMaterials.value || [])),
     materialFiles: JSON.parse(JSON.stringify(materialFiles.value || [])),
@@ -3394,13 +3411,24 @@ function snapshotDraft() {
   }
 }
 // 值不值得存草稿：填了会议名 / 加了议题 / 有材料才算（日期/时间/地点是开窗默认值，不算）
-function draftHasContent(d) {
+// 标题之外的实质内容（0801 修草稿判定）：
+// ① 议题必须真有文字才算——原先 topics.length 一律算数，点一次「添加议题」就生成「未命名会议」草稿；
+// ② 日期/时间/非默认地点的改动也要算——原先只改这些再返回不存草稿，刚选好的内容直接丢失。
+//    新建时 meetingDate/meetingTime 为空、location 为默认值，故非空/非默认即代表用户动过。
+function draftHasBodyContent(d) {
   if (!d) return false
-  return !!(String(d.title || '').trim()
+  const hasTopicText = Array.isArray(d.topics) && d.topics.some((t) => t && String(t.title || '').trim())
+  return !!(hasTopicText
     || String(d.firstTopicText || '').trim()
-    || (d.topics && d.topics.length)
+    || String(d.meetingDate || '').trim()
+    || String(d.meetingTime || '').trim()
+    || (String(d.location || '').trim() && d.location !== defaultMeetingLocation)
     || (d.pendingMaterials && d.pendingMaterials.length)
     || (d.materialFiles && d.materialFiles.length))
+}
+function draftHasContent(d) {
+  if (!d) return false
+  return !!(String(d.title || '').trim() || draftHasBodyContent(d))
 }
 // 有实质内容才落盘并提示；空表单直接返回不动已有草稿
 function persistDraft() {
@@ -3409,10 +3437,7 @@ function persistDraft() {
   // 标题还是进来时自动预填的「第N次例会」原样、且没加议题/材料 → 只是看了一眼，不算草稿
   const titleUntouched = prefilledCreateTitle.value
     && String(snap.title || '').trim() === prefilledCreateTitle.value
-  const nothingElse = !(snap.topics && snap.topics.length)
-    && !String(snap.firstTopicText || '').trim()
-    && !(snap.pendingMaterials && snap.pendingMaterials.length)
-    && !(snap.materialFiles && snap.materialFiles.length)
+  const nothingElse = !draftHasBodyContent(snap)
   if (titleUntouched && nothingElse) return
   setStorage(DRAFT_KEY, snap)
   draft.value = snap
@@ -3491,6 +3516,8 @@ async function continueDraft() {
   createForm.meetingDate = d.meetingDate || ''
   createForm.meetingTime = d.meetingTime || ''
   createForm.location = d.location || defaultMeetingLocation
+  createForm.locationLat = d.locationLat == null ? null : d.locationLat   // 0801 修：带回地图选点坐标
+  createForm.locationLng = d.locationLng == null ? null : d.locationLng
   createForm.meetingMethod = d.meetingMethod || 'offline'   // 0725 修:草稿还原时带回召开方式
   createForm.description = d.description || ''
   createForm.topics = JSON.parse(JSON.stringify(d.topics || []))
@@ -3500,7 +3527,10 @@ async function continueDraft() {
   syncLocationPreset(createForm.location)
   pendingMaterials.value = JSON.parse(JSON.stringify(d.pendingMaterials || []))
   materialFiles.value = JSON.parse(JSON.stringify(d.materialFiles || []))
-  createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
+  // 0801 修：草稿里的日期/时间/地点是**用户填过的内容**，不是系统默认占位值。
+  // 原先把它们登记进 createInitialDefaults，isFieldUserSet 就会判成"用户没填过"，
+  // 之后拍照识别会直接覆盖、不弹冲突确认。续写草稿时不设默认值，一律视为用户内容。
+  createInitialDefaults.value = {}
   prefilledCreateTitle.value = ''   // 草稿里的标题是用户已确认的内容，返回时照常续存
   scanBusy.value = ''
   lastScanTokens.value = 0
@@ -3540,6 +3570,10 @@ async function openMeetingForEdit(id) {
     createForm.meetingDate = d.meetingDate || ''
     createForm.meetingTime = (d.meetingTime || '').slice(0, 5)
     createForm.location = d.location || defaultMeetingLocation
+    // 0801 修：编辑模式原先根本不载入坐标，配合上面新增的 locationLat/Lng 提交，
+    // 不动地点直接保存会把库里已有坐标清成 null——必须先带回来
+    createForm.locationLat = d.locationLat == null ? null : d.locationLat
+    createForm.locationLng = d.locationLng == null ? null : d.locationLng
     createForm.meetingMethod = d.meetingMethod || 'offline'   // 0725 修:原先编辑线上会议时表单恒显"线下"
     createForm.description = d.description || ''
     createForm.topics = (((d.record && d.record.topics) || d.topics) || []).map((t) => ({
@@ -3555,7 +3589,9 @@ async function openMeetingForEdit(id) {
     editInitialJuwei.value = createForm.juweiWitness
     locationPreset.value = commonLocations.indexOf(createForm.location) >= 0
       ? createForm.location : (createForm.location ? '__other__' : defaultMeetingLocation)
-    createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
+    // 同上，且编辑的是**已发出的正式会议**，风险更大：其日期/时间/地点必须视为用户内容，
+    // 识别到不同值时要问过用户才能改
+    createInitialDefaults.value = {}
     suggestedTitle.value = ''
     pendingMaterials.value = []; scanBusy.value = ''; lastScanTokens.value = 0
   } catch (e) {
@@ -4757,6 +4793,8 @@ async function submitNewMeeting() {
       await api.committeeUpdate(id, {
         title: form.title, meetingDate: form.meetingDate, meetingTime: form.meetingTime,
         location: form.location, meetingMethod: form.meetingMethod || 'offline',   // 0725 修:同创建,编辑时线上/线下切换原先存不进去
+        // 0801 修：编辑时原先只提交地点文字，重新从地图选点后新坐标不落库，详情页导航仍指旧位置
+        locationLat: form.locationLat, locationLng: form.locationLng,
         description: form.description, topics: topics
       })
       // 居委会见证态若有变，翻转标记（toggle 语义：与载入态不同才切）
@@ -4787,15 +4825,31 @@ async function submitNewMeeting() {
       description: form.description,
       topics: topics
     })
-    // 居委会见证：勾选则标记本次为重大事项（hasMajorIssue）。失败不阻断建会流程。
+    // 重大事项标记与材料挂载是建会之后的独立请求，失败不阻断建会流程；但 0801 修：
+    // 原先失败被完全吞掉，用户勾了重大事项/传了材料，却在"创建成功"的表象下丢失，页面毫无提示。
+    // 现在收集失败项，跳转前明确告知，用户可到会议详情页补做。
+    const postFails = []
     if (created && created.id && form.juweiWitness) {
-      try { await api.committeeToggleFlag(created.id, 'hasMajorIssue') } catch (e) {}
+      try { await api.committeeToggleFlag(created.id, 'hasMajorIssue') } catch (e) {
+        console.error('[重大事项] 标记失败：', e)
+        postFails.push('「含重大事项」标记')
+      }
     }
     // 会议材料：弹窗里传好的文件逐份挂到会议（供委员传阅，后端顺带触发 OCR）。单份失败不阻断建会。
     if (created && created.id && pendingMaterials.value.length) {
+      let matFail = 0
       for (const m of pendingMaterials.value) {
-        try { await api.committeeAddMaterial(created.id, m.fileName, m.sizeText, m.fileType, m.url) } catch (e) { console.error('[材料] 挂载失败：', m.fileName, e) }
+        try { await api.committeeAddMaterial(created.id, m.fileName, m.sizeText, m.fileType, m.url) } catch (e) { console.error('[材料] 挂载失败：', m.fileName, e); matFail++ }
       }
+      if (matFail) postFails.push(matFail + ' 份会议材料')
+    }
+    if (postFails.length) {
+      await showModal({
+        title: '会议已创建，但有内容没保存上',
+        content: postFails.join('、') + ' 保存失败。会议本身已创建成功，请进入会议详情页重新设置或重新上传。',
+        confirmText: '知道了',
+        showCancel: false
+      })
     }
     console.log('[去通知] created =', JSON.stringify(created))
     createVisible.value = false
