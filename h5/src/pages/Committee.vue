@@ -600,7 +600,8 @@
           <div class="create-section">
             <div class="section-title-row topic-head">
               <!-- 设计师点2：未填不显示计数（避免"0 项"和眼前议题框自相矛盾），填了才出现「N 项」 -->
-              <span class="section-title">会议议题<span v-if="createForm.topics.length" class="sec-count"> {{ createForm.topics.length }} 项</span></span>
+              <!-- 0801 设计师点1：只数填了内容的——空框不算一项（上一版"空框也算 1 项"与眼前空白自相矛盾） -->
+              <span class="section-title">会议议题<span v-if="filledTopicCount" class="sec-count">{{ filledTopicCount }} 项</span></span>
             </div>
             <!-- 每条议题内联编辑：序号+删除、标题输入、类型；表决类再展开表决方式/选项 -->
             <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-item">
@@ -611,11 +612,15 @@
               </div>
               <!-- 0801 设计师：一行起步、随内容自增高——固定三行高让一条议题占大半屏 -->
               <textarea class="ti-input" v-model="topic.title" rows="1" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')" @input="autoGrowTopicTa"></textarea>
-              <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision -->
-              <div class="ti-types">
-                <span class="type-chip" :class="{ on: topic.type === 'notice' }" @click="setTopicType(topic, 'notice')">通知</span>
-                <span class="type-chip" :class="{ on: topic.type === 'discussion' }" @click="setTopicType(topic, 'discussion')">讨论</span>
-                <span class="type-chip" :class="{ on: topic.type === 'decision' }" @click="setTopicType(topic, 'decision')">表决</span>
+              <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision
+                   0801 设计师点4：加回左侧标签——空表单时只看到"通知/讨论/表决"三个词，老人不知道在问什么 -->
+              <div class="ti-type-row">
+                <span class="ti-sub-label">议题类型</span>
+                <div class="ti-types">
+                  <span class="type-chip" :class="{ on: topic.type === 'notice' }" @click="setTopicType(topic, 'notice')">通知</span>
+                  <span class="type-chip" :class="{ on: topic.type === 'discussion' }" @click="setTopicType(topic, 'discussion')">讨论</span>
+                  <span class="type-chip" :class="{ on: topic.type === 'decision' }" @click="setTopicType(topic, 'decision')">表决</span>
+                </div>
               </div>
               <template v-if="topic.type === 'decision'">
                 <!-- 0801 设计师：第二排必须有标签说明在问什么，且视觉退一级（浅底描边、小一号），
@@ -2730,6 +2735,8 @@ function addTopicRow() {
     if (last) last.focus()
   })
 }
+// 议题计数（0801 设计师点1）：只数真正填了字的，空框不计入
+const filledTopicCount = computed(() => (createForm.topics || []).filter((t) => t.title && t.title.trim()).length)
 // 议题输入框自增高（0801 设计师）：一行起步随内容长高。逐字输入走 @input；
 // 数组整体替换（识别回填/加行/删行/编辑载入，都是重新赋值数组）由下面的 watch 统一量一遍
 function autoGrowTopicTa(e) {
@@ -6645,7 +6652,12 @@ onActivated(show)
 .create-panel .topic-line-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 16rpx; color: #1F2937; font-size: 30rpx; line-height: 1.45; }
 .create-panel .topic-line-text b { color: #4E5A6A; font-size: 28rpx; }
 .create-panel .topic-line-del { width: auto; margin-left: 18rpx; padding: 4rpx 10rpx; border: 0; background: transparent; color: #6F7783; font-size: 27rpx; line-height: 1.4; }
-.create-panel .topic-add-trigger { min-height: 92rpx; border-top: 2rpx solid #E3E7EB; color: #3567A4; }
+/* 0801 设计师点5：虚线框是全 App 唯一一处虚线，且在白卡里又围出一个轮廓——
+   改成分隔线上方一行「＋ 添加议题」，不要框。基础样式的 dashed 四边/圆角/底色一并清掉
+   （此前只覆写 border-top，dashed 左右下仍在，就是截图里那个虚线框） */
+.create-panel .topic-add-trigger { min-height: 112rpx; margin-top: 4rpx; border: 0; border-top: 2rpx solid #EEF0F2; border-radius: 0; background: transparent; color: #3567A4; }
+.create-panel .topic-add-trigger:active { background: #F6F8FB; }
+.create-panel .topic-add-trigger.field-error { border-top-color: #E5533C; background: #FFF3F1; color: #C0392B; }
 .create-panel .tat-text { color: #3567A4; font-size: 31rpx; font-weight: 700; }
 
 /* 0801 设计师点12：按钮条与内容之间补 10px 呼吸（padding-top 20rpx）+ 一条分隔线，不再紧贴 */
@@ -6666,23 +6678,29 @@ onActivated(show)
 .topic-item:first-of-type { border-top: 0; }
 .ti-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
 .ti-no { font-size: 30rpx; color: #1f2329; font-weight: 700; }
-/* 0801 设计师·规则十：删除改文字按钮（小、灰），不做随手能碰到的大 × */
-.ti-del { font-size: 26rpx; line-height: 1.4; color: #9aa0a6; padding: 6rpx 10rpx; }
+/* 0801 设计师·规则十：删除改文字按钮（小、灰），不做随手能碰到的大 ×
+   点6：点击区补到 ≥44px（88rpx）——文字小但热区要够，右侧负 margin 抵消内缩不影响排版 */
+.ti-del { display: inline-flex; align-items: center; min-height: 88rpx; padding: 0 20rpx; margin-right: -20rpx; font-size: 26rpx; line-height: 1.4; color: #9aa0a6; }
 .ti-del:active { color: #E5533C; }
 /* 0801 设计师：一行起步（min-height 一行）随内容自增高，overflow hidden 配合 scrollHeight 量高 */
 .ti-input { width: 100%; box-sizing: border-box; min-height: 80rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; overflow: hidden; }
 .ti-input::placeholder { color: #b7bbc0; }
-.ti-input:focus { border-color: #3567A4; }
+/* 点2：聚焦态只留框（白底不加色），与「选中=有底色」的药丸拉开差别 */
+.ti-input:focus { border-color: #3567A4; background: #fff; }
 .ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
-/* 0801 设计师：实心蓝只留页头/底导/主按钮——选中态改「白底蓝描边」，一屏最亮的不再是单选控件 */
-.ti-types .type-chip { border: 2rpx solid transparent; }
-.ti-types .type-chip.on { background: #fff; color: #3567A4; border-color: #3567A4; font-weight: 700; }
-/* 第二排（表决方式）带标签且视觉退一级：浅蓝底 + 淡描边 + 小一号，不与上排混成六个并列选项 */
+/* 0801 设计师点3：填充方向反过来——未选白底灰描边（空的=没选），选中浅蓝底蓝描边（被填满=被选中）；
+   实心蓝仍只留页头/底导/主按钮。点2：选中态有「底色」，输入框聚焦只有「框」，两个蓝不再撞脸 */
+.ti-types .type-chip { background: #fff; border: 2rpx solid #D8DCE2; color: #5f636b; }
+.ti-types .type-chip.on { background: #EAF0F8; border-color: #3567A4; color: #2f5f9e; font-weight: 700; }
+/* 点4：议题类型也带左标签，与「表决方式」同结构对齐 */
+.ti-type-row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
+.ti-type-row .ti-types { margin-top: 0; }
+/* 第二排（表决方式）带标签且视觉退一级：底色更淡 + 淡描边 + 小一号，不与上排混成六个并列选项 */
 .ti-decide-row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
 .ti-sub-label { flex-shrink: 0; font-size: 27rpx; color: #8a9099; }
 .ti-decide { margin-top: 0; }
 .ti-decide .type-chip { min-height: 64rpx; padding: 6rpx 22rpx; font-size: 29rpx; }
-.ti-decide .type-chip.on { background: #EAF0F8; border-color: #A9C1DE; color: #2f5f9e; }
+.ti-decide .type-chip.on { background: #F3F7FC; border-color: #A9C1DE; color: #2f5f9e; }
 .ti-options { margin-top: 10rpx; }
 .ti-options .ti-sub-label { display: block; margin-bottom: 2rpx; }
 .ti-options .add-link { color: #3567A4; }
