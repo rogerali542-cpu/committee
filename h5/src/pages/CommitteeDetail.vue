@@ -113,7 +113,12 @@
              ⑥ 它不该是白卡（白卡=要办的事），改轻列表；位置也提到低频操作之前——
                 记录讲的是刚发生的通知，低频操作是页面级出口，本该垫底。 -->
         <div class="prep-more sr-list" v-if="noticeSent">
-          <div class="sr-heading">通知记录</div>
+          <div class="sr-heading-row">
+            <span class="sr-heading">通知记录</span>
+            <!-- 0801 用户定：清空回到这一行右边，但做成不起眼的小字按钮——测试期复原状态要用，
+                 日常又不该显眼到顺手就点（记录是凭据）。二次确认保留。 -->
+            <button type="button" class="sr-clear" @click="clearNotices">清空</button>
+          </div>
           <div class="sr-row" v-for="(r, i) in noticeLogRows" :key="i">
             <span class="sr-who">{{ r.who }}</span>
             <span class="sr-what">{{ r.what }}</span>
@@ -136,12 +141,6 @@
                「开始会议」只在会议当天（或已过原定日期）作为底部主按钮出现。 -->
           <div class="prep-more-row" @click="removeMeeting">
             <span>取消本次会议</span>
-            <i class="pm-arrow"></i>
-          </div>
-          <!-- 0801 用户定：清空通知记录保留（测试期复原状态用）。不放通知记录的标题行——
-               那是凭据列表，头上挂删除违规且太顺手；放在这一列破坏性操作里，仍带二次确认。 -->
-          <div v-if="noticeSent" class="prep-more-row" @click="clearNotices">
-            <span>清空通知记录</span>
             <i class="pm-arrow"></i>
           </div>
         </div>
@@ -2669,7 +2668,14 @@ async function removeMaterial(item) {
    颜色也从绿字绿✓改成深色正文 + 灰时间：绿是业主接待的模块色，而且记录是中性事实，
    不需要"成功"的颜色。 */
 .sr-list { margin:6rpx 0 0; }
-.sr-heading { padding:10rpx 22rpx 8rpx; color:#8A9099; font-size:25rpx; font-weight:600; }
+.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:10rpx 22rpx 8rpx; }
+.sr-heading { color:#8A9099; font-size:25rpx; font-weight:600; }
+/* 清空：小字灰按钮，够得着但不显眼——测试期要用，日常不该顺手点到（记录是凭据，且带二次确认） */
+.sr-clear { flex-shrink:0; margin:0; padding:6rpx 16rpx; border:0; background:none; font:inherit;
+  color:#A0A6AD; font-size:24rpx; line-height:1.3;
+  cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+.sr-clear:active { color:#6A7480; }
 .sr-row { display:flex; align-items:center; flex-wrap:wrap; gap:6rpx 16rpx;
   min-height:88rpx; padding:14rpx 22rpx; border-bottom:1px solid #EEF0F2; }
 .sr-row:first-of-type { border-top:1px solid #EEF0F2; }
