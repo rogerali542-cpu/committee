@@ -540,20 +540,29 @@
               </div>
             </div>
             <div class="field-list">
-              <div class="field-line meeting-method-line" @click="pickMeetingMethod">
+              <div class="field-line meeting-method-line">
                 <span class="fl-label">召开方式</span>
-                <span class="fl-value">{{ createForm.meetingMethod === 'online' ? '线上会议' : '线下会议' }}</span>
-                <span class="fl-arrow">›</span>
+                <!-- 设计师点6：召开方式改内联分段按钮（免点选弹框） -->
+                <div class="method-switch">
+                  <button type="button" :class="{ active: createForm.meetingMethod === 'offline' }" @click="setMeetingMethod('offline')">线下会议</button>
+                  <button type="button" :class="{ active: createForm.meetingMethod === 'online' }" @click="setMeetingMethod('online')">线上会议</button>
+                </div>
               </div>
-              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingDate }" @click="openDatePicker">
+              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingDate || meetingDateTimePast }" @click="openDatePicker">
                 <span class="fl-label">日期 <i v-if="recognizedFields.meetingDate">已识别</i></span>
-                <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtPlanDate(createForm.meetingDate) : '未选择' }}</span>
+                <!-- 设计师点3：日期带星期「8月5日 周二」，老人排会靠星期 -->
+                <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtDateWithWeek(createForm.meetingDate) : '未选择' }}</span>
                 <span class="fl-arrow">›</span>
               </div>
-              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingTime }" @click="openTimePicker">
+              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingTime || meetingDateTimePast }" @click="openTimePicker">
                 <span class="fl-label">时间 <i v-if="recognizedFields.meetingTime">已识别</i></span>
                 <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime || '未选择' }}</span>
                 <span class="fl-arrow">›</span>
+              </div>
+              <!-- 会议时间已过（多为拍照识别带入的旧时间）：保留可填，但提示 + 底部"生成通知"已置灰锁住（设计师点4） -->
+              <div v-if="meetingDateTimePast" class="dt-past-warn">
+                <span class="dt-past-ico">!</span>
+                <span>会议时间已过，请点上方日期/时间改到<b>现在之后</b>，再生成通知</span>
               </div>
               <div v-if="createForm.meetingMethod !== 'online'" class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
                 <!-- 选「其他地点」时：本行直接变输入框（不再另弹文本框）；点「地点」标签可回到常用地点选择 -->
@@ -566,6 +575,10 @@
                   <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
+                <!-- 设计师点7：地点单独露出地图选点入口 -->
+                <button class="loc-map-btn field-map-btn" @click.stop="pickLocationOnMap" aria-label="从地图选点">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+                </button>
               </div>
               <div v-else class="field-line field-line-location">
                 <span class="fl-label online-platform-label">线上平台</span>
@@ -577,64 +590,43 @@
             </div>
           </div>
 
-          <!-- 会议议程项（在当前卡片内逐条添加和编辑） -->
+          <!-- 会议议程项：点＋直接出一行可编辑议题，就地编辑、无"确定"步骤（设计师点1）；卡中卡去掉、分隔线分条 -->
           <div class="create-section">
             <div class="section-title-row topic-head">
-              <span class="section-title">会议议题 <em>{{ createForm.topics.length || (firstTopicText.trim() ? 1 : 0) }} 项</em><i v-if="recognizedFields.topics">已识别</i></span>
+              <!-- 设计师点2：未填不显示计数（避免"0 项"和眼前议题框自相矛盾），填了才出现「N 项」 -->
+              <span class="section-title">会议议题<span v-if="createForm.topics.length" class="sec-count"> {{ createForm.topics.length }} 项</span></span>
             </div>
-            <div v-if="createForm.topics.length" class="topic-list">
-              <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line" @click="openEditTopic(idx)">
-                <span class="topic-line-text"><b>议题 {{ idx + 1 }}</b><span>{{ topic.title }}</span></span>
-                <button type="button" class="topic-line-del" @click.stop="removeCreateTopic(idx)">删除</button>
+            <!-- 每条议题内联编辑：序号+删除、标题输入、类型；表决类再展开表决方式/选项 -->
+            <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-item">
+              <div class="ti-head">
+                <span class="ti-no">议题 {{ idx + 1 }}</span>
+                <span class="ti-del" @click="removeCreateTopic(idx)" aria-label="删除本条议题">×</span>
               </div>
+              <textarea class="ti-input" v-model="topic.title" rows="2" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')"></textarea>
+              <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision -->
+              <div class="ti-types">
+                <span class="type-chip" :class="{ on: topic.type === 'notice' }" @click="setTopicType(topic, 'notice')">通知</span>
+                <span class="type-chip" :class="{ on: topic.type === 'discussion' }" @click="setTopicType(topic, 'discussion')">讨论</span>
+                <span class="type-chip" :class="{ on: topic.type === 'decision' }" @click="setTopicType(topic, 'decision')">表决</span>
+              </div>
+              <template v-if="topic.type === 'decision'">
+                <div class="ti-types ti-decide">
+                  <span class="type-chip" :class="{ on: topic.decisionType === 'simple' }" @click="setTopicDecision(topic, 'simple')">是 / 否</span>
+                  <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
+                </div>
+                <div v-if="topic.decisionType === 'multi_choice'" class="ti-options">
+                  <div v-for="(opt, oi) in (topic.options || [])" :key="opt.id" class="ct-option-row">
+                    <span class="ct-opt-num">{{ oi + 1 }}.</span>
+                    <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
+                    <span v-if="(topic.options || []).length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">×</span>
+                  </div>
+                  <span class="add-link" @click="addTopicOption(topic)">+ 添加选项</span>
+                </div>
+              </template>
             </div>
-            <div v-if="!createForm.topics.length && !topicDialogOpen" class="topic-first-row" :class="{ 'field-error': fieldErrors.topics }">
-              <span class="topic-first-label">议题 1</span>
-              <textarea v-model="firstTopicText" rows="2" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')"></textarea>
-            </div>
-            <div v-show="!topicDialogOpen" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
+            <!-- 分隔线 + 一行「＋ 添加议题」：点即新增一行可编辑议题 -->
+            <div v-show="createTab === 'manual'" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="addTopicRow()">
               <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
-            </div>
-            <div v-if="topicDialogOpen" class="topic-inline-editor">
-              <!-- 标题「添加议题」已删；「取消」并入「议题内容」标签行，标签+chips 同行（0723 用户定，卡片压缩） -->
-              <div class="form-group">
-                <div class="tie-label-row">
-                  <span class="form-label">议题内容</span>
-                  <button type="button" class="tie-cancel" @click="topicDialogOpen = false">取消</button>
-                </div>
-                <!-- 灰色占位文案已删（0723 用户定）：标签「议题内容」已经说明用途，占位字是重复噪音 -->
-                <div class="td-title-row">
-                  <input class="form-input large" v-model="topicDraft.title" />
-                </div>
-              </div>
-              <div class="form-group tie-inline-row">
-                <span class="form-label">议题类型</span>
-                <div class="type-row">
-                  <!-- 0728 用户定：事项分三类——通知 / 讨论 / 表决。通知与讨论操作一致（均不表决、只需宣读/记录），
-                       仅分类不同；只有表决需要投票。底层枚举 notice / discussion / decision 一一对应。 -->
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'notice' }" @click="draftPickType('notice')">通知</span>
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'discussion' }" @click="draftPickType('discussion')">讨论</span>
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决</span>
-                </div>
-              </div>
-              <!-- 「补充通知正文」入口已删（0723 用户定，卡片压缩）：底层 content→notice 映射保留，旧议题的正文编辑保存时原样带回 -->
-              <div class="form-group tie-inline-row" v-if="topicDraft.type === 'decision'">
-                <span class="form-label">表决方式</span>
-                <div class="type-row">
-                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
-                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'multi_choice' }" @click="draftPickDecision('multi_choice')">多选一</span>
-                </div>
-              </div>
-              <div class="form-group" v-if="topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice'">
-                <span class="form-label">选项（至少两个）</span>
-                <div v-for="(opt, oi) in topicDraft.options" :key="opt.id" class="ct-option-row">
-                  <span class="ct-opt-num">{{ oi + 1 }}.</span>
-                  <input class="form-input ct-opt-input" v-model="opt.label" />
-                  <span v-if="topicDraft.options.length > 1" class="tp-del" @click="draftRemoveOption(oi)">×</span>
-                </div>
-                <span class="add-link tie-add-option" @click="draftAddOption">+ 添加选项</span>
-              </div>
-              <button type="button" class="tie-confirm-btn" @click="confirmTopic">确定添加议题</button>
             </div>
           </div>
 
@@ -646,9 +638,21 @@
               <span class="major-checkbox" :class="{ checked: createForm.juweiWitness }">{{ createForm.juweiWitness ? '✓' : '' }}</span>
               <span class="juwei-title">含重大事项</span>
             </label>
-            <div v-if="createForm.juweiWitness" class="major-facts">
-              <div><span>公告日期</span><b>{{ majorNoticeDeadline }}</b></div>
-              <div><span>居委会</span><b>需到场见证</b></div>
+            <!-- 勾选后展开（设计师点5）：会前公告截止日 = 会议日期 − 7 天；紧张/已过用异常色，且已过提示改期 -->
+            <div v-if="createForm.juweiWitness && createForm.meetingMethod !== 'online'" class="juwei-detail">
+              <div class="jd-row" :class="{ 'jd-warn': majorNoticeInfo && majorNoticeInfo.tight, 'jd-error': majorNoticeInfo && majorNoticeInfo.past }">
+                <span class="jd-label">公告日期</span>
+                <span v-if="majorNoticeInfo" class="jd-value">
+                  <template v-if="majorNoticeInfo.past">公告日已过（最迟 {{ majorNoticeInfo.text }}），建议改期</template>
+                  <template v-else-if="majorNoticeInfo.days === 0">最迟今天（{{ majorNoticeInfo.text }}）前公告</template>
+                  <template v-else>最迟 {{ majorNoticeInfo.text }} 前公告（{{ majorNoticeInfo.tight ? '仅剩' : '还剩' }} {{ majorNoticeInfo.days }} 天）</template>
+                </span>
+                <span v-else class="jd-value ph">请先选择会议日期</span>
+              </div>
+              <div class="jd-row">
+                <span class="jd-label">居委会</span>
+                <span class="jd-value">需到场见证</span>
+              </div>
             </div>
           </div>
 
@@ -675,7 +679,7 @@
 
         <!-- 添加议题时隐藏底部主按钮，避免真机键盘弹起时「取消/生成通知」压住「确定添加议题」 -->
         <div v-show="!topicDialogOpen" class="sheet-actions fixed">
-          <button class="btn btn-primary" :class="{ 'form-incomplete': !meetingFormComplete }" @click="submitNewMeeting">生成会议通知</button>
+          <button class="btn btn-primary" :class="{ 'form-incomplete': !createCanSubmit }" @click="onSubmitClick">{{ createSubmitLabel }}</button>
         </div>
       </div>
     </div>
@@ -2648,6 +2652,76 @@ const meetingFormComplete = computed(() => Boolean(
   createForm.location && createForm.location.trim() &&
   ((createForm.topics && createForm.topics.some((t) => t.title && t.title.trim())) || firstTopicText.value.trim())
 ))
+// 主按钮对象文案（设计师点8）：按建会期数——有「第N次」则「生成第N次例会通知」，否则通用名
+const createSubmitLabel = computed(() => createPeriod.value > 0 ? ('生成第' + createPeriod.value + '次例会通知') : '生成会议通知')
+// 会前公告截止日（设计师点5）：业委会会议须会前 7 天公告 → 最迟公告日 = 会议日期 − 7 天。
+// 算出距今天数：已过→提示改期；≤3 天→紧张提醒色；否则常态。
+const majorNoticeInfo = computed(() => {
+  const p = String(createForm.meetingDate || '').split('-')
+  if (p.length !== 3) return null
+  const dl = new Date(new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getTime() - 7 * 86400000)
+  const tp = todayStr().split('-')
+  const todayMs = new Date(Number(tp[0]), Number(tp[1]) - 1, Number(tp[2])).getTime()
+  const days = Math.round((dl.getTime() - todayMs) / 86400000)
+  return { text: (dl.getMonth() + 1) + '月' + dl.getDate() + '日', days, past: days < 0, tight: days >= 0 && days <= 3 }
+})
+// 会议时间是否已过（发起新会议才限制；编辑历史会议不限）：拍照识别可能带入过去时间——
+// 允许填入，但给提示并锁住"生成通知"，防止把会议建到过去（设计师点4）。
+const meetingDateTimePast = computed(() => {
+  if (editingMeetingId.value) return false
+  const d = createForm.meetingDate
+  if (!d) return false
+  if (d < todayStr()) return true
+  if (d === todayStr() && createForm.meetingTime) {
+    const now = new Date()
+    const parts = String(createForm.meetingTime).split(':')
+    if (Number(parts[0]) * 60 + Number(parts[1]) <= now.getHours() * 60 + now.getMinutes()) return true
+  }
+  return false
+})
+// 主按钮可提交门槛（设计师点4）：日期+时间+至少一条非空议题齐了才亮；缺则置灰、点了提示；时间已过也锁。
+const createCanSubmit = computed(() =>
+  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.some((t) => t.title && t.title.trim()))) && !meetingDateTimePast.value)
+function onSubmitClick() {
+  if (meetingDateTimePast.value) { toast({ title: '会议时间已过，请改到当前时间之后再生成通知', icon: 'none' }); return }
+  if (!createCanSubmit.value) { toast({ title: '请填写日期、时间和至少一条议题', icon: 'none' }); return }
+  submitNewMeeting()
+}
+// 带星期的日期（发起会议日期行用，设计师点3）：老人排会靠星期——「8月12日 周二」
+function fmtDateWithWeek(s) {
+  const p = String(s || '').split('-')
+  if (p.length !== 3) return String(s || '')
+  const wk = ['日', '一', '二', '三', '四', '五', '六'][new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getDay()]
+  return Number(p[1]) + '月' + Number(p[2]) + '日 周' + wk
+}
+// 议题内联编辑（设计师点1）：点＋直接新增一行可编辑议题，就地改、无"确定"步骤；
+// 空标题行在 submitNewMeeting 里已自动过滤，不会误提交。
+function addTopicRow() {
+  clearFieldError('topics')
+  createForm.topics = createForm.topics.concat([{ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' }])
+  nextTick(function () {
+    const inputs = document.querySelectorAll('.topic-item .ti-input')
+    const last = inputs[inputs.length - 1]
+    if (last) last.focus()
+  })
+}
+function setTopicType(topic, type) {
+  topic.type = type
+  topic.decisionType = type === 'decision' ? 'simple' : 'none'
+  topic.options = []
+}
+function setTopicDecision(topic, dtype) {
+  topic.decisionType = dtype
+  topic.options = dtype === 'multi_choice' ? [{ id: 1, label: '' }, { id: 2, label: '' }] : []
+}
+function addTopicOption(topic) {
+  const opts = topic.options || []
+  const newId = opts.length ? Math.max.apply(null, opts.map(function (o) { return o.id })) + 1 : 1
+  topic.options = opts.concat([{ id: newId, label: '' }])
+}
+function removeTopicOption(topic, i) {
+  topic.options = topic.options.filter(function (_, idx) { return idx !== i })
+}
 
 // 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
 // 用户点进对应输入框（focus）即清除红框。
@@ -4308,6 +4382,18 @@ async function submitNewMeeting() {
     if (missing.includes('会议地点')) fieldErrors.location = true
     if (missing.includes('会议议题')) fieldErrors.topics = true
     return
+  }
+  // 表决·多选一：至少两个非空选项（原在弹窗"确定"时校验，改内联后移到提交时统一校验）
+  for (let i = 0; i < topics.length; i++) {
+    const t = topics[i]
+    if (t.type === 'decision' && t.decisionType === 'multi_choice') {
+      const valid = (t.options || []).filter(function (o) { return o.label && o.label.trim() })
+      if (valid.length < 2) {
+        fieldErrors.topics = true
+        await showModal({ title: '表决议题缺选项', content: '第 ' + (i + 1) + ' 条「多选一」表决议题至少需要两个选项，请补全。', confirmText: '知道了', showCancel: false })
+        return
+      }
+    }
   }
   // 新发起的会议不得选择今天以前的日期。接待补录和既有历史会议编辑不受此限制。
   if (!editingMeetingId.value && form.meetingDate < todayStr()) {
@@ -6474,4 +6560,38 @@ onActivated(show)
 .create-panel .sheet-actions.fixed { padding: 14rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 0; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
 .create-panel .sheet-actions.fixed .btn-primary { flex: 1; width: 100%; height: 104rpx; border-radius: 18rpx; background: #3567A4; font-size: 34rpx; }
 .create-panel .sheet-actions.fixed .btn-primary:active { background: #2D598E; }
+
+/* ===== 设计师功能点（加在原型基线上；配色沿用基线蓝 #3567A4，不动整体布局） ===== */
+/* 点2：议题计数——仅 topics>0 时出现，次级灰、常规字重 */
+.sec-count { color: #8a9099; font-weight: 400; font-size: 26rpx; }
+/* 点4：会议时间已过提示（识别带入旧时间时）红字 + 圆形感叹号，配合底部按钮置灰 */
+.dt-past-warn { display: flex; align-items: flex-start; gap: 10rpx; padding: 4rpx 6rpx 2rpx; color: #E5533C; font-size: 26rpx; line-height: 1.5; }
+.dt-past-ico { flex-shrink: 0; width: 32rpx; height: 32rpx; border-radius: 50%; background: #E5533C; color: #fff; font-size: 24rpx; font-weight: 700; line-height: 32rpx; text-align: center; }
+.dt-past-warn b { color: #E5533C; font-weight: 700; }
+/* 点1：议题内联编辑行——分隔线分条、就地改，无卡中卡、无"确定"大按钮 */
+.topic-item { padding: 18rpx 0 6rpx; border-top: 2rpx solid #EEF0F2; }
+.topic-item:first-of-type { border-top: 0; }
+.ti-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
+.ti-no { font-size: 30rpx; color: #1f2329; font-weight: 700; }
+.ti-del { font-size: 40rpx; line-height: 1; color: #9aa0a6; padding: 4rpx 12rpx; }
+.ti-del:active { color: #E5533C; }
+.ti-input { width: 100%; box-sizing: border-box; min-height: 150rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; }
+.ti-input::placeholder { color: #b7bbc0; }
+.ti-input:focus { border-color: #3567A4; }
+.ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
+.ti-decide { margin-top: 8rpx; }
+.ti-options { margin-top: 8rpx; }
+/* 选中态统一用基线会议蓝（盖过全局橙 .type-chip.on） */
+.ti-types .type-chip.on { background: #3567A4; color: #fff; border-color: #3567A4; font-weight: 700; }
+.ti-options .add-link { color: #3567A4; }
+/* 点5：含重大事项勾选后展开——公告截止日倒计时（会议−7天）+ 居委会见证；紧张(≤3天)橙、已过红 */
+.juwei-detail { margin-top: 14rpx; padding-top: 12rpx; border-top: 2rpx solid #f0f0f0; display: flex; flex-direction: column; gap: 10rpx; }
+.jd-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.jd-label { flex-shrink: 0; font-size: 28rpx; color: #8a9099; }
+.jd-value { min-width: 0; text-align: right; font-size: 30rpx; color: #2d3137; font-weight: 600; }
+.jd-value.ph { color: #b7bbc0; font-weight: 400; }
+.jd-row.jd-warn .jd-value { color: #C76A00; }
+.jd-row.jd-error .jd-value { color: #E5533C; font-weight: 700; }
+/* 点6：召开方式分段按钮 active 用基线蓝（覆盖 var，避免落到全局橙） */
+.create-panel .method-switch button.active { color: #3567A4; }
 </style>
