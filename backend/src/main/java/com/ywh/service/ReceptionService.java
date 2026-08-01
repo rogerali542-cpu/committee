@@ -41,7 +41,7 @@ public class ReceptionService {
         Map<String, Object> result = new HashMap<>();
         // 公告抬头（已算好的整串，不是原始小区名）。给整串而不是让前端自己拼，理由见 noticeOrgName()。
         result.put("orgName", noticeOrgName());
-        // 落款全称（含区划+届别），预览落款与导出 PDF 用同一串
+        // 公告落款，预览与导出 PDF 使用同一串
         result.put("orgFullName", noticeOrgFullName());
         // sys 为空（从没设过接待安排）也要把抬头带回去，否则新社区第一次进页面预览是空的
         if (sys == null) return result;
@@ -78,14 +78,9 @@ public class ReceptionService {
         return usable ? name.trim() + "业主委员会" : "业主委员会";
     }
 
-    /** 落款全称（0723 与会议文书统一口径）：区划前缀+小区名+业主委员会（第X届），如「上海市静安区阳光花园业主委员会（第一届）」。 */
+    /** 公告落款统一使用短名，如「阳光花园业主委员会」，与纪要、公示和文档预览一致。 */
     public String noticeOrgFullName() {
-        Community c = communityRepo.findById(SecurityUtils.getCurrentCommunityId()).orElse(null);
-        String name = c != null ? c.getName() : null;
-        boolean usable = name != null && !name.isBlank() && !name.matches("[?？\\s]+") && !name.contains("�");
-        String region = c != null && c.getOrgRegion() != null && !c.getOrgRegion().isBlank() ? c.getOrgRegion().trim() : "";
-        String term = c != null && c.getCommitteeTerm() != null && !c.getCommitteeTerm().isBlank() ? c.getCommitteeTerm().trim() : "第一届";
-        return region + (usable ? name.trim() : "") + "业主委员会（" + term + "）";
+        return noticeOrgName();
     }
 
     /** 接待日公告的导出留痕（快照，不是当前设置——见 ReceptionNoticeExport 的注释）。 */

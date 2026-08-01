@@ -202,12 +202,12 @@ onActivated(() => { if (mounted) refresh() })
 .profile-scroll { min-height: 100vh; background: #f2f3f5; }
 
 /* 页头：中性深灰渐变（个人中心不属于任何模块，与待办聚合页/历史记录同族色） */
-.pf-hd { background: linear-gradient(160deg, #55606e 0%, #434d5a 100%); padding: calc(env(safe-area-inset-top) + 18rpx) 32rpx 40rpx; color: #fff; }
-.pf-hd-bar { display: flex; align-items: center; gap: 18rpx; min-height: 72rpx; cursor: pointer; }
+.pf-hd { background: linear-gradient(160deg, #55606e 0%, #434d5a 100%); padding: calc(env(safe-area-inset-top) + 8rpx) 32rpx 32rpx; color: #fff; }
+.pf-hd-bar { position: relative; display: flex; align-items: center; min-height: 108rpx; cursor: pointer; }
 .pf-hd-bar:active { opacity: .75; }
 /* CSS 边框画返回箭头（项目规约：不用字符箭头） */
-.pf-back { display: inline-block; width: 18rpx; height: 18rpx; border-left: 4rpx solid #fff; border-bottom: 4rpx solid #fff; transform: rotate(45deg); }
-.pf-hd-title { font-size: 34rpx; font-weight: 700; }
+.pf-back { position: relative; z-index: 1; display: inline-block; width: 18rpx; height: 18rpx; margin-left: 18rpx; border-left: 4rpx solid #fff; border-bottom: 4rpx solid #fff; transform: rotate(45deg); }
+.pf-hd-title { position: absolute; left: 108rpx; right: 108rpx; text-align: center; font-size: 34rpx; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .pf-id { display: flex; align-items: center; gap: 24rpx; margin-top: 20rpx; }
 .pf-avatar { flex-shrink: 0; width: 112rpx; height: 112rpx; border-radius: 50%; background: rgba(255,255,255,.28); display: flex; align-items: center; justify-content: center; font-size: 48rpx; font-weight: 700; }
 .pf-id-main { min-width: 0; }

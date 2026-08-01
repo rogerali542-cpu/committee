@@ -100,10 +100,8 @@ public class ReceptionNoticePdfService {
                 y -= 16;
                 thickLine(cs, left, y, pageW - right, y);
                 y -= 48;
-                // 时间是头条轴：时间变了就叫「时间调整」（哪怕地点也变）；仅地点变才叫「地点调整」
+                // 一次调整可能同时涉及周期、时间、地点和人员，标题统一使用「安排调整」。
                 String title = !adjustment ? "业主接待日公告"
-                        : timeChanged ? "业主接待时间调整通知"
-                        : placeChanged ? "业主接待地点调整通知"
                         : "业主接待安排调整通知";
                 textCentered(cs, font, 28, title, pageW / 2, y);
 
@@ -146,7 +144,7 @@ public class ReceptionNoticePdfService {
                 // 落款：右下角，公文规矩。位置固定在页面下方，不跟着正文长度飘——
                 // 正文再短也不能让落款吊在半空
                 float signY = 210;
-                // 落款用带区划+届别的全称（0723 与会议文书统一），正文仍用短名
+                // 落款统一使用「小区名+业主委员会」，与纪要、公示和页面预览一致
                 textRight(cs, font, 16, receptionService.noticeOrgFullName(), pageW - right, signY);
                 LocalDate today = LocalDate.now();
                 textRight(cs, font, 16,
