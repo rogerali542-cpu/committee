@@ -595,62 +595,44 @@
             </div>
           </div>
 
-          <!-- 会议议程项（在当前卡片内逐条添加和编辑） -->
+          <!-- 会议议程项：点＋直接出一行可编辑议题，就地编辑、无"确定"步骤（设计师点2；卡中卡去掉，分隔线分条=点1/3/6） -->
           <div class="create-section">
             <div class="section-title-row topic-head">
               <!-- 设计师点1：未填不显示计数（避免"0 项"和眼前议题框自相矛盾），填了才出现「N 项」 -->
               <span class="section-title">会议议题<span v-if="createForm.topics.length" class="sec-count"> {{ createForm.topics.length }} 项</span></span>
             </div>
-            <div v-if="createForm.topics.length" class="topic-list">
-              <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line" @click="openEditTopic(idx)">
-                <span class="topic-line-text"><b>{{ idx + 1 }}.</b> {{ topic.title }}</span>
-                <span class="ts-badge topic-line-badge" :class="topicTypeClass(topic)">{{ topicTypeLabel(topic) }}</span>
-                <span class="topic-line-del" @click.stop="removeCreateTopic(idx)">×</span>
+            <!-- 每条议题内联编辑：序号+删除、标题输入、类型；表决类再展开表决方式/选项 -->
+            <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-item">
+              <div class="ti-head">
+                <span class="ti-no">议题 {{ idx + 1 }}</span>
+                <span class="ti-del" @click="removeCreateTopic(idx)" aria-label="删除本条议题">×</span>
               </div>
+              <!-- 设计师点5：放回 placeholder，输入框给 3 行高，够写一两句话 -->
+              <textarea class="ti-input" v-model="topic.title" rows="2" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')"></textarea>
+              <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision -->
+              <div class="ti-types">
+                <span class="type-chip" :class="{ on: topic.type === 'notice' }" @click="setTopicType(topic, 'notice')">通知</span>
+                <span class="type-chip" :class="{ on: topic.type === 'discussion' }" @click="setTopicType(topic, 'discussion')">讨论</span>
+                <span class="type-chip" :class="{ on: topic.type === 'decision' }" @click="setTopicType(topic, 'decision')">表决</span>
+              </div>
+              <template v-if="topic.type === 'decision'">
+                <div class="ti-types ti-decide">
+                  <span class="type-chip" :class="{ on: topic.decisionType === 'simple' }" @click="setTopicDecision(topic, 'simple')">是 / 否</span>
+                  <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
+                </div>
+                <div v-if="topic.decisionType === 'multi_choice'" class="ti-options">
+                  <div v-for="(opt, oi) in topic.options" :key="opt.id" class="ct-option-row">
+                    <span class="ct-opt-num">{{ oi + 1 }}.</span>
+                    <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
+                    <span v-if="topic.options.length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">×</span>
+                  </div>
+                  <span class="add-link" @click="addTopicOption(topic)">+ 添加选项</span>
+                </div>
+              </template>
             </div>
-            <div v-show="createTab === 'manual' && !topicDialogOpen" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
+            <!-- 分隔线 + 一行「＋ 添加议题」：点即新增一行可编辑议题（设计师点2/4） -->
+            <div v-show="createTab === 'manual'" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="addTopicRow()">
               <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
-            </div>
-            <div v-if="createTab === 'manual' && topicDialogOpen" class="topic-inline-editor">
-              <!-- 标题「添加议题」已删；「取消」并入「议题内容」标签行，标签+chips 同行（0723 用户定，卡片压缩） -->
-              <div class="form-group">
-                <div class="tie-label-row">
-                  <span class="form-label">议题内容</span>
-                  <button type="button" class="tie-cancel" @click="topicDialogOpen = false">取消</button>
-                </div>
-                <!-- 灰色占位文案已删（0723 用户定）：标签「议题内容」已经说明用途，占位字是重复噪音 -->
-                <div class="td-title-row">
-                  <input class="form-input large" v-model="topicDraft.title" />
-                </div>
-              </div>
-              <div class="form-group tie-inline-row">
-                <span class="form-label">议题类型</span>
-                <div class="type-row">
-                  <!-- 0728 用户定：事项分三类——通知 / 讨论 / 表决。通知与讨论操作一致（均不表决、只需宣读/记录），
-                       仅分类不同；只有表决需要投票。底层枚举 notice / discussion / decision 一一对应。 -->
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'notice' }" @click="draftPickType('notice')">通知</span>
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'discussion' }" @click="draftPickType('discussion')">讨论</span>
-                  <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决</span>
-                </div>
-              </div>
-              <!-- 「补充通知正文」入口已删（0723 用户定，卡片压缩）：底层 content→notice 映射保留，旧议题的正文编辑保存时原样带回 -->
-              <div class="form-group tie-inline-row" v-if="topicDraft.type === 'decision'">
-                <span class="form-label">表决方式</span>
-                <div class="type-row">
-                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
-                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'multi_choice' }" @click="draftPickDecision('multi_choice')">多选一</span>
-                </div>
-              </div>
-              <div class="form-group" v-if="topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice'">
-                <span class="form-label">选项（至少两个）</span>
-                <div v-for="(opt, oi) in topicDraft.options" :key="opt.id" class="ct-option-row">
-                  <span class="ct-opt-num">{{ oi + 1 }}.</span>
-                  <input class="form-input ct-opt-input" v-model="opt.label" />
-                  <span v-if="topicDraft.options.length > 1" class="tp-del" @click="draftRemoveOption(oi)">×</span>
-                </div>
-                <span class="add-link tie-add-option" @click="draftAddOption">+ 添加选项</span>
-              </div>
-              <button type="button" class="tie-confirm-btn" @click="confirmTopic">确定添加议题</button>
             </div>
           </div>
 
@@ -4225,72 +4207,33 @@ function topicTypeClass(t) {
   return 'badge-discussion'
 }
 
-function openAddTopic() {
+// 议题内联编辑（设计师点2）：点＋直接新增一行可编辑议题，就地改、无"确定"步骤；
+// 空标题行在 submitNewMeeting 里已自动过滤，不会误提交。
+function addTopicRow() {
   clearFieldError('topics')
-  topicEditIdx.value = -1
-  topicDraft.title = ''
-  topicDraft.type = 'discussion'
-  topicDraft.decisionType = 'none'
-  topicDraft.options = []
-  topicDraft.content = ''
-  topicDialogOpen.value = true
+  createForm.topics = createForm.topics.concat([{ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' }])
+  nextTick(function () {
+    const inputs = document.querySelectorAll('.topic-item .ti-input')
+    const last = inputs[inputs.length - 1]
+    if (last) last.focus()
+  })
 }
-
-function openEditTopic(idx) {
-  const t = createForm.topics[idx]
-  topicEditIdx.value = idx
-  topicDraft.title = t.title || ''
-  topicDraft.type = t.type || 'discussion'
-  topicDraft.decisionType = t.decisionType || 'none'
-  topicDraft.options = (t.options || []).map(function (o) { return { id: o.id, label: o.label } })
-  topicDraft.content = t.content || ''
-  topicDialogOpen.value = true
+function setTopicType(topic, type) {
+  topic.type = type
+  topic.decisionType = type === 'decision' ? 'simple' : 'none'
+  topic.options = []
 }
-
-function draftPickType(type) {
-  topicDraft.type = type
-  topicDraft.decisionType = type === 'decision' ? 'simple' : 'none'
-  topicDraft.options = []
+function setTopicDecision(topic, dtype) {
+  topic.decisionType = dtype
+  topic.options = dtype === 'multi_choice' ? [{ id: 1, label: '' }, { id: 2, label: '' }] : []
 }
-
-function draftPickDecision(type) {
-  topicDraft.decisionType = type
-  topicDraft.options = type === 'multi_choice' ? [{ id: 1, label: '' }, { id: 2, label: '' }] : []
+function addTopicOption(topic) {
+  const opts = topic.options || []
+  const newId = opts.length ? Math.max.apply(null, opts.map(function (o) { return o.id })) + 1 : 1
+  topic.options = opts.concat([{ id: newId, label: '' }])
 }
-
-function draftAddOption() {
-  const options = topicDraft.options || []
-  const newId = options.length ? Math.max.apply(null, options.map(function (o) { return o.id })) + 1 : 1
-  topicDraft.options = options.concat([{ id: newId, label: '' }])
-}
-
-function draftRemoveOption(i) {
-  topicDraft.options = topicDraft.options.filter(function (_, idx) { return idx !== i })
-}
-
-function confirmTopic() {
-  if (!topicDraft.title.trim()) { toast({ title: '请输入议题内容', icon: 'none' }); return }
-  if (topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice') {
-    const valid = (topicDraft.options || []).filter(function (o) { return o.label.trim() })
-    if (valid.length < 2) { toast({ title: '多选一议题至少需要两个选项', icon: 'none' }); return }
-  }
-  // 0728：三类显式落库（通知/讨论/表决），不再按有无正文自动分流；通知正文（如有）随 notice 带上
-  const noticeContent = topicDraft.type === 'notice' ? (topicDraft.content || '').trim() : ''
-  const nt = {
-    title: topicDraft.title.trim(),
-    type: topicDraft.type,
-    decisionType: topicDraft.decisionType,
-    options: (topicDraft.options || []).map(function (o) { return { id: o.id, label: o.label } }),
-    content: noticeContent
-  }
-  if (topicEditIdx.value >= 0) {
-    const arr = createForm.topics.slice()
-    arr[topicEditIdx.value] = nt
-    createForm.topics = arr
-  } else {
-    createForm.topics = createForm.topics.concat([nt])
-  }
-  topicDialogOpen.value = false
+function removeTopicOption(topic, i) {
+  topic.options = topic.options.filter(function (_, idx) { return idx !== i })
 }
 
 async function submitNewMeeting() {
@@ -4321,6 +4264,18 @@ async function submitNewMeeting() {
     if (missing.includes('会议地点')) fieldErrors.location = true
     if (missing.includes('会议议题')) fieldErrors.topics = true
     return
+  }
+  // 表决·多选一：至少两个非空选项（原在弹窗"确定"时校验，改内联后移到提交时统一校验）
+  for (let i = 0; i < topics.length; i++) {
+    const t = topics[i]
+    if (t.type === 'decision' && t.decisionType === 'multi_choice') {
+      const valid = (t.options || []).filter(function (o) { return o.label && o.label.trim() })
+      if (valid.length < 2) {
+        fieldErrors.topics = true
+        await showModal({ title: '表决议题缺选项', content: '第 ' + (i + 1) + ' 条「多选一」表决议题至少需要两个选项，请补全。', confirmText: '知道了', showCancel: false })
+        return
+      }
+    }
   }
   // 新发起的会议不得选择今天以前的日期。接待补录和既有历史会议编辑不受此限制。
   if (!editingMeetingId.value && form.meetingDate < todayStr()) {
@@ -6096,6 +6051,21 @@ onActivated(show)
 .topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
 .topic-line-badge { flex-shrink: 0; margin: 0; }
 .topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
+/* 议题内联编辑行（设计师点1/2/3/5/6）：直接铺在白卡里、分隔线分条，无卡中卡、无"确定"大按钮 */
+.topic-item { padding: 18rpx 0 6rpx; border-top: 2rpx solid #EEF0F2; }
+.topic-item:first-of-type { border-top: 0; }
+.ti-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
+.ti-no { font-size: 30rpx; color: #1f2329; font-weight: 700; }
+.ti-del { font-size: 40rpx; line-height: 1; color: #9aa0a6; padding: 4rpx 12rpx; }
+.ti-del:active { color: #E5533C; }
+.ti-input { width: 100%; box-sizing: border-box; min-height: 150rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; }
+.ti-input::placeholder { color: #b7bbc0; }
+.ti-input:focus { border-color: #3E6BA8; }
+.ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
+.ti-decide { margin-top: 8rpx; }
+.ti-options { margin-top: 8rpx; }
+/* 选中态统一用会议蓝 #3E6BA8（设计师点4：不再引入 #3F6078 第四色） */
+.ti-types .type-chip.on { background: #3E6BA8; color: #fff; border-color: #3E6BA8; font-weight: 700; }
 /* 会议议题：标题与添加条贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
 /* 添加议题触发条：点它弹出议题弹窗（输入/类型/确定都在弹窗内），单独一条大按钮，远离右下角「生成通知」防误触 */
