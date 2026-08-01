@@ -703,16 +703,22 @@
           <div v-if="pendingMaterials.length" class="create-section">
             <div class="section-title-row mat-head" @click="materialsOpen = !materialsOpen">
               <span class="section-title">会议材料（{{ pendingMaterials.length }}）</span>
-              <span class="mat-toggle" :class="{ open: materialsOpen }" aria-label="展开查看材料详情">›</span>
+              <!-- 0801 设计师点6：收起 › / 展开 ∨ 是同一控件两个符号，且 › 意味着"进下一页"——
+                   统一成 ∨/∧（CSS 边框箭头，见 CLAUDE.md，不用字符箭头） -->
+              <i class="mat-toggle" :class="{ open: materialsOpen }" aria-label="展开查看材料详情"></i>
             </div>
+            <!-- 0801 设计师：文件行与上传区统一成同一套（灰色线性文档图标 + 文件名 + 文字「移除」）——
+                 同一个 App 里同一类对象不该两种样子。原「蓝色实心 DOC 方块 + 文件大小 + ×」全部去掉：
+                 实心模块色只留页头/底导/主按钮；文件大小对用户没有决策价值；× 热区不足且无确认 -->
             <template v-if="materialsOpen">
-              <div v-for="(m, idx) in pendingMaterials" :key="m.url" class="mat-card" @click="openMaterialViewer(m)">
-                <span class="mat-badge" :class="'t-' + matBadge(m).cls">{{ matBadge(m).label }}</span>
-                <div class="mat-info">
-                  <span class="mat-fname">{{ m.fileName }}</span>
-                  <span class="mat-fsize" v-if="m.sizeText">{{ m.sizeText }}</span>
-                </div>
-                <span class="mat-del" @click.stop="removePendingMaterial(idx)">×</span>
+              <div v-for="(m, idx) in pendingMaterials" :key="m.url" class="mat-row">
+                <span class="mat-doc" @click="openMaterialViewer(m)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h5"/>
+                  </svg>
+                </span>
+                <span class="mat-fname" @click="openMaterialViewer(m)">{{ m.fileName }}</span>
+                <span class="mat-remove" @click.stop="confirmRemoveMaterial(idx)">移除</span>
               </div>
             </template>
           </div>
@@ -3529,6 +3535,19 @@ const createTab = ref('manual')       // 发起会议顶部分段：manual=手�
 function removePendingMaterial(idx) {
   pendingMaterials.value = pendingMaterials.value.filter((_, i) => i !== idx)
 }
+// 移除材料要二次确认（0801 设计师点3）：这是已上传落库的文件，删了要重新传，
+// 比上传区那些还没识别的暂存文件成本高
+async function confirmRemoveMaterial(idx) {
+  const m = pendingMaterials.value[idx]
+  if (!m) return
+  const r = await showModal({
+    title: '移除这份材料？',
+    content: '「' + (m.fileName || '该文件') + '」将不再随本次会议提供给委员传阅。',
+    confirmText: '移除'
+  })
+  if (!r || !r.confirm) return
+  removePendingMaterial(idx)
+}
 // 材料行小图标：按文件类型区分（图片/PDF/其他）
 function matExt(m) {
   let t = String((m && m.fileType) || '').toLowerCase()
@@ -6283,24 +6302,21 @@ onActivated(show)
    透明底 + 分隔线 + 常规深色 + ›，行高与其他字段行一致，不再又窄又像卡 */
 .mat-head { cursor: pointer; min-height: 100rpx; padding: 0 4rpx; }
 .create-panel .mat-head .section-title { color: #1f2329; font-weight: 600; }
-.mat-toggle { flex-shrink: 0; font-size: 40rpx; line-height: 1; color: #b4bcc7; font-weight: 700; transition: transform .2s ease; }
-.mat-toggle.open { transform: rotate(90deg); }
+/* 收起=∨（点我展开）、展开=∧（点我收起）：CSS 边框箭头，top 反向补偿保持垂直居中 */
+.mat-toggle { flex-shrink: 0; display: inline-block; width: 16rpx; height: 16rpx; position: relative; top: -3rpx;
+  border-right: 3rpx solid #b4bcc7; border-bottom: 3rpx solid #b4bcc7; transform: rotate(45deg);
+  transition: transform .2s ease, top .2s ease; }
+.mat-toggle.open { transform: rotate(-135deg); top: 3rpx; }
 /* 微信式文件卡：类型图标 + 文件名 + 下方大小 */
-.mat-card { display: flex; align-items: center; gap: 18rpx; background: #F7F8FA; border: 1rpx solid #ECEEF1; border-radius: 14rpx; padding: 16rpx 18rpx; margin-top: 14rpx; cursor: pointer; }
-.mat-card:active { background: #EEF0F3; }
-.mat-badge { flex-shrink: 0; width: 72rpx; height: 72rpx; border-radius: 12rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22rpx; font-weight: 700; letter-spacing: 1rpx; }
-.mat-badge.t-pdf  { background: #E5533C; }
-.mat-badge.t-doc  { background: #2B7CD3; }
-.mat-badge.t-xls  { background: #1E9E5A; }
-.mat-badge.t-ppt  { background: #E07B2E; }
-.mat-badge.t-img  { background: #17A2A2; }
-.mat-badge.t-txt  { background: #7A8598; }
-.mat-badge.t-file { background: #9AA0A6; }
-.mat-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.mat-fname { font-size: 28rpx; color: #1f2329; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mat-fsize { font-size: 24rpx; color: #9aa0a6; }
-.mat-del { flex-shrink: 0; font-size: 40rpx; color: #c4c8cd; padding: 0 6rpx; line-height: 1; }
-.mat-del:active { color: #999; }
+/* 会议材料文件行（0801 设计师点1/2/4/5）：与上传区同一套——灰线性文档图标 + 文件名 + 文字「移除」。
+   点5：去掉浅灰底卡（白卡里再套卡），直接铺在白卡上、靠分隔线分行 */
+.mat-row { display: flex; align-items: center; gap: 18rpx; padding: 6rpx 0; border-top: 2rpx solid #EEF0F2; cursor: pointer; }
+.mat-doc { flex-shrink: 0; width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; color: #A8AEB6; }
+.mat-doc svg { width: 52rpx; height: 52rpx; }
+.mat-fname { flex: 1; min-width: 0; font-size: 27rpx; color: #4a5158; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 「移除」：与上传区、议题、选项同一套删除语言；热区 88rpx（原 × 约 24px 不够） */
+.mat-remove { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 88rpx; padding: 0 8rpx; color: #8a9099; font-size: 26rpx; }
+.mat-remove:active { color: #E5533C; }
 /* 转圈圈：按钮内白色细环旋转（识别中显示，模拟进度数字在按钮文字里） */
 .ai-fill-spin { width: 34rpx; height: 34rpx; border-radius: 50%; border: 5rpx solid rgba(255,255,255,0.45); border-top-color: #fff; box-sizing: border-box; animation: aiSpin 0.7s linear infinite; }
 @keyframes aiSpin { to { transform: rotate(360deg); } }
