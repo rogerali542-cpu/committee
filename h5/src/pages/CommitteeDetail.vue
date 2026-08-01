@@ -1,5 +1,5 @@
 <template>
-  <div class="detail-page">
+  <div class="detail-page" :class="{ 'has-prep-footer': detail && userView === 'chair' && detail.stage === 'preparing' }">
     <!-- 页面左右 padding 为 0，负 margin 只抵顶部（0723 修：左右 -12px 无 padding 可抵，
          把文档撑宽 12px，真机能横向晃动——Chrome 桌面测不出来） -->
     <PageNav :title="navTitle" style="margin:-12px 0 0;">
@@ -7,9 +7,9 @@
       <template #left>
         <div class="nav-back" @click="handleDetailBack">‹</div>
       </template>
-      <template #right>
-        <button class="nav-home" @click="goHome">首页</button>
-      </template>
+      <!-- 0801 设计师：右上「首页」胶囊删——左上返回已是唯一且够用的出口，
+           页头再放一个同级入口只是分散注意力 -->
+
     </PageNav>
 
     <!-- AI 生成党建新闻：红色党建风工作遮罩，完成后进入独立新闻页 -->
@@ -48,7 +48,9 @@
                 <template v-if="detail.meetingMethod === 'online'">线上会议 · {{ detail.location || '微信工作群' }}</template>
                 <template v-else>
                   线下会议 ·
-                  <span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>
+                  <!-- 0801 设计师：正文里出现蓝色带下划线的链接很突兀，且点了去哪没说明。
+                       改成普通文字 + 后面一个小定位图标表示"可点开地图" -->
+                  <span v-if="detail.location" class="nc-loc" @click="openMap(detail.location)">{{ detail.location }}<svg class="nc-loc-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg></span>
                   <span v-else class="nc-muted">地点待定</span>
                 </template>
               </span>
@@ -99,15 +101,21 @@
         <!-- 0801 设计师版：名单直接展开——发通知前要确认发给谁，这是主流程不是可选细节；
              头部右侧是计数 + 一个文字按钮「全选 / 取消全选」（原来是勾选框+"全选"+计数+›，
              四个元素挤一行且勾选框与下方成员勾选框同款，容易误读成"某一位委员"） -->
+        <!-- 0801 用户×设计师定：默认收起——常态就是通知全体委员，姓名不是每次都要核对的信息。
+             收起态给一行摘要：全选时「全体委员 N 人」（常态，不必写 已选7/7）；
+             一旦有人被取消，摘要变「N 人中已选 M 人」，这时才需要警觉。要改人再点开 -->
         <div class="recipient-card">
-          <div class="recipient-card-head">
+          <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
             <span class="recipient-card-title">通知人员</span>
             <div class="recipient-card-right">
-              <span class="rcp-head-count">已选 {{ recipientSelectedCount }}/{{ recipientList.length }} 人</span>
-              <span class="rcp-head-toggle" @click="toggleRecipientAll">{{ recipientAllChecked ? '取消全选' : '全选' }}</span>
+              <span class="rcp-head-count" :class="{ partial: !recipientAllChecked }">{{ recipientSummary }}</span>
+              <i class="rcp-head-chev" :class="{ open: recipientOpen }"></i>
             </div>
           </div>
-          <div class="rcp-list page-rcp-list">
+          <div class="rcp-list page-rcp-list" v-if="recipientOpen">
+            <div class="rcp-all-row" @click="toggleRecipientAll">
+              <span class="rcp-head-toggle">{{ recipientAllChecked ? '取消全选' : '全选' }}</span>
+            </div>
             <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
               <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
               <div class="rcp-person">
@@ -389,9 +397,11 @@
         <!-- 0801 设计师版：两个同款并排按钮（App内通知 / 去微信通知）看不出哪个是主操作，
              且「App内」是实现口径不是用户语言。改上下叠放：主操作「发送通知（N 人）」实心蓝、
              带人数与上方名单呼应；「转发到微信」浅蓝次级。没勾人时主按钮置灰 -->
+        <!-- 0801 设计师定：微信是唯一主按钮——业委会实际就是在微信工作群里通知，
+             App 内送达是补充手段，降为次级。两颗都做成主按钮等于没有主操作 -->
         <div class="pf-btn-col">
-          <button class="pf-btn pf-btn-main" :class="{ disabled: !recipientSelectedCount }" @click="sendAppNoticeOnly">发送通知（{{ recipientSelectedCount }} 人）</button>
-          <button class="pf-btn pf-btn-sub" @click="openWechat">转发到微信</button>
+          <button class="pf-btn pf-btn-main" @click="openWechat">发到微信工作群</button>
+          <button class="pf-btn pf-btn-sub" :class="{ disabled: !recipientSelectedCount }" @click="sendAppNoticeOnly">同时在 App 内通知（{{ recipientSelectedCount }} 人）</button>
         </div>
       </div>
     </div>
@@ -1213,6 +1223,15 @@ const recipientOpen = ref(false)
 const recipientList = ref([])   // [{ userRoleId, name, role, checked }]
 const recipientSelectedCount = computed(() => recipientList.value.filter((x) => x.checked).length)
 const recipientAllChecked = computed(() => recipientList.value.length > 0 && recipientList.value.every((x) => x.checked))
+// 收起态摘要（0801）：常态是全体，就直说「全体委员 N 人」；有人被取消才写成需要警觉的写法
+const recipientSummary = computed(() => {
+  const total = recipientList.value.length
+  if (!total) return '暂无委员'
+  const sel = recipientSelectedCount.value
+  if (sel === total) return '全体委员 ' + total + ' 人'
+  if (!sel) return total + ' 人中未选任何人'
+  return total + ' 人中已选 ' + sel + ' 人'
+})
 const methodConvertOpen = ref(false)
 const methodConvertSaving = ref(false)
 const methodConvertOtherLocation = ref('')
@@ -1882,6 +1901,8 @@ async function removeMaterial(item) {
 /* overflow-x:hidden 兜底（0723）：任何子元素越界都不再把页面撑宽导致真机横向晃动 */
 .detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 40px; display:flex; flex-direction:column; box-sizing:border-box; overflow-x:hidden; }
 .detail-body { flex:1 0 auto; }
+/* 底部操作条改 fixed 后，内容区要给它让位，否则最后一段被挡住（准备阶段才有这条） */
+.detail-page.has-prep-footer .detail-body { padding-bottom:230rpx; }
 
 /* Task banner */
 .task-banner { padding:10px 14px; border-radius:12px; margin-bottom:12px; }
@@ -2301,8 +2322,13 @@ async function removeMaterial(item) {
 
 /* 准备阶段底部固定主操作 */
 /* 0725 用户定:取消固定悬浮(会压住通知记录等内容),改随文档流,滚到底部才出现 */
-.prep-footer { box-sizing:border-box; background:transparent; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
-.prep-footer.after-send-footer { padding:28px 16px calc(16px + env(safe-area-inset-bottom)); }  /* 0728 用户定：按钮组整体下移一点，与上方内容拉开 */
+/* 0801 修回退：底部主操作必须固定贴底、不随内容滚（设计规范 §7 拇指区）。
+   原先是文档流里的一块，内容一长就跟着滚走、内容短又浮在页面中间——收起通知人员名单后尤其明显。
+   详情页没有底部导航栏，直接贴视口底；内容区靠 .detail-body 的 padding-bottom 让位 */
+.prep-footer { position:fixed; left:0; right:0; bottom:0; z-index:90;
+  box-sizing:border-box; background:#fff; padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  box-shadow:0 -10rpx 24rpx rgba(20,42,58,.06); }
+.prep-footer.after-send-footer { padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
 /* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
 .pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; }
@@ -2318,6 +2344,7 @@ async function removeMaterial(item) {
 .pf-btn-main.disabled { background:#C3CAD3; }
 .pf-btn-sub { background:#EAF0F8; color:#2f5f9e; }
 .pf-btn-sub:active { background:#DCE7F3; }
+.pf-btn-sub.disabled { background:#F2F4F7; color:#A8AEB6; }
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
 .pf-btn-row .pf-btn { flex:1; min-width:0; height:72rpx; font-size:27rpx; background: var(--c-primary-dark); }
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
@@ -2342,6 +2369,10 @@ async function removeMaterial(item) {
 .nc-fl { flex:0 0 auto; width:56rpx; color:#8A9099; font-size:28rpx; line-height:1.6; }
 .nc-fv { flex:1; min-width:0; color:#1f2329; font-size:28rpx; line-height:1.6; word-break:break-all; }
 .nc-topic-line { display:block; }
+/* 地点：正文里不做蓝色下划线链接，用普通文字 + 小定位图标暗示可点开地图 */
+.nc-loc { display:inline-flex; align-items:center; gap:4rpx; color:#1f2329; }
+.nc-loc-ico { width:28rpx; height:28rpx; flex-shrink:0; color:#3567A4; }
+.nc-loc:active { opacity:.6; }
 .nc-copy-note { margin-top:10rpx; font-size:27rpx; color:#555; line-height:1.6; }
 .nc-copy-sign { margin-top:6rpx; text-align:right; font-size:28rpx; font-weight:700; color:#1a1a1a; line-height:1.65; }
 .nc-banner { background:#C76A00; color:#fff; text-align:center; font-size:34rpx; font-weight:700; letter-spacing:6rpx; padding:24rpx 0; }
@@ -2370,8 +2401,16 @@ async function removeMaterial(item) {
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
 .recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:14rpx; }
 /* 全选控件挪进头部（替代原摘要）：小圆勾 + 「全选」 + 已选计数，点它切换全选/全不选 */
-.rcp-head-count { font-size:26rpx; color:#8A9099; white-space:nowrap; }
-/* 全选/取消全选：文字按钮（原来是勾选框+文字+计数+›四件挤一行，勾选框还和成员那列同款、易误读） */
+.rcp-head-count { font-size:28rpx; color:#4a5158; white-space:nowrap; }
+/* 有人被取消勾选 = 非常态，摘要转深色加粗提醒（全体时是常态，保持普通灰） */
+.rcp-head-count.partial { color:#1f2329; font-weight:700; }
+/* 收起/展开箭头：CSS 边框箭头（见 CLAUDE.md），收起=∨、展开=∧ */
+.rcp-head-chev { flex-shrink:0; display:inline-block; width:16rpx; height:16rpx; position:relative; top:-3rpx;
+  border-right:3rpx solid #B4BCC7; border-bottom:3rpx solid #B4BCC7; transform:rotate(45deg);
+  transition:transform .2s ease, top .2s ease; }
+.rcp-head-chev.open { transform:rotate(-135deg); top:3rpx; }
+/* 展开后第一行：全选/取消全选（收起态由摘要承担，不必常驻） */
+.rcp-all-row { display:flex; justify-content:flex-end; padding:0 22rpx; border-bottom:1px solid #F0F0F2; }
 .rcp-head-toggle { display:inline-flex; align-items:center; min-height:80rpx; padding:0 4rpx; color:#3567A4; font-size:28rpx; font-weight:700; white-space:nowrap; }
 .rcp-head-toggle:active { opacity:.6; }
 /* 0801 设计师版：名单默认展开且不再限高滚动——7 个人的名单套一个内滚动区，
