@@ -121,7 +121,7 @@
           <!-- 末行档案馆入口（0730 定稿图）：「档案馆」深色、说明灰色 -->
           <div class="rec-recent-arch" @click="goArchive('reception')">
             <!-- 副题删（0731 设计师点5：把两个上级栏目名念了一遍，太长） -->
-            <span class="rra-text"><b>历史记录</b></span>
+            <span class="rra-text"><b>全部接待记录</b></span>
             <span class="rec-recent-arch-arr">›</span>
           </div>
         </div>
@@ -267,9 +267,9 @@
                 </div>
               </template>
             </div>
-            <!-- 查看全部历史（0731 用户定：移出全年面板，与发起临时会议同级同重量）——历年归档入口 -->
+            <!-- 往年记录（0731 用户定：移出全年面板，与发起临时会议同级同重量）——历年归档入口 -->
             <div class="mtg-next-foot mtg-arch-foot" @click="goArchive('committee')">
-              <b>查看全部历史</b>
+              <b>往年记录</b>
               <i class="mfb-chev right"></i>
             </div>
             <!-- ＋ 发起临时会议（0731 设计师点2）：一年用几次的低频动作收进列表末行，
@@ -482,24 +482,18 @@
       <div class="create-panel" @click.stop>
         <div class="create-head">
           <span class="create-back" @click="closeCreate">‹</span>
-          <span class="create-title">{{ createHeadTitle }}</span>
+          <span class="create-title">{{ createPageTitle }}</span>
           <span class="create-nav-ph"></span>
         </div>
 
         <div class="create-body" style="overflow-y:auto;">
-          <!-- 拍照进流程入口（0731 设计师点3）：线性相机图标（不套灰块）+ 说明 + ›（这是进流程）。
-               点开在下方展开拍照/上传面板；识别完成自动收起回表单 -->
-          <div class="scan-entry" :class="{ open: createTab === 'scan' }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
-            <svg class="se-cam" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.1-1.7a1 1 0 0 1 .84-.45h5.12a1 1 0 0 1 .84.45L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9z"/>
-              <circle cx="12" cy="13" r="3.1"/>
-            </svg>
-            <span class="se-copy">
-              <!-- 设计师点5：一件事只说一遍——标题一行足够；格式说明交给下方两个按钮，不再重复副标题 -->
-              <b>拍通知照片自动填写</b>
-              <small v-if="scanItems.length && createTab !== 'scan'">已识别 {{ scanItems.length }} 份文件</small>
+          <!-- 拍照上传是填表加速器，不再与手动填写并列成两种模式。 -->
+          <div class="scan-accelerator" :class="{ done: docPrefilled }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
+            <span class="scan-accelerator-icon" aria-hidden="true">📷</span>
+            <span class="scan-accelerator-main">
+              <b>{{ docPrefilled ? '已识别，可继续核对修改' : '拍通知照片自动填写' }}</b>
+              <small>{{ docPrefilled ? '识别内容已回填到下方表单' : '支持拍照、图片、PDF 或 Word 文件' }}</small>
             </span>
-            <i class="se-chev"></i>
           </div>
 
           <!-- 拍照/上传面板：拍通知照片或传文件，AI 识别后在当前面板展示结果，并把识别内容预填到下方表单 -->
@@ -515,16 +509,16 @@
                 </div>
               </div>
               <div class="ds-cards ds-cards-2">
-                <!-- 设计师点4：图标改会议蓝线性描边、去彩色底块，纳入三色制 -->
                 <button class="ds-card" :disabled="scanRecognizing" @click="chooseImageSource">
-                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#2f5f9e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 15l-5-5-4 4-2-2-4 4"/></svg>
+                  <span class="ds-ico bl">🖼️</span>
                   <span class="ds-t">图片</span>
                 </button>
                 <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
-                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#2f5f9e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h5"/></svg>
+                  <span class="ds-ico bl">📄</span>
                   <span class="ds-t">文件</span>
                 </button>
               </div>
+              <div class="ds-shared-hint">可上传图片或 PDF、Word 文件</div>
               <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
                 {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
               </button>
@@ -533,44 +527,33 @@
 
           <!-- 会议内容表单：两个 tab 都显示；拍照/上传识别后就地填入这里 -->
           <div class="manual-pane">
-          <!-- 会议信息：会议名称 + 召开方式/时间/地点 合并为一张统一信息卡（还原原型「基础信息统一成一张行式白卡、减少盒套盒」，此前误拆成两张） -->
-          <div class="create-section meeting-info-card">
-            <div class="form-group meeting-title-group">
-              <span class="field-caption caption-as-title">会议名称</span>
+          <!-- 基础信息统一成一张行式白卡：标签左、值右，减少盒套盒。 -->
+          <div class="create-section meeting-info-card basic-info-card">
+            <div class="form-group meeting-title-line">
+              <span class="field-caption caption-as-title">会议名称 <i v-if="recognizedFields.title">已识别</i></span>
               <div class="title-row">
                 <div class="title-input-wrap">
                   <textarea ref="titleEl" class="form-input large title-ta" :class="{ 'field-error': fieldErrors.title }" rows="1" v-model="createForm.title" :placeholder="suggestedTitle ? '' : '请输入会议名称'" @input="autoGrowTitle" @focus="clearFieldError('title')" @keydown.enter.prevent></textarea>
                   <!-- 推荐标题：半透明显示在文本框内，点文字直接填入 -->
-                  <span v-if="createTab === 'manual' && suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle; clearFieldError('title')">{{ suggestedTitle }}</span>
-                  <span v-show="createTab === 'manual'" class="title-clear" :class="{ dim: !createForm.title && !suggestedTitle }" @click="clearTitleOrGhost">×</span>
+                  <span v-if="suggestedTitle && !createForm.title" class="title-ghost" @click="createForm.title = suggestedTitle; clearFieldError('title')">{{ suggestedTitle }}</span>
                 </div>
               </div>
             </div>
-            <!-- 召开方式/日期+时间/地点：与会议名称同卡，用分隔线断开；日期+时间合并为一行，地点单独露出地图入口 -->
             <div class="field-list">
-              <div class="field-line meeting-method-line">
+              <div class="field-line meeting-method-line" @click="pickMeetingMethod">
                 <span class="fl-label">召开方式</span>
-                <div class="method-switch">
-                  <button type="button" :class="{ active: createForm.meetingMethod === 'offline' }" @click="setMeetingMethod('offline')">线下会议</button>
-                  <button type="button" :class="{ active: createForm.meetingMethod === 'online' }" @click="setMeetingMethod('online')">线上会议</button>
-                </div>
+                <span class="fl-value">{{ createForm.meetingMethod === 'online' ? '线上会议' : '线下会议' }}</span>
+                <span class="fl-arrow">›</span>
               </div>
-              <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime || meetingDateTimePast }">
-                <div class="fl-part" @click="openDatePicker">
-                  <span class="fl-label">日期</span>
-                  <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtDateWithWeek(createForm.meetingDate) : '' }}</span>
-                  <span class="fl-arrow">›</span>
-                </div>
-                <div class="fl-part fl-part-time" @click="openTimePicker">
-                  <span class="fl-label">时间</span>
-                  <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime }}</span>
-                  <span class="fl-arrow">›</span>
-                </div>
+              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingDate }" @click="openDatePicker">
+                <span class="fl-label">日期 <i v-if="recognizedFields.meetingDate">已识别</i></span>
+                <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtPlanDate(createForm.meetingDate) : '未选择' }}</span>
+                <span class="fl-arrow">›</span>
               </div>
-              <!-- 会议时间已过（多为拍照识别带入的旧时间）：保留可填，但提示 + 底部"生成通知"已置灰锁住 -->
-              <div v-if="meetingDateTimePast" class="dt-past-warn">
-                <span class="dt-past-ico">!</span>
-                <span>会议时间已过，请点上方日期/时间改到<b>现在之后</b>，再生成通知</span>
+              <div class="field-line" :class="{ 'field-error': fieldErrors.meetingTime }" @click="openTimePicker">
+                <span class="fl-label">时间 <i v-if="recognizedFields.meetingTime">已识别</i></span>
+                <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime || '未选择' }}</span>
+                <span class="fl-arrow">›</span>
               </div>
               <div v-if="createForm.meetingMethod !== 'online'" class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
                 <!-- 选「其他地点」时：本行直接变输入框（不再另弹文本框）；点「地点」标签可回到常用地点选择 -->
@@ -579,13 +562,10 @@
                   <input class="fl-inline-input" v-model="createForm.location" placeholder="请输入会议地点" @focus="clearFieldError('location')" />
                 </template>
                 <div v-else class="fl-loc-main" @click="openLocPicker">
-                  <span class="fl-label">地点</span>
+                  <span class="fl-label">地点 <i v-if="recognizedFields.location">已识别</i></span>
                   <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
-                <button class="loc-map-btn field-map-btn" @click.stop="pickLocationOnMap" aria-label="从地图选点">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-                </button>
               </div>
               <div v-else class="field-line field-line-location">
                 <span class="fl-label online-platform-label">线上平台</span>
@@ -597,44 +577,64 @@
             </div>
           </div>
 
-          <!-- 会议议程项：点＋直接出一行可编辑议题，就地编辑、无"确定"步骤（设计师点2；卡中卡去掉，分隔线分条=点1/3/6） -->
+          <!-- 会议议程项（在当前卡片内逐条添加和编辑） -->
           <div class="create-section">
             <div class="section-title-row topic-head">
-              <!-- 设计师点1：未填不显示计数（避免"0 项"和眼前议题框自相矛盾），填了才出现「N 项」 -->
-              <span class="section-title">会议议题<span v-if="createForm.topics.length" class="sec-count"> {{ createForm.topics.length }} 项</span></span>
+              <span class="section-title">会议议题 <em>{{ createForm.topics.length || (firstTopicText.trim() ? 1 : 0) }} 项</em><i v-if="recognizedFields.topics">已识别</i></span>
             </div>
-            <!-- 每条议题内联编辑：序号+删除、标题输入、类型；表决类再展开表决方式/选项 -->
-            <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-item">
-              <div class="ti-head">
-                <span class="ti-no">议题 {{ idx + 1 }}</span>
-                <span class="ti-del" @click="removeCreateTopic(idx)" aria-label="删除本条议题">×</span>
+            <div v-if="createForm.topics.length" class="topic-list">
+              <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line" @click="openEditTopic(idx)">
+                <span class="topic-line-text"><b>议题 {{ idx + 1 }}</b><span>{{ topic.title }}</span></span>
+                <button type="button" class="topic-line-del" @click.stop="removeCreateTopic(idx)">删除</button>
               </div>
-              <!-- 设计师点5：放回 placeholder，输入框给 3 行高，够写一两句话 -->
-              <textarea class="ti-input" v-model="topic.title" rows="2" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')"></textarea>
-              <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision -->
-              <div class="ti-types">
-                <span class="type-chip" :class="{ on: topic.type === 'notice' }" @click="setTopicType(topic, 'notice')">通知</span>
-                <span class="type-chip" :class="{ on: topic.type === 'discussion' }" @click="setTopicType(topic, 'discussion')">讨论</span>
-                <span class="type-chip" :class="{ on: topic.type === 'decision' }" @click="setTopicType(topic, 'decision')">表决</span>
-              </div>
-              <template v-if="topic.type === 'decision'">
-                <div class="ti-types ti-decide">
-                  <span class="type-chip" :class="{ on: topic.decisionType === 'simple' }" @click="setTopicDecision(topic, 'simple')">是 / 否</span>
-                  <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
-                </div>
-                <div v-if="topic.decisionType === 'multi_choice'" class="ti-options">
-                  <div v-for="(opt, oi) in (topic.options || [])" :key="opt.id" class="ct-option-row">
-                    <span class="ct-opt-num">{{ oi + 1 }}.</span>
-                    <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
-                    <span v-if="(topic.options || []).length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">×</span>
-                  </div>
-                  <span class="add-link" @click="addTopicOption(topic)">+ 添加选项</span>
-                </div>
-              </template>
             </div>
-            <!-- 分隔线 + 一行「＋ 添加议题」：点即新增一行可编辑议题（设计师点2/4） -->
-            <div v-show="createTab === 'manual'" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="addTopicRow()">
+            <div v-if="!createForm.topics.length && !topicDialogOpen" class="topic-first-row" :class="{ 'field-error': fieldErrors.topics }">
+              <span class="topic-first-label">议题 1</span>
+              <textarea v-model="firstTopicText" rows="2" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')"></textarea>
+            </div>
+            <div v-show="!topicDialogOpen" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="openAddTopic()">
               <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
+            </div>
+            <div v-if="topicDialogOpen" class="topic-inline-editor">
+              <!-- 标题「添加议题」已删；「取消」并入「议题内容」标签行，标签+chips 同行（0723 用户定，卡片压缩） -->
+              <div class="form-group">
+                <div class="tie-label-row">
+                  <span class="form-label">议题内容</span>
+                  <button type="button" class="tie-cancel" @click="topicDialogOpen = false">取消</button>
+                </div>
+                <!-- 灰色占位文案已删（0723 用户定）：标签「议题内容」已经说明用途，占位字是重复噪音 -->
+                <div class="td-title-row">
+                  <input class="form-input large" v-model="topicDraft.title" />
+                </div>
+              </div>
+              <div class="form-group tie-inline-row">
+                <span class="form-label">议题类型</span>
+                <div class="type-row">
+                  <!-- 0728 用户定：事项分三类——通知 / 讨论 / 表决。通知与讨论操作一致（均不表决、只需宣读/记录），
+                       仅分类不同；只有表决需要投票。底层枚举 notice / discussion / decision 一一对应。 -->
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'notice' }" @click="draftPickType('notice')">通知</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'discussion' }" @click="draftPickType('discussion')">讨论</span>
+                  <span class="type-chip" :class="{ on: topicDraft.type === 'decision' }" @click="draftPickType('decision')">表决</span>
+                </div>
+              </div>
+              <!-- 「补充通知正文」入口已删（0723 用户定，卡片压缩）：底层 content→notice 映射保留，旧议题的正文编辑保存时原样带回 -->
+              <div class="form-group tie-inline-row" v-if="topicDraft.type === 'decision'">
+                <span class="form-label">表决方式</span>
+                <div class="type-row">
+                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'simple' }" @click="draftPickDecision('simple')">是 / 否</span>
+                  <span class="type-chip" :class="{ on: topicDraft.decisionType === 'multi_choice' }" @click="draftPickDecision('multi_choice')">多选一</span>
+                </div>
+              </div>
+              <div class="form-group" v-if="topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice'">
+                <span class="form-label">选项（至少两个）</span>
+                <div v-for="(opt, oi) in topicDraft.options" :key="opt.id" class="ct-option-row">
+                  <span class="ct-opt-num">{{ oi + 1 }}.</span>
+                  <input class="form-input ct-opt-input" v-model="opt.label" />
+                  <span v-if="topicDraft.options.length > 1" class="tp-del" @click="draftRemoveOption(oi)">×</span>
+                </div>
+                <span class="add-link tie-add-option" @click="draftAddOption">+ 添加选项</span>
+              </div>
+              <button type="button" class="tie-confirm-btn" @click="confirmTopic">确定添加议题</button>
             </div>
           </div>
 
@@ -642,33 +642,13 @@
                0723 用户定：主标题只留「含重大事项」，两条制度要求（提前 7 天公告、居委会到场见证）小字补充 -->
           <!-- 只点右侧开关才切换（0723 用户定）：整行可点容易误触 -->
           <div class="juwei-card" :class="{ disabled: createForm.meetingMethod === 'online' }">
-            <div class="juwei-top">
-              <div class="juwei-text">
-                <div class="juwei-title">含重大事项</div>
-                <!-- 未勾选时给制度说明；勾选后换成下方算好的截止日明细，不重复 -->
-                <div v-if="!createForm.juweiWitness" class="juwei-sub">{{ createForm.meetingMethod === 'online'
-                  ? '线上会议不支持重大事项（须线下提前 7 天公告并请居委会到场见证）'
-                  : '需提前 7 天向业主公告，并请居委会到场见证' }}</div>
-              </div>
-              <span class="juwei-switch" :class="{ on: createForm.juweiWitness, disabled: createForm.meetingMethod === 'online' }"
-                    role="switch" :aria-checked="createForm.juweiWitness" :aria-disabled="createForm.meetingMethod === 'online'"
-                    @click="onJuweiToggle"></span>
-            </div>
-            <!-- 勾选后展开（设计师点9）：会前公告截止日 = 会议日期 − 7 天；紧张/已过用异常色，且已过提示改期 -->
-            <div v-if="createForm.juweiWitness && createForm.meetingMethod !== 'online'" class="juwei-detail">
-              <div class="jd-row" :class="{ 'jd-warn': majorNoticeInfo && majorNoticeInfo.tight, 'jd-error': majorNoticeInfo && majorNoticeInfo.past }">
-                <span class="jd-label">公告日期</span>
-                <span v-if="majorNoticeInfo" class="jd-value">
-                  <template v-if="majorNoticeInfo.past">公告日已过（最迟 {{ majorNoticeInfo.text }}），建议改期</template>
-                  <template v-else-if="majorNoticeInfo.days === 0">最迟今天（{{ majorNoticeInfo.text }}）前公告</template>
-                  <template v-else>最迟 {{ majorNoticeInfo.text }} 前公告（{{ majorNoticeInfo.tight ? '仅剩' : '还剩' }} {{ majorNoticeInfo.days }} 天）</template>
-                </span>
-                <span v-else class="jd-value ph">请先选择会议日期</span>
-              </div>
-              <div class="jd-row">
-                <span class="jd-label">居委会</span>
-                <span class="jd-value">需到场见证</span>
-              </div>
+            <label class="major-check-row" @click.prevent="onJuweiToggle">
+              <span class="major-checkbox" :class="{ checked: createForm.juweiWitness }">{{ createForm.juweiWitness ? '✓' : '' }}</span>
+              <span class="juwei-title">含重大事项</span>
+            </label>
+            <div v-if="createForm.juweiWitness" class="major-facts">
+              <div><span>公告日期</span><b>{{ majorNoticeDeadline }}</b></div>
+              <div><span>居委会</span><b>需到场见证</b></div>
             </div>
           </div>
 
@@ -695,9 +675,7 @@
 
         <!-- 添加议题时隐藏底部主按钮，避免真机键盘弹起时「取消/生成通知」压住「确定添加议题」 -->
         <div v-show="!topicDialogOpen" class="sheet-actions fixed">
-          <button class="btn btn-ghost" @click="closeCreate">取消</button>
-          <!-- 0731 设计师点2：日期/时间/议题未齐则置灰（仍可点→提示缺什么），齐了才亮 -->
-          <button class="btn btn-primary" :class="{ disabled: !createCanSubmit }" @click="onSubmitClick">{{ createSubmitLabel }}<span class="btn-arrow">›</span></button>
+          <button class="btn btn-primary" :class="{ 'form-incomplete': !meetingFormComplete }" @click="submitNewMeeting">生成会议通知</button>
         </div>
       </div>
     </div>
@@ -906,7 +884,7 @@
                 @click="cell && pickCalDay(cell)">{{ cell || '' }}</span>
         </div>
         <div class="pp-actions">
-          <button class="btn btn-primary" @click="datePickerOpen = false">确认</button>
+          <button class="btn btn-ghost" @click="datePickerOpen = false">取消</button>
         </div>
       </div>
     </div>
@@ -1190,13 +1168,6 @@ const planTabLabel = computed(() => planTab.value === 'meeting' ? '会议' : '�
 function fmtPlanDate(s) {
   const p = String(s || '').split('-')
   return p.length === 3 ? (Number(p[1]) + '月' + Number(p[2]) + '日') : String(s || '')
-}
-// 带星期的日期（发起会议日期行用，设计师点8）：老人排会靠星期——「8月12日 周二」
-function fmtDateWithWeek(s) {
-  const p = String(s || '').split('-')
-  if (p.length !== 3) return String(s || '')
-  const wk = ['日', '一', '二', '三', '四', '五', '六'][new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getDay()]
-  return Number(p[1]) + '月' + Number(p[2]) + '日 周' + wk
 }
 // 日期是否属于指定年份（缺省今年）第 m 月。
 // 会议记录要跟着年份箭头走 → 传 viewYear；接待/培训没有年份切换器，仍按今年统计，别跟着跑偏。
@@ -2570,6 +2541,11 @@ const publishScore = ref({ ontime: 0, overdue: 0, pending: 0 })
 const counts = ref({ preparing: 0, ongoing: 0, ended: 0 })
 const roleView = ref({ title: '', intro: '' })
 const createVisible = ref(false)
+const createPeriod = ref(0)
+const createPageTitle = computed(() => {
+  if (editingMeetingId.value) return '编辑会议'
+  return createPeriod.value > 0 ? ('发起第' + createPeriod.value + '次例会') : '发起业委会会议'
+})
 // createReturnPortal 已删(0725 导航审计):驾驶舱入口不再预切甲,布局保持 portal,模态关闭天然回驾驶舱
 // 「去安排/去补开」进来时自动预填的「第N次例会」标题快照：用户只看一眼没填任何东西就返回，
 // 预填标题不算用户输入，不生成草稿（否则待办区凭空多出一张"继续通知"卡，还顶掉补开卡）
@@ -2587,49 +2563,10 @@ const createForm = reactive({
   locationLat: null,   // 地图选点回传的经纬度（0723）：随建会落库，详情页导航用精确坐标
   locationLng: null
 })
-// 页头标题/主按钮随会议期数动态（0731 设计师稿）：从标题里取「第N次」——
-// 有则「发起第N次例会」「生成第N次例会通知」（主按钮带对象，设计师点6），否则退回通用名
-const createPeriodNo = computed(() => {
-  const m = String(createForm.title || prefilledCreateTitle.value || '').match(/第\s*(\d+)\s*次/)
-  return m ? m[1] : ''
-})
-const createHeadTitle = computed(() => createPeriodNo.value ? ('发起第' + createPeriodNo.value + '次例会') : '发起业委会')
-const createSubmitLabel = computed(() => createPeriodNo.value ? ('生成第' + createPeriodNo.value + '次例会通知') : '生成会议通知')
-// 会前公告截止日（设计师点9）：业委会会议须会前 7 天公告 → 最迟公告日 = 会议日期 − 7 天。
-// （7 天是业委会层规则，非业主大会的 15 天。）算出距今天数：已过→提示改期；≤3 天→紧张提醒色；否则常态。
-const majorNoticeInfo = computed(() => {
-  const p = String(createForm.meetingDate || '').split('-')
-  if (p.length !== 3) return null
-  const dl = new Date(new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getTime() - 7 * 86400000)
-  const tp = todayStr().split('-')
-  const todayMs = new Date(Number(tp[0]), Number(tp[1]) - 1, Number(tp[2])).getTime()
-  const days = Math.round((dl.getTime() - todayMs) / 86400000)
-  return { text: (dl.getMonth() + 1) + '月' + dl.getDate() + '日', days, past: days < 0, tight: days >= 0 && days <= 3 }
-})
-// 会议时间是否已过（发起新会议才限制；编辑历史会议不限）：拍照识别可能带入过去的时间——
-// 用户定：允许填入，但要给提示并锁住"去通知"，防止把会议建到过去。
-const meetingDateTimePast = computed(() => {
-  if (editingMeetingId.value) return false
-  const d = createForm.meetingDate
-  if (!d) return false
-  if (d < todayStr()) return true
-  if (d === todayStr() && createForm.meetingTime) {
-    const now = new Date()
-    const parts = String(createForm.meetingTime).split(':')
-    if (Number(parts[0]) * 60 + Number(parts[1]) <= now.getHours() * 60 + now.getMinutes()) return true
-  }
-  return false
-})
-// 主按钮可提交门槛（0731 设计师点2）：日期+时间+至少一条议题齐了才亮；缺则置灰、点了提示。
-// 另：会议时间已过也置灰锁住（保留可填，只拦提交，多为识别带入的旧时间）。
-const createCanSubmit = computed(() =>
-  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.length)) && !meetingDateTimePast.value)
-function onSubmitClick() {
-  if (meetingDateTimePast.value) { toast({ title: '会议时间已过，请改到当前时间之后再生成通知', icon: 'none' }); return }
-  if (!createCanSubmit.value) { toast({ title: '请填写日期、时间和至少一条议题', icon: 'none' }); return }
-  submitNewMeeting()
+const recognizedFields = reactive({ title: false, meetingDate: false, meetingTime: false, location: false, topics: false })
+function resetRecognizedFields() {
+  Object.keys(recognizedFields).forEach((key) => { recognizedFields[key] = false })
 }
-
 // 地点被手填/选常用地点覆盖时，清掉不再匹配的旧坐标（地图选点回填的那次除外）
 let _mapJustSet = false
 watch(() => createForm.location, () => {
@@ -2646,8 +2583,9 @@ const keyword = ref('')
 // 标题推荐
 const suggestedTitle = ref('')
 // 会议地点下拉
-const commonLocations = ['社区活动室', '社区会议室']
-const locationPreset = ref('社区活动室')
+const defaultMeetingLocation = '党群服务站一楼会议室'
+const commonLocations = [defaultMeetingLocation, '社区活动室', '社区会议室']
+const locationPreset = ref(defaultMeetingLocation)
 function setMeetingMethod(method) {
   createForm.meetingMethod = method
   // 线上会议不支持重大事项（须线下公告 + 居委会到场见证），切到线上时强制取消勾选
@@ -2656,10 +2594,15 @@ function setMeetingMethod(method) {
     createForm.location = '微信工作群'
     locationPreset.value = '__other__'
   } else if (method === 'offline' && ['微信工作群', '腾讯会议', '微信工作群、腾讯会议', '腾讯会议、微信工作群'].includes(createForm.location)) {
-    createForm.location = '社区活动室'
-    locationPreset.value = '社区活动室'
+    createForm.location = defaultMeetingLocation
+    locationPreset.value = defaultMeetingLocation
   }
   clearFieldError('location')
+}
+async function pickMeetingMethod() {
+  const res = await showActionSheet({ itemList: ['线下会议', '线上会议'] })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  setMeetingMethod(res.tapIndex === 1 ? 'online' : 'offline')
 }
 // 含重大事项开关：线上会议锁定；点击时弹提示说明原因，否则用户不知为何点不了
 function onJuweiToggle() {
@@ -2691,6 +2634,20 @@ const minuteOptions = Array.from({ length: 4 }, (_, i) => i * 15)
 const topicDialogOpen = ref(false)
 const topicEditIdx = ref(-1)
 const topicDraft = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
+const firstTopicText = ref('')
+const majorNoticeDeadline = computed(() => {
+  if (!createForm.meetingDate) return '请先选择会议日期'
+  const date = new Date(createForm.meetingDate + 'T12:00:00')
+  if (Number.isNaN(date.getTime())) return '请先选择会议日期'
+  date.setDate(date.getDate() - 7)
+  return '最迟 ' + (date.getMonth() + 1) + '月' + date.getDate() + '日前公告'
+})
+const meetingFormComplete = computed(() => Boolean(
+  createForm.title && createForm.title.trim() &&
+  createForm.meetingDate && createForm.meetingTime &&
+  createForm.location && createForm.location.trim() &&
+  ((createForm.topics && createForm.topics.some((t) => t.title && t.title.trim())) || firstTopicText.value.trim())
+))
 
 // 必填校验：红框状态（会议名称/会议议题/会议地点）。点"生成通知"缺失→弹卡片→确认后亮红框；
 // 用户点进对应输入框（focus）即清除红框。
@@ -3086,7 +3043,9 @@ function openMeetingTap(item) {
 
 async function openNewMeeting(period) {
   createVisible.value = true
+  createPeriod.value = Number(period) || 0
   createTab.value = 'manual'      // 每次进来默认手动填写面板
+  resetRecognizedFields()
   editingMeetingId.value = null   // 全新会议：非编辑模式
   docPrefilled.value = false
   materialPrefillOpen.value = false
@@ -3099,13 +3058,14 @@ async function openNewMeeting(period) {
   createForm.title = ''
   createForm.meetingDate = ''
   createForm.meetingTime = ''
-  createForm.location = ''
+  createForm.location = defaultMeetingLocation
   createForm.locationLat = null
   createForm.locationLng = null
   createForm.meetingMethod = 'offline'
-  locationPreset.value = ''
+  locationPreset.value = defaultMeetingLocation
   createForm.description = ''
   createForm.topics = []
+  firstTopicText.value = ''
   createForm.juweiWitness = false
   // 快照默认占位值：日期/时间/地点等于这些默认时视为"未填"，不参与冲突判定，可被识别值直接填入
   createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
@@ -3155,6 +3115,7 @@ function snapshotDraft() {
     description: createForm.description || '',
     juweiWitness: !!createForm.juweiWitness,
     topics: JSON.parse(JSON.stringify(createForm.topics || [])),
+    firstTopicText: firstTopicText.value || '',
     locationPreset: locationPreset.value || '',
     pendingMaterials: JSON.parse(JSON.stringify(pendingMaterials.value || [])),
     materialFiles: JSON.parse(JSON.stringify(materialFiles.value || [])),
@@ -3165,6 +3126,7 @@ function snapshotDraft() {
 function draftHasContent(d) {
   if (!d) return false
   return !!(String(d.title || '').trim()
+    || String(d.firstTopicText || '').trim()
     || (d.topics && d.topics.length)
     || (d.pendingMaterials && d.pendingMaterials.length)
     || (d.materialFiles && d.materialFiles.length))
@@ -3177,6 +3139,7 @@ function persistDraft() {
   const titleUntouched = prefilledCreateTitle.value
     && String(snap.title || '').trim() === prefilledCreateTitle.value
   const nothingElse = !(snap.topics && snap.topics.length)
+    && !String(snap.firstTopicText || '').trim()
     && !(snap.pendingMaterials && snap.pendingMaterials.length)
     && !(snap.materialFiles && snap.materialFiles.length)
   if (titleUntouched && nothingElse) return
@@ -3213,6 +3176,7 @@ async function continueDraft() {
   const d = draft.value
   if (!d) { openNewMeeting(); return }
   createVisible.value = true
+  createPeriod.value = Number((String(d.title || '').match(/第(\d+)次/) || [])[1]) || 0
   docPrefilled.value = false
   materialPrefillOpen.value = false
   materialText.value = ''
@@ -3223,12 +3187,13 @@ async function continueDraft() {
   createForm.title = d.title || ''
   createForm.meetingDate = d.meetingDate || ''
   createForm.meetingTime = d.meetingTime || ''
-  createForm.location = d.location || ''
+  createForm.location = d.location || defaultMeetingLocation
   createForm.meetingMethod = d.meetingMethod || 'offline'   // 0725 修:草稿还原时带回召开方式
   createForm.description = d.description || ''
   createForm.topics = JSON.parse(JSON.stringify(d.topics || []))
+  firstTopicText.value = d.firstTopicText || ''
   createForm.juweiWitness = !!d.juweiWitness
-  locationPreset.value = d.locationPreset || (d.location ? '__other__' : '社区活动室')
+  locationPreset.value = d.locationPreset || (d.location ? '__other__' : defaultMeetingLocation)
   syncLocationPreset(createForm.location)
   pendingMaterials.value = JSON.parse(JSON.stringify(d.pendingMaterials || []))
   materialFiles.value = JSON.parse(JSON.stringify(d.materialFiles || []))
@@ -3261,6 +3226,7 @@ async function openMeetingForEdit(id) {
     const d = await api.committeeDetail(id)
     if (!d) { toast({ title: '会议信息加载失败', icon: 'none' }); return }
     createVisible.value = true
+    createPeriod.value = 0
     editingMeetingId.value = id
     setStorage('meetingView:' + id, 'edit')  // 记住"上次停在发起/编辑页"，供首页卡片按上次位置重进
     docPrefilled.value = false
@@ -3270,7 +3236,7 @@ async function openMeetingForEdit(id) {
     createForm.title = d.title || ''
     createForm.meetingDate = d.meetingDate || ''
     createForm.meetingTime = (d.meetingTime || '').slice(0, 5)
-    createForm.location = d.location || ''
+    createForm.location = d.location || defaultMeetingLocation
     createForm.meetingMethod = d.meetingMethod || 'offline'   // 0725 修:原先编辑线上会议时表单恒显"线下"
     createForm.description = d.description || ''
     createForm.topics = (((d.record && d.record.topics) || d.topics) || []).map((t) => ({
@@ -3281,10 +3247,11 @@ async function openMeetingForEdit(id) {
       content: t.content || '',
       realNameVote: !!t.realNameVote
     }))
+    firstTopicText.value = ''
     createForm.juweiWitness = !!(d.hasMajorIssue || d.juweiWitness)
     editInitialJuwei.value = createForm.juweiWitness
     locationPreset.value = commonLocations.indexOf(createForm.location) >= 0
-      ? createForm.location : (createForm.location ? '__other__' : '社区活动室')
+      ? createForm.location : (createForm.location ? '__other__' : defaultMeetingLocation)
     createInitialDefaults.value = { title: '', meetingDate: createForm.meetingDate, meetingTime: createForm.meetingTime, location: createForm.location }
     suggestedTitle.value = ''
     pendingMaterials.value = []; scanBusy.value = ''; lastScanTokens.value = 0
@@ -3877,12 +3844,13 @@ function noticeConflicts(res) {
 // 应用通知字段：未填(空或仍是默认占位)的总是填；用户已填且冲突的字段仅 overwrite 时才覆盖
 function applyNoticeFields(res, overwrite) {
   let changed = false
-  if (res.title && (!isFieldUserSet('title') || overwrite)) { createForm.title = res.title; changed = true }
-  if (res.meetingDate && (!isFieldUserSet('meetingDate') || overwrite)) { createForm.meetingDate = res.meetingDate; changed = true }
-  if (res.meetingTime && (!isFieldUserSet('meetingTime') || overwrite)) { createForm.meetingTime = res.meetingTime; changed = true }
-  if (res.location && (!isFieldUserSet('location') || overwrite)) { createForm.location = res.location; syncLocationPreset(res.location); changed = true }
+  if (res.title && (!isFieldUserSet('title') || overwrite)) { createForm.title = res.title; recognizedFields.title = true; changed = true }
+  if (res.meetingDate && (!isFieldUserSet('meetingDate') || overwrite)) { createForm.meetingDate = res.meetingDate; recognizedFields.meetingDate = true; changed = true }
+  if (res.meetingTime && (!isFieldUserSet('meetingTime') || overwrite)) { createForm.meetingTime = res.meetingTime; recognizedFields.meetingTime = true; changed = true }
+  if (res.location && (!isFieldUserSet('location') || overwrite)) { createForm.location = res.location; recognizedFields.location = true; syncLocationPreset(res.location); changed = true }
   if (Array.isArray(res.topics) && res.topics.length && (!(createForm.topics && createForm.topics.length) || overwrite)) {
     createForm.topics = res.topics.map(normalizeRecognizedTopic)
+    recognizedFields.topics = true
     changed = true
   }
   if (changed) docPrefilled.value = true
@@ -4126,8 +4094,7 @@ function pickCalDay(day) {
   }
   if (pickerTarget.value === 'reception') recForm.date = calDateStr(day)
   else createForm.meetingDate = calDateStr(day)
-  // 设计师点2：不再点日期即关——与时间选择器统一为「点选(即时高亮/写入)→点确认关闭」，
-  // 老人不会再在日历里找不到「确认」
+  datePickerOpen.value = false
 }
 
 // 时间选择器：常规小时（左）+ 分钟（右），点选即生效；与日期选择器同走 pickerTarget
@@ -4225,33 +4192,82 @@ function topicTypeClass(t) {
   return 'badge-discussion'
 }
 
-// 议题内联编辑（设计师点2）：点＋直接新增一行可编辑议题，就地改、无"确定"步骤；
-// 空标题行在 submitNewMeeting 里已自动过滤，不会误提交。
-function addTopicRow() {
+function openAddTopic() {
   clearFieldError('topics')
-  createForm.topics = createForm.topics.concat([{ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' }])
-  nextTick(function () {
-    const inputs = document.querySelectorAll('.topic-item .ti-input')
-    const last = inputs[inputs.length - 1]
-    if (last) last.focus()
-  })
+  if (!createForm.topics.length && firstTopicText.value.trim()) {
+    createForm.topics = [{
+      title: firstTopicText.value.trim(),
+      type: 'discussion',
+      decisionType: 'none',
+      options: [],
+      content: ''
+    }]
+    firstTopicText.value = ''
+  }
+  topicEditIdx.value = -1
+  topicDraft.title = ''
+  topicDraft.type = 'discussion'
+  topicDraft.decisionType = 'none'
+  topicDraft.options = []
+  topicDraft.content = ''
+  topicDialogOpen.value = true
 }
-function setTopicType(topic, type) {
-  topic.type = type
-  topic.decisionType = type === 'decision' ? 'simple' : 'none'
-  topic.options = []
+
+function openEditTopic(idx) {
+  const t = createForm.topics[idx]
+  topicEditIdx.value = idx
+  topicDraft.title = t.title || ''
+  topicDraft.type = t.type || 'discussion'
+  topicDraft.decisionType = t.decisionType || 'none'
+  topicDraft.options = (t.options || []).map(function (o) { return { id: o.id, label: o.label } })
+  topicDraft.content = t.content || ''
+  topicDialogOpen.value = true
 }
-function setTopicDecision(topic, dtype) {
-  topic.decisionType = dtype
-  topic.options = dtype === 'multi_choice' ? [{ id: 1, label: '' }, { id: 2, label: '' }] : []
+
+function draftPickType(type) {
+  topicDraft.type = type
+  topicDraft.decisionType = type === 'decision' ? 'simple' : 'none'
+  topicDraft.options = []
 }
-function addTopicOption(topic) {
-  const opts = topic.options || []
-  const newId = opts.length ? Math.max.apply(null, opts.map(function (o) { return o.id })) + 1 : 1
-  topic.options = opts.concat([{ id: newId, label: '' }])
+
+function draftPickDecision(type) {
+  topicDraft.decisionType = type
+  topicDraft.options = type === 'multi_choice' ? [{ id: 1, label: '' }, { id: 2, label: '' }] : []
 }
-function removeTopicOption(topic, i) {
-  topic.options = topic.options.filter(function (_, idx) { return idx !== i })
+
+function draftAddOption() {
+  const options = topicDraft.options || []
+  const newId = options.length ? Math.max.apply(null, options.map(function (o) { return o.id })) + 1 : 1
+  topicDraft.options = options.concat([{ id: newId, label: '' }])
+}
+
+function draftRemoveOption(i) {
+  topicDraft.options = topicDraft.options.filter(function (_, idx) { return idx !== i })
+}
+
+function confirmTopic() {
+  if (!topicDraft.title.trim()) { toast({ title: '请输入议题内容', icon: 'none' }); return }
+  if (topicDraft.type === 'decision' && topicDraft.decisionType === 'multi_choice') {
+    const valid = (topicDraft.options || []).filter(function (o) { return o.label.trim() })
+    if (valid.length < 2) { toast({ title: '多选一议题至少需要两个选项', icon: 'none' }); return }
+  }
+  // 0728：三类显式落库（通知/讨论/表决），不再按有无正文自动分流；通知正文（如有）随 notice 带上
+  const noticeContent = topicDraft.type === 'notice' ? (topicDraft.content || '').trim() : ''
+  const nt = {
+    title: topicDraft.title.trim(),
+    type: topicDraft.type,
+    decisionType: topicDraft.decisionType,
+    options: (topicDraft.options || []).map(function (o) { return { id: o.id, label: o.label } }),
+    content: noticeContent
+  }
+  if (topicEditIdx.value >= 0) {
+    const arr = createForm.topics.slice()
+    arr[topicEditIdx.value] = nt
+    createForm.topics = arr
+  } else {
+    createForm.topics = createForm.topics.concat([nt])
+  }
+  topicDialogOpen.value = false
 }
 
 async function submitNewMeeting() {
@@ -4259,6 +4275,16 @@ async function submitNewMeeting() {
   // OCR 还在识别时先别提交：此刻 createForm 可能是中间态，等识别完再去通知
   if (scanBusy.value) { toast({ title: '正在识别中，请稍候…', icon: 'none' }); return }
   // 议题：逐条添加在 createForm.topics（过滤空标题）。议题现全部经弹窗添加，提交时列表已是最终态
+  if (!form.topics.length && firstTopicText.value.trim()) {
+    form.topics = [{
+      title: firstTopicText.value.trim(),
+      type: 'discussion',
+      decisionType: 'none',
+      options: [],
+      content: ''
+    }]
+    firstTopicText.value = ''
+  }
   var topics = (form.topics || []).filter(function (t) { return t.title && t.title.trim() })
   // 必填校验：会议名称 / 会议地点 / 会议议题。缺失 → 弹卡片列出，确认后亮红框
   fieldErrors.title = false; fieldErrors.location = false; fieldErrors.topics = false; fieldErrors.meetingDate = false; fieldErrors.meetingTime = false
@@ -4282,18 +4308,6 @@ async function submitNewMeeting() {
     if (missing.includes('会议地点')) fieldErrors.location = true
     if (missing.includes('会议议题')) fieldErrors.topics = true
     return
-  }
-  // 表决·多选一：至少两个非空选项（原在弹窗"确定"时校验，改内联后移到提交时统一校验）
-  for (let i = 0; i < topics.length; i++) {
-    const t = topics[i]
-    if (t.type === 'decision' && t.decisionType === 'multi_choice') {
-      const valid = (t.options || []).filter(function (o) { return o.label && o.label.trim() })
-      if (valid.length < 2) {
-        fieldErrors.topics = true
-        await showModal({ title: '表决议题缺选项', content: '第 ' + (i + 1) + ' 条「多选一」表决议题至少需要两个选项，请补全。', confirmText: '知道了', showCancel: false })
-        return
-      }
-    }
   }
   // 新发起的会议不得选择今天以前的日期。接待补录和既有历史会议编辑不受此限制。
   if (!editingMeetingId.value && form.meetingDate < todayStr()) {
@@ -4785,7 +4799,7 @@ onActivated(show)
 .ck-todo { position: relative; display: block; background: #fff; border-radius: 26rpx; padding: 26rpx 26rpx 30rpx 34rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 6rpx rgba(20,33,61,0.05), 0 12rpx 26rpx rgba(20,33,61,0.08); overflow: hidden; }
 .ck-todo:last-child { margin-bottom: 0; }
 .ck-todo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
-.ck-todo.blue::before { background: #2f5f9e; }
+.ck-todo.blue::before { background: #3E6BA8; }
 .ck-todo.green::before { background: #3F7C5A; }
 .ck-todo.amber::before { background: #3f8189; }   /* 学习培训卡：青色条（规范学习深青系） */
 .ck-todo.blue:not(.ck-todo-complete) { padding-right: 224rpx; }
@@ -4877,7 +4891,7 @@ onActivated(show)
 .ck-todo-delete:active { color: #C0392B; }
 .ck-todo-pager { position: absolute; top: 20rpx; right: 26rpx; display: inline-flex; align-items: center; gap: 12rpx; color: #7B8799; }
 .ck-todo-pager button { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #64758D; font-size: 22rpx; font-weight: 500; }
-.ck-todo-pager button:active { color: #2f5f9e; }
+.ck-todo-pager button:active { color: #3E6BA8; }
 .ck-todo-pager span { min-width: 44rpx; text-align: center; font-size: 21rpx; color: #9AA4B3; font-variant-numeric: tabular-nums; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
@@ -4885,7 +4899,7 @@ onActivated(show)
 .ck-lines { display: flex; flex-direction: column; gap: 20rpx; }
 .ck-line { position: relative; display: flex; align-items: center; gap: 22rpx; min-height: 116rpx; background: #fff; border-radius: 22rpx; padding: 20rpx 26rpx 20rpx 38rpx; box-shadow: 0 2rpx 5rpx rgba(20,33,61,0.04), 0 9rpx 22rpx rgba(20,33,61,0.055); overflow: hidden; cursor: pointer; box-sizing: border-box; }
 .ck-line::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 12rpx; }
-.ck-line.blue::before { background: #2f5f9e; }
+.ck-line.blue::before { background: #3E6BA8; }
 .ck-line.green::before { background: #3F7C5A; }
 .ck-line.amber::before { background: #4e8f98; }
 .ck-line:active { transform: translateY(2rpx); }
@@ -4981,7 +4995,7 @@ onActivated(show)
 .mtg-actionbar { position: fixed; left: 0; right: 0; bottom: calc(98rpx + env(safe-area-inset-bottom)); z-index: 90; padding: 12rpx 24rpx 16rpx; background: #fff; box-shadow: 0 -10rpx 24rpx rgba(20,42,58,.06); }   /* 0731 设计师点2：只剩主按钮一个实心色块，次级已收进列表末行 */
 /* 主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」19px(38rpx)/600、高 60px(120rpx)——
    两行结构重量分散、54px 在最底部偏矮，改一行大字。次级按钮已收进列表末行，样式退役 */
-.mtg-primary { width: 100%; min-height: 120rpx; border: 0; border-radius: 20rpx; background: #2f5f9e; color: #fff; font-size: 38rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+.mtg-primary { width: 100%; min-height: 120rpx; border: 0; border-radius: 20rpx; background: #3E6BA8; color: #fff; font-size: 38rpx; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .mtg-primary:active { background: #35608F; }
 /* 会议 tab 内容区给动作条+底栏让位 */
 /* 动作条只剩单钮：底部清开「固定动作条(约148rpx) + 底栏(约102rpx)」两层 */
@@ -4991,7 +5005,7 @@ onActivated(show)
 .mr-featured { position: relative; display: block; margin: 0 0 24rpx; padding: 24rpx 22rpx 22rpx; border: 2rpx solid #D6E2EC; border-radius: 22rpx; background: #F8FBFD; box-shadow: 0 9rpx 22rpx rgba(34,62,84,.08); overflow: hidden; cursor: pointer; }
 .mr-featured:active { background: #F1F7FB; }
 .mr-feat-main { display: flex; align-items: center; gap: 26rpx; }
-.mr-cta-wide { display: block; width: 100%; margin-top: 22rpx; min-height: 88rpx; border: 0; border-radius: 16rpx; background: #2f5f9e; color: #fff; font-size: 32rpx; font-weight: 700; }
+.mr-cta-wide { display: block; width: 100%; margin-top: 22rpx; min-height: 88rpx; border: 0; border-radius: 16rpx; background: #3E6BA8; color: #fff; font-size: 32rpx; font-weight: 700; }
 .mr-cta-wide:active { background: #35608F; }
 .mr-featured::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9rpx; background: #4B77A9; }
 .mr-featured:has(.mr-badge.overdue)::before { background: #C75B4B; }
@@ -5301,7 +5315,17 @@ onActivated(show)
 /* 右箭头：CSS 边框画（CLAUDE.md），示意可进入 */
 .rte-arr { flex-shrink: 0; display: inline-block; width: 14rpx; height: 14rpx;
   border-right: 3rpx solid #B4BCC7; border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
-.rte-sub { margin-top: 12rpx; font-size: 27rpx; color: #6B7280; line-height: 1.55; }   /* 0731 用户定：不许单行截断——折行写全，条数超限由「等」收尾（每条完整） */
+.rte-sub {
+  margin-top: 12rpx;
+  font-size: 27rpx;
+  color: #6B7280;
+  line-height: 1.55;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}   /* 摘要最多两行：优先自然排满首行，仅在末行过短时调整，避免孤字 */
 .plan-stack.reception-mode .plan-todo-card .plan-badge.view { cursor: pointer; }
 .plan-stack.reception-mode .plan-todo-card.empty-compact { padding: 0 24rpx; }
 .plan-stack.reception-mode .plan-todo-card.empty-compact .yc-list-head { display: none; }
@@ -5683,10 +5707,7 @@ onActivated(show)
 
 /* 新建会议弹窗 */
 .modal-mask { position: fixed; inset: 0; z-index: 200; background: #fff; display: flex; align-items: stretch; }
-.create-panel { width: 100%; height: 100%; background: #fff; display: flex; flex-direction: column; overflow: hidden;
-  /* 发起会议弹层整体走会议模块蓝：此前误用全局橙 var(--c-primary-*)（头部/主按钮/选中态都成橙），与原型不符——
-     在本作用域把主色变量覆写为蓝，头部/线下会议选中/含重大事项开关/主按钮一并变蓝。异常态(橙/红)是硬编码，不受影响 */
-  --c-primary: #2f5f9e; --c-primary-dark: #2f5f9e; --c-primary-strong: #244b7d; --c-primary-soft: #EAF0F8; }
+.create-panel { width: 100%; height: 100%; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
 .create-head { display: flex; align-items: center; background: var(--c-primary-dark); flex-shrink: 0; padding-top: env(safe-area-inset-top); box-sizing: border-box; height: calc(120rpx + env(safe-area-inset-top)); }
 .create-back { width: 96rpx; height: 120rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 64rpx; font-weight: 700; flex-shrink: 0; }
 .create-title { flex: 1; text-align: center; color: #fff; font-size: 38rpx; font-weight: 700; line-height: 1.35; }
@@ -5726,16 +5747,12 @@ onActivated(show)
 .quick-fill-bar { flex-shrink: 0; padding: 16rpx 26rpx 10rpx; background: var(--c-bg-page); border-top: 1rpx solid #ececec; }
 .quick-fill-bar .ai-fill-btn { margin: 0 auto 10rpx; }
 .quick-fill-bar .ai-fill-hint { margin: 0; }
-/* 拍照进流程入口卡（0731 设计师点3）：线性相机图标不套灰块 + 说明 + ›，风格与下方字段卡一致 */
-.scan-entry { display: flex; align-items: center; gap: 18rpx; padding: 22rpx 20rpx; margin-bottom: 22rpx; background: #fff; border: 2rpx solid #ececec; border-radius: 16rpx; box-shadow: 0 2rpx 10rpx rgba(30,40,60,0.05); cursor: pointer; }
-.scan-entry:active { background: #FAFBFC; }
-.se-cam { width: 46rpx; height: 46rpx; flex-shrink: 0; color: #2f5f9e; }
-.se-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.se-copy b { font-size: 32rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
-.se-copy small { font-size: 26rpx; color: #8a9099; line-height: 1.3; }
-/* › 收起态右指、展开态下指（CSS 边框箭头，见 CLAUDE.md，不用字符箭头） */
-.se-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #b4bcc7; border-bottom: 3rpx solid #b4bcc7; transform: rotate(-45deg); transition: transform .2s ease; }
-.scan-entry.open .se-chev { transform: rotate(45deg); }
+/* 顶部分段切换：手动填写 / 拍照上传（灰底圆角胶囊 + active 橙底白字） */
+.create-tabs { display: flex; gap: 8rpx; background: #F2F6F7; border-radius: 16rpx; padding: 4rpx; margin-bottom: 22rpx; }
+.create-tab { flex: 1; display: flex; align-items: center; justify-content: center; padding: 14rpx 0; font-size: 36rpx; line-height: 1.2; font-weight: 700; color: #40545C; background:#E7EEF0; border:1rpx solid #D5E0E3; border-radius: 12rpx; cursor: pointer; }
+.create-tab.active { background: #D97706; border-color:#D97706; color: #fff; box-shadow: 0 6rpx 16rpx rgba(217,119,6,0.2); }
+.create-tab:active { opacity: 0.8; }
+.ct-ico { font-size: 32rpx; line-height: 1; }
 /* 拍照/上传面板 */
 .scan-pane { margin-bottom: 12rpx; }
 /* 时间/地点设置项列表（iOS 日历式）：标签左、值右、点整行展开选择器 */
@@ -5748,10 +5765,6 @@ onActivated(show)
 .fl-value.ph { color: #b7bbc0; }
 .fl-arrow { flex-shrink: 0; font-size: 28rpx; color: #c4c8cd; line-height: 1; }
 .field-line.field-error { background: #FFF4F4; }
-/* 会议时间已过提示（识别带入旧时间时）：红字 + 圆形感叹号，配合底部按钮置灰 */
-.dt-past-warn { display: flex; align-items: flex-start; gap: 10rpx; padding: 2rpx 6rpx; color: #E5533C; font-size: 26rpx; line-height: 1.5; }
-.dt-past-ico { flex-shrink: 0; width: 32rpx; height: 32rpx; border-radius: 50%; background: #E5533C; color: #fff; font-size: 24rpx; font-weight: 700; line-height: 32rpx; text-align: center; }
-.dt-past-warn b { color: #E5533C; font-weight: 700; }
 .field-line-split { padding: 0; gap: 0; }
 .fl-part { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12rpx; padding: 16rpx 18rpx; box-sizing: border-box; }
 .fl-part-time { border-left: 2rpx solid #f2f2f2; }
@@ -5786,16 +5799,15 @@ onActivated(show)
 .ds-cards-2 { gap: 56rpx; justify-content:center; }
 .ds-cards-2 .ds-card { flex:0 0 36%; padding: 18rpx 6rpx 16rpx; }
 .ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
-.ds-card:active { background: #EAF0F8; border-color: #C7D8EE; }
+.ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
 .ds-card:disabled { opacity: 0.75; }
-.ds-svg { width: 48rpx; height: 48rpx; margin-bottom: 6rpx; }
 .ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22rpx; margin-bottom: 4rpx; }
 .ds-ico.or { background: #FFF3E0; }
 .ds-ico.bl { background: #EAF2FF; }
 .ds-t { font-size: 28rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
 .ds-shared-hint { margin:12rpx 4rpx 2rpx; color:#938979; font-size:26rpx; line-height:1.45; text-align:center; white-space:nowrap; }
 .ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
-.ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(47,95,158,0.2); border-top-color: #2f5f9e; box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
+.ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
 /* 待识别缩略图预览条：横向排列，可删 */
 .ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
 .ds-thumb { position: relative; width: 108rpx; height: 108rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
@@ -5834,8 +5846,8 @@ onActivated(show)
 @media (prefers-reduced-motion: reduce) { .sp-ring-svg { animation: none; transform: rotate(-90deg); } }
 .sp-ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .sp-ring-val { display: flex; align-items: baseline; }
-.sp-ring-num { font-size: 76rpx; font-weight: 800; color: #2f5f9e; font-variant-numeric: tabular-nums; line-height: 1; }
-.sp-ring-pct { font-size: 32rpx; font-weight: 800; color: #2f5f9e; margin-left: 3rpx; }
+.sp-ring-num { font-size: 76rpx; font-weight: 800; color: #C76A00; font-variant-numeric: tabular-nums; line-height: 1; }
+.sp-ring-pct { font-size: 32rpx; font-weight: 800; color: #C76A00; margin-left: 3rpx; }
 @keyframes spRingGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,168,0,0)); } 50% { filter: drop-shadow(0 0 5rpx rgba(255,168,0,0.55)); } }
 .sp-title { font-size: 42rpx; font-weight: 700; color: #1f2329; letter-spacing: 1rpx; }
 .sp-say { font-size: 32rpx; color: #B07400; margin: 14rpx 0 4rpx; min-height: 44rpx; }
@@ -5986,18 +5998,7 @@ onActivated(show)
 /* 居委会见证（创建页，移自通知页）：白卡 + 标题/说明 + 适老化大复选框 */
 /* 居委会见证：普通选项行（非卡片），标题比 section-title 小一号、无灰字注释 */
 /* 居委会见证（说明式开关卡片，精简为一行：标题 + 开关） */
-.juwei-card { display: flex; flex-direction: column; align-items: stretch; gap: 0; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
-/* 开关行（标题+说明 | 开关）：卡片改纵向后，这一行仍横排 */
-.juwei-top { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-/* 勾选后展开的明细：公告截止日 + 居委会见证（设计师点9） */
-.juwei-detail { margin-top: 14rpx; padding-top: 12rpx; border-top: 2rpx solid #f0f0f0; display: flex; flex-direction: column; gap: 10rpx; }
-.jd-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.jd-label { flex-shrink: 0; font-size: 28rpx; color: #8a9099; }
-.jd-value { min-width: 0; text-align: right; font-size: 30rpx; color: #2d3137; font-weight: 600; }
-.jd-value.ph { color: #b7bbc0; font-weight: 400; }
-/* 三色制：紧张(≤3天)用橙、已过用红——都是"异常态"，此处才该出橙/红 */
-.jd-row.jd-warn .jd-value { color: #C76A00; }
-.jd-row.jd-error .jd-value { color: #E5533C; font-weight: 700; }
+.juwei-card { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; background: #fff; border: 2rpx solid #f0f0f0; border-radius: 16rpx; padding: 16rpx 18rpx; margin-top: 4rpx; margin-bottom: 25rpx; box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.04); }
 .juwei-switch { cursor: pointer; }
 .juwei-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .juwei-title { min-width: 0; font-size: 28rpx; color: #1f2329; font-weight: 600; line-height: 1.4; }
@@ -6021,8 +6022,6 @@ onActivated(show)
 .clear-link { display: block; margin-top: 14rpx; font-size: 28rpx; color: #666; line-height: 1.5; }
 .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-bottom: 10rpx; }
 .section-title { display: block; font-size: 32rpx; color: #1f2329; font-weight: 700; margin-bottom: 8rpx; line-height: 1.4; word-break: break-all; }
-/* 议题计数（设计师点1）：次级灰、常规字重，跟在标题后，仅 topics>0 时出现 */
-.sec-count { color: #8a9099; font-weight: 400; font-size: 26rpx; }
 .section-title-row .section-title { margin-bottom: 0; }
 .required-note { font-size: 28rpx; color: #E67E22; line-height: 1.35; white-space: nowrap; }
 
@@ -6062,11 +6061,8 @@ onActivated(show)
 .btn, .btn-ghost, .btn-primary { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; text-align: center; font-size: 32rpx; font-weight: 600; box-sizing: border-box; white-space: nowrap; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; }
 .btn-ghost { color: #777; background: #f5f5f5; }
 /* 主按钮统一深橙（与顶栏同色），按下更深 */
-.btn-primary { color: #fff; background: #2f5f9e; }
-.btn-primary:active { background: #244b7d; }
-/* 0731 设计师点2：未填齐的置灰态（仍可点，点了 onSubmitClick 提示缺什么，不用 disabled 属性） */
-.btn-primary.disabled { background: #C3CAD3; color: #fff; box-shadow: none; }
-.btn-primary.disabled:active { background: #C3CAD3; }
+.btn-primary { color: #fff; background: var(--c-primary-dark); }
+.btn-primary:active { background: var(--c-primary-strong); }
 
 /* 议题构建 */
 .topic-empty { text-align: center; padding: 28rpx 0; font-size: 28rpx; color: #666; line-height: 1.6; }
@@ -6076,29 +6072,12 @@ onActivated(show)
 .topic-line-text { flex: 1; min-width: 0; font-size: 30rpx; color: #1f2329; line-height: 1.45; word-break: break-all; }
 .topic-line-badge { flex-shrink: 0; margin: 0; }
 .topic-line-del { flex-shrink: 0; font-size: 42rpx; color: #888; padding: 0 10rpx; line-height: 1; }
-/* 议题内联编辑行（设计师点1/2/3/5/6）：直接铺在白卡里、分隔线分条，无卡中卡、无"确定"大按钮 */
-.topic-item { padding: 18rpx 0 6rpx; border-top: 2rpx solid #EEF0F2; }
-.topic-item:first-of-type { border-top: 0; }
-.ti-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
-.ti-no { font-size: 30rpx; color: #1f2329; font-weight: 700; }
-.ti-del { font-size: 40rpx; line-height: 1; color: #9aa0a6; padding: 4rpx 12rpx; }
-.ti-del:active { color: #E5533C; }
-.ti-input { width: 100%; box-sizing: border-box; min-height: 150rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; }
-.ti-input::placeholder { color: #b7bbc0; }
-.ti-input:focus { border-color: #2f5f9e; }
-.ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
-.ti-decide { margin-top: 8rpx; }
-.ti-options { margin-top: 8rpx; }
-/* 选中态统一用会议模块蓝 #2f5f9e（设计师定：白底上约 6:1，去掉 #3E6BA8/#3F6078 等杂蓝） */
-.ti-types .type-chip.on { background: #2f5f9e; color: #fff; border-color: #2f5f9e; font-weight: 700; }
 /* 会议议题：标题与添加条贴近一些 */
 .section-title-row.topic-head { margin-bottom: 0; }
 /* 添加议题触发条：点它弹出议题弹窗（输入/类型/确定都在弹窗内），单独一条大按钮，远离右下角「生成通知」防误触 */
-/* 0731 设计师点4：虚线框（本设计里独一份的新形状）改成与卡内其他行一致的一行「＋ 添加议题」，
-   上面用分隔线断开、蓝字，不再用虚线 */
-.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 4rpx; min-height: 112rpx; border: 0; border-top: 2rpx solid #EEF0F2; border-radius: 0; background: transparent; color: #2f5f9e; font-size: 30rpx; }
-.topic-add-trigger:active { background: #F6F8FB; }
-.topic-add-trigger.field-error { border-top-color: #E5533C; background: #FFF3F1; color: #C0392B; }
+.topic-add-trigger { display: flex; align-items: center; justify-content: center; gap: 10rpx; margin-top: 12rpx; height: 88rpx; border: 2rpx dashed #C9CDD4; border-radius: 16rpx; background: #FAFBFC; color: #55606E; font-size: 30rpx; }
+.topic-add-trigger:active { background: #F1F3F5; }
+.topic-add-trigger.field-error { border-color: #E5533C; background: #FFF3F1; color: #C0392B; }
 /* 卡片压缩（0723 用户定）：去标题去补充正文后整体收紧,类型 chip 缩小约 40%；
    「议题内容+取消」「议题类型/表决方式+chips」各并成一行 */
 .topic-inline-editor { margin-top: 16rpx; padding: 22rpx 24rpx 26rpx; border: 2rpx solid #E2E5E9; border-radius: 18rpx; background: #FAFBFC; }
@@ -6114,11 +6093,11 @@ onActivated(show)
 .topic-inline-editor .type-row { margin-bottom: 0; }
 .tie-content { box-sizing: border-box; height: auto; min-height: 140rpx; line-height: 1.6; resize: none; padding: 16rpx 20rpx; }
 .tie-add-option { display: block; margin-top: 12rpx; }
-.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #2f5f9e; font-size: 28rpx; font-weight: 600; }
+.topic-title-confirm { flex: 0 0 104rpx; height: 72rpx; border: 2rpx solid #C7D8E6; border-radius: 12rpx; background: #DCE8F2; color: #3F6078; font-size: 28rpx; font-weight: 600; }
 .topic-title-confirm:active { opacity: .88; }
 /* 选中态加强（0723 用户定"明显一点"）：深蓝底白字，与未选的浅灰形成强对比 */
 .topic-inline-editor .type-chip { border: 2rpx solid #E2E5E9; background: #fff; }
-.topic-inline-editor .type-chip.on { background: #2f5f9e; color: #fff; border-color: #2f5f9e; font-weight: 700; box-shadow: 0 4rpx 10rpx rgba(63,96,120,0.25); }
+.topic-inline-editor .type-chip.on { background: #3F6078; color: #fff; border-color: #3F6078; font-weight: 700; box-shadow: 0 4rpx 10rpx rgba(63,96,120,0.25); }
 .topic-inline-editor .add-link { color: #5B7C96; }
 .tie-confirm { width: 100%; height: 76rpx; margin-top: 2rpx; border: 0; border-radius: 14rpx; background: #B45F18; color: #fff; font-size: 29rpx; font-weight: 600; }
 .tie-confirm:active { opacity: .88; }
@@ -6212,19 +6191,17 @@ onActivated(show)
 .cal-cell { height: 78rpx; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #1f2329; border-radius: 12rpx; }
 .cal-cell.empty { visibility: hidden; }
 .cal-cell.disabled { color: #C7CDD5; background: transparent; cursor: not-allowed; }
-/* 设计师点3：今天用会议蓝（非橙）——橙只留异常态（逾期/待留档），此处是"当前"不是异常 */
-.cal-cell.today { color: #2f5f9e; font-weight: 700; }
-.cal-cell.on { background: #2f5f9e; color: #fff; font-weight: 700; }
+.cal-cell.today { color: var(--c-primary-dark); font-weight: 700; }
+.cal-cell.on { background: #3E6BA8; color: #fff; font-weight: 700; }
 .cal-cell:not(.empty):not(.on):not(.disabled):active { background: #E6EDF8; }
 .picker-pop { position: relative; width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 38rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
-/* 设计师点3：时间大标题用会议蓝（非橙金）——所选时间是"当前值"，不该抢异常态的橙 */
-.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #2f5f9e; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
+.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #8B5E34; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
 .tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
 .tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
-.tg-cell.on { background: #E6EDF8; color: #2f5f9e; font-weight: 700; box-shadow: inset 0 0 0 3rpx #2f5f9e; }
+.tg-cell.on { background: #E6EDF8; color: #2F5E96; font-weight: 700; box-shadow: inset 0 0 0 3rpx #3E6BA8; }
 .tg-cell:not(.on):active { background: #E6EDF8; }
 .tg-cell.disabled { color: #C4CAD2; background: #F7F8FA; box-shadow: none; cursor: not-allowed; }
 .tg-cell.disabled:active { background: #F7F8FA; }
@@ -6239,7 +6216,7 @@ onActivated(show)
 .pp-item.on { color: #fff; background: #FFA800; font-weight: 700; }
 .pp-actions { display: flex; gap: 18rpx; margin-top: 24rpx; justify-content: center; }
 .pp-actions .btn { flex: 0 0 60%; width: 60%; }
-.picker-pop .pp-actions .btn-primary { background: #2f5f9e; border-color: #2f5f9e; color: #fff; }
+.picker-pop .pp-actions .btn-primary { background: #3E6BA8; border-color: #3E6BA8; color: #fff; }
 
 
 /* 议题摘要行 */
@@ -6361,7 +6338,7 @@ onActivated(show)
 .create-panel .fl-label,
 .create-panel .meeting-method-line > .fl-label { color: #667B88; font-weight: 500; }
 .create-panel .meeting-info-card .caption-as-title,
-.create-panel .section-title { color: #1f2329; font-weight: 600; letter-spacing: 1rpx; }
+.create-panel .section-title { color: #8A540D; font-weight: 600; letter-spacing: 1rpx; }
 .create-panel .juwei-title { color: #24364B; font-weight: 600; } /* 主标题短句后升格，小字负责解释 */
 .create-panel .form-label { color: #667B88; font-weight: 500; }
 .create-panel .fl-value { color: #24364B; font-weight: 700; font-size: 34rpx; }   /* 具体值统一深蓝黑 */
@@ -6369,27 +6346,24 @@ onActivated(show)
 .create-panel .topic-line-text { color: #2C3E70; font-weight: 400; }  /* 议题正文：深靛蓝(≈9:1)替代硬黑，清爽墨水感；序号仍<b>加粗保结构 */
 .create-panel .topic-line-text b { color:#B46A12; }
 /* — 议题「确定添加」：整宽底部按钮，蓝底(与橙色「生成通知」区分)，防误点 — */
-.create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #2f5f9e; color: #fff; font-size: 32rpx; font-weight: 700; }
+.create-panel .tie-confirm-btn { display: block; width: 100%; height: 88rpx; margin-top: 18rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 32rpx; font-weight: 700; }
 .create-panel .tie-confirm-btn:active { background: #33506A; }
 .create-panel .tie-notice-toggle { display: inline-block; padding: 12rpx 0; font-size: 30rpx; color: #5B7C96; }
-/* — 行距/卡片间距整体收紧，把「含重大事项」挤进短屏首屏 + 三行灰字左对齐 —
-   0731 设计师：三行 66px 收到 62px（padding 14→12rpx），配合去虚线框/收 section 间距把勾选框顶进首屏 */
-.create-panel .field-line { padding: 12rpx 20rpx; }
+/* — 行距/卡片间距整体收紧，把「居委会见证」挤进短屏首屏 + 三行灰字左对齐 — */
+.create-panel .field-line { padding: 14rpx 20rpx; }
 .create-panel .field-line-split { padding: 0; }
-.create-panel .meeting-info-card .fl-part { padding: 12rpx 20rpx; gap: 12rpx; }
+.create-panel .meeting-info-card .fl-part { padding: 14rpx 20rpx; gap: 12rpx; }
 .create-panel .meeting-info-card .fl-part .fl-label { width: 100rpx; flex-shrink: 0; }
 .create-panel .fl-loc-main { padding: 0; gap: 12rpx; }
 .create-panel .fl-loc-main .fl-label { width: 100rpx; flex-shrink: 0; }
 /* 卡片间距/输入框高度收紧（省高度大头：原 section 间距 31rpx → 16rpx） */
 .create-panel .create-body { padding-top: 10rpx; padding-bottom: 28rpx; }
-.create-panel .scan-entry { margin-bottom: 16rpx; }
+.create-panel .create-tabs { margin-bottom: 12rpx; }
 .create-panel .create-section,
-.create-panel .create-section.meeting-info-card { margin-bottom: 16rpx; padding-top: 12rpx; padding-bottom: 12rpx; }
+.create-panel .create-section.meeting-info-card { margin-bottom: 22rpx; padding-top: 14rpx; padding-bottom: 14rpx; }
 .create-panel .meeting-info-card .form-group { margin-bottom: 6rpx; }
 .create-panel .meeting-info-card .caption-as-title { margin-bottom: 6rpx; }
-/* 会议名称与下方字段（召开方式/时间/地点）同卡，用分隔线断开——还原原型「统一行式白卡」的分行观感 */
-.create-panel .meeting-info-card .meeting-title-group { margin-bottom: 0; padding-bottom: 12rpx; border-bottom: 2rpx solid #f0f0f0; }
-.create-panel .meeting-info-card .field-list { gap: 10rpx; margin-top: 6rpx; }
+.create-panel .meeting-info-card .field-list { gap: 10rpx; }
 .create-panel .form-input.large { height: 64rpx; min-height: 64rpx; }
 .create-panel .title-input-wrap textarea.title-ta { min-height: 56rpx; }
 .create-panel .juwei-card { margin-top: 0; margin-bottom: 22rpx; padding: 20rpx 18rpx; }
@@ -6398,7 +6372,7 @@ onActivated(show)
 .create-panel .method-switch button { min-height: 76rpx; padding: 14rpx 26rpx; font-size: 32rpx; }      /* 线下/线上 38px */
 .create-panel .platform-select { height: 88rpx; font-size: 32rpx; flex-basis: 330rpx; padding: 0 40rpx 0 24rpx; }  /* 线上平台下拉 44px；加宽+减右留白，让「微信工作群」完整显示 */
 .create-panel .field-map-btn { width: 84rpx; height: 76rpx; min-height: 76rpx; } /* 地图键 38px */
-.create-panel .topic-add-trigger { min-height: 112rpx; }       /* 添加议题一行（56px，分隔线+蓝字，去虚线框） */
+.create-panel .topic-add-trigger { min-height: 92rpx; }        /* 添加议题条 46px */
 /* — bug修复：议题列表去掉内层限高(原200rpx裁掉换行议题)，交给弹层整体滚动 — */
 .create-panel .topic-list { max-height: none; overflow: visible; }
 /* — 精简·扁平化：浅灰底衬白卡、去边框留微阴影；字段行去内框、改细分隔线，消除「盒套盒」 — */
@@ -6422,4 +6396,82 @@ onActivated(show)
 .create-panel .juwei-switch.on { background: #2E8B57; }
 /* 线上会议不支持重大事项：整卡置灰（开关仍可点——点了弹提示说明原因） */
 .create-panel .juwei-card.disabled { opacity: 0.6; }
+
+/* 0731 发起会议重排：蓝色居中页头 + 基础信息行卡 + 议题卡 + 单一底部主按钮。 */
+.create-panel .create-head { height: calc(116rpx + env(safe-area-inset-top)); background: #3567A4; }
+.create-panel .create-back { width: 108rpx; height: 108rpx; font-size: 58rpx; }
+.create-panel .create-nav-ph { width: 108rpx; }
+.create-panel .create-title { font-size: 37rpx; }
+.create-panel .create-body { padding: 20rpx 28rpx 28rpx; background: #F3F5F7; }
+
+/* 上传识别保留，但退成表单上方的轻量辅助入口，不与主体白卡争抢。 */
+.create-panel .create-tabs { margin: 0 0 18rpx; padding: 0; background: transparent; gap: 16rpx; }
+.create-panel .create-tab { min-height: 68rpx; padding: 0 16rpx; border: 0; border-radius: 14rpx; background: #E8EDF3; color: #5F6D7C; font-size: 28rpx; font-weight: 600; box-shadow: none; }
+.create-panel .create-tab.active { background: #DCE7F3; color: #315F97; box-shadow: none; }
+
+.create-panel .scan-accelerator { display: flex; align-items: center; gap: 18rpx; min-height: 96rpx; margin-bottom: 18rpx; padding: 12rpx 22rpx; box-sizing: border-box; border: 2rpx solid #D8E2EE; border-radius: 18rpx; background: #F7FAFD; color: #315F97; cursor: pointer; }
+.create-panel .scan-accelerator:active { background: #EDF4FA; }
+.create-panel .scan-accelerator.done { border-color: #BED8C8; background: #F2F8F4; color: #2F6B45; }
+.create-panel .scan-accelerator-icon { flex: 0 0 auto; font-size: 34rpx; line-height: 1; }
+.create-panel .scan-accelerator-main { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4rpx; }
+.create-panel .scan-accelerator-main b { font-size: 29rpx; line-height: 1.35; }
+.create-panel .scan-accelerator-main small { color: #748294; font-size: 23rpx; line-height: 1.35; }
+.create-panel .scan-accelerator-arrow { flex: 0 0 auto; color: #8A97A6; font-size: 38rpx; transform: rotate(90deg); transition: transform .18s ease; }
+.create-panel .scan-accelerator-arrow.open { transform: rotate(-90deg); }
+
+/* 0731 发起会议表单：直接填写、明确规则、缺项不伪装成可提交 */
+.create-panel .scan-accelerator-icon { display: grid; place-items: center; width: 58rpx; height: 58rpx; border-radius: 14rpx; background: #E7F0FA; font-size: 30rpx; }
+.create-panel .meeting-title-line .title-input-wrap { padding-right: 0; }
+.create-panel .field-line-location .fl-loc-main { width: 100%; }
+.create-panel .topic-first-row { padding: 18rpx 0 8rpx; }
+.create-panel .topic-first-label { display: block; margin-bottom: 12rpx; color: #425066; font-size: 28rpx; font-weight: 600; }
+.create-panel .topic-first-row textarea { width: 100%; min-height: 116rpx; padding: 20rpx; box-sizing: border-box; resize: none; border: 2rpx solid #D9DEE6; border-radius: 14rpx; background: #fff; color: #1F2937; font: inherit; font-size: 30rpx; line-height: 1.5; }
+.create-panel .topic-first-row textarea::placeholder { color: #8B95A4; }
+.create-panel .topic-first-row.field-error textarea { border-color: #E5533C; background: #FFF8F7; }
+.create-panel .juwei-card { display: block; }
+.create-panel .major-check-row { display: flex; align-items: center; gap: 16rpx; min-height: 58rpx; cursor: pointer; }
+.create-panel .major-checkbox { display: grid; flex: 0 0 38rpx; width: 38rpx; height: 38rpx; place-items: center; box-sizing: border-box; border: 3rpx solid #BBC4CF; border-radius: 8rpx; color: #fff; font-size: 25rpx; font-weight: 700; }
+.create-panel .major-checkbox.checked { border-color: #3F73B5; background: #3F73B5; }
+.create-panel .major-facts { margin-top: 14rpx; border-top: 2rpx solid #E8EBEF; }
+.create-panel .major-facts > div { display: flex; justify-content: space-between; gap: 20rpx; padding: 14rpx 2rpx 0; color: #667386; font-size: 27rpx; }
+.create-panel .major-facts b { color: #B56A1D; font-weight: 600; text-align: right; }
+.create-panel .sheet-actions .btn.form-incomplete { background: #A9B7C9; box-shadow: none; }
+
+.create-panel .basic-info-card { padding: 0 28rpx !important; border-radius: 22rpx; overflow: hidden; }
+.create-panel .meeting-title-line { display: grid; grid-template-columns: 148rpx minmax(0, 1fr); align-items: center; min-height: 112rpx; margin: 0 !important; border-bottom: 2rpx solid #E3E7EB; }
+.create-panel .meeting-title-line .caption-as-title { margin: 0 !important; color: #758091; font-size: 29rpx; font-weight: 500; letter-spacing: 0; }
+.create-panel .caption-as-title i,
+.create-panel .fl-label i,
+.create-panel .topic-head i { display: block; margin-top: 3rpx; color: #2F7A55; font-size: 20rpx; font-style: normal; font-weight: 600; line-height: 1.2; }
+.create-panel .topic-head i { display: inline-block; margin: 0 0 0 12rpx; padding: 3rpx 9rpx; border-radius: 999rpx; background: #E6F3EA; vertical-align: middle; }
+.create-panel .meeting-title-line .title-row,
+.create-panel .meeting-title-line .title-input-wrap { min-width: 0; width: 100%; }
+.create-panel .meeting-title-line .title-input-wrap textarea.title-ta { min-height: 76rpx; height: auto; padding: 16rpx 50rpx 16rpx 0; border: 0; border-radius: 0; background: transparent; color: #1F2937; font-size: 33rpx; font-weight: 700; line-height: 1.35; }
+.create-panel .meeting-title-line .title-clear { right: 0; }
+.create-panel .meeting-title-line .title-ghost { left: 0; font-size: 31rpx; }
+.create-panel .basic-info-card .field-list { margin: 0; }
+.create-panel .basic-info-card .field-line { min-height: 112rpx; padding: 0; gap: 12rpx; }
+.create-panel .basic-info-card .meeting-method-line,
+.create-panel .basic-info-card .field-line-location { min-height: 112rpx; }
+.create-panel .basic-info-card .fl-label,
+.create-panel .basic-info-card .meeting-method-line > .fl-label { width: 136rpx; min-width: 136rpx; color: #758091; font-size: 29rpx; font-weight: 500; }
+.create-panel .basic-info-card .fl-value { text-align: left; color: #1F2937; font-size: 33rpx; font-weight: 700; }
+.create-panel .basic-info-card .fl-value.ph { color: #7C8796; font-weight: 600; }
+.create-panel .basic-info-card .fl-loc-main { padding: 0; }
+.create-panel .basic-info-card .field-map-btn { flex: 0 0 76rpx; }
+
+.create-panel .create-section:not(.meeting-info-card) { padding: 0 28rpx 10rpx; border-radius: 22rpx; }
+.create-panel .topic-head { min-height: 88rpx; display: flex; align-items: center; border-bottom: 2rpx solid #E3E7EB; }
+.create-panel .topic-head .section-title { color: #394556; font-size: 30rpx; font-weight: 700; letter-spacing: 0; }
+.create-panel .topic-head .section-title em { margin-left: 8rpx; color: #758091; font-style: normal; font-size: 27rpx; font-weight: 500; }
+.create-panel .topic-line { align-items: flex-start; min-height: 170rpx; padding: 22rpx 0; }
+.create-panel .topic-line-text { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 16rpx; color: #1F2937; font-size: 30rpx; line-height: 1.45; }
+.create-panel .topic-line-text b { color: #4E5A6A; font-size: 28rpx; }
+.create-panel .topic-line-del { width: auto; margin-left: 18rpx; padding: 4rpx 10rpx; border: 0; background: transparent; color: #6F7783; font-size: 27rpx; line-height: 1.4; }
+.create-panel .topic-add-trigger { min-height: 92rpx; border-top: 2rpx solid #E3E7EB; color: #3567A4; }
+.create-panel .tat-text { color: #3567A4; font-size: 31rpx; font-weight: 700; }
+
+.create-panel .sheet-actions.fixed { padding: 14rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 0; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
+.create-panel .sheet-actions.fixed .btn-primary { flex: 1; width: 100%; height: 104rpx; border-radius: 18rpx; background: #3567A4; font-size: 34rpx; }
+.create-panel .sheet-actions.fixed .btn-primary:active { background: #2D598E; }
 </style>
