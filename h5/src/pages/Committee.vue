@@ -391,7 +391,8 @@
         </div>
 
         <!-- 地图选点（0723 接真实接口）：腾讯 H5 选点组件弹层 -->
-        <MapPicker :open="mapPickerOpen" @close="mapPickerOpen = false" @picked="onMapPicked" />
+        <!-- 0801 设计师点10：把表单已有坐标传进去当默认落点（没有则组件内走浏览器定位） -->
+        <MapPicker :open="mapPickerOpen" :init-lat="createForm.locationLat" :init-lng="createForm.locationLng" @close="mapPickerOpen = false" @picked="onMapPicked" />
 
         <!-- 接待登记弹窗（0716 从已删的接待列表页搬来，字段与校验照旧） -->
         <div v-if="recCreateOpen" class="rec-mask" @click="recCreateOpen = false">
@@ -487,13 +488,15 @@
         </div>
 
         <div class="create-body" style="overflow-y:auto;">
-          <!-- 拍照上传是填表加速器，不再与手动填写并列成两种模式。 -->
-          <div class="scan-accelerator" :class="{ done: docPrefilled }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
+          <!-- 拍照上传是填表加速器，不再与手动填写并列成两种模式。
+               0801 设计师点11：入口压成一行「📷 拍通知照片自动填写 ›」——副标题与面板里的格式说明念的是同一件事，删；
+               支持的格式交给展开后「图片 / 文件」两个按钮自明 -->
+          <div class="scan-accelerator" :class="{ done: docPrefilled, open: createTab === 'scan' }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
             <span class="scan-accelerator-icon" aria-hidden="true">📷</span>
             <span class="scan-accelerator-main">
               <b>{{ docPrefilled ? '已识别，可继续核对修改' : '拍通知照片自动填写' }}</b>
-              <small>{{ docPrefilled ? '识别内容已回填到下方表单' : '支持拍照、图片、PDF 或 Word 文件' }}</small>
             </span>
+            <i class="sa-chev" aria-hidden="true"></i>
           </div>
 
           <!-- 拍照/上传面板：拍通知照片或传文件，AI 识别后在当前面板展示结果，并把识别内容预填到下方表单 -->
@@ -518,7 +521,6 @@
                   <span class="ds-t">文件</span>
                 </button>
               </div>
-              <div class="ds-shared-hint">可上传图片或 PDF、Word 文件</div>
               <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
                 {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
               </button>
@@ -575,10 +577,8 @@
                   <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
-                <!-- 设计师点7：地点单独露出地图选点入口 -->
-                <button class="loc-map-btn field-map-btn" @click.stop="pickLocationOnMap" aria-label="从地图选点">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1A73E8" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
-                </button>
+                <!-- 0801 设计师点7：行内地图小图标删——一行两个点击目标老人分不清点哪个；
+                     「从地图选点」已并入点行后弹出的地点选择单（openLocPicker 最后一项） -->
               </div>
               <div v-else class="field-line field-line-location">
                 <span class="fl-label online-platform-label">线上平台</span>
@@ -638,13 +638,18 @@
               <span class="major-checkbox" :class="{ checked: createForm.juweiWitness }">{{ createForm.juweiWitness ? '✓' : '' }}</span>
               <span class="juwei-title">含重大事项</span>
             </label>
-            <!-- 勾选后展开（设计师点5）：会前公告截止日 = 会议日期 − 7 天；紧张/已过用异常色，且已过提示改期 -->
+            <!-- 勾选后展开：会前公告截止日 = 会议日期 − 7 天。异常统一暖橙（0801 设计师点2：红不在配色表，
+                 异常语言全项目只留一套 字#9a5b12/底#f7e4c6）；已过时不再挤在 label-value 行里换三行（点3），
+                 改整行暖底通栏：主句一行 + 浅色小字给出路 -->
             <div v-if="createForm.juweiWitness && createForm.meetingMethod !== 'online'" class="juwei-detail">
-              <div class="jd-row" :class="{ 'jd-warn': majorNoticeInfo && majorNoticeInfo.tight, 'jd-error': majorNoticeInfo && majorNoticeInfo.past }">
+              <div v-if="majorNoticeInfo && majorNoticeInfo.past" class="jd-past-banner">
+                <b>公告日已过（最迟 {{ majorNoticeInfo.text }}）</b>
+                <small>请改期或取消勾选</small>
+              </div>
+              <div v-else class="jd-row" :class="{ 'jd-warn': majorNoticeInfo && majorNoticeInfo.tight }">
                 <span class="jd-label">公告日期</span>
                 <span v-if="majorNoticeInfo" class="jd-value">
-                  <template v-if="majorNoticeInfo.past">公告日已过（最迟 {{ majorNoticeInfo.text }}），请改期或取消勾选</template>
-                  <template v-else-if="majorNoticeInfo.days === 0">最迟今天（{{ majorNoticeInfo.text }}）前公告</template>
+                  <template v-if="majorNoticeInfo.days === 0">最迟今天（{{ majorNoticeInfo.text }}）前公告</template>
                   <template v-else>最迟 {{ majorNoticeInfo.text }} 前公告（{{ majorNoticeInfo.tight ? '仅剩' : '还剩' }} {{ majorNoticeInfo.days }} 天）</template>
                 </span>
                 <span v-else class="jd-value ph">请先选择会议日期</span>
@@ -887,9 +892,7 @@
                 :class="{ empty: !cell, disabled: cell && isPastMeetingDay(cell), on: cell && isSelectedDay(cell), today: cell && !isSelectedDay(cell) && isToday(cell) }"
                 @click="cell && pickCalDay(cell)">{{ cell || '' }}</span>
         </div>
-        <div class="pp-actions">
-          <button class="btn btn-ghost" @click="datePickerOpen = false">取消</button>
-        </div>
+        <!-- 0801 设计师点5：底部「取消」删——与右上 × 是两个并存的关闭出口；点日即选即关，留 × 一个就够 -->
       </div>
     </div>
 
@@ -6298,18 +6301,23 @@ onActivated(show)
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6rpx; }
 .cal-cell { height: 78rpx; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #1f2329; border-radius: 12rpx; }
 .cal-cell.empty { visibility: hidden; }
-.cal-cell.disabled { color: #C7CDD5; background: transparent; cursor: not-allowed; }
-.cal-cell.today { color: var(--c-primary-dark); font-weight: 700; }
-.cal-cell.on { background: #3E6BA8; color: #fff; font-weight: 700; }
+/* 0801 设计师点8：已过日期置灰加重（更浅的灰），点了只 toast 不选中（pickCalDay 已拦） */
+.cal-cell.disabled { color: #D3D8DF; background: transparent; cursor: not-allowed; }
+/* 0801 设计师点4：今天用会议蓝（原 var 落到全局橙）——「当前」不是异常，橙只留异常态 */
+.cal-cell.today { color: #3567A4; font-weight: 700; }
+/* 点6：选中态全项目统一「蓝底白字」，蓝统一 #3567A4（与页头/主按钮同色） */
+.cal-cell.on { background: #3567A4; color: #fff; font-weight: 700; }
 .cal-cell:not(.empty):not(.on):not(.disabled):active { background: #E6EDF8; }
 .picker-pop { position: relative; width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 38rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
-.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #8B5E34; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
+/* 0801 设计师点4：时间大标题会议蓝（原橙金 #8B5E34 越权）——所选时间是「当前值」不是异常 */
+.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #3567A4; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
 .tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
 .tg-cell { height: 88rpx; display: flex; align-items: center; justify-content: center; font-size: 36rpx; color: #1f2329; background: #f5f6f8; border-radius: 14rpx; }
-.tg-cell.on { background: #E6EDF8; color: #2F5E96; font-weight: 700; box-shadow: inset 0 0 0 3rpx #3E6BA8; }
+/* 0801 设计师点6：时间选中与日历统一为「蓝底白字」一种选中态（原蓝描边白底是第二种） */
+.tg-cell.on { background: #3567A4; color: #fff; font-weight: 700; box-shadow: none; }
 .tg-cell:not(.on):active { background: #E6EDF8; }
 .tg-cell.disabled { color: #C4CAD2; background: #F7F8FA; box-shadow: none; cursor: not-allowed; }
 .tg-cell.disabled:active { background: #F7F8FA; }
@@ -6324,7 +6332,7 @@ onActivated(show)
 .pp-item.on { color: #fff; background: #FFA800; font-weight: 700; }
 .pp-actions { display: flex; gap: 18rpx; margin-top: 24rpx; justify-content: center; }
 .pp-actions .btn { flex: 0 0 60%; width: 60%; }
-.picker-pop .pp-actions .btn-primary { background: #3E6BA8; border-color: #3E6BA8; color: #fff; }
+.picker-pop .pp-actions .btn-primary { background: #3567A4; border-color: #3567A4; color: #fff; }  /* 0801 杂蓝并入 #3567A4 */
 
 
 /* 议题摘要行 */
@@ -6579,17 +6587,19 @@ onActivated(show)
 .create-panel .topic-add-trigger { min-height: 92rpx; border-top: 2rpx solid #E3E7EB; color: #3567A4; }
 .create-panel .tat-text { color: #3567A4; font-size: 31rpx; font-weight: 700; }
 
-.create-panel .sheet-actions.fixed { padding: 14rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 0; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
+/* 0801 设计师点12：按钮条与内容之间补 10px 呼吸（padding-top 20rpx）+ 一条分隔线，不再紧贴 */
+.create-panel .sheet-actions.fixed { padding: 20rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #EEF0F2; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
 .create-panel .sheet-actions.fixed .btn-primary { flex: 1; width: 100%; height: 104rpx; border-radius: 18rpx; background: #3567A4; font-size: 34rpx; }
 .create-panel .sheet-actions.fixed .btn-primary:active { background: #2D598E; }
 
 /* ===== 设计师功能点（加在原型基线上；配色沿用基线蓝 #3567A4，不动整体布局） ===== */
 /* 点2：议题计数——仅 topics>0 时出现，次级灰、常规字重 */
 .sec-count { color: #8a9099; font-weight: 400; font-size: 26rpx; }
-/* 点4：会议时间已过提示（识别带入旧时间时）红字 + 圆形感叹号，配合底部按钮置灰 */
-.dt-past-warn { display: flex; align-items: flex-start; gap: 10rpx; padding: 4rpx 6rpx 2rpx; color: #E5533C; font-size: 26rpx; line-height: 1.5; }
-.dt-past-ico { flex-shrink: 0; width: 32rpx; height: 32rpx; border-radius: 50%; background: #E5533C; color: #fff; font-size: 24rpx; font-weight: 700; line-height: 32rpx; text-align: center; }
-.dt-past-warn b { color: #E5533C; font-weight: 700; }
+/* 点4：会议时间已过提示（识别带入旧时间时），配合底部按钮置灰。
+   0801 设计师点2：红不在配色表——异常语言全项目一套，暖橙通栏 字#9a5b12/底#f7e4c6 */
+.dt-past-warn { display: flex; align-items: flex-start; gap: 12rpx; padding: 14rpx 18rpx; border-radius: 12rpx; background: #f7e4c6; color: #9a5b12; font-size: 26rpx; line-height: 1.5; }
+.dt-past-ico { flex-shrink: 0; width: 32rpx; height: 32rpx; border-radius: 50%; background: #9a5b12; color: #fff; font-size: 24rpx; font-weight: 700; line-height: 32rpx; text-align: center; }
+.dt-past-warn b { color: #9a5b12; font-weight: 700; }
 /* 点1：议题内联编辑行——分隔线分条、就地改，无卡中卡、无"确定"大按钮 */
 .topic-item { padding: 18rpx 0 6rpx; border-top: 2rpx solid #EEF0F2; }
 .topic-item:first-of-type { border-top: 0; }
@@ -6612,8 +6622,14 @@ onActivated(show)
 .jd-label { flex-shrink: 0; font-size: 28rpx; color: #8a9099; }
 .jd-value { min-width: 0; text-align: right; font-size: 30rpx; color: #2d3137; font-weight: 600; }
 .jd-value.ph { color: #b7bbc0; font-weight: 400; }
-.jd-row.jd-warn .jd-value { color: #C76A00; }
-.jd-row.jd-error .jd-value { color: #E5533C; font-weight: 700; }
+.jd-row.jd-warn .jd-value { color: #9a5b12; }   /* 紧张(≤3天)也走统一暖橙字色 */
+/* 0801 设计师点3：公告日已过 → 整行暖底通栏：主句一行 + 浅色小字给出路（不再 label-value 三行右对齐） */
+.jd-past-banner { display: flex; flex-direction: column; gap: 4rpx; padding: 16rpx 20rpx; border-radius: 12rpx; background: #f7e4c6; }
+.jd-past-banner b { color: #9a5b12; font-size: 29rpx; font-weight: 700; line-height: 1.45; }
+.jd-past-banner small { color: #9a5b12; opacity: .72; font-size: 25rpx; line-height: 1.4; }
+/* 0801 设计师点11：上传入口一行式的右侧 ›（CSS 边框箭头，见 CLAUDE.md 不用字符箭头）；展开转为下指 */
+.sa-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #8A97A6; border-bottom: 3rpx solid #8A97A6; transform: rotate(-45deg); transition: transform .2s ease; }
+.scan-accelerator.open .sa-chev { transform: rotate(45deg); }
 /* 点6：召开方式分段按钮 active 用基线蓝（覆盖 var，避免落到全局橙） */
 .create-panel .method-switch button.active { color: #3567A4; }
 </style>

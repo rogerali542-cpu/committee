@@ -6,9 +6,11 @@
         <span class="mp-close" @click="close">×</span>
       </div>
 
-      <!-- 腾讯官方 H5 选点组件：搜索/定位/拖图选点后点组件内「确认」，postMessage 回传地址与经纬度 -->
-      <iframe v-if="activeProvider === 'tencent'" :src="tencentUrl" class="mp-frame" frameborder="0"
+      <!-- 腾讯官方 H5 选点组件：搜索/定位/拖图选点后点组件内「确认」，postMessage 回传地址与经纬度。
+           txReady 先解析默认落点再渲染（0801 设计师点10），URL 带 coord 直接落到表单坐标/当前位置 -->
+      <iframe v-if="activeProvider === 'tencent' && txReady" :src="tencentUrl" class="mp-frame" frameborder="0"
               allow="geolocation" @load="onTencentIframeLoad"></iframe>
+      <div v-else-if="activeProvider === 'tencent'" class="mp-locating">正在定位…</div>
 
       <!-- 高德 JS API 选点：中心固定针，拖图取点，逆地理出地址；顶部关键字搜索 -->
       <template v-else-if="activeProvider === 'amap'">
@@ -54,9 +56,29 @@ import { getStorage, setStorage } from '@/utils/storage'
 import { toast } from '@/utils/ui'
 
 const props = defineProps({
-  open: { type: Boolean, default: false }
+  open: { type: Boolean, default: false },
+  // 0801 设计师点10：初始落点（表单里已存的会议地点坐标）。没有时组件自己尝试浏览器定位，
+  // 都拿不到才落地图默认视野——不再一打开就是天安门。
+  initLat: { type: Number, default: null },
+  initLng: { type: Number, default: null }
 })
 const emit = defineEmits(['close', 'picked'])
+
+// ── 默认落点解析（0801 设计师点10）：优先表单已有坐标 → 其次浏览器定位（限时 2.5s，拿不到不挡加载）──
+function resolveStartCoord() {
+  if (props.initLat != null && props.initLng != null) return Promise.resolve(props.initLat + ',' + props.initLng)
+  if (!navigator.geolocation) return Promise.resolve('')
+  return new Promise((resolve) => {
+    let done = false
+    const finish = (v) => { if (!done) { done = true; resolve(v) } }
+    setTimeout(() => finish(''), 2500)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => finish(pos.coords.latitude + ',' + pos.coords.longitude),
+      () => finish(''),
+      { enableHighAccuracy: true, timeout: 2400, maximumAge: 300000 }
+    )
+  })
+}
 
 // ── 供应商选择：配了哪家用哪家；两家都配了用 VITE_MAP_PROVIDER 指定（默认腾讯，组件更省心）──
 const TX_KEY = import.meta.env.VITE_TXMAP_KEY || ''
@@ -115,10 +137,14 @@ function onTencentTimeout() {
 }
 
 // ── 腾讯：locpicker iframe ──
+// txReady：先解析默认落点（≤2.5s）再渲染 iframe——URL 带 coord 一步到位，不然先落天安门再跳很晃眼
+const txReady = ref(false)
+const txCoord = ref('')   // 'lat,lng'，空 = 用组件默认视野
 const tencentUrl = computed(() =>
   'https://apis.map.qq.com/tools/locpicker?search=1&type=1'
   + '&key=' + encodeURIComponent(TX_KEY)
-  + '&referer=' + encodeURIComponent(TX_REFERER))
+  + '&referer=' + encodeURIComponent(TX_REFERER)
+  + (txCoord.value ? '&coord=' + encodeURIComponent(txCoord.value) : ''))
 
 // 选点组件回传：{ module:'locationPicker', latlng:{lat,lng}, poiaddress, poiname, cityname }
 function onMessage(ev) {
@@ -171,12 +197,14 @@ async function initAmap() {
     await loadAmapScript()
     await nextTick()
     if (!amapEl.value || _amap) return
-    _amap = new window.AMap.Map(amapEl.value, { zoom: 16, resizeEnable: true })
+    // 0801 设计师点10：表单已有坐标（改地点/编辑会议）直接落到该点；否则再走浏览器定位，不再默认北京
+    const hasInit = props.initLat != null && props.initLng != null
+    _amap = new window.AMap.Map(amapEl.value, { zoom: 16, resizeEnable: true, ...(hasInit ? { center: [props.initLng, props.initLat] } : {}) })
     _geocoder = new window.AMap.Geocoder()
     _placeSearch = new window.AMap.PlaceSearch({ pageSize: 5 })
     _amap.on('moveend', regeoCenter)
     // 尝试定位到当前位置（手机允许定位即生效；电脑/拒绝授权则失败，留默认视野，用户可搜索）
-    locateToCurrent()
+    if (!hasInit) locateToCurrent()
     regeoCenter()
   } catch (e) {
     amapError.value = (e && e.message) || '地图初始化失败'
@@ -246,13 +274,18 @@ function destroyAmap() {
   amapResults.value = []; amapCurName.value = ''; amapCurAddress.value = ''
 }
 
-watch(() => props.open, (v) => {
+watch(() => props.open, async (v) => {
   if (v) {
     activeProvider.value = pickStartProvider()
     if (activeProvider.value === 'amap') initAmap()
-    else if (activeProvider.value === 'tencent') armWatchdog() // 起看门狗：超时未加载→切高德
+    else if (activeProvider.value === 'tencent') {
+      txReady.value = false
+      txCoord.value = await resolveStartCoord()  // 先定落点（表单坐标/浏览器定位，≤2.5s）
+      txReady.value = true
+      armWatchdog() // 起看门狗：超时未加载→切高德
+    }
   } else {
-    clearWatchdog(); destroyAmap()
+    clearWatchdog(); destroyAmap(); txReady.value = false
   }
 })
 
@@ -284,12 +317,16 @@ function pickDemo() {
 .mp-map { width: 100%; height: 100%; }
 .mp-pin { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%); font-size: 52rpx; pointer-events: none; }
 .mp-map-err { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 48rpx; text-align: center; background: #F7F8FA; color: #B02A1E; font-size: 28rpx; }
-.mp-confirm-bar { flex-shrink: 0; display: flex; align-items: center; gap: 20rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #EEF0F3; }
-.mp-cur { flex: 1; min-width: 0; }
-.mp-cur-name { font-size: 30rpx; font-weight: 700; color: #1f2329; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mp-cur-addr { font-size: 24rpx; color: #6B7280; margin-top: 4rpx; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mp-confirm-btn { flex-shrink: 0; min-height: 80rpx; padding: 0 44rpx; border: 0; border-radius: 16rpx; background: #3F6078; color: #fff; font-size: 30rpx; font-weight: 700; }
+/* 0801 设计师点9：确认栏改纵向——地址正是要确认的东西，不许「…中华人民共…」截断：
+   占满一行、最多两行折行；「确认」移到下面独立一整行（主操作贴底） */
+.mp-confirm-bar { flex-shrink: 0; display: flex; flex-direction: column; align-items: stretch; gap: 14rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #EEF0F3; }
+.mp-cur { min-width: 0; }
+.mp-cur-name { font-size: 30rpx; font-weight: 700; color: #1f2329; line-height: 1.4; }
+.mp-cur-addr { font-size: 24rpx; color: #6B7280; margin-top: 4rpx; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.mp-confirm-btn { width: 100%; min-height: 88rpx; padding: 0; border: 0; border-radius: 16rpx; background: #3567A4; color: #fff; font-size: 32rpx; font-weight: 700; }  /* 杂蓝 #3F6078 并入会议蓝 */
 .mp-confirm-btn:disabled { opacity: 0.5; }
+/* 0801 点10：腾讯 iframe 等默认落点解析时的占位（≤2.5s） */
+.mp-locating { flex: 1; display: flex; align-items: center; justify-content: center; color: #8A97A6; font-size: 28rpx; }
 /* 未配置 Key */
 .mp-nokey { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18rpx; padding: 0 48rpx; text-align: center; }
 .mp-nokey-title { font-size: 32rpx; font-weight: 700; color: #1f2329; }
