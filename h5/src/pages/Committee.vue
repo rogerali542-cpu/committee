@@ -107,7 +107,12 @@
               <div class="rec-recent-copy">
                 <!-- 0731 设计师定：一行只留两种字重——日期黑，姓名+内容一起灰，眼睛只跟日期 -->
                 <strong class="rec-recent-main">{{ fmtPlanDate(session.date) }}</strong>
-                <span class="rec-recent-sub">{{ session.noVisit ? '无业主来访' : ((session.receiver ? session.receiver + ' · ' : '') + recSummaryOf(session)) }}</span>
+                <!-- 0801 修：原先摘要开头是接待人（值班的委员），后面才是来访人姓名，两个名字都不带
+                     标签并排——本行一眼看去的主角变成了接待人，实际这条记录讲的是"谁来了、说了什么"。
+                     且本行 nowrap + 省略号，窄屏上常常只剩开头那个名字，更坐实了误读。
+                     改为来访人打头（recSummaryOf 已是「李桂芬：顶楼渗水…」）；无人来访时才显示接待人，
+                     并加「接待人」标签说清是谁值的班。 -->
+                <span class="rec-recent-sub">{{ session.noVisit ? ('无业主来访' + (session.receiver ? ' · 接待人 ' + session.receiver : '')) : recSummaryOf(session) }}</span>
               </div>
               <i class="rec-recent-chev" :class="{ open: recentOpenKey === session.key && session.displayRecords.length > 1 }"></i>
             </div>
@@ -2075,9 +2080,36 @@ const homeFocus = computed(() => {
     sub: '本期暂无待办事项，继续保持', cta: '', onTap: null }
 })
 
+// 草稿与已建会议撞期（0801 修 codex 报的「第4次例会同时以待召开和草稿编辑中出现」）：
+// 二者数据上确实是两样东西——一场已经建好的会议，和一份还没发出的新建表单——但同期同名并排列出，
+// 看着就是同一场会重复了两遍。找出这种撞车，合并成一行：主体仍是那场真实会议，行尾标明
+// 「另有没写完的草稿」，点行时问一句要打开哪个。合并不能让草稿失联，所以只在那场会议确实
+// 已经在列表里出现时才合并（见 meetingRecordList 末尾的 dupRowShown）。
+const draftDupMeeting = computed(() => {
+  if (!hasDraft.value) return null
+  const d = draft.value || {}
+  const dp = meetingPeriod(d, viewYear.value)
+  const dt = String(d.title || '').trim()
+  return (currents.value || []).find((c) => {
+    if (c.stage === 'ended') return false
+    if (dp && meetingPeriod(c, viewYear.value) === dp) return true
+    return !!dt && String(c.title || '').trim() === dt
+  }) || null
+})
+async function openMeetingOrDraft(c) {
+  const r = await showModal({
+    title: '这一期有两份内容',
+    content: '「' + (c.title || '本期例会') + '」已经建好了；另外还有一份没写完的会议通知草稿。要打开哪一个？',
+    confirmText: '打开会议', cancelText: '继续写草稿', showCancel: true
+  })
+  if (r && r.confirm) goCurrent(c)
+  else if (r && r.cancel) continueDraft()
+}
+
 const homeFocusItems = computed(() => {
   if (planTab.value !== 'meeting') return []
   const list = currents.value || []
+  const dup = draftDupMeeting.value
   const items = []
   list.filter(c => c.stage === 'ongoing' && !c.reviewDone).forEach(c => items.push({
     key: 'ongoing-' + c.id, level: 'active', kicker: c.tag || '进行中', title: c.title,
@@ -2086,15 +2118,17 @@ const homeFocusItems = computed(() => {
   }))
   list.filter(c => c.stage === 'preparing').forEach(c => items.push({
     key: 'preparing-' + c.id, level: 'active', kicker: '待召开', title: c.title,
-    sub: [c.timeText, c.locationText].filter(Boolean).join(' · '),
-    cta: c.ctaLabel || '查看会议', onTap: () => goCurrent(c)
+    sub: [c.timeText, c.locationText].filter(Boolean).join(' · ') + (dup && dup.id === c.id ? ' · 另有没写完的草稿' : ''),
+    cta: c.ctaLabel || '查看会议',
+    onTap: () => (dup && dup.id === c.id ? openMeetingOrDraft(c) : goCurrent(c))
   }))
   list.filter(c => c.stage === 'ended' && c.ctaLabel !== '查看会议').forEach(c => items.push({
     key: 'ended-' + c.id, level: 'active',
     kicker: c.minutesGen ? '纪要生成中' : '待整理',
     title: c.title, sub: c.timeText, cta: c.ctaLabel, onTap: () => goCurrent(c)
   }))
-  if (hasDraft.value) items.push({
+  // 撞期时草稿已并进上面那场会议的行，这里不再单列，否则同一个名字挂着两种状态出现两次
+  if (hasDraft.value && !(dup && dup.stage === 'preparing')) items.push({
     key: 'draft', level: 'active', kicker: '通知编辑中', title: draftTitle.value,
     sub: draftSummary.value || '会议通知尚未完成', cta: '继续通知', onTap: () => continueDraft()
   })
@@ -2203,10 +2237,13 @@ const meetingCalendarOpen = ref(false)
 // （补开判定 isMakeupHeld 已删，0729 用户定：完成列表不再标「补开」，月历已表达各期执行情况）
 const meetingRecordList = computed(() => {
   const rows = yearPlan.value || []
+  const dupMeeting = draftDupMeeting.value
   const toRow = (r) => {
     const current = (currents.value || []).find(c => meetingPeriod(c, viewYear.value) === r.period)
     const draftMatch = hasDraft.value && meetingPeriod(draft.value || {}, viewYear.value) === r.period
     if (current) {
+      // 同期还压着一份没写完的草稿：并进本行，不再另起一行（见 draftDupMeeting）
+      const withDraft = draftMatch || !!(dupMeeting && dupMeeting.id === current.id)
       const state = current.stage === 'ongoing' ? (current.fieldEnded ? '会后整理' : '进行中')
         : current.stage === 'preparing' ? '去召开'
           : (current.minutesGen ? '纪要生成中' : (current.ctaLabel === '查看会议' ? '已完成' : '待整理'))
@@ -2217,11 +2254,11 @@ const meetingRecordList = computed(() => {
         badgeBot: current.meetingDate ? Number(String(current.meetingDate).split('-')[1]) + '月' : '',
         range: !current.meetingDate,
         title: current.title || ('第' + r.period + '次业委会例会'),
-        sub: [current.timeText, current.locationText].filter(Boolean).join(' · '),
+        sub: [current.timeText, current.locationText].filter(Boolean).join(' · ') + (withDraft ? ' · 另有没写完的草稿' : ''),
         statusLabel: state,
         statusClass: current.stage === 'ongoing' ? 'current' : (current.stage === 'ended' ? 'done' : 'upcoming'),
         meetingDate: current.meetingDate || '',   // 主卡倒计时用
-        onTap: () => goCurrent(current)
+        onTap: () => (withDraft ? openMeetingOrDraft(current) : goCurrent(current))
       }
     }
     if (draftMatch) {
@@ -2255,7 +2292,9 @@ const meetingRecordList = computed(() => {
       // 0730 二改：计划期次徽标改「11-12 / 月」两行式，与日期叶同构
       badgeTop: String(r.monthLabel || '').replace(/月$/, ''), badgeBot: '月', range: true,
       // 非 upcoming（逾期/本期）走待召开卡，标题写全称（0731 用户定），与真实会议标题同构
-      title: upcoming ? (viewYear.value + '年第' + r.period + '次业主委员会例会') : (viewYear.value + '年第' + r.period + '次业委会例会'),
+      // 0801 修：原先 upcoming 写「业主委员会例会」、其余写「业委会例会」，同一场会翻个状态就换个名字，
+      // 首页两处并排时看着像两场会。全项目统一「业委会例会」（发起会议预填、demo 数据都是这个写法）
+      title: viewYear.value + '年第' + r.period + '次业委会例会',
       sub: upcoming ? '日期未定' : r.sub,
       statusLabel: label, statusClass: r.status,
       onTap: () => onPlanRow(r) }
@@ -2266,7 +2305,11 @@ const meetingRecordList = computed(() => {
   // 标题里没有「N年第N次」（临时会议/自定义名称/识别结果格式不同），也还没填日期 → 期次算 0；
   // 就算算得出，若该期已被真实会议占用、或该期 status==='done' 被 filter 掉，草稿行同样不出现。
   // 这里补一条独立行，保证只要有草稿首页一定看得到入口。
-  if (hasDraft.value && !active.some(row => String(row.key).indexOf('mr-draft-') === 0)) {
+  // 撞期的草稿已并进那场会议的行（sub 标了「另有没写完的草稿」、点行会问打开哪个），不再单列。
+  // 只有那行确实出现在列表里才算合并成功——否则（比如该期被 status==='done' 过滤掉了）
+  // 草稿就没入口了，还是得补这条独立行。
+  const dupRowShown = !!(dupMeeting && active.some(row => row.key === 'mr-current-' + dupMeeting.id))
+  if (hasDraft.value && !dupRowShown && !active.some(row => String(row.key).indexOf('mr-draft-') === 0)) {
     // 放末尾：与 heroMeeting 里草稿 rank=4（最低）的优先级一致，不抢逾期/本期的位置
     active.push({
       key: 'mr-draft-standalone', done: false,
