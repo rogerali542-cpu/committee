@@ -495,9 +495,9 @@
               <circle cx="12" cy="13" r="3.1"/>
             </svg>
             <span class="se-copy">
+              <!-- 设计师点5：一件事只说一遍——标题一行足够；格式说明交给下方两个按钮，不再重复副标题 -->
               <b>拍通知照片自动填写</b>
               <small v-if="scanItems.length && createTab !== 'scan'">已识别 {{ scanItems.length }} 份文件</small>
-              <small v-else>支持拍照、图片、PDF 或 Word 文件</small>
             </span>
             <i class="se-chev"></i>
           </div>
@@ -515,16 +515,16 @@
                 </div>
               </div>
               <div class="ds-cards ds-cards-2">
+                <!-- 设计师点4：图标改会议蓝线性描边、去彩色底块，纳入三色制 -->
                 <button class="ds-card" :disabled="scanRecognizing" @click="chooseImageSource">
-                  <span class="ds-ico bl">🖼️</span>
+                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#3E6BA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 15l-5-5-4 4-2-2-4 4"/></svg>
                   <span class="ds-t">图片</span>
                 </button>
                 <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
-                  <span class="ds-ico bl">📄</span>
+                  <svg class="ds-svg" viewBox="0 0 24 24" fill="none" stroke="#3E6BA8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h5"/></svg>
                   <span class="ds-t">文件</span>
                 </button>
               </div>
-              <div class="ds-shared-hint">可上传图片或 PDF、Word 文件</div>
               <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
                 {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
               </button>
@@ -561,7 +561,7 @@
               <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime }">
                 <div class="fl-part" @click="openDatePicker">
                   <span class="fl-label">日期</span>
-                  <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtPlanDate(createForm.meetingDate) : '' }}</span>
+                  <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtDateWithWeek(createForm.meetingDate) : '' }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
                 <div class="fl-part fl-part-time" @click="openTimePicker">
@@ -598,7 +598,8 @@
           <!-- 会议议程项（在当前卡片内逐条添加和编辑） -->
           <div class="create-section">
             <div class="section-title-row topic-head">
-              <span class="section-title">会议议题</span>
+              <!-- 设计师点1：未填不显示计数（避免"0 项"和眼前议题框自相矛盾），填了才出现「N 项」 -->
+              <span class="section-title">会议议题<span v-if="createForm.topics.length" class="sec-count"> {{ createForm.topics.length }} 项</span></span>
             </div>
             <div v-if="createForm.topics.length" class="topic-list">
               <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-line" @click="openEditTopic(idx)">
@@ -693,7 +694,7 @@
         <div v-show="!topicDialogOpen" class="sheet-actions fixed">
           <button class="btn btn-ghost" @click="closeCreate">取消</button>
           <!-- 0731 设计师点2：日期/时间/议题未齐则置灰（仍可点→提示缺什么），齐了才亮 -->
-          <button class="btn btn-primary" :class="{ disabled: !createCanSubmit }" @click="onSubmitClick">生成会议通知<span class="btn-arrow">›</span></button>
+          <button class="btn btn-primary" :class="{ disabled: !createCanSubmit }" @click="onSubmitClick">{{ createSubmitLabel }}<span class="btn-arrow">›</span></button>
         </div>
       </div>
     </div>
@@ -902,7 +903,7 @@
                 @click="cell && pickCalDay(cell)">{{ cell || '' }}</span>
         </div>
         <div class="pp-actions">
-          <button class="btn btn-ghost" @click="datePickerOpen = false">取消</button>
+          <button class="btn btn-primary" @click="datePickerOpen = false">确认</button>
         </div>
       </div>
     </div>
@@ -1186,6 +1187,13 @@ const planTabLabel = computed(() => planTab.value === 'meeting' ? '会议' : '�
 function fmtPlanDate(s) {
   const p = String(s || '').split('-')
   return p.length === 3 ? (Number(p[1]) + '月' + Number(p[2]) + '日') : String(s || '')
+}
+// 带星期的日期（发起会议日期行用，设计师点8）：老人排会靠星期——「8月12日 周二」
+function fmtDateWithWeek(s) {
+  const p = String(s || '').split('-')
+  if (p.length !== 3) return String(s || '')
+  const wk = ['日', '一', '二', '三', '四', '五', '六'][new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getDay()]
+  return Number(p[1]) + '月' + Number(p[2]) + '日 周' + wk
 }
 // 日期是否属于指定年份（缺省今年）第 m 月。
 // 会议记录要跟着年份箭头走 → 传 viewYear；接待/培训没有年份切换器，仍按今年统计，别跟着跑偏。
@@ -2576,11 +2584,14 @@ const createForm = reactive({
   locationLat: null,   // 地图选点回传的经纬度（0723）：随建会落库，详情页导航用精确坐标
   locationLng: null
 })
-// 页头标题随会议期数动态（0731 设计师稿）：「第N次例会」→「发起第N次例会」，否则退回通用名
-const createHeadTitle = computed(() => {
+// 页头标题/主按钮随会议期数动态（0731 设计师稿）：从标题里取「第N次」——
+// 有则「发起第N次例会」「生成第N次例会通知」（主按钮带对象，设计师点6），否则退回通用名
+const createPeriodNo = computed(() => {
   const m = String(createForm.title || prefilledCreateTitle.value || '').match(/第\s*(\d+)\s*次/)
-  return m ? ('发起第' + m[1] + '次例会') : '发起业委会'
+  return m ? m[1] : ''
 })
+const createHeadTitle = computed(() => createPeriodNo.value ? ('发起第' + createPeriodNo.value + '次例会') : '发起业委会')
+const createSubmitLabel = computed(() => createPeriodNo.value ? ('生成第' + createPeriodNo.value + '次例会通知') : '生成会议通知')
 // 主按钮可提交门槛（0731 设计师点2）：日期+时间+至少一条议题齐了才亮；缺则置灰、点了提示
 const createCanSubmit = computed(() =>
   !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.length)))
@@ -4085,7 +4096,8 @@ function pickCalDay(day) {
   }
   if (pickerTarget.value === 'reception') recForm.date = calDateStr(day)
   else createForm.meetingDate = calDateStr(day)
-  datePickerOpen.value = false
+  // 设计师点2：不再点日期即关——与时间选择器统一为「点选(即时高亮/写入)→点确认关闭」，
+  // 老人不会再在日历里找不到「确认」
 }
 
 // 时间选择器：常规小时（左）+ 分钟（右），点选即生效；与日期选择器同走 pickerTarget
@@ -5766,6 +5778,7 @@ onActivated(show)
 .ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
 .ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
 .ds-card:disabled { opacity: 0.75; }
+.ds-svg { width: 48rpx; height: 48rpx; margin-bottom: 6rpx; }
 .ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22rpx; margin-bottom: 4rpx; }
 .ds-ico.or { background: #FFF3E0; }
 .ds-ico.bl { background: #EAF2FF; }
@@ -5987,6 +6000,8 @@ onActivated(show)
 .clear-link { display: block; margin-top: 14rpx; font-size: 28rpx; color: #666; line-height: 1.5; }
 .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-bottom: 10rpx; }
 .section-title { display: block; font-size: 32rpx; color: #1f2329; font-weight: 700; margin-bottom: 8rpx; line-height: 1.4; word-break: break-all; }
+/* 议题计数（设计师点1）：次级灰、常规字重，跟在标题后，仅 topics>0 时出现 */
+.sec-count { color: #8a9099; font-weight: 400; font-size: 26rpx; }
 .section-title-row .section-title { margin-bottom: 0; }
 .required-note { font-size: 28rpx; color: #E67E22; line-height: 1.35; white-space: nowrap; }
 
@@ -6161,12 +6176,14 @@ onActivated(show)
 .cal-cell { height: 78rpx; display: flex; align-items: center; justify-content: center; font-size: 32rpx; color: #1f2329; border-radius: 12rpx; }
 .cal-cell.empty { visibility: hidden; }
 .cal-cell.disabled { color: #C7CDD5; background: transparent; cursor: not-allowed; }
-.cal-cell.today { color: var(--c-primary-dark); font-weight: 700; }
+/* 设计师点3：今天用会议蓝（非橙）——橙只留异常态（逾期/待留档），此处是"当前"不是异常 */
+.cal-cell.today { color: #3E6BA8; font-weight: 700; }
 .cal-cell.on { background: #3E6BA8; color: #fff; font-weight: 700; }
 .cal-cell:not(.empty):not(.on):not(.disabled):active { background: #E6EDF8; }
 .picker-pop { position: relative; width: 100%; max-width: 660rpx; background: #fff; border-radius: 26rpx; padding: 28rpx 26rpx 38rpx; box-sizing: border-box; }
 /* 时间：大按钮点选网格（免滚动） */
-.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #8B5E34; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
+/* 设计师点3：时间大标题用会议蓝（非橙金）——所选时间是"当前值"，不该抢异常态的橙 */
+.tg-cur { text-align: center; font-size: 64rpx; font-weight: 700; color: #3E6BA8; letter-spacing: 2rpx; margin: 4rpx 0 12rpx; }
 .tg-label { font-size: 28rpx; color: #999; margin: 2rpx 2rpx 8rpx; }
 .tg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14rpx; }
 .tg-grid-m { margin-bottom: 4rpx; }
