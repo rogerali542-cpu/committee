@@ -8,7 +8,8 @@ export const uiState = reactive({
   toasts: [],                       // [{ id, title, icon }]
   loading: { show: false, title: '' },
   modal: null,                      // { title, content, confirmText, cancelText, showCancel, editable, placeholderText, _resolve }
-  actionSheet: null                 // { itemList, _resolve }
+  actionSheet: null,                // { itemList, _resolve }
+  inputSheet: null                  // { title, placeholder, value, confirmText, showBack, _resolve }
 })
 
 // toast：icon 'none' | 'success'
@@ -75,4 +76,27 @@ export function resolveActionSheet(result) {
   if (a && a._resolve) a._resolve(result)
 }
 
-export default { toast, hideToast, showLoading, hideLoading, showModal, showActionSheet }
+// 底部输入弹层（0801 设计师）：从「选择列表」进到「手动填写」时用。
+// 此前是在底部选择弹层之上再叠一个居中对话框——两级弹窗，而且那个框的「取消」看着像
+// 取消整件事（老人会以为地点白选了）。改成同一个底部弹层换内容：
+// 左上返回箭头退回上一层列表（resolve {back:true}），确定 resolve {confirm:true,value}，
+// 点遮罩关掉整件事（resolve {cancel:true}）。
+export function showInputSheet(opts = {}) {
+  return new Promise((resolve) => {
+    uiState.inputSheet = {
+      title: opts.title || '',
+      placeholder: opts.placeholder || '',
+      value: opts.value || '',
+      confirmText: opts.confirmText || '确定',
+      showBack: opts.showBack !== false,
+      _resolve: resolve
+    }
+  })
+}
+export function resolveInputSheet(result) {
+  const s = uiState.inputSheet
+  uiState.inputSheet = null
+  if (s && s._resolve) s._resolve(result)
+}
+
+export default { toast, hideToast, showLoading, hideLoading, showModal, showActionSheet, showInputSheet }

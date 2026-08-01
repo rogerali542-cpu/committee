@@ -58,14 +58,39 @@
       <button v-else class="ui-sheet-item cancel" @click="onSheetCancel">{{ uiState.actionSheet.cancelText }}</button>
     </div>
   </div>
+
+  <!-- 输入弹层（0801 设计师）：与上面的选择弹层是同一层，不叠居中对话框。
+       左上返回箭头退回上一层列表；点遮罩才是放弃整件事 -->
+  <div v-if="uiState.inputSheet" class="ui-mask sheet-mask" @click.self="onInputCancel">
+    <div class="ui-sheet ui-isheet">
+      <div class="ui-isheet-head">
+        <button v-if="uiState.inputSheet.showBack" type="button" class="ui-isheet-back" aria-label="返回上一层" @click="onInputBack"><i class="ui-isheet-back-arr"></i></button>
+        <span class="ui-isheet-title">{{ uiState.inputSheet.title }}</span>
+      </div>
+      <input ref="inputSheetEl" class="ui-isheet-input" v-model="inputSheetText"
+             :placeholder="uiState.inputSheet.placeholder" @keyup.enter="onInputConfirm" />
+      <button type="button" class="ui-isheet-confirm" @click="onInputConfirm">{{ uiState.inputSheet.confirmText }}</button>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { uiState, resolveModal, resolveActionSheet } from '@/utils/ui'
+import { ref, watch, nextTick } from 'vue'
+import { uiState, resolveModal, resolveActionSheet, resolveInputSheet } from '@/utils/ui'
 
 const editText = ref('')
 watch(() => uiState.modal, (m) => { editText.value = m && m.editable ? (m.content || '') : '' })
+
+// 输入弹层：打开时带入初值并自动聚焦（老人少点一下键盘）
+const inputSheetText = ref('')
+const inputSheetEl = ref(null)
+watch(() => uiState.inputSheet, (s) => {
+  inputSheetText.value = s ? (s.value || '') : ''
+  if (s) nextTick(() => { try { inputSheetEl.value && inputSheetEl.value.focus() } catch (e) {} })
+})
+function onInputConfirm() { resolveInputSheet({ confirm: true, value: inputSheetText.value }) }
+function onInputBack() { resolveInputSheet({ back: true }) }
+function onInputCancel() { resolveInputSheet({ cancel: true }) }
 
 function onConfirm() { resolveModal({ confirm: true, content: editText.value }) }
 function onCancel() { resolveModal({ confirm: false, cancel: true }) }
@@ -176,6 +201,32 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 /* 分组起始行：上方加粗分隔 + 一点留白，把「动作」与「候选值」在同一列表里分开 */
 .ui-sheet-item.group-start { margin-top: 12rpx; border-top: 12rpx solid #F3F5F7; }
 .ui-sheet.opinion-change { padding: 0 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #F5F3EF; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.12); }
+
+/* 输入弹层（0801 设计师）：与 picker 同一层的另一种内容，不再叠居中对话框。
+   头部左上是返回箭头——退回上一层选择列表，而不是关掉整个流程（老人点「取消」会以为白选了）。 */
+.ui-sheet.ui-isheet { background: #fff; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.14);
+  padding: 0 32rpx calc(32rpx + env(safe-area-inset-bottom)); }
+.ui-isheet-head { position: relative; display: flex; align-items: center; justify-content: center; min-height: 112rpx; border-bottom: 2rpx solid #F0F2F5; }
+.ui-isheet-title { font-size: 33rpx; font-weight: 700; color: #1F2937; }
+.ui-isheet-back { position: absolute; left: -12rpx; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx;
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ui-isheet-back:active { opacity: .5; }
+/* ‹ 用 CSS 边框画（见 CLAUDE.md，不用字符箭头）：右下边框旋转 135° 即向左 */
+.ui-isheet-back-arr { display: inline-block; width: 20rpx; height: 20rpx;
+  border-right: 4rpx solid #5A626C; border-bottom: 4rpx solid #5A626C; transform: rotate(135deg); }
+/* 单行输入 + 描边：原先是三行高的无边框灰块，看着像禁用的只读区；地点就一行字 */
+.ui-isheet-input { display: block; width: 100%; box-sizing: border-box; height: 112rpx; margin: 32rpx 0 0;
+  padding: 0 24rpx; border: 2rpx solid #d7dbe2; border-radius: 16rpx; background: #fff;
+  color: #1F2937; font-size: 32rpx; font-family: inherit; outline: none; }
+.ui-isheet-input::placeholder { color: #A0A6AD; }
+.ui-isheet-input:focus { border-color: #2f5f9e; }
+/* 确定：蓝实心整宽。原先是橙色文字——橙是「例外/警示」专用色，越权了，而且文字按钮点击区不足 */
+.ui-isheet-confirm { display: block; width: 100%; height: 112rpx; margin: 28rpx 0 0; padding: 0;
+  border: 0; border-radius: 16rpx; background: #2f5f9e; color: #fff; font-size: 33rpx; font-weight: 600;
+  font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ui-isheet-confirm:active { background: #275183; }
 /* 底部选择单（variant:'picker'，0731 设计师定）：>5 项/需滚动的选择用底部弹层——选项落在拇指区；
    列表弹层内滚动、选中项浅绿底+绿勾、取消胶囊 sticky 常驻 */
 .ui-sheet.picker { max-height: 78vh; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fff; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.14); }

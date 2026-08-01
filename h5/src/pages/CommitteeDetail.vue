@@ -459,7 +459,7 @@ import { useRoute } from 'vue-router'
 import api from '@/api'
 import { meetingRecordingSession, discardMeetingRecording } from '@/composables/meetingRecordingSession'
 import perm from '@/utils/perm'
-import { toast, showModal, showActionSheet } from '@/utils/ui'
+import { toast, showModal, showActionSheet, showInputSheet } from '@/utils/ui'
 import { navigateTo, redirectTo, navigateBack, goModuleHome } from '@/utils/navigate'
 import { aiTask, startAiTask, finishAiTask, failAiTask, clearAiTask } from '@/composables/aiTask'
 import { getStorage, setStorage } from '@/utils/storage'
@@ -1370,22 +1370,32 @@ async function pickOnlineWay() {
 async function pickOfflinePlace() {
   const items = OFFLINE_PLACES.concat(['其他地点（手动填写）', '从地图选点'])
   const cur = (detail.value && detail.value.location) || ''
-  const res = await showActionSheet({
-    title: '转为线下会议 · 选择会议地点', variant: 'picker',
-    itemList: items.map((s) => ({ label: s, selected: s === cur }))
-  })
-  if (!res || res.tapIndex == null || res.tapIndex < 0) return ''
-  const i = res.tapIndex
-  if (i < OFFLINE_PLACES.length) return OFFLINE_PLACES[i]
-  if (i === OFFLINE_PLACES.length) {
-    const r = await showModal({
-      title: '会议地点', content: '', editable: true, placeholderText: '请输入会议地点',
-      confirmText: '确定', cancelText: '取消', showCancel: true
+  // 0801 设计师：手动填写留在同一个底部弹层里换内容，不再叠一个居中对话框（两级弹窗）。
+  // 外层循环就是为了让输入页的返回箭头能真正"退回上一层选择列表"。
+  for (;;) {
+    const res = await showActionSheet({
+      title: '转为线下会议 · 选择会议地点', variant: 'picker',
+      itemList: items.map((s) => ({ label: s, selected: s === cur }))
     })
-    if (!r || !r.confirm) return ''
-    return String(r.content || '').trim()
+    if (!res || res.tapIndex == null || res.tapIndex < 0) return ''
+    const i = res.tapIndex
+    if (i < OFFLINE_PLACES.length) return OFFLINE_PLACES[i]
+    if (i > OFFLINE_PLACES.length) return await pickPlaceOnMap()
+    let back = false
+    for (;;) {
+      const r = await showInputSheet({
+        title: '其他地点',
+        // placeholder 给例子而不是把标题再念一遍——标题已说了是会议地点，这里该告诉他写多细
+        placeholder: '例如：3号楼架空层', confirmText: '确定'
+      })
+      if (r && r.back) { back = true; break }
+      if (!r || !r.confirm) return ''          // 点遮罩 = 放弃整件事
+      const v = String(r.value || '').trim()
+      if (v) return v
+      toast({ title: '请输入会议地点', icon: 'none' })   // 空的就留在输入页，别把人踢回列表
+    }
+    if (back) continue
   }
-  return await pickPlaceOnMap()
 }
 
 async function pickPlaceOnMap() {
