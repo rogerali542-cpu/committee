@@ -90,9 +90,6 @@
               <i class="rcp-head-chev" :class="{ open: recipientOpen }"></i>
             </div>
           </div>
-          <!-- 0801 设计师：发送的结果归属在这张卡里。原先发完之后整屏没变化，
-               用户只能靠底部按钮变没变去猜"到底发出去没有" -->
-          <div v-if="noticeSent" class="rcp-sent-line">{{ noticeSentLine }}</div>
           <div class="rcp-list page-rcp-list" v-if="recipientOpen">
             <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
               <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
@@ -102,6 +99,24 @@
               </div>
             </div>
             <div v-if="!recipientList.length" class="rcp-empty">{{ recipientsLoading ? '正在加载委员名单…' : '暂无可通知的委员' }}</div>
+          </div>
+        </div>
+
+        <!-- 通知记录（0801 设计师定重做）：
+             ① 原来整块绿字绿✓——绿是业主接待的模块色，而且记录是中性事实，不需要"成功"的颜色；
+             ② 「清空」直接去掉：记录是凭据，谁在什么时候通知了谁，出纠纷要拿它说话，规则也禁止在
+                列表头放删除；
+             ③ 同一人、同一分钟的两个渠道本是一次动作，拆两行看着像发了两次 → 合成一条；
+             ④ 时间统一成全 App 的「8月1日 19:22」，不再露 2026-08-01 这种机读格式；
+             ⑤ 句式去掉「已由…通过…」，主谓宾摆着就行；
+             ⑥ 它不该是白卡（白卡=要办的事），改轻列表；位置也提到低频操作之前——
+                记录讲的是刚发生的通知，低频操作是页面级出口，本该垫底。 -->
+        <div class="prep-more sr-list" v-if="noticeSent">
+          <div class="sr-heading">通知记录</div>
+          <div class="sr-row" v-for="(r, i) in noticeLogRows" :key="i">
+            <span class="sr-who">{{ r.who }}</span>
+            <span class="sr-what">{{ r.what }}</span>
+            <span class="sr-when">{{ r.when }}</span>
           </div>
         </div>
 
@@ -126,24 +141,6 @@
           <div class="prep-more-row" @click="removeMeeting">
             <span>取消本次会议</span>
             <i class="pm-arrow"></i>
-          </div>
-        </div>
-
-        <!-- 通知记录：标题 + 历史列表（最新在前） -->
-        <div class="sr-section" v-if="noticeSent">
-          <div class="sr-heading-row">
-            <span class="sr-heading">通知记录</span>
-            <span class="sr-clear-btn" @click="clearNotices">清空</span>
-          </div>
-          <template v-if="detail.notificationLogs && detail.notificationLogs.length">
-            <div class="send-record" v-for="(log, idx) in [...detail.notificationLogs].reverse()" :key="idx">
-              <span class="sr-ic">✓</span>
-              <span class="sr-text">{{ logText(log) }}</span>
-            </div>
-          </template>
-          <div class="send-record" v-else>
-            <span class="sr-ic">✓</span>
-            <span class="sr-text">{{ sendRecordText }}</span>
           </div>
         </div>
 
@@ -1290,21 +1287,37 @@ const remindLabel = computed(() => (
     ? '再次提醒 ' + (recipientSelectedCount.value || recipientList.value.length) + ' 人'
     : '发送通知'
 ))
-// 通知人员卡里的结果行：「已通知 7 人 · 8月1日 14:30」
+// 全 App 统一的时间写法：8月1日 19:22（不露 2026-08-01 19:22 这种机读格式）
 function fmtSendTimeShort(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
   return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : ''
 }
-const noticeSentLine = computed(() => {
+// 通知记录行（0801 设计师）：同一个人、同一分钟发出的多个渠道本来就是一次动作，
+// 拆成两行看着像发了两次 → 按「人 + 分钟」合并，渠道并列写。最新在前。
+const CHANNEL_ORDER = ['微信', 'App 内']
+const noticeLogRows = computed(() => {
   const d = detail.value || {}
   const logs = d.notificationLogs || []
-  const last = logs.length ? logs[logs.length - 1] : null
-  const at = fmtSendTimeShort((last && last.sentAt) || d.notifiedAt)
-  const total = (d.delivery && d.delivery.total) || 0
-  // 只走了微信时没有送达人数，就别编一个数字出来
-  const head = total ? ('已通知 ' + total + ' 人')
-    : (last && last.channel === 'wechat' ? '已发到微信工作群' : '已通知')
-  return head + (at ? ' · ' + at : '')
+  const groups = []
+  const idx = new Map()
+  logs.forEach((l) => {
+    if (!l) return
+    const at = String(l.sentAt || '')
+    const key = (l.sentByName || '') + '|' + at.slice(0, 16)
+    let g = idx.get(key)
+    if (!g) { g = { by: l.sentByName || '', at, channels: [] }; idx.set(key, g); groups.push(g) }
+    const ch = l.channel === 'wechat' ? '微信' : 'App 内'
+    if (g.channels.indexOf(ch) < 0) g.channels.push(ch)
+  })
+  if (!groups.length && noticeSent.value) {
+    // 只有 notifiedAt、没有明细日志的旧数据：也得给一条，别让"已通知"却查不到记录
+    groups.push({ by: d.notifiedByName || '', at: String(d.notifiedAt || ''), channels: ['App 内'] })
+  }
+  return groups.slice().reverse().map((g) => ({
+    who: g.by || '业委会',
+    what: CHANNEL_ORDER.filter((c) => g.channels.indexOf(c) >= 0).join(' + '),
+    when: fmtSendTimeShort(g.at)
+  }))
 })
 // 已通知后再发：渠道收进底部弹层选（底部只留一颗次级按钮，不再常驻两行勾选）
 async function openRemindSheet() {
@@ -1547,19 +1560,7 @@ const noticeSent = computed(() => {
   const d = detail.value || {}
   return !!(d.notifiedAt || (d.notificationLogs && d.notificationLogs.length) || (d.delivery && d.delivery.total > 0))
 })
-const noticeSentTime = computed(() => fmtSendTime(detail.value && detail.value.notifiedAt))
-const sendRecordText = computed(() => {
-  const by = detail.value && detail.value.notifiedByName
-  const prefix = by ? ('已由 ' + by + ' 发送') : '通知已发送'
-  return prefix + (noticeSentTime.value ? ' · ' + noticeSentTime.value : '')
-})
 function fmtHm(t) { return String(t || '').slice(0, 5) }
-function fmtSendTime(s) { return s ? String(s).replace('T', ' ').slice(0, 16) : '' }
-function logText(log) {
-  const action = log && log.channel === 'wechat' ? '通过微信通知' : 'App内通知'
-  const prefix = log.sentByName ? ('已由 ' + log.sentByName + ' ' + action) : (log && log.channel === 'wechat' ? '已通过微信通知' : '已发送App内通知')
-  return prefix + (log.sentAt ? ' · ' + fmtSendTime(log.sentAt) : '')
-}
 function fmtCnDate(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
   return m ? (Number(m[1]) + '年' + Number(m[2]) + '月' + Number(m[3]) + '日') : (s || '')
@@ -1808,19 +1809,6 @@ async function removeMeeting() {
 }
 
 // 清空通知记录（0728 用户定为正式功能）：确认后删本会议全部通知历史+送达、重置为「未通知」，再刷新详情
-async function clearNotices() {
-  const res = await showModal({
-    title: '清空通知记录',
-    content: '将删除本会议的全部通知记录，会议恢复为「未通知」状态，需要重新发送会议通知。确定清空？'
-  })
-  if (!res.confirm) return
-  try {
-    await api.committeeClearNotifications(currentMeetingId())
-    toast({ title: '已清空通知记录', icon: 'success' })
-    await loadDetail()
-  } catch (e) { toast({ title: (e && e.message) || '清空失败', icon: 'none' }) }
-}
-
 // 判断是否图片（按 fileType 或扩展名）
 function isImageFile(url, fileType) {
   var s = ((fileType || '') + ' ' + (url || '')).toLowerCase()
@@ -2659,17 +2647,19 @@ async function removeMaterial(item) {
 .nc-online-emphasis { margin:8rpx 0 16rpx; padding:12rpx 18rpx; border-radius:10rpx; background:#EAF3FA; color:#315F7D; font-size:28rpx; font-weight:700; text-align:center; }
 /* 通知记录：标题 + 记录 */
 /* 通知记录：与通知人员同族的白卡容器（0723 修：原先无容器，内容裸贴屏幕左右边缘） */
-.sr-section { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; padding:20rpx 28rpx 22rpx; box-sizing:border-box; }
-.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:0 0 12rpx; }
-.sr-heading { font-size:30rpx; font-weight:700; color:#1f2329; }
+/* 通知记录：轻列表（透明底 + 分隔线），不是白卡——白卡留给"要办的事"（规则八）。
+   颜色也从绿字绿✓改成深色正文 + 灰时间：绿是业主接待的模块色，而且记录是中性事实，
+   不需要"成功"的颜色。 */
+.sr-list { margin:6rpx 0 0; }
+.sr-heading { padding:10rpx 22rpx 8rpx; color:#8A9099; font-size:25rpx; font-weight:600; }
+.sr-row { display:flex; align-items:center; flex-wrap:wrap; gap:6rpx 16rpx;
+  min-height:88rpx; padding:14rpx 22rpx; border-bottom:1px solid #EEF0F2; }
+.sr-row:first-of-type { border-top:1px solid #EEF0F2; }
+.sr-who { color:#1F2937; font-size:29rpx; font-weight:600; }
+.sr-what { color:#3F4A57; font-size:28rpx; }
+.sr-when { margin-left:auto; color:#8A9099; font-size:26rpx; white-space:nowrap; }
 /* 清空通知记录：弱化小按钮（灰描边胶囊），不与主操作抢视觉 */
-.sr-clear-btn { flex-shrink:0; font-size:25rpx; color:#8A9099; padding:5rpx 18rpx; border:2rpx solid #E3E5E9; border-radius:999rpx; line-height:1.3; }
-.sr-clear-btn:active { background:#F2F3F5; color:#6A7480; }
 /* 通知记录：去底色，纯绿色文字、加大一号并加粗 */
-.send-record { display:flex; align-items:center; gap:12rpx; margin:0; padding:8rpx 2rpx; }
-.send-record + .send-record { margin-top:20rpx; }   /* 多条记录之间间隔加大约 10px */
-.sr-ic { color:#2E9E5B; font-weight:700; font-size:27rpx; }
-.sr-text { font-size:27rpx; color:#2E7D46; font-weight:600; }
 .forward-sheet { position:relative; width:100%; max-width:480px; margin:0 auto; background:#fff; border-radius:24rpx 24rpx 0 0; padding:30rpx 28rpx calc(36rpx + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto; box-sizing:border-box; }
 .fw-title { font-size:34rpx; font-weight:700; color:#1a1a1a; text-align:center; }
 .fw-hint { font-size:26rpx; color:#888; text-align:center; margin:10rpx 0 20rpx; line-height:1.5; }
