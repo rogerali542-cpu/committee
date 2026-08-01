@@ -377,8 +377,10 @@
       <div class="pf-after-send">
         <!-- 0801 设计师定：底部按"这一刻该做什么"分三态，任何一态都只有一颗实心主按钮。
              ① 发送前：两个渠道勾选 + 蓝实心「发送通知」
-             ② 已发送、会议未到：只留浅蓝次级「再次提醒 N 人」——通知已经完成，剩下的是可选动作，
-                不该再用实心主按钮；渠道选择收进弹层
+             ② 已发送、会议未到：浅蓝次级「再次提醒 N 人」+「开始会议」并排——通知已经完成，
+                这两件都是可选动作，谁也不该占实心主位；渠道选择收进弹层。
+                （0801 用户定：开始会议必须够得着——委员到齐了提前开是常态，
+                 startMeeting 自带"会议时间未到，确认现在开始吗"的二次确认）
              ③ 会议当天：蓝实心「开始会议」升为主操作（下面仍留一颗浅蓝次级，人没到齐时能再提醒）
              原先「开始会议」一通知完就浮出来，会议在 12 天后却占着最显眼的位置；而且用的是接待模块
              的绿色，越权到会议模块了——现在统一会议蓝。 -->
@@ -407,8 +409,12 @@
             </button>
           </div>
           <button v-if="footerStage === 'send'" class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
-          <!-- 已发送 / 会议当天：次级浅蓝。通知这件事已经完成，再发是可选动作，不该再摆实心主按钮 -->
-          <button v-else class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
+          <!-- 已发送 / 会议当天：次级浅蓝。通知这件事已经完成，再发是可选动作，不该再摆实心主按钮。
+               会议未到时「开始会议」与它并排（同为次级）；会议当天它已在上面当主按钮，这里就只剩提醒 -->
+          <div v-else class="pf-sub-row">
+            <button class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
+            <button v-if="footerStage === 'remind'" class="pf-btn pf-btn-light" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2555,6 +2561,9 @@ async function removeMaterial(item) {
 .pf-btn-light { background:#EAF0F8; color:#2f5f9e; font-weight:600; }
 .pf-btn-light:active { background:#DCE7F3; }
 .pf-btn-col .pf-btn-light { height:96rpx; font-size:31rpx; }
+/* 已通知、会议未到：「再次提醒」与「开始会议」并排，同为次级——谁都不占实心主位 */
+.pf-sub-row { display:flex; gap:16rpx; }
+.pf-sub-row .pf-btn { flex:1; min-width:0; }
 .pf-btn-light.busy { opacity:.6; }
 /* 通知人员卡里的结果行：发送的结果归属在这张卡，不必去底部按钮里找线索 */
 .rcp-sent-line { padding:0 18rpx 16rpx; margin-top:-6rpx; color:#6B7280; font-size:26rpx; line-height:1.4; }
@@ -2661,12 +2670,13 @@ async function removeMaterial(item) {
 .sr-list { margin:6rpx 0 0; }
 .sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:10rpx 22rpx 8rpx; }
 .sr-heading { color:#8A9099; font-size:25rpx; font-weight:600; }
-/* 清空：小字灰按钮，够得着但不显眼——测试期要用，日常不该顺手点到（记录是凭据，且带二次确认） */
-.sr-clear { flex-shrink:0; margin:0; padding:6rpx 16rpx; border:0; background:none; font:inherit;
-  color:#A0A6AD; font-size:24rpx; line-height:1.3;
+/* 清空：细描边小胶囊，看得出是个按钮但仍是次要——测试期要用，日常不该顺手点到
+   （记录是凭据；破坏性由二次确认承担） */
+.sr-clear { flex-shrink:0; margin:0; padding:7rpx 20rpx; background:none; font:inherit;
+  border:2rpx solid #DFE2E6; border-radius:999rpx; color:#7A828C; font-size:25rpx; line-height:1.3;
   cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none;
   -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
-.sr-clear:active { color:#6A7480; }
+.sr-clear:active { background:#F2F3F5; color:#5A626C; }
 .sr-row { display:flex; align-items:center; flex-wrap:wrap; gap:6rpx 16rpx;
   min-height:88rpx; padding:14rpx 22rpx; border-bottom:1px solid #EEF0F2; }
 .sr-row:first-of-type { border-top:1px solid #EEF0F2; }
