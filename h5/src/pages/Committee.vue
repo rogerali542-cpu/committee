@@ -2742,7 +2742,7 @@ const locationPreset = ref(defaultMeetingLocation)
 // 线上方式（0801 设计师点3）：「微信工作群」严格说不是会议平台而是个群，字段名叫「线上平台」不准，
 // 改叫「线上方式」；选项覆盖群里语音/会议软件/电话，混合情况走「其他」手填（如"腾讯会议 + 微信群"）
 // 「微信工作群」排第一且作切到线上时的默认值（0801 用户定：线上会议基本都在微信工作群里开）
-const onlineWays = ['微信工作群', '腾讯会议', '电话']
+const onlineWays = ['微信工作群', '腾讯会议']   // 0801 用户定：删掉「电话」（通知页同步）
 const DEFAULT_ONLINE_WAY = '微信工作群'
 const onlineOther = ref(false)   // true = 本行变成手填输入框（与线下地点的「其他地点」同一套交互）
 function syncOnlineOther() {

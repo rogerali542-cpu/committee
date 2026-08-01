@@ -116,6 +116,13 @@
             <span>{{ exportingPreNotice ? '正在生成业主公告…' : '导出业主公告' }}</span>
             <i class="pm-arrow"></i>
           </div>
+          <!-- 0801：会议日之前「开始会议」不占底部主位（那时它没意义），但不能因此变得够不着——
+               委员到齐了提前开是常态（startMeeting 本来就带"会议时间未到，确认现在开始吗"的二次确认）。
+               放在低频操作里：够得着，又不抢主操作。到了会议当天它升为底部主按钮，这行随之消失 -->
+          <div v-if="footerStage !== 'start'" class="prep-more-row" @click="startMeeting">
+            <span>提前开始会议</span>
+            <i class="pm-arrow"></i>
+          </div>
           <div class="prep-more-row" @click="removeMeeting">
             <span>取消本次会议</span>
             <i class="pm-arrow"></i>
@@ -1271,9 +1278,10 @@ function todayStrLocal() {
   const d = new Date()
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
+// 到点（当天）或已经过了原定日期都算 start：逾期没开的会必须还能开，否则那场会就卡死了
 const isMeetingDay = computed(() => {
   const d = detail.value || {}
-  return !!d.meetingDate && String(d.meetingDate).slice(0, 10) === todayStrLocal()
+  return !!d.meetingDate && String(d.meetingDate).slice(0, 10) <= todayStrLocal()
 })
 const footerStage = computed(() => (isMeetingDay.value ? 'start' : (noticeSent.value ? 'remind' : 'send')))
 // 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
@@ -1316,7 +1324,7 @@ async function openRemindSheet() {
   await sendNoticeMain()
 }
 
-const ONLINE_WAYS = ['微信工作群', '腾讯会议', '电话']
+const ONLINE_WAYS = ['微信工作群', '腾讯会议']   // 0801 用户定：删掉「电话」
 const OFFLINE_PLACES = ['社区活动室', '社区会议室']
 const methodConvertSaving = ref(false)
 
