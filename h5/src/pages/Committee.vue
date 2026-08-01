@@ -5686,7 +5686,10 @@ onActivated(show)
 
 /* 新建会议弹窗 */
 .modal-mask { position: fixed; inset: 0; z-index: 200; background: #fff; display: flex; align-items: stretch; }
-.create-panel { width: 100%; height: 100%; background: #fff; display: flex; flex-direction: column; overflow: hidden; }
+.create-panel { width: 100%; height: 100%; background: #fff; display: flex; flex-direction: column; overflow: hidden;
+  /* 发起会议弹层整体走会议模块蓝：此前误用全局橙 var(--c-primary-*)（头部/主按钮/选中态都成橙），与原型不符——
+     在本作用域把主色变量覆写为蓝，头部/线下会议选中/含重大事项开关/主按钮一并变蓝。异常态(橙/红)是硬编码，不受影响 */
+  --c-primary: #2f5f9e; --c-primary-dark: #2f5f9e; --c-primary-strong: #244b7d; --c-primary-soft: #EAF0F8; }
 .create-head { display: flex; align-items: center; background: var(--c-primary-dark); flex-shrink: 0; padding-top: env(safe-area-inset-top); box-sizing: border-box; height: calc(120rpx + env(safe-area-inset-top)); }
 .create-back { width: 96rpx; height: 120rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 64rpx; font-weight: 700; flex-shrink: 0; }
 .create-title { flex: 1; text-align: center; color: #fff; font-size: 38rpx; font-weight: 700; line-height: 1.35; }
@@ -5786,7 +5789,7 @@ onActivated(show)
 .ds-cards-2 { gap: 56rpx; justify-content:center; }
 .ds-cards-2 .ds-card { flex:0 0 36%; padding: 18rpx 6rpx 16rpx; }
 .ds-card { flex: 1; min-width: 0; background: #fff; border: 2rpx solid #eee; border-radius: 20rpx; padding: 20rpx 10rpx 16rpx; display: flex; flex-direction: column; align-items: center; gap: 6rpx; box-shadow: 0 4rpx 14rpx rgba(0,0,0,0.05); }
-.ds-card:active { background: #FFF8EE; border-color: #FFD79A; }
+.ds-card:active { background: #EAF0F8; border-color: #C7D8EE; }
 .ds-card:disabled { opacity: 0.75; }
 .ds-svg { width: 48rpx; height: 48rpx; margin-bottom: 6rpx; }
 .ds-ico { width: 58rpx; height: 58rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22rpx; margin-bottom: 4rpx; }
@@ -5795,7 +5798,7 @@ onActivated(show)
 .ds-t { font-size: 28rpx; font-weight: 700; color: #1f2329; line-height: 1.3; }
 .ds-shared-hint { margin:12rpx 4rpx 2rpx; color:#938979; font-size:26rpx; line-height:1.45; text-align:center; white-space:nowrap; }
 .ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
-.ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
+.ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(47,95,158,0.2); border-top-color: #2f5f9e; box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
 /* 待识别缩略图预览条：横向排列，可删 */
 .ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
 .ds-thumb { position: relative; width: 108rpx; height: 108rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
@@ -5834,8 +5837,8 @@ onActivated(show)
 @media (prefers-reduced-motion: reduce) { .sp-ring-svg { animation: none; transform: rotate(-90deg); } }
 .sp-ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .sp-ring-val { display: flex; align-items: baseline; }
-.sp-ring-num { font-size: 76rpx; font-weight: 800; color: #C76A00; font-variant-numeric: tabular-nums; line-height: 1; }
-.sp-ring-pct { font-size: 32rpx; font-weight: 800; color: #C76A00; margin-left: 3rpx; }
+.sp-ring-num { font-size: 76rpx; font-weight: 800; color: #2f5f9e; font-variant-numeric: tabular-nums; line-height: 1; }
+.sp-ring-pct { font-size: 32rpx; font-weight: 800; color: #2f5f9e; margin-left: 3rpx; }
 @keyframes spRingGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,168,0,0)); } 50% { filter: drop-shadow(0 0 5rpx rgba(255,168,0,0.55)); } }
 .sp-title { font-size: 42rpx; font-weight: 700; color: #1f2329; letter-spacing: 1rpx; }
 .sp-say { font-size: 32rpx; color: #B07400; margin: 14rpx 0 4rpx; min-height: 44rpx; }
@@ -6062,8 +6065,8 @@ onActivated(show)
 .btn, .btn-ghost, .btn-primary { flex: 1; min-width: 0; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; text-align: center; font-size: 32rpx; font-weight: 600; box-sizing: border-box; white-space: nowrap; padding: 0 24rpx; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; }
 .btn-ghost { color: #777; background: #f5f5f5; }
 /* 主按钮统一深橙（与顶栏同色），按下更深 */
-.btn-primary { color: #fff; background: var(--c-primary-dark); }
-.btn-primary:active { background: var(--c-primary-strong); }
+.btn-primary { color: #fff; background: #2f5f9e; }
+.btn-primary:active { background: #244b7d; }
 /* 0731 设计师点2：未填齐的置灰态（仍可点，点了 onSubmitClick 提示缺什么，不用 disabled 属性） */
 .btn-primary.disabled { background: #C3CAD3; color: #fff; box-shadow: none; }
 .btn-primary.disabled:active { background: #C3CAD3; }
@@ -6361,7 +6364,7 @@ onActivated(show)
 .create-panel .fl-label,
 .create-panel .meeting-method-line > .fl-label { color: #667B88; font-weight: 500; }
 .create-panel .meeting-info-card .caption-as-title,
-.create-panel .section-title { color: #8A540D; font-weight: 600; letter-spacing: 1rpx; }
+.create-panel .section-title { color: #1f2329; font-weight: 600; letter-spacing: 1rpx; }
 .create-panel .juwei-title { color: #24364B; font-weight: 600; } /* 主标题短句后升格，小字负责解释 */
 .create-panel .form-label { color: #667B88; font-weight: 500; }
 .create-panel .fl-value { color: #24364B; font-weight: 700; font-size: 34rpx; }   /* 具体值统一深蓝黑 */
