@@ -632,12 +632,13 @@
                     <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
                   </div>
                 </div>
+                <!-- 0801 设计师点4：「选项（至少两个）」标签删——已预置两行，结构自明，不重复说 -->
                 <div v-if="topic.decisionType === 'multi_choice'" class="ti-options">
-                  <span class="ti-sub-label">选项（至少两个）</span>
                   <div v-for="(opt, oi) in (topic.options || [])" :key="opt.id" class="ct-option-row">
                     <span class="ct-opt-num">{{ oi + 1 }}.</span>
                     <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
-                    <span v-if="(topic.options || []).length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">×</span>
+                    <!-- 点2：删除语言统一成文字（议题也是「删除」），并补足 44px 热区 -->
+                    <span v-if="(topic.options || []).length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">删除</span>
                   </div>
                   <span class="add-link" @click="addTopicOption(topic)">+ 添加选项</span>
                 </div>
@@ -2768,14 +2769,22 @@ async function confirmRemoveTopic(idx) {
   }
   removeCreateTopic(idx)
 }
+// 0801 设计师提问「切回来能不能找回」→ 能。类型/表决方式来回切时**不再清空已填选项**，
+// 只是隐藏；切回「多选一」原样回来，老人误触不会丢东西。脏数据不落库：提交时按类型清理（见 submitNewMeeting）
 function setTopicType(topic, type) {
   topic.type = type
-  topic.decisionType = type === 'decision' ? 'simple' : 'none'
-  topic.options = []
+  // 回到「表决」时保留上次的表决方式；此前没选过才默认「是/否」
+  if (type === 'decision') {
+    if (topic.decisionType !== 'simple' && topic.decisionType !== 'multi_choice') topic.decisionType = 'simple'
+  }
+  // 切到通知/讨论：decisionType 与 options 都原样留着（隐藏不显示），切回来即恢复
 }
 function setTopicDecision(topic, dtype) {
   topic.decisionType = dtype
-  topic.options = dtype === 'multi_choice' ? [{ id: 1, label: '' }, { id: 2, label: '' }] : []
+  // 首次进「多选一」预置两行；已填过则原样保留
+  if (dtype === 'multi_choice' && !(topic.options && topic.options.length)) {
+    topic.options = [{ id: 1, label: '' }, { id: 2, label: '' }]
+  }
 }
 function addTopicOption(topic) {
   const opts = topic.options || []
@@ -4438,7 +4447,18 @@ async function submitNewMeeting() {
     }]
     firstTopicText.value = ''
   }
-  var topics = (form.topics || []).filter(function (t) { return t.title && t.title.trim() })
+  // 落库前按类型清理：编辑期为防误触而保留的隐藏选项/表决方式不带进库——
+  // 非表决类 decisionType 归 none、选项清空；表决·是否 也不带选项
+  var topics = (form.topics || [])
+    .filter(function (t) { return t.title && t.title.trim() })
+    .map(function (t) {
+      var isDecision = t.type === 'decision'
+      var isMulti = isDecision && t.decisionType === 'multi_choice'
+      return Object.assign({}, t, {
+        decisionType: isDecision ? t.decisionType : 'none',
+        options: isMulti ? (t.options || []) : []
+      })
+    })
   // 必填校验：会议名称 / 会议地点 / 会议议题。缺失 → 弹卡片列出，确认后亮红框
   fieldErrors.title = false; fieldErrors.location = false; fieldErrors.topics = false; fieldErrors.meetingDate = false; fieldErrors.meetingTime = false
   const missing = []
@@ -6306,7 +6326,9 @@ onActivated(show)
 .type-chip { min-height: 60rpx; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 28rpx; color: #666; background: #f5f5f5; padding: 10rpx 22rpx; border-radius: 28rpx; }
 .type-chip.on { color: #fff; background: #FFA800; font-weight: 600; }
 .add-link { font-size: 28rpx; color: #FFA800; font-weight: 600; }
-.tp-del { font-size: 38rpx; color: #666; padding: 0 8rpx; flex-shrink: 0; }
+/* 0801 设计师点2：选项删除从 × 改文字「删除」，与议题的「删除」统一语言；热区补到 88rpx(44px) */
+.tp-del { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 88rpx; padding: 0 16rpx; font-size: 26rpx; color: #9aa0a6; }
+.tp-del:active { color: #E5533C; }
 
 /* 搜索 */
 .search-bar { position: relative; margin: 16rpx 24rpx; }
@@ -6699,11 +6721,14 @@ onActivated(show)
 .ti-decide-row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
 .ti-sub-label { flex-shrink: 0; font-size: 27rpx; color: #8a9099; }
 .ti-decide { margin-top: 0; }
-.ti-decide .type-chip { min-height: 64rpx; padding: 6rpx 22rpx; font-size: 29rpx; }
-.ti-decide .type-chip.on { background: #F3F7FC; border-color: #A9C1DE; color: #2f5f9e; }
+/* 0801 设计师点1：表决方式是「选了表决才存在」的从属选择，必须比议题类型退一级——
+   药丸小一号(64rpx vs 88rpx)、选中态只用浅蓝底、描边透明不加粗，避免五个平级选项的错觉 */
+.ti-decide .type-chip { min-height: 64rpx; padding: 4rpx 20rpx; font-size: 28rpx; border-color: #E4E7EB; }
+.ti-decide .type-chip.on { background: #EAF0F8; border-color: transparent; color: #2f5f9e; font-weight: 600; }
 .ti-options { margin-top: 10rpx; }
-.ti-options .ti-sub-label { display: block; margin-bottom: 2rpx; }
-.ti-options .add-link { color: #3567A4; }
+/* 点3：「+ 添加选项」缩进对齐到选项输入框左边（序号 40rpx + gap 14rpx），
+   否则贴着卡片边缘，看着像整张卡的操作而不是这条议题的 */
+.ti-options .add-link { display: inline-block; margin-left: 54rpx; color: #3567A4; }
 /* 点5：含重大事项勾选后展开——公告截止日倒计时（会议−7天）+ 居委会见证；紧张(≤3天)橙、已过红 */
 .juwei-detail { margin-top: 14rpx; padding-top: 12rpx; border-top: 2rpx solid #f0f0f0; display: flex; flex-direction: column; gap: 10rpx; }
 .jd-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
