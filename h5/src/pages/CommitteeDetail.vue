@@ -137,8 +137,14 @@
             <span>{{ exportingPreNotice ? '正在生成业主公告…' : '导出业主公告' }}</span>
             <i class="pm-arrow"></i>
           </div>
-          <!-- 0801 用户定：「提前开始会议」这行删掉。会议日之前不给开会入口，
-               「开始会议」只在会议当天（或已过原定日期）作为底部主按钮出现。 -->
+          <!-- 会议日之前底部不放开会按钮（设计师：12 天后的事不该提前出现），但入口得留着——
+               委员到齐了提前开是常态。放这一列：够得着，又不与底部主操作重复。
+               到了会议当天它升为底部主按钮，这行随之消失。
+               startMeeting 自带「会议时间未到，确认现在开始吗」二次确认。 -->
+          <div v-if="footerStage !== 'start'" class="prep-more-row" @click="startMeeting">
+            <span>提前开始会议</span>
+            <i class="pm-arrow"></i>
+          </div>
           <div class="prep-more-row" @click="removeMeeting">
             <span>取消本次会议</span>
             <i class="pm-arrow"></i>
