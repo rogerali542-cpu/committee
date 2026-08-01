@@ -486,6 +486,8 @@
           <span class="create-title">{{ createPageTitle }}</span>
           <span class="create-nav-ph"></span>
         </div>
+        <!-- 识别成功浮层（0801 设计师折中）：保留绿、但 2.8s 自动消失——瞬时反馈不当常驻装饰 -->
+        <div v-if="recogFlash" class="recog-flash">已识别，可继续核对修改</div>
 
         <div class="create-body" style="overflow-y:auto;">
           <!-- 拍照上传是填表加速器，不再与手动填写并列成两种模式。
@@ -600,9 +602,11 @@
             <div v-for="(topic, idx) in createForm.topics" :key="idx" class="topic-item">
               <div class="ti-head">
                 <span class="ti-no">议题 {{ idx + 1 }}</span>
-                <span class="ti-del" @click="removeCreateTopic(idx)" aria-label="删除本条议题">×</span>
+                <!-- 0801 设计师·规则十：删除不做随手能碰的大 ×；文字按钮 + 打过字的二次确认 -->
+                <span class="ti-del" @click="confirmRemoveTopic(idx)">删除</span>
               </div>
-              <textarea class="ti-input" v-model="topic.title" rows="2" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')"></textarea>
+              <!-- 0801 设计师：一行起步、随内容自增高——固定三行高让一条议题占大半屏 -->
+              <textarea class="ti-input" v-model="topic.title" rows="1" placeholder="要讨论或表决的事项" @focus="clearFieldError('topics')" @input="autoGrowTopicTa"></textarea>
               <!-- 0728：三类——通知/讨论操作一致（不表决、只宣读记录），仅表决要投票；底层枚举 notice/discussion/decision -->
               <div class="ti-types">
                 <span class="type-chip" :class="{ on: topic.type === 'notice' }" @click="setTopicType(topic, 'notice')">通知</span>
@@ -610,11 +614,17 @@
                 <span class="type-chip" :class="{ on: topic.type === 'decision' }" @click="setTopicType(topic, 'decision')">表决</span>
               </div>
               <template v-if="topic.type === 'decision'">
-                <div class="ti-types ti-decide">
-                  <span class="type-chip" :class="{ on: topic.decisionType === 'simple' }" @click="setTopicDecision(topic, 'simple')">是 / 否</span>
-                  <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
+                <!-- 0801 设计师：第二排必须有标签说明在问什么，且视觉退一级（浅底描边、小一号），
+                     别和上排长成六个并列选项 -->
+                <div class="ti-decide-row">
+                  <span class="ti-sub-label">表决方式</span>
+                  <div class="ti-types ti-decide">
+                    <span class="type-chip" :class="{ on: topic.decisionType === 'simple' }" @click="setTopicDecision(topic, 'simple')">是 / 否</span>
+                    <span class="type-chip" :class="{ on: topic.decisionType === 'multi_choice' }" @click="setTopicDecision(topic, 'multi_choice')">多选一</span>
+                  </div>
                 </div>
                 <div v-if="topic.decisionType === 'multi_choice'" class="ti-options">
+                  <span class="ti-sub-label">选项（至少两个）</span>
                   <div v-for="(opt, oi) in (topic.options || [])" :key="opt.id" class="ct-option-row">
                     <span class="ct-opt-num">{{ oi + 1 }}.</span>
                     <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
@@ -2549,9 +2559,16 @@ const counts = ref({ preparing: 0, ongoing: 0, ended: 0 })
 const roleView = ref({ title: '', intro: '' })
 const createVisible = ref(false)
 const createPeriod = ref(0)
+// 0801 设计师（数据自相矛盾）：期数以「会议名称」为准——识别/手填「第4次」，页头和主按钮跟着变「第4次」，
+// 同屏三个数字不再打架；名称里没有期数时才退回入口带进来的 createPeriod
+const effectivePeriodNo = computed(() => {
+  const m = String(createForm.title || '').match(/第\s*(\d+)\s*次/)
+  if (m) return m[1]
+  return createPeriod.value > 0 ? String(createPeriod.value) : ''
+})
 const createPageTitle = computed(() => {
   if (editingMeetingId.value) return '编辑会议'
-  return createPeriod.value > 0 ? ('发起第' + createPeriod.value + '次例会') : '发起业委会会议'
+  return effectivePeriodNo.value ? ('发起第' + effectivePeriodNo.value + '次例会') : '发起业委会会议'
 })
 // createReturnPortal 已删(0725 导航审计):驾驶舱入口不再预切甲,布局保持 portal,模态关闭天然回驾驶舱
 // 「去安排/去补开」进来时自动预填的「第N次例会」标题快照：用户只看一眼没填任何东西就返回，
@@ -2655,8 +2672,8 @@ const meetingFormComplete = computed(() => Boolean(
   createForm.location && createForm.location.trim() &&
   ((createForm.topics && createForm.topics.some((t) => t.title && t.title.trim())) || firstTopicText.value.trim())
 ))
-// 主按钮对象文案（设计师点8）：按建会期数——有「第N次」则「生成第N次例会通知」，否则通用名
-const createSubmitLabel = computed(() => createPeriod.value > 0 ? ('生成第' + createPeriod.value + '次例会通知') : '生成会议通知')
+// 主按钮对象文案（设计师点8）：与页头同源（effectivePeriodNo，跟会议名称走），同屏数字永远一致
+const createSubmitLabel = computed(() => effectivePeriodNo.value ? ('生成第' + effectivePeriodNo.value + '次例会通知') : '生成会议通知')
 // 会前公告截止日（设计师点5）：业委会会议须会前 7 天公告 → 最迟公告日 = 会议日期 − 7 天。
 // 算出距今天数：已过→提示改期；≤3 天→紧张提醒色；否则常态。
 const majorNoticeInfo = computed(() => {
@@ -2718,6 +2735,37 @@ function addTopicRow() {
     const last = inputs[inputs.length - 1]
     if (last) last.focus()
   })
+}
+// 议题输入框自增高（0801 设计师）：一行起步随内容长高。逐字输入走 @input；
+// 数组整体替换（识别回填/加行/删行/编辑载入，都是重新赋值数组）由下面的 watch 统一量一遍
+function autoGrowTopicTa(e) {
+  const el = e && e.target
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+function sizeAllTopicTa() {
+  nextTick(function () {
+    document.querySelectorAll('.topic-item .ti-input').forEach(function (el) {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    })
+  })
+}
+watch(() => createForm.topics, function () { if (createVisible.value) sizeAllTopicTa() })
+// 删除议题（0801 设计师·规则十）：打过字的必须二次确认——误删文字就没了；空行直接删不烦人
+async function confirmRemoveTopic(idx) {
+  const t = createForm.topics[idx]
+  const txt = t && t.title ? t.title.trim() : ''
+  if (txt) {
+    const r = await showModal({
+      title: '删除这条议题？',
+      content: '「' + (txt.length > 20 ? txt.slice(0, 20) + '…' : txt) + '」删除后不可恢复。',
+      confirmText: '删除'
+    })
+    if (!r || !r.confirm) return
+  }
+  removeCreateTopic(idx)
 }
 function setTopicType(topic, type) {
   topic.type = type
@@ -3402,6 +3450,10 @@ function scanMaterialPrefill() {
 
 // —— 拍照/上传文档 → 后端 OCR + 大模型识别 → 回填表单（OCR/AI 未开或失败则提示并回退手填） ——
 const docPrefilled = ref(false)   // 已成功预填过一次（保留状态位，供后续提示用）
+// 0801 设计师折中：识别成功的绿提示做成几秒即逝的浮层——成功反馈是瞬时的，长期驻留就变装饰；
+// 表单里的「已识别」标签保持灰（它是来源说明"这不是你填的，请核对"，不是成功状态，不该有颜色）
+const recogFlash = ref(false)
+let _recogFlashTimer = null
 const createInitialDefaults = ref({})  // 表单打开时的默认占位值快照（日期/时间/地点）
 // 字段是否为"用户真正填过"（手动改或识别填过）——等于初始默认占位则视为未填
 function isFieldUserSet(key) {
@@ -3941,7 +3993,12 @@ function applyNoticeFields(res, overwrite) {
     recognizedFields.topics = true
     changed = true
   }
-  if (changed) docPrefilled.value = true
+  if (changed) {
+    docPrefilled.value = true
+    recogFlash.value = true
+    if (_recogFlashTimer) clearTimeout(_recogFlashTimer)
+    _recogFlashTimer = setTimeout(() => { recogFlash.value = false }, 2800)
+  }
   return changed
 }
 
@@ -6527,7 +6584,8 @@ onActivated(show)
 
 .create-panel .scan-accelerator { display: flex; align-items: center; gap: 18rpx; min-height: 96rpx; margin-bottom: 18rpx; padding: 12rpx 22rpx; box-sizing: border-box; border: 2rpx solid #D8E2EE; border-radius: 18rpx; background: #F7FAFD; color: #315F97; cursor: pointer; }
 .create-panel .scan-accelerator:active { background: #EDF4FA; }
-.create-panel .scan-accelerator.done { border-color: #BED8C8; background: #F2F8F4; color: #2F6B45; }
+/* 0801 设计师：识别完成不再整条常驻绿（绿=接待模块色，且成功反馈应瞬时）——入口回归常态，绿交给 .recog-flash 浮层 */
+.create-panel .scan-accelerator.done { border-color: #D8E2EE; background: #F7FAFD; color: #315F97; }
 .create-panel .scan-accelerator-icon { flex: 0 0 auto; font-size: 34rpx; line-height: 1; }
 .create-panel .scan-accelerator-main { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4rpx; }
 .create-panel .scan-accelerator-main b { font-size: 29rpx; line-height: 1.35; }
@@ -6556,10 +6614,12 @@ onActivated(show)
 .create-panel .basic-info-card { padding: 0 28rpx !important; border-radius: 22rpx; overflow: hidden; }
 .create-panel .meeting-title-line { display: grid; grid-template-columns: 148rpx minmax(0, 1fr); align-items: center; min-height: 112rpx; margin: 0 !important; border-bottom: 2rpx solid #E3E7EB; }
 .create-panel .meeting-title-line .caption-as-title { margin: 0 !important; color: #758091; font-size: 29rpx; font-weight: 500; letter-spacing: 0; }
+/* 0801 设计师：「已识别」是来源说明（"这不是你填的，请核对"），不是成功状态——不该有颜色。
+   绿 #2F7A55 是接待模块色，在会议模块里越权，且绿=对会让用户跳过核对；改灰字 */
 .create-panel .caption-as-title i,
 .create-panel .fl-label i,
-.create-panel .topic-head i { display: block; margin-top: 3rpx; color: #2F7A55; font-size: 20rpx; font-style: normal; font-weight: 600; line-height: 1.2; }
-.create-panel .topic-head i { display: inline-block; margin: 0 0 0 12rpx; padding: 3rpx 9rpx; border-radius: 999rpx; background: #E6F3EA; vertical-align: middle; }
+.create-panel .topic-head i { display: block; margin-top: 3rpx; color: #8a9099; font-size: 20rpx; font-style: normal; font-weight: 600; line-height: 1.2; }
+.create-panel .topic-head i { display: inline-block; margin: 0 0 0 12rpx; padding: 3rpx 9rpx; border-radius: 999rpx; background: #F2F3F5; vertical-align: middle; }
 .create-panel .meeting-title-line .title-row,
 .create-panel .meeting-title-line .title-input-wrap { min-width: 0; width: 100%; }
 .create-panel .meeting-title-line .title-input-wrap textarea.title-ta { min-height: 76rpx; height: auto; padding: 16rpx 50rpx 16rpx 0; border: 0; border-radius: 0; background: transparent; color: #1F2937; font-size: 33rpx; font-weight: 700; line-height: 1.35; }
@@ -6593,8 +6653,8 @@ onActivated(show)
 .create-panel .sheet-actions.fixed .btn-primary:active { background: #2D598E; }
 
 /* ===== 设计师功能点（加在原型基线上；配色沿用基线蓝 #3567A4，不动整体布局） ===== */
-/* 点2：议题计数——仅 topics>0 时出现，次级灰、常规字重 */
-.sec-count { color: #8a9099; font-weight: 400; font-size: 26rpx; }
+/* 点2：议题计数——仅 topics>0 时出现，次级灰、常规字重；margin 补空格（0801：模板里的空格会被压掉） */
+.sec-count { color: #8a9099; font-weight: 400; font-size: 26rpx; margin-left: 10rpx; }
 /* 点4：会议时间已过提示（识别带入旧时间时），配合底部按钮置灰。
    0801 设计师点2：红不在配色表——异常语言全项目一套，暖橙通栏 字#9a5b12/底#f7e4c6 */
 .dt-past-warn { display: flex; align-items: flex-start; gap: 12rpx; padding: 14rpx 18rpx; border-radius: 12rpx; background: #f7e4c6; color: #9a5b12; font-size: 26rpx; line-height: 1.5; }
@@ -6605,16 +6665,25 @@ onActivated(show)
 .topic-item:first-of-type { border-top: 0; }
 .ti-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8rpx; }
 .ti-no { font-size: 30rpx; color: #1f2329; font-weight: 700; }
-.ti-del { font-size: 40rpx; line-height: 1; color: #9aa0a6; padding: 4rpx 12rpx; }
+/* 0801 设计师·规则十：删除改文字按钮（小、灰），不做随手能碰到的大 × */
+.ti-del { font-size: 26rpx; line-height: 1.4; color: #9aa0a6; padding: 6rpx 10rpx; }
 .ti-del:active { color: #E5533C; }
-.ti-input { width: 100%; box-sizing: border-box; min-height: 150rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; }
+/* 0801 设计师：一行起步（min-height 一行）随内容自增高，overflow hidden 配合 scrollHeight 量高 */
+.ti-input { width: 100%; box-sizing: border-box; min-height: 80rpx; padding: 16rpx 18rpx; border: 2rpx solid #E2E5E9; border-radius: 14rpx; background: #fff; font-size: 30rpx; line-height: 1.5; color: #1f2329; resize: none; outline: none; font-family: inherit; overflow: hidden; }
 .ti-input::placeholder { color: #b7bbc0; }
 .ti-input:focus { border-color: #3567A4; }
 .ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
-.ti-decide { margin-top: 8rpx; }
-.ti-options { margin-top: 8rpx; }
-/* 选中态统一用基线会议蓝（盖过全局橙 .type-chip.on） */
-.ti-types .type-chip.on { background: #3567A4; color: #fff; border-color: #3567A4; font-weight: 700; }
+/* 0801 设计师：实心蓝只留页头/底导/主按钮——选中态改「白底蓝描边」，一屏最亮的不再是单选控件 */
+.ti-types .type-chip { border: 2rpx solid transparent; }
+.ti-types .type-chip.on { background: #fff; color: #3567A4; border-color: #3567A4; font-weight: 700; }
+/* 第二排（表决方式）带标签且视觉退一级：浅蓝底 + 淡描边 + 小一号，不与上排混成六个并列选项 */
+.ti-decide-row { display: flex; align-items: center; gap: 16rpx; margin-top: 12rpx; }
+.ti-sub-label { flex-shrink: 0; font-size: 27rpx; color: #8a9099; }
+.ti-decide { margin-top: 0; }
+.ti-decide .type-chip { min-height: 64rpx; padding: 6rpx 22rpx; font-size: 29rpx; }
+.ti-decide .type-chip.on { background: #EAF0F8; border-color: #A9C1DE; color: #2f5f9e; }
+.ti-options { margin-top: 10rpx; }
+.ti-options .ti-sub-label { display: block; margin-bottom: 2rpx; }
 .ti-options .add-link { color: #3567A4; }
 /* 点5：含重大事项勾选后展开——公告截止日倒计时（会议−7天）+ 居委会见证；紧张(≤3天)橙、已过红 */
 .juwei-detail { margin-top: 14rpx; padding-top: 12rpx; border-top: 2rpx solid #f0f0f0; display: flex; flex-direction: column; gap: 10rpx; }
@@ -6622,7 +6691,8 @@ onActivated(show)
 .jd-label { flex-shrink: 0; font-size: 28rpx; color: #8a9099; }
 .jd-value { min-width: 0; text-align: right; font-size: 30rpx; color: #2d3137; font-weight: 600; }
 .jd-value.ph { color: #b7bbc0; font-weight: 400; }
-.jd-row.jd-warn .jd-value { color: #9a5b12; }   /* 紧张(≤3天)也走统一暖橙字色 */
+/* 0801 设计师·规则七：紧张(仅剩≤3天)是「需注意但不异常」→ 模块蓝字；暖橙只留真逾期（已过通栏），两档不再同色 */
+.jd-row.jd-warn .jd-value { color: #3567A4; }
 /* 0801 设计师点3：公告日已过 → 整行暖底通栏：主句一行 + 浅色小字给出路（不再 label-value 三行右对齐） */
 .jd-past-banner { display: flex; flex-direction: column; gap: 4rpx; padding: 16rpx 20rpx; border-radius: 12rpx; background: #f7e4c6; }
 .jd-past-banner b { color: #9a5b12; font-size: 29rpx; font-weight: 700; line-height: 1.45; }
@@ -6630,6 +6700,9 @@ onActivated(show)
 /* 0801 设计师点11：上传入口一行式的右侧 ›（CSS 边框箭头，见 CLAUDE.md 不用字符箭头）；展开转为下指 */
 .sa-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #8A97A6; border-bottom: 3rpx solid #8A97A6; transform: rotate(-45deg); transition: transform .2s ease; }
 .scan-accelerator.open .sa-chev { transform: rotate(45deg); }
+/* 识别成功浮层（0801 设计师折中）：绿保留但 2.8s 即逝——成功反馈是瞬时的，不当常驻装饰、不占首屏 */
+.recog-flash { position: fixed; top: calc(150rpx + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 260; padding: 12rpx 30rpx; border-radius: 999rpx; background: #F2F8F4; border: 2rpx solid #BED8C8; color: #2F6B45; font-size: 27rpx; font-weight: 600; white-space: nowrap; box-shadow: 0 6rpx 18rpx rgba(20, 40, 30, .12); animation: recogFlashIn .25s ease; }
+@keyframes recogFlashIn { from { opacity: 0; transform: translate(-50%, -10rpx); } to { opacity: 1; transform: translate(-50%, 0); } }
 /* 点6：召开方式分段按钮 active 用基线蓝（覆盖 var，避免落到全局橙） */
 .create-panel .method-switch button.active { color: #3567A4; }
 </style>
