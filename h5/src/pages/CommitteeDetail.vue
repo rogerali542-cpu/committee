@@ -90,6 +90,9 @@
               <i class="rcp-head-chev" :class="{ open: recipientOpen }"></i>
             </div>
           </div>
+          <!-- 0801 设计师：发送的结果归属在这张卡里。原先发完之后整屏没变化，
+               用户只能靠底部按钮变没变去猜"到底发出去没有" -->
+          <div v-if="noticeSent" class="rcp-sent-line">{{ noticeSentLine }}</div>
           <div class="rcp-list page-rcp-list" v-if="recipientOpen">
             <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
               <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
@@ -367,8 +370,13 @@
     <!-- 准备阶段（主任）：底部固定主操作 -->
     <div ref="prepFooterEl" class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
       <div class="pf-after-send">
-        <!-- 已通知（App送达全体 或 微信留痕）后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
-        <button v-if="prepareMode !== 'send'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
+        <!-- 0801 设计师定：底部按"这一刻该做什么"分三态，任何一态都只有一颗实心主按钮。
+             ① 发送前：两个渠道勾选 + 蓝实心「发送通知」
+             ② 已发送、会议未到：只留浅蓝次级「再次提醒 N 人」——通知已经完成，剩下的是可选动作，
+                不该再用实心主按钮；渠道选择收进弹层
+             ③ 会议当天：蓝实心「开始会议」升为主操作（下面仍留一颗浅蓝次级，人没到齐时能再提醒）
+             原先「开始会议」一通知完就浮出来，会议在 12 天后却占着最显眼的位置；而且用的是接待模块
+             的绿色，越权到会议模块了——现在统一会议蓝。 -->
         <!-- 0801 定稿（用户提 + 设计师改）：渠道两个勾选、主操作只留一个。
              此前把微信做成唯一主按钮、App 内送达做成附加项，等于砍掉了「只在 App 内通知」——
              而这条路是真实需要的：微信工作群里往往还有物业和居委会的人，物业费、合同这类议题
@@ -376,12 +384,14 @@
              默认两个都勾，常规情况直接点发送；只发 App 就取消微信那勾；两个都取消按钮置灰。
              两颗实心按钮抢注意力的老问题也没有回来——底部仍是一主操作。 -->
         <div class="pf-btn-col">
+          <button v-if="footerStage === 'start'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
           <!-- 0801 修「勾选框点了很久才有反应、或者没反应」：这两行原是 <div @click>，
                而同一条里唯一响应正常的「发送通知」是原生 <button>——差别就在这儿。
                手机浏览器把 div 当普通文字：手指按得稍久就先进入选字/长按菜单，tap 根本不会变成
                click；再加上非交互元素还吃 300ms 双击缩放延迟，就是"要么慢半拍、要么没反应"。
-               改成原生 button（另配 touch-action:manipulation 去延迟、user-select:none 断长按选字）。 -->
-          <div class="pf-ch-group">
+               改成原生 button（另配 touch-action:manipulation 去延迟、user-select:none 断长按选字）。
+               ⚠ 只在「发送前」这一态出现；已发送后渠道选择收进弹层（openRemindSheet）。 -->
+          <div v-if="footerStage === 'send'" class="pf-ch-group">
             <button type="button" class="pf-also" :aria-pressed="chWechat ? 'true' : 'false'" @click="chWechat = !chWechat">
               <span class="pf-also-check" :class="{ on: chWechat }">{{ chWechat ? '✓' : '' }}</span>
               <span class="pf-also-txt">发到微信工作群</span>
@@ -391,7 +401,9 @@
               <span class="pf-also-txt">{{ recipientSelectedCount ? 'App 内通知 ' + recipientSelectedCount + ' 位委员' : '未选委员，无法在 App 内通知' }}</span>
             </button>
           </div>
-          <button class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
+          <button v-if="footerStage === 'send'" class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
+          <!-- 已发送 / 会议当天：次级浅蓝。通知这件事已经完成，再发是可选动作，不该再摆实心主按钮 -->
+          <button v-else class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
         </div>
       </div>
     </div>
@@ -1250,6 +1262,60 @@ onUnmounted(() => { if (_footerRO) { _footerRO.disconnect(); _footerRO = null } 
 // ② 原生下拉是本页第三种控件（行+›、分段、下拉），蓝色高亮是系统默认样式，不受设计系统控制；
 // ③ 选完还得再点「确认转换」，那颗按钮常在折叠线以下 —— 于是"选了腾讯会议、正文还写着线下会议"，
 //    其实压根没提交。改成与「地点」同款的底部弹层：选中即生效，只更新上面「方式」那一行。
+// ── 底部操作条三态（0801 设计师定）──
+// send：还没通知 → 渠道勾选 + 蓝实心「发送通知」
+// remind：已通知、会议未到 → 只留浅蓝次级「再次提醒 N 人」（渠道进弹层）
+// start：会议当天 → 蓝实心「开始会议」升为主操作
+// 原先只看"通知了没有"，一发完「开始会议」就浮出来——会议在 12 天后，这颗按钮既没用又最显眼。
+function todayStrLocal() {
+  const d = new Date()
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+const isMeetingDay = computed(() => {
+  const d = detail.value || {}
+  return !!d.meetingDate && String(d.meetingDate).slice(0, 10) === todayStrLocal()
+})
+const footerStage = computed(() => (isMeetingDay.value ? 'start' : (noticeSent.value ? 'remind' : 'send')))
+// 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
+const remindLabel = computed(() => (
+  noticeSent.value
+    ? '再次提醒 ' + (recipientSelectedCount.value || recipientList.value.length) + ' 人'
+    : '发送通知'
+))
+// 通知人员卡里的结果行：「已通知 7 人 · 8月1日 14:30」
+function fmtSendTimeShort(s) {
+  const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
+  return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : ''
+}
+const noticeSentLine = computed(() => {
+  const d = detail.value || {}
+  const logs = d.notificationLogs || []
+  const last = logs.length ? logs[logs.length - 1] : null
+  const at = fmtSendTimeShort((last && last.sentAt) || d.notifiedAt)
+  const total = (d.delivery && d.delivery.total) || 0
+  // 只走了微信时没有送达人数，就别编一个数字出来
+  const head = total ? ('已通知 ' + total + ' 人')
+    : (last && last.channel === 'wechat' ? '已发到微信工作群' : '已通知')
+  return head + (at ? ' · ' + at : '')
+})
+// 已通知后再发：渠道收进底部弹层选（底部只留一颗次级按钮，不再常驻两行勾选）
+async function openRemindSheet() {
+  if (mainSending.value || sendSubmitting.value) return
+  const n = recipientSelectedCount.value
+  const items = [{ label: '发到微信工作群', selected: true }]
+  if (n) items.push({ label: 'App 内通知 ' + n + ' 位委员', selected: true })
+  const res = await showActionSheet({
+    title: noticeSent.value ? '再次提醒 · 选择渠道' : '发送通知 · 选择渠道',
+    variant: 'picker', multi: true, confirmText: '发送', cancelText: '取消', itemList: items
+  })
+  if (!res || !res.confirm) return
+  const picked = res.tapIndexes || []
+  if (!picked.length) { toast({ title: '请至少选择一个通知渠道', icon: 'none' }); return }
+  chWechat.value = picked.indexOf(0) >= 0
+  chApp.value = n ? picked.indexOf(1) >= 0 : false
+  await sendNoticeMain()
+}
+
 const ONLINE_WAYS = ['微信工作群', '腾讯会议', '电话']
 const OFFLINE_PLACES = ['社区活动室', '社区会议室']
 const methodConvertSaving = ref(false)
@@ -1383,8 +1449,8 @@ async function sendNoticeMain() {
     // 顺序：App 内先留档，再跳微信分享。反过来的话安卓会被拉去微信，回不来做第二步。
     if (wantApp) {
       const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
-      // 还要跳微信时不弹 App 这步的 toast，免得和微信的"已复制"提示连着闪两条
-      const ok = await doSend(ids, { quietForward: true, silent: wantWechat })
+      // 0801 设计师：发送成功要有一次明确反馈，而不是让用户从按钮变化去推断发出去没有
+      const ok = await doSend(ids, { quietForward: true, successText: '已通知 ' + ids.length + ' 位委员' })
       if (!ok) {
         if (!wantWechat) return   // 只发 App：doSend 已经报过错，到此为止
         // 两条都勾时，App 这条失败不该连累微信——但也不能默默跳过，问一句
@@ -1396,7 +1462,8 @@ async function sendNoticeMain() {
         if (!r || !r.confirm) return
       }
     }
-    if (wantWechat) await openWechat()
+    // markNotified：这是一次明确的发送/提醒动作，微信这条也要进通知记录
+    if (wantWechat) await openWechat({ markNotified: true })
   } finally { mainSending.value = false }
 }
 function toggleRecipient(id) {
@@ -1423,7 +1490,11 @@ async function doSend(ids, options) {
   try {
     await api.committeeSendAll(id, ids)
     if (!(options && options.silent)) {
-      toast({ title: options && options.quietForward ? 'App内已通知' : '通知已发送', icon: 'success' })
+      toast({
+        title: (options && options.successText)
+          || (options && options.quietForward ? 'App内已通知' : '通知已发送'),
+        icon: 'success'
+      })
     }
     recipientOpen.value = false
     await loadDetail()
@@ -1571,7 +1642,7 @@ function copyShareText() {
 // 转发到微信：先复制通知内容，再"尽力"唤起微信（安卓多能跳转；iOS 常无效但不影响使用），到群里直接粘贴即可。
 // ⚠ 严禁用 window.location.href='weixin://' 顶层跳转——那会把当前 H5 页面 unload（真机表现为"网页被自动关闭"）。
 // 改用隐藏 iframe 唤起 scheme：唤得起就跳微信，唤不起也只是无效，当前页始终不被关闭/重置。
-async function openWechat() {
+async function openWechat(opts) {
   // ① 复制通知文本到剪贴板（粘贴到业主群）
   try {
     await writeShareToClipboard()
@@ -1587,8 +1658,10 @@ async function openWechat() {
     document.body.appendChild(ifr)
     setTimeout(() => { try { document.body.removeChild(ifr) } catch (e) {} }, 1500)
   } catch (e) {}
-  // ③ 微信通知只做留痕，不改 App 内送达状态；App 内通知仍由「App内通知」按钮单独完成。
-  if (prepareMode.value === 'send') {
+  // ③ 微信通知只做留痕，不改 App 内送达状态；App 内送达由 committeeSendAll 单独完成。
+  // markNotified：来自底部「发送通知/再次提醒」的明确动作 → 一律留痕（否则再次提醒不会进通知记录）；
+  // 转发弹窗里那颗「转发到微信」不带此标记，仍按 prepareMode 判定，免得每点一次转发就多一条记录。
+  if ((opts && opts.markNotified) || prepareMode.value === 'send') {
     try {
       await api.committeeMarkWechatNotified(currentMeetingId())
       await loadDetail()
@@ -2467,11 +2540,20 @@ async function removeMaterial(item) {
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
 .pf-after-send { display:flex; flex-direction:column; gap:14rpx; }
 .after-send-footer .pf-btn-row { padding:0 20rpx; }
-.pf-btn-start-top { align-self:center; width:60%; height:78rpx; background:#0F766E; color:#fff; font-size:29rpx; font-weight:700; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.28); animation:startPulse 2.2s ease-in-out infinite; }
-.pf-btn-start-top:active { background:#0B5F59; animation:none; }
-.pf-start-ico { font-size:24rpx; margin-right:10rpx; line-height:1; }
-@keyframes startPulse { 0%, 100% { box-shadow:0 6rpx 16rpx rgba(15,118,110,0.22); } 50% { box-shadow:0 8rpx 24rpx rgba(15,118,110,0.44), 0 0 0 5rpx rgba(15,118,110,0.12); } }
-@media (prefers-reduced-motion: reduce) { .pf-btn-start-top { animation:none; } }
+/* 0801 设计师：原来是 #0F766E 绿——那是业主接待的模块色，越权到会议模块了。改会议蓝。
+   脉冲动画一并去掉：它当初是为了让绿按钮从一堆按钮里跳出来，现在它已经是当天唯一的主按钮，
+   不需要再闪；一直呼吸的按钮对老人反而是干扰。整宽：与「发送通知」同款，别自成一路。 */
+.pf-btn-start-top { background:#3567A4; color:#fff; font-weight:700; }
+.pf-btn-start-top:active { background:#2D598E; }
+.pf-start-ico { font-size:26rpx; margin-right:10rpx; line-height:1; }
+/* 次级：已通知后的「再次提醒 N 人」。通知已经完成，再发是可选动作，不给实心主按钮。
+   会议当天与「开始会议」同屏时矮一档，层级一眼分得出 */
+.pf-btn-light { background:#EAF0F8; color:#2f5f9e; font-weight:600; }
+.pf-btn-light:active { background:#DCE7F3; }
+.pf-btn-col .pf-btn-light { height:96rpx; font-size:31rpx; }
+.pf-btn-light.busy { opacity:.6; }
+/* 通知人员卡里的结果行：发送的结果归属在这张卡，不必去底部按钮里找线索 */
+.rcp-sent-line { padding:0 18rpx 16rpx; margin-top:-6rpx; color:#6B7280; font-size:26rpx; line-height:1.4; }
 .pf-hint { display:block; text-align:center; font-size: 24rpx; color:#666; margin-top:7px; }
 
 /* ——— 通知页（精简版）：通知卡片 / 发送记录 / 取消会议 / 转发微信弹层 ——— */
