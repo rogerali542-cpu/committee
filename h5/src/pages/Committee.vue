@@ -2669,7 +2669,17 @@ function resetRecognizedFields() {
 }
 // 地点被手填/选常用地点覆盖时，清掉不再匹配的旧坐标（地图选点回填的那次除外）
 let _mapJustSet = false
+// 0801 修：还原表单（续写草稿/编辑会议）时要压住这个 watcher。
+// 它是异步触发的：还原代码里先赋 location、再赋 locationLat/Lng，watcher 下一 tick 才跑，
+// 正好把刚载入的坐标清成 null；提交时又带 updateLocationCoords:true，
+// 结果每次编辑保存都会把库里的坐标抹掉（不碰地点也一样）。
+let _restoringLocation = false
+function beginLocationRestore() {
+  _restoringLocation = true
+  nextTick(() => { _restoringLocation = false })
+}
 watch(() => createForm.location, () => {
+  if (_restoringLocation) return
   if (_mapJustSet) { _mapJustSet = false; return }
   createForm.locationLat = null
   createForm.locationLng = null
@@ -3515,6 +3525,7 @@ async function continueDraft() {
   createForm.title = d.title || ''
   createForm.meetingDate = d.meetingDate || ''
   createForm.meetingTime = d.meetingTime || ''
+  beginLocationRestore()   // 压住"地点变了就清坐标"的 watcher，否则下一 tick 把刚载入的坐标清掉
   createForm.location = d.location || defaultMeetingLocation
   createForm.locationLat = d.locationLat == null ? null : d.locationLat   // 0801 修：带回地图选点坐标
   createForm.locationLng = d.locationLng == null ? null : d.locationLng
@@ -3569,6 +3580,7 @@ async function openMeetingForEdit(id) {
     createForm.title = d.title || ''
     createForm.meetingDate = d.meetingDate || ''
     createForm.meetingTime = (d.meetingTime || '').slice(0, 5)
+    beginLocationRestore()   // 同上：不压住 watcher，载入的坐标会在下一 tick 被清掉
     createForm.location = d.location || defaultMeetingLocation
     // 0801 修：编辑模式原先根本不载入坐标，配合上面新增的 locationLat/Lng 提交，
     // 不动地点直接保存会把库里已有坐标清成 null——必须先带回来
@@ -4501,6 +4513,9 @@ function calDateStr(day) {
 function isSelectedDay(day) { return _pickerDate() === calDateStr(day) }
 function isToday(day) { return todayStr() === calDateStr(day) }
 function isPastMeetingDay(day) {
+  // 0801 修：编辑既有会议不受"不得早于今天"限制——历史会议本来就在过去，
+  // 否则编辑时连它自己的日期都点不了（提交校验早有此豁免，选择器漏了）
+  if (editingMeetingId.value) return false
   return pickerTarget.value === 'meeting' && calDateStr(day) < todayStr()
 }
 function pickCalDay(day) {
@@ -4542,6 +4557,9 @@ function confirmTime() {
   timePickerOpen.value = false
 }
 function isPastTimeOption(hour, minute) {
+  // 0801 修：同上。原先编辑一场今天早些时候开过的会议时，一打开时间选择器就会被
+  // openTimePicker 里的"跳到最近可选时间"逻辑直接改写成未来时间，用户还没动手时间就变了
+  if (editingMeetingId.value) return false
   if (pickerTarget.value !== 'meeting' || createForm.meetingDate !== todayStr()) return false
   const now = new Date()
   return Number(hour) * 60 + Number(minute) <= now.getHours() * 60 + now.getMinutes()
