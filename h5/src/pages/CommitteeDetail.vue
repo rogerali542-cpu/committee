@@ -404,15 +404,20 @@
              默认两个都勾，常规情况直接点发送；只发 App 就取消微信那勾；两个都取消按钮置灰。
              两颗实心按钮抢注意力的老问题也没有回来——底部仍是一主操作。 -->
         <div class="pf-btn-col">
+          <!-- 0801 修「勾选框点了很久才有反应、或者没反应」：这两行原是 <div @click>，
+               而同一条里唯一响应正常的「发送通知」是原生 <button>——差别就在这儿。
+               手机浏览器把 div 当普通文字：手指按得稍久就先进入选字/长按菜单，tap 根本不会变成
+               click；再加上非交互元素还吃 300ms 双击缩放延迟，就是"要么慢半拍、要么没反应"。
+               改成原生 button（另配 touch-action:manipulation 去延迟、user-select:none 断长按选字）。 -->
           <div class="pf-ch-group">
-            <div class="pf-also" @click="chWechat = !chWechat">
-              <div class="pf-also-check" :class="{ on: chWechat }">{{ chWechat ? '✓' : '' }}</div>
+            <button type="button" class="pf-also" :aria-pressed="chWechat ? 'true' : 'false'" @click="chWechat = !chWechat">
+              <span class="pf-also-check" :class="{ on: chWechat }">{{ chWechat ? '✓' : '' }}</span>
               <span class="pf-also-txt">发到微信工作群</span>
-            </div>
-            <div class="pf-also" :class="{ disabled: !recipientSelectedCount }" @click="toggleAppChannel">
-              <div class="pf-also-check" :class="{ on: appChannelOn }">{{ appChannelOn ? '✓' : '' }}</div>
+            </button>
+            <button type="button" class="pf-also" :class="{ disabled: !recipientSelectedCount }" :aria-pressed="appChannelOn ? 'true' : 'false'" @click="toggleAppChannel">
+              <span class="pf-also-check" :class="{ on: appChannelOn }">{{ appChannelOn ? '✓' : '' }}</span>
               <span class="pf-also-txt">{{ recipientSelectedCount ? 'App 内通知 ' + recipientSelectedCount + ' 位委员' : '未选委员，无法在 App 内通知' }}</span>
-            </div>
+            </button>
           </div>
           <button class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
         </div>
@@ -2395,7 +2400,7 @@ async function removeMaterial(item) {
 .prep-footer.after-send-footer { padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
 /* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
-.pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; }
+.pf-btn { display:flex; align-items:center; justify-content:center; height:80rpx; border:0; border-radius:40rpx; background: var(--c-primary-dark); color:#fff; font-size:29rpx; font-weight:600; line-height:1; box-sizing:border-box; padding:0 18rpx; touch-action:manipulation; }
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
@@ -2406,9 +2411,14 @@ async function removeMaterial(item) {
 .pf-btn-main { background:#3567A4; color:#fff; }
 .pf-btn-main:active { background:#2D598E; }
 .pf-btn-main.disabled, .pf-btn-main.busy { background:#C3CAD3; }
-/* 渠道勾选：整行可点（勾选框只有 38rpx，老人点不准），高度给足 88rpx 触达区 */
+/* 渠道勾选：整行可点（勾选框只有 38rpx，老人点不准），高度给足 88rpx 触达区。
+   ⚠ 必须是原生 <button>：见模板处注释，div 在手机上长按会被当选字、且吃 300ms 点击延迟。
+   下面这组是配套的——button 的 UA 默认样式要清掉，触摸行为要显式声明。 */
 .pf-ch-group { display:flex; flex-direction:column; }
-.pf-also { display:flex; align-items:center; gap:14rpx; min-height:88rpx; padding:0 6rpx; color:#3F4A57; font-size:29rpx; }
+.pf-also { display:flex; align-items:center; gap:14rpx; width:100%; min-height:88rpx; padding:0 6rpx;
+  margin:0; border:0; background:none; font:inherit; text-align:left; color:#3F4A57; font-size:29rpx;
+  cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent; }
 .pf-also:active { opacity:.6; }
 .pf-also.disabled { color:#9AA0A6; }
 .pf-also-check { flex-shrink:0; width:38rpx; height:38rpx; border-radius:8rpx; border:2rpx solid #C3CAD3;
@@ -2466,6 +2476,11 @@ async function removeMaterial(item) {
 /* 通知人员：前置到通知页，默认收起，避免长通知正文后再弹二次确认 */
 .recipient-card { background:#fff; border:2rpx solid #EEF0F3; border-radius:16rpx; box-shadow:0 3rpx 12rpx rgba(0,0,0,0.04); margin:0 0 14rpx; overflow:hidden; }
 .recipient-card-head { display:flex; align-items:center; justify-content:space-between; gap:10rpx; padding:9rpx 18rpx; min-height:96rpx; box-sizing:border-box; }
+/* 页内这几行都是 div + @click 的可点行，同样吃 300ms 点击延迟、长按会变成选字（见底部勾选行的注释）。
+   这里不改标签，先把触摸行为显式声明掉——大头就在这两条。 */
+.recipient-card-head, .rcp-all-row, .page-rcp-item, .prep-more-row {
+  touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent; cursor:pointer; }
 .recipient-card-head:active { background:#FAFAFA; }
 .recipient-card-title { display:block; font-size:30rpx; color:#1f2329; font-weight:700; line-height:1.25; }  /* 0725 内容变多,整块字号降一档 */
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
