@@ -3237,6 +3237,22 @@ function openMeetingTap(item) {
 
 
 async function openNewMeeting(period) {
+  // 0801 修 bug「草稿还是没保存」：底部主按钮、期次行「去召开/去补开」都走这里，而这里一律
+  // 清空重来、完全不看草稿——用户刚存完草稿再从底部大按钮进来，看到的是空表单，自然以为没存上
+  // （只有点首页那条草稿行走 continueDraft 才会还原）。现在进来先接草稿：
+  // 同一期次、或草稿期次判不出来（标题没「第N次」又没填日期）→ 直接续写；
+  // 明确是另一期才问一句，避免默默丢掉半成品。
+  if (hasDraft.value && !editingMeetingId.value) {
+    const draftP = meetingPeriod(draft.value || {}, curYear)
+    const p = Number(period) || 0
+    if (!draftP || !p || draftP === p) { continueDraft(); return }
+    const r = await showModal({
+      title: '有未写完的会议通知',
+      content: '「' + draftTitle.value + '」还没写完。继续写它，还是另起一份？\n（只保留一份草稿，另起会替换掉它）',
+      confirmText: '继续写', cancelText: '另起一份', showCancel: true
+    })
+    if (r && r.confirm) { continueDraft(); return }
+  }
   createVisible.value = true
   createTab.value = 'manual'      // 每次进来默认手动填写面板
   resetRecognizedFields()
