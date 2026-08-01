@@ -104,8 +104,9 @@
 
         <!-- 通知记录（0801 设计师定重做）：
              ① 原来整块绿字绿✓——绿是业主接待的模块色，而且记录是中性事实，不需要"成功"的颜色；
-             ② 「清空」直接去掉：记录是凭据，谁在什么时候通知了谁，出纠纷要拿它说话，规则也禁止在
-                列表头放删除；
+             ② 「清空」从这里的标题行拿掉：记录是凭据，谁在什么时候通知了谁，出纠纷要拿它说话，
+                规则也禁止在列表头放删除。功能本身保留（测试期要复原状态），挪进下面的低频操作，
+                与「取消本次会议」同列，仍带二次确认；
              ③ 同一人、同一分钟的两个渠道本是一次动作，拆两行看着像发了两次 → 合成一条；
              ④ 时间统一成全 App 的「8月1日 19:22」，不再露 2026-08-01 这种机读格式；
              ⑤ 句式去掉「已由…通过…」，主谓宾摆着就行；
@@ -131,15 +132,16 @@
             <span>{{ exportingPreNotice ? '正在生成业主公告…' : '导出业主公告' }}</span>
             <i class="pm-arrow"></i>
           </div>
-          <!-- 0801：会议日之前「开始会议」不占底部主位（那时它没意义），但不能因此变得够不着——
-               委员到齐了提前开是常态（startMeeting 本来就带"会议时间未到，确认现在开始吗"的二次确认）。
-               放在低频操作里：够得着，又不抢主操作。到了会议当天它升为底部主按钮，这行随之消失 -->
-          <div v-if="footerStage !== 'start'" class="prep-more-row" @click="startMeeting">
-            <span>提前开始会议</span>
-            <i class="pm-arrow"></i>
-          </div>
+          <!-- 0801 用户定：「提前开始会议」这行删掉。会议日之前不给开会入口，
+               「开始会议」只在会议当天（或已过原定日期）作为底部主按钮出现。 -->
           <div class="prep-more-row" @click="removeMeeting">
             <span>取消本次会议</span>
+            <i class="pm-arrow"></i>
+          </div>
+          <!-- 0801 用户定：清空通知记录保留（测试期复原状态用）。不放通知记录的标题行——
+               那是凭据列表，头上挂删除违规且太顺手；放在这一列破坏性操作里，仍带二次确认。 -->
+          <div v-if="noticeSent" class="prep-more-row" @click="clearNotices">
+            <span>清空通知记录</span>
             <i class="pm-arrow"></i>
           </div>
         </div>
@@ -1678,6 +1680,22 @@ async function openWechat(opts) {
       toast({ title: (e && e.message) || '微信通知记录失败', icon: 'none' })
     }
   }
+}
+
+// 清空通知记录（0801 用户定保留：测试期把会议复原成"未通知"再走一遍流程）。
+// 入口在低频操作那一列，不在记录列表头——记录是凭据，头上挂删除既违规又太顺手。
+async function clearNotices() {
+  const res = await showModal({
+    title: '清空通知记录',
+    content: '将删除本会议的全部通知记录，会议恢复为「未通知」状态，需要重新发送会议通知。确定清空？',
+    confirmText: '确定清空', cancelText: '取消', showCancel: true
+  })
+  if (!res || !res.confirm) return
+  try {
+    await api.committeeClearNotifications(currentMeetingId())
+    toast({ title: '已清空通知记录', icon: 'success' })
+    await loadDetail()
+  } catch (e) { toast({ title: (e && e.message) || '清空失败', icon: 'none' }) }
 }
 
 async function archiveDirect() {
