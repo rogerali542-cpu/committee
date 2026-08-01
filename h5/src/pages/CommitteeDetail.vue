@@ -1,5 +1,8 @@
 <template>
-  <div class="detail-page" :class="{ 'has-prep-footer': detail && userView === 'chair' && detail.stage === 'preparing' }">
+  <div class="detail-page" :class="{
+        'has-prep-footer': detail && userView === 'chair' && detail.stage === 'preparing',
+        'has-start-btn': detail && userView === 'chair' && detail.stage === 'preparing' && prepareMode !== 'send'
+      }">
     <!-- 页面左右 padding 为 0，负 margin 只抵顶部（0723 修：左右 -12px 无 padding 可抵，
          把文档撑宽 12px，真机能横向晃动——Chrome 桌面测不出来） -->
     <PageNav :title="navTitle" style="margin:-12px 0 0;">
@@ -398,10 +401,17 @@
              且「App内」是实现口径不是用户语言。改上下叠放：主操作「发送通知（N 人）」实心蓝、
              带人数与上方名单呼应；「转发到微信」浅蓝次级。没勾人时主按钮置灰 -->
         <!-- 0801 设计师定：微信是唯一主按钮——业委会实际就是在微信工作群里通知，
-             App 内送达是补充手段，降为次级。两颗都做成主按钮等于没有主操作 -->
+             App 内送达是补充手段。但做成第二颗按钮语义就纠缠了：「同时在 App 内通知」里的
+             "同时"说的是跟主按钮一起发生，长相却是个独立按钮——点完主按钮 App 内到底发没发，
+             用户看不出来；若真当它独立，得点两次才算通知完，老人多半只点上面那颗。
+             改成主按钮上方的可关勾选项：一个主操作 + 一个附加项。人数也跟着主按钮走
+             （原先是次按钮带人数、主按钮不带，正好反了）。 -->
         <div class="pf-btn-col">
-          <button class="pf-btn pf-btn-main" @click="openWechat">发到微信工作群</button>
-          <button class="pf-btn pf-btn-sub" :class="{ disabled: !recipientSelectedCount }" @click="sendAppNoticeOnly">同时在 App 内通知（{{ recipientSelectedCount }} 人）</button>
+          <div class="pf-also" :class="{ off: !alsoAppNotify, disabled: !recipientSelectedCount }" @click="toggleAlsoAppNotify">
+            <div class="pf-also-check" :class="{ on: alsoAppNotify && recipientSelectedCount }">{{ alsoAppNotify && recipientSelectedCount ? '✓' : '' }}</div>
+            <span class="pf-also-txt">{{ recipientSelectedCount ? '同时在 App 内通知 ' + recipientSelectedCount + ' 位委员' : '未选委员，无法在 App 内通知' }}</span>
+          </div>
+          <button class="pf-btn pf-btn-main" :class="{ busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在通知…' : mainSendLabel }}</button>
         </div>
       </div>
     </div>
@@ -1308,14 +1318,38 @@ async function openRecipients() {
   if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
   confirmSendRecipients()
 }
-async function sendAppNoticeOnly() {
-  if (sendSubmitting.value) return
-  const ok = await loadRecipients(false)
-  if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
-  const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
-  // 0801：一个都没勾时不该发（按钮已置灰，这里兜底），否则发出一条谁也没收到的"通知"
-  if (!ids.length) { toast({ title: '请先选择要通知的委员', icon: 'none' }); return }
-  doSend(ids, { quietForward: true })
+// ——— 底部主操作：发到微信工作群（可勾"同时在 App 内通知"）———
+// 0801 设计师定：合成一次操作。勾选项默认开——常态是两个渠道都通知到；
+// 不想在 App 里发就取消勾选，主操作只做微信。
+const alsoAppNotify = ref(true)
+const mainSending = ref(false)
+const mainSendLabel = computed(() => (
+  recipientSelectedCount.value ? '发到微信工作群（' + recipientSelectedCount.value + ' 人）' : '发到微信工作群'
+))
+function toggleAlsoAppNotify() {
+  if (!recipientSelectedCount.value) { toast({ title: '请先在上方「通知人员」里选择要通知的委员', icon: 'none' }); return }
+  alsoAppNotify.value = !alsoAppNotify.value
+}
+async function sendNoticeMain() {
+  if (mainSending.value || sendSubmitting.value) return
+  mainSending.value = true
+  try {
+    // 顺序要紧：先做 App 内送达再唤起微信。反过来的话安卓会被拉去微信，回不来看 App 这步的结果。
+    if (alsoAppNotify.value && recipientSelectedCount.value) {
+      const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
+      const ok = await doSend(ids, { quietForward: true, silent: true })
+      if (!ok) {
+        // 附加项失败不该连累主渠道（微信才是业委会实际通知委员的地方），但也不能默默跳过——问一句
+        const r = await showModal({
+          title: 'App 内通知没发出去',
+          content: '网络或服务出了点问题，App 内通知没能发送。是否仍要把通知发到微信工作群？',
+          confirmText: '仍发到微信', cancelText: '先不发', showCancel: true
+        })
+        if (!r || !r.confirm) return
+      }
+    }
+    await openWechat()
+  } finally { mainSending.value = false }
 }
 function toggleRecipient(id) {
   const it = recipientList.value.find((x) => x.userRoleId === id)
@@ -1330,12 +1364,13 @@ function confirmSendRecipients() {
   doSend(ids)
 }
 
-// 真正发送：把选中的委员 id 发给后端
+// 真正发送：把选中的委员 id 发给后端。返回是否发送成功——
+// sendNoticeMain 要据此决定"App 内这步没成，微信还发不发"，不能只看有没有抛错。
 async function doSend(ids, options) {
-  if (sendSubmitting.value) return
-  if (!ids || !ids.length) { toast({ title: '请至少选择一位委员', icon: 'none' }); return }
+  if (sendSubmitting.value) return false
+  if (!ids || !ids.length) { toast({ title: '请至少选择一位委员', icon: 'none' }); return false }
   const id = currentMeetingId()
-  if (!id) { toast({ title: '当前会议信息异常，请返回首页重新进入', icon: 'none' }); return }
+  if (!id) { toast({ title: '当前会议信息异常，请返回首页重新进入', icon: 'none' }); return false }
   sendSubmitting.value = true
   try {
     await api.committeeSendAll(id, ids)
@@ -1345,8 +1380,10 @@ async function doSend(ids, options) {
     recipientOpen.value = false
     await loadDetail()
     if (!(options && options.quietForward)) openForward()
+    return true
   } catch (e) {
     toast({ title: (e && e.message) || '发送失败', icon: 'none' })
+    return false
   } finally {
     sendSubmitting.value = false
   }
@@ -1901,8 +1938,14 @@ async function removeMaterial(item) {
 /* overflow-x:hidden 兜底（0723）：任何子元素越界都不再把页面撑宽导致真机横向晃动 */
 .detail-page { min-height:100vh; background:#f4f5f7; padding:12px 0 40px; display:flex; flex-direction:column; box-sizing:border-box; overflow-x:hidden; }
 .detail-body { flex:1 0 auto; }
-/* 底部操作条改 fixed 后，内容区要给它让位，否则最后一段被挡住（准备阶段才有这条） */
-.detail-page.has-prep-footer .detail-body { padding-bottom:230rpx; }
+/* 底部操作条改 fixed 后，内容区要给它让位，否则最后一段被挡住（准备阶段才有这条）。
+   0801 设计师：轻列表和操作条之间留白过多。让位量按操作条实际高度精算 = 条高 + 40px 呼吸位，
+   并把 .detail-page 自带的 40px 底 padding 在这个模式下去掉（原先两处叠加，多留了一截）。
+   条高两种：未通知时=勾选项 88rpx + 间距 16rpx + 主按钮 120rpx + 上下 32px；
+   已通知后头上多一颗「开始会议」(78rpx + 14rpx 间距)，靠 .has-start-btn 分开给量。 */
+.detail-page.has-prep-footer { padding-bottom:0; }
+.detail-page.has-prep-footer .detail-body { padding-bottom:calc(368rpx + env(safe-area-inset-bottom)); }
+.detail-page.has-prep-footer.has-start-btn .detail-body { padding-bottom:calc(460rpx + env(safe-area-inset-bottom)); }
 
 /* Task banner */
 .task-banner { padding:10px 14px; border-radius:12px; margin-bottom:12px; }
@@ -2335,16 +2378,21 @@ async function removeMaterial(item) {
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
-/* 0801 设计师版：主/次上下叠放——主操作「发送通知（N 人）」实心蓝整宽，
-   「转发到微信」浅蓝底蓝字次级，一眼看得出先点哪个 */
-.pf-btn-col { display:flex; flex-direction:column; gap:14rpx; padding:0 20rpx; }
-.pf-btn-col .pf-btn { width:100%; height:96rpx; border-radius:20rpx; font-size:33rpx; }
+/* 0801 设计师定稿：一个主操作（实心蓝 60px 高）+ 上方一个可关的附加勾选项。
+   此前是两颗上下叠放的按钮，"同时在 App 内通知"既像附加又像独立操作，语义纠缠 */
+.pf-btn-col { display:flex; flex-direction:column; gap:16rpx; padding:0 20rpx; }
+.pf-btn-col .pf-btn { width:100%; height:120rpx; border-radius:20rpx; font-size:34rpx; }
 .pf-btn-main { background:#3567A4; color:#fff; }
 .pf-btn-main:active { background:#2D598E; }
-.pf-btn-main.disabled { background:#C3CAD3; }
-.pf-btn-sub { background:#EAF0F8; color:#2f5f9e; }
-.pf-btn-sub:active { background:#DCE7F3; }
-.pf-btn-sub.disabled { background:#F2F4F7; color:#A8AEB6; }
+.pf-btn-main.disabled, .pf-btn-main.busy { background:#C3CAD3; }
+/* 附加项：整行可点（勾选框只有 36rpx，老人点不准），高度给足 88rpx 触达区 */
+.pf-also { display:flex; align-items:center; gap:14rpx; min-height:88rpx; padding:0 6rpx; color:#3F4A57; font-size:29rpx; }
+.pf-also:active { opacity:.6; }
+.pf-also.disabled { color:#9AA0A6; }
+.pf-also-check { flex-shrink:0; width:38rpx; height:38rpx; border-radius:8rpx; border:2rpx solid #C3CAD3;
+  background:#fff; color:#fff; font-size:26rpx; line-height:1; display:flex; align-items:center; justify-content:center; }
+.pf-also-check.on { background:#3567A4; border-color:#3567A4; }
+.pf-also-txt { flex:1; min-width:0; }
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
 .pf-btn-row .pf-btn { flex:1; min-width:0; height:72rpx; font-size:27rpx; background: var(--c-primary-dark); }
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
@@ -2424,9 +2472,11 @@ async function removeMaterial(item) {
 /* 操作区(0725 用户定):等宽等高同款一排,危险项红字;参照 iOS/微信卡片操作区 */
 /* 低频操作（0801 设计师版）：名单下方的轻列表行——透明底 + 分隔线 + 灰字 + ›，
    不与底部主操作抢。「取消本次会议」不再涂红：红不在配色表，破坏性由二次确认承担 */
-.prep-more { margin:6rpx 0 14rpx; }
+.prep-more { margin:6rpx 0 0; }
+/* 0801 设计师：文字看着太浅（比 #6b7280 还淡）。29rpx 的常规字重压不住这么大的行，
+   加深到 #3F4A57 并上 500 字重——仍是灰系，不会跟底部蓝色主按钮抢注意力 */
 .prep-more-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx;
-  min-height:100rpx; padding:0 22rpx; border-bottom:1px solid #EEF0F2; color:#55606E; font-size:29rpx; }
+  min-height:100rpx; padding:0 22rpx; border-bottom:1px solid #EEF0F2; color:#3F4A57; font-size:30rpx; font-weight:500; }
 .prep-more-row:first-child { border-top:1px solid #EEF0F2; }
 .prep-more-row:active { background:#F3F5F7; }
 .prep-more-row.busy { color:#9aa0a6; }
