@@ -539,7 +539,7 @@
               <!-- 0801 设计师点2：三态分清——没跑过=「开始识别（N）」，跑失败才=「识别失败，重试（N）」，
                    不能一上来就说"重试"（用户根本没识别过） -->
               <button v-if="scanItems.length" class="ds-recognize" :class="{ failed: scanFailed && !scanRecognizing }" :disabled="scanRecognizing" @click="recognizeScanItems">
-                {{ scanRecognizing ? '识别中 ' + docProgress + '%'
+                {{ scanRecognizing ? '识别中…'
                    : scanFailed ? '识别失败，重试（' + scanItems.length + '）'
                    : scanDone ? '重新识别（' + scanItems.length + '）'
                    : '开始识别（' + scanItems.length + '）' }}
@@ -735,26 +735,19 @@
     </div>
 
     <!-- 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案；不做整页进度页） -->
+    <!-- 识别中（0801 用户×设计师定稿）：一个蓝色转圈 + 一行阶段文字 + 底部「取消」。
+         删掉的东西和原因：
+         · 橙色进度环/大百分比 —— 等待不是异常态，橙是异常专用色，不该让全页最亮的东西说"一切正常"
+         · 百分比本身 —— 后端一次性返回，前端只是定时器模拟，卡在某个数不动比没有进度条更让人焦虑，
+           改用不确定型转圈，只说阶段（上传 → 识别）
+         · 「AI 智能」「安全」「豆包大模型」—— 营销词/自我表扬/用户不关心用了谁的模型（花费在结果页写）
+         · 「已用时 0s」—— 0 秒没信息量，往上跳的秒数只会让人越等越慌
+         · 右上角 × —— 后果说不清且难点中，改成底部一行文字「取消」 -->
     <div v-if="scanBusy" class="scan-pop-mask">
       <div class="scan-pop">
-        <span class="sp-close" @click="cancelRecognize" aria-label="取消识别">×</span>
-        <!-- 圆环进度：单一焦点，中心大百分比（替代原扫描图标+三步条+横进度条） -->
-        <div class="sp-ring">
-          <svg class="sp-ring-svg" viewBox="0 0 100 100">
-            <defs>
-              <linearGradient id="spGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FFB733" />
-                <stop offset="100%" stop-color="#C76A00" />
-              </linearGradient>
-            </defs>
-            <circle class="sp-ring-track" cx="50" cy="50" r="42" />
-            <circle class="sp-ring-fill" cx="50" cy="50" r="42" :style="{ strokeDashoffset: 264 * (1 - docProgress / 100) }" />
-          </svg>
-          <div class="sp-ring-center"><div class="sp-ring-val"><span class="sp-ring-num">{{ docProgress }}</span><span class="sp-ring-pct">%</span></div></div>
-        </div>
-        <span class="sp-title">AI 智能识别中</span>
-        <span class="sp-say">{{ scanSay }}</span>
-        <span class="sp-foot">豆包大模型 · 已用时 {{ scanSec }}s</span>
+        <span class="sp-spinner" aria-hidden="true"></span>
+        <span class="sp-title">{{ scanSay }}</span>
+        <button type="button" class="sp-cancel" @click="cancelRecognize">取消</button>
       </div>
     </div>
 
@@ -3747,12 +3740,10 @@ async function recognizeScanItems() {
 // 识别弹窗的阶段与文案：按进度分 上传→OCR提取→AI理解 三步（模拟节奏，后端一次性返回）
 const scanSec = ref(0)
 let _scanSecTimer = null
-const scanStage = computed(() => (docProgress.value < 25 ? 1 : docProgress.value < 70 ? 2 : 3))
-const scanSay = computed(() => {
-  if (docProgress.value < 25) return '正在安全上传文件…'
-  if (docProgress.value < 70) return '正在解析文字内容…'
-  return '正在理解内容、判断文件类型…'
-})
+// scanStage 已退役（0801）：三步条随识别弹窗一起精简掉，只保留 scanSay 两段阶段文字
+// 0801 用户×设计师定稿：只留两段阶段文字（上传 → 识别）。原三句在说同一件事，
+// 且「安全上传」是自我表扬、「理解内容、判断文件类型」是实现细节，用户不关心
+const scanSay = computed(() => (docProgress.value < 25 ? '正在上传…' : '正在识别…'))
 
 // ——— 模拟手机相机（测试用）：全屏取景框对着一张"纸质会议通知"，按快门出照片；使用照片=加入暂存，可连拍多张 ———
 const mockCameraVisible = ref(false)
@@ -6152,24 +6143,17 @@ onActivated(show)
 
 /* 识别中：居中小弹窗（文档扫描动画 + 三步流程 + 动态文案） */
 .scan-pop-mask { position: fixed; inset: 0; z-index: 3050; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; }
-.scan-pop { position: relative; width: 640rpx; max-width: 92%; background: linear-gradient(180deg, #FFFDF9 0%, #fff 30%); border: 1rpx solid rgba(255, 168, 0, 0.25); border-radius: 30rpx; padding: 48rpx 44rpx 38rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(120, 70, 0, 0.28), 0 0 0 6rpx rgba(255, 168, 0, 0.06); box-sizing: border-box; }
-.sp-close { position: absolute; top: 10rpx; right: 16rpx; width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; font-size: 48rpx; line-height: 1; color: #B0A48E; z-index: 2; }
-.sp-close:active { color: #7A6E58; }
-/* 圆环进度：单一焦点，中心大百分比 */
-.sp-ring { position: relative; width: 210rpx; height: 210rpx; margin-bottom: 32rpx; }
-.sp-ring-svg { width: 100%; height: 100%; transform-origin: 50% 50%; animation: spSpin 2.6s linear infinite; }
-.sp-ring-track { fill: none; stroke: #F1EADB; stroke-width: 8.5; }
-.sp-ring-fill { fill: none; stroke: url(#spGrad); stroke-width: 8.5; stroke-linecap: round; stroke-dasharray: 264; transition: stroke-dashoffset .45s ease; }
+/* 识别中弹窗（0801 定稿）：转圈 + 一行字 + 底部取消，卡片比原先小一半；
+   去掉暖橙描边/暖调渐变底——等待是常态不是异常，橙留给真正的异常态 */
+.scan-pop { position: relative; width: 480rpx; max-width: 84%; background: #fff; border-radius: 26rpx; padding: 48rpx 40rpx 20rpx; display: flex; flex-direction: column; align-items: center; box-shadow: 0 20rpx 60rpx rgba(20, 40, 70, 0.22); box-sizing: border-box; }
+/* 不确定型转圈（会议蓝）：不报假百分比——后端一次性返回，进度本就是模拟的 */
+.sp-spinner { width: 84rpx; height: 84rpx; border-radius: 50%; border: 7rpx solid #E6EDF6; border-top-color: #3567A4; box-sizing: border-box; animation: spSpin .8s linear infinite; }
 @keyframes spSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .sp-ring-svg { animation: none; transform: rotate(-90deg); } }
-.sp-ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-.sp-ring-val { display: flex; align-items: baseline; }
-.sp-ring-num { font-size: 76rpx; font-weight: 800; color: #C76A00; font-variant-numeric: tabular-nums; line-height: 1; }
-.sp-ring-pct { font-size: 32rpx; font-weight: 800; color: #C76A00; margin-left: 3rpx; }
-@keyframes spRingGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255,168,0,0)); } 50% { filter: drop-shadow(0 0 5rpx rgba(255,168,0,0.55)); } }
-.sp-title { font-size: 42rpx; font-weight: 700; color: #1f2329; letter-spacing: 1rpx; }
-.sp-say { font-size: 32rpx; color: #B07400; margin: 14rpx 0 4rpx; min-height: 44rpx; }
-.sp-foot { font-size: 23rpx; color: #C0B29A; margin-top: 26rpx; letter-spacing: 0.5rpx; }
+@media (prefers-reduced-motion: reduce) { .sp-spinner { animation-duration: 2.4s; } }
+.sp-title { margin-top: 28rpx; font-size: 34rpx; font-weight: 600; color: #1f2329; letter-spacing: 1rpx; }
+/* 取消：底部一行文字按钮，比右上角 × 更明确也更好点（≥44px 热区） */
+.sp-cancel { width: 100%; min-height: 88rpx; margin-top: 24rpx; border: 0; border-top: 2rpx solid #EEF0F2; background: transparent; color: #8a9099; font-size: 30rpx; }
+.sp-cancel:active { color: #E5533C; }
 
 /* AI 识别完成：精美结果卡 */
 .scan-result-mask { position: fixed; inset: 0; z-index: 3060; background: rgba(10, 8, 4, 0.42); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 40rpx; box-sizing: border-box; }
