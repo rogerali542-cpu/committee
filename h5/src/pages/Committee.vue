@@ -663,7 +663,9 @@
                     <span class="ct-opt-num">{{ oi + 1 }}.</span>
                     <input class="form-input ct-opt-input" v-model="opt.label" placeholder="选项内容" />
                     <!-- 点2：删除语言统一成文字（议题也是「删除」），并补足 44px 热区 -->
-                    <span v-if="(topic.options || []).length > 1" class="tp-del" @click="removeTopicOption(topic, oi)">删除</span>
+                    <!-- 0801 设计师点2：「多选一」至少要两项，剩 2 项时隐藏「删除」（删到 1 项这个议题就不成立了）；
+                         加到第 3 项后再出现。议题自身的「删除」不受此限——删到 0 条议题是允许的 -->
+                    <span v-if="(topic.options || []).length > 2" class="tp-del" @click="removeTopicOption(topic, oi)">删除</span>
                   </div>
                   <span class="add-link" @click="addTopicOption(topic)">+ 添加选项</span>
                 </div>
@@ -2679,7 +2681,9 @@ function syncOnlineOther() {
     && !!createForm.location && !onlineWays.includes(createForm.location)
 }
 async function pickOnlineWay() {
-  const res = await showActionSheet({ itemList: [...onlineWays, '其他（手动填写）'] })
+  const res = await showActionSheet({
+    itemList: [...onlineWays.map((n) => ({ label: n })), { label: '其他（手动填写）', divider: true }]
+  })
   if (!res || res.tapIndex == null || res.tapIndex < 0) return
   if (res.tapIndex < onlineWays.length) {
     onlineOther.value = false
@@ -4328,7 +4332,12 @@ function onLocationPreset(e) {
 // 地点行点击：原生 action sheet 选常用地点 / 其他手填 / 从地图选点（学微信/系统的底部选择，比内嵌下拉更简洁）
 async function openLocPicker() {
   clearFieldError('location')
-  const items = [...commonLocations, '其他地点（手动填写）', '从地图选点']
+  // 0801 设计师：三个「地点值」和两个「动作」原先混在一列、样式相同——动作组用分隔线断开
+  const items = [
+    ...commonLocations.map((n) => ({ label: n })),
+    { label: '其他地点（手动填写）', divider: true },
+    { label: '从地图选点' }
+  ]
   const res = await showActionSheet({ itemList: items })
   if (!res || res.tapIndex == null || res.tapIndex < 0) return
   const i = res.tapIndex
@@ -6559,7 +6568,9 @@ onActivated(show)
 .cal-pop { width: 86%; max-width: 620rpx; background: #fff; border-radius: 24rpx; padding: 28rpx 24rpx calc(20rpx + env(safe-area-inset-bottom)); box-sizing: border-box; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18rpx; }
 .cal-title { font-size: 36rpx; font-weight: 700; color: #1f2329; }
-.cal-nav { width: 76rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; color: var(--c-primary-dark); font-weight: 700; }
+/* 0801 设计师复查：月份箭头原用 var(--c-primary-dark)，日历弹层在 create-panel 之外 → 落到全局橙。
+   橙留给异常态，翻月是常规操作，改会议蓝 */
+.cal-nav { width: 76rpx; height: 76rpx; display: flex; align-items: center; justify-content: center; font-size: 52rpx; color: #3567A4; font-weight: 700; }
 .cal-nav:active { opacity: 0.5; }
 .cal-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8rpx; }
 .cal-wd { text-align: center; font-size: 26rpx; color: #999; padding: 8rpx 0; }
@@ -6889,6 +6900,12 @@ onActivated(show)
 .ti-input::placeholder { color: #b7bbc0; }
 /* 点2：聚焦态只留框（白底不加色），与「选中=有底色」的药丸拉开差别 */
 .ti-input:focus { border-color: #3567A4; background: #fff; }
+/* 0801 设计师点1：选项输入框等此前没写 :focus，走的是浏览器默认黑色聚焦框——黑不在配色表。
+   与议题输入框统一成会议蓝描边 */
+.create-panel .ct-opt-input:focus,
+.create-panel .fl-inline-input:focus,
+.create-panel .form-input:focus,
+.create-panel .title-ta:focus { border-color: #3567A4; outline: none; }
 .ti-types { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: 12rpx; }
 /* 0801 设计师点3：填充方向反过来——未选白底灰描边（空的=没选），选中浅蓝底蓝描边（被填满=被选中）；
    实心蓝仍只留页头/底导/主按钮。点2：选中态有「底色」，输入框聚焦只有「框」，两个蓝不再撞脸 */

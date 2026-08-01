@@ -38,7 +38,9 @@
         <div v-if="uiState.actionSheet.title" class="ui-sheet-title">{{ uiState.actionSheet.title }}</div>
         <div v-if="uiState.actionSheet.description" class="ui-sheet-desc">{{ uiState.actionSheet.description }}</div>
       </div>
-      <button v-for="(item, idx) in uiState.actionSheet.itemList" :key="idx" class="ui-sheet-item" :class="[typeof item === 'object' ? item.tone : '', { selected: typeof item === 'object' && item.selected }]" @click="onSheetTap(idx)">
+      <!-- item.divider=true：本行上方画一条分隔线，用于把「动作」与「候选值」分成两组
+           （0801 设计师：地点弹窗里三个地点值和「其他地点」「从地图选点」两个动作混在一列、样式相同） -->
+      <button v-for="(item, idx) in uiState.actionSheet.itemList" :key="idx" class="ui-sheet-item" :class="[typeof item === 'object' ? item.tone : '', { selected: typeof item === 'object' && item.selected, 'group-start': typeof item === 'object' && item.divider }]" @click="onSheetTap(idx)">
         <span v-if="typeof item === 'object' && item.icon" class="ui-sheet-icon">{{ item.icon }}</span>
         <span class="ui-sheet-copy">
           <b>{{ typeof item === 'object' ? item.label : item }}</b>
@@ -171,6 +173,8 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-sheet { width: 100%; background: #f4f4f6; padding-bottom: env(safe-area-inset-bottom); }
 .ui-sheet-item { display: block; width: 100%; padding: 32rpx 0; font-size: 32rpx; background: #fff; border-bottom: 1rpx solid #eee; color: #1a1a1a; }
 .ui-sheet-item.cancel { margin-top: 14rpx; color: #666; font-weight: 600; border-bottom: none; }
+/* 分组起始行：上方加粗分隔 + 一点留白，把「动作」与「候选值」在同一列表里分开 */
+.ui-sheet-item.group-start { margin-top: 12rpx; border-top: 12rpx solid #F3F5F7; }
 .ui-sheet.opinion-change { padding: 0 24rpx calc(20rpx + env(safe-area-inset-bottom)); background: #F5F3EF; border-radius: 32rpx 32rpx 0 0; box-shadow: 0 -12rpx 40rpx rgba(31,35,41,.12); }
 /* 底部选择单（variant:'picker'，0731 设计师定）：>5 项/需滚动的选择用底部弹层——选项落在拇指区；
    列表弹层内滚动、选中项浅绿底+绿勾、取消胶囊 sticky 常驻 */
