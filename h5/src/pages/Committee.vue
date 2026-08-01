@@ -2237,6 +2237,22 @@ const meetingRecordList = computed(() => {
       onTap: () => onPlanRow(r) }
   }
   const active = rows.filter(r => r.status !== 'done').map(toRow)
+  // 草稿兜底行（0801 修 bug：提示"已保存草稿"，回首页却什么都没有）。
+  // 上面 draftMatch 那条要求 meetingPeriod(草稿) 命中某一期，但草稿常常两个条件都不满足：
+  // 标题里没有「N年第N次」（临时会议/自定义名称/识别结果格式不同），也还没填日期 → 期次算 0；
+  // 就算算得出，若该期已被真实会议占用、或该期 status==='done' 被 filter 掉，草稿行同样不出现。
+  // 这里补一条独立行，保证只要有草稿首页一定看得到入口。
+  if (hasDraft.value && !active.some(row => String(row.key).indexOf('mr-draft-') === 0)) {
+    // 放末尾：与 heroMeeting 里草稿 rank=4（最低）的优先级一致，不抢逾期/本期的位置
+    active.push({
+      key: 'mr-draft-standalone', done: false,
+      badgeTop: '草稿', badgeBot: '', range: true,
+      title: draftTitle.value,
+      sub: '会议通知还没写完',
+      statusLabel: '编辑中', statusClass: 'current',
+      onTap: () => continueDraft()
+    })
+  }
   return {
     active,
     immediate: active.filter(row => row.statusClass !== 'upcoming' || row.key.indexOf('mr-current-') === 0),
