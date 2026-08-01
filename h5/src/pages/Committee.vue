@@ -506,28 +506,29 @@
           <!-- 拍照/上传面板：与入口同卡。选完图自动开始识别（autoRecognizeStaged），识别后预填到下方表单 -->
           <div v-show="createTab === 'scan'" class="scan-pane">
             <div class="doc-scan-bar inline">
-              <!-- 缩略图（0801 设计师点2/3）：放大到 88px、操作移出图片——图下一行「移除」；
-                   点图放大预览（原左下 ⤢ 角标与右上 × 删，两个功能挤在小图上，删） -->
+              <!-- 0801 设计师点6：去掉卡中卡——缩略图直接铺在浅蓝卡上，一行 [图|文件名|移除]，
+                   「移除」做成图右侧一行文字，不再在缩略图卡里独占一行 -->
               <div v-if="scanItems.length" class="ds-preview">
-                <div v-for="it in scanItems" :key="it.id" class="ds-thumb">
+                <div v-for="it in scanItems" :key="it.id" class="ds-thumb-row">
                   <img v-if="it.isImage && it.thumbUrl" class="ds-thumb-img" :src="it.thumbUrl" :alt="it.name" @click="openScanItemPreview(it)" />
-                  <span v-else class="ds-thumb-file" @click="openScanItemPreview(it)"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span><span class="ds-thumb-ext">{{ it.ext || '文件' }}</span></span>
-                  <button type="button" class="ds-thumb-remove" @click="removeScanItem(it.id)">移除</button>
+                  <span v-else class="ds-thumb-file" @click="openScanItemPreview(it)"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span></span>
+                  <span class="ds-thumb-name" @click="openScanItemPreview(it)">{{ it.name }}</span>
+                  <span class="ds-thumb-remove" @click="removeScanItem(it.id)">移除</span>
                 </div>
               </div>
-              <div class="ds-cards ds-cards-2">
-                <button class="ds-card" :disabled="scanRecognizing" @click="chooseImageSource">
-                  <span class="ds-ico bl">🖼️</span>
-                  <span class="ds-t">图片</span>
-                </button>
-                <button class="ds-card" :disabled="scanRecognizing" @click="startDocScan('file')">
-                  <span class="ds-ico bl">📄</span>
-                  <span class="ds-t">文件</span>
-                </button>
-              </div>
-              <!-- 0801 设计师点1：选完图已自动开始识别——此按钮退成浅底次级兜底（识别被取消后手动重试用） -->
-              <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
-                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
+              <!-- 0801 设计师点2：拍照/相册/文件本是一个入口三选一，不该在页面上占两个大方块；
+                   点4：已经传过之后收成一行小字「＋ 再加一个」，位置让给识别 -->
+              <button v-if="!scanItems.length" class="ds-pick" :disabled="scanRecognizing" @click="choosePhotoOrFile">
+                <svg class="ds-pick-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.1-1.7a1 1 0 0 1 .84-.45h5.12a1 1 0 0 1 .84.45L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9z"/>
+                  <circle cx="12" cy="13" r="3.1"/>
+                </svg>
+                <span>选择照片或文件</span>
+              </button>
+              <span v-else class="ds-pick-more" :class="{ disabled: scanRecognizing }" @click="scanRecognizing || choosePhotoOrFile()">＋ 再加一个</span>
+              <!-- 点5：正常流程选完即自动识别，页面上不放按钮；只有失败/取消后才给重试出口 -->
+              <button v-if="scanItems.length && scanFailed" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
+                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '重试识别' }}
               </button>
             </div>
           </div>
@@ -3321,6 +3322,7 @@ async function continueDraft() {
   const d = draft.value
   if (!d) { openNewMeeting(); return }
   createVisible.value = true
+  createTab.value = 'manual'   // 0801 设计师点1：识别区默认收起（此前继续草稿会沿用上次的展开态）
   docPrefilled.value = false
   materialPrefillOpen.value = false
   materialText.value = ''
@@ -3370,6 +3372,7 @@ async function openMeetingForEdit(id) {
     const d = await api.committeeDetail(id)
     if (!d) { toast({ title: '会议信息加载失败', icon: 'none' }); return }
     createVisible.value = true
+    createTab.value = 'manual'   // 0801 设计师点1：识别区默认收起（编辑会议同样不该带着上次的展开态）
     editingMeetingId.value = id
     setStorage('meetingView:' + id, 'edit')  // 记住"上次停在发起/编辑页"，供首页卡片按上次位置重进
     docPrefilled.value = false
@@ -3549,6 +3552,19 @@ async function chooseImageSource() {
   else if (res.tapIndex === 1) await startDocScan('image')
 }
 
+// 0801 设计师点2：拍照 / 相册 / 文件合成一个入口三选一——标题说「拍照」却只有图片和文件两个
+// 大方块、没有拍照入口；手机上这三个本就是一个入口弹出的选择，不该在页面上占两个方块
+async function choosePhotoOrFile() {
+  const res = await showActionSheet({
+    title: '选择照片或文件',
+    itemList: ['拍照', '从相册选择', '选择文件（PDF / Word）']
+  })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  if (res.tapIndex === 0) await startCamera()
+  else if (res.tapIndex === 1) await startDocScan('image')
+  else if (res.tapIndex === 2) await startDocScan('file')
+}
+
 async function startDocScan(source = 'image') {
   if (scanRecognizing.value) return
   // 企业微信里「图片」走 JS-SDK 相册多选（内置浏览器把 <input multiple> 强制单选）；
@@ -3580,10 +3596,14 @@ function autoRecognizeStaged() {
   if (scanItems.value.length && !scanRecognizing.value) recognizeScanItems()
 }
 
+// 识别失败标志（0801 设计师点5）：正常流程选完即自动识别、页面上不放按钮；
+// 只有识别失败/被取消后才露出「重试识别」，避免老人卡在"我传了怎么没动静"
+const scanFailed = ref(false)
 // 识别中窗口点 × 取消：收起窗口、复位状态；在途请求返回后按标志丢弃，文件保留可重试
 let _recognizeCancelled = false
 function cancelRecognize() {
   _recognizeCancelled = true
+  scanFailed.value = true    // 取消后同样给「重试识别」出口，文件仍在暂存
   stopDocProgress()
   clearInterval(_scanSecTimer)
   _scanSecTimer = null
@@ -3598,6 +3618,7 @@ async function recognizeScanItems() {
   if (scanRecognizing.value || !scanItems.value.length) return
   const files = scanItems.value.map((x) => x.file)
   _recognizeCancelled = false
+  scanFailed.value = false
   scanRecognizing.value = true
   scanBusy.value = 'file'
   startDocProgress()
@@ -3637,6 +3658,7 @@ async function recognizeScanItems() {
   } catch (e) {
     if (_recognizeCancelled) return
     stopDocProgress()
+    scanFailed.value = true   // 失败才露出「重试识别」按钮（正常流程无按钮，选完即识别）
     const message = e && e.message && !/^HTTP\s/i.test(e.message)
       ? e.message
       : '识别失败，请重试或手动填写'
@@ -6004,17 +6026,24 @@ onActivated(show)
 .ds-shared-hint { margin:12rpx 4rpx 2rpx; color:#938979; font-size:26rpx; line-height:1.45; text-align:center; white-space:nowrap; }
 .ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
-/* 待识别缩略图预览条（0801 设计师点2/3）：图 88px、操作出图——图下一行「移除」，点图=放大预览 */
-.ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
-.ds-thumb { width: 176rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-.ds-thumb-img { width: 100%; height: 176rpx; object-fit: cover; display: block; cursor: pointer; }
-.ds-thumb-file { cursor: pointer; }
-.ds-thumb-file { width: 100%; height: 176rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; background: #FAF7F1; }
+/* 待识别文件（0801 设计师点6）：去卡中卡——缩略图直接铺在浅蓝卡上，一行 [图|文件名|移除] */
+.ds-preview { display: flex; flex-direction: column; gap: 12rpx; padding: 4rpx 0 14rpx; }
+.ds-thumb-row { display: flex; align-items: center; gap: 18rpx; }
+.ds-thumb-img { flex-shrink: 0; width: 88rpx; height: 88rpx; object-fit: cover; display: block; border-radius: 10rpx; border: 2rpx solid #DCE4EE; background: #fff; cursor: pointer; }
+.ds-thumb-file { flex-shrink: 0; width: 88rpx; height: 88rpx; display: flex; align-items: center; justify-content: center; border-radius: 10rpx; border: 2rpx solid #DCE4EE; background: #fff; cursor: pointer; }
 .ds-thumb-ico { font-size: 44rpx; line-height: 1; }
-.ds-thumb-ext { font-size: 20rpx; color: #A98; text-transform: uppercase; }
-/* 图下「移除」一行：文字按钮宽即图宽，好点不误触；删除的只是待识别文件，重选成本低，不再二次确认 */
-.ds-thumb-remove { display: block; width: 100%; min-height: 60rpx; border: 0; border-top: 2rpx solid #EFEBE2; background: #fff; color: #8a9099; font-size: 26rpx; }
-.ds-thumb-remove:active { color: #E5533C; background: #FAFAFA; }
+.ds-thumb-name { flex: 1; min-width: 0; font-size: 27rpx; color: #4a5158; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 「移除」：图右侧一行文字（与议题/选项的「删除」同一套语言），热区 88rpx */
+.ds-thumb-remove { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 88rpx; padding: 0 8rpx; color: #8a9099; font-size: 26rpx; }
+.ds-thumb-remove:active { color: #E5533C; }
+/* 点2：单一入口按钮（拍照/相册/文件三选一）；点3：图标随文字走会议蓝，不再用紫色 emoji */
+.ds-pick { display: flex; align-items: center; justify-content: center; gap: 12rpx; width: 100%; min-height: 96rpx; border: 2rpx solid #C7D8EE; border-radius: 16rpx; background: #fff; color: #2f5f9e; font-size: 30rpx; font-weight: 700; }
+.ds-pick:active { background: #EAF0F8; }
+.ds-pick:disabled { opacity: .6; }
+.ds-pick-ico { width: 40rpx; height: 40rpx; flex-shrink: 0; }
+/* 点4：已传过之后收成一行小字，位置让给识别 */
+.ds-pick-more { display: inline-flex; align-items: center; min-height: 80rpx; padding: 0 4rpx; color: #3567A4; font-size: 28rpx; font-weight: 600; }
+.ds-pick-more.disabled { opacity: .5; }
 /* 0801 设计师点1：识别已在选完图后自动开始——这颗从"绿色实心大按钮"（同屏第四个颜色、第二颗实心，
    和底部主按钮抢）退成浅蓝底描边次级兜底，识别被取消后手动重试用 */
 .ds-recognize { display: block; width: 62%; height: 81rpx; margin: 24rpx auto 4rpx; border: 2rpx solid #C7D8EE; border-radius: 16rpx; background: #EAF0F8; color: #2f5f9e; font-size: 29rpx; font-weight: 700; box-shadow: none; }
