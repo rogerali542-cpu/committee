@@ -624,8 +624,8 @@
                 </div>
               </template>
             </div>
-            <!-- 分隔线 + 一行「＋ 添加议题」：点即新增一行可编辑议题 -->
-            <div v-show="createTab === 'manual'" class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="addTopicRow()">
+            <!-- 分隔线 + 一行「＋ 添加议题」：点即新增一行可编辑议题（始终可用，不随拍照面板开合隐藏） -->
+            <div class="topic-add-trigger" :class="{ 'field-error': fieldErrors.topics }" @click="addTopicRow()">
               <span class="tat-ico">＋</span><span class="tat-text">添加议题</span>
             </div>
           </div>
