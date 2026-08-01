@@ -1224,7 +1224,10 @@ async function confirmMethodConversion() {
   try {
     await api.committeeUpdate(meetingId, {
       meetingMethod: methodConvertForm.meetingMethod,
-      location
+      location,
+      // 0801：转换后地点已换（线上=群/会议软件，线下=新填地址），原地图坐标必然过期——
+      // 显式清空，否则导航还指着原来那个会议室
+      locationLat: null, locationLng: null, updateLocationCoords: true
     })
     methodConvertOpen.value = false
     toast({ title: methodConvertForm.meetingMethod === 'online' ? '已转为线上会议' : '已转为线下会议', icon: 'success' })

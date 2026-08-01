@@ -279,9 +279,16 @@ public class CommitteeService {
         if (req.getMeetingTime() != null) m.setMeetingTime(req.getMeetingTime());
         if (req.getLocation() != null) m.setLocation(req.getLocation());
         // 0801 修：编辑会议时地图选点的新坐标原先不落库（只更新地点文字），详情页导航仍指旧位置。
-        // 沿用 != null 才覆盖：不传坐标的调用方（如通知草稿编辑弹窗）不受影响。
-        if (req.getLocationLat() != null) m.setLocationLat(req.getLocationLat());
-        if (req.getLocationLng() != null) m.setLocationLng(req.getLocationLng());
+        // updateLocationCoords=true 的调用方（发起/编辑会议表单、线上线下转换）按原样写入，
+        // 允许置 null——从地图选点改回手填/常用地点时必须能清掉旧坐标；
+        // 其余调用方维持"非空才覆盖"，不传坐标就不动。
+        if (Boolean.TRUE.equals(req.getUpdateLocationCoords())) {
+            m.setLocationLat(req.getLocationLat());
+            m.setLocationLng(req.getLocationLng());
+        } else {
+            if (req.getLocationLat() != null) m.setLocationLat(req.getLocationLat());
+            if (req.getLocationLng() != null) m.setLocationLng(req.getLocationLng());
+        }
         if (req.getMeetingMethod() != null) {
             m.setMeetingMethod(req.getMeetingMethod());
             if (req.getMeetingMethod() == com.ywh.enums.MeetingMethod.online

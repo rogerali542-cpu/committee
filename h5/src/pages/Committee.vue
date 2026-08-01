@@ -4759,7 +4759,9 @@ async function submitNewMeeting() {
     })
     return
   }
-  if (form.meetingDate === todayStr()) {
+  // 0801 修：上面的日期校验带了 !editingMeetingId 豁免，这里的时间校验漏了——
+  // 编辑一场今天早些时候已经开过的会议再保存，会被"会议时间不能早于当前时间"挡住。
+  if (!editingMeetingId.value && form.meetingDate === todayStr()) {
     const now = new Date()
     const nowMinutes = now.getHours() * 60 + now.getMinutes()
     const timeParts = form.meetingTime.split(':')
@@ -4793,8 +4795,9 @@ async function submitNewMeeting() {
       await api.committeeUpdate(id, {
         title: form.title, meetingDate: form.meetingDate, meetingTime: form.meetingTime,
         location: form.location, meetingMethod: form.meetingMethod || 'offline',   // 0725 修:同创建,编辑时线上/线下切换原先存不进去
-        // 0801 修：编辑时原先只提交地点文字，重新从地图选点后新坐标不落库，详情页导航仍指旧位置
-        locationLat: form.locationLat, locationLng: form.locationLng,
+        // 0801 修：编辑时原先只提交地点文字，重新从地图选点后新坐标不落库，详情页导航仍指旧位置。
+        // updateLocationCoords 让后端按原样写入（含 null）——从地图选点改回手填/常用地点时能清掉旧坐标
+        locationLat: form.locationLat, locationLng: form.locationLng, updateLocationCoords: true,
         description: form.description, topics: topics
       })
       // 居委会见证态若有变，翻转标记（toggle 语义：与载入态不同才切）
