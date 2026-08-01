@@ -6982,8 +6982,10 @@ onActivated(show)
 .create-panel .major-facts { margin-top: 14rpx; border-top: 2rpx solid #E8EBEF; }
 .create-panel .major-facts > div { display: flex; justify-content: space-between; gap: 20rpx; padding: 14rpx 2rpx 0; color: #667386; font-size: 27rpx; }
 .create-panel .major-facts b { color: #B56A1D; font-weight: 600; text-align: right; }
+/* 置灰（未填完）与提交中（按不动）——⚠ 生效的是文件末尾 .sheet-actions.fixed .btn-primary.xxx
+   那两条：这里的写法权重只有 (0,4,0)，会被后面同权重的 .btn-primary 蓝底盖掉。改样式去那儿改。
+   这两条留着兜底 .sheet-actions 里其它非 .btn-primary 的按钮。 */
 .create-panel .sheet-actions .btn.form-incomplete { background: #A9B7C9; box-shadow: none; }
-/* 提交中：保持主色但明显"按不动"，让连点的人一眼看出请求已经在跑，别再戳 */
 .create-panel .sheet-actions .btn.is-submitting { opacity: .6; }
 
 .create-panel .basic-info-card { padding: 0 28rpx !important; border-radius: 22rpx; overflow: hidden; }
@@ -6999,7 +7001,9 @@ onActivated(show)
 .create-panel .meeting-title-line .title-input-wrap { min-width: 0; width: 100%; }
 .create-panel .meeting-title-line .title-input-wrap textarea.title-ta { min-height: 76rpx; height: auto; padding: 16rpx 50rpx 16rpx 0; border: 0; border-radius: 0; background: transparent; color: #1F2937; font-size: 33rpx; font-weight: 700; line-height: 1.35; }
 .create-panel .meeting-title-line .title-clear { right: 0; }
-.create-panel .meeting-title-line .title-ghost { left: 0; font-size: 31rpx; }
+/* 推荐标题也放开到两行：它是"点一下就填进去"的预览，截成一行看不出推荐的是哪次会议 */
+.create-panel .meeting-title-line .title-ghost { left: 0; font-size: 31rpx; white-space: normal; line-height: 1.35;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .create-panel .basic-info-card .field-list { margin: 0; }
 .create-panel .basic-info-card .field-line { min-height: 112rpx; padding: 0; gap: 12rpx; }
 .create-panel .basic-info-card .meeting-method-line,
@@ -7010,6 +7014,14 @@ onActivated(show)
 .create-panel .basic-info-card .fl-value.ph { color: #7C8796; font-weight: 600; }
 .create-panel .basic-info-card .fl-loc-main { padding: 0; }
 .create-panel .basic-info-card .field-map-btn { flex: 0 0 76rpx; }
+/* 0801 修：地点/线上方式原是 nowrap + 省略号的单行——「上海市静安区临汾路XX弄社区活动室」
+   这类长地点在窄屏上被截成「上海市静安区临汾…」，看不出到底在哪。放开到最多两行，第三行才省略
+   （与会议名称输入框两行封顶一致）。整行 min-height 是 min，两行时自然长高，不会挤坏。
+   日期/时间不动——它们本来就短，多行反而松散。 */
+.create-panel .basic-info-card .field-line-location .fl-value {
+  white-space: normal; line-height: 1.35; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.create-panel .basic-info-card .field-line-location { padding-top: 12rpx; padding-bottom: 12rpx; }
 
 .create-panel .create-section:not(.meeting-info-card) { padding: 0 28rpx 10rpx; border-radius: 22rpx; }
 .create-panel .topic-head { min-height: 88rpx; display: flex; align-items: center; border-bottom: 2rpx solid #E3E7EB; }
@@ -7033,6 +7045,12 @@ onActivated(show)
 .create-panel .sheet-actions.fixed { padding: 20rpx 28rpx calc(18rpx + env(safe-area-inset-bottom)); border-top: 2rpx solid #DFE4EA; box-shadow: 0 -8rpx 22rpx rgba(31, 45, 61, .08); }
 .create-panel .sheet-actions.fixed .btn-primary { flex: 1; width: 100%; height: 104rpx; border-radius: 18rpx; background: #3567A4; font-size: 34rpx; }
 .create-panel .sheet-actions.fixed .btn-primary:active { background: #2D598E; }
+/* 0801 修：置灰态必须写在上面这两条之后、且同样带 .fixed。
+   原先写在 6985 行的 `.create-panel .sheet-actions .btn.form-incomplete` 与上一条同为 (0,4,0)
+   权重，后写的蓝色赢——表单没填完按钮照样是蓝的，看着随时能点，跟"缺内容才提示"的设计对不上。 */
+.create-panel .sheet-actions.fixed .btn-primary.form-incomplete,
+.create-panel .sheet-actions.fixed .btn-primary.form-incomplete:active { background: #A9B7C9; box-shadow: none; }
+.create-panel .sheet-actions.fixed .btn-primary.is-submitting { opacity: .6; }
 
 /* ===== 设计师功能点（加在原型基线上；配色沿用基线蓝 #3567A4，不动整体布局） ===== */
 /* 点2：议题计数——仅 topics>0 时出现，次级灰、常规字重；margin 补空格（0801：模板里的空格会被压掉） */
