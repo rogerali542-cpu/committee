@@ -643,7 +643,7 @@
               <div class="jd-row" :class="{ 'jd-warn': majorNoticeInfo && majorNoticeInfo.tight, 'jd-error': majorNoticeInfo && majorNoticeInfo.past }">
                 <span class="jd-label">公告日期</span>
                 <span v-if="majorNoticeInfo" class="jd-value">
-                  <template v-if="majorNoticeInfo.past">公告日已过（最迟 {{ majorNoticeInfo.text }}），建议改期</template>
+                  <template v-if="majorNoticeInfo.past">公告日已过（最迟 {{ majorNoticeInfo.text }}），请改期或取消勾选</template>
                   <template v-else-if="majorNoticeInfo.days === 0">最迟今天（{{ majorNoticeInfo.text }}）前公告</template>
                   <template v-else>最迟 {{ majorNoticeInfo.text }} 前公告（{{ majorNoticeInfo.tight ? '仅剩' : '还剩' }} {{ majorNoticeInfo.days }} 天）</template>
                 </span>
@@ -2679,11 +2679,22 @@ const meetingDateTimePast = computed(() => {
   }
   return false
 })
-// 主按钮可提交门槛（设计师点4）：日期+时间+至少一条非空议题齐了才亮；缺则置灰、点了提示；时间已过也锁。
+// 含重大事项但会前公告来不及（会议距今不足 7 天 → 最迟公告日已过）：与"会议时间已过"一样要拦，
+// 否则会建出法定程序上无法成立的重大事项会议（用户要求）。编辑历史会议不限。
+const majorNoticeUnmeetable = computed(() =>
+  !editingMeetingId.value
+  && createForm.juweiWitness
+  && createForm.meetingMethod !== 'online'
+  && !!(majorNoticeInfo.value && majorNoticeInfo.value.past))
+// 主按钮可提交门槛（设计师点4）：日期+时间+至少一条非空议题齐了才亮；缺则置灰、点了提示；
+// 会议时间已过、或含重大事项公告来不及，也锁住。
 const createCanSubmit = computed(() =>
-  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.some((t) => t.title && t.title.trim()))) && !meetingDateTimePast.value)
+  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.some((t) => t.title && t.title.trim())))
+  && !meetingDateTimePast.value
+  && !majorNoticeUnmeetable.value)
 function onSubmitClick() {
   if (meetingDateTimePast.value) { toast({ title: '会议时间已过，请改到当前时间之后再生成通知', icon: 'none' }); return }
+  if (majorNoticeUnmeetable.value) { toast({ title: '含重大事项须会前 7 天公告，当前距会议不足 7 天，请改到更晚日期或取消勾选重大事项', icon: 'none' }); return }
   if (!createCanSubmit.value) { toast({ title: '请填写日期、时间和至少一条议题', icon: 'none' }); return }
   submitNewMeeting()
 }
@@ -4421,6 +4432,17 @@ async function submitNewMeeting() {
       })
       return
     }
+  }
+  // 含重大事项须会前 7 天公告：会议距今不足 7 天（最迟公告日已过）则拦下，避免建出程序上无法成立的会议
+  if (!editingMeetingId.value && form.juweiWitness && form.meetingMethod !== 'online' && majorNoticeInfo.value && majorNoticeInfo.value.past) {
+    fieldErrors.meetingDate = true
+    await showModal({
+      title: '重大事项公告来不及',
+      content: '含重大事项的会议须会前 7 天向业主公告。当前会议日期距今不足 7 天，最迟公告日已过，请把会议改到更晚的日期，或取消勾选「含重大事项」。',
+      confirmText: '知道了',
+      showCancel: false
+    })
+    return
   }
   // 编辑模式：更新本会议（不新建），完成后回到该会议的「会议通知」页
   if (editingMeetingId.value) {
