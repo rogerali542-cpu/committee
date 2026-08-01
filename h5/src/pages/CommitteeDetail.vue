@@ -33,27 +33,35 @@
 
         <!-- 通知卡片：发给委员的核心内容，也是生成转发图片的源 -->
         <div class="notice-card">
+          <!-- 0801 设计师版：通知正文改「标签 + 值」两列——标签灰、值深色，时间/方式/议题各占一行；
+               议题按 一、二、三 分行列全（原先挤成一行并用「等」截断，委员看不到全部议题）。
+               标题从「新会议通知：xxx」改成「xxx 会议通知」——正文是通知本身，不是在播报"有新通知" -->
           <div class="nc-copy">
-            <div class="nc-copy-title">新会议通知：{{ detail.title || '业委会会议' }}</div>
-            <div v-if="detail.meetingMethod === 'online'" class="nc-online-emphasis">本次会议为线上会议</div>
-            <div class="nc-copy-row">会议时间：{{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }}</div>
-            <div class="nc-copy-row">{{ detail.meetingMethod === 'online' ? '线上平台' : '会议地点' }}：<span v-if="detail.meetingMethod === 'online'">{{ detail.location || '微信工作群' }}</span><span v-else-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span><span v-else class="nc-muted">待定</span></div>
-            <div v-if="detail.meetingMethod !== 'online' && detail.location" class="nc-copy-row">地点导航：<span class="loc-inline" @click="openMap(detail.location)">打开地图导航</span></div>
-            <div class="nc-copy-row">会议议题：{{ noticeTopicsText }}</div>
+            <div class="nc-copy-title">{{ detail.title || '业委会会议' }} 会议通知</div>
+            <div class="nc-field">
+              <span class="nc-fl">时间</span>
+              <span class="nc-fv">{{ fmtCnDate(detail.meetingDate) }} {{ fmtHm(detail.meetingTime) }}</span>
+            </div>
+            <div class="nc-field">
+              <span class="nc-fl">方式</span>
+              <span class="nc-fv">
+                <template v-if="detail.meetingMethod === 'online'">线上会议 · {{ detail.location || '微信工作群' }}</template>
+                <template v-else>
+                  线下会议 ·
+                  <span v-if="detail.location" class="loc-inline" @click="openMap(detail.location)">{{ detail.location }}</span>
+                  <span v-else class="nc-muted">地点待定</span>
+                </template>
+              </span>
+            </div>
+            <div class="nc-field">
+              <span class="nc-fl">议题</span>
+              <span class="nc-fv">
+                <span v-for="(t, i) in noticeTopicLines" :key="i" class="nc-topic-line">{{ t }}</span>
+                <span v-if="!noticeTopicLines.length" class="nc-muted">（待定）</span>
+              </span>
+            </div>
             <div class="nc-copy-note">请各位委员准时参加。</div>
             <div class="nc-copy-sign">业主委员会</div>
-          </div>
-          <!-- 同级低频操作统一一排等宽同款(0725 用户定,参照iOS/微信卡片操作区):
-               危险操作(取消会议)红字区分;重大事项时第三枚「导出业主公告」入列,说明小字在按钮组下方 -->
-          <div class="prep-meeting-actions">
-            <button type="button" class="pma-btn danger" @click="removeMeeting">取消会议</button>
-            <button type="button" class="pma-btn" @click="openMethodConversion">
-              {{ detail.meetingMethod === 'online' ? '转为线下会议' : '转为线上会议' }}
-            </button>
-            <button v-if="detail.record && detail.record.hasMajorIssue" type="button" class="pma-btn"
-                    :disabled="exportingPreNotice" @click="exportPreNotice">
-              {{ exportingPreNotice ? '正在生成…' : '导出业主公告' }}
-            </button>
           </div>
           <div v-if="detail.record && detail.record.hasMajorIssue" class="pre-notice-hint">重大事项按规定应提前 7 天张贴，告知业主会议时间和议程</div>
           <div v-if="methodConvertOpen" class="method-convert-panel">
@@ -88,31 +96,44 @@
         </div>
 
         <!-- 通知人员：默认收起(0725 用户定),头部有全选+计数;点头部展开调整名单 -->
+        <!-- 0801 设计师版：名单直接展开——发通知前要确认发给谁，这是主流程不是可选细节；
+             头部右侧是计数 + 一个文字按钮「全选 / 取消全选」（原来是勾选框+"全选"+计数+›，
+             四个元素挤一行且勾选框与下方成员勾选框同款，容易误读成"某一位委员"） -->
         <div class="recipient-card">
-          <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
+          <div class="recipient-card-head">
             <span class="recipient-card-title">通知人员</span>
             <div class="recipient-card-right">
-              <!-- 全选控件挪到头部（替代原「全体委员·N人」摘要，两者信息重复）：点它=全选/全不选，@click.stop 不触发展开 -->
-              <div class="rcp-head-all" @click.stop="toggleRecipientAll">
-                <div class="rcp-check" :class="{ on: recipientAllChecked }">{{ recipientAllChecked ? '✓' : '' }}</div>
-                <span class="rcp-head-all-label">全选</span>
-                <span class="rcp-head-count">已选 {{ recipientSelectedCount }}/{{ recipientList.length }} 人</span>
-              </div>
-              <span class="recipient-card-arrow" :class="{ open: recipientOpen }">›</span>
+              <span class="rcp-head-count">已选 {{ recipientSelectedCount }}/{{ recipientList.length }} 人</span>
+              <span class="rcp-head-toggle" @click="toggleRecipientAll">{{ recipientAllChecked ? '取消全选' : '全选' }}</span>
             </div>
           </div>
-          <template v-if="recipientOpen">
-            <div class="rcp-list page-rcp-list">
-              <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
-                <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
-                <div class="rcp-person">
-                  <span class="rcp-name">{{ m.name }}</span>
-                  <span v-if="m.role" class="rcp-role">{{ m.role }}</span>
-                </div>
+          <div class="rcp-list page-rcp-list">
+            <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
+              <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
+              <div class="rcp-person">
+                <span class="rcp-name">{{ m.name }}</span>
+                <span v-if="m.role" class="rcp-role">{{ m.role }}</span>
               </div>
-              <div v-if="!recipientList.length" class="rcp-empty">暂无可通知的委员</div>
             </div>
-          </template>
+            <div v-if="!recipientList.length" class="rcp-empty">暂无可通知的委员</div>
+          </div>
+        </div>
+
+        <!-- 低频操作（0801 设计师版）：从通知卡里那排等宽按钮改成名单下方的轻列表行——
+             它们不是这一页的主线（主线是"确认内容 → 选人 → 发送"），做成按钮会与底部主操作抢 -->
+        <div class="prep-more">
+          <div class="prep-more-row" @click="openMethodConversion">
+            <span>{{ detail.meetingMethod === 'online' ? '转为线下会议' : '转为线上会议' }}</span>
+            <i class="pm-arrow"></i>
+          </div>
+          <div v-if="detail.record && detail.record.hasMajorIssue" class="prep-more-row" :class="{ busy: exportingPreNotice }" @click="exportingPreNotice || exportPreNotice()">
+            <span>{{ exportingPreNotice ? '正在生成业主公告…' : '导出业主公告' }}</span>
+            <i class="pm-arrow"></i>
+          </div>
+          <div class="prep-more-row" @click="removeMeeting">
+            <span>取消本次会议</span>
+            <i class="pm-arrow"></i>
+          </div>
         </div>
 
         <!-- 通知记录：标题 + 历史列表（最新在前） -->
@@ -365,9 +386,12 @@
       <div class="pf-after-send">
         <!-- 已通知（App送达全体 或 微信留痕）后才浮出「开始会议」；此前先让主任二选一发通知（App内群发 / 去微信复制） -->
         <button v-if="prepareMode !== 'send'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
-        <div class="pf-btn-row">
-          <button class="pf-btn" @click="sendAppNoticeOnly">App内通知</button>
-          <button class="pf-btn" @click="openWechat">去微信通知</button>
+        <!-- 0801 设计师版：两个同款并排按钮（App内通知 / 去微信通知）看不出哪个是主操作，
+             且「App内」是实现口径不是用户语言。改上下叠放：主操作「发送通知（N 人）」实心蓝、
+             带人数与上方名单呼应；「转发到微信」浅蓝次级。没勾人时主按钮置灰 -->
+        <div class="pf-btn-col">
+          <button class="pf-btn pf-btn-main" :class="{ disabled: !recipientSelectedCount }" @click="sendAppNoticeOnly">发送通知（{{ recipientSelectedCount }} 人）</button>
+          <button class="pf-btn pf-btn-sub" @click="openWechat">转发到微信</button>
         </div>
       </div>
     </div>
@@ -1270,6 +1294,8 @@ async function sendAppNoticeOnly() {
   const ok = await loadRecipients(false)
   if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
   const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
+  // 0801：一个都没勾时不该发（按钮已置灰，这里兜底），否则发出一条谁也没收到的"通知"
+  if (!ids.length) { toast({ title: '请先选择要通知的委员', icon: 'none' }); return }
   doSend(ids, { quietForward: true })
 }
 function toggleRecipient(id) {
@@ -1308,6 +1334,16 @@ async function doSend(ids, options) {
 }
 
 // ——— 通知卡片数据 + 发送记录 ———
+// 通知正文里的议题：按「一、二、三」逐条分行列全（0801 设计师版）。
+// noticeTopicsText 那套是挤成一行、超预算用「等」截断的写法，转发文本仍用它；
+// 页面上的通知卡不该截断——委员要看到全部议题才知道这会讨论什么。
+const CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十']
+const noticeTopicLines = computed(() => {
+  const ts = (detail.value && detail.value.record && detail.value.record.topics) || []
+  const titles = ts.map((t) => ((t && t.title) || '').trim()).filter(Boolean)
+  const last = titles.length - 1
+  return titles.map((t, i) => (CN_NUM[i] || (i + 1)) + '、' + t + (i === last ? '' : '；'))
+})
 const noticeTopicsText = computed(() => {
   const ts = (detail.value && detail.value.record && detail.value.record.topics) || []
   const titles = ts.map((t) => ((t && t.title) || '').trim()).filter(Boolean)
@@ -2273,6 +2309,15 @@ async function removeMaterial(item) {
 .pf-btn:active { background: var(--c-primary-strong); }
 .pf-btn-single { width:78%; margin:0 auto; }        /* 发送通知：单按钮，窄一点、居中 */
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
+/* 0801 设计师版：主/次上下叠放——主操作「发送通知（N 人）」实心蓝整宽，
+   「转发到微信」浅蓝底蓝字次级，一眼看得出先点哪个 */
+.pf-btn-col { display:flex; flex-direction:column; gap:14rpx; padding:0 20rpx; }
+.pf-btn-col .pf-btn { width:100%; height:96rpx; border-radius:20rpx; font-size:33rpx; }
+.pf-btn-main { background:#3567A4; color:#fff; }
+.pf-btn-main:active { background:#2D598E; }
+.pf-btn-main.disabled { background:#C3CAD3; }
+.pf-btn-sub { background:#EAF0F8; color:#2f5f9e; }
+.pf-btn-sub:active { background:#DCE7F3; }
 .pf-btn-row { display:flex; gap:36rpx; padding:0 20rpx; }
 .pf-btn-row .pf-btn { flex:1; min-width:0; height:72rpx; font-size:27rpx; background: var(--c-primary-dark); }
 .pf-btn-row .pf-btn:active { background: var(--c-primary-strong); }
@@ -2290,9 +2335,14 @@ async function removeMaterial(item) {
 .notice-card { background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 6rpx 22rpx rgba(0,0,0,0.07); margin-top:24rpx; margin-bottom:16rpx; }
 /* 0723 加入会前公告按钮后整卡压密一档：padding/gap/行距微收，总高不涨 */
 .nc-copy { padding:20rpx 28rpx; display:flex; flex-direction:column; gap:6rpx; font-size:28rpx; line-height:1.55; color:#1a1a1a; }
-.nc-copy-title { font-size:31rpx; font-weight:700; line-height:1.5; word-break:break-all; }
+.nc-copy-title { font-size:34rpx; font-weight:700; line-height:1.45; word-break:break-all; margin-bottom:8rpx; }
 .nc-copy-row { font-size:28rpx; color:#333; line-height:1.6; word-break:break-all; }
-.nc-copy-note { margin-top:4rpx; font-size:27rpx; color:#555; line-height:1.6; }
+/* 0801 设计师版：「标签 + 值」两列——标签灰、定宽，值深色可换行；议题逐条分行 */
+.nc-field { display:flex; align-items:flex-start; gap:16rpx; padding:6rpx 0; }
+.nc-fl { flex:0 0 auto; width:56rpx; color:#8A9099; font-size:28rpx; line-height:1.6; }
+.nc-fv { flex:1; min-width:0; color:#1f2329; font-size:28rpx; line-height:1.6; word-break:break-all; }
+.nc-topic-line { display:block; }
+.nc-copy-note { margin-top:10rpx; font-size:27rpx; color:#555; line-height:1.6; }
 .nc-copy-sign { margin-top:6rpx; text-align:right; font-size:28rpx; font-weight:700; color:#1a1a1a; line-height:1.65; }
 .nc-banner { background:#C76A00; color:#fff; text-align:center; font-size:34rpx; font-weight:700; letter-spacing:6rpx; padding:24rpx 0; }
 /* 强化语气：卡片以「新会议通知」橙色标签开头，替代原来偏弱的邀请口吻 */
@@ -2320,21 +2370,30 @@ async function removeMaterial(item) {
 .recipient-card-sub { display:block; margin-top:4rpx; font-size:21rpx; color:#8A9099; line-height:1.35; }
 .recipient-card-right { flex-shrink:0; display:flex; align-items:center; gap:14rpx; }
 /* 全选控件挪进头部（替代原摘要）：小圆勾 + 「全选」 + 已选计数，点它切换全选/全不选 */
-.rcp-head-all { display:flex; align-items:center; gap:8rpx; padding:0 10rpx; min-height:80rpx; box-sizing:border-box; }
-.rcp-head-all .rcp-check { width:38rpx; height:38rpx; border-width:3rpx; font-size:24rpx; }
-.rcp-head-all-label { font-size:28rpx; color:#A85800; font-weight:700; white-space:nowrap; }
 .rcp-head-count { font-size:26rpx; color:#8A9099; white-space:nowrap; }
-.recipient-card-arrow { color:#A4A9B0; font-size:32rpx; line-height:1; transform:rotate(90deg); transition:transform .18s ease; }
-.recipient-card-arrow.open { transform:rotate(-90deg); }
-.page-rcp-list { margin:0; max-height:329rpx; overflow-y:auto; border-top:1px solid #F0F0F2; }
-.page-rcp-item { min-height:76rpx; box-sizing:border-box; padding:14rpx 22rpx; }
+/* 全选/取消全选：文字按钮（原来是勾选框+文字+计数+›四件挤一行，勾选框还和成员那列同款、易误读） */
+.rcp-head-toggle { display:inline-flex; align-items:center; min-height:80rpx; padding:0 4rpx; color:#3567A4; font-size:28rpx; font-weight:700; white-space:nowrap; }
+.rcp-head-toggle:active { opacity:.6; }
+/* 0801 设计师版：名单默认展开且不再限高滚动——7 个人的名单套一个内滚动区，
+   既看不全又与页面主滚动打架；直接铺开由页面统一滚 */
+.page-rcp-list { margin:0; border-top:1px solid #F0F0F2; }
+.page-rcp-item { min-height:96rpx; box-sizing:border-box; padding:16rpx 22rpx; }
+/* 姓名靠左、角色靠右分列（原来两者上下叠在一起、角色小到 10px 几乎看不见） */
+.page-rcp-item .rcp-person { flex:1; min-width:0; flex-direction:row; align-items:center; justify-content:space-between; gap:16rpx; }
+.page-rcp-item .rcp-name { font-size:31rpx; }
+.page-rcp-item .rcp-role { font-size:26rpx; color:#8A9099; white-space:nowrap; }
 /* 操作区(0725 用户定):等宽等高同款一排,危险项红字;参照 iOS/微信卡片操作区 */
-.prep-meeting-actions { box-sizing:border-box; display:flex; align-items:center; gap:16rpx; margin:2rpx 24rpx 12rpx; padding-top:16rpx; border-top:1px solid #EEF0F2; }
-.pma-btn { flex:1; min-width:0; height:64rpx; padding:0 8rpx; border:2rpx solid #CBD4DC; border-radius:12rpx; background:#fff; color:#44536A; font-size:26rpx; font-weight:600; white-space:nowrap; }
-.pma-btn:active { background:#F2F5F8; }
-.pma-btn:disabled { opacity:.6; }
-.pma-btn.danger { color:#B0463A; border-color:#DEB4AE; }
-.pma-btn.danger:active { background:#FBF0EE; }
+/* 低频操作（0801 设计师版）：名单下方的轻列表行——透明底 + 分隔线 + 灰字 + ›，
+   不与底部主操作抢。「取消本次会议」不再涂红：红不在配色表，破坏性由二次确认承担 */
+.prep-more { margin:6rpx 0 14rpx; }
+.prep-more-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx;
+  min-height:100rpx; padding:0 22rpx; border-bottom:1px solid #EEF0F2; color:#55606E; font-size:29rpx; }
+.prep-more-row:first-child { border-top:1px solid #EEF0F2; }
+.prep-more-row:active { background:#F3F5F7; }
+.prep-more-row.busy { color:#9aa0a6; }
+/* › 用 CSS 边框箭头（见 CLAUDE.md，不用字符箭头） */
+.pm-arrow { flex-shrink:0; display:inline-block; width:16rpx; height:16rpx;
+  border-right:3rpx solid #B4BCC7; border-bottom:3rpx solid #B4BCC7; transform:rotate(-45deg); }
 /* 删除会议(0729 用户定二改)：贴近上方操作排、红字描边胶囊更醒目（原灰字太隐蔽、下方空白过大） */
 .detail-del-zone { margin:16rpx 0 0; text-align:center; }
 .detail-del-link { display:inline-block; padding:10rpx 44rpx; font-size:26rpx; font-weight:600; color:#B0463A; border:2rpx solid #DEB4AE; border-radius:999rpx; }
@@ -2606,7 +2665,9 @@ async function removeMaterial(item) {
 .rcp-empty { text-align:center; color:#9aa0a6; font-size:24rpx; padding:32rpx 0; }
 .rcp-check { flex-shrink:0; width:38rpx; height:38rpx; border-radius:50%; border:3rpx solid #cfd4da; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24rpx; font-weight:700; box-sizing:border-box; }
 .rcp-check.mini { width:28rpx; height:28rpx; border-width:2rpx; font-size:18rpx; }
-.rcp-check.on { background:var(--c-primary); border-color:var(--c-primary); }
+/* 0801 设计师版：勾选框方形 + 会议蓝（原圆形且 var(--c-primary) 落到全局橙） */
+.rcp-check.on { background:#3567A4; border-color:#3567A4; }
+.page-rcp-item .rcp-check { width:44rpx; height:44rpx; border-radius:10rpx; border-width:3rpx; font-size:28rpx; }
 .rcp-actions { display:flex; gap:20rpx; margin-top:20rpx; }
 .rcp-btn { flex:1; height:92rpx; border:none; border-radius:20rpx; font-size:34rpx; font-weight:700; }
 .rcp-btn.ghost { flex:0 0 34%; background:#f0f1f3; color:#555; }
