@@ -503,7 +503,7 @@
             <i class="sa-chev" aria-hidden="true"></i>
           </div>
 
-          <!-- 拍照/上传面板：与入口同卡。选完图自动开始识别（autoRecognizeStaged），识别后预填到下方表单 -->
+          <!-- 拍照/上传面板：与入口同卡。可连续添加多个文件，攒齐后点「开始识别（N）」统一识别 -->
           <div v-show="createTab === 'scan'" class="scan-pane">
             <div class="doc-scan-bar inline">
               <!-- 0801 设计师点6：去掉卡中卡——缩略图直接铺在浅蓝卡上，一行 [图|文件名|移除]，
@@ -526,9 +526,10 @@
                 <span>选择照片或文件</span>
               </button>
               <span v-else class="ds-pick-more" :class="{ disabled: scanRecognizing }" @click="scanRecognizing || choosePhotoOrFile()">＋ 再加一个</span>
-              <!-- 点5：正常流程选完即自动识别，页面上不放按钮；只有失败/取消后才给重试出口 -->
-              <button v-if="scanItems.length && scanFailed" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
-                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '重试识别' }}
+              <!-- 0801 用户定：恢复「攒齐多个文件再统一识别」——一份通知常有多页/多附件，
+                   选完第一个就自动识别会把后面的挤掉。按钮常驻，攒够了自己点 -->
+              <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
+                {{ scanRecognizing ? '识别中 ' + docProgress + '%' : (scanFailed ? '重试识别（' + scanItems.length + '）' : '开始识别（' + scanItems.length + '）') }}
               </button>
             </div>
           </div>
@@ -1620,7 +1621,22 @@ const cockpitTodos = computed(() => {
       onTap: enterCommitteeArea
     })
   }
-  if (f && (f.level === 'urgent' || f.level === 'active') && f.cta) {
+  // 草稿始终单独成卡（0801 修 bug）：此前草稿只能占「单焦点」槽位（homeFocus 的第 3 优先级），
+  // 一旦有进行中/待整理的会议占住焦点，草稿就被吞掉；而上面 draftPeriod 又把该期的「待安排」卡
+  // 抑制了（注释写着"由草稿卡代表"）——两头一夹，存了草稿反而首页什么都不剩。
+  // 现在草稿独立出卡，不与焦点争位；焦点里的草稿分支则跳过，避免同时出两张。
+  if (hasDraft.value) {
+    items.push({
+      key: 'committee-draft', tag: '业委会', tone: 'blue', level: 'active',
+      title: draftTitle.value || '会议通知未完成',
+      sub: draftSummary.value || '会议通知尚未完成',
+      cta: isChair.value ? '继续通知' : '',
+      actionable: isChair.value,
+      timeScope: 'recent', summaryLabel: '会议任务', daysUntil: null, draft: true,
+      onTap: () => continueDraft()
+    })
+  }
+  if (f && !f.draft && (f.level === 'urgent' || f.level === 'active') && f.cta) {
     const todayKey = formatLocalDay(new Date())
     const meetingDay = f.meeting && f.meeting.meetingDate ? String(f.meeting.meetingDate).slice(0, 10) : ''
     const meetingDays = daysFromToday(meetingDay)
@@ -3573,7 +3589,6 @@ async function startDocScan(source = 'image') {
     try {
       const files = await chooseWecomImages(9)
       files.forEach((f) => addScanItem(f))
-      autoRecognizeStaged()
       return
     } catch (e) {
       if (isWecomCancel(e)) return
@@ -3586,15 +3601,11 @@ async function startDocScan(source = 'image') {
   const files = await pickFiles(accept)
   if (!files || !files.length) return // 用户取消
   files.forEach((f) => addScanItem(f))
-  autoRecognizeStaged()
 }
 
-// 选完图直接开始识别（0801 设计师点1）：不用再点「开始识别」——老人最容易卡在"传完了怎么没反应"。
-// 相册/文件选完即触发；相机路径在收起取景器时触发（连拍不打断）；识别中或无文件不动作。
-// 「开始识别」按钮保留为浅底兜底：识别被取消后手动重试用。
-function autoRecognizeStaged() {
-  if (scanItems.value.length && !scanRecognizing.value) recognizeScanItems()
-}
+// 0801 用户定：不再选完即自动识别——一份会议通知常有多页/多个附件，自动识别会把
+// 「再传一个」的机会挤掉。改回攒齐多个文件后由用户点「开始识别（N）」统一识别。
+// （设计师担心的"传完没动静"由常驻按钮 + 文件计数解决：按钮上直接写着有几份待识别）
 
 // 识别失败标志（0801 设计师点5）：正常流程选完即自动识别、页面上不放按钮；
 // 只有识别失败/被取消后才露出「重试识别」，避免老人卡在"我传了怎么没动静"
@@ -3786,7 +3797,7 @@ function openMockCamera() {
   _mockShotFile = null
   mockCameraVisible.value = true
 }
-function closeMockCamera() { mockCameraVisible.value = false; mockShotUrl.value = ''; _mockShotFile = null; autoRecognizeStaged() }
+function closeMockCamera() { mockCameraVisible.value = false; mockShotUrl.value = ''; _mockShotFile = null }
 // 模拟真实相机成片：按取景框比例出竖幅照片（纸张摆在深色桌面上），预览时能铺满屏幕
 function buildShotPhotoCanvas(paperCanvas) {
   const vp = document.querySelector('.mc-viewport')
@@ -3894,7 +3905,6 @@ function closeRealCamera() {
   realCamVisible.value = false
   realShotUrl.value = ''
   _realShotFile = null
-  autoRecognizeStaged()  // 收起取景器时已攒了照片 → 直接开识别（0801 设计师点1）
 }
 // 按快门：抓当前视频帧到 canvas → 预览确认（不直接识别，和模拟/上传一致）
 async function realShoot() {
@@ -6044,10 +6054,11 @@ onActivated(show)
 /* 点4：已传过之后收成一行小字，位置让给识别 */
 .ds-pick-more { display: inline-flex; align-items: center; min-height: 80rpx; padding: 0 4rpx; color: #3567A4; font-size: 28rpx; font-weight: 600; }
 .ds-pick-more.disabled { opacity: .5; }
-/* 0801 设计师点1：识别已在选完图后自动开始——这颗从"绿色实心大按钮"（同屏第四个颜色、第二颗实心，
-   和底部主按钮抢）退成浅蓝底描边次级兜底，识别被取消后手动重试用 */
-.ds-recognize { display: block; width: 62%; height: 81rpx; margin: 24rpx auto 4rpx; border: 2rpx solid #C7D8EE; border-radius: 16rpx; background: #EAF0F8; color: #2f5f9e; font-size: 29rpx; font-weight: 700; box-shadow: none; }
-.ds-recognize:active { background: #DCE7F3; }
+/* 「开始识别（N）」：攒齐文件后的主操作，整宽、实心会议蓝——它是这个面板里要点的那颗；
+   仍不与底部「生成会议通知」抢（在展开的浅蓝卡内、只在有待识别文件时出现）。
+   不再用原来的绿色（绿=接待模块色，且是同屏第四个颜色） */
+.ds-recognize { display: block; width: 100%; height: 88rpx; margin: 20rpx 0 2rpx; border: 0; border-radius: 16rpx; background: #3567A4; color: #fff; font-size: 30rpx; font-weight: 700; }
+.ds-recognize:active { background: #2D598E; }
 .ds-recognize:disabled { opacity: 0.72; }
 @keyframes dsGlow {
   0%, 100% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 12rpx rgba(30,180,155,0.38); }
