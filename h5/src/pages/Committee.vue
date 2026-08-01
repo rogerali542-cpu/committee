@@ -774,27 +774,12 @@
                 <span class="sr-pv-label">{{ row.label }}</span>
                 <div class="sr-pv-val-wrap">
                   <span class="sr-pv-value" :class="{ miss: row.miss }">{{ row.miss ? '未识别 · 待手填' : row.value }}</span>
+                  <!-- 日期已过：值下方一行暖色小字，省掉一整块暖底（设计师·瘦身点4） -->
+                  <span v-if="row.warn" class="sr-pv-warn">{{ row.warn }}</span>
                 </div>
               </div>
-              <!-- 0801 设计师点5：不写孤零零的「1 份」——把每个文件按用途列出来，
-                   数量对得上，也说清了是哪份文件贡献了上面那些字段 -->
-              <div v-if="scanResultCard.noticeFiles && scanResultCard.noticeFiles.length" class="sr-pv-row">
-                <span class="sr-pv-label">识别自</span>
-                <div class="sr-pv-val-wrap">
-                  <span v-for="(n, i) in scanResultCard.noticeFiles" :key="'n' + i" class="sr-pv-file">{{ n }}</span>
-                </div>
-              </div>
-              <div v-if="scanResultCard.materialFiles && scanResultCard.materialFiles.length" class="sr-pv-row">
-                <span class="sr-pv-label">会议材料</span>
-                <div class="sr-pv-val-wrap">
-                  <span v-for="(n, i) in scanResultCard.materialFiles" :key="'m' + i" class="sr-pv-file">{{ n }}</span>
-                </div>
-              </div>
-            </div>
-            <!-- 0801 设计师点4：识别出的日期已过 → 当场提示，别等填完被底部按钮锁住才发现 -->
-            <div v-if="scanResultCard.pastDate" class="sr-past">
-              <b>日期 {{ scanResultCard.pastDate }} 已过</b>
-              <span>填入后需另选日期才能生成通知</span>
+              <!-- 0801 设计师·瘦身点1：「识别自 / 会议材料」两行文件名删——文件名上一屏刚看过，
+                   是过程信息不是要核对的内容（份数也随之不必解释） -->
             </div>
             <div v-if="scanResultCard.conflictNote" class="sr-alert">{{ scanResultCard.conflictNote }}</div>
           </template>
@@ -821,12 +806,12 @@
 
           <!-- 信息冲突：材料仍会添加，仅询问是否覆盖冲突字段 -->
           <div v-if="scanResultCard.conflicts && scanResultCard.conflicts.length" class="sr-card sr-conflict">
-            <div class="sr-row-top"><span class="sr-pill warn">信息冲突</span><span class="sr-row-note">与你已填的不一致，是否覆盖？</span></div>
+            <!-- 0801 设计师·瘦身点2：新值上面「名称」行已经写过，冲突块只说旧值即可；
+                 「是否覆盖」也不必问——下方两颗按钮就是答案 -->
+            <div class="sr-row-top"><span class="sr-pill warn">信息冲突</span></div>
             <div v-for="(cf, i) in scanResultCard.conflicts" :key="i" class="sr-conf-line">
               <span class="sr-conf-label">{{ cf.label }}</span>
-              <span class="sr-conf-old">{{ cf.cur }}</span>
-              <span class="sr-conf-arrow">→</span>
-              <span class="sr-conf-new">{{ cf.nv }}</span>
+              <span class="sr-conf-old">原为 {{ cf.cur }}</span>
             </div>
           </div>
         </div>
@@ -4139,10 +4124,8 @@ function handleMultiScanResult(res) {
   // 识别为会议通知：冲突 = 新识别值与「已填写」的不同 → 才问覆盖；否则空字段直填、材料照加
   const conflicts = noticeConflicts(res)
   const hasConf = conflicts.length > 0
-  // 0801 设计师点4：识别出的日期已过（如通知是 7/25、今天 8/1），直接填进去必然触发「公告日已过」
-  // 且底部按钮会被锁住。这比会议名称冲突严重得多，必须当场说明，别等填完了才发现
-  const pastDate = (res.meetingDate && String(res.meetingDate).trim() < todayStr())
-    ? formatScanDateTime(res.meetingDate, '') : ''
+  // 识别出的日期已过（如通知写 7/25、今天 8/1）仍要当场说明，否则填进去必然触发「公告日已过」
+  // 且底部按钮被锁住；提示已并进「时间」行的暖色小字（scanNoticeRows 里算），此处不再单独成块
   const REQUIRED = [
     { label: '标题', has: !!(res.title && res.title.trim()) },
     { label: '议题', has: !!(Array.isArray(res.topics) && res.topics.length) }
@@ -4153,17 +4136,11 @@ function handleMultiScanResult(res) {
     missingRequired: REQUIRED.filter((f) => !f.has).map((f) => f.label),
     conflictNote: (res.conflictNote || '').trim(),
     conflicts,
-    pastDate,
-    // 0801 设计师点5：按用途列出每个文件名（识别自 / 会议材料），数量对得上，
-    // 也说清是哪份文件贡献了上面那些字段——不再只给一个孤零零的「1 份」
-    noticeFiles: filesArr.filter((f) => f.category !== 'material').map((f) => f.fileName || '识别文件'),
-    materialFiles: materials.map((f) => f.fileName || '识别文件'),
+    // pastDate 已并进「时间」行（scanNoticeRows 里算），不再单独成块（设计师·瘦身点4）
     needOverwriteAsk: hasConf,
-    // 0801 设计师点6：「保留原信息」指代不清（是全都不填，还是只保留冲突那项？）——改对象明确的说法
-    primaryLabel: hasConf ? '全部按识别结果填入' : '确认填入',
-    ghostLabel: hasConf
-      ? (conflicts.length === 1 ? ('只保留我填的' + String(conflicts[0].label).replace(/^会议/, '')) : '保留我已填的')
-      : '取消',
+    // 0801 设计师·瘦身点5：文案收短——语义靠上方冲突块交代，按钮只说动作
+    primaryLabel: hasConf ? '按识别结果填入' : '确认填入',
+    ghostLabel: hasConf ? '不填入' : '取消',
     seconds, tokens, res, materials
   }
 }
@@ -4174,9 +4151,11 @@ const scanNoticeRows = computed(() => {
   const r = c.res || {}
   const topics = Array.isArray(r.topics) ? r.topics.map((t) => String(t).trim()).filter(Boolean) : []
   const dt = formatScanDateTime(r.meetingDate, r.meetingTime)
+  // 0801 设计师·瘦身点4：「日期已过」不再单占一块暖色，并进「时间」行下方小字
+  const past = !!(r.meetingDate && String(r.meetingDate).trim() < todayStr())
   return [
     { label: '名称', value: (r.title || '').trim(), miss: !(r.title && r.title.trim()) },
-    { label: '时间', value: dt, miss: !dt },
+    { label: '时间', value: dt, miss: !dt, warn: past ? '已过，填入后需另选日期' : '' },
     { label: '地点', value: (r.location || '').trim(), miss: !(r.location && r.location.trim()) },
     { label: '议题', value: topics.length ? (topics.length + ' 项') : '', miss: !topics.length, topics }
   ]
@@ -6158,15 +6137,10 @@ onActivated(show)
 .sr-preview { width: 100%; background: #fff; border: 1rpx solid #EEE6D8; border-radius: 16rpx; overflow: hidden; }
 .sr-pv-row { display: flex; align-items: flex-start; gap: 16rpx; padding: 22rpx 24rpx; }
 .sr-pv-row + .sr-pv-row { border-top: 1rpx solid #F3EEE4; }
-/* 点8：label 列原 90rpx 放不下「会议材料」四个字会折成两行 → 加宽到 126rpx */
-.sr-pv-label { flex-shrink: 0; width: 126rpx; color: #8A8F98; font-size: 31rpx; line-height: 1.5; }
-/* 文件名（识别自 / 会议材料）：比字段值低一级，多份各占一行，长名换行不截断 */
-.sr-pv-file { display: block; color: #4a5158; font-size: 27rpx; line-height: 1.5; word-break: break-all; }
-.sr-pv-file + .sr-pv-file { margin-top: 2rpx; }
-/* 点4：识别出的日期已过 —— 全项目统一暖橙异常色，整行通栏 */
-.sr-past { display: flex; flex-direction: column; gap: 4rpx; margin-top: 18rpx; padding: 16rpx 20rpx; border-radius: 12rpx; background: #f7e4c6; text-align: left; }
-.sr-past b { color: #9a5b12; font-size: 29rpx; font-weight: 700; line-height: 1.45; }
-.sr-past span { color: #9a5b12; opacity: .72; font-size: 25rpx; line-height: 1.4; }
+/* 0801 设计师·瘦身点6：「会议材料」那行已删，label 列收窄回 90rpx（原 126rpx 挤得「名称」值折两行） */
+.sr-pv-label { flex-shrink: 0; width: 90rpx; color: #8A8F98; font-size: 31rpx; line-height: 1.5; }
+/* 日期已过：并进「时间」行的暖色小字，替代原来那一整块暖底（瘦身点4） */
+.sr-pv-warn { display: block; margin-top: 4rpx; color: #9a5b12; font-size: 25rpx; line-height: 1.45; }
 .sr-pv-val-wrap { flex: 1; min-width: 0; }
 .sr-pv-value { color: #1f2329; font-size: 34rpx; font-weight: 600; line-height: 1.5; word-break: break-all; }
 .sr-pv-value.miss { color: #B0863A; }
