@@ -776,13 +776,18 @@
                   <span class="sr-pv-value" :class="{ miss: row.miss }">{{ row.miss ? '未识别 · 待手填' : row.value }}</span>
                 </div>
               </div>
-              <!-- 材料随通知识别出时，作为同款字段行并入列表。
-                   0801 设计师点5：传 2 个文件却只说「1 份」，用户不知道另一个去哪了——说清分工 -->
-              <div v-if="scanResultCard.materialCount" class="sr-pv-row">
+              <!-- 0801 设计师点5：不写孤零零的「1 份」——把每个文件按用途列出来，
+                   数量对得上，也说清了是哪份文件贡献了上面那些字段 -->
+              <div v-if="scanResultCard.noticeFiles && scanResultCard.noticeFiles.length" class="sr-pv-row">
+                <span class="sr-pv-label">识别自</span>
+                <div class="sr-pv-val-wrap">
+                  <span v-for="(n, i) in scanResultCard.noticeFiles" :key="'n' + i" class="sr-pv-file">{{ n }}</span>
+                </div>
+              </div>
+              <div v-if="scanResultCard.materialFiles && scanResultCard.materialFiles.length" class="sr-pv-row">
                 <span class="sr-pv-label">会议材料</span>
                 <div class="sr-pv-val-wrap">
-                  <span class="sr-pv-value">{{ scanResultCard.materialCount }} 份</span>
-                  <span v-if="scanResultCard.fileTotal > scanResultCard.materialCount" class="sr-pv-note">另 {{ scanResultCard.fileTotal - scanResultCard.materialCount }} 份识别为会议通知，已用于填表</span>
+                  <span v-for="(n, i) in scanResultCard.materialFiles" :key="'m' + i" class="sr-pv-file">{{ n }}</span>
                 </div>
               </div>
             </div>
@@ -826,7 +831,8 @@
           </div>
         </div>
 
-        <!-- 0801 设计师点1：「耗时 Xs · 消耗 N token」是开发调试信息，委员不需要知道 token 是什么——整行删 -->
+        <!-- 用量说明：产品定——要让用户知道本次识别产生了消耗，保留原样不删（设计师曾建议删，已否） -->
+        <div class="sr-meta">耗时 {{ scanResultCard.seconds }}s<template v-if="scanResultCard.tokens > 0"> · 消耗 {{ scanResultCard.tokens.toLocaleString() }} token</template></div>
 
         <div class="sr-actions">
           <button class="sr-btn ghost" @click="onScanGhost()">{{ scanResultCard.ghostLabel }}</button>
@@ -4148,9 +4154,10 @@ function handleMultiScanResult(res) {
     conflictNote: (res.conflictNote || '').trim(),
     conflicts,
     pastDate,
-    // 材料/通知分工说明（0801 设计师点5）：传了 N 个文件，其中几份当通知、几份当材料，
-    // 别让用户以为"另一个不见了"
-    fileTotal: filesArr.length,
+    // 0801 设计师点5：按用途列出每个文件名（识别自 / 会议材料），数量对得上，
+    // 也说清是哪份文件贡献了上面那些字段——不再只给一个孤零零的「1 份」
+    noticeFiles: filesArr.filter((f) => f.category !== 'material').map((f) => f.fileName || '识别文件'),
+    materialFiles: materials.map((f) => f.fileName || '识别文件'),
     needOverwriteAsk: hasConf,
     // 0801 设计师点6：「保留原信息」指代不清（是全都不填，还是只保留冲突那项？）——改对象明确的说法
     primaryLabel: hasConf ? '全部按识别结果填入' : '确认填入',
@@ -6153,8 +6160,9 @@ onActivated(show)
 .sr-pv-row + .sr-pv-row { border-top: 1rpx solid #F3EEE4; }
 /* 点8：label 列原 90rpx 放不下「会议材料」四个字会折成两行 → 加宽到 126rpx */
 .sr-pv-label { flex-shrink: 0; width: 126rpx; color: #8A8F98; font-size: 31rpx; line-height: 1.5; }
-/* 材料行的补充说明（另 N 份识别为通知）：次级灰小字 */
-.sr-pv-note { display: block; margin-top: 4rpx; color: #8A8F98; font-size: 25rpx; line-height: 1.45; }
+/* 文件名（识别自 / 会议材料）：比字段值低一级，多份各占一行，长名换行不截断 */
+.sr-pv-file { display: block; color: #4a5158; font-size: 27rpx; line-height: 1.5; word-break: break-all; }
+.sr-pv-file + .sr-pv-file { margin-top: 2rpx; }
 /* 点4：识别出的日期已过 —— 全项目统一暖橙异常色，整行通栏 */
 .sr-past { display: flex; flex-direction: column; gap: 4rpx; margin-top: 18rpx; padding: 16rpx 20rpx; border-radius: 12rpx; background: #f7e4c6; text-align: left; }
 .sr-past b { color: #9a5b12; font-size: 29rpx; font-weight: 700; line-height: 1.45; }
