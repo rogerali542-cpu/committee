@@ -6702,7 +6702,9 @@ onActivated(show)
 .sa-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #8A97A6; border-bottom: 3rpx solid #8A97A6; transform: rotate(-45deg); transition: transform .2s ease; }
 .scan-accelerator.open .sa-chev { transform: rotate(45deg); }
 /* 0801 设计师点4：折叠标题栏与展开内容同卡——卡皮挪到 .scan-card，入口行变卡头，展开区带分隔线接在卡内 */
-.create-panel .scan-card { margin-bottom: 16rpx; border: 2rpx solid #D8E2EE; border-radius: 18rpx; background: #F7FAFD; overflow: hidden; }
+/* flex-shrink:0 必须有：.create-body 是 column flex，而 overflow:hidden 会把 flex 项的
+   自动最小尺寸(min-height:auto)算成 0 → 卡被压扁、展开内容被裁光（0801 实测 bug） */
+.create-panel .scan-card { flex-shrink: 0; margin-bottom: 16rpx; border: 2rpx solid #D8E2EE; border-radius: 18rpx; background: #F7FAFD; overflow: hidden; }
 .create-panel .scan-card .scan-accelerator { margin-bottom: 0; border: 0; border-radius: 0; background: transparent; }
 .create-panel .scan-card .scan-pane { margin-bottom: 0; padding: 0 20rpx 18rpx; border-top: 2rpx solid #E2EAF3; }
 .create-panel .scan-card .ds-preview { padding-top: 16rpx; }
