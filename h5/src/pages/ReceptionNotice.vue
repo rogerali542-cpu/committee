@@ -168,6 +168,9 @@ const dutyName = computed(() => dutyPersonFor(timeText.value || saved.timeDesc, 
 
 const HOUR_OPTS = Array.from({ length: 14 }, (_, i) => String(i + 8).padStart(2, '0'))   /* 0731 mock：时段从 08:00 起 */
 const MINUTE_OPTS = ['00', '30']
+// 接待安排可选范围：早 8 点至晚 9 点（0801 用户定）。原先只按整点建表，
+// 末尾自动多出一个 21:30，超出了约定的晚 9 点上限。
+const DAY_END_HM = '21:00'
 const form = reactive({ day: '', start: '', end: '', place: '', person: '', reason: '' })
 function timePart(field, part) {
   return computed({
@@ -195,10 +198,10 @@ watch(() => form.start, (val) => {
   if (!formLoaded) return
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(val || ''))
   if (!m) return
-  let hh = Number(m[1]) + 1
-  const maxHour = Number(HOUR_OPTS[HOUR_OPTS.length - 1]) // 21
-  if (hh > maxHour) hh = maxHour                          // 越界则夹到最晚,避免出现无效结束时间
-  form.end = String(hh).padStart(2, '0') + ':' + m[2]
+  // 越界则夹到最晚 21:00，避免出现无效结束时间。
+  // 0801 修：原先只夹小时（>21 才拦），起始 20:30 时会算出 21:30——超过晚 9 点上限。
+  const end = String(Number(m[1]) + 1).padStart(2, '0') + ':' + m[2]
+  form.end = end > DAY_END_HM ? DAY_END_HM : end
 })
 // saved 是「已保存到后端」的基线：算 dirty、导出 PDF 门槛、下次接待时间判定用。
 // 公告预览不再用它——0731 用户定：预览实时跟当前选择（见 noticeParas）
@@ -341,7 +344,8 @@ async function load() {
 onMounted(load)
 
 // ── 行点击（0731 设计师稿：行版式，点行改值） ──
-const TIME_OPTS = HOUR_OPTS.flatMap(h => MINUTE_OPTS.map(m => h + ':' + m))
+// 08:00 起、21:00 止（含）：flatMap 到 21 点会带出 21:30，超过晚 9 点上限，这里截掉
+const TIME_OPTS = HOUR_OPTS.flatMap(h => MINUTE_OPTS.map(m => h + ':' + m)).filter(t => t <= DAY_END_HM)
 // 底部选择单（0731 用户定：每周/开始/结束都用弹层）——picker 变体：当前值浅绿高亮+绿勾
 async function pickDay() {
   if (!canManage.value) return

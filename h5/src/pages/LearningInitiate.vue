@@ -64,7 +64,31 @@ function nowHm() {
   const d = new Date()
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')
 }
-const DEFAULT_FORM = () => ({ title: '', date: todayStr(), time: '14:00', location: '社区活动室', description: '' })
+// 默认时间：从当前时间往后推到最近的半点（0801 用户定）。原先固定「今天 14:00」，
+// 下午打开表单一进来就是个已经过去的时间——提交时会被拦下，但用户必须自己再选一次，白走一趟。
+// 时间选择器只给 9—20 点（PlanDateTimeField），所以两头要夹：
+// 早于 9 点 → 今天 09:00；已过 20:30（今天排不下了）→ 直接切明天 09:00。
+const PICK_MIN_HM = '09:00'
+const PICK_MAX_HM = '20:30'   // 选择器上限是 20:45，但默认值走半点，最后一个半点是 20:30
+function dateStrOf(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+function nextHalfHourDefault() {
+  const d = new Date()
+  // 严格往后推：正好 13:30 时取 14:00，不会给出一个"此刻"的时间
+  const total = (Math.floor((d.getHours() * 60 + d.getMinutes()) / 30) + 1) * 30
+  const hm = String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0')
+  if (total >= 24 * 60 || hm > PICK_MAX_HM) {
+    const t = new Date(d.getTime())
+    t.setDate(t.getDate() + 1)
+    return { date: dateStrOf(t), time: PICK_MIN_HM }
+  }
+  return { date: todayStr(), time: hm < PICK_MIN_HM ? PICK_MIN_HM : hm }
+}
+const DEFAULT_FORM = () => {
+  const d = nextHalfHourDefault()
+  return { title: '', date: d.date, time: d.time, location: '社区活动室', description: '' }
+}
 const DRAFT_KEY = 'learning_initiate_draft'
 const form = reactive(DEFAULT_FORM())
 const saving = ref(false)
@@ -152,7 +176,8 @@ async function submit() {
   if (!String(form.description).trim()) missing.push('学习内容')
   if (missing.length) { toast({ title: '请补全：' + missing.join('、'), icon: 'none' }); return }
   if (form.date < todayStr()) { toast({ title: '日期不能早于今天', icon: 'none' }); return }
-  // 今天的学习：时间不能早于当前（默认 14:00 未改且已过点时兜底拦截）
+  // 今天的学习：时间不能早于当前（默认值已按当前时间推到下一个半点，这里仍留兜底——
+  // 表单可能开着放了一阵子，或用户手动往前选）
   if (form.date === todayStr() && form.time && form.time < nowHm()) {
     toast({ title: '时间不能早于当前时间', icon: 'none' }); return
   }
@@ -163,7 +188,7 @@ async function submit() {
     const result = await api.learningCreate({
       title: form.title.trim(),
       date: form.date,
-      time: form.time || '14:00',
+      time: form.time || nextHalfHourDefault().time,
       location: form.location.trim(),
       description: form.description.trim(),
       type: 'internal',
