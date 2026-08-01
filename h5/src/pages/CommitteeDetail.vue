@@ -391,7 +391,6 @@
              默认两个都勾，常规情况直接点发送；只发 App 就取消微信那勾；两个都取消按钮置灰。
              两颗实心按钮抢注意力的老问题也没有回来——底部仍是一主操作。 -->
         <div class="pf-btn-col">
-          <button v-if="footerStage === 'start'" class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
           <!-- 0801 修「勾选框点了很久才有反应、或者没反应」：这两行原是 <div @click>，
                而同一条里唯一响应正常的「发送通知」是原生 <button>——差别就在这儿。
                手机浏览器把 div 当普通文字：手指按得稍久就先进入选字/长按菜单，tap 根本不会变成
@@ -409,12 +408,14 @@
             </button>
           </div>
           <button v-if="footerStage === 'send'" class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
-          <!-- 已发送 / 会议当天：次级浅蓝。通知这件事已经完成，再发是可选动作，不该再摆实心主按钮。
-               会议未到时「开始会议」与它并排（同为次级）；会议当天它已在上面当主按钮，这里就只剩提醒 -->
-          <div v-else class="pf-sub-row">
+          <!-- 会议当天（或开始前 1 小时内）：当下最该做的是开会 → 「开始会议」蓝实心主按钮，
+               与浅蓝次级「再次提醒」按规则四 2:1 分宽，主按钮占三分之二。
+               其余时间只有「再次提醒 N 人」一颗——会议还早，开会按钮不该提前十几天就出现。 -->
+          <div v-else-if="footerStage === 'start'" class="pf-sub-row">
             <button class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
-            <button v-if="footerStage === 'remind'" class="pf-btn pf-btn-light" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
+            <button class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
           </div>
+          <button v-else class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
         </div>
       </div>
     </div>
@@ -1282,10 +1283,15 @@ function todayStrLocal() {
   const d = new Date()
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
-// 到点（当天）或已经过了原定日期都算 start：逾期没开的会必须还能开，否则那场会就卡死了
+// 什么时候算"该开会了"（0801 设计师）：会议当天，或距开始不足 1 小时。
+// 已过原定日期也算——逾期没开的会必须还能开，否则那场会就卡死了。
+// 不足 1 小时这一条是为跨零点的会议留的：00:30 开的会，前一天 23:40 就该能开。
 const isMeetingDay = computed(() => {
   const d = detail.value || {}
-  return !!d.meetingDate && String(d.meetingDate).slice(0, 10) <= todayStrLocal()
+  if (!d.meetingDate) return false
+  if (String(d.meetingDate).slice(0, 10) <= todayStrLocal()) return true
+  const start = scheduledStartTime(d)
+  return !!start && (start.getTime() - Date.now()) <= 60 * 60 * 1000
 })
 const footerStage = computed(() => (isMeetingDay.value ? 'start' : (noticeSent.value ? 'remind' : 'send')))
 // 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
@@ -2571,9 +2577,11 @@ async function removeMaterial(item) {
 .pf-btn-light { background:#EAF0F8; color:#2f5f9e; font-weight:600; }
 .pf-btn-light:active { background:#DCE7F3; }
 .pf-btn-col .pf-btn-light { height:96rpx; font-size:31rpx; }
-/* 已通知、会议未到：「再次提醒」与「开始会议」并排，同为次级——谁都不占实心主位 */
+/* 会议当天：「再次提醒」浅蓝次级 + 「开始会议」蓝实心主按钮，按规则四 2:1 分宽。
+   同高 120rpx（60px），主次靠颜色和宽度区分，不靠高度 */
 .pf-sub-row { display:flex; gap:16rpx; }
-.pf-sub-row .pf-btn { flex:1; min-width:0; }
+.pf-sub-row .pf-btn { flex:1; min-width:0; height:120rpx; font-size:31rpx; }
+.pf-sub-row .pf-btn-start-top { flex:2; font-size:34rpx; }
 .pf-btn-light.busy { opacity:.6; }
 /* 通知人员卡里的结果行：发送的结果归属在这张卡，不必去底部按钮里找线索 */
 .rcp-sent-line { padding:0 18rpx 16rpx; margin-top:-6rpx; color:#6B7280; font-size:26rpx; line-height:1.4; }
@@ -2677,8 +2685,9 @@ async function removeMaterial(item) {
 /* 通知记录：轻列表（透明底 + 分隔线），不是白卡——白卡留给"要办的事"（规则八）。
    颜色也从绿字绿✓改成深色正文 + 灰时间：绿是业主接待的模块色，而且记录是中性事实，
    不需要"成功"的颜色。 */
-.sr-list { margin:6rpx 0 0; }
-.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:10rpx 22rpx 8rpx; }
+/* 0801 用户：与上方通知人员卡的间隔偏大，往上收一点（原 margin 6rpx + 标题上 padding 10rpx） */
+.sr-list { margin:0; }
+.sr-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12rpx; padding:2rpx 22rpx 6rpx; }
 .sr-heading { color:#8A9099; font-size:25rpx; font-weight:600; }
 /* 清空：细描边小胶囊，看得出是个按钮但仍是次要——测试期要用，日常不该顺手点到
    （记录是凭据；破坏性由二次确认承担） */
