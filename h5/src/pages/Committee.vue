@@ -533,9 +533,9 @@
 
           <!-- 会议内容表单：两个 tab 都显示；拍照/上传识别后就地填入这里 -->
           <div class="manual-pane">
-          <!-- 会议信息：会议名称 + 时间地点合并为一个信息卡片 -->
+          <!-- 会议信息：会议名称 + 召开方式/时间/地点 合并为一张统一信息卡（还原原型「基础信息统一成一张行式白卡、减少盒套盒」，此前误拆成两张） -->
           <div class="create-section meeting-info-card">
-            <div class="form-group">
+            <div class="form-group meeting-title-group">
               <span class="field-caption caption-as-title">会议名称</span>
               <div class="title-row">
                 <div class="title-input-wrap">
@@ -546,10 +546,7 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 时间/地点：单独成卡；日期+时间合并为一行，地点保留常用地点选择并单独露出地图入口 -->
-          <div class="create-section meeting-info-card">
+            <!-- 召开方式/日期+时间/地点：与会议名称同卡，用分隔线断开；日期+时间合并为一行，地点单独露出地图入口 -->
             <div class="field-list">
               <div class="field-line meeting-method-line">
                 <span class="fl-label">召开方式</span>
@@ -6390,7 +6387,9 @@ onActivated(show)
 .create-panel .create-section.meeting-info-card { margin-bottom: 16rpx; padding-top: 12rpx; padding-bottom: 12rpx; }
 .create-panel .meeting-info-card .form-group { margin-bottom: 6rpx; }
 .create-panel .meeting-info-card .caption-as-title { margin-bottom: 6rpx; }
-.create-panel .meeting-info-card .field-list { gap: 10rpx; }
+/* 会议名称与下方字段（召开方式/时间/地点）同卡，用分隔线断开——还原原型「统一行式白卡」的分行观感 */
+.create-panel .meeting-info-card .meeting-title-group { margin-bottom: 0; padding-bottom: 12rpx; border-bottom: 2rpx solid #f0f0f0; }
+.create-panel .meeting-info-card .field-list { gap: 10rpx; margin-top: 6rpx; }
 .create-panel .form-input.large { height: 64rpx; min-height: 64rpx; }
 .create-panel .title-input-wrap textarea.title-ta { min-height: 56rpx; }
 .create-panel .juwei-card { margin-top: 0; margin-bottom: 22rpx; padding: 20rpx 18rpx; }
