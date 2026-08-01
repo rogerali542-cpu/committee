@@ -605,11 +605,18 @@
                      「从地图选点」已并入点行后弹出的地点选择单（openLocPicker 最后一项） -->
               </div>
               <div v-else class="field-line field-line-location">
-                <span class="fl-label online-platform-label">线上平台</span>
-                <select class="platform-select" v-model="createForm.location">
-                  <option value="微信工作群">微信工作群</option>
-                  <option value="腾讯会议">腾讯会议</option>
-                </select>
+                <!-- 0801 设计师点1：带边框的下拉框是这张卡里的第三种控件（整行+›、分段控件、下拉框），
+                     老人要学三套点法 → 改成与日期/时间/地点一致的「整行 + › + 弹窗选择」。
+                     点3：字段名「线上平台」→「线上方式」（微信群不是会议平台），选项含电话与手填混合 -->
+                <template v-if="onlineOther">
+                  <span class="fl-label fl-label-tap" @click="pickOnlineWay">线上方式</span>
+                  <input class="fl-inline-input" v-model="createForm.location" placeholder="如：腾讯会议 + 微信群" @input="clearRecognizedMark('location')" @focus="clearFieldError('location')" />
+                </template>
+                <div v-else class="fl-loc-main" @click="pickOnlineWay">
+                  <span class="fl-label">线上方式</span>
+                  <span class="fl-value" :class="{ ph: !createForm.location }">{{ createForm.location || '未选择' }}</span>
+                  <span class="fl-arrow">›</span>
+                </div>
               </div>
             </div>
           </div>
@@ -2661,16 +2668,47 @@ const suggestedTitle = ref('')
 const defaultMeetingLocation = '党群服务站一楼会议室'
 const commonLocations = [defaultMeetingLocation, '社区活动室', '社区会议室']
 const locationPreset = ref(defaultMeetingLocation)
+// 线上方式（0801 设计师点3）：「微信工作群」严格说不是会议平台而是个群，字段名叫「线上平台」不准，
+// 改叫「线上方式」；选项覆盖群里语音/会议软件/电话，混合情况走「其他」手填（如"腾讯会议 + 微信群"）
+const onlineWays = ['微信群', '腾讯会议', '电话']
+const onlineOther = ref(false)   // true = 本行变成手填输入框（与线下地点的「其他地点」同一套交互）
+function syncOnlineOther() {
+  onlineOther.value = createForm.meetingMethod === 'online'
+    && !!createForm.location && !onlineWays.includes(createForm.location)
+}
+async function pickOnlineWay() {
+  const res = await showActionSheet({ itemList: [...onlineWays, '其他（手动填写）'] })
+  if (!res || res.tapIndex == null || res.tapIndex < 0) return
+  if (res.tapIndex < onlineWays.length) {
+    onlineOther.value = false
+    createForm.location = onlineWays[res.tapIndex]
+  } else {
+    onlineOther.value = true
+    createForm.location = ''
+  }
+  clearFieldError('location')
+  clearRecognizedMark('location')
+}
+// 线上/线下各记一份地点（0801 设计师提问「来回切会不会各自保留」→ 会）：
+// 原先切换直接覆盖 createForm.location，误触切一下前面填的就没了
+const _offlineLocMemo = ref('')
+const _onlineLocMemo = ref('')
 function setMeetingMethod(method) {
+  if (method === createForm.meetingMethod) return
+  // 先把当前模式下填的值存进各自的记忆
+  if (createForm.meetingMethod === 'online') _onlineLocMemo.value = createForm.location || ''
+  else _offlineLocMemo.value = createForm.location || ''
   createForm.meetingMethod = method
   // 线上会议不支持重大事项（须线下公告 + 居委会到场见证），切到线上时强制取消勾选
-  if (method === 'online') createForm.juweiWitness = false
-  if (method === 'online' && (!createForm.location || commonLocations.includes(createForm.location))) {
-    createForm.location = '微信工作群'
+  if (method === 'online') {
+    createForm.juweiWitness = false
+    createForm.location = _onlineLocMemo.value || '微信群'   // 回到线上：还原上次选的方式
     locationPreset.value = '__other__'
-  } else if (method === 'offline' && ['微信工作群', '腾讯会议', '微信工作群、腾讯会议', '腾讯会议、微信工作群'].includes(createForm.location)) {
-    createForm.location = defaultMeetingLocation
-    locationPreset.value = defaultMeetingLocation
+    syncOnlineOther()
+  } else {
+    createForm.location = _offlineLocMemo.value || defaultMeetingLocation  // 回到线下：还原上次填的地点
+    locationPreset.value = commonLocations.includes(createForm.location)
+      ? createForm.location : (createForm.location ? '__other__' : defaultMeetingLocation)
   }
   clearFieldError('location')
 }
@@ -3272,6 +3310,10 @@ async function openNewMeeting(period) {
   createForm.locationLat = null
   createForm.locationLng = null
   createForm.meetingMethod = 'offline'
+  // 线上/线下地点记忆与线上方式展示态：每次新建都复位，别把上一场的残留带进来
+  _offlineLocMemo.value = ''
+  _onlineLocMemo.value = ''
+  onlineOther.value = false
   locationPreset.value = defaultMeetingLocation
   createForm.description = ''
   createForm.topics = []
@@ -4269,6 +4311,8 @@ function syncLocationPreset(val) {
   } else {
     locationPreset.value = '社区活动室'
   }
+  // 线上方式行的展示态（选项 / 手填）随之同步：草稿续写、编辑既有会议、识别回填都经过这里
+  syncOnlineOther()
 }
 
 // 地点下拉：选预设直接用，选"其他"则清空等手填
