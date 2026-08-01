@@ -558,7 +558,7 @@
                   <button type="button" :class="{ active: createForm.meetingMethod === 'online' }" @click="setMeetingMethod('online')">线上会议</button>
                 </div>
               </div>
-              <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime }">
+              <div class="field-line field-line-split" :class="{ 'field-error': fieldErrors.meetingDate || fieldErrors.meetingTime || meetingDateTimePast }">
                 <div class="fl-part" @click="openDatePicker">
                   <span class="fl-label">日期</span>
                   <span class="fl-value" :class="{ ph: !createForm.meetingDate }">{{ createForm.meetingDate ? fmtDateWithWeek(createForm.meetingDate) : '' }}</span>
@@ -569,6 +569,11 @@
                   <span class="fl-value" :class="{ ph: !createForm.meetingTime }">{{ createForm.meetingTime }}</span>
                   <span class="fl-arrow">›</span>
                 </div>
+              </div>
+              <!-- 会议时间已过（多为拍照识别带入的旧时间）：保留可填，但提示 + 底部"生成通知"已置灰锁住 -->
+              <div v-if="meetingDateTimePast" class="dt-past-warn">
+                <span class="dt-past-ico">!</span>
+                <span>会议时间已过，请点上方日期/时间改到<b>现在之后</b>，再生成通知</span>
               </div>
               <div v-if="createForm.meetingMethod !== 'online'" class="field-line field-line-location" :class="{ 'field-error': fieldErrors.location }">
                 <!-- 选「其他地点」时：本行直接变输入框（不再另弹文本框）；点「地点」标签可回到常用地点选择 -->
@@ -2604,10 +2609,26 @@ const majorNoticeInfo = computed(() => {
   const days = Math.round((dl.getTime() - todayMs) / 86400000)
   return { text: (dl.getMonth() + 1) + '月' + dl.getDate() + '日', days, past: days < 0, tight: days >= 0 && days <= 3 }
 })
-// 主按钮可提交门槛（0731 设计师点2）：日期+时间+至少一条议题齐了才亮；缺则置灰、点了提示
+// 会议时间是否已过（发起新会议才限制；编辑历史会议不限）：拍照识别可能带入过去的时间——
+// 用户定：允许填入，但要给提示并锁住"去通知"，防止把会议建到过去。
+const meetingDateTimePast = computed(() => {
+  if (editingMeetingId.value) return false
+  const d = createForm.meetingDate
+  if (!d) return false
+  if (d < todayStr()) return true
+  if (d === todayStr() && createForm.meetingTime) {
+    const now = new Date()
+    const parts = String(createForm.meetingTime).split(':')
+    if (Number(parts[0]) * 60 + Number(parts[1]) <= now.getHours() * 60 + now.getMinutes()) return true
+  }
+  return false
+})
+// 主按钮可提交门槛（0731 设计师点2）：日期+时间+至少一条议题齐了才亮；缺则置灰、点了提示。
+// 另：会议时间已过也置灰锁住（保留可填，只拦提交，多为识别带入的旧时间）。
 const createCanSubmit = computed(() =>
-  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.length)))
+  !!(createForm.meetingDate && createForm.meetingTime && (createForm.topics && createForm.topics.length)) && !meetingDateTimePast.value)
 function onSubmitClick() {
+  if (meetingDateTimePast.value) { toast({ title: '会议时间已过，请改到当前时间之后再生成通知', icon: 'none' }); return }
   if (!createCanSubmit.value) { toast({ title: '请填写日期、时间和至少一条议题', icon: 'none' }); return }
   submitNewMeeting()
 }
@@ -5727,6 +5748,10 @@ onActivated(show)
 .fl-value.ph { color: #b7bbc0; }
 .fl-arrow { flex-shrink: 0; font-size: 28rpx; color: #c4c8cd; line-height: 1; }
 .field-line.field-error { background: #FFF4F4; }
+/* 会议时间已过提示（识别带入旧时间时）：红字 + 圆形感叹号，配合底部按钮置灰 */
+.dt-past-warn { display: flex; align-items: flex-start; gap: 10rpx; padding: 2rpx 6rpx; color: #E5533C; font-size: 26rpx; line-height: 1.5; }
+.dt-past-ico { flex-shrink: 0; width: 32rpx; height: 32rpx; border-radius: 50%; background: #E5533C; color: #fff; font-size: 24rpx; font-weight: 700; line-height: 32rpx; text-align: center; }
+.dt-past-warn b { color: #E5533C; font-weight: 700; }
 .field-line-split { padding: 0; gap: 0; }
 .fl-part { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12rpx; padding: 16rpx 18rpx; box-sizing: border-box; }
 .fl-part-time { border-left: 2rpx solid #f2f2f2; }
