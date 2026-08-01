@@ -491,8 +491,10 @@
 
         <div class="create-body" style="overflow-y:auto;">
           <!-- 拍照上传是填表加速器，不再与手动填写并列成两种模式。
-               0801 设计师点11：入口压成一行「📷 拍通知照片自动填写 ›」——副标题与面板里的格式说明念的是同一件事，删；
-               支持的格式交给展开后「图片 / 文件」两个按钮自明 -->
+               0801 设计师点11：入口压成一行「📷 拍通知照片自动填写 ›」；
+               0801 设计师点4：折叠标题栏与展开内容装进同一张卡（.scan-card），不再看着断开；
+               0801 设计师点5：默认收起，点开才展开 -->
+          <div class="scan-card" :class="{ open: createTab === 'scan' }">
           <div class="scan-accelerator" :class="{ done: docPrefilled, open: createTab === 'scan' }" @click="createTab = createTab === 'scan' ? 'manual' : 'scan'">
             <span class="scan-accelerator-icon" aria-hidden="true">📷</span>
             <span class="scan-accelerator-main">
@@ -501,16 +503,16 @@
             <i class="sa-chev" aria-hidden="true"></i>
           </div>
 
-          <!-- 拍照/上传面板：拍通知照片或传文件，AI 识别后在当前面板展示结果，并把识别内容预填到下方表单 -->
+          <!-- 拍照/上传面板：与入口同卡。选完图自动开始识别（autoRecognizeStaged），识别后预填到下方表单 -->
           <div v-show="createTab === 'scan'" class="scan-pane">
             <div class="doc-scan-bar inline">
-              <!-- 缩略图预览条：图片显缩略图，PDF/其他显图标；可逐个删除 -->
+              <!-- 缩略图（0801 设计师点2/3）：放大到 88px、操作移出图片——图下一行「移除」；
+                   点图放大预览（原左下 ⤢ 角标与右上 × 删，两个功能挤在小图上，删） -->
               <div v-if="scanItems.length" class="ds-preview">
                 <div v-for="it in scanItems" :key="it.id" class="ds-thumb">
                   <img v-if="it.isImage && it.thumbUrl" class="ds-thumb-img" :src="it.thumbUrl" :alt="it.name" @click="openScanItemPreview(it)" />
                   <span v-else class="ds-thumb-file" @click="openScanItemPreview(it)"><span class="ds-thumb-ico">{{ scanThumbIcon(it.ext) }}</span><span class="ds-thumb-ext">{{ it.ext || '文件' }}</span></span>
-                  <span v-if="it.isImage && it.thumbUrl" class="ds-thumb-zoom" @click.stop="openScanItemPreview(it)">⤢</span>
-                  <span class="ds-thumb-del" @click.stop="removeScanItem(it.id)">×</span>
+                  <button type="button" class="ds-thumb-remove" @click="removeScanItem(it.id)">移除</button>
                 </div>
               </div>
               <div class="ds-cards ds-cards-2">
@@ -523,10 +525,12 @@
                   <span class="ds-t">文件</span>
                 </button>
               </div>
+              <!-- 0801 设计师点1：选完图已自动开始识别——此按钮退成浅底次级兜底（识别被取消后手动重试用） -->
               <button v-if="scanItems.length" class="ds-recognize" :disabled="scanRecognizing" @click="recognizeScanItems">
                 {{ scanRecognizing ? '识别中 ' + docProgress + '%' : '开始识别（' + scanItems.length + '）' }}
               </button>
             </div>
+          </div>
           </div>
 
           <!-- 会议内容表单：两个 tab 都显示；拍照/上传识别后就地填入这里 -->
@@ -694,7 +698,8 @@
 
         <!-- 添加议题时隐藏底部主按钮，避免真机键盘弹起时「取消/生成通知」压住「确定添加议题」 -->
         <div v-show="!topicDialogOpen" class="sheet-actions fixed">
-          <button class="btn btn-primary" :class="{ 'form-incomplete': !createCanSubmit }" @click="onSubmitClick">{{ createSubmitLabel }}</button>
+          <!-- 0801 设计师定稿：按钮不带期数（次数唯一来源在会议名称行，就在按钮上方一屏内，无歧义） -->
+          <button class="btn btn-primary" :class="{ 'form-incomplete': !createCanSubmit }" @click="onSubmitClick">生成会议通知</button>
         </div>
       </div>
     </div>
@@ -2558,18 +2563,9 @@ const publishScore = ref({ ontime: 0, overdue: 0, pending: 0 })
 const counts = ref({ preparing: 0, ongoing: 0, ended: 0 })
 const roleView = ref({ title: '', intro: '' })
 const createVisible = ref(false)
-const createPeriod = ref(0)
-// 0801 设计师（数据自相矛盾）：期数以「会议名称」为准——识别/手填「第4次」，页头和主按钮跟着变「第4次」，
-// 同屏三个数字不再打架；名称里没有期数时才退回入口带进来的 createPeriod
-const effectivePeriodNo = computed(() => {
-  const m = String(createForm.title || '').match(/第\s*(\d+)\s*次/)
-  if (m) return m[1]
-  return createPeriod.value > 0 ? String(createPeriod.value) : ''
-})
-const createPageTitle = computed(() => {
-  if (editingMeetingId.value) return '编辑会议'
-  return effectivePeriodNo.value ? ('发起第' + effectivePeriodNo.value + '次例会') : '发起业委会会议'
-})
+// 0801 设计师定稿（次数唯一来源）：期数只在「会议名称」一行出现——顶栏固定「发起会议」、
+// 主按钮固定「生成会议通知」；识别成第几次都只改名称行，同屏数字永不打架
+const createPageTitle = computed(() => (editingMeetingId.value ? '编辑会议' : '发起会议'))
 // createReturnPortal 已删(0725 导航审计):驾驶舱入口不再预切甲,布局保持 portal,模态关闭天然回驾驶舱
 // 「去安排/去补开」进来时自动预填的「第N次例会」标题快照：用户只看一眼没填任何东西就返回，
 // 预填标题不算用户输入，不生成草稿（否则待办区凭空多出一张"继续通知"卡，还顶掉补开卡）
@@ -2672,8 +2668,6 @@ const meetingFormComplete = computed(() => Boolean(
   createForm.location && createForm.location.trim() &&
   ((createForm.topics && createForm.topics.some((t) => t.title && t.title.trim())) || firstTopicText.value.trim())
 ))
-// 主按钮对象文案（设计师点8）：与页头同源（effectivePeriodNo，跟会议名称走），同屏数字永远一致
-const createSubmitLabel = computed(() => effectivePeriodNo.value ? ('生成第' + effectivePeriodNo.value + '次例会通知') : '生成会议通知')
 // 会前公告截止日（设计师点5）：业委会会议须会前 7 天公告 → 最迟公告日 = 会议日期 − 7 天。
 // 算出距今天数：已过→提示改期；≤3 天→紧张提醒色；否则常态。
 const majorNoticeInfo = computed(() => {
@@ -3179,7 +3173,6 @@ function openMeetingTap(item) {
 
 async function openNewMeeting(period) {
   createVisible.value = true
-  createPeriod.value = Number(period) || 0
   createTab.value = 'manual'      // 每次进来默认手动填写面板
   resetRecognizedFields()
   editingMeetingId.value = null   // 全新会议：非编辑模式
@@ -3312,7 +3305,6 @@ async function continueDraft() {
   const d = draft.value
   if (!d) { openNewMeeting(); return }
   createVisible.value = true
-  createPeriod.value = Number((String(d.title || '').match(/第(\d+)次/) || [])[1]) || 0
   docPrefilled.value = false
   materialPrefillOpen.value = false
   materialText.value = ''
@@ -3362,7 +3354,6 @@ async function openMeetingForEdit(id) {
     const d = await api.committeeDetail(id)
     if (!d) { toast({ title: '会议信息加载失败', icon: 'none' }); return }
     createVisible.value = true
-    createPeriod.value = 0
     editingMeetingId.value = id
     setStorage('meetingView:' + id, 'edit')  // 记住"上次停在发起/编辑页"，供首页卡片按上次位置重进
     docPrefilled.value = false
@@ -3550,6 +3541,7 @@ async function startDocScan(source = 'image') {
     try {
       const files = await chooseWecomImages(9)
       files.forEach((f) => addScanItem(f))
+      autoRecognizeStaged()
       return
     } catch (e) {
       if (isWecomCancel(e)) return
@@ -3562,6 +3554,14 @@ async function startDocScan(source = 'image') {
   const files = await pickFiles(accept)
   if (!files || !files.length) return // 用户取消
   files.forEach((f) => addScanItem(f))
+  autoRecognizeStaged()
+}
+
+// 选完图直接开始识别（0801 设计师点1）：不用再点「开始识别」——老人最容易卡在"传完了怎么没反应"。
+// 相册/文件选完即触发；相机路径在收起取景器时触发（连拍不打断）；识别中或无文件不动作。
+// 「开始识别」按钮保留为浅底兜底：识别被取消后手动重试用。
+function autoRecognizeStaged() {
+  if (scanItems.value.length && !scanRecognizing.value) recognizeScanItems()
 }
 
 // 识别中窗口点 × 取消：收起窗口、复位状态；在途请求返回后按标志丢弃，文件保留可重试
@@ -3748,7 +3748,7 @@ function openMockCamera() {
   _mockShotFile = null
   mockCameraVisible.value = true
 }
-function closeMockCamera() { mockCameraVisible.value = false; mockShotUrl.value = ''; _mockShotFile = null }
+function closeMockCamera() { mockCameraVisible.value = false; mockShotUrl.value = ''; _mockShotFile = null; autoRecognizeStaged() }
 // 模拟真实相机成片：按取景框比例出竖幅照片（纸张摆在深色桌面上），预览时能铺满屏幕
 function buildShotPhotoCanvas(paperCanvas) {
   const vp = document.querySelector('.mc-viewport')
@@ -3856,6 +3856,7 @@ function closeRealCamera() {
   realCamVisible.value = false
   realShotUrl.value = ''
   _realShotFile = null
+  autoRecognizeStaged()  // 收起取景器时已攒了照片 → 直接开识别（0801 设计师点1）
 }
 // 按快门：抓当前视频帧到 canvas → 预览确认（不直接识别，和模拟/上传一致）
 async function realShoot() {
@@ -5976,22 +5977,22 @@ onActivated(show)
 .ds-shared-hint { margin:12rpx 4rpx 2rpx; color:#938979; font-size:26rpx; line-height:1.45; text-align:center; white-space:nowrap; }
 .ds-hint { font-size: 24rpx; color: #9a9a9a; text-align: center; margin: 12rpx 2rpx 0; line-height: 1.45; }
 .ds-spin { width: 68rpx; height: 68rpx; border-radius: 50%; border: 6rpx solid rgba(168,88,0,0.2); border-top-color: var(--c-primary-dark); box-sizing: border-box; animation: aiSpin 0.7s linear infinite; margin-bottom: 4rpx; }
-/* 待识别缩略图预览条：横向排列，可删 */
+/* 待识别缩略图预览条（0801 设计师点2/3）：图 88px、操作出图——图下一行「移除」，点图=放大预览 */
 .ds-preview { display: flex; flex-wrap: wrap; gap: 14rpx; padding: 4rpx 2rpx 16rpx; }
-.ds-thumb { position: relative; width: 108rpx; height: 108rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); }
-.ds-thumb-img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+.ds-thumb { width: 176rpx; border-radius: 14rpx; overflow: hidden; border: 2rpx solid #E7E2D8; background: #fff; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+.ds-thumb-img { width: 100%; height: 176rpx; object-fit: cover; display: block; cursor: pointer; }
 .ds-thumb-file { cursor: pointer; }
-/* 放大角标：提示缩略图可点击展开看清（左下角，避开右上删除×） */
-.ds-thumb-zoom { position: absolute; bottom: 0; left: 0; width: 36rpx; height: 36rpx; border-radius: 0 12rpx 0 12rpx; background: rgba(0,0,0,0.5); color: #fff; font-size: 24rpx; line-height: 36rpx; text-align: center; }
-.ds-thumb-file { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; background: #FAF7F1; }
+.ds-thumb-file { width: 100%; height: 176rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4rpx; background: #FAF7F1; }
 .ds-thumb-ico { font-size: 44rpx; line-height: 1; }
 .ds-thumb-ext { font-size: 20rpx; color: #A98; text-transform: uppercase; }
-.ds-thumb-del { position: absolute; top: -2rpx; right: -2rpx; width: 38rpx; height: 38rpx; border-radius: 0 14rpx 0 14rpx; background: rgba(0,0,0,0.55); color: #fff; font-size: 30rpx; line-height: 38rpx; text-align: center; }
-/* 开始 AI 识别：实心橙大按钮，攒了文件才出现 */
-/* 开始 AI 识别：深青绿 + 居中变窄(70%) + 边缘淡淡发光(轻脉冲)，醒目且与橙色协调 */
-.ds-recognize { display: block; width: 62%; height: 81rpx; margin: 40rpx auto 4rpx; border: none; border-radius: 16rpx; background: #0E8A7B; color: #fff; font-size: 29rpx; font-weight: 700; box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 14rpx rgba(30,180,155,0.5); animation: dsGlow 1.9s ease-in-out infinite; }
-.ds-recognize:active { background: #0B6F63; }
-.ds-recognize:disabled { opacity: 0.72; animation: none; }
+/* 图下「移除」一行：文字按钮宽即图宽，好点不误触；删除的只是待识别文件，重选成本低，不再二次确认 */
+.ds-thumb-remove { display: block; width: 100%; min-height: 60rpx; border: 0; border-top: 2rpx solid #EFEBE2; background: #fff; color: #8a9099; font-size: 26rpx; }
+.ds-thumb-remove:active { color: #E5533C; background: #FAFAFA; }
+/* 0801 设计师点1：识别已在选完图后自动开始——这颗从"绿色实心大按钮"（同屏第四个颜色、第二颗实心，
+   和底部主按钮抢）退成浅蓝底描边次级兜底，识别被取消后手动重试用 */
+.ds-recognize { display: block; width: 62%; height: 81rpx; margin: 24rpx auto 4rpx; border: 2rpx solid #C7D8EE; border-radius: 16rpx; background: #EAF0F8; color: #2f5f9e; font-size: 29rpx; font-weight: 700; box-shadow: none; }
+.ds-recognize:active { background: #DCE7F3; }
+.ds-recognize:disabled { opacity: 0.72; }
 @keyframes dsGlow {
   0%, 100% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 12rpx rgba(30,180,155,0.38); }
   50% { box-shadow: 0 6rpx 16rpx rgba(12,90,80,0.30), 0 0 26rpx rgba(40,200,170,0.82); }
@@ -6700,6 +6701,12 @@ onActivated(show)
 /* 0801 设计师点11：上传入口一行式的右侧 ›（CSS 边框箭头，见 CLAUDE.md 不用字符箭头）；展开转为下指 */
 .sa-chev { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #8A97A6; border-bottom: 3rpx solid #8A97A6; transform: rotate(-45deg); transition: transform .2s ease; }
 .scan-accelerator.open .sa-chev { transform: rotate(45deg); }
+/* 0801 设计师点4：折叠标题栏与展开内容同卡——卡皮挪到 .scan-card，入口行变卡头，展开区带分隔线接在卡内 */
+.create-panel .scan-card { margin-bottom: 16rpx; border: 2rpx solid #D8E2EE; border-radius: 18rpx; background: #F7FAFD; overflow: hidden; }
+.create-panel .scan-card .scan-accelerator { margin-bottom: 0; border: 0; border-radius: 0; background: transparent; }
+.create-panel .scan-card .scan-pane { margin-bottom: 0; padding: 0 20rpx 18rpx; border-top: 2rpx solid #E2EAF3; }
+.create-panel .scan-card .ds-preview { padding-top: 16rpx; }
+
 /* 识别成功浮层（0801 设计师折中）：绿保留但 2.8s 即逝——成功反馈是瞬时的，不当常驻装饰、不占首屏 */
 .recog-flash { position: fixed; top: calc(150rpx + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 260; padding: 12rpx 30rpx; border-radius: 999rpx; background: #F2F8F4; border: 2rpx solid #BED8C8; color: #2F6B45; font-size: 27rpx; font-weight: 600; white-space: nowrap; box-shadow: 0 6rpx 18rpx rgba(20, 40, 30, .12); animation: recogFlashIn .25s ease; }
 @keyframes recogFlashIn { from { opacity: 0; transform: translate(-50%, -10rpx); } to { opacity: 1; transform: translate(-50%, 0); } }
