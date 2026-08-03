@@ -212,7 +212,7 @@
         <div class="si-rows">
           <button v-if="signinStats.total" type="button" class="si-row" @click="siRosterOpen = !siRosterOpen">
             <span class="si-row-k">参会名单</span>
-            <span v-if="!siRosterOpen" class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
+            <span v-if="!siRosterOpen" class="si-row-v">已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total }}</span>
             <i class="si-row-arr" :class="{ open: siRosterOpen }"></i>
           </button>
           <div v-if="siRosterOpen" class="si-roster-body">
@@ -275,7 +275,7 @@
                只留「已签到 x/7」：外观是卡内普通灰字，但可点开名单弹窗——
                主持人会中改签到状态的唯一入口，别做成死文本 -->
           <div v-if="signinStats.total" class="si-meet-meta2 si-meet-loc">
-            <span class="si-meet-att" @click="rosterPopOpen = true">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
+            <span class="si-meet-att" @click="rosterPopOpen = true">已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total }}</span>
           </div>
           <!-- 录音状态：灰点=未开始/已暂停，蓝点呼吸=录音中/上传/识别中。
                0803 设计师：暂停是主动操作的常态、不是异常，点不再用暖橙（暖色一屏只留预警那一处）。
@@ -308,7 +308,7 @@
                只留计数会孤零零右飘一行，两端各一个才对称 -->
           <div class="mc-topics-head">
             <span class="mc-topics-title">会议议题</span>
-            <span class="mc-topics-count">已处理 {{ resolvedTopicCount }} / {{ meetingTopics.length }}</span>
+            <span class="mc-topics-count">已处理 {{ resolvedTopicCount }}/{{ meetingTopics.length }}</span>
           </div>
           <!-- 序号圆点已删（0803 用户定：行间已有分隔线，圆点只是装饰） -->
           <button type="button" class="mc-topic-row" v-for="t in meetingTopics" :key="'mc-' + t.id" @click="openTopicSheet(t)">
@@ -4278,7 +4278,7 @@ async function returnToRecordingPage() {
 /* 结果改动留痕小字：常驻行下，灰色不抢眼 */
 .er-topic-audit { margin-top:6rpx; padding-left:8rpx; font-size:21rpx; color:#9AA3AD; line-height:1.5; }
 .er-topic-title { flex:1; min-width:0; font-size:26rpx; color:#4A5058; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; font-variant-numeric:tabular-nums; }
+.er-topic-result { flex-shrink:0; font-size:22rpx; font-weight:600; }
 .er-topic-result.pass { color:#2E7D32; }
 .er-topic-result.fail { color:#C0392B; }
 .er-topic-result.done { color:#2E7D32; } /* 已讨论/已通报也用绿色（0722 用户定） */
@@ -4286,7 +4286,7 @@ async function returnToRecordingPage() {
 /* 会议录音：每段一行（段号+时长 + 转写/删除小按钮） */
 .er-rec-list { margin-top:18rpx; padding-left:16rpx; display:flex; flex-direction:column; gap:18rpx; }
 .er-rec-row { display:flex; align-items:center; gap:14rpx; }
-.er-rec-name { flex:1; min-width:0; font-size:26rpx; color:#4A5058; font-variant-numeric:tabular-nums; }
+.er-rec-name { flex:1; min-width:0; font-size:26rpx; color:#4A5058; }
 .er-rec-act { flex-shrink:0; border:2rpx solid #D8DBE0; background:#fff; color:#55585E; font-size:22rpx; font-weight:500; border-radius:999rpx; padding:6rpx 20rpx; font-family:inherit; line-height:1.3; }
 .er-rec-act:active { background:#F1F2F4; }
 .er-rec-act.del { border-color:#EBC2BC; color:#C9483D; }

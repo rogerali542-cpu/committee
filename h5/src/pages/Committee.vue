@@ -877,7 +877,7 @@
           <!-- 左右切换样张（模拟不同纸质文件） -->
           <button class="mc-nav prev" @click.stop="prevSample" aria-label="上一张">‹</button>
           <button class="mc-nav next" @click.stop="nextSample" aria-label="下一张">›</button>
-          <span class="mc-sample-ind">{{ mockSampleIdx + 1 }} / {{ MOCK_SAMPLES.length }} · {{ currentSampleLabel }}</span>
+          <span class="mc-sample-ind">{{ mockSampleIdx + 1 }}/{{ MOCK_SAMPLES.length }} · {{ currentSampleLabel }}</span>
           <span class="mc-tip">左右滑动切换文件 · 对准取景框</span>
         </div>
         <div class="mc-bottom">
@@ -5317,7 +5317,7 @@ onActivated(show)
 .ck-board-tag.blue { color: #3A5E92; background: #E6EDF8; }
 .ck-board-tag.green { color: #3B7150; background: #E4F0E8; }
 .ck-board-tag.amber { color: #2a6b73; background: #DDEBEC; }   /* 学习＝模块深青（规范） */
-.ck-board-pager { display: flex; align-items: center; gap: 8rpx; font-size: 25rpx; color: #8A94A6; font-variant-numeric: tabular-nums; }
+.ck-board-pager { display: flex; align-items: center; gap: 8rpx; font-size: 25rpx; color: #8A94A6; }
 .ck-board-pager button { border: 0; background: #F2F4F7; color: #5A6473; width: 48rpx; height: 48rpx; border-radius: 10rpx; font-size: 30rpx; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .ck-board-pager button:active { background: #E4E8ED; }
 .ck-board-main { flex: 1; min-width: 0; }
@@ -5451,7 +5451,7 @@ onActivated(show)
 .ck-todo-pager { position: absolute; top: 20rpx; right: 26rpx; display: inline-flex; align-items: center; gap: 12rpx; color: #7B8799; }
 .ck-todo-pager button { min-height: 42rpx; padding: 0; border: 0; background: transparent; color: #64758D; font-size: 22rpx; font-weight: 500; }
 .ck-todo-pager button:active { color: #3E6BA8; }
-.ck-todo-pager span { min-width: 44rpx; text-align: center; font-size: 21rpx; color: #9AA4B3; font-variant-numeric: tabular-nums; }
+.ck-todo-pager span { min-width: 44rpx; text-align: center; font-size: 21rpx; color: #9AA4B3; }
 .ck-calm { display: flex; align-items: center; gap: 24rpx; background: #EAF4EE; border: 2rpx solid #CDE6D6; border-radius: 26rpx; padding: 40rpx 34rpx; }
 .ck-calm-ico { flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 50%; background: #3B7150; color: #fff; font-size: 46rpx; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 .ck-calm-text { font-size: 33rpx; font-weight: 700; color: #2E6B47; line-height: 1.42; }
@@ -6163,7 +6163,7 @@ onActivated(show)
 .tl-rail::before { content: ''; position: absolute; top: 0; bottom: 0; width: 6rpx; background: var(--c-border); border-radius: 3rpx; }
 .tl-i:first-child .tl-rail::before { top: 30rpx; }
 .tl-i:last-child .tl-rail::before { bottom: calc(100% - 30rpx); }
-.tl-node { position: relative; z-index: 1; width: 44rpx; height: 44rpx; margin-top: 8rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; color: #fff; background: var(--c-border); font-variant-numeric: tabular-nums; }
+.tl-node { position: relative; z-index: 1; width: 44rpx; height: 44rpx; margin-top: 8rpx; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24rpx; font-weight: 700; color: #fff; background: var(--c-border); }
 .tl-node.done { background: var(--c-success); }
 .tl-node.current { background: var(--c-primary); box-shadow: 0 0 0 6rpx var(--c-primary-soft); }
 .tl-node.overdue { background: #B02A1E; }

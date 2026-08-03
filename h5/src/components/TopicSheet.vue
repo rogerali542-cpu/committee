@@ -1450,7 +1450,7 @@ async function removeOpinion(op) {
 /* 进行中(实时票数)：中性蓝，区别于已揭晓的绿/红结论 */
 .ts-result-line.live { background: #F4F8FF; border-color: #DCE8FB; }
 .ts-result-line.live .ts-result-badge { background: #E7F0FF; color: #2F6BD8; border: 2rpx solid #C6DBF7; }
-.ts-result-nums { font-size: 25rpx; font-weight: 600; color: #5F6673; font-variant-numeric: tabular-nums; }
+.ts-result-nums { font-size: 25rpx; font-weight: 600; color: #5F6673; }
 /* 票数分项上色：同意绿 / 不同意红 / 弃权灰（0722 用户定） */
 .rn-part.agree { color: #2E7D32; }
 .rn-part.against { color: #C0392B; }
@@ -1680,7 +1680,7 @@ async function removeOpinion(op) {
 
 /* AI 助手行：AI 帮写(橙) / 语音输入(蓝) 两个等宽按钮并排，卡片内文本框下方，双色区分 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 0 0; background: transparent; }
-.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; font-variant-numeric: tabular-nums; }
+.ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; }
 .ts-ai-btn.ai { background: #EEF6E2; border-color: #BAD79A; color: #4F8B34; }
 .ts-ai-btn.ai:active { background: #E3F0D2; }
 .ts-ai-btn.voice { background: #EAF3FC; border-color: #C6DDF3; color: #1F6FB2; }
