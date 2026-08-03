@@ -296,16 +296,10 @@
           <!-- 录音控制（0803 设计师）：底部整条让给议题主线，录音的开始/暂停/继续和保存
                全部回到会议卡这块"录音区"——状态、控制、保存在同一处，不再横跨两个区域。
                每行 54px、浅蓝次级样式：录音是辅助手段，主线在底部 -->
-          <div v-if="isChair && !isSelfRemote" class="mc-rec-ops">
-            <button v-if="recActive" type="button" class="mc-rec-op" :disabled="uploading || generatingMinutes" @click="onCircleTap">暂停录音</button>
-            <button v-else-if="isPaused" type="button" class="mc-rec-op" :disabled="uploading || generatingMinutes" @click="resumeRecording">继续录音</button>
-            <button v-else type="button" class="mc-rec-op" :disabled="uploading || generatingMinutes" @click="onCircleTap">
-              {{ (recordings.length || stoppedUnuploaded) ? '继续录音' : '开始录音' }}
-            </button>
-            <!-- 只在已暂停/已停止未传时出现；录音进行中不给——误点会打断整场 -->
-            <button v-if="mcCanSaveRec" type="button" class="mc-rec-op save" @click="uploadRecordingStep">
-              保存并上传这段录音
-            </button>
+          <!-- 录音开关已挪回底部条（0803 定稿：录音与表决同为主线，1:1 实心并排在拇指区）；
+               卡内只留「保存并上传」——它是低频补救，不该占拇指区 -->
+          <div v-if="mcCanSaveRec" class="mc-rec-ops">
+            <button type="button" class="mc-rec-op save" @click="uploadRecordingStep">保存并上传这段录音</button>
           </div>
         </div>
 
@@ -356,6 +350,14 @@
             <span class="si-row-k">＋ 临时添加议题</span>
             <i class="si-row-arr"></i>
           </button>
+          <!-- ⚠ 退路，勿轻易删（0803）：底部「结束会议」按定稿只在议题全部处理完后才出现，
+               但"处理完"可能永远到不了——表决类的 status 由后端实时算，passed 要求赞成票过
+               全体委员半数；7 人缺 2、到场 5 人投 3:2 时它一直是 pending，讨论类也要有意见
+               记录才算已处理。没有这一行，主任会被锁在本页无法结束会议。
+               放在列表最末、灰字无箭头：不在拇指区、不与底部主按钮争，也不构成"顺手就点" -->
+          <button v-if="isChair && nextPendingTopic" type="button" class="si-row mc-end-fallback" @click="handleMeetingBottomAction">
+            <span class="si-row-k">议题没处理完，直接结束会议</span>
+          </button>
         </div>
       </div>
 
@@ -403,11 +405,16 @@
         <div class="mlq-endbar">
           <template v-if="isChair">
             <button v-if="fieldMeetingEnded" class="mc-cta" @click="handleMeetingBottomAction">会后整理 →</button>
-            <div v-else-if="nextPendingTopic" class="mc-endrow">
-              <button class="mc-cta" @click="openTopicSheet(nextPendingTopic)">{{ bottomTopicLabel }}</button>
-              <button class="mc-cta-light" @click="handleMeetingBottomAction">结束会议</button>
+            <!-- 左：录音开关（会议开始时点一次的开关，状态自己说明进度）
+                 右：议题主线；三条全办完后右侧才换成「结束会议」——不到那一步没有这个入口，
+                 避免半路误结束。两颗都实心蓝、等宽 1:1：录音是留痕前提、表决是主线，都不能漏 -->
+            <div v-else class="mc-endrow eq">
+              <button class="mc-cta" :disabled="uploading || generatingMinutes" @click="recActive ? onCircleTap() : (isPaused ? resumeRecording() : onCircleTap())">
+                {{ recActive ? '暂停录音' : ((isPaused || recordings.length || stoppedUnuploaded) ? '继续录音' : '开始录音') }}
+              </button>
+              <button v-if="nextPendingTopic" class="mc-cta" @click="openTopicSheet(nextPendingTopic)">{{ bottomTopicLabel }}</button>
+              <button v-else class="mc-cta" @click="handleMeetingBottomAction">结束会议</button>
             </div>
-            <button v-else class="mc-cta" @click="handleMeetingBottomAction">结束会议</button>
           </template>
           <template v-else>
             <button v-if="nextPendingTopic" class="mc-cta" @click="openTopicSheet(nextPendingTopic)">{{ bottomTopicLabel }}</button>
@@ -922,7 +929,11 @@ const bottomTopicLabel = computed(() => {
   const t = nextPendingTopic.value
   if (!t) return ''
   const i = meetingTopics.value.indexOf(t) + 1
-  return topicStateText(t) + ' · 第 ' + i + ' 项议题'
+  // 与左侧录音按钮字数接近（都 4-7 字），两颗实心并排才视觉等重（0803 设计师）
+  let verb = '讨论'
+  if (t.voteRequired) verb = '表决'
+  else if (t.type === 'notice') verb = isHost.value ? '通知' : '查看'
+  return '第 ' + i + ' 项议题' + verb
 })
 function topicStateText(item) {
   if (!topicBadgeDone(item)) {
@@ -4661,6 +4672,8 @@ async function returnToRecordingPage() {
 /* 保存行比录音开关再轻一档：描边白底，免得两行同色分不出主次 */
 .mc-rec-op.save { background:#fff; border:2rpx solid #C9D8EA; }
 .mc-rec-op.save:active { background:#F2F6FB; }
+/* 兜底出口：压到最低存在感（灰字、无箭头），只保证"不至于走不掉" */
+.mc-end-fallback .si-row-k { color:#9AA0A6; font-size:27rpx; font-weight:400; }
 /* 委员把议题都处理完之后：底部不留空按钮，给一句状态 */
 .mc-done-hint { min-height:104rpx; display:flex; align-items:center; justify-content:center;
   font-size:28rpx; color:#8A9099; }
@@ -4708,6 +4721,8 @@ async function returnToRecordingPage() {
 .mc-endrow { display:flex; gap:16rpx; }
 .mc-endrow .mc-cta { flex:2; }
 .mc-endrow .mc-cta-light { flex:1; }
+/* 等重并排（0803 定稿）：录音与议题/结束会议都实心、1:1 */
+.mc-endrow.eq .mc-cta { flex:1 1 0; min-width:0; padding:0 8rpx; }
 .mc-cta { display:block; width:100%; height:108rpx; box-sizing:border-box; margin:0; padding:0; border:0; border-radius:20rpx;
   background:#3567A4; color:#fff; font-size:34rpx; font-weight:700; font-family:inherit;
   touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
