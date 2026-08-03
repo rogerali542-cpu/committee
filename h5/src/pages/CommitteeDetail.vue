@@ -388,7 +388,7 @@
     </div>
 
     <!-- 准备阶段（主任）：底部固定主操作 -->
-    <div ref="prepFooterEl" class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
+    <div ref="prepFooterEl" class="prep-footer after-send-footer" :style="{ '--pf-shrink': pfShrink }" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
       <div class="pf-after-send">
         <!-- 测试开关：只在「已发送、会议未到」出现，切到/切回「会议当天」预览开始会议按钮。
              纯本页显示态，不落库，刷新复原；真到会议当天自然消失 -->
@@ -416,8 +416,7 @@
                改成原生 button（另配 touch-action:manipulation 去延迟、user-select:none 断长按选字）。
                ⚠ 只在「发送前」这一态出现；已发送后渠道选择收进弹层（openRemindSheet）。 -->
           <div v-if="footerStage === 'send'" class="pf-ch-group">
-            <!-- 0801 设计师：勾选组加一行小标题，两行勾选有了归属，不再直接贴着按钮 -->
-            <div class="pf-ch-caption">发送方式</div>
+            <!-- 「发送方式」小标题曾加过又删（0803 用户定：条内寸土寸金，勾选行自身已够自明） -->
             <!-- 「转发到微信工作群」不叫「发到」：线上会议的召开方式也常是「微信工作群」，
                  一个是开会场所、一个是通知渠道，字面完全一样会混。转发也更贴实际动作（复制+跳微信粘贴） -->
             <button type="button" class="pf-also" :aria-pressed="chWechat ? 'true' : 'false'" @click="chWechat = !chWechat">
@@ -1284,16 +1283,44 @@ function measurePrepFooter() {
   const el = prepFooterEl.value
   if (el) prepFooterH.value = Math.ceil(el.getBoundingClientRect().height)
 }
+// 自适应收紧（0803 用户定）：内容放不下一屏时，按溢出比例收紧条内行高/间距/上下内边距，
+// 最多缩 20%；行高按钮另有 px 下限（46/54，见 CSS 的 max()），守住老年人点击目标。
+// 内容放得下时 pfShrink=0，完全不缩。
+// 算法要点：以"未压缩的自然条高 F0"为基准算比例——先归零、下一帧量 F0 再定档，
+// 避免"缩了→条变矮→溢出变小→又弹回来"的振荡。
+const pfShrink = ref(0)
+let _shrinkPending = false
+function recalcFooterShrink() {
+  if (_shrinkPending) return
+  _shrinkPending = true
+  pfShrink.value = 0
+  nextTick(() => {
+    _shrinkPending = false
+    const el = prepFooterEl.value
+    const body = document.querySelector('.detail-page .detail-body')
+    if (!el || !body) { measurePrepFooter(); return }
+    const F0 = el.getBoundingClientRect().height
+    const padB = parseFloat(getComputedStyle(body).paddingBottom) || 0
+    const contentH = body.scrollHeight - padB   // 内容自然高（刨掉给条让位的 padding）
+    const overflow = contentH + F0 - window.innerHeight
+    if (overflow > 0 && F0 > 0) pfShrink.value = Math.min(0.2, overflow / F0)
+    nextTick(measurePrepFooter)   // 缩完再量实高，让位 padding 跟着新条高走
+  })
+}
 watch(prepFooterEl, (el) => {
   if (_footerRO) { _footerRO.disconnect(); _footerRO = null }
-  if (!el) { prepFooterH.value = 0; return }
-  measurePrepFooter()
+  if (!el) { prepFooterH.value = 0; pfShrink.value = 0; return }
+  recalcFooterShrink()
   if (typeof ResizeObserver !== 'undefined') {
-    _footerRO = new ResizeObserver(measurePrepFooter)
+    _footerRO = new ResizeObserver(measurePrepFooter)   // RO 只跟让位量；缩放档位由 recalc 统一定
     _footerRO.observe(el)
   }
 }, { flush: 'post' })
-onUnmounted(() => { if (_footerRO) { _footerRO.disconnect(); _footerRO = null } })
+onMounted(() => { window.addEventListener('resize', recalcFooterShrink) })
+onUnmounted(() => {
+  window.removeEventListener('resize', recalcFooterShrink)
+  if (_footerRO) { _footerRO.disconnect(); _footerRO = null }
+})
 
 // ── 转为线上/线下会议（0801 设计师定：改底部弹层）──
 // 原先是通知白卡里的一块内联面板 + 原生 <select>，三处毛病：
@@ -1334,7 +1361,7 @@ const footerStage = computed(() => (
 // ⚠ 注册放 onMounted 里：watch 注册当场就会求值一次 footerStage 来收集依赖，而它的依赖链
 // （footerStageBase → noticeSent）里有定义在本行之后的 const——setup 顶层直接 watch 会撞 TDZ
 // （Cannot access 'noticeSent' before initialization），整页白屏。0803 就是这么炸的。
-onMounted(() => { watch(footerStage, () => nextTick(measurePrepFooter)) })
+onMounted(() => { watch([footerStage, recipientOpen], () => nextTick(recalcFooterShrink)) })
 // 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
 const remindLabel = computed(() => (
   noticeSent.value
@@ -2580,7 +2607,11 @@ async function removeMaterial(item) {
    原先是文档流里的一块，内容一长就跟着滚走、内容短又浮在页面中间——收起通知人员名单后尤其明显。
    详情页没有底部导航栏，直接贴视口底；内容区靠 .detail-body 的 padding-bottom 让位 */
 .prep-footer { position:fixed; left:0; right:0; bottom:0; z-index:90;
-  box-sizing:border-box; background:#fff; padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  box-sizing:border-box; background:#fff;
+  /* 自适应收紧（0803）：--pf-shrink 0~0.2 由 JS 按溢出比例定档，上下内边距同比收；
+     下限 10px 兜底。内容放得下时为 0，完全不缩 */
+  padding: max(10px, calc(16px * (1 - var(--pf-shrink, 0)))) 16px
+           calc(max(10px, calc(16px * (1 - var(--pf-shrink, 0)))) + env(safe-area-inset-bottom));
   /* 顶部阴影加深一档（0801 设计师）：滚动时能看出条下面还压着内容 */
   box-shadow:0 -10rpx 24rpx rgba(20,42,58,.10); }
 .prep-footer.after-send-footer { padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
@@ -2592,8 +2623,9 @@ async function removeMaterial(item) {
 /* 已发送：再次通知 + 开始会议 并排，同色同等重要——稍矮、浅一点(亮橙)、拉开间距+两侧留缝，不拥挤 */
 /* 0801 设计师定稿：一个主操作（实心蓝 60px 高）+ 上方一个可关的附加勾选项。
    此前是两颗上下叠放的按钮，"同时在 App 内通知"既像附加又像独立操作，语义纠缠 */
-.pf-btn-col { display:flex; flex-direction:column; gap:16rpx; padding:0 20rpx; }
-.pf-btn-col .pf-btn { width:100%; height:120rpx; border-radius:20rpx; font-size:34rpx; }
+.pf-btn-col { display:flex; flex-direction:column; gap:calc(16rpx * (1 - var(--pf-shrink, 0))); padding:0 20rpx; }
+/* 按钮 60px；溢出时同比收，下限 54px */
+.pf-btn-col .pf-btn { width:100%; height:max(54px, calc(120rpx * (1 - var(--pf-shrink, 0)))); border-radius:20rpx; font-size:34rpx; }
 .pf-btn-main { background:#3567A4; color:#fff; }
 .pf-btn-main:active { background:#2D598E; }
 .pf-btn-main.disabled, .pf-btn-main.busy { background:#C3CAD3; }
@@ -2601,10 +2633,9 @@ async function removeMaterial(item) {
    ⚠ 必须是原生 <button>：见模板处注释，div 在手机上长按会被当选字、且吃 300ms 点击延迟。
    下面这组是配套的——button 的 UA 默认样式要清掉，触摸行为要显式声明。 */
 .pf-ch-group { display:flex; flex-direction:column; }
-/* 组标题（0801 设计师）：15px 灰字，两行勾选有了归属，不再直接贴按钮 */
-.pf-ch-caption { padding:4rpx 6rpx 2rpx; color:#8A9099; font-size:30rpx; }
-/* 行高 54px（0801 设计师：48→54） */
-.pf-also { display:flex; align-items:center; gap:14rpx; width:100%; min-height:108rpx; padding:0 6rpx;
+/* 行高 54px（0801 设计师：48→54）；溢出时随 --pf-shrink 同比收，下限 46px（老年人点击目标） */
+.pf-also { display:flex; align-items:center; gap:14rpx; width:100%;
+  min-height:max(46px, calc(108rpx * (1 - var(--pf-shrink, 0)))); padding:0 6rpx;
   margin:0; border:0; background:none; font:inherit; text-align:left; color:#3F4A57; font-size:29rpx;
   cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   -webkit-tap-highlight-color:transparent; }
@@ -2629,7 +2660,7 @@ async function removeMaterial(item) {
    会议当天与「开始会议」同屏时矮一档，层级一眼分得出 */
 .pf-btn-light { background:#EAF0F8; color:#2f5f9e; font-weight:600; }
 .pf-btn-light:active { background:#DCE7F3; }
-.pf-btn-col .pf-btn-light { height:96rpx; font-size:31rpx; }
+.pf-btn-col .pf-btn-light { height:max(54px, calc(96rpx * (1 - var(--pf-shrink, 0)))); font-size:31rpx; }
 /* 测试开关：右上小字灰，与「清空」同量级——测试期用，不抢正式按钮的注意力 */
 .pf-test-toggle { align-self:flex-end; margin:0 20rpx; padding:4rpx 12rpx; border:0; background:none;
   font:inherit; color:#A0A6AD; font-size:23rpx; line-height:1.4; cursor:pointer;
@@ -2638,7 +2669,7 @@ async function removeMaterial(item) {
 /* 会议当天：「再次提醒」浅蓝次级 + 「开始会议」蓝实心主按钮，按规则四 2:1 分宽。
    同高 120rpx（60px），主次靠颜色和宽度区分，不靠高度 */
 .pf-sub-row { display:flex; gap:16rpx; }
-.pf-sub-row .pf-btn { flex:1; min-width:0; height:120rpx; font-size:31rpx; }
+.pf-sub-row .pf-btn { flex:1; min-width:0; height:max(54px, calc(120rpx * (1 - var(--pf-shrink, 0)))); font-size:31rpx; }
 .pf-sub-row .pf-btn-start-top { flex:2; font-size:34rpx; }
 .pf-btn-light.busy { opacity:.6; }
 /* 通知人员卡里的结果行：发送的结果归属在这张卡，不必去底部按钮里找线索 */
