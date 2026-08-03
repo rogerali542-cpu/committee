@@ -350,14 +350,6 @@
             <span class="si-row-k">＋ 临时添加议题</span>
             <i class="si-row-arr"></i>
           </button>
-          <!-- ⚠ 退路，勿轻易删（0803）：底部「结束会议」按定稿只在议题全部处理完后才出现，
-               但"处理完"可能永远到不了——表决类的 status 由后端实时算，passed 要求赞成票过
-               全体委员半数；7 人缺 2、到场 5 人投 3:2 时它一直是 pending，讨论类也要有意见
-               记录才算已处理。没有这一行，主任会被锁在本页无法结束会议。
-               放在列表最末、灰字无箭头：不在拇指区、不与底部主按钮争，也不构成"顺手就点" -->
-          <button v-if="isChair && nextPendingTopic" type="button" class="si-row mc-end-fallback" @click="handleMeetingBottomAction">
-            <span class="si-row-k">议题没处理完，直接结束会议</span>
-          </button>
         </div>
       </div>
 
@@ -893,6 +885,15 @@ function topicBadgeDone(item) {
   if (item.type === 'notice') return !!item.notified || (item.opinionCount || 0) > 0 // 通报：已宣读/全体已看，或录音里被提到
   return (item.opinionCount || 0) > 0 // 讨论：录音里被提到/有意见 = 已处理
 }
+// 「我这条填完了没」（0803 定稿）：会议进行页的进度按本人是否表过态算，不看别人投没投、
+// 更不看票数够不够过半——那是会后统计的事，不该锁住主任的界面（与"不把 App 内确认当前提"同理）。
+// 表决类=我投过票；通报类=我点过「我已收到」或已宣读；讨论类=我留过意见（myOpinionCount 后端 0803 新增）
+function topicSelfDone(item) {
+  if (!item) return false
+  if (item.voteRequired) return !!item.myVote || item.mySelectedId != null
+  if (item.type === 'notice') return !!item.viewedByMe || !!item.notified
+  return (item.myOpinionCount || 0) > 0
+}
 const allTopicsCompleted = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(topicBadgeDone))
 const pendingTopicCount = computed(() => meetingTopics.value.filter(item => !topicBadgeDone(item)).length)
 const meetingEnded = computed(() => !!detail.value && detail.value.stage === 'ended')
@@ -919,9 +920,9 @@ function topicActionName(item) {
 // 其余待办不写字（只留箭头），已办写灰色结果。计数与「结束会议还有N项未处理」
 // 统一用 topicBadgeDone（会中就会推进；topicRowDone 是给弹层按钮用的"表决是否已锁"，
 // 会中恒为未完成，拿来当计数会一直卡在 0/N）
-const resolvedTopicCount = computed(() => meetingTopics.value.filter((t) => topicBadgeDone(t)).length)
-// 下一条待办 = 列表里第一条未处理的议题（会中随处理进度自动往下走）
-const nextPendingTopic = computed(() => meetingTopics.value.find((t) => !topicBadgeDone(t)) || null)
+const resolvedTopicCount = computed(() => meetingTopics.value.filter((t) => topicSelfDone(t)).length)
+// 下一条待办 = 列表里第一条"我还没填"的议题（会中随本人处理进度自动往下走）
+const nextPendingTopic = computed(() => meetingTopics.value.find((t) => !topicSelfDone(t)) || null)
 const nextPendingTopicId = computed(() => (nextPendingTopic.value ? nextPendingTopic.value.id : null))
 // 底部主按钮文案（0803 设计师：主线是逐条处理议题，按钮跟着进度走，用户不用自己判断点哪条）。
 // 动作词与议题行同源（去表决/去讨论/去通知/查看通知），比笼统的「去处理」准确
@@ -936,15 +937,17 @@ const bottomTopicLabel = computed(() => {
   return '第 ' + i + ' 项议题' + verb
 })
 function topicStateText(item) {
-  if (!topicBadgeDone(item)) {
+  if (!topicSelfDone(item)) {
     if (item.id !== nextPendingTopicId.value) return '' // 未轮到：只留标题和箭头
     if (item.voteRequired) return '去表决'
     if (item.type === 'notice') return isHost.value ? '去通知' : '查看通知'
     return '去讨论'
   }
-  if (item.voteRequired) return '已表决 · ' + (item.status === 'passed' ? '通过' : '未通过')
-  if (item.type === 'notice' || item.type === 'notify') return '已通报'
-  return '已讨论'
+  // 0803 定稿：只说"我做完了"，不说"结果出来了"——票数是会后统计的事，
+  // 会中写「已表决 · 通过」会让人以为结果已定。点行进去仍可改
+  if (item.voteRequired) return '我已表决'
+  if (item.type === 'notice' || item.type === 'notify') return '我已收到'
+  return '我已填写'
 }
 function topicRowDone(item) {
   // 方案A：表决全程开放→一直「去表决」；会议结束后（或旧数据已 voteClosed）才「看结果」
@@ -4672,8 +4675,6 @@ async function returnToRecordingPage() {
 /* 保存行比录音开关再轻一档：描边白底，免得两行同色分不出主次 */
 .mc-rec-op.save { background:#fff; border:2rpx solid #C9D8EA; }
 .mc-rec-op.save:active { background:#F2F6FB; }
-/* 兜底出口：压到最低存在感（灰字、无箭头），只保证"不至于走不掉" */
-.mc-end-fallback .si-row-k { color:#9AA0A6; font-size:27rpx; font-weight:400; }
 /* 委员把议题都处理完之后：底部不留空按钮，给一句状态 */
 .mc-done-hint { min-height:104rpx; display:flex; align-items:center; justify-content:center;
   font-size:28rpx; color:#8A9099; }

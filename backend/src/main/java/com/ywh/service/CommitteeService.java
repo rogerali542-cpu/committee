@@ -3317,6 +3317,7 @@ public class CommitteeService {
             tv.setAbVotes(abV);
             tv.setVoted(countedVotes);
             tv.setOpinionCount((int) opinionRepo.countByTopicId(tp.getId()));
+            tv.setMyOpinionCount((int) opinionRepo.countByTopicIdAndUserRoleId(tp.getId(), ur.getId()));
             tv.setTotal(total);
             tv.setNeed(need);
             tv.setPassed(passed);
