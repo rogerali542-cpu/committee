@@ -70,31 +70,23 @@
                 </div>
               </template>
             </template>
-            <button v-if="pendingVote != null && !proxyOpen" class="ts-vote-submit" :disabled="voteSubmitting" @click="submitVote">
-              {{ voteSubmitting ? '提交中...' : '确认提交' }}
-            </button>
-            <!-- 已投收起态的状态并入下方票数卡；这行只在 选中未提交/改票展开 时出现 -->
-            <div v-if="voteFeedbackText && !voteCollapsed && !proxyOpen" class="ts-vote-status-row">
-              <div class="ts-vote-feedback" :class="[voteFeedbackClass, { pending: voteFeedbackPending }]">
-                <span v-if="!voteFeedbackPending" class="ts-vote-feedback-mark">✓</span>
-                <span>{{ voteFeedbackText }}</span>
-              </div>
-              <button v-if="showRetract" class="ts-vote-retract" :disabled="voteSubmitting" @click="retractVote">撤回</button>
-            </div>
+            <!-- 0803 设计师：「确认提交」原在选项与统计之间（橙实心胶囊），既不在拇指区、
+                 又是第四种颜色；现移到底部导航行，选完直接按底部提交。
+                 「已选：同意」胶囊一并删除——选项的选中态已经说过一遍了 -->
             <!-- 表决进行中：实时票数明细，只报数不下"通过/未通过"结论(没结束不算数)。0722 用户定：不怕从众 -->
             <div v-if="showLiveTally" class="ts-vote-all compact">
               <div class="ts-result-line live">
                 <span class="ts-result-badge">进行中</span>
                 <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
               </div>
-              <!-- 我的投票并入卡内一行（0722 用户定）：状态 + 小号改票/撤回 -->
+              <!-- 我的投票（0803 设计师：改票/撤回原是 38px 小胶囊，低于 54px 点不准）：
+                   状态单独一行，两个动作做成等宽 54px 次按钮 -->
               <div v-if="voteCollapsed && !proxyOpen" class="ts-my-line">
                 <span class="ts-my-vote">✓ 已投：{{ myVoteLabel || localVoteLabel }}</span>
-                <!-- 主任(会后整理)把改票/撤回并入下方「修改投票」面板，这里不重复；其余角色仍就地改票/撤回 -->
-                <template v-if="!proxyEditsUnified">
-                  <button class="ts-mini-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
-                  <button class="ts-mini-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
-                </template>
+              </div>
+              <div v-if="voteCollapsed && !proxyOpen && !proxyEditsUnified" class="ts-my-acts">
+                <button class="ts-my-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
+                <button class="ts-my-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
               </div>
             </div>
             <!-- 代委员投票（仅主持人、会后整理阶段）：现场会议结束后，主任为忘投/不会用手机的委员补录并留凭证审计。
@@ -164,18 +156,9 @@
         </button>
         <!-- 没有意见时的友好空态（0729 用户定：投完票、还没意见时页面别太空、太荒芜）。
              仅在"已投票/已揭晓"后出现——未投票时焦点在投票按钮，不提前占位。 -->
+        <!-- 0803 设计师：空态原有大图标 + 三行使用说明，规则明确不写说明文字，只留一句 -->
         <div v-if="canDiscuss && !opinionOpen && !hasOpinions && !loading && (committedVote != null || voteRevealed)" class="ts-ops-empty">
-          <div class="ts-ops-empty-ico">
-            <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M8 10.5h28a4.5 4.5 0 0 1 4.5 4.5v12a4.5 4.5 0 0 1-4.5 4.5H21l-7.5 6v-6H8A4.5 4.5 0 0 1 3.5 27V15A4.5 4.5 0 0 1 8 10.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
-              <circle cx="15" cy="21" r="2" fill="currentColor"/>
-              <circle cx="22" cy="21" r="2" fill="currentColor"/>
-              <circle cx="29" cy="21" r="2" fill="currentColor"/>
-            </svg>
-          </div>
           <div class="ts-ops-empty-title">还没有补充意见</div>
-          <div v-if="interactive" class="ts-ops-empty-sub">补充意见是选填的——会上口头说过就行。<br>想给这个议题留句书面说明，点上方「补充意见」。</div>
-          <div v-else class="ts-ops-empty-sub">本议题暂无补充意见记录。</div>
         </div>
       </div>
 
@@ -201,6 +184,15 @@
             <button class="ts-notice-forceall-link" @click="markNoticeRead">一键确认已通知全体</button>
           </div>
         </template>
+      </div>
+
+      <!-- 讨论类单独一种形态（0803 设计师）：正文 + 补充意见 + 「我已查看」。
+           不投票、不统计票数，进来看过这一项就算本人处理完（补充意见选填） -->
+      <div v-if="isDiscussion" class="ts-discuss">
+        <div v-if="topic.content" class="ts-notice-body">{{ topic.content }}</div>
+        <div v-if="interactive && signedIn" class="ts-discuss-done">
+          <span class="ts-discuss-done-mark">✓</span>我已查看——本项即完成，补充意见选填
+        </div>
       </div>
 
       <!-- 意见区 -->
@@ -294,16 +286,22 @@
       <div v-else-if="canDiscuss && interactive && !signedIn && (!topic.voteRequired || opinionOpen)" class="ts-input-hint">签到后可发表意见</div>
 
       <!-- 上一个 / 下一个议题：处理完当前议题直接切换，不用先关弹层 -->
-      <div v-if="opinionOpen || hasPrev || hasNext" class="ts-nav-row">
-        <button v-if="opinionOpen" class="ts-op-collapse" :class="{ warm: opinions.length }" @click="opinionOpen = false">收起</button>
+      <!-- 底部行（0803 设计师）：选完选项时整行让给「提交表决」——它是此刻唯一该办的事，
+           放在拇指区而不是插在选项与统计之间；其余时候是 返回/上一个 与 下一个议题 等宽两颗 -->
+      <div v-if="pendingVote != null && !proxyOpen && !voteRevealed" class="ts-nav-row">
+        <button class="ts-nav-btn cancel" :disabled="voteSubmitting" @click="pendingVote = null; pendingOption = null">重选</button>
+        <button class="ts-nav-btn submit" :disabled="voteSubmitting" @click="submitVote">
+          {{ voteSubmitting ? '提交中…' : '提交表决' }}
+        </button>
+      </div>
+      <div v-else-if="opinionOpen || hasPrev || hasNext" class="ts-nav-row">
+        <button v-if="opinionOpen" class="ts-op-collapse" @click="opinionOpen = false">收起</button>
         <button v-if="hasPrev && !opinionOpen" class="ts-nav-btn prev" @click="$emit('prev')">‹ 上一个议题</button>
         <!-- 第一个议题没有「上一个」：左下角补「返回」，避免左侧空着不对称（点了收起弹层回列表） -->
         <button v-else-if="!opinionOpen && hasNext" class="ts-nav-btn back" @click="$emit('close')">返回</button>
-        <div v-if="hasNext" class="ts-next-action" :class="{ disabled: !canGoNext }" @click="onNextTap">
-          <button class="ts-nav-btn next" :disabled="!canGoNext">下一个议题 <span class="ts-next-arrow">›</span></button>
-        </div>
+        <button v-if="hasNext" class="ts-nav-btn next" :class="{ off: !canGoNext }" @click="onNextTap">下一个议题 ›</button>
         <!-- 最后一个议题：右侧改为「完成」，点了收起弹层 -->
-        <button v-else class="ts-nav-btn done" @click="$emit('close')">完成</button>
+        <button v-else-if="!opinionOpen" class="ts-nav-btn next" @click="$emit('close')">完成</button>
       </div>
     </div>
 
@@ -371,6 +369,8 @@ const tagLabel = computed(() => {
   return t === 'decision' ? '表决' : (t === 'notice' ? '通知' : '讨论')
 })
 const canDiscuss = computed(() => props.topic && props.topic.type !== 'notice')
+// 讨论类＝不表决也不是通报（0803 设计师：单独一种形态，与表决页/通报页都不同）
+const isDiscussion = computed(() => !!props.topic && !props.topic.voteRequired && props.topic.type !== 'notice')
 const showOpinionSection = computed(() => {
   if (!canDiscuss.value) return false
   return true
@@ -785,24 +785,10 @@ function confirmVoice() {
 
 // ── AI 润色 / 代拟 ──
 // AI 完成后弹卡片：告知已生成、耗时、消耗 token
+// 0803 设计师：AI 写完原本弹一个「已按你的想法拟好，可修改/查看」的小弹窗——
+// 文字此刻已经在输入框里了，弹窗只是让人多点一次「查看」。改成一句轻提示
 function showAiDoneCard(mode) {
-  if (mode === 'polish') {
-    showModal({
-      title: '',
-      content: '已润色，可继续修改',
-      size: 'aicard',
-      showCancel: false,
-      confirmText: '查看'
-    })
-    return
-  }
-  showModal({
-    title: '',
-    content: '已按你的想法拟好，可修改',
-    size: 'aicard',
-    showCancel: false,
-    confirmText: '查看'
-  })
+  toast({ title: mode === 'polish' ? '已润色，可继续修改' : '已拟好，可继续修改', icon: 'none' })
 }
 async function polishByAi() {
   const text = draft.value.trim()
@@ -1368,8 +1354,9 @@ async function removeOpinion(op) {
 .ts-guide.notice { border-left-color: #1677B8; background: #E6F4FB; color: #12639B; } /* 0729 用户定：紫色太突兀，换「通知」标签同款蓝 */
 .ts-guide.discuss { border-left-color: #1F6FB2; background: #EFF6FC; color: #1A5C93; }
 /* 三类议题各一专属色（浅底彩字，方案A）——讨论蓝 / 表决橙 / 通报紫，刻意避开绿(=同意票色) */
-.ts-tag.discuss { background: #EAF6EE; color: #2E8B57; }
-.ts-tag.vote { background: #FFF0E5; color: #D56A16; }
+/* 0803 设计师：类型标签原本讨论绿、表决橙——三色制里都不该有。统一中性灰，
+   类型信息由页面形态本身表达（有选项=表决、有正文+补充意见=讨论） */
+.ts-tag.discuss, .ts-tag.vote { background: #F2F4F6; color: #6B7078; }
 /* .ts-tag.notice 已删（0717 通知并入讨论，tagClass 不再产出 notice） */
 .ts-close { flex-shrink: 0; width: 56rpx; height: 56rpx; line-height: 52rpx; text-align: center; font-size: 44rpx; color: #999; margin: -8rpx -12rpx 0 0; }
 
@@ -1398,41 +1385,38 @@ async function removeOpinion(op) {
 .ts-sheet.is-vote .ts-vote.has-ops:not(.opinion-mode) .ts-vote-mine { margin-top: auto; }
 .ts-sheet.is-vote .ts-vote.opinion-mode { min-height: 0; }
 .ts-sheet.is-vote .ts-vote-btns { display: flex; flex-direction: column; gap: 16rpx; }
-.ts-sheet.is-vote .ts-vote-btn { display: flex; align-items: center; justify-content: flex-start; gap: 18rpx; border-radius: 16rpx; border: 2rpx solid #E1E4E8; background: #fff; color: #1f2329; font-size: 34rpx; font-weight: 700; padding: 26rpx 24rpx; text-align: left; box-shadow: none; }
+/* 0803 设计师：三个选项 68px 大行；选中态一律蓝边框 + 浅蓝底（原来同意绿、不同意红，
+   三色制里没有绿和红），未选中一律白底灰边——颜色不承载"同意/反对"的语义 */
+.ts-sheet.is-vote .ts-vote-btn { display: flex; align-items: center; justify-content: flex-start; gap: 18rpx; min-height: 131rpx; box-sizing: border-box; border-radius: 12px; border: 2rpx solid #E1E4E8; background: #fff; color: #1f2329; font-size: 34rpx; font-weight: 700; padding: 20rpx 24rpx; text-align: left; box-shadow: none; }
 .ts-sheet.is-vote .ts-vote-btn.agree,
 .ts-sheet.is-vote .ts-vote-btn.against,
 .ts-sheet.is-vote .ts-vote-btn.abstain { background: #fff; border-color: #E1E4E8; color: #1f2329; }
 .ts-radio { flex-shrink: 0; width: 34rpx; height: 34rpx; border-radius: 50%; border: 3rpx solid #C5CBD3; box-sizing: border-box; background: #fff; }
-.ts-sheet.is-vote .ts-vote-btn.agree.on { border-color: #69B95B; background: #F0FAED; color: #2E7D32; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.10); }
-.ts-sheet.is-vote .ts-vote-btn.against.on { border-color: #ED7B70; background: #FFF3F1; color: #C0392B; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.10); }
-.ts-sheet.is-vote .ts-vote-btn.abstain.on { border-color: #8D949D; background: #F4F5F7; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
-.ts-sheet.is-vote .ts-vote-btn.agree.on .ts-radio { border-color: #3E9B34; box-shadow: inset 0 0 0 8rpx #fff; background: #3E9B34; }
-.ts-sheet.is-vote .ts-vote-btn.against.on .ts-radio { border-color: #E24B3A; box-shadow: inset 0 0 0 8rpx #fff; background: #E24B3A; }
-.ts-sheet.is-vote .ts-vote-btn.abstain.on .ts-radio { border-color: #4D5158; box-shadow: inset 0 0 0 8rpx #fff; background: #4D5158; }
-.ts-sheet.is-vote .ts-vote-submit { width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border-radius: 16rpx; padding: 20rpx 32rpx; font-size: 30rpx; background: var(--c-primary-dark, #A85800); }
-.ts-sheet.is-vote .ts-vote-submit:active { background: var(--c-primary-strong, #8A4A00); }
-.ts-sheet.is-vote .ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; }
+.ts-sheet.is-vote .ts-vote-btn.on,
+.ts-sheet.is-vote .ts-vote-btn.agree.on,
+.ts-sheet.is-vote .ts-vote-btn.against.on,
+.ts-sheet.is-vote .ts-vote-btn.abstain.on { border-color: #3567A4; background: #EAF0F8; color: #2f5f9e; box-shadow: none; }
+.ts-sheet.is-vote .ts-vote-btn.on .ts-radio,
+.ts-sheet.is-vote .ts-vote-btn.agree.on .ts-radio,
+.ts-sheet.is-vote .ts-vote-btn.against.on .ts-radio,
+.ts-sheet.is-vote .ts-vote-btn.abstain.on .ts-radio { border-color: #3567A4; box-shadow: inset 0 0 0 8rpx #fff; background: #3567A4; }
 .ts-vote-locktip { margin-top: 12rpx; text-align: center; font-size: 24rpx; color: #9AA0A6; }
-.ts-sheet.is-vote .ts-vote-submit-tip { display: none; }
 .ts-sheet.is-vote .ts-vote-all { margin-top: 22rpx; padding-top: 18rpx; border-top: 2rpx solid #F0F1F3; }
 /* 补充意见按钮与上方蓝色票数框拉开距离(0729 用户定) */
 .ts-sheet.is-vote .ts-op-entry { margin-top: 44rpx; }
 .ts-op-entry.in-summary { margin: 18rpx auto 4rpx; }
-.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 51%; min-height: 80rpx; box-sizing: border-box; margin: 20rpx auto 0; border: 2rpx solid #A9CBEA; border-radius: 16rpx; background: #EAF3FC; color: #1F6FB2; font-size: 32rpx; font-weight: 700; padding: 14rpx 24rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 4rpx 12rpx rgba(31,111,178,0.12); }
-.ts-op-entry.open { background: #E4F1FC; color: #185A91; border-color: #8EC0EA; }
+/* 0803 设计师：原来居中半屏宽、80rpx(约 42px) 低于 54px —— 改通栏 54px */
+.ts-op-entry { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 104rpx; box-sizing: border-box; margin: 20rpx 0 0; border: 0; border-radius: 12px; background: #EAF0F8; color: #2f5f9e; font-size: 30rpx; font-weight: 700; padding: 0 24rpx; font-family: inherit; line-height: 1.2; box-shadow: none; }
+.ts-op-entry:active { background: #DCE7F3; }
 
 .ts-vote { margin-top: 16rpx; margin-bottom: 24rpx; } /* 标题与投票按钮之间多留 8px */
 .ts-vote-status-row { display: flex; align-items: center; gap: 14rpx; margin-top: 16rpx; }
 .ts-vote-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14rpx; }
 .ts-vote-btn { border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #444; font-size: 32rpx; font-weight: 700; padding: 22rpx 0; }
 /* 方案B：默认就带语义色(浅底+彩边+彩字)，同意绿/不同意红/弃权灰，一眼分清 */
-.ts-vote-btn.agree { background: #EAF6E5; border-color: #52A344; color: #2E7D32; }
-.ts-vote-btn.against { background: #FDECEA; border-color: #E74C3C; color: #C0392B; }
-.ts-vote-btn.abstain { background: #F2F2F4; border-color: #9AA0A6; color: #5F6570; }
+.ts-vote-btn.agree, .ts-vote-btn.against, .ts-vote-btn.abstain { background: #fff; border-color: #D8DBE0; color: #444; }
 /* 选中态：加深为实心白字 + 色环，与默认浅底拉开层次 */
-.ts-vote-btn.agree.on { background: #F0FAED; border-color: #69B95B; color: #2E7D32; box-shadow: 0 0 0 4rpx rgba(62,155,52,0.10); }
-.ts-vote-btn.against.on { background: #FFF3F1; border-color: #ED7B70; color: #C0392B; box-shadow: 0 0 0 4rpx rgba(226,75,58,0.10); }
-.ts-vote-btn.abstain.on { background: #F4F5F7; border-color: #8D949D; color: #4D5158; box-shadow: 0 0 0 4rpx rgba(77,81,88,0.10); }
+.ts-vote-btn.on, .ts-vote-btn.agree.on, .ts-vote-btn.against.on, .ts-vote-btn.abstain.on { background: #EAF0F8; border-color: #3567A4; color: #2f5f9e; box-shadow: none; }
 .ts-vote-btn.off { opacity: 0.35; }
 .ts-vote-btn:active { transform: scale(0.97); }
 .ts-opt { display: flex; align-items: center; justify-content: space-between; border: 2rpx solid #D8DBE0; border-radius: 16rpx; padding: 22rpx 24rpx; margin-bottom: 14rpx; font-size: 32rpx; color: #333; }
@@ -1443,17 +1427,18 @@ async function removeOpinion(op) {
 .ts-vote-all { margin-top: 44rpx; }
 /* 紧凑揭晓（0722）：一行=结论徽标+票数统计，不占大区域 */
 .ts-vote-all.compact { margin-top: 20rpx; }
-.ts-result-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 14rpx; padding: 14rpx 18rpx; border-radius: 14rpx; background: #F7F8FA; border: 2rpx solid #EDEFF2; }
+/* 0803 设计师：常态不给底色——票数统计原来是浅蓝底卡还叠「进行中」蓝胶囊，
+   一屏就这块最跳。改成无底、无框的一行文字 */
+.ts-result-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8rpx 14rpx; padding: 10rpx 0; border-radius: 0; background: none; border: 0; }
 .ts-result-badge { flex-shrink: 0; font-size: 26rpx; font-weight: 800; padding: 4rpx 16rpx; border-radius: 999rpx; }
 .ts-result-line.pass .ts-result-badge { background: #EAF6E5; color: #2E7D32; border: 2rpx solid #B8DFAF; }
 .ts-result-line.fail .ts-result-badge { background: #FDECEA; color: #C0392B; border: 2rpx solid #F0B3AB; }
 /* 进行中(实时票数)：中性蓝，区别于已揭晓的绿/红结论 */
-.ts-result-line.live { background: #F4F8FF; border-color: #DCE8FB; }
-.ts-result-line.live .ts-result-badge { background: #E7F0FF; color: #2F6BD8; border: 2rpx solid #C6DBF7; }
+.ts-result-line.live { background: none; border: 0; }
+.ts-result-line.live .ts-result-badge { background: none; border: 0; padding: 0; color: #8A9099; font-weight: 600; }
 .ts-result-nums { font-size: 25rpx; font-weight: 600; color: #5F6673; }
 /* 票数分项上色：同意绿 / 不同意红 / 弃权灰（0722 用户定） */
-.rn-part.agree { color: #2E7D32; }
-.rn-part.against { color: #C0392B; }
+.rn-part.agree, .rn-part.against { color: #5F6673; }
 .rn-part.abstain { color: #5F6673; }
 .rn-part.opt { color: #5F6673; }
 .rn-sep { color: #C4C9D0; }
@@ -1463,17 +1448,17 @@ async function removeOpinion(op) {
 .rn-part.faint { color: #B6BBC3; font-size: 22rpx; margin-left: 12rpx; }
 /* 我的投票并入票数卡内一行：细分隔线 + 状态绿字 + 右侧小号改票/撤回 */
 .ts-my-line { display: flex; align-items: center; gap: 12rpx; margin-top: 14rpx; padding: 14rpx 18rpx 0; border-top: 2rpx solid #E3ECF9; } /* 左右各 18rpx 与蓝卡内容对齐 */
-.ts-my-vote { flex: 1; min-width: 0; font-size: 25rpx; font-weight: 700; color: #2E7D32; }
-.ts-mini-act { flex-shrink: 0; border: 2rpx solid #D8DBE0; background: #fff; color: #6B7078; font-size: 23rpx; font-weight: 600; border-radius: 999rpx; padding: 6rpx 20rpx; font-family: inherit; line-height: 1.3; }
-.ts-mini-act:active { background: #F1F2F4; }
-.ts-mini-act:disabled { opacity: .5; }
+.ts-my-vote { flex: 1; min-width: 0; font-size: 27rpx; font-weight: 700; color: #3F4A57; }
+/* 0803 设计师：改票/撤回原是 38px 小胶囊 → 等宽 54px 次按钮，单独一行 */
+.ts-my-acts { display: flex; gap: 14rpx; margin-top: 14rpx; }
+.ts-my-act { flex: 1 1 0; min-height: 104rpx; box-sizing: border-box; border: 2rpx solid #D8DBE0; background: #fff;
+  color: #55585E; font-size: 28rpx; font-weight: 700; border-radius: 12px; padding: 0; font-family: inherit;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.ts-my-act:active { background: #F1F2F4; }
+.ts-my-act:disabled { opacity: .5; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
-.ts-vote-hint.mine { color: #2E7D32; font-weight: 600; }
+.ts-vote-hint.mine { color: #3F4A57; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
-.ts-vote-submit { display: flex; align-items: center; justify-content: center; box-sizing: border-box; width: 60%; min-height: 88rpx; margin: 20rpx auto 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #A85800); color: #fff; font-size: 30rpx; font-weight: 800; padding: 20rpx 32rpx; font-family: inherit; line-height: 1.2; box-shadow: 0 6rpx 16rpx rgba(168,88,0,0.22); white-space: nowrap; }
-.ts-vote-submit:active { background: var(--c-primary-strong, #8A4A00); }
-.ts-vote-submit[disabled] { background: #D8C3AB; color: #fff; box-shadow: none; }
-.ts-vote-submit-tip { font-size: 24rpx; font-weight: 400; opacity: 0.92; margin-left: 4rpx; }
 .ts-vote-feedback { display:inline-flex; align-items:center; gap:8rpx; padding:10rpx 16rpx; border-radius:999rpx; background:#EAF6E5; border:2rpx solid #B8DFAF; color:#2E7D32; font-size:25rpx; font-weight:800; }
 /* 选中未提交：暖橙提示色，与提交成功的绿色明确区分（0722：别让"已选"看着像"已投"） */
 .ts-vote-feedback-mark { width:28rpx; height:28rpx; border-radius:50%; background:#2E9E4B; color:#fff; display:inline-flex; align-items:center; justify-content:center; font-size:18rpx; flex-shrink:0; }
@@ -1495,7 +1480,7 @@ async function removeOpinion(op) {
 /* 入口=弹层里最显眼的实心按钮（0722 用户定：不自动展开面板，用醒目入口引导） */
 /* 次级按钮层级（Ant/WeUI 惯例：一个弹层只留一个彩色填充按钮）：白底描边+主题色文字，
    靠宽度和居中位置保持醒目，不靠色块抢戏 */
-.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:51%; min-height:80rpx; box-sizing:border-box; margin:0 auto; border:2rpx solid #7FB5AE; border-radius:16rpx; background:#E6F4F2; color:#0F766E; font-size:29rpx; font-weight:700; font-family:inherit; padding:16rpx 24rpx; box-shadow:0 4rpx 12rpx rgba(15,118,110,0.14); }
+.ts-proxy-entry { display:flex; align-items:center; justify-content:center; width:100%; min-height:104rpx; box-sizing:border-box; margin:16rpx 0 0; border:0; border-radius:12px; background:#EAF0F8; color:#2f5f9e; font-size:29rpx; font-weight:700; font-family:inherit; padding:0 24rpx; box-shadow:none; }
 .ts-proxy-entry:active { background:#D5EBE8; }
 .ts-proxy-panel { background:#F8F9FB; border:2rpx solid #ECEEF2; border-radius:14rpx; padding:18rpx; }
 .ts-proxy-title { display:flex; align-items:center; justify-content:space-between; font-size:25rpx; font-weight:700; color:#3C434B; }
@@ -1509,18 +1494,18 @@ async function removeOpinion(op) {
 .ts-proxy-menu { position:absolute; right:0; top:calc(100% + 4rpx); z-index:40; display:flex; flex-direction:column; min-width:260rpx; padding:8rpx; background:#fff; border:2rpx solid #E8EAED; border-radius:14rpx; box-shadow:0 10rpx 28rpx rgba(31,35,41,0.16); }
 .ts-proxy-menu-item { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:14rpx 22rpx; font-size:25rpx; font-weight:600; color:#42464D; border-radius:10rpx; line-height:1.3; }
 .ts-proxy-menu-item:active { background:#F1F2F4; }
-.ts-proxy-menu-item.cur { color:#0F766E; background:#EFF6F5; }
+.ts-proxy-menu-item.cur { color:#2f5f9e; background:#EAF0F8; }
 .ts-proxy-menu-name { min-width:0; }
 /* 已代投委员：菜单里带一枚"已代投 X · 改"小标，一眼看清当前投的是什么、点它去改 */
-.ts-proxy-menu-cur { flex-shrink:0; font-size:22rpx; font-weight:600; color:#A85800; background:#FBEFDD; padding:2rpx 12rpx; border-radius:8rpx; white-space:nowrap; }
+.ts-proxy-menu-cur { flex-shrink:0; font-size:22rpx; font-weight:600; color:#2f5f9e; background:#EAF0F8; padding:2rpx 12rpx; border-radius:8rpx; white-space:nowrap; }
 /* 代投委员列表（0729 用户定，替代原下拉）：一行一人、名字常显、点选高亮；已代投显示当前票 */
 .ts-proxy-list { margin-top:14rpx; display:flex; flex-direction:column; gap:8rpx; max-height:360rpx; overflow-y:auto; }
 .ts-proxy-mrow { display:flex; align-items:center; gap:14rpx; padding:16rpx 18rpx; background:#fff; border:2rpx solid #ECEEF2; border-radius:12rpx; }
 .ts-proxy-mrow.on { border-color:#7FB5AE; background:#EAF5F3; }
 .ts-proxy-mrow-name { flex:1; min-width:0; font-size:27rpx; font-weight:700; color:#1F2329; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.ts-proxy-mrow-cur { flex-shrink:0; font-size:23rpx; font-weight:600; color:#A85800; background:#FBEFDD; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
+.ts-proxy-mrow-cur { flex-shrink:0; font-size:23rpx; font-weight:600; color:#2f5f9e; background:#EAF0F8; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
 /* "我投的" 用绿色区分（自己的票），"已代投" 用琥珀色（代别人投的） */
-.ts-proxy-mrow-cur.self { color:#0F766E; background:#E6F4F2; }
+.ts-proxy-mrow-cur.self { color:#2f5f9e; background:#EAF0F8; }
 .ts-proxy-mrow.me { border-color:#BFDBD6; }
 .ts-proxy-mrow-tag { flex-shrink:0; font-size:23rpx; font-weight:600; color:#8A9099; background:#F1F2F4; padding:4rpx 14rpx; border-radius:999rpx; white-space:nowrap; }
 .ts-proxy-choices { margin-top:14rpx; display:flex; flex-wrap:wrap; gap:12rpx; }
@@ -1532,7 +1517,7 @@ async function removeOpinion(op) {
 .ts-proxy-proof-tip { font-size:21rpx; color:#A0A5AD; }
 /* 操作行：撤回(改自己票时才出) + 确认。撤回浅色描边，确认实心，居中并排 */
 .ts-proxy-acts { display:flex; align-items:center; justify-content:center; gap:16rpx; margin-top:16rpx; }
-.ts-proxy-submit { border:0; border-radius:999rpx; background:#0F766E; color:#fff; font-size:26rpx; font-weight:700; padding:14rpx 44rpx; font-family:inherit; }
+.ts-proxy-submit { border:0; border-radius:12px; min-height:104rpx; background:#3567A4; color:#fff; font-size:28rpx; font-weight:700; padding:0 44rpx; font-family:inherit; }
 .ts-proxy-submit:disabled { background:#C7D1D5; }
 .ts-proxy-retract { border:2rpx solid #E1B4AC; background:#fff; color:#B0463A; font-size:25rpx; font-weight:600; border-radius:999rpx; padding:12rpx 30rpx; font-family:inherit; }
 .ts-proxy-retract:active { background:#FBEEEC; }
@@ -1547,7 +1532,7 @@ async function removeOpinion(op) {
 
 /* 通报类议题：通知正文 + 已通报状态 */
 .ts-notice { background: #FFFBF3; border: 2rpx solid #F1E2C6; border-radius: 16rpx; padding: 22rpx 22rpx 20rpx; margin-bottom: 18rpx; }
-.ts-notice-label { font-size: 26rpx; font-weight: 700; color: #A85800; margin-bottom: 12rpx; }
+.ts-notice-label { font-size: 26rpx; font-weight: 700; color: #8A9099; margin-bottom: 12rpx; }
 .ts-notice-body { font-size: 32rpx; color: #1f2329; line-height: 1.7; white-space: pre-wrap; }
 .ts-notice-none { font-size: 26rpx; color: #A79A7E; }
 /* 已通知：清爽一行绿字（0729 重做——通知是一次性传达，完成即一行了事，不再堆已读进度） */
@@ -1577,7 +1562,12 @@ async function removeOpinion(op) {
 .ts-ops.summary .ts-ops-title-row .ts-ops-head { margin-bottom: 0; }
 .ts-empty { font-size: 28rpx; color: #9AA0A6; padding: 18rpx 0 24rpx; }
 /* 无意见友好空态：软图标 + 一句安心话，填补投完票后的空白（0729 用户定） */
-.ts-ops-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16rpx; padding: 88rpx 48rpx 64rpx; text-align: center; }
+.ts-ops-empty { display: flex; align-items: center; justify-content: center; padding: 40rpx 24rpx; text-align: center; }
+/* 讨论类形态（0803 设计师）：正文 + 「我已查看」状态行，无票数、无结论 */
+.ts-discuss { padding: 4rpx 0 8rpx; }
+.ts-discuss-done { display: flex; align-items: center; gap: 12rpx; margin-top: 18rpx; font-size: 27rpx; color: #3F4A57; font-weight: 600; }
+.ts-discuss-done-mark { flex-shrink: 0; width: 34rpx; height: 34rpx; border-radius: 50%; background: #3567A4; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 22rpx; }
 .ts-ops-empty-ico { width: 112rpx; height: 112rpx; border-radius: 50%; background: #EEF2F7; display: flex; align-items: center; justify-content: center; color: #9BA6B4; }
 .ts-ops-empty-ico svg { width: 58rpx; height: 58rpx; display: block; }
 .ts-ops-empty-title { font-size: 30rpx; font-weight: 700; color: #8A9099; }
@@ -1626,7 +1616,8 @@ async function removeOpinion(op) {
 .ts-op-claim-btn:active { background: #FFF1DC; }
 
 /* 发表意见卡片：暖米底把"写意见"整块框起来，与下方导航区分开 */
-.ts-compose { flex-shrink: 0; background: #FCF9F3; border: 2rpx solid #F0EAE0; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
+/* 0803 设计师：输入区原本整块橙底（橙是异常态专用）→ 中性浅灰 */
+.ts-compose { flex-shrink: 0; background: #F7F8FA; border: 2rpx solid #E8EBEF; border-radius: 20rpx; padding: 18rpx 18rpx 16rpx; margin-top: 10rpx; }
 .ts-input { flex-shrink: 0; display: flex; align-items: flex-end; gap: 14rpx; background: transparent; }
 /* 补充意见输入框默认给足高度（约3行），别只留一行让人不敢展开写；输入更多会自增到 max-height */
 .ts-input .ts-ta { min-height: 132rpx; }
@@ -1645,46 +1636,52 @@ async function removeOpinion(op) {
 .ts-voice-result-edit { width:100%; min-height:180rpx; max-height:280rpx; box-sizing:border-box; resize:none; border:2rpx solid #D7DEE6; border-radius:16rpx; background:#fff; padding:18rpx 20rpx; font-family:inherit; outline:none; }
 .ts-voice-result-edit:focus { border-color:#4B8FD8; box-shadow:0 0 0 5rpx rgba(75,143,216,0.10); }
 .ts-voice-txt { font-size: 30rpx; color: #333; }
-.ts-voice-txt.busy { display: flex; align-items: center; justify-content: center; gap: 14rpx; color: #E8890C; font-weight: 600; padding: 16rpx 0; }
-.ts-voice-spin { width: 28rpx; height: 28rpx; border: 4rpx solid #F0D9BC; border-top-color: #E8890C; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
+.ts-voice-txt.busy { display: flex; align-items: center; justify-content: center; gap: 14rpx; color: #2f5f9e; font-weight: 600; padding: 16rpx 0; }
+.ts-voice-spin { width: 28rpx; height: 28rpx; border: 4rpx solid #B9CCE4; border-top-color: #3567A4; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
 .ts-voice-cancel { flex-shrink: 0; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #fff; color: #666; font-size: 30rpx; padding: 16rpx 34rpx; }
-.ts-voice-done { flex-shrink: 0; border: 0; border-radius: 16rpx; background: var(--c-primary-dark, #E8890C); color: #fff; font-size: 30rpx; font-weight: 700; padding: 18rpx 44rpx; }
+.ts-voice-done { flex-shrink: 0; min-height: 104rpx; border: 0; border-radius: 12px; background: #3567A4; color: #fff; font-size: 30rpx; font-weight: 700; padding: 0 44rpx; }
 .ts-ta { flex: 1; border: 2rpx solid #D8DBE0; border-radius: 18rpx; padding: 16rpx 20rpx; font-size: 30rpx; line-height: 1.4; resize: none; box-sizing: border-box; max-height: 160px; font-family: inherit; }
 .ts-ta:focus { border-color: #FFA800; outline: none; }
-.ts-send { flex-shrink: 0; background: var(--c-primary-dark, #E8890C); color: #fff; border: 0; border-radius: 18rpx; font-size: 30rpx; font-weight: 700; padding: 18rpx 34rpx; }
-.ts-send[disabled] { background: #E3D5C3; }
+.ts-send { flex-shrink: 0; min-height: 104rpx; background: #3567A4; color: #fff; border: 0; border-radius: 12px; font-size: 30rpx; font-weight: 700; padding: 0 34rpx; }
+.ts-send:active { background: #2f5f9e; }
+.ts-send[disabled] { background: #C9D2DC; }
 .ts-input-hint { flex-shrink: 0; font-size: 26rpx; color: #9AA0A6; text-align: center; padding: 16rpx 0 4rpx; border-top: 2rpx solid #F2F2F4; margin-top: 8rpx; }
 /* 导航：在输入卡片之外、弹层最底部。上一个=白底描边次要按钮靠左，下一个/完成=实心主按钮+呼吸发光靠右，两端隔开（方案B） */
-.ts-nav-row { flex-shrink: 0; display: flex; align-items: center; gap: 14rpx; margin-top: 20rpx; padding-top:18rpx; border-top:2rpx solid #EEF1F4; }
-.ts-nav-btn { box-sizing: border-box; border: 2rpx solid #D8DBE0; border-radius: 16rpx; background: #F7F8FA; color: #444; font-size: 29rpx; font-weight: 700; padding: 22rpx 34rpx; }
+/* 0803 设计师：两颗等宽 1:1、都 54px；原来宽度不等、「下一个议题」还是墨绿实心（第四种颜色） */
+.ts-nav-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 14rpx; margin-top: 20rpx; padding-top:18rpx; border-top:2rpx solid #EEF1F4; }
+.ts-nav-row > button { flex: 1 1 0; min-width: 0; }
+.ts-nav-btn { box-sizing: border-box; min-height: 104rpx; border: 2rpx solid #D8DBE0; border-radius: 12px; background: #fff; color: #444; font-size: 29rpx; font-weight: 700; padding: 0 20rpx; font-family: inherit; }
 .ts-nav-btn:active { background: #ECEEF1; }
 .ts-op-collapse { flex-shrink: 0; border: 2rpx solid #C7D4E2; background: #F4F8FC; color: #3F566E; font-size: 28rpx; font-weight: 800; padding: 16rpx 28rpx; border-radius: 999rpx; font-family: inherit; box-shadow: 0 4rpx 10rpx rgba(63,86,110,0.08); }
 .ts-op-collapse:active { background: #E8F0F8; border-color: #9FB4C9; color: #26394D; }
-.ts-op-collapse.warm { border-color: #E7B36A; background: #FFF4E6; color: #A85800; box-shadow: 0 5rpx 14rpx rgba(168,88,0,0.12); }
+
 .ts-op-collapse.warm:active { background: #FBE7CC; border-color: #D88900; color: #874600; }
 /* 上一个议题：规整的白底描边次要按钮，靠左；把右侧主按钮顶到最右 */
-.ts-nav-btn.prev { margin-right: auto; background: #fff; border-color: #D8DBE0; color: #55585E; padding: 18rpx 30rpx; }
+.ts-nav-btn.prev { background: #fff; border-color: #D8DBE0; color: #55585E; }
 .ts-nav-btn.prev:active { background: #EEF0F3; color: #3A3F47; }
 /* 返回：与「上一个议题」同款白底描边次要按钮，靠左，把右侧主按钮顶到最右 */
-.ts-nav-btn.back { margin-right: auto; background: #fff; border-color: #D8DBE0; color: #55585E; padding: 18rpx 34rpx; }
+.ts-nav-btn.back { background: #fff; border-color: #D8DBE0; color: #55585E; }
 .ts-nav-btn.back:active { background: #EEF0F3; color: #3A3F47; }
-.ts-next-action { margin-left:auto; display:flex; align-items:center; padding:10rpx; border:2rpx solid #B9D8D5; background:#F0FAF8; border-radius:22rpx; box-shadow:0 6rpx 18rpx rgba(15,118,110,0.10); }
-.ts-next-action.disabled { border-color:#E1E5EA; background:#F6F7F9; box-shadow:none; }
-.ts-nav-btn.next { min-width:0; padding:18rpx 28rpx 18rpx 32rpx; border-radius:16rpx; background:#0F766E; border-color:#0F766E; color:#fff; font-size:30rpx; box-shadow:none; }
-.ts-nav-btn.next:active { background:#0B5F59; border-color:#0B5F59; }
-.ts-nav-btn.next[disabled] { background:#D8DDE3; border-color:#D8DDE3; color:#8B949E; }
+.ts-nav-btn.next { background:#3567A4; border-color:#3567A4; color:#fff; font-size:30rpx; box-shadow:none; }
+.ts-nav-btn.next:active { background:#2f5f9e; border-color:#2f5f9e; }
+/* 禁用态原来是浅灰几乎看不出（0803 设计师）：加深描边与文字，明确"现在点不了" */
+.ts-nav-btn.next.off { background:#E7EAEE; border-color:#CFD5DC; color:#8B949E; }
 .ts-next-arrow { font-size:34rpx; line-height:1; margin-left:4rpx; }
 /* 最后一个议题的「完成」：绿色实心(收尾/成功语义)，同样去掉发光 */
-.ts-nav-btn.done { margin-left:auto; background: #1F9D57; border-color: #1F9D57; color: #fff; box-shadow: 0 4rpx 12rpx rgba(31,157,87,0.22); }
-.ts-nav-btn.done:active { background: #1A8449; border-color: #1A8449; }
+.ts-nav-btn.done { background: #3567A4; border-color: #3567A4; color: #fff; box-shadow: none; }
+.ts-nav-btn.done:active { background: #2f5f9e; border-color: #2f5f9e; }
+/* 底部「提交表决」：选完选项时的唯一主按钮，实心蓝 2 份宽；「重选」中性 1 份 */
+.ts-nav-row .ts-nav-btn.submit { flex: 2 1 0; background: #3567A4; border-color: #3567A4; color: #fff; font-size: 31rpx; }
+.ts-nav-row .ts-nav-btn.submit:active { background: #2f5f9e; border-color: #2f5f9e; }
+.ts-nav-row .ts-nav-btn.submit[disabled] { background: #C9D2DC; border-color: #C9D2DC; }
+.ts-nav-row .ts-nav-btn.cancel { background: #fff; border-color: #D8DBE0; color: #55585E; }
 
 /* AI 助手行：AI 帮写(橙) / 语音输入(蓝) 两个等宽按钮并排，卡片内文本框下方，双色区分 */
 .ts-ai-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 16rpx; padding: 12rpx 0 0; background: transparent; }
 .ts-ai-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 10rpx; border: 2rpx solid transparent; border-radius: 14rpx; font-size: 28rpx; font-weight: 600; padding: 18rpx 12rpx; }
-.ts-ai-btn.ai { background: #EEF6E2; border-color: #BAD79A; color: #4F8B34; }
-.ts-ai-btn.ai:active { background: #E3F0D2; }
-.ts-ai-btn.voice { background: #EAF3FC; border-color: #C6DDF3; color: #1F6FB2; }
-.ts-ai-btn.voice:active { background: #DCEAF8; }
+/* 0803 设计师：两个同级按钮原本一绿一蓝 → 同一套浅蓝，同级就该同样式 */
+.ts-ai-btn.ai, .ts-ai-btn.voice { background: #EAF0F8; border-color: #B9CCE4; color: #2f5f9e; }
+.ts-ai-btn.ai:active, .ts-ai-btn.voice:active { background: #DCE7F3; }
 .ts-ai-btn[disabled] { opacity: 0.55; }
 /* 虚化态（0729 用户定）：条件不满足时 AI 按钮"占位但暗淡"，满足后恢复为清晰可点 */
 .ts-ai-btn.faded { opacity: 0.4; filter: grayscale(0.4); }
@@ -1693,7 +1690,7 @@ async function removeOpinion(op) {
 .ts-ai-token { margin-left: auto; font-size: 22rpx; color: #C2C6CC; }
 /* AI 生成中：转圈图标 + 假进度百分比 */
 .ts-ai-prog { display: inline-flex; align-items: center; gap: 8rpx; font-size: 24rpx; font-weight: 600; color: #B06A00; font-variant-numeric: tabular-nums; }
-.ts-ai-spin { width: 26rpx; height: 26rpx; border: 4rpx solid #CDE3B4; border-top-color: #4F8B34; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
+.ts-ai-spin { width: 26rpx; height: 26rpx; border: 4rpx solid #B9CCE4; border-top-color: #3567A4; border-radius: 50%; animation: ts-ai-spin 0.7s linear infinite; }
 @keyframes ts-ai-spin { to { transform: rotate(360deg); } }
 
 /* AI 小助手面板 */
