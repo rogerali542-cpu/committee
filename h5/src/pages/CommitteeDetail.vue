@@ -1280,13 +1280,16 @@ const recipientSummary = computed(() => {
 const prepFooterEl = ref(null)
 const prepFooterH = ref(0)
 let _footerRO = null
+function measurePrepFooter() {
+  const el = prepFooterEl.value
+  if (el) prepFooterH.value = Math.ceil(el.getBoundingClientRect().height)
+}
 watch(prepFooterEl, (el) => {
   if (_footerRO) { _footerRO.disconnect(); _footerRO = null }
   if (!el) { prepFooterH.value = 0; return }
-  const measure = () => { prepFooterH.value = Math.ceil(el.getBoundingClientRect().height) }
-  measure()
+  measurePrepFooter()
   if (typeof ResizeObserver !== 'undefined') {
-    _footerRO = new ResizeObserver(measure)
+    _footerRO = new ResizeObserver(measurePrepFooter)
     _footerRO.observe(el)
   }
 }, { flush: 'post' })
@@ -1325,6 +1328,10 @@ const footerStageBase = computed(() => (isMeetingDay.value ? 'start' : (noticeSe
 const footerStage = computed(() => (
   testForceStart.value && footerStageBase.value === 'remind' ? 'start' : footerStageBase.value
 ))
+// 0801 修「底部条把最后一行压掉」：三态切换时条高变化不小（send 态带标题+两行勾选，最高），
+// 万一 ResizeObserver 没跟上（个别 WebView 不触发/不支持），让位量还停在旧值就会盖住内容。
+// 状态一切就主动补量一次，双保险。
+watch(footerStage, () => nextTick(measurePrepFooter), { flush: 'post' })
 // 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
 const remindLabel = computed(() => (
   noticeSent.value
@@ -2133,7 +2140,9 @@ async function removeMaterial(item) {
    条高不再手算：--prep-footer-h 由 JS 用 ResizeObserver 实测写入（含安全区），这里只加 40px 呼吸位。
    兜底 190px 供首帧（测量前）用。 */
 .detail-page.has-prep-footer { padding-bottom:0; }
-.detail-page.has-prep-footer .detail-body { padding-bottom:calc(var(--prep-footer-h, 190px) + 40px); }
+/* 兜底 250px 按最高的 send 态（标题+两行勾选+主按钮）给：实测值没到位时宁可多留、别压内容；
+   呼吸位 20→32px（0801 设计师：最后一行被条压掉过） */
+.detail-page.has-prep-footer .detail-body { padding-bottom:calc(var(--prep-footer-h, 250px) + 32px); }
 /* 0801 设计师二提「仍空 150px」：那一片不是 padding——通知人员收起后整页不满一屏，
    .detail-body(flex:1 0 auto) 被撑满视口，内容末尾到钉死的操作条之间剩下的是视口余量，
    单纯减 padding 消不掉。改成把这片余量挪走：.detail-body 在该模式下转成 flex 列，
@@ -2569,7 +2578,8 @@ async function removeMaterial(item) {
    详情页没有底部导航栏，直接贴视口底；内容区靠 .detail-body 的 padding-bottom 让位 */
 .prep-footer { position:fixed; left:0; right:0; bottom:0; z-index:90;
   box-sizing:border-box; background:#fff; padding:16px 16px calc(16px + env(safe-area-inset-bottom));
-  box-shadow:0 -10rpx 24rpx rgba(20,42,58,.06); }
+  /* 顶部阴影加深一档（0801 设计师）：滚动时能看出条下面还压着内容 */
+  box-shadow:0 -10rpx 24rpx rgba(20,42,58,.10); }
 .prep-footer.after-send-footer { padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
 /* 主按钮：与创建页 .btn-primary 一致（纯深橙药丸，高 88rpx / 圆角 44rpx / 字 32rpx·600） */
 /* 按钮整体缩 10%（高度/字号），通知页内容多时不显拥挤 */
