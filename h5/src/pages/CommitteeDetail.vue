@@ -416,14 +416,17 @@
             </button>
           </div>
           <button v-if="footerStage === 'send'" class="pf-btn pf-btn-main" :class="{ disabled: !recipientSelectedCount, busy: mainSending }" :disabled="mainSending || !recipientSelectedCount" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : (recipientSelectedCount ? '发送通知' : '请先选择通知人员') }}</button>
-          <!-- 会议当天：「开始会议」蓝实心主操作 + 浅蓝次级「再次提醒」，按规则四 2:1 分宽。
-               已发送、会议未到：「再次提醒」是这一态唯一主按钮 → 实心蓝（0803 用户定），
-               点了直接 App 内再通知（不再弹渠道选择——App 内通知已是默认动作） -->
+          <!-- 会议当天：「开始会议」蓝实心主操作 + 浅蓝次级「再次提醒 N 人」，按规则四 2:1 分宽。
+               已发送、会议未到：浅蓝底（0803 设计师改回、用户同意）——"底部主按钮必须实心"
+               的前提是这一屏有件必须办的事；通知已发出、等开会而已，「再次提醒」是可选补救，
+               实心蓝在喊人点它、还让人以为差一步没做完。实心只留给真要做的事（开始会议）。
+               四个字撑不满的问题靠文案补对象解决（再次提醒 7 位委员），不靠缩按钮——
+               60px 是老年人拇指区下限，整宽是底部唯一动作的常规做法。 -->
           <div v-else-if="footerStage === 'start'" class="pf-sub-row">
-            <button class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="remindNow">{{ mainSending ? '正在发送…' : remindLabel }}</button>
+            <button class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="remindNow">{{ mainSending ? '正在发送…' : remindLabelShort }}</button>
             <button class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
           </div>
-          <button v-else class="pf-btn pf-btn-main" :class="{ busy: mainSending }" :disabled="mainSending" @click="remindNow">{{ mainSending ? '正在发送…' : remindLabel }}</button>
+          <button v-else class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="remindNow">{{ mainSending ? '正在发送…' : remindLabel }}</button>
         </div>
       </div>
     </div>
@@ -1349,10 +1352,19 @@ const footerStage = computed(() => (
 // （footerStageBase → noticeSent）里有定义在本行之后的 const——setup 顶层直接 watch 会撞 TDZ
 // （Cannot access 'noticeSent' before initialization），整页白屏。0803 就是这么炸的。
 onMounted(() => { watch([footerStage, recipientOpen], () => nextTick(recalcFooterShrink)) })
-// 文案就叫「再次提醒」（0803 用户定，设计师同意）：不掺"N 位未确认"——委员在微信群看到通知
-// 就来开会、从不进 App 确认是完全正常的用法，App 内确认只是个信号，不该变成提醒的前提。
-// 会议当天还没通知过时回落成「发送通知」。
-const remindLabel = computed(() => (noticeSent.value ? '再次提醒' : '发送通知'))
+// 再次提醒的文案（0803 定稿）：带人数不带判断——"未确认"去掉（委员在微信群看到就来开会、
+// 不进 App 确认是正常用法，确认只是信号不是前提），但对象要说清：按钮得讲明对谁做，
+// 光秃秃的「再次提醒」四个字摆在整宽按钮上也撑不住。独占一行用全称「再次提醒 7 位委员」，
+// 与「开始会议」并排时用短形「再次提醒 7 人」。会议当天还没通知过时回落「发送通知」。
+const remindCount = computed(() => recipientSelectedCount.value || recipientList.value.length || 0)
+const remindLabel = computed(() => {
+  if (!noticeSent.value) return '发送通知'
+  return remindCount.value ? '再次提醒 ' + remindCount.value + ' 位委员' : '再次提醒'
+})
+const remindLabelShort = computed(() => {
+  if (!noticeSent.value) return '发送通知'
+  return remindCount.value ? '再次提醒 ' + remindCount.value + ' 人' : '再次提醒'
+})
 // 全 App 统一的时间写法：8月1日 19:22（不露 2026-08-01 19:22 这种机读格式）
 function fmtSendTimeShort(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
