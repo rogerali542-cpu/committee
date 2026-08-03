@@ -4047,6 +4047,10 @@ async function returnToRecordingPage() {
 /* 步骤小字在本页不带自身 padding（外层已给 8px），下方用 margin 精确控 8px；
    line-height 显式给定，免得默认行高的额外行距把 8px 又撑开 */
 .meeting-console .si-step-line { padding:0 6rpx; margin-bottom:16rpx; line-height:1.35; }
+/* 会议卡顶部内边距在本页收窄（0803 用户定）：外层白卡与会议卡同为白底、之间那 8px
+   看不出分界，40rpx 的卡内上留白会和它连成一片 ≈29px 空白，标题像掉在半空。
+   收到 16rpx 后步骤小字到标题约 16px，读起来是"小标签 + 标题"一组 */
+.meeting-console .si-meet-card { padding-top:16rpx; }
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
 .meeting-console-title { font-size:34rpx; line-height:1.35; font-weight:800; color:#20242A; }
 .meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:26rpx; color:#7A818B; }
