@@ -151,8 +151,8 @@
 
 
     <template v-if="!isOnlineMeeting">
-    <!-- 方案C：录音开始后收成顶部状态条；暂停后在这里露出继续/上传 -->
-    <div v-if="currentStep === 2 && (recActive || isPaused)" class="top-rec-status" :class="{ paused: isPaused }">
+    <!-- 方案C：录音开始后收成顶部状态条（0803 起仅议题处理等旧页用；会议进行页状态在会议卡里，不再双份） -->
+    <div v-if="currentStep === 2 && meetingPhase !== 'recording' && (recActive || isPaused)" class="top-rec-status" :class="{ paused: isPaused }">
       <span class="top-rec-dot"></span>
       <span class="top-rec-main">{{ isPaused ? '录音已暂停' : '录音中' }}</span>
       <span class="top-rec-time">{{ timeText }}</span>
@@ -273,12 +273,21 @@
           <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
           <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}</div>
           <div class="si-meet-meta2 si-meet-loc">{{ detail.location }}<template v-if="signinStats.total"> · 已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</template></div>
-          <!-- 录音状态：灰点=未开始，蓝点呼吸=录音中，暖橙点=已暂停（异常态专色，暂停恰是"需要留意"） -->
-          <div class="mc-rec" :class="{ on: recActive, paused: isPaused }">
+          <!-- 录音状态：灰点=未开始，蓝点呼吸=录音中/上传/识别中，暖橙点=已暂停（异常态专色，暂停恰是"需要留意"）。
+               0803 设计师：录音状态只在这一行，控制只在底部条——原「会议录音」卡整张删除，
+               上传/识别进度并入本行，异常（上传失败/识别失败）用下面的暖色提示行 + 行内重试 -->
+          <div class="mc-rec" :class="{ on: recActive || mcRecBusy, paused: isPaused && !mcRecBusy }">
             <span class="mc-rec-dot"></span>
-            <span class="mc-rec-txt">{{ recActive ? '录音中 ' + timeText : (isPaused ? '已暂停 ' + timeText : '尚未开始录音') }}</span>
+            <span class="mc-rec-txt">{{ mcRecText }}</span>
           </div>
+          <button v-if="mcRecErrText" type="button" class="mc-rec-err" :disabled="!mcRecErrAction" @click="mcRecErrRetry">
+            <span class="mc-rec-err-txt">⚠ {{ mcRecErrText }}</span>
+            <span v-if="mcRecErrAction" class="mc-rec-err-act">{{ mcRecErrAction }}</span>
+          </button>
         </div>
+
+        <!-- 录音中断预警：切出瞬间 JS 冻结无法当场提示，只能前置；跟在状态行所在卡片下面 -->
+        <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中请不要切出微信或锁屏，否则录音会中断</div>
 
         <div class="mc-topics">
           <div class="mc-topics-head">
@@ -312,6 +321,24 @@
             <span class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
             <i class="si-row-arr"></i>
           </button>
+          <!-- 已上传的录音段：原录音卡里的「已录N段」列表降级成一行，展开看详情/删除（删除仅主任） -->
+          <button v-if="recordings.length" type="button" class="si-row" @click="recListOpen = !recListOpen">
+            <span class="si-row-k">会议录音（{{ recordings.length }} 段）</span>
+            <i class="si-row-arr" :class="{ open: recListOpen }"></i>
+          </button>
+          <div v-if="recordings.length && recListOpen" class="mc-files">
+            <div class="supp-file" v-for="(item, idx) in recordingsChrono" :key="item.id" @click="openRecordingDetail(item, idx)">
+              <span class="supp-file-name mc-seg-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
+              <span class="supp-file-size">详情</span>
+              <span v-if="isChair" class="mc-seg-del" @click.stop="deleteRecording(item, idx)">删除</span>
+            </div>
+          </div>
+          <!-- 低频补救（0803 设计师）：录音出问题手动传文件补上，收进列表末尾，不与录音控制并列 -->
+          <button v-if="!isSelfRemote" type="button" class="si-row mc-upload-row" @click="chooseAudioFile">
+            <span class="si-row-k">＋ 上传录音文件</span>
+            <i class="si-row-arr"></i>
+          </button>
+          <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
         </div>
       </div>
 
@@ -344,60 +371,8 @@
         </div>
       </div>
 
-      <!-- 录音中断预警：放在录音卡上方（不占卡内空间）；切出瞬间 JS 冻结无法当场提示，只能前置 -->
-      <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中请不要切出微信或锁屏，否则录音会中断</div>
-
-      <!-- 录音明细（0803 骨架后降级为按需出现）：有段落/暂停待传/上传中才显示——
-           纯"未开始/正在录"由会议卡状态行+底部条表达，这卡不再常驻 -->
-      <div class="supp-card" v-if="meetingPhase === 'recording' && (recordings.length || isPaused || stoppedUnuploaded || uploading || polling)">
-        <!-- ① 会议录音（0729 用户定：左栏=标题+「已录N段·展开」；右侧「继续录音」放大、纵向占满两行高度，
-             既醒目又远离展开，避免和展开相互误点） -->
-        <div class="supp-head recording-compact-head">
-          <div class="rec-head-left">
-            <span class="supp-title">会议录音</span>
-            <!-- 展开紧挨「已录N段」（挪离右侧录音钮）：左侧一组，右侧录音钮，互不误触 -->
-            <div v-if="recordings.length" class="rec-seg-toggle-row">
-              <span class="rec-seg-label">已录 {{ recordings.length }} 段</span>
-              <button class="recording-summary-toggle" @click="recListOpen = !recListOpen">{{ recListOpen ? '收起 ▲' : '展开 ▾' }}</button>
-            </div>
-          </div>
-          <button v-if="!isPaused && !isSelfRemote" class="supp-btn rec recording-head-action" @click="onCircleTap" :disabled="uploading || generatingMinutes">
-            {{ recActive ? '暂停录音' : (idleAfterUpload ? '继续录音' : '开始录音') }}
-          </button>
-        </div>
-        <!-- 线上参会：不参与现场录音，仅可查看已录段落与会议进展 -->
-        <div v-if="isSelfRemote" class="rec-remote-note">您以线上方式参会，无需现场录音。现场录音由到场委员完成。</div>
-        <!-- 已录内容作为录音区状态摘要，放在主操作上方，避免与下方会议材料混在一起 -->
-        <div v-if="recordings.length && recListOpen" class="rec-list rec-list-before-action">
-          <div class="rec-list-body">
-            <div class="qk-rec-list-item rec-summary-row" v-for="(item, idx) in recordingsChrono" :key="item.id">
-              <span class="qrl-name rec-summary-name">第 {{ idx + 1 }} 段</span>
-              <span class="rec-summary-duration">{{ fmtDur(item.durationSec) }}</span>
-              <!-- 0721 用户定：行内播放按钮去掉——录音基本没人听，转写内容才是重点；试听收进详情 -->
-              <span class="rec-summary-more" @click="openRecordingDetail(item, idx)">详情 ›</span>
-              <span v-if="isChair" class="rec-summary-del" @click="deleteRecording(item, idx)">删除</span>
-            </div>
-          </div>
-        </div>
-        <!-- 录音上传/后台转写状态：上传后自动转写 -->
-        <div v-if="uploading" class="rec-status"><span class="qk-up-spin"></span>正在上传并处理录音…<span v-if="uploadPct > 0"> 预计 {{ uploadPct }}%</span></div>
-        <div v-else-if="asrStatus === 'empty' || asrStatus === 'failed'" class="rec-status err">⚠ {{ asrErrorText }}</div>
-        <div v-else-if="uploadErrorText" class="rec-status err">⚠ {{ uploadErrorText }}</div>
-        <div v-else-if="polling || extracting" class="rec-status"><span class="qk-up-spin"></span>录音识别中，可继续录音和开会</div>
-        <!-- 识别失败的重试入口：仅失败时出现（平时不放识别按钮，免得误导；正常识别全自动） -->
-        <div v-if="recognizeRetryVisible" class="supp-actions single paused">
-          <button class="supp-btn upload-rec" @click="uploadAndRecognize">重新识别录音</button>
-        </div>
-        <!-- 暂停态：继续/上传放卡片下部（初始「开始录音」在头部右侧，见上方 supp-head）
-             已停止未上传态（中断/上传失败）：只出「上传录音」，继续录音无从恢复不显示 -->
-        <div v-if="(isPaused || stoppedUnuploaded) && !isSelfRemote" class="supp-actions single paused">
-          <button v-if="isPaused" class="supp-btn rec" @click="resumeRecording" :disabled="uploading || generatingMinutes">继续录音</button>
-          <button class="supp-btn upload-rec" @click="uploadRecordingStep" :disabled="uploadRecordingDisabled || uploading || polling || extracting || generatingMinutes">上传录音</button>
-        </div>
-        <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
-      </div>
-
-      <!-- 会议材料：独立卡片（与会议录音分开）；份数紧跟标题，文件名蓝字下划线示可点 -->
+      <!-- 「会议录音」卡已删（0803 设计师）：状态并入会议卡状态行，控制只在底部条，
+           段落列表/上传文件收进上方轻列表，异常重试走状态行下的暖色提示行 -->
       <!-- 底部操作条（0803 设计师）：未录音「开始录音」；录音中「暂停录音 | 结束会议」；
            暂停/停录未传「继续录音 | 结束会议」；进过会后整理则整条变「会后整理」。
            结束会议走 handleMeetingBottomAction（自带二次确认与无录音兜底） -->
@@ -1096,6 +1071,36 @@ const recognizeRetryVisible = computed(() =>
   && !canUpload.value
   && (asrStatus.value === 'failed' || (recordings.value || []).some(r => r.asrStatus === 'failed')))
 
+// ── 会议卡录音状态行（0803 设计师：状态只在会议卡、控制只在底部条，录音卡整张删除）──
+// 一行文本走完 录音中/暂停/上传/识别/已录N段；异常（上传失败/识别失败）单独一条暖色提示行带行内重试
+const mcRecBusy = computed(() => uploading.value || polling.value || extracting.value)
+const mcRecText = computed(() => {
+  if (uploading.value) return '正在上传录音…' + (uploadPct.value > 0 ? ' ' + uploadPct.value + '%' : '')
+  if (polling.value || extracting.value) return '录音识别中，可继续开会'
+  if (recActive.value) return '录音中 ' + timeText.value
+  if (isPaused.value) return '已暂停 ' + timeText.value
+  if (stoppedUnuploaded.value) return '录音已停止，结束会议时自动上传'
+  if ((recordings.value || []).length) return '已录 ' + recordings.value.length + ' 段'
+  return '尚未开始录音'
+})
+const mcRecErrText = computed(() => {
+  if (mcRecBusy.value || generatingMinutes.value) return ''
+  if (uploadErrorText.value && canUpload.value) return '录音上传失败，这段还在本机'
+  if (recognizeRetryVisible.value) return '录音识别失败'
+  if (asrStatus.value === 'empty') return asrErrorText.value // 静音段：只告知，不给重试（重转只会再花一次钱）
+  return ''
+})
+const mcRecErrAction = computed(() => {
+  if (!mcRecErrText.value) return ''
+  if (uploadErrorText.value && canUpload.value) return '重新上传'
+  if (recognizeRetryVisible.value) return '重新识别'
+  return ''
+})
+function mcRecErrRetry() {
+  if (uploadErrorText.value && canUpload.value) { uploadRecordingStep(); return }
+  if (recognizeRetryVisible.value) uploadAndRecognize()
+}
+
 // ── 主任端静默补识别：委员上传的段/识别中途丢任务的段，主任进入或刷新详情时自动识别 ──
 // 不设按钮（0721 用户定：识别入口会误导用户）。每段只自动尝试一次，失败的留给
 // 结束会议/生成纪要流程里的「先识别录音」提示兜底，避免失败段被无限重试烧识别费。
@@ -1388,7 +1393,7 @@ watch(() => meetingRecordingSession.openRequest, () => {
   syncRecordingPageVisibility()
   persistQuickState()
 })
-const recListOpen = ref(true)    // 录音卡内「已录N段」列表默认展开
+const recListOpen = ref(false)   // 轻列表「会议录音（N 段）」默认收起（0803 卡删后降级成一行）
 const rosterPopOpen = ref(false) // 点「已签到 N/M」胶囊弹出的签到名单
 const matListOpen = ref(false)   // 会中优先展示录音和主流程，材料按需展开
 const siMeetOpen = ref(false)    // 签到页：会议卡是否展开(看议题)
@@ -2064,23 +2069,34 @@ async function toggleRecord() {
   if (rec.recording.value && !rec.paused.value) {
     rec.pause()
     if (!rec.paused.value) {
-      toast({ title: '本设备不支持暂停，可直接点「上传录音」', icon: 'none' })
+      toast({ title: '本设备不支持暂停，结束会议时录音会自动上传保存', icon: 'none' })
     }
     return
   }
   // 别人正在录音 → 先提示（两路同录会导致转写重复内容），用户确认后才继续
   if (!(await confirmOthersRecording())) return
   // 暂停态的「继续录音/重新录音」由模板里并排按钮独立处理，本函数只在非暂停态被调用
-  // ⚠ 本地有未上传的录音（如中断后选了「稍后处理」）→ 必须先确认，开新录会把它丢掉。
-  //   这条检查必须放在 hasSavedRecordings 捷径之前——否则已传过段的会议里会不加确认直接丢（真机踩过）
+  // ⚠ 本地有未上传的录音（如中断后选了「稍后处理」）→ 先把它传上去再开新段。
+  //   这条检查必须放在 hasSavedRecordings 捷径之前——否则已传过段的会议里会直接顶掉（真机踩过）。
+  //   0803 卡上「上传录音」按钮删除后不再让用户选"丢弃"：与中断恢复同路，先开新段不漏录，旧段转后台静默上传
   if (rec.hasRecording.value) {
     const res = await showModal({
       title: '有一段录音还没上传',
-      content: '手里这段录音还没有上传。直接开始新录音会丢掉它。建议先点「上传录音」保存这段，再录新的。',
-      confirmText: '丢弃并重新录',
+      content: '手里这段录音还没有上传。继续录音会先把它上传保存，再接着录新的一段，转写时自动合并。',
+      confirmText: '上传并继续录',
       cancelText: '先不录'
     })
-    if (res.confirm) await startRecord()
+    if (!res.confirm) return
+    const oldBlob = rec.getBlob && rec.getBlob()
+    if (oldBlob && oldBlob.size > 0) {
+      const oldFile = new File([oldBlob], 'recording.' + extFromBlob(oldBlob), { type: oldBlob.type })
+      const oldDur = asrAudioDurSec.value || 0
+      const oldKey = rec.getPersistSessionKey()
+      await startRecord({ resume: true })
+      uploadInterruptedSegment(oldFile, oldDur, oldKey, '上一段录音')
+    } else {
+      await startRecord()
+    }
     return
   }
   // 已上传过录音 → 本次是“新增录音”，旧录音已存服务器、不会丢，直接开录、无需覆盖确认
@@ -2207,7 +2223,7 @@ watch(() => rec.interrupted.value, async (v) => {
   const r = await showModal({
     title: '录音已中断',
     content: kept
-      ? '切出微信或来电会中断录音。已录的 ' + recordedText + ' 已保存好，不会丢。\n\n点「继续录音」：立即接着录，刚才这段自动上传，最后合并成一份完整记录。\n点「稍后处理」：先不录，这段仍保留，可稍后点「上传录音」保存。'
+      ? '切出微信或来电会中断录音。已录的 ' + recordedText + ' 已保存好，不会丢。\n\n点「继续录音」：立即接着录，刚才这段自动上传，最后合并成一份完整记录。\n点「稍后处理」：先不录，这段仍保留，结束会议时会自动上传保存。'
       : '切出微信或来电会中断录音，这段没有录到内容。要重新开始录音吗？',
     confirmText: kept ? '继续录音' : '重新开始录音',
     cancelText: '稍后处理'
@@ -2223,8 +2239,10 @@ watch(() => rec.interrupted.value, async (v) => {
   uploadInterruptedSegment(oldFile, oldDur, oldSessionKey)
 })
 
-// 后台静默上传中断段：不动 rec/转写等页面状态（正在录新段），成功后清落盘并刷新录音列表
-async function uploadInterruptedSegment(file, durationSec, sessionKey) {
+// 后台静默上传一段录音（中断段/结束会议兜底段）：不动 rec/转写等页面状态（可能正在录新段），
+// 成功后清落盘并刷新录音列表；label 用于提示语（中断前的录音/上一段录音/本次录音）
+async function uploadInterruptedSegment(file, durationSec, sessionKey, label) {
+  const what = label || '中断前的录音'
   try {
     await api.committeeUploadRecording(meetingId.value, file, durationSec, () => {})
     if (sessionKey) recStore.clearSession(sessionKey)
@@ -2233,11 +2251,29 @@ async function uploadInterruptedSegment(file, durationSec, sessionKey) {
       const recs = (d.record && d.record.recordings) || []
       if (recs.length) { recordings.value = recs; reconcilePickedIds(recs) }
     } catch (e) { /* 列表刷新失败无妨，下次 loadDetail 补 */ }
-    toast({ title: '中断前的录音已上传', icon: 'success' })
+    toast({ title: what + '已上传', icon: 'success' })
+    return true
   } catch (e) {
-    // 内存里的旧段已被新录音顶掉，但落地切片还在——提示用户，重进本页可恢复上传
-    toast({ title: '中断前那段上传失败，重新进入本页可恢复', icon: 'none' })
+    // 内存里的旧段可能已被新录音顶掉，但落地切片还在——提示用户，重进本页可恢复上传
+    toast({ title: what + '上传失败，重新进入本页可恢复', icon: 'none' })
+    return false
   }
+}
+
+// 结束会议兜底：上一段还在识别时不能走 finishRecord（它会排队拒传），手里这段改走静默通道——
+// 不打断在途识别、不并发第二个转写；传成功后才清内存与落盘（失败留着，孤儿恢复弹窗兜底），
+// 这段的转写由会后整理页「生成纪要」流程按需补跑
+async function saveOngoingRecordingSilently() {
+  let saved = null
+  if (rec.recording.value) { try { saved = await rec.stop() } catch (e) { saved = null } }
+  const blob = (saved && saved.blob) || (rec.getBlob && rec.getBlob()) || null
+  if (!blob || !blob.size) { toast({ title: '这段录音没有录到内容', icon: 'none' }); return }
+  const ext = (saved && saved.ext) || extFromBlob(blob)
+  const dur = (saved && saved.durationSec) || asrAudioDurSec.value || 0
+  const file = new File([blob], 'recording.' + ext, { type: blob.type || '' })
+  const key = rec.getPersistSessionKey && rec.getPersistSessionKey()
+  const ok = await uploadInterruptedSegment(file, dur, key, '本次录音')
+  if (ok && !rec.recording.value) rec.reset() // 已确认入库才清内存；落盘切片 clearSession 已清
 }
 
 async function finishRecord() {
@@ -2422,8 +2458,8 @@ async function uploadRecordingFile(file, durationSec) {
     uploading.value = false
     currentStep.value = 2 // 退回录音步，可复用已录音频重试
     processText.value = '上传失败，请重试'
-    // 常驻行内提示（toast 一闪就没）：录音还在手里，引导点「上传录音」重试
-    uploadErrorText.value = '上传失败：' + ((e && e.message) || '网络异常') + '　录音还在，请点「上传录音」重试'
+    // 常驻行内提示（toast 一闪就没）：录音还在手里，会议卡状态行下有「重新上传」入口
+    uploadErrorText.value = '上传失败：' + ((e && e.message) || '网络异常')
     toast({ title: e.message || '上传失败', icon: 'none' })
   }
 }
@@ -3425,14 +3461,11 @@ async function confirmEndMeeting() {
     // 正在上传：不放弃，系统后台继续传完并保存
     content = '录音正在后台上传，不会丢失，确认结束会议吗？' + pendingTail
     confirmText = '结束会议'; cancelText = '继续开会'
-  } else if (hasOngoing && !hasUploaded) {
-    // 状态1：有进行中、无已上传。确认=放弃这段并结束。
-    content = '这段录音还没上传，结束会放弃它。确认结束？'
-    confirmText = '确认结束'; cancelText = '继续录音'
-  } else if (hasOngoing && hasUploaded) {
-    // 状态2：有进行中、有已上传。前面已保存，只放弃当前这段。
-    content = '当前这段录音没上传，结束会放弃它（前面的已保存）。确认结束？'
-    confirmText = '确认结束'; cancelText = '继续录音'
+  } else if (hasOngoing) {
+    // 状态1/2：手里有进行中/未上传的录音。0803 录音卡（上传录音按钮）删除后，
+    // 结束会议是这段录音的唯一出口——确认即自动停录并上传保存，不再放弃
+    content = '结束后，这段录音会自动上传保存，并进入会后整理。' + pendingTail
+    confirmText = '结束会议'; cancelText = '继续开会'
   } else if (!hasOngoing && !hasUploaded) {
     // 状态3：无进行中、无已上传。基本是没录音就想结束。
     content = '本次还没有任何录音，确认结束？'
@@ -3457,11 +3490,15 @@ async function confirmEndMeeting() {
   const confirmed = await showModal({ title: '', content, confirmText, cancelText })
   if (!confirmed.confirm) return
 
-  // 决策1：确认即放弃当前「进行中/未上传」的录音——结束后不再提供上传/返回入口。
-  // reset 会停录并清掉落盘切片，watch 把 recording=false 同步给全局悬浮条并隐藏。
+  // 决策1（0803 改）：确认后自动停录并上传保存手里这段——旧版"确认即放弃"是给卡上
+  // 「上传录音」当主路径时兜底用的，卡删掉后放弃会让正常流程丢整场录音。
+  // 常规走 finishRecord（停录→上传→自动识别，不 await，整理页显示上传/识别进度）；
+  // 上一段还在识别时 finishRecord 会排队拒传，改走静默通道（转写由整理页生成流程按需补跑）
   if (hasOngoing) {
-    rec.reset()
-    toast({ title: '已停止并放弃当前录音', icon: 'none' })
+    if (polling.value || extracting.value) saveOngoingRecordingSilently()
+    else finishRecord()
+    openEndReview()
+    return
   }
 
   // 决策2（安全网）：已上传但还没识别完成（识别失败/被中断/从未识别）→ 直接结束会导致会后生成纪要必失败。
@@ -4068,19 +4105,8 @@ async function returnToRecordingPage() {
 .live-quorum-tip { align-self:flex-end; margin:14rpx 2rpx -4rpx auto; padding:10rpx 16rpx; border:2rpx solid #F0C98E; border-radius:14rpx; background:#FFF8EA; color:#A35D08; display:flex; align-items:center; gap:12rpx; font-size:23rpx; font-weight:700; box-shadow:0 4rpx 12rpx rgba(163,93,8,.08); }
 .live-quorum-tip.ready { border-color:#B9DEC7; background:#EEF9F2; color:#24784A; }
 .live-quorum-count { padding-right:12rpx; border-right:2rpx solid currentColor; opacity:.9; }
-.supp-card { background:#FFF; border:2rpx solid #E8EBEF; border-radius:18rpx; padding:18rpx 20rpx; margin-top:16rpx; box-shadow:0 5rpx 16rpx rgba(31,35,41,.04); } /* 会中辅助区压缩为紧凑工具卡 */
-.supp-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16rpx; margin-bottom:12rpx; }
-.recording-compact-head { align-items:center; margin-bottom:8rpx; }
-/* 左栏：标题 + 「已录N段·展开」竖排；右侧留给放大的录音钮 */
-.rec-head-left { display:flex; flex-direction:column; gap:10rpx; flex:1; min-width:0; }
-/* 已录段落 toggle：展开紧挨段数（左对齐成组），不再撑到最右、远离录音钮防误点 */
-.rec-seg-toggle-row { display:flex; align-items:center; justify-content:flex-start; gap:18rpx; }
-.rec-seg-label { font-size:26rpx; color:#6B7480; font-weight:650; }
-/* 录音主控放卡片下部、居中 */
-.rec-bottom-action { display:flex; justify-content:center; margin-top:16rpx; }
-.rec-bottom-action .supp-btn.rec { width:56%; min-width:260rpx; height:72rpx; font-size:27rpx; }
-.recording-summary-toggle { border:0; background:transparent; color:#6B7480; font-size:26rpx; font-weight:650; padding:6rpx 12rpx; white-space:nowrap; }
-.recording-summary-toggle:active { opacity:.6; }
+/* （0803）「会议录音」supp-card 已删：状态并入会议卡状态行、控制在底部条、段落收进轻列表；
+   .supp-btn 基础样式保留——录音详情弹窗仍在用 */
 
 /* 签到名单弹窗 */
 .roster-pop-mask { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; padding:48rpx; } /* 高于会后整理页(180)，两处都能弹 */
@@ -4107,41 +4133,16 @@ async function returnToRecordingPage() {
 .rp-state.remote { color:#2980B9; }
 .rp-state.wait { color:#B0752F; }
 .rp-state.off { color:#B0392E; }
-/* ⚠ 须用 .supp-btn.recording-head-action 提权：基础 .supp-btn(84rpx) 在文件更后面，
-   单类同权重会被其覆盖（0722 用户实测按钮一直没变小的根因） */
-/* 放大：占满左栏两行高度、加宽加粗，醒目且远离展开（0729 用户定） */
-/* 继续录音钮：在放大版基础上再缩约 20%（0729 用户定），仍醒目但不过大 */
-.supp-btn.recording-head-action { flex-shrink:0; align-self:center; width:auto; min-width:160rpx; height:77rpx; padding:0 32rpx; font-size:26rpx; font-weight:700; }
-.supp-head.supp-head-2 { margin-top:22rpx; padding-top:20rpx; border-top:2rpx solid #EAEDF0; } /* 「会议材料」子标题：与上方「会议录音」区拉开分隔 */
-.supp-title { font-size:30rpx; font-weight:700; color:#2F3740; }
-.supp-sub { flex:1; text-align:right; font-size:25rpx; color:#7B8490; line-height:1.45; }
-.supp-actions { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14rpx; margin-bottom:12rpx; }
-.supp-actions.single { grid-template-columns:1fr; }
-.supp-actions.single .supp-btn { width:56%; min-width:250rpx; justify-self:center; } /* 会中操作统一胶囊宽度 */
-.supp-actions.paused { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-.supp-actions.single.paused { grid-template-columns:1fr; gap:24rpx; }
-.supp-actions.single.paused .supp-btn { width:30%; min-width:128rpx; height:46rpx; font-size:22rpx; font-weight:500; justify-self:center; }  /* 暂停态按钮（0722 二次再缩：46rpx/22号） */
-/* 双类提权确保 margin-top 生效（否则被后面的 .rec-list margin-top 覆盖）：
-   拉大「第1段」列表与上方「已录N段」行的间距（0729 用户定） */
-.rec-list.rec-list-before-action { margin:28rpx 0 12rpx; padding:8rpx 14rpx; border:2rpx solid #E4E8ED; border-radius:14rpx; background:#FFF; }
+/* .supp-btn：仅录音详情弹窗（查看这段转写/播放录音）还在用 */
 .supp-btn { height:84rpx; border-radius:999rpx; border:2rpx solid #D9E2EA; background:#F8FAFB; color:#334155; font-size:28rpx; font-weight:600; font-family:inherit; }
-.supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }  /* 稍减重：调浅一档 + 去投影 */
-.supp-actions.single:not(.paused) .supp-btn.rec { width:310rpx; min-width:310rpx; height:88rpx; font-size:28rpx; }
+.supp-btn.rec { border-color:#C0685A; background:#C0685A; color:#FFF; box-shadow:none; }
 .supp-btn.rec:active { background:#A85446; border-color:#A85446; }
-.supp-btn.upload-rec { border-color:#D6A75F; background:#FFF9EF; color:#91611C; }
-.supp-btn.ai { border-color:#BFD7D9; background:#EAF6F6; color:#126A72; }
-.supp-actions.single .supp-material-btn { width:310rpx; min-width:310rpx; height:88rpx; border-radius:999rpx; border-color:#BFC9D3; background:#FFFFFF; color:#52606D; font-size:28rpx; font-weight:600; box-shadow:none; }
-.supp-actions.single .supp-material-btn:active { background:#F2F5F7; border-color:#AEBAC6; }
-.supp-actions.paused .supp-material-btn { grid-column:1 / -1; } /* 仅暂停时「上传材料」铺满整行；非暂停(开始录音前)与「开始录音」左右并排 */
 .supp-btn:active { background:#EEF3F7; }
 .supp-btn[disabled] { opacity:0.55; box-shadow:none; }
-.supp-files { border-top:2rpx solid #F0F2F4; margin-top:12rpx; padding-top:10rpx; }
 .supp-file { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:16rpx 0; border-bottom:2rpx solid #F5F6F8; }
 .supp-file:last-child { border-bottom:0; }
 .supp-file-name { flex:1; min-width:0; font-size:28rpx; color:#2563EB; text-decoration:underline; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .supp-file-size { flex-shrink:0; font-size:24rpx; color:#8A8F98; }
-.supp-files-foot { font-size:24rpx; color:#8A8F98; text-align:right; padding-top:14rpx; margin-top:4rpx; border-top:2rpx solid #F5F6F8; }
-.supp-head-click { cursor:pointer; }
 /* 结束会议：会议进行页底部的固定出口（纪要可选，不生成也能结束）。白底描边 full-width，清晰但不抢 AI纪要 主按钮的焦点 */
 /* 返回录音 + 结束现场会议：同等重量并排（返回录音更常用，与结束会议等宽等重）。
    议题处理阶段(.pinned)钉底常驻，随时可点；两按钮同款中等重量、以颜色区分语义（0722） */
@@ -4323,9 +4324,7 @@ async function returnToRecordingPage() {
 .qk-seg-hint { font-size:26rpx; color:#9A6A00; line-height:1.5; margin:6rpx 0 2rpx; background:#FFF8EC; border-radius:12rpx; padding:14rpx 18rpx; text-align:center; }
 /* 上传录音中：转圈 + 实时进度百分比 */
 .qk-seg-hint.uploading { display:flex; align-items:center; justify-content:center; gap:12rpx; font-weight:600; }
-.qk-up-spin { width:30rpx; height:30rpx; border:5rpx solid #F0D9B8; border-top-color:#C76A00; border-radius:50%; animation:qk-up-spin 0.7s linear infinite; }
 .qk-up-pct { color:#C76A00; font-variant-numeric:tabular-nums; }
-@keyframes qk-up-spin { to { transform:rotate(360deg); } }
 /* 识别失败/空转写：明确红色提示条 */
 .qk-seg-hint.asr-error { background:#FDECEA; color:#C0392B; font-weight:600; text-align:left; }
 
@@ -4456,7 +4455,6 @@ async function returnToRecordingPage() {
 
 /* 下一步：单一主按钮区 */
 .rec-action { margin-bottom:24rpx; display:flex; flex-direction:column; align-items:center; gap:14rpx; }
-.rec-status { display:flex; align-items:center; justify-content:center; gap:12rpx; width:100%; font-size:28rpx; color:#E8890C; font-weight:600; padding:6rpx 0; }
 /* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
 .rec-bg-warn { width:fit-content; max-width:100%; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 14rpx; box-sizing:border-box; margin:14rpx auto 0; }  /* 移到录音卡上方，居中一条 */
 /* 录音警示三角：放大 + 脉冲发光，录音中持续抓注意力（0729 用户定） */
@@ -4468,9 +4466,6 @@ async function returnToRecordingPage() {
 @media (prefers-reduced-motion: reduce) {
   .rec-bg-warn-ico { animation:none; transform:scale(1.15); }
 }
-.rec-status.err { color:#C0392B; }
-/* 线上参会提示：不参与现场录音 */
-.rec-remote-note { width:100%; box-sizing:border-box; text-align:center; font-size:26rpx; line-height:1.5; color:#6B7280; background:#F6F7F9; border:1px solid #E5E7EB; border-radius:12rpx; padding:16rpx 18rpx; margin-top:12rpx; }
 .rec-main { width:52% !important; max-width:360rpx; margin:0 auto !important; font-size:26rpx !important; font-weight:700; padding:16rpx 0 !important; box-shadow:0 6rpx 16rpx rgba(232,137,12,0.22); } /* 缩小约40% */
 .rec-sub { background:none; border:0; color:#8A8F98; font-size:28rpx; padding:6rpx 20rpx; }
 .rec-sub:active { color:#5A6069; }
@@ -4589,6 +4584,19 @@ async function returnToRecordingPage() {
 .mc-rec.on .mc-rec-txt { color:#1F2937; }
 @keyframes mcPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
 @media (prefers-reduced-motion: reduce) { .mc-rec.on .mc-rec-dot { animation:none; } }
+/* 状态行下的异常提示（暖色=异常态专用）：整行可点重试，行高保 46px 下限，圆角与页面按钮同 12px 一套 */
+.mc-rec-err { display:flex; align-items:center; gap:16rpx; width:100%; min-height:92rpx; box-sizing:border-box;
+  margin-top:16rpx; padding:14rpx 22rpx; border:1px solid #F0E2C6; border-radius:12px; background:#FDF6EA;
+  font-family:inherit; text-align:left; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.mc-rec-err:active { background:#F7ECD8; }
+.mc-rec-err[disabled] { opacity:1; } /* 无动作的纯告知（静音段）：不点亮也不变灰 */
+.mc-rec-err-txt { flex:1; min-width:0; font-size:26rpx; line-height:1.45; color:#9a5b12; }
+.mc-rec-err-act { flex-shrink:0; font-size:27rpx; font-weight:700; color:#9a5b12; }
+/* 低频补救行「＋ 上传录音文件」：压一档存在感，别抢常规行 */
+.mc-upload-row .si-row-k { color:#6B7684; font-weight:500; }
+/* 轻列表里的录音段行：段名不用材料的蓝下划线（点整行看详情），删除仅主任、暖红字 */
+.mc-files .supp-file-name.mc-seg-name { color:#2F3740; text-decoration:none; }
+.mc-seg-del { flex-shrink:0; font-size:24rpx; color:#B24A3B; padding:8rpx 0 8rpx 16rpx; }
 .mc-topics { background:#fff; border-radius:26rpx; padding:8rpx 0 6rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .mc-topics-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:24rpx 30rpx 16rpx; }
 .mc-topics-title { font-size:32rpx; font-weight:700; color:#1F2024; }
@@ -4781,13 +4789,7 @@ async function returnToRecordingPage() {
 .qk-rec-list-item:last-child { border-bottom:0; }
 .qrl-idx { width:44rpx; height:44rpx; flex-shrink:0; border-radius:50%; background:#FFF1E0; color:var(--c-primary-dark); font-size:28rpx; font-weight:700; text-align:center; line-height:44rpx; }
 .qrl-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4rpx; }
-.rec-summary-row { padding:14rpx 0; }
-.rec-summary-name { flex:1; min-width:0; }
-.rec-summary-duration { color:#667085; font-size:26rpx; font-variant-numeric:tabular-nums; }
-.rec-summary-more { flex-shrink:0; color:#8A8F98; font-size:23rpx; cursor:pointer; padding:6rpx 4rpx; }
 /* 删除：红色小字，与「详情」间隔开、并加内边距扩大热区避免误点 */
-.rec-summary-del { flex-shrink:0; color:#D0392E; font-size:23rpx; margin-left:26rpx; padding:6rpx 6rpx; }
-.rec-summary-del:active { opacity:0.6; }
 .recording-detail-card { width:88%; max-height:82vh; overflow-y:auto; box-sizing:border-box; background:#fff; border-radius:24rpx; padding:30rpx; }
 .recording-detail-card .qk-modal-title { margin-bottom:0; }
 .recording-detail-grid { display:flex; flex-direction:column; gap:0; border:2rpx solid #ECEFF3; border-radius:16rpx; overflow:hidden; }
