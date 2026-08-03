@@ -293,6 +293,12 @@
                录音中＝暖色警告（切出会断），暂停中＝中性告知（切出不影响），两态都不留空 -->
           <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中不要切出或锁屏</div>
           <div v-else-if="isPaused && !mcRecBusy" class="rec-bg-warn calm">已暂停，此时切出微信不影响这段录音</div>
+          <!-- 会中保存录音（0803：用户要保留能力、设计师定形式）：卡内单独一行、行高 54px，
+               文案带对象说清楚存的是什么。只在已暂停/已停止未传时出现；录音进行中不给——
+               误点会打断整场。不给它蓝底/实心，免得和底部「继续录音 | 结束会议」争主次 -->
+          <button v-if="mcCanSaveRec" type="button" class="mc-rec-save" @click="uploadRecordingStep">
+            保存并上传这段录音
+          </button>
         </div>
 
         <div class="mc-topics">
@@ -336,14 +342,6 @@
               <i class="si-row-arr"></i>
             </button>
           </div>
-          <!-- 会中保存录音（0803 用户反馈补回、同日设计师提点后从卡内蓝字挪来这里）：
-               只在已暂停/已停止未传时出现；放列表行而不是卡内，是为了离底部两颗主按钮远一点，
-               不跟「继续录音」并列成两个动作。录音进行中不给——误点会打断整场 -->
-          <button v-if="mcCanSaveRec" type="button" class="si-row" @click="uploadRecordingStep">
-            <span class="si-row-k">保存当前录音</span>
-            <span class="si-row-v">{{ timeText }}</span>
-            <i class="si-row-arr"></i>
-          </button>
           <!-- 「＋ 上传录音文件」行已删（0803 用户定：用不到）；chooseAudioFile/onAudioFileChange 留在 JS 里备用 -->
           <!-- 临时添加议题（仅主持人）：从议题白卡内移到轻列表末行，与「会议材料」同款左对齐带箭头（0803 设计师） -->
           <button v-if="isHost" type="button" class="si-row" @click="openAddTopic">
@@ -518,20 +516,17 @@
     <!-- 实时添加议题弹窗 -->
     <div v-if="addTopicVisible" class="qk-modal-mask" @click="closeAddTopic">
       <div class="qk-modal" @click.stop="noop">
-        <span class="qk-modal-title">实时添加议题</span>
+        <span class="qk-modal-title">临时添加议题</span>
         <div class="qk-input-row">
-          <input class="qk-modal-input" placeholder="输入议题" v-model="newTopicForm.title" />
+          <input class="qk-modal-input" placeholder="请输入议题名称" v-model="newTopicForm.title" />
         </div>
         <div class="qk-modal-label">议题类型</div>
-        <!-- 0717 用户定：通知并入讨论，只剩两类；填了通知正文提交时存 notice、没填存 discussion（见 submitAddTopic） -->
+        <!-- 0717 用户定：通知并入讨论，只剩两类。0803 设计师：会中不再填通知正文，
+             非表决类一律按 discussion 落库（正文只在发起会议时写） -->
         <div class="qk-modal-types">
           <span class="qk-type discussion" :class="newTopicForm.type !== 'decision' ? 'on' : ''" @click="pickTopicType('discussion')">通知和讨论</span>
           <span class="qk-type decision" :class="newTopicForm.type === 'decision' ? 'on' : ''" @click="pickTopicType('decision')">表决事项</span>
         </div>
-        <template v-if="newTopicForm.type !== 'decision'">
-          <div class="qk-modal-label">通知正文（选填）</div>
-          <textarea class="qk-modal-input qk-modal-textarea" placeholder="请输入内容" v-model="newTopicForm.content" rows="3"></textarea>
-        </template>
         <template v-if="newTopicForm.type === 'decision'">
           <div class="qk-modal-label">表决方式</div>
           <div class="qk-modal-types">
@@ -3926,12 +3921,12 @@ async function submitAddTopic() {
     optionsJson = JSON.stringify(valid.map(function (o, i) { return { id: i + 1, label: o.label.trim() } }))
   }
   const dt = f.type === 'decision' ? f.decisionType : 'none'
-  // 合并类型的落库映射（0717，与发起会议弹窗同款）：非表决类有正文存 notice、无正文存 discussion
-  const mergedContent = f.type !== 'decision' ? (f.content || '').trim() : ''
-  const sendType = f.type === 'decision' ? 'decision' : (mergedContent ? 'notice' : 'discussion')
+  // 0803 设计师：会中不再填通知正文（会都开着，没人现场写），非表决类一律 discussion。
+  // 需要带正文的通报类议题在发起会议时创建（那边的弹窗仍有正文框）
+  const sendType = f.type === 'decision' ? 'decision' : 'discussion'
   try {
-    // 现场新增只允许通知和讨论/表决，重大事项后端会拦截；带正文走通报机制
-    await api.committeeAddTopic(meetingId.value, f.title.trim(), sendType, dt, optionsJson, false, sendType === 'notice' ? mergedContent : null)
+    // 现场新增只允许通知和讨论/表决，重大事项后端会拦截
+    await api.committeeAddTopic(meetingId.value, f.title.trim(), sendType, dt, optionsJson, false, null)
     toast({ title: '议题已添加', icon: 'success' })
     addTopicVisible.value = false
     loadDetail()
@@ -4629,6 +4624,13 @@ async function returnToRecordingPage() {
 .mc-rec.on .mc-rec-txt { color:#1F2937; }
 @keyframes mcPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
 @media (prefers-reduced-motion: reduce) { .mc-rec.on .mc-rec-dot { animation:none; } }
+/* 卡内「保存并上传这段录音」：整行可点、54px 下限、12px 圆角与页面一套；
+   浅蓝底蓝字＝次级动作，不与底部主按钮争分量 */
+.mc-rec-save { display:flex; align-items:center; justify-content:center; width:100%; min-height:104rpx;
+  box-sizing:border-box; margin-top:20rpx; padding:0 20rpx; border:0; border-radius:12px;
+  background:#EAF0F8; color:#2f5f9e; font-family:inherit; font-size:29rpx; font-weight:700;
+  touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+.mc-rec-save:active { background:#DCE7F3; }
 /* 状态行下的异常提示（暖色=异常态专用）：整行可点重试，行高保 46px 下限，圆角与页面按钮同 12px 一套 */
 .mc-rec-err { display:flex; align-items:center; gap:16rpx; width:100%; min-height:92rpx; box-sizing:border-box;
   margin-top:16rpx; padding:14rpx 22rpx; border:1px solid #F0E2C6; border-radius:12px; background:#FDF6EA;
@@ -4884,22 +4886,27 @@ async function returnToRecordingPage() {
 .qk-modal-input { box-sizing:border-box; width:100%; height:88rpx; line-height:88rpx; background:#F6F6F8; border-radius:14rpx; padding:0 20rpx; font-size:30rpx; margin-bottom:18rpx; border:0; }
 .qk-modal-textarea { height:auto; min-height:150rpx; line-height:1.6; padding:16rpx 20rpx; resize:none; font-family:inherit; }
 .qk-modal-types { display:flex; gap:18rpx; margin-bottom:46rpx; }
-.qk-type { font-size:28rpx; padding:12rpx 26rpx; border-radius:24rpx; background:#F6F6F8; color:#6B6E76; border:2rpx solid #ECECEF; }
-.qk-type.notice.on { background:#E6F4FB; color:#1677B8; border-color:#78B9DC; }
-.qk-type.discussion.on { background:#EAF6EE; color:#2E8B57; border-color:#82BE97; }
-.qk-type.decision.on, .qk-type.on:not(.notice):not(.discussion) { background:#FFF0E5; color:#D56A16; border-color:#E6A370; }
+/* 0803 设计师：选中态原来一绿（业主接待模块色）一橙（异常态专用），会议模块都不该出现——
+   统一成会议蓝；两个选项高度守 54px */
+.qk-type { display:inline-flex; align-items:center; justify-content:center; min-height:104rpx; box-sizing:border-box;
+  font-size:28rpx; padding:0 30rpx; border-radius:12px; background:#F6F6F8; color:#6B6E76; border:2rpx solid #ECECEF;
+  touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+.qk-type.on { background:#EAF0F8; color:#2f5f9e; border-color:#B9CCE4; font-weight:700; }
 .qk-modal-label { display:block; font-size:26rpx; color:#777; font-weight:600; margin-bottom:26rpx; }
 .qk-opt-row { display:flex; align-items:center; gap:14rpx; margin-bottom:12rpx; }
 .qk-opt-num { font-size:28rpx; color:#666; width:40rpx; text-align:right; flex-shrink:0; }
 .qk-opt-input { flex:1; min-width:0; height:76rpx; line-height:76rpx; margin-bottom:0; }
 .qk-opt-del { font-size:38rpx; color:#999; padding:0 8rpx; flex-shrink:0; }
 .qk-modal-area { width:100%; box-sizing:border-box; background:#F6F6F8; border-radius:14rpx; padding:18rpx 20rpx; font-size:28rpx; height:160rpx; margin-bottom:18rpx; border:0; }
-.qk-modal-btns { display:flex; gap:30rpx; margin-top:22rpx; }
-/* 添加/取消 较原生尺寸缩小约30%（高约96→68rpx） */
-.qk-modal-btns .lp-ghost-btn, .qk-modal-btns .lp-primary-btn { flex:1; margin:0; padding:15rpx 0; font-size:26rpx; border-radius:34rpx; }
-/* 取消：改中性灰底（原橙字描边不清晰、显廉价），与右侧「添加」主按钮对比更明确 */
-.qk-modal-btns .lp-ghost-btn.qk-cancel-btn { background:#F0F1F3; color:#5A6069; border:2rpx solid #E2E4E8; font-weight:600; }
-.qk-modal-btns .lp-ghost-btn.qk-cancel-btn:active { background:#E5E7EA; }
+.qk-modal-btns { display:flex; align-items:center; gap:20rpx; margin-top:22rpx; }
+/* 0803 设计师：「添加」原是橙实心+胶囊圆角——橙是异常态专用色、圆角也与页面 12px 一套不符。
+   改会议蓝实心 + 12px 圆角，高度守 54px；「取消」改无底灰字，不与主按钮争分量 */
+.qk-modal-btns .lp-primary-btn { flex:2; margin:0; min-height:104rpx; padding:0; font-size:30rpx; font-weight:700;
+  border-radius:12px; background:#3567A4; }
+.qk-modal-btns .lp-primary-btn:active { background:#2D598E; }
+.qk-modal-btns .lp-ghost-btn.qk-cancel-btn { flex:1; margin:0; min-height:104rpx; padding:0; font-size:29rpx;
+  border:0; border-radius:12px; background:none; color:#8A9099; font-weight:600; }
+.qk-modal-btns .lp-ghost-btn.qk-cancel-btn:active { background:#F2F4F6; }
 /* 议题内容 + 语音输入按钮 同行 */
 .qk-input-row { display:flex; align-items:center; gap:14rpx; margin-bottom:46rpx; }
 .qk-input-row .qk-modal-input { flex:1; min-width:0; margin-bottom:0; }
