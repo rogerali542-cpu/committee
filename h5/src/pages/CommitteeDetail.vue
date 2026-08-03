@@ -1331,7 +1331,10 @@ const footerStage = computed(() => (
 // 0801 修「底部条把最后一行压掉」：三态切换时条高变化不小（send 态带标题+两行勾选，最高），
 // 万一 ResizeObserver 没跟上（个别 WebView 不触发/不支持），让位量还停在旧值就会盖住内容。
 // 状态一切就主动补量一次，双保险。
-watch(footerStage, () => nextTick(measurePrepFooter), { flush: 'post' })
+// ⚠ 注册放 onMounted 里：watch 注册当场就会求值一次 footerStage 来收集依赖，而它的依赖链
+// （footerStageBase → noticeSent）里有定义在本行之后的 const——setup 顶层直接 watch 会撞 TDZ
+// （Cannot access 'noticeSent' before initialization），整页白屏。0803 就是这么炸的。
+onMounted(() => { watch(footerStage, () => nextTick(measurePrepFooter)) })
 // 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
 const remindLabel = computed(() => (
   noticeSent.value
