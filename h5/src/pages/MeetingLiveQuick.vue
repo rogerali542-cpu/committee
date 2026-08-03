@@ -299,8 +299,10 @@
         </div>
 
         <div class="mc-topics">
-          <!-- 「会议议题」标题已删（0803 用户定：下面就是议题列表，标题多余），只留右侧计数 -->
+          <!-- 标题 0803 一度删掉、同日按用户意见加回：右侧本就有「已处理 N/M」，
+               只留计数会孤零零右飘一行，两端各一个才对称 -->
           <div class="mc-topics-head">
+            <span class="mc-topics-title">会议议题</span>
             <span class="mc-topics-count">已处理 {{ resolvedTopicCount }} / {{ meetingTopics.length }}</span>
           </div>
           <!-- 序号圆点已删（0803 用户定：行间已有分隔线，圆点只是装饰） -->
@@ -1097,7 +1099,9 @@ const mcRecText = computed(() => {
   if (recActive.value) return '录音中 ' + timeText.value
   if (isPaused.value) return '已暂停 · 已录 ' + timeText.value
   if (stoppedUnuploaded.value) return '录音已停止，结束会议时自动上传'
-  if ((recordings.value || []).length) return '已录 ' + recordings.value.length + ' 段'
+  // 段数只写在列表行「会议录音（N 段）」里（0803 设计师）：卡内只讲状态，
+  // 且未开始录音时写「已录 N 段」会和底部「开始录音」自相矛盾
+  if ((recordings.value || []).length) return '录音已保存'
   return '尚未开始录音'
 })
 // 会中保存录音（0803 用户反馈：录音卡删掉后上传按钮跟着没了，只剩「结束会议」时自动上传）。
@@ -4488,8 +4492,10 @@ async function returnToRecordingPage() {
 /* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
 .rec-bg-warn { width:fit-content; max-width:100%; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 14rpx; box-sizing:border-box; margin:14rpx auto 0; }  /* 移到录音卡上方，居中一条 */
 /* 录音警示三角：放大 + 脉冲发光，录音中持续抓注意力（0729 用户定） */
-/* 暂停态的中性告知（0803 设计师：暂停不是异常，不用暖色） */
-.rec-bg-warn.calm { color:#61656C; background:#F4F6F8; border-color:#E4E8ED; }
+/* 暂停态的中性告知（0803 设计师：暂停不是异常，不用暖色；灰胶囊只包住文字、
+   宽度和上下行对不齐，改成无底灰字整行左对齐） */
+.rec-bg-warn.calm { width:100%; text-align:left; color:#8A9099; background:none; border:0;
+  padding:0; margin:12rpx 0 0; font-size:25rpx; }
 .rec-bg-warn-ico { display:inline-block; vertical-align:middle; font-size:36rpx; line-height:1; margin-right:8rpx; color:#E8890C; animation:recWarnPulse 1.1s ease-in-out infinite; }
 @keyframes recWarnPulse {
   0%, 100% { transform:scale(1); opacity:.85; text-shadow:0 0 2rpx rgba(232,137,12,.2); }
@@ -4637,8 +4643,8 @@ async function returnToRecordingPage() {
 .mc-files .supp-file-name.mc-seg-name { color:#2F3740; text-decoration:none; }
 .mc-seg-del { flex-shrink:0; font-size:24rpx; color:#B24A3B; padding:8rpx 0 8rpx 16rpx; }
 .mc-topics { background:#fff; border-radius:26rpx; padding:8rpx 0 6rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
-/* 标题删后只剩计数：右对齐、上下留白收一档（原来是给 32rpx 标题配的） */
-.mc-topics-head { display:flex; align-items:center; justify-content:flex-end; padding:18rpx 30rpx 10rpx; }
+.mc-topics-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:22rpx 30rpx 12rpx; }
+.mc-topics-title { font-size:31rpx; font-weight:700; color:#1F2024; }
 .mc-topics-count { font-size:27rpx; color:#6b7078; }
 .mc-topic-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:104rpx; margin:0; padding:14rpx 30rpx;
   border:0; border-top:1px solid #F0F2F5; background:none; font:inherit; text-align:left; cursor:pointer; box-sizing:border-box;
