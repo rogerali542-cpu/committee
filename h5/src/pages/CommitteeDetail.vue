@@ -80,17 +80,24 @@
              收起态给一行摘要：全选时「全体委员 N 人」（常态，不必写 已选7/7）；
              一旦有人被取消，摘要变「N 人中已选 M 人」，这时才需要警觉。要改人再点开 -->
         <div class="recipient-card">
+          <!-- 0801 设计师定稿：标题行只剩「通知人员 / 摘要 / 折叠箭头」，整行一个点击目标——
+               全选按钮挤在这一行会变成一行两个点击目标，老人容易点错；独占一行又浪费。
+               全选改成展开后列表的第一行，与成员行同构（见下）。 -->
           <div class="recipient-card-head" @click="recipientOpen = !recipientOpen">
             <span class="recipient-card-title">通知人员</span>
             <div class="recipient-card-right">
-              <!-- 0801 设计师：全选按钮原先独占名单上方一行，白占一行高度。放回标题行右侧；
-                   只在展开时出现（收起态那行是纯摘要，不该塞操作）。.stop 免得连带把卡片收起来 -->
-              <button v-if="recipientOpen && recipientList.length" type="button" class="rcp-head-toggle" @click.stop="toggleRecipientAll">{{ recipientAllChecked ? '取消全选' : '全选' }}</button>
               <span class="rcp-head-count" :class="{ partial: !recipientAllChecked }">{{ recipientSummary }}</span>
               <i class="rcp-head-chev" :class="{ open: recipientOpen }"></i>
             </div>
           </div>
           <div class="rcp-list page-rcp-list" v-if="recipientOpen">
+            <!-- 全选行：和成员行一样的勾选行，点击目标同构。全勾时 ✓，部分勾时 − （表示"有人没选上"） -->
+            <div v-if="recipientList.length" class="rcp-item page-rcp-item rcp-all-item" @click="toggleRecipientAll">
+              <div class="rcp-check" :class="{ on: recipientAllChecked, part: !recipientAllChecked && recipientSelectedCount > 0 }">{{ recipientAllChecked ? '✓' : (recipientSelectedCount > 0 ? '−' : '') }}</div>
+              <div class="rcp-person">
+                <span class="rcp-name">全体委员 · {{ recipientList.length }} 人</span>
+              </div>
+            </div>
             <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
               <div class="rcp-check" :class="{ on: m.checked }">{{ m.checked ? '✓' : '' }}</div>
               <div class="rcp-person">
@@ -2652,13 +2659,11 @@ async function removeMaterial(item) {
   border-right:3rpx solid #B4BCC7; border-bottom:3rpx solid #B4BCC7; transform:rotate(45deg);
   transition:transform .2s ease, top .2s ease; }
 .rcp-head-chev.open { transform:rotate(-135deg); top:3rpx; }
-/* 全选/取消全选：标题行右侧，展开时才出现（收起态由摘要承担）。
-   原生 button——与底部渠道勾选同理，div 在手机上长按会变选字、还吃 300ms 点击延迟 */
-.rcp-head-toggle { display:inline-flex; align-items:center; min-height:80rpx; margin:0; padding:0 4rpx;
-  border:0; background:none; font:inherit; color:#3567A4; font-size:28rpx; font-weight:700; white-space:nowrap;
-  cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none;
-  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
-.rcp-head-toggle:active { opacity:.6; }
+/* 全选行（0801 设计师定稿）：展开后列表第一行，与成员行同构的勾选行。
+   名字加粗与成员区分；部分选中时勾选框显 −（有人没选上）。触摸声明由 .page-rcp-item 共享规则带上 */
+.rcp-all-item { border-bottom:2rpx solid #E5E8EC; }
+.rcp-all-item .rcp-name { font-weight:700; }
+.rcp-all-item .rcp-check.part { color:#3567A4; border-color:#3567A4; background:#fff; }
 /* 0801 设计师版：名单默认展开且不再限高滚动——7 个人的名单套一个内滚动区，
    既看不全又与页面主滚动打架；直接铺开由页面统一滚 */
 .page-rcp-list { margin:0; border-top:1px solid #F0F0F2; }
