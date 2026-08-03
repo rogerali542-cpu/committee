@@ -200,7 +200,9 @@
         <div class="si-step-line">第 1 步 / 共 4 步 · 会议签到</div>
         <div class="si-meet-card">
           <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
-          <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}<template v-if="detail.location"> · {{ detail.location }}</template></div>
+          <!-- 时间、地点分两行（0803 设计师：一行放不下时「社区活动室」被拆得只剩个"室"字掉行） -->
+          <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}</div>
+          <div v-if="detail.location" class="si-meet-meta2 si-meet-loc">{{ detail.location }}</div>
           <div class="si-self">
             <span class="si-self-check" :class="{ on: signedIn }">{{ signedIn ? '✓' : '' }}</span>
             <span class="si-self-txt">{{ selfDisplayName }}（我）{{ signedIn ? '已签到' : '未签到' }}</span>
@@ -216,9 +218,10 @@
           <div v-if="siRosterOpen" class="si-roster-body">
             <div class="signin-roster-row" v-for="a in signinStats.list" :key="a.userRoleId">
               <span class="srr-name">{{ a.name }}</span>
+              <!-- 文案统一说签到（0803 设计师：这一屏说的是签到，不是确认）：未签的写「待签到」 -->
               <span class="srr-state"
                     :class="a.signedIn ? (a.attendanceMode === 'remote' ? 'remote' : 'on') : (a.declined ? 'off' : 'wait')">
-                {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '未确认') }}
+                {{ a.signedIn ? (a.attendanceMode === 'remote' ? '线上' : '已签到') : (a.declined ? '请假/缺席' : '待签到') }}
               </span>
             </div>
           </div>
@@ -4490,7 +4493,8 @@ async function returnToRecordingPage() {
 .si-meet-topics { background:none; border-radius:0; padding:4rpx 22rpx 8rpx; box-shadow:none; margin-top:0; min-height:0; box-sizing:border-box; border-bottom:1px solid #EEF0F2; }
 .si-topic-item { display:flex; align-items:flex-start; gap:18rpx; padding:24rpx 0; border-bottom:2rpx solid #F4F4F6; }
 .si-topic-item:last-child { border-bottom:0; }
-.si-topic-idx { flex-shrink:0; width:50rpx; height:50rpx; border-radius:50%; background:#FFF1E0; color:#E8890C; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
+/* 序号灰底灰字（0803 设计师：橙是异常态专用色，当序号色会跟真正的异常抢注意力） */
+.si-topic-idx { flex-shrink:0; width:50rpx; height:50rpx; border-radius:50%; background:#f4f6f9; color:#4b5563; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
 .si-topic-title { flex:1; min-width:0; font-size:30rpx; color:#2B2E33; line-height:1.6; white-space:normal; overflow:visible; word-break:break-word; }
 .si-topic-empty { display:block; text-align:center; color:#9AA0A6; font-size:30rpx; padding:34rpx 0; }
 /* 参会名单：收起态一条，展开显示逐人 */
@@ -4519,6 +4523,7 @@ async function returnToRecordingPage() {
 .si-step-line { padding:22rpx 6rpx 0; color:#8A9099; font-size:27rpx; }
 /* 会议卡：时间·地点一行 + 本人签到状态行 */
 .si-meet-meta2 { margin-top:18rpx; font-size:31rpx; color:#61656C; line-height:1.55; }
+.si-meet-loc { margin-top:6rpx; }
 .si-self { display:flex; align-items:center; gap:14rpx; margin-top:26rpx; }
 .si-self-check { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; border:3rpx solid #C3CAD3; background:#fff; color:#fff; font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
 .si-self-check.on { background:#3567A4; border-color:#3567A4; }
@@ -4576,11 +4581,14 @@ async function returnToRecordingPage() {
 .signin-roster-row { display:flex; align-items:center; justify-content:space-between; gap:18rpx; padding:16rpx 0; border-bottom:2rpx solid #F6F6F8; }
 .signin-roster-row:last-child { border-bottom:0; }
 .srr-name { font-size:28rpx; color:#1f2329; font-weight:600; flex-shrink:0; }
-.srr-state { font-size:24rpx; font-weight:600; padding:4rpx 16rpx; border-radius:12rpx; flex-shrink:0; }
-.srr-state.on { color:#2E8B57; background:#E8F7EE; }
-.srr-state.remote { color:#2676D9; background:#EAF2FF; }
-.srr-state.off { color:#C0392B; background:#FDECEA; }
-.srr-state.wait { color:#6b7078; background:#EDEEF0; }
+/* 0803 设计师：常态不给底色胶囊——7 人里 6 个挂着底色，页面全是块。
+   已签到蓝字（绿是业主接待模块色，会议模块不该出现）；待签到纯灰字；
+   仅「请假/缺席」这个异常保留暖底提示 */
+.srr-state { font-size:26rpx; font-weight:600; padding:4rpx 0; flex-shrink:0; }
+.srr-state.on { color:#2f5f9e; }
+.srr-state.remote { color:#2676D9; }
+.srr-state.off { color:#9a5b12; background:#f7e4c6; padding:4rpx 16rpx; border-radius:12rpx; }
+.srr-state.wait { color:#8A9099; }
 /* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
 /* 上下堆叠、居中、宽度 60%：主(生成纪要)实心在上，次(继续上传)描边在下 */
 .qk-two-btns { display:flex; flex-direction:column; align-items:center; gap:14rpx; margin-top:14rpx; padding:0; }
