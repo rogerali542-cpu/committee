@@ -402,41 +402,28 @@
              ③ 会议当天：蓝实心「开始会议」升为主操作（下面仍留一颗浅蓝次级，人没到齐时能再提醒）
              原先「开始会议」一通知完就浮出来，会议在 12 天后却占着最显眼的位置；而且用的是接待模块
              的绿色，越权到会议模块了——现在统一会议蓝。 -->
-        <!-- 0801 定稿（用户提 + 设计师改）：渠道两个勾选、主操作只留一个。
-             此前把微信做成唯一主按钮、App 内送达做成附加项，等于砍掉了「只在 App 内通知」——
-             而这条路是真实需要的：微信工作群里往往还有物业和居委会的人，物业费、合同这类议题
-             不适合发进群，只想让 7 位委员看到。
-             默认两个都勾，常规情况直接点发送；只发 App 就取消微信那勾；两个都取消按钮置灰。
-             两颗实心按钮抢注意力的老问题也没有回来——底部仍是一主操作。 -->
+        <!-- 0803 用户定稿：App 内通知不再是选项——点发送就一定通知（去重和"确认后不再打扰"
+             由委员端解决，主任这边只有一个动作）。底部只剩一个勾选「同时转发到微信工作群」
+             （默认勾上），勾上就复制全文并打开微信。一个人都没选时发送按钮真锁死。 -->
         <div class="pf-btn-col">
-          <!-- 0801 修「勾选框点了很久才有反应、或者没反应」：这两行原是 <div @click>，
-               而同一条里唯一响应正常的「发送通知」是原生 <button>——差别就在这儿。
-               手机浏览器把 div 当普通文字：手指按得稍久就先进入选字/长按菜单，tap 根本不会变成
-               click；再加上非交互元素还吃 300ms 双击缩放延迟，就是"要么慢半拍、要么没反应"。
-               改成原生 button（另配 touch-action:manipulation 去延迟、user-select:none 断长按选字）。
-               ⚠ 只在「发送前」这一态出现；已发送后渠道选择收进弹层（openRemindSheet）。 -->
+          <!-- 勾选行用原生 button：div 在手机上长按变选字、还吃 300ms 点击延迟（0801 踩过） -->
           <div v-if="footerStage === 'send'" class="pf-ch-group">
-            <!-- 「发送方式」小标题曾加过又删（0803 用户定：条内寸土寸金，勾选行自身已够自明） -->
-            <!-- 「转发到微信工作群」不叫「发到」：线上会议的召开方式也常是「微信工作群」，
-                 一个是开会场所、一个是通知渠道，字面完全一样会混。转发也更贴实际动作（复制+跳微信粘贴） -->
+            <!-- 「转发」不叫「发到」：线上会议的召开方式也常是「微信工作群」，
+                 一个是开会场所、一个是通知渠道，字面一样会混；转发也贴实际动作（复制+跳微信粘贴） -->
             <button type="button" class="pf-also" :aria-pressed="chWechat ? 'true' : 'false'" @click="chWechat = !chWechat">
               <span class="pf-also-check" :class="{ on: chWechat }">{{ chWechat ? '✓' : '' }}</span>
-              <span class="pf-also-txt">转发到微信工作群</span>
-            </button>
-            <button type="button" class="pf-also" :class="{ disabled: !recipientSelectedCount }" :aria-pressed="appChannelOn ? 'true' : 'false'" @click="toggleAppChannel">
-              <span class="pf-also-check" :class="{ on: appChannelOn }">{{ appChannelOn ? '✓' : '' }}</span>
-              <span class="pf-also-txt">{{ recipientSelectedCount ? 'App 内通知 ' + recipientSelectedCount + ' 位委员' : '未选委员，无法在 App 内通知' }}</span>
+              <span class="pf-also-txt">同时转发到微信工作群</span>
             </button>
           </div>
-          <button v-if="footerStage === 'send'" class="pf-btn pf-btn-main" :class="{ disabled: !canSendNotice, busy: mainSending }" :disabled="mainSending" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : '发送通知' }}</button>
-          <!-- 会议当天（或开始前 1 小时内）：当下最该做的是开会 → 「开始会议」蓝实心主按钮，
-               与浅蓝次级「再次提醒」按规则四 2:1 分宽，主按钮占三分之二。
-               其余时间只有「再次提醒 N 人」一颗——会议还早，开会按钮不该提前十几天就出现。 -->
+          <button v-if="footerStage === 'send'" class="pf-btn pf-btn-main" :class="{ disabled: !recipientSelectedCount, busy: mainSending }" :disabled="mainSending || !recipientSelectedCount" @click="sendNoticeMain">{{ mainSending ? '正在发送…' : (recipientSelectedCount ? '发送通知' : '请先选择通知人员') }}</button>
+          <!-- 会议当天：「开始会议」蓝实心主操作 + 浅蓝次级「再次提醒」，按规则四 2:1 分宽。
+               已发送、会议未到：「再次提醒」是这一态唯一主按钮 → 实心蓝（0803 用户定），
+               点了直接 App 内再通知（不再弹渠道选择——App 内通知已是默认动作） -->
           <div v-else-if="footerStage === 'start'" class="pf-sub-row">
-            <button class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
+            <button class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="remindNow">{{ mainSending ? '正在发送…' : remindLabel }}</button>
             <button class="pf-btn pf-btn-start-top" @click="startMeeting"><span class="pf-start-ico">▶</span>开始会议</button>
           </div>
-          <button v-else class="pf-btn pf-btn-light" :class="{ busy: mainSending }" :disabled="mainSending" @click="openRemindSheet">{{ mainSending ? '正在发送…' : remindLabel }}</button>
+          <button v-else class="pf-btn pf-btn-main" :class="{ busy: mainSending }" :disabled="mainSending" @click="remindNow">{{ mainSending ? '正在发送…' : remindLabel }}</button>
         </div>
       </div>
     </div>
@@ -1362,12 +1349,19 @@ const footerStage = computed(() => (
 // （footerStageBase → noticeSent）里有定义在本行之后的 const——setup 顶层直接 watch 会撞 TDZ
 // （Cannot access 'noticeSent' before initialization），整页白屏。0803 就是这么炸的。
 onMounted(() => { watch([footerStage, recipientOpen], () => nextTick(recalcFooterShrink)) })
-// 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
-const remindLabel = computed(() => (
-  noticeSent.value
-    ? '再次提醒 ' + (recipientSelectedCount.value || recipientList.value.length) + ' 人'
-    : '发送通知'
-))
+// 再次提醒按对象说话（0803 设计师）：已确认参会的不在提醒范围内（委员端确认后也不会再收到），
+// 有出席数据时写「再次提醒 N 位未确认」；没有就退回人数。会议当天还没通知过时回落成「发送通知」。
+const unconfirmedCount = computed(() => {
+  const atts = (detail.value && detail.value.record && detail.value.record.attendances) || []
+  if (!atts.length) return 0
+  const confirmed = atts.filter((a) => a && a.signedIn).length
+  return Math.max(0, (recipientList.value.length || atts.length) - confirmed)
+})
+const remindLabel = computed(() => {
+  if (!noticeSent.value) return '发送通知'
+  if (unconfirmedCount.value > 0) return '再次提醒 ' + unconfirmedCount.value + ' 位未确认'
+  return '再次提醒 ' + (recipientSelectedCount.value || recipientList.value.length) + ' 人'
+})
 // 全 App 统一的时间写法：8月1日 19:22（不露 2026-08-01 19:22 这种机读格式）
 function fmtSendTimeShort(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
@@ -1376,7 +1370,7 @@ function fmtSendTimeShort(s) {
 // 通知记录行（0801 设计师二改）：同一个人、同一分钟发出的多个渠道本来就是一次动作，
 // 按「人 + 分钟」合并，最新在前。行文改「已通知 7 人 · 微信 + App 内 · 张建国发送」——
 // 原先「张建国·主任」打头，看不出他是发通知的人还是被通知的人。
-const CHANNEL_ORDER = ['微信', 'App 内']
+const CHANNEL_ORDER = ['App 内', '微信']   // 0803：App 内是默认渠道，排前面
 const noticeLogRows = computed(() => {
   const d = detail.value || {}
   const logs = d.notificationLogs || []
@@ -1406,22 +1400,16 @@ const noticeLogRows = computed(() => {
     return { text: parts.join(' · '), when: fmtSendTimeShort(g.at) }
   })
 })
-// 已通知后再发：渠道收进底部弹层选（底部只留一颗次级按钮，不再常驻两行勾选）
-async function openRemindSheet() {
+// 再次提醒（0803 用户定）：App 内通知已是默认动作，点了直接再发一轮，不再弹渠道选择。
+// 委员端负责去重与"确认参会后不再打扰"，这里只管发。
+async function remindNow() {
   if (mainSending.value || sendSubmitting.value) return
-  const n = recipientSelectedCount.value
-  const items = [{ label: '转发到微信工作群', selected: true }]
-  if (n) items.push({ label: 'App 内通知 ' + n + ' 位委员', selected: true })
-  const res = await showActionSheet({
-    title: noticeSent.value ? '再次提醒 · 选择渠道' : '发送通知 · 选择渠道',
-    variant: 'picker', multi: true, confirmText: '发送', cancelText: '取消', itemList: items
-  })
-  if (!res || !res.confirm) return
-  const picked = res.tapIndexes || []
-  if (!picked.length) { toast({ title: '请至少选择一个通知渠道', icon: 'none' }); return }
-  chWechat.value = picked.indexOf(0) >= 0
-  chApp.value = n ? picked.indexOf(1) >= 0 : false
-  await sendNoticeMain()
+  const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
+  if (!ids.length) { toast({ title: '请先在「通知人员」里选择委员', icon: 'none' }); return }
+  mainSending.value = true
+  try {
+    await doSend(ids, { quietForward: true, successText: noticeSent.value ? '已再次提醒' : ('已通知 ' + ids.length + ' 位委员') })
+  } finally { mainSending.value = false }
 }
 
 const ONLINE_WAYS = ['微信工作群', '腾讯会议']   // 0801 用户定：删掉「电话」
@@ -1534,44 +1522,25 @@ async function openRecipients() {
   if (!ok || !recipientList.value.length) { toast({ title: '暂无可通知的委员', icon: 'none' }); return }
   confirmSendRecipients()
 }
-// ——— 底部：两个渠道勾选 + 一个「发送通知」主操作 ———
-// 0801 定稿：默认两个都勾（常规情况不用管，直接发）。只发 App 就取消微信那勾——
-// 微信工作群里往往还有物业和居委会的人，物业费/合同这类议题不适合发进群。
+// ——— 底部：一个「发送通知」主操作 + 可选「同时转发到微信工作群」———
+// 0803 用户定稿：App 内通知不再是选项，点发送就一定通知（去重和"确认后不再打扰"由委员端解决，
+// 主任这边只有一个动作）。微信是附加转发，默认勾上；不想发群（物业/居委会也在群里，
+// 物业费、合同这类议题不适合）就取消勾。一个人都没选时按钮真锁死（:disabled），
+// 摘要行「7 人中未选任何人」就是原因说明。
 const chWechat = ref(true)
-const chApp = ref(true)
 const mainSending = ref(false)
-// 没勾人时 App 这条渠道无从发起，勾选框显示为未选（chApp 的值原样留着，重新选人后自动恢复）
-const appChannelOn = computed(() => chApp.value && recipientSelectedCount.value > 0)
-const canSendNotice = computed(() => chWechat.value || appChannelOn.value)
-function toggleAppChannel() {
-  if (!recipientSelectedCount.value) { toast({ title: '请先在上方「通知人员」里选择要通知的委员', icon: 'none' }); return }
-  chApp.value = !chApp.value
-}
 async function sendNoticeMain() {
   if (mainSending.value || sendSubmitting.value) return
-  const wantApp = appChannelOn.value
+  const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
+  if (!ids.length) return   // 按钮已锁死，这里只是兜底
   const wantWechat = chWechat.value
-  // 置灰按钮仍可点：老人点了得有反馈，光变灰不说话等于没响应
-  if (!wantApp && !wantWechat) { toast({ title: '请至少勾选一个通知渠道', icon: 'none' }); return }
   mainSending.value = true
   try {
     // 顺序：App 内先留档，再跳微信分享。反过来的话安卓会被拉去微信，回不来做第二步。
-    if (wantApp) {
-      const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
-      // 0801 设计师：发送成功要有一次明确反馈，而不是让用户从按钮变化去推断发出去没有
-      const ok = await doSend(ids, { quietForward: true, successText: '已通知 ' + ids.length + ' 位委员' })
-      if (!ok) {
-        if (!wantWechat) return   // 只发 App：doSend 已经报过错，到此为止
-        // 两条都勾时，App 这条失败不该连累微信——但也不能默默跳过，问一句
-        const r = await showModal({
-          title: 'App 内通知没发出去',
-          content: '网络或服务出了点问题，App 内通知没能发送。是否仍要把通知发到微信工作群？',
-          confirmText: '仍发到微信', cancelText: '先不发', showCancel: true
-        })
-        if (!r || !r.confirm) return
-      }
-    }
-    // markNotified：这是一次明确的发送/提醒动作，微信这条也要进通知记录
+    // App 内没发出去就不去微信——通知没落档，先解决网络重试，别造成"发了"的错觉。
+    const ok = await doSend(ids, { quietForward: true, successText: '已通知 ' + ids.length + ' 位委员', silent: wantWechat })
+    if (!ok) return
+    // markNotified：这是一次明确的发送动作，微信这条也要进通知记录
     if (wantWechat) await openWechat({ markNotified: true })
   } finally { mainSending.value = false }
 }
