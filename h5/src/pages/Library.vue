@@ -12,13 +12,13 @@
 
       <!-- 年份筛选（客户端；三类数据均无服务端年份参数）。只一个年份时不显示，免冗余 -->
       <div v-if="years.length > 1" class="arch-years">
-        <div class="arch-year" :class="{ active: yearFilter === '' }" @click="yearFilter = ''">全部</div>
-        <div v-for="y in years" :key="y" class="arch-year" :class="{ active: yearFilter === y }" @click="yearFilter = y">{{ y }}年</div>
+        <div class="arch-year" :class="{ active: yearFilter === '' }" @click="setYear('')">全部</div>
+        <div v-for="y in years" :key="y" class="arch-year" :class="{ active: yearFilter === y }" @click="setYear(y)">{{ y }}年</div>
       </div>
 
       <!-- 纯轻列表（spec §5：只需知晓的历史信息＝透明底+分隔线，非白卡） -->
-      <div v-if="items.length" class="arch-list">
-        <div v-for="item in items" :key="item.kind + '-' + item.id" class="arch-row" @click="openDetail(item)">
+      <div v-if="pageItems.length" class="arch-list">
+        <div v-for="item in pageItems" :key="item.kind + '-' + item.id" class="arch-row" @click="openDetail(item)">
           <div class="arch-info">
             <div class="arch-title">{{ item.title }}</div>
             <div class="arch-meta">
@@ -31,7 +31,23 @@
         </div>
       </div>
 
-      <div v-else-if="!loading" class="arch-empty">
+      <!-- 翻页条（0803 用户定：记录会累到几百条，分段加载会退化成点二十次）：
+           上一页 / 第 N 页 共 M 页 / 下一页，两侧按钮 ≥46px；中间那块可点，
+           页数多时弹出跳页，免得从第 1 页一路点到第 12 页 -->
+      <div v-if="totalPages > 1" class="arch-pager">
+        <button type="button" class="ap-btn" :disabled="page <= 1" @click="goPage(page - 1)">
+          <i class="ap-arr pre"></i>上一页
+        </button>
+        <button type="button" class="ap-now" :disabled="totalPages <= 2" @click="openPageJump">
+          第 {{ page }} 页 · 共 {{ totalPages }} 页
+        </button>
+        <button type="button" class="ap-btn" :disabled="page >= totalPages" @click="goPage(page + 1)">
+          下一页<i class="ap-arr next"></i>
+        </button>
+      </div>
+
+      <!-- ⚠ 空态用独立 v-if（不能接 v-else-if）：中间隔了翻页条，链会断 -->
+      <div v-if="!items.length && !loading" class="arch-empty">
         <div class="empty-icon">📚</div>
         <span class="empty-title">{{ curTab.label }}暂无归档</span>
         <span class="empty-text">{{ curTab.emptyHint }}</span>
@@ -41,12 +57,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api'
 import PublishNav from '@/components/PublishNav.vue'
 import { navigateTo, redirectTo } from '@/utils/navigate'
 import { getStorage } from '@/utils/storage'
+import { showActionSheet } from '@/utils/ui'
 
 const route = useRoute()
 
@@ -78,6 +95,36 @@ const items = computed(() => {
   const list = curList.value
   return yearFilter.value ? list.filter(it => String(it.date || '').startsWith(yearFilter.value)) : list
 })
+
+// ── 翻页（0803 用户定：会议/接待/事项会累到几百条）──
+// 纯前端分页：四路数据本就一次性拉全量，这里只切显示；等哪天单页签上千条、
+// 首屏拉取本身变慢，再让后端出 page/size 接口，这层照样能接
+const PAGE_SIZE = 10
+const page = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(items.value.length / PAGE_SIZE)))
+const pageItems = computed(() => items.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+// 数据变少（切页签/筛年份/刷新后条目减少）时把越界页码拉回最后一页，避免翻到空白页
+watch(totalPages, (n) => { if (page.value > n) page.value = n })
+
+function goPage(p) {
+  const next = Math.min(Math.max(1, p), totalPages.value)
+  if (next === page.value) return
+  page.value = next
+  // 翻页后回到列表顶部：本项目滚动只在 #app-scroll，window 上的滚动 API 全失效
+  const el = document.getElementById('app-scroll')
+  if (el) el.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// 跳页：页数多时不必从第 1 页一路点过去（两页时没必要弹，按钮已 disabled）
+async function openPageJump() {
+  if (totalPages.value <= 2) return
+  // picker 变体：当前页打勾、其余不带 ›（› 表示「去别处」，这里是就地选择）
+  const itemList = Array.from({ length: totalPages.value }, (_, i) => ({
+    label: '第 ' + (i + 1) + ' 页', selected: i + 1 === page.value
+  }))
+  const r = await showActionSheet({ title: '跳到第几页', variant: 'picker', itemList })
+  if (r && r.tapIndex >= 0) goPage(r.tapIndex + 1)
+}
 
 async function loadArchive() {
   loading.value = true
@@ -141,7 +188,8 @@ async function loadArchive() {
   loading.value = false
 }
 
-function switchTab(t) { tab.value = t; yearFilter.value = '' }
+function switchTab(t) { tab.value = t; yearFilter.value = ''; page.value = 1 }
+function setYear(y) { yearFilter.value = y; page.value = 1 }
 
 function openDetail(item) {
   // 会议/学习归档详情走 ArchiveDetail；接待有自己的详情页（ArchiveDetail 不含 reception 分支）；
@@ -160,6 +208,7 @@ function enter() {
   if (!activeRole) { redirectTo('/pages/login/login'); return }
   const qtab = route.query && route.query.tab
   if (qtab && TABS.some(t => t.key === qtab)) tab.value = qtab
+  page.value = 1 // 从详情页返回(onActivated)也回第 1 页，与页签/年份切换一致
   loadArchive()
 }
 
@@ -202,6 +251,24 @@ onActivated(enter)
 .arch-dot { opacity: .5; }
 .arch-status { flex-shrink: 0; align-self: center; font-size: 25rpx; font-weight: 500; color: #6b7280; }
 .arch-arrow { flex-shrink: 0; font-size: 32rpx; color: #b4bcc7; }
+
+/* 翻页条：两侧按钮 + 中间页码。老人手指粗，按钮给到 92rpx(≈48px) 高、整块可点；
+   中间页码在只有两页时不可跳（disabled 只去掉可点感，不变灰——它同时是状态显示） */
+.arch-pager { display: flex; align-items: center; gap: 14rpx; margin-top: 26rpx; }
+.arch-pager button { font-family: inherit; touch-action: manipulation; user-select: none; -webkit-tap-highlight-color: transparent; }
+.ap-btn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 10rpx;
+  min-width: 176rpx; height: 92rpx; padding: 0 24rpx; box-sizing: border-box;
+  border: 2rpx solid #d7dbe2; border-radius: 14rpx; background: #fff; color: #3a424e; font-size: 28rpx; font-weight: 600; }
+.ap-btn:active:not(:disabled) { background: #eceef1; }
+.ap-btn:disabled { color: #b4bcc7; border-color: #e6e9ed; background: #f7f8f9; }
+/* 箭头用 CSS 边框画（项目规范：⌄/⌃ 字符基线偏低、压不准中线） */
+.ap-arr { display: inline-block; width: 14rpx; height: 14rpx; border-right: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; }
+.ap-arr.pre { transform: rotate(135deg); position: relative; left: 3rpx; }
+.ap-arr.next { transform: rotate(-45deg); position: relative; right: 3rpx; }
+.ap-now { flex: 1; min-width: 0; height: 92rpx; padding: 0 8rpx; border: 0; border-radius: 14rpx;
+  background: transparent; color: #6b7280; font-size: 27rpx; font-weight: 600; }
+.ap-now:active:not(:disabled) { background: #eceef1; }
+.ap-now:disabled { color: #6b7280; }
 
 /* 空态 */
 .arch-empty { text-align: center; padding: 80rpx 36rpx; background: #fff; border-radius: 20rpx; box-shadow: 0 6rpx 20rpx rgba(31,41,55,0.05); }
