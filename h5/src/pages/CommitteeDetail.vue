@@ -147,8 +147,10 @@
           <!-- 会议日之前底部不放开会按钮（设计师：12 天后的事不该提前出现），但入口得留着——
                委员到齐了提前开是常态。放这一列：够得着，又不与底部主操作重复。
                到了会议当天它升为底部主按钮，这行随之消失。
-               startMeeting 自带「会议时间未到，确认现在开始吗」二次确认。 -->
-          <div v-if="footerStage !== 'start'" class="prep-more-row" @click="startMeeting">
+               startMeeting 自带「会议时间未到，确认现在开始吗」二次确认。
+               0801 用户定：只在「已通知」后出现——还没发通知（含清空记录还原后）不该能开会，
+               先通知委员是前置步骤。 -->
+          <div v-if="footerStage === 'remind'" class="prep-more-row" @click="startMeeting">
             <span>提前开始会议</span>
             <i class="pm-arrow"></i>
           </div>
