@@ -1349,19 +1349,10 @@ const footerStage = computed(() => (
 // （footerStageBase → noticeSent）里有定义在本行之后的 const——setup 顶层直接 watch 会撞 TDZ
 // （Cannot access 'noticeSent' before initialization），整页白屏。0803 就是这么炸的。
 onMounted(() => { watch([footerStage, recipientOpen], () => nextTick(recalcFooterShrink)) })
-// 再次提醒按对象说话（0803 设计师）：已确认参会的不在提醒范围内（委员端确认后也不会再收到），
-// 有出席数据时写「再次提醒 N 位未确认」；没有就退回人数。会议当天还没通知过时回落成「发送通知」。
-const unconfirmedCount = computed(() => {
-  const atts = (detail.value && detail.value.record && detail.value.record.attendances) || []
-  if (!atts.length) return 0
-  const confirmed = atts.filter((a) => a && a.signedIn).length
-  return Math.max(0, (recipientList.value.length || atts.length) - confirmed)
-})
-const remindLabel = computed(() => {
-  if (!noticeSent.value) return '发送通知'
-  if (unconfirmedCount.value > 0) return '再次提醒 ' + unconfirmedCount.value + ' 位未确认'
-  return '再次提醒 ' + (recipientSelectedCount.value || recipientList.value.length) + ' 人'
-})
+// 文案就叫「再次提醒」（0803 用户定，设计师同意）：不掺"N 位未确认"——委员在微信群看到通知
+// 就来开会、从不进 App 确认是完全正常的用法，App 内确认只是个信号，不该变成提醒的前提。
+// 会议当天还没通知过时回落成「发送通知」。
+const remindLabel = computed(() => (noticeSent.value ? '再次提醒' : '发送通知'))
 // 全 App 统一的时间写法：8月1日 19:22（不露 2026-08-01 19:22 这种机读格式）
 function fmtSendTimeShort(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
