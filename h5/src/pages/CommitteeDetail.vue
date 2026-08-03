@@ -1352,19 +1352,15 @@ const footerStage = computed(() => (
 // （footerStageBase → noticeSent）里有定义在本行之后的 const——setup 顶层直接 watch 会撞 TDZ
 // （Cannot access 'noticeSent' before initialization），整页白屏。0803 就是这么炸的。
 onMounted(() => { watch([footerStage, recipientOpen], () => nextTick(recalcFooterShrink)) })
-// 再次提醒的文案（0803 定稿）：带人数不带判断——"未确认"去掉（委员在微信群看到就来开会、
-// 不进 App 确认是正常用法，确认只是信号不是前提），但对象要说清：按钮得讲明对谁做，
-// 光秃秃的「再次提醒」四个字摆在整宽按钮上也撑不住。独占一行用全称「再次提醒 7 位委员」，
-// 与「开始会议」并排时用短形「再次提醒 7 人」。会议当天还没通知过时回落「发送通知」。
+// 再次提醒的文案（0803 用户定稿）：带人数不带判断——"未确认"去掉（委员在微信群看到就来开会、
+// 不进 App 确认是正常用法，确认只是信号不是前提）。独占一行时「再次提醒 7 人」（不用「位委员」）；
+// 与「开始会议」并排的窄按钮塞人数太挤，只写「再次提醒」。会议当天还没通知过时回落「发送通知」。
 const remindCount = computed(() => recipientSelectedCount.value || recipientList.value.length || 0)
 const remindLabel = computed(() => {
   if (!noticeSent.value) return '发送通知'
-  return remindCount.value ? '再次提醒 ' + remindCount.value + ' 位委员' : '再次提醒'
-})
-const remindLabelShort = computed(() => {
-  if (!noticeSent.value) return '发送通知'
   return remindCount.value ? '再次提醒 ' + remindCount.value + ' 人' : '再次提醒'
 })
+const remindLabelShort = computed(() => (noticeSent.value ? '再次提醒' : '发送通知'))
 // 全 App 统一的时间写法：8月1日 19:22（不露 2026-08-01 19:22 这种机读格式）
 function fmtSendTimeShort(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
