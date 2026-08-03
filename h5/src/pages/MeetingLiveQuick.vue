@@ -268,17 +268,18 @@
            会议卡带录音状态行；议题直接摊开点行处理（不再"处理议题"整页切换）；
            材料/名单收成末尾两行；录音控制全部在底部操作条 -->
       <div v-if="meetingPhase === 'recording'" class="meeting-console">
-        <div class="si-step-line">第 2 步 / 共 4 步 · 会议进行</div>
+        <!-- 步骤行已删（0803 用户定：页头就写着「会议进行」，这行是重复） -->
         <div class="si-meet-card">
           <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
-          <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}</div>
+          <!-- 日期时间行已删（0803 用户定：人都到场了，没人需要知道今天几号几点开的） -->
           <!-- 已签到 x/7：外观是卡内普通灰字（0803 用户定：列表参会名单行删除、人数只留这里），
                但保留可点开名单弹窗——主持人会中改签到状态的唯一入口，别做成死文本 -->
           <div class="si-meet-meta2 si-meet-loc">{{ detail.location }}<span v-if="signinStats.total" class="si-meet-att" @click="rosterPopOpen = true"> · 已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span></div>
-          <!-- 录音状态：灰点=未开始，蓝点呼吸=录音中/上传/识别中，暖橙点=已暂停（异常态专色，暂停恰是"需要留意"）。
-               0803 设计师：录音状态只在这一行，控制只在底部条——原「会议录音」卡整张删除，
-               上传/识别进度并入本行，异常（上传失败/识别失败）用下面的暖色提示行 + 行内重试 -->
-          <div class="mc-rec" :class="{ on: recActive || mcRecBusy, paused: isPaused && !mcRecBusy }">
+          <!-- 录音状态：灰点=未开始/已暂停，蓝点呼吸=录音中/上传/识别中。
+               0803 设计师：暂停是主动操作的常态、不是异常，点不再用暖橙（暖色一屏只留预警那一处）。
+               状态只在这一行，控制只在底部条——原「会议录音」卡整张删除，上传/识别进度并入本行，
+               异常（上传失败/识别失败）用下面的暖色提示行 + 行内重试 -->
+          <div class="mc-rec" :class="{ on: recActive || mcRecBusy }">
             <span class="mc-rec-dot"></span>
             <span class="mc-rec-txt">{{ mcRecText }}</span>
           </div>
@@ -286,18 +287,19 @@
             <span class="mc-rec-err-txt">⚠ {{ mcRecErrText }}</span>
             <span v-if="mcRecErrAction" class="mc-rec-err-act">{{ mcRecErrAction }}</span>
           </button>
-          <!-- 录音中断预警（0803 用户定：收进会议卡内）：紧跟录音状态行，与它是同一件事；
-               切出瞬间 JS 冻结无法当场提示，只能前置常驻 -->
+          <!-- 切屏提示（0803 设计师）：暂停恰恰是最容易切出去的时候，那时更要说话——
+               录音中＝暖色警告（切出会断），暂停中＝中性告知（切出不影响），两态都不留空 -->
           <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中请不要切出微信或锁屏，否则录音会中断</div>
+          <div v-else-if="isPaused && !mcRecBusy" class="rec-bg-warn calm">已暂停，此时切出微信不影响这段录音</div>
         </div>
 
         <div class="mc-topics">
+          <!-- 「会议议题」标题已删（0803 用户定：下面就是议题列表，标题多余），只留右侧计数 -->
           <div class="mc-topics-head">
-            <span class="mc-topics-title">会议议题</span>
             <span class="mc-topics-count">已处理 {{ resolvedTopicCount }} / {{ meetingTopics.length }}</span>
           </div>
-          <button type="button" class="mc-topic-row" v-for="(t, i) in meetingTopics" :key="'mc-' + t.id" @click="openTopicSheet(t)">
-            <span class="mc-topic-no">{{ i + 1 }}</span>
+          <!-- 序号圆点已删（0803 用户定：行间已有分隔线，圆点只是装饰） -->
+          <button type="button" class="mc-topic-row" v-for="t in meetingTopics" :key="'mc-' + t.id" @click="openTopicSheet(t)">
             <span class="mc-topic-name">{{ t.title }}</span>
             <span class="mc-topic-state" :class="{ next: t.id === nextPendingTopicId }">{{ topicStateText(t) }}</span>
             <i class="si-row-arr"></i>
@@ -1083,11 +1085,20 @@ const recognizeRetryVisible = computed(() =>
 // ── 会议卡录音状态行（0803 设计师：状态只在会议卡、控制只在底部条，录音卡整张删除）──
 // 一行文本走完 录音中/暂停/上传/识别/已录N段；异常（上传失败/识别失败）单独一条暖色提示行带行内重试
 const mcRecBusy = computed(() => uploading.value || polling.value || extracting.value)
+// 时长读法（0803 设计师）：「16:53」会被老人读成"16 点 53 分"，改成带单位的中文时长
+function durText(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0))
+  if (s < 60) return s + ' 秒'
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (h > 0) return h + ' 小时 ' + m + ' 分'
+  return m + ' 分 ' + (s % 60) + ' 秒'
+}
 const mcRecText = computed(() => {
   if (uploading.value) return '正在上传录音…' + (uploadPct.value > 0 ? ' ' + uploadPct.value + '%' : '')
   if (polling.value || extracting.value) return '录音识别中，可继续开会'
-  if (recActive.value) return '录音中 ' + timeText.value
-  if (isPaused.value) return '已暂停 ' + timeText.value
+  if (recActive.value) return '录音中 ' + durText(rec.seconds.value)
+  if (isPaused.value) return '已暂停 · 已录 ' + durText(rec.seconds.value)
   if (stoppedUnuploaded.value) return '录音已停止，结束会议时自动上传'
   if ((recordings.value || []).length) return '已录 ' + recordings.value.length + ' 段'
   return '尚未开始录音'
@@ -4042,15 +4053,11 @@ async function returnToRecordingPage() {
 .meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#5f6570; }
 .meeting-stage-next { display:block; width:auto; min-width:340rpx; margin:24rpx auto 0; padding:22rpx 44rpx; border:0; border-radius:999rpx; background:var(--c-primary-dark,#A85800); color:#fff; font-size:30rpx; font-weight:700; box-shadow:0 6rpx 16rpx rgba(168,88,0,.20); }
 .meeting-stage-next[disabled] { opacity:.6; box-shadow:none; }
-/* 顶部内边距单列（0803 用户定）：步骤小字上下各 8px，与两侧 28rpx 解耦 */
+/* 顶部内边距单列（0803 用户定）：步骤小字删除后，白卡顶到标题 = 本行 + 卡内 24rpx ≈ 21px */
 .meeting-console { margin-top:18rpx; padding:16rpx 28rpx 28rpx; border-radius:22rpx; background:#fff; border:2rpx solid #E8EBEF; box-shadow:0 8rpx 24rpx rgba(31,35,41,.06); }
-/* 步骤小字在本页不带自身 padding（外层已给 8px），下方用 margin 精确控 8px；
-   line-height 显式给定，免得默认行高的额外行距把 8px 又撑开 */
-.meeting-console .si-step-line { padding:0 6rpx; margin-bottom:16rpx; line-height:1.35; }
-/* 会议卡顶部内边距在本页归零（0803 用户定，二次再收）：外层白卡与会议卡同为白底、
-   之间没有分界，卡内的上留白会和步骤行下方那 8px 叠加成一片空白，标题像掉在半空。
-   归零后步骤小字到标题就是那唯一的 8px，读起来是"小标签 + 标题"一组 */
-.meeting-console .si-meet-card { padding-top:0; }
+/* 会议卡顶部内边距在本页收窄：外层白卡与会议卡同为白底、之间没有分界，
+   卡内原 40rpx 上留白会和外层的叠成一片，标题像掉在半空 */
+.meeting-console .si-meet-card { padding-top:24rpx; }
 /* 预警条收进会议卡后：左对齐贴着录音状态行，不再居中浮一条 */
 .meeting-console .rec-bg-warn { margin:16rpx 0 0; }
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
@@ -4477,6 +4484,8 @@ async function returnToRecordingPage() {
 /* 录音中的切出预警：常驻、醒目但不刺眼（切出瞬间无法当场提示，只能事先讲清） */
 .rec-bg-warn { width:fit-content; max-width:100%; text-align:center; font-size:23rpx; line-height:1.4; color:#A65A08; background:#FFF8EC; border:1px solid #F2D9AF; border-radius:10rpx; padding:7rpx 14rpx; box-sizing:border-box; margin:14rpx auto 0; }  /* 移到录音卡上方，居中一条 */
 /* 录音警示三角：放大 + 脉冲发光，录音中持续抓注意力（0729 用户定） */
+/* 暂停态的中性告知（0803 设计师：暂停不是异常，不用暖色） */
+.rec-bg-warn.calm { color:#61656C; background:#F4F6F8; border-color:#E4E8ED; }
 .rec-bg-warn-ico { display:inline-block; vertical-align:middle; font-size:36rpx; line-height:1; margin-right:8rpx; color:#E8890C; animation:recWarnPulse 1.1s ease-in-out infinite; }
 @keyframes recWarnPulse {
   0%, 100% { transform:scale(1); opacity:.85; text-shadow:0 0 2rpx rgba(232,137,12,.2); }
@@ -4598,7 +4607,6 @@ async function returnToRecordingPage() {
 .mc-rec { display:flex; align-items:center; gap:14rpx; margin-top:26rpx; }
 .mc-rec-dot { flex-shrink:0; width:22rpx; height:22rpx; border-radius:50%; background:#C3CAD3; }
 .mc-rec.on .mc-rec-dot { background:#3567A4; animation:mcPulse 1.6s ease-in-out infinite; }
-.mc-rec.paused .mc-rec-dot { background:#D98012; }
 .mc-rec-txt { font-size:31rpx; color:#61656C; font-weight:600; }
 .mc-rec.on .mc-rec-txt { color:#1F2937; }
 @keyframes mcPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
@@ -4620,15 +4628,13 @@ async function returnToRecordingPage() {
 .mc-files .supp-file-name.mc-seg-name { color:#2F3740; text-decoration:none; }
 .mc-seg-del { flex-shrink:0; font-size:24rpx; color:#B24A3B; padding:8rpx 0 8rpx 16rpx; }
 .mc-topics { background:#fff; border-radius:26rpx; padding:8rpx 0 6rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
-.mc-topics-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:24rpx 30rpx 16rpx; }
-.mc-topics-title { font-size:32rpx; font-weight:700; color:#1F2024; }
+/* 标题删后只剩计数：右对齐、上下留白收一档（原来是给 32rpx 标题配的） */
+.mc-topics-head { display:flex; align-items:center; justify-content:flex-end; padding:18rpx 30rpx 10rpx; }
 .mc-topics-count { font-size:27rpx; color:#6b7078; }
 .mc-topic-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:104rpx; margin:0; padding:14rpx 30rpx;
   border:0; border-top:1px solid #F0F2F5; background:none; font:inherit; text-align:left; cursor:pointer; box-sizing:border-box;
   touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
 .mc-topic-row:active { background:#F6F8FA; }
-.mc-topic-no { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; background:#f4f6f9; color:#4b5563;
-  font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
 .mc-topic-name { flex:1; min-width:0; font-size:30rpx; color:#2B2E33; line-height:1.5; word-break:break-word; }
 /* 已办结果=中性灰（记录，不是动作）；下一条待办=蓝色动作词，全屏唯一的"该你办这条" */
 .mc-topic-state { flex-shrink:0; font-size:26rpx; color:#8A9099; }
