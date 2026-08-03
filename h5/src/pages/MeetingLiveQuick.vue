@@ -271,10 +271,12 @@
         <!-- 步骤行已删（0803 用户定：页头就写着「会议进行」，这行是重复） -->
         <div class="si-meet-card">
           <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
-          <!-- 日期时间行已删（0803 用户定：人都到场了，没人需要知道今天几号几点开的） -->
-          <!-- 已签到 x/7：外观是卡内普通灰字（0803 用户定：列表参会名单行删除、人数只留这里），
-               但保留可点开名单弹窗——主持人会中改签到状态的唯一入口，别做成死文本 -->
-          <div class="si-meet-meta2 si-meet-loc">{{ detail.location }}<span v-if="signinStats.total" class="si-meet-att" @click="rosterPopOpen = true"> · 已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span></div>
+          <!-- 日期时间行、会议地点均已删（0803 用户定：人都到场了，几号几点、在哪开都不用再说）。
+               只留「已签到 x/7」：外观是卡内普通灰字，但可点开名单弹窗——
+               主持人会中改签到状态的唯一入口，别做成死文本 -->
+          <div v-if="signinStats.total" class="si-meet-meta2 si-meet-loc">
+            <span class="si-meet-att" @click="rosterPopOpen = true">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
+          </div>
           <!-- 录音状态：灰点=未开始/已暂停，蓝点呼吸=录音中/上传/识别中。
                0803 设计师：暂停是主动操作的常态、不是异常，点不再用暖橙（暖色一屏只留预警那一处）。
                状态只在这一行，控制只在底部条——原「会议录音」卡整张删除，上传/识别进度并入本行，
@@ -1085,20 +1087,12 @@ const recognizeRetryVisible = computed(() =>
 // ── 会议卡录音状态行（0803 设计师：状态只在会议卡、控制只在底部条，录音卡整张删除）──
 // 一行文本走完 录音中/暂停/上传/识别/已录N段；异常（上传失败/识别失败）单独一条暖色提示行带行内重试
 const mcRecBusy = computed(() => uploading.value || polling.value || extracting.value)
-// 时长读法（0803 设计师）：「16:53」会被老人读成"16 点 53 分"，改成带单位的中文时长
-function durText(sec) {
-  const s = Math.max(0, Math.floor(Number(sec) || 0))
-  if (s < 60) return s + ' 秒'
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  if (h > 0) return h + ' 小时 ' + m + ' 分'
-  return m + ' 分 ' + (s % 60) + ' 秒'
-}
 const mcRecText = computed(() => {
   if (uploading.value) return '正在上传录音…' + (uploadPct.value > 0 ? ' ' + uploadPct.value + '%' : '')
   if (polling.value || extracting.value) return '录音识别中，可继续开会'
-  if (recActive.value) return '录音中 ' + durText(rec.seconds.value)
-  if (isPaused.value) return '已暂停 · 已录 ' + durText(rec.seconds.value)
+  // mm:ss（0803 用户定：中文「16 分 53 秒」读着别扭）；「已录」前缀点明这是时长不是时刻
+  if (recActive.value) return '录音中 ' + timeText.value
+  if (isPaused.value) return '已暂停 · 已录 ' + timeText.value
   if (stoppedUnuploaded.value) return '录音已停止，结束会议时自动上传'
   if ((recordings.value || []).length) return '已录 ' + recordings.value.length + ' 段'
   return '尚未开始录音'
