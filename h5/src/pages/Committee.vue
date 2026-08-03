@@ -1,5 +1,5 @@
 <template>
-  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs' && !!heroMeeting, 'has-rec-bar': planTab === 'reception' && canManageReception }">
+  <div class="home" :class="{ 'portal-home': welcomeVisible, 'reception-home': planTab === 'reception', 'has-mtg-bar': planTab === 'meeting' && homeLayout === 'tabs' && heroBarVisible, 'has-rec-bar': planTab === 'reception' && canManageReception }">
     <!-- 顶栏：标题 -->
     <div class="hd">
       <!-- 驾驶舱态整个左侧（机构名+身份行）都是个人中心入口（0731 用户定：机构名也可点，触区更大）；
@@ -222,7 +222,7 @@
                + 右侧状态签（逾期暖胶囊/其余灰字）。卡内不放动词只报状态，动作全交底部主按钮
                （三个动词入口会让人不知道按哪个）；整行可点进入各自流程 -->
           <template v-if="meetingRecordList.immediate.length">
-            <div class="mtg-due-card">
+            <div class="mtg-due-card" :class="{ single: meetingRecordList.immediate.length === 1 }">
               <div v-for="row in meetingRecordList.immediate" :key="row.key"
                    class="mtg-due-row" @click="row.onTap()">
                 <div class="mr-badge" :class="[row.statusClass, { range: row.range }]">
@@ -247,7 +247,7 @@
             <div class="mtg-next-foot" @click="toggleMeetingCalendar">
               <b>{{ viewYear }}年全年例会</b>
               <span class="yp-head-right">
-                <span class="yp-count">已开 {{ yearDoneCount }} / 共 {{ yearPlan.length }}</span>
+                <span class="yp-count">已开 {{ yearDoneCount }}／共 {{ yearPlan.length }}</span>
                 <!-- 纯图形展开按钮（0731 用户定二改：去文字）：圆底+边框画箭头，向下=展开、向上=收起；整行仍是点击区 -->
                 <i class="mfb-chev" :class="{ open: meetingCalendarOpen }"></i>
               </span>
@@ -288,7 +288,7 @@
           <!-- 底部动作条（0731 设计师三点改）：只剩主按钮一个实心色块——次级「发起临时会议」已收进
                上方列表末行；按钮一行式「去补开 · 第3次例会」19px/600 高 60px，不再两行分散重量。
                无最急项时不出条（发起会议走列表行，不重复） -->
-          <div v-if="heroMeeting" class="mtg-actionbar">
+          <div v-if="heroBarVisible" class="mtg-actionbar">
             <button type="button" class="mtg-primary" @click="heroMeeting.onTap()">{{ heroBarLine }}</button>
           </div>
         </div>
@@ -2146,7 +2146,8 @@ const DUE_RANK = { ongoing: 0, overdue: 1, current: 2, upcoming: 3 }
 const heroMeeting = computed(() => {
   const list = meetingRecordList.value.immediate
   if (!list.length) return null
-  const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
+  const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4
+    : (rowIsLive(r) ? 0 : (DUE_RANK[r.statusClass] ?? 3))
   return [...list].sort((a, b) => rank(a) - rank(b))[0]
 })
 // 驾驶舱会议卡可翻页（0731 用户定）：同时存在多期「到点该开」的例会（逾期/本期/进行中/草稿）时，
@@ -2154,7 +2155,8 @@ const heroMeeting = computed(() => {
 // 只收 immediate——9-10月/11-12月这类还没到时间的未来计划期次不进首页卡（0731 用户定）；
 // 要看/提前起未来期次仍到业委会页。顺序与主卡同序，第 0 页即 heroMeeting。
 const meetingCardList = computed(() => {
-  const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4 : (DUE_RANK[r.statusClass] ?? 3)
+  const rank = (r) => String(r.key).indexOf('mr-draft') === 0 ? 4
+    : (rowIsLive(r) ? 0 : (DUE_RANK[r.statusClass] ?? 3))
   return [...meetingRecordList.value.immediate].sort((a, b) => rank(a) - rank(b))
 })
 const mtgIdx = ref(0)   // 当前翻到第几场；越界在渲染时 clamp，翻页函数也按 clamp 后基准增减
@@ -2165,11 +2167,19 @@ function shortMeetingName(title) {
   return m ? ('第' + m[1] + '次例会') : String(title || '')
 }
 // 右侧常驻状态标签（点2/4：无边框浅底文字，与"选中"分离）
+const LIVE_LABELS = ['进行中', '会后整理', '待整理', '纪要生成中']
 function dueStatusText(row) {
   if (row.statusClass === 'overdue') return '逾期'
-  if (row.statusClass === 'ongoing') return '进行中'
-  if (String(row.key).indexOf('mr-draft') === 0) return '编辑中'
+  // ⚠ 0803 修：进行中的会议 statusClass 是 'current' 不是 'ongoing'（见 meetingRecordList.toRow），
+  // 原来只认 'ongoing' → 卡里写「待召开」、底部按钮写「进行中」，同一场会两个状态。以 statusLabel 为准
+  const lb = String(row.statusLabel || '')
+  if (LIVE_LABELS.indexOf(lb) >= 0) return lb
+  if (String(row.key).indexOf('mr-draft') === 0 || lb === '编辑中') return '编辑中'
   return '待召开'
+}
+// 这场会是不是"正开着/开完还没整理完"——底部条只为这种情况出现（0803 设计师）
+function rowIsLive(row) {
+  return !!row && LIVE_LABELS.indexOf(String(row.statusLabel || '')) >= 0
 }
 // 状态字三级样式（0730 设计师定，全 app 通用）——判据：这个状态是否需要用户额外做点补救？
 //   ① st-warn 暖色胶囊(有底)＝异常需补救(逾期)：一屏最多一种，全页唯一跳出来的东西
@@ -2187,6 +2197,9 @@ function yearlessTitle(title) {
 }
 // 底部主按钮一行式（0731 设计师点3）：「去补开 · 第3次例会」——动词领队一句话，不再两行分散重量。
 // （原两行式的 heroBarSub/meetingRowTitle 随之退役）
+// 底部条出现条件（0803 设计师）：卡片行本身就是入口，平时那颗大按钮与它指向同一场会、纯属重复；
+// 只有"会正开着"时才需要一个从任何位置立刻回到现场的入口
+const heroBarVisible = computed(() => rowIsLive(heroMeeting.value))
 const heroBarLine = computed(() => {
   const h = heroMeeting.value
   if (!h) return ''
@@ -5496,6 +5509,10 @@ onActivated(show)
 /* 待召开卡放大（0730 用户+设计师定，加对地方）：行内距 26→34rpx(两行更松)；会议名(本行最重要
    信息)31→34rpx；标题↔副行间距 7→10rpx；日期块 94→108rpx / range 132→152rpx，字号同步加大 */
 .mtg-due-row { position: relative; display: flex; align-items: center; gap: 22rpx; padding: 52rpx 6rpx; border-top: 2rpx solid #F0F2F5; cursor: pointer; }   /* 行高 86px（0731 设计师定：三处加高凑约 72% 占屏，点击区同步变大） */
+/* 只有一场会时收紧（0803 设计师：日期块+标题+状态横排一行，右边大片空白，整卡显空）：
+   上下内边距减半、日期块压扁；点击区仍 ≥54px */
+.mtg-due-card.single .mtg-due-row { padding: 26rpx 6rpx; }
+.mtg-due-card.single .mtg-due-row .mr-badge { min-height: 76rpx; }
 .mtg-due-row:first-child { border-top: 0; }
 .mtg-due-row:active { background: #F6F9FC; }
 .mtg-due-row .mr-row-title { font-size: 36rpx; }
