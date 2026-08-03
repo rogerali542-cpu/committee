@@ -1162,11 +1162,16 @@ async function startMeeting() {
   const d = detail.value || {}
   const scheduled = scheduledStartTime(d)
   if (scheduled && scheduled.getTime() - Date.now() > 30 * 60 * 1000) {
+    // 0803 设计师版：标题写要做的判断（不是状态陈述），正文一行说清事实、不复读标题和按钮；
+    // caution 变体=上下叠放胶囊按钮 + 浅暖底确认（非常规操作），取消就叫「取消」
+    const md = String(d.meetingDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+    const when = (md ? (Number(md[2]) + '月' + Number(md[3]) + '日 ') : '') + fmtHm(d.meetingTime)
     const res = await showModal({
-      title: '会议时间未到',
-      content: '原定会议时间为 ' + fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime) + '，尚未到。确认现在开始吗？',
+      title: '提前开始会议？',
+      content: '原定 ' + when + '，现在开始即为提前召开。',
       confirmText: '确认开始',
-      cancelText: '再等等'
+      cancelText: '取消',
+      size: 'caution'
     })
     if (!res || !res.confirm) return
   }

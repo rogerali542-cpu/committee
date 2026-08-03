@@ -188,6 +188,20 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 
 /* AI 帮写/润色完成卡（size:'aicard'）：轻提示，短句+清晰确认 */
 .ui-modal.aicard { width: 560rpx; max-width: 82vw; border-radius: 22rpx; padding: 36rpx 36rpx 0; box-shadow: 0 18rpx 54rpx rgba(31,35,41,0.18); }
+/* 非常规操作确认（0803 设计师定，首例=提前开始会议）：
+   标题写问题不写状态（「提前开始会议？」）；正文一行左对齐、不复读标题和按钮；
+   按钮上下叠放带底色——两个并排纯文字按钮是老人最难点的形态，高度给足 108rpx(54px)；
+   确认用浅暖底+深暖字胶囊（#f7e4c6/#9a5b12）——暖橙是异常/例外专用色，
+   做底色胶囊表达"非常规"，不拿橙色文字当按钮主色。 */
+.ui-modal.caution .ui-modal-title { text-align: left; }
+.ui-modal.caution .ui-modal-content { text-align: left; margin-top: 16rpx; color: #4A5560; }
+.ui-modal.caution .ui-modal-actions { flex-direction: column; gap: 16rpx; margin-top: 36rpx; border-top: 0; }
+.ui-modal.caution .ui-modal-btn { box-sizing: border-box; min-height: 108rpx; padding: 0; border-radius: 999rpx; font-size: 33rpx; }
+.ui-modal.caution .ui-modal-btn.confirm { order: -1; background: #f7e4c6; color: #9a5b12; font-weight: 700; }
+.ui-modal.caution .ui-modal-btn.confirm:active { background: #F0D8B2; }
+.ui-modal.caution .ui-modal-btn.cancel { border-right: 0; background: #F1F3F6; color: #4A5560; font-weight: 600; }
+.ui-modal.caution .ui-modal-btn.cancel:active { background: #E5E9EE; }
+
 .ui-modal.aicard .ui-modal-content { font-size: 32rpx; font-weight: 500; color: #1f2329; line-height: 1.45; margin-top: 0; }
 .ui-modal-meta { text-align: center; white-space: pre-wrap; }
 .ui-modal.aicard .ui-modal-meta { margin-top: 8px; font-size: 26rpx; color: #8A8F98; line-height: 1.45; }
