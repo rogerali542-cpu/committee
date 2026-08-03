@@ -241,7 +241,7 @@
         <!-- 底部（si-bottom 用 margin-top:auto 吸底）：每个角色/状态只有一颗主按钮 -->
         <div class="si-bottom">
           <template v-if="isChair">
-            <button class="si-cta" @click="chairEnterMeeting">开始录音 · 进入会议</button>
+            <button class="si-cta" @click="chairEnterMeeting">进入会议</button>
           </template>
           <template v-else-if="!signedIn">
             <button class="si-cta" @click="confirmSignIn">现场签到</button>
@@ -250,7 +250,7 @@
           <template v-else>
             <!-- 设计稿是灰色"已签到，等待主持人开始"死按钮——但委员必须能进第 2 步（表决/发言都在里面），
                  锁死会把人挡在表决之外。折中：浅蓝可点，文案保留"已签到"状态感 -->
-            <button class="si-cta-light" @click="confirmSignIn">已签到 · 进入会议</button>
+            <button class="si-cta-light" @click="confirmSignIn">进入会议</button>
           </template>
         </div>
       </div>
@@ -1946,7 +1946,8 @@ async function chairEnterMeeting() {
     } catch (e) { toast({ title: (e && e.message) || '签到失败，请重试', icon: 'none' }); return }
   }
   await enterLiveMeeting()
-  try { if (!recActive.value && !isPaused.value) toggleRecord() } catch (e) { console.warn('[进入会议] 录音未能自动开始：', e) }
+  // 0803 用户定：按钮文案改回「进入会议」，不再顺手开录音——文案没承诺"开始录音"，
+  // 自动开录就违背 0721 方案A；录音由主任在第 2 步手动点
 }
 
 async function confirmSignIn() {
@@ -4512,7 +4513,8 @@ async function returnToRecordingPage() {
   background:#fff; border-top:1px solid #EDF0F3; box-shadow:0 -8rpx 20rpx rgba(20,42,58,.05); }
 /* ===== 0803 设计师重做（签到页）===== */
 /* 步骤小字：替代圆点阶段条 */
-.si-step-line { padding:6rpx 6rpx 0; color:#8A9099; font-size:27rpx; }
+/* 与页头留 12-16px 间距（0803 设计师：贴着蓝条像被压着） */
+.si-step-line { padding:22rpx 6rpx 0; color:#8A9099; font-size:27rpx; }
 /* 会议卡：时间·地点一行 + 本人签到状态行 */
 .si-meet-meta2 { margin-top:18rpx; font-size:31rpx; color:#61656C; line-height:1.55; }
 .si-self { display:flex; align-items:center; gap:14rpx; margin-top:26rpx; }
@@ -4523,7 +4525,7 @@ async function returnToRecordingPage() {
    margin-top:auto（0803 设计师）：名单收起后这屏没多少内容，与其在中段留 400px 空白，
    不如做成"上面是会议、下面是入口"的两段结构——列表贴住底部操作条，空白落在两段之间，
    读作分组间距。列表展开变长时自由空间为 0，auto 自动失效，照常滚动 */
-.si-rows { display:flex; flex-direction:column; margin-top:auto; }
+.si-rows { display:flex; flex-direction:column; margin-top:auto; margin-bottom:28rpx; }  /* 底部条上方留 ~14px，别连成一块 */
 .si-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:100rpx; margin:0; padding:0 22rpx;
   border:0; border-bottom:1px solid #EEF0F2; background:none; font:inherit; text-align:left;
   color:#3F4A57; font-size:30rpx; font-weight:500; cursor:pointer;
