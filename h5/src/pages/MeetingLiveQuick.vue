@@ -4053,11 +4053,13 @@ async function returnToRecordingPage() {
 .meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#5f6570; }
 .meeting-stage-next { display:block; width:auto; min-width:340rpx; margin:24rpx auto 0; padding:22rpx 44rpx; border:0; border-radius:999rpx; background:var(--c-primary-dark,#A85800); color:#fff; font-size:30rpx; font-weight:700; box-shadow:0 6rpx 16rpx rgba(168,88,0,.20); }
 .meeting-stage-next[disabled] { opacity:.6; box-shadow:none; }
-/* 顶部内边距单列（0803 用户定）：步骤小字删除后，白卡顶到标题 = 本行 + 卡内 24rpx ≈ 21px */
-.meeting-console { margin-top:18rpx; padding:16rpx 28rpx 28rpx; border-radius:22rpx; background:#fff; border:2rpx solid #E8EBEF; box-shadow:0 8rpx 24rpx rgba(31,35,41,.06); }
+/* 顶部内边距收一档（0803 用户定，三次）：步骤行删掉后仍有 ~19px。
+   ⚠ margin-top 保持 18rpx 不能再减——白卡本就有 3px 掖在页头下面，
+   再往上推圆角会被蓝条切掉（实测 12rpx 时卡顶被削平）。只收卡内两层 */
+.meeting-console { margin-top:18rpx; padding:8rpx 28rpx 28rpx; border-radius:22rpx; background:#fff; border:2rpx solid #E8EBEF; box-shadow:0 8rpx 24rpx rgba(31,35,41,.06); }
 /* 会议卡顶部内边距在本页收窄：外层白卡与会议卡同为白底、之间没有分界，
    卡内原 40rpx 上留白会和外层的叠成一片，标题像掉在半空 */
-.meeting-console .si-meet-card { padding-top:24rpx; }
+.meeting-console .si-meet-card { padding-top:20rpx; }
 /* 预警条收进会议卡后：左对齐贴着录音状态行，不再居中浮一条 */
 .meeting-console .rec-bg-warn { margin:16rpx 0 0; }
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
