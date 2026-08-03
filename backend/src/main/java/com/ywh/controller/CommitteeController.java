@@ -193,8 +193,9 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    // 0803 收紧（codex 审查点6）：改他人送达位是主任的通知管理动作，委员不可调
     @PutMapping("/{id}/delivery/{userRoleId}")
-    @RequireRole({"主任", "副主任", "委员"})
+    @RequireRole({"主任", "副主任"})
     public Result<Void> toggleDelivery(@PathVariable Long id, @PathVariable Long userRoleId,
                                        @RequestParam String field) {
         service.toggleDelivery(id, userRoleId, field);
@@ -207,8 +208,9 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    // 0803 收紧（codex 审查点6）：整场通知名单只允许主任/副主任发起，委员不可覆盖
     @PostMapping("/{id}/delivery/send-all")
-    @RequireRole({"主任", "副主任", "委员"})
+    @RequireRole({"主任", "副主任"})
     public Result<Void> sendAll(@PathVariable Long id,
                                 @RequestBody(required = false) DeliverySendRequest req) {
         service.sendAll(id, req == null ? null : req.getMemberIds());
@@ -230,8 +232,9 @@ public class CommitteeController {
         return Result.ok();
     }
 
+    // 0803 收紧（codex 审查点6）：改他人签到只允许主任/副主任；委员只能走 /self 本人签到
     @PutMapping("/{id}/attendance/{userRoleId}")
-    @RequireRole({"主任", "副主任", "委员"})
+    @RequireRole({"主任", "副主任"})
     public Result<Void> toggleAttendance(@PathVariable Long id, @PathVariable Long userRoleId,
                                           @RequestParam String field) {
         service.toggleAttendance(id, userRoleId, field);

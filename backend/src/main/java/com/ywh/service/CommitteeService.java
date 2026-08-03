@@ -804,6 +804,18 @@ public class CommitteeService {
     public void selfAttend(Long meetingId, String mode, boolean authorizeProxySign) {
         CommitteeMeeting meeting = meetingRepo.findById(meetingId)
                 .orElseThrow(() -> new IllegalArgumentException("会议不存在"));
+        // 0803 修（codex 审查点5）：签到必须限进行中的会议、且签到人必须是本小区业委会成员。
+        // 原先谁登录都能在任何阶段签到——不在参会名单里的账号会被静默建出出席行，
+        // 污染签到人数、表决分母和"过半有效"判定。签到接口不扩大参会名单。
+        if (meeting.getStage() != MeetingStage.ongoing) {
+            throw new IllegalArgumentException("会议未在进行中，暂不能签到");
+        }
+        UserRoleEntity self = SecurityUtils.getCurrentUserRole();
+        boolean sameCommunity = self != null && self.getCommunity() != null && meeting.getCommunity() != null
+                && self.getCommunity().getId().equals(meeting.getCommunity().getId());
+        if (!sameCommunity || self.getRole() == null || !self.getRole().isCommitteeMember()) {
+            throw new IllegalArgumentException("仅本小区业委会成员可签到参会");
+        }
         // 线上会议也各自签到（0725 用户定）：个人签到一律记远程参会；主持人的统一登记仅作未签到者的兜底代录
         if (meeting.getMeetingMethod() == com.ywh.enums.MeetingMethod.online) {
             mode = "remote";
