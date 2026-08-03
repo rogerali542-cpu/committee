@@ -1390,14 +1390,17 @@ const noticeLogRows = computed(() => {
     groups.push({ by: d.notifiedByName || '', at: String(d.notifiedAt || ''), channels: ['App 内'], count: 0 })
   }
   return groups.slice().reverse().map((g) => {
-    // 0803 用户定格式：已通知（App内 + 微信）· 张建国　＋右侧时间。
-    // 按渠道分支、不按人数分支——旧日志/后端没重启时 App 内那条没有 sentCount，
-    // 按人数分支会把整行退化成"已转发到微信工作群"，App 内通知被吞掉。
+    // 0803 用户定格式：已通知 7 人（App 内 + 微信）· 张建国　＋右侧时间。
+    // 渠道按列举写、不作为分支条件——否则 sentCount 缺失时 App 内会被整行吞掉。
+    // 人数：优先日志定格的 sentCount；旧日志/后端未重启没有它时，App 内送达用 delivery.total 兜底
+    // （绝大多数是"全体一次发"，误差可忽略；连 delivery 都没有就不写数字）。
     const chs = CHANNEL_ORDER.filter((c) => g.channels.indexOf(c) >= 0).join(' + ')
+    const hasApp = g.channels.indexOf('App 内') >= 0
+    const count = g.count || (hasApp && d.delivery && d.delivery.total) || 0
     const name = String(g.by || '').split('·')[0].trim()
-    const parts = ['已通知（' + chs + '）']
-    if (name) parts.push(name)
-    return { text: parts.join(' · '), when: fmtSendTimeShort(g.at) }
+    const head = '已通知' + (count ? ' ' + count + ' 人' : '') + '（' + chs + '）'
+    // 「·」前不加空格：全角「）」自带右侧留白，再加空格看着是两个空
+    return { text: name ? head + '· ' + name : head, when: fmtSendTimeShort(g.at) }
   })
 })
 // 再次提醒（0803 用户定）：App 内通知已是默认动作，点了直接再发一轮，不再弹渠道选择。
