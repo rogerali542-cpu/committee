@@ -34,7 +34,11 @@
         </div>
         <div v-if="opinions.length > visibleOpinions.length" class="ts-op-more">还有 {{ opinions.length - visibleOpinions.length }} 条，点击“补充意见”查看</div>
         <!-- 补充意见：意见卡片正下方的显眼按钮（0722 用户定）。会后只读（interactive=false）隐藏写入口 -->
-        <button v-if="interactive" class="ts-op-entry in-summary" @click.stop="opinionOpen = true">补充意见</button>
+        <button v-if="interactive" class="ts-op-entry in-summary ts-op-row" @click.stop="opinionOpen = true">
+          <span class="ts-my-row-k">补充意见</span>
+          <span class="ts-my-row-v">去写</span>
+          <i class="ts-my-row-arr"></i>
+        </button>
       </div>
 
       <!-- 可滚动区：表决 + 意见汇总（输入框固定在底部，这里滚动看更多意见） -->
@@ -79,14 +83,16 @@
                 <span class="ts-result-badge">进行中</span>
                 <span class="ts-result-nums"><span class="rn-part progress">已投 {{ tallyProgress.voted }}/{{ tallyProgress.total }}</span><template v-for="(p, i) in breakdownParts" :key="i"><span v-if="i > 0" class="rn-sep"> · </span><span class="rn-part" :class="p.cls">{{ p.text }}</span></template><span v-if="notVoted > 0" class="rn-part faint">（未投 {{ notVoted }}）</span></span>
               </div>
-              <!-- 我的投票（0803 设计师：改票/撤回原是 38px 小胶囊，低于 54px 点不准）：
-                   状态单独一行，两个动作做成等宽 54px 次按钮 -->
-              <div v-if="voteCollapsed && !proxyOpen" class="ts-my-line">
-                <span class="ts-my-vote">✓ 已投：{{ myVoteLabel || localVoteLabel }}</span>
-              </div>
-              <div v-if="voteCollapsed && !proxyOpen && !proxyEditsUnified" class="ts-my-acts">
-                <button class="ts-my-act" :disabled="voteSubmitting" @click="changeVoteOpen = true">改票</button>
-                <button class="ts-my-act" :disabled="voteSubmitting" @click="retractVote">撤回</button>
+              <!-- 我的表决（0803 设计师二改）：状态与「改票」合成一条 68px 列表行；
+                   撤回收进行内的动作选择（两个 38px 小胶囊 → 一条大行，点不准的问题一并解决） -->
+              <button v-if="voteCollapsed && !proxyOpen && !proxyEditsUnified" type="button" class="ts-my-row"
+                      :disabled="voteSubmitting" @click="openMyVoteActions">
+                <span class="ts-my-row-k">我已投：{{ myVoteLabel || localVoteLabel }}</span>
+                <span class="ts-my-row-v">改票</span>
+                <i class="ts-my-row-arr"></i>
+              </button>
+              <div v-else-if="voteCollapsed && !proxyOpen" class="ts-my-line">
+                <span class="ts-my-vote">我已投：{{ myVoteLabel || localVoteLabel }}</span>
               </div>
             </div>
             <!-- 代委员投票（仅主持人、会后整理阶段）：现场会议结束后，主任为忘投/不会用手机的委员补录并留凭证审计。
@@ -151,8 +157,10 @@
           </div>
         </div>
         <!-- 有意见时入口已在意见汇总标题行；这里只兜底"还没人发言"的场景 -->
-        <button v-if="canDiscuss && interactive && !opinionOpen && !hasOpinions" class="ts-op-entry" @click="opinionOpen = true">
-          补充意见
+        <button v-if="canDiscuss && interactive && !opinionOpen && !hasOpinions" class="ts-op-entry ts-op-row" @click="opinionOpen = true">
+          <span class="ts-my-row-k">补充意见</span>
+          <span class="ts-my-row-v">去写</span>
+          <i class="ts-my-row-arr"></i>
         </button>
         <!-- 没有意见时的友好空态（0729 用户定：投完票、还没意见时页面别太空、太荒芜）。
              仅在"已投票/已揭晓"后出现——未投票时焦点在投票按钮，不提前占位。 -->
@@ -1016,6 +1024,18 @@ const showRetract = computed(() => {
   return committedVote.value != null && pendingVote.value == null
 })
 // 撤回本人投票（表决未结束前）：回到"未投"，可重新投票
+// 我的表决行（0803 设计师二改）：一条 68px 行承担改票/撤回两个动作，
+// 点行弹选择，避免并排两个小胶囊都低于 54px
+async function openMyVoteActions() {
+  if (voteSubmitting.value) return
+  const r = await showActionSheet({
+    title: '我的表决',
+    variant: 'picker',
+    itemList: [{ label: '改投其他选项' }, { label: '撤回投票', tone: 'danger' }]
+  })
+  if (r && r.tapIndex === 0) changeVoteOpen.value = true
+  else if (r && r.tapIndex === 1) retractVote()
+}
 async function retractVote() {
   const t = props.topic
   if (!t || t.voteClosed || voteSubmitting.value) return
@@ -1449,13 +1469,20 @@ async function removeOpinion(op) {
 /* 我的投票并入票数卡内一行：细分隔线 + 状态绿字 + 右侧小号改票/撤回 */
 .ts-my-line { display: flex; align-items: center; gap: 12rpx; margin-top: 14rpx; padding: 14rpx 18rpx 0; border-top: 2rpx solid #E3ECF9; } /* 左右各 18rpx 与蓝卡内容对齐 */
 .ts-my-vote { flex: 1; min-width: 0; font-size: 27rpx; font-weight: 700; color: #3F4A57; }
-/* 0803 设计师：改票/撤回原是 38px 小胶囊 → 等宽 54px 次按钮，单独一行 */
-.ts-my-acts { display: flex; gap: 14rpx; margin-top: 14rpx; }
-.ts-my-act { flex: 1 1 0; min-height: 104rpx; box-sizing: border-box; border: 2rpx solid #D8DBE0; background: #fff;
-  color: #55585E; font-size: 28rpx; font-weight: 700; border-radius: 12px; padding: 0; font-family: inherit;
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.ts-my-act:active { background: #F1F2F4; }
-.ts-my-act:disabled { opacity: .5; }
+/* 我的表决行 / 补充意见行（0803 设计师二改）：68px 大行、通栏、右侧动作词+箭头，
+   全页只剩 议题标题 / 我的表决 / 补充意见 三块 */
+.ts-my-row, .ts-op-row { display: flex; align-items: center; gap: 14rpx; width: 100%; min-height: 131rpx;
+  box-sizing: border-box; margin: 14rpx 0 0; padding: 0 24rpx; border: 2rpx solid #E4E8ED; border-radius: 12px;
+  background: #fff; font-family: inherit; text-align: left; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; }
+.ts-my-row:active, .ts-op-row:active { background: #F6F8FA; }
+.ts-my-row:disabled { opacity: .5; }
+.ts-my-row-k { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; color: #2B2E33; }
+.ts-my-row-v { flex-shrink: 0; font-size: 28rpx; font-weight: 700; color: #2f5f9e; }
+.ts-my-row-arr { flex-shrink: 0; width: 16rpx; height: 16rpx; border-right: 3rpx solid #B4BCC7;
+  border-bottom: 3rpx solid #B4BCC7; transform: rotate(-45deg); }
+/* 补充意见沿用同款行：覆盖上面浅蓝块的底色与居中 */
+.ts-op-entry.ts-op-row { min-height: 131rpx; justify-content: flex-start; background: #fff; color: #2B2E33; font-size: 30rpx; border: 2rpx solid #E4E8ED; }
 .ts-vote-hint { font-size: 24rpx; color: #9AA0A6; margin-top: 10rpx; }
 .ts-vote-hint.mine { color: #3F4A57; font-weight: 600; }
 /* 先选后交（研究P1）：确认提交按钮——选好才亮，带"提交后不可改"静态提示 */
@@ -1650,6 +1677,8 @@ async function removeOpinion(op) {
 /* 0803 设计师：两颗等宽 1:1、都 54px；原来宽度不等、「下一个议题」还是墨绿实心（第四种颜色） */
 .ts-nav-row { flex-shrink: 0; display: flex; align-items: stretch; gap: 14rpx; margin-top: 20rpx; padding-top:18rpx; border-top:2rpx solid #EEF1F4; }
 .ts-nav-row > button { flex: 1 1 0; min-width: 0; }
+/* 0803 二改：返回 1 : 下一个议题 2——右侧才是主线 */
+.ts-nav-row > .ts-nav-btn.next { flex: 2 1 0; }
 .ts-nav-btn { box-sizing: border-box; min-height: 104rpx; border: 2rpx solid #D8DBE0; border-radius: 12px; background: #fff; color: #444; font-size: 29rpx; font-weight: 700; padding: 0 20rpx; font-family: inherit; }
 .ts-nav-btn:active { background: #ECEEF1; }
 .ts-op-collapse { flex-shrink: 0; border: 2rpx solid #C7D4E2; background: #F4F8FC; color: #3F566E; font-size: 28rpx; font-weight: 800; padding: 16rpx 28rpx; border-radius: 999rpx; font-family: inherit; box-shadow: 0 4rpx 10rpx rgba(63,86,110,0.08); }
