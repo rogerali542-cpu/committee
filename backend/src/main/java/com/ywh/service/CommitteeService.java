@@ -951,8 +951,10 @@ public class CommitteeService {
     public void markNoticeViewed(Long meetingId, Long topicId) {
         RecordTopic topic = requireTopic(meetingId, topicId);
         // 0803：讨论类也用这套「我看过」留痕——会议进行页按"本人进过这条议题"算已处理
-        // （讨论不强制发表意见）。表决类不走这里，它的"我填完了"＝我投过票
-        if (topic.getType() != TopicType.notice && topic.getType() != TopicType.discussion) return;
+        // （讨论不强制发表意见）。表决类不走这里，它的"我填完了"＝我投过票。
+        // 用 isVoteTopic 判而不是逐个列类型：decision/major/ordinary 都算表决类，
+        // 将来枚举再加值也不会漏（前端 voteRequired 与它同源）
+        if (isVoteTopic(topic)) return;
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         if (ur == null) return;
         Set<Long> viewed = parseViewedBy(topic.getViewedByJson());
