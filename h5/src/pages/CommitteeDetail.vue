@@ -388,6 +388,9 @@
     <!-- 准备阶段（主任）：底部固定主操作 -->
     <div ref="prepFooterEl" class="prep-footer after-send-footer" v-if="detail && userView === 'chair' && detail.stage === 'preparing'">
       <div class="pf-after-send">
+        <!-- 测试开关：只在「已发送、会议未到」出现，切到/切回「会议当天」预览开始会议按钮。
+             纯本页显示态，不落库，刷新复原；真到会议当天自然消失 -->
+        <button v-if="footerStageBase === 'remind'" type="button" class="pf-test-toggle" @click="testForceStart = !testForceStart">{{ testForceStart ? '测试 · 切回实际日期' : '测试 · 预览会议当天' }}</button>
         <!-- 0801 设计师定：底部按"这一刻该做什么"分三态，任何一态都只有一颗实心主按钮。
              ① 发送前：两个渠道勾选 + 蓝实心「发送通知」
              ② 已发送、会议未到：浅蓝次级「再次提醒 N 人」+「开始会议」并排——通知已经完成，
@@ -1308,7 +1311,14 @@ const isMeetingDay = computed(() => {
   const start = scheduledStartTime(d)
   return !!start && (start.getTime() - Date.now()) <= 60 * 60 * 1000
 })
-const footerStage = computed(() => (isMeetingDay.value ? 'start' : (noticeSent.value ? 'remind' : 'send')))
+// 测试用的状态开关（0801 用户定）：三态里「会议当天」要等真到日子才出现，测试没法等 12 天。
+// 已发送后底部露一个小字开关，把 remind 手动切到 start 预览/联调「开始会议」；只影响本页显示，
+// 不落库不改会议数据，刷新即复原。真到了会议当天开关自然消失。
+const testForceStart = ref(false)
+const footerStageBase = computed(() => (isMeetingDay.value ? 'start' : (noticeSent.value ? 'remind' : 'send')))
+const footerStage = computed(() => (
+  testForceStart.value && footerStageBase.value === 'remind' ? 'start' : footerStageBase.value
+))
 // 会议当天却还没通知过：次级按钮回落成「发送通知」，别把这条路藏了
 const remindLabel = computed(() => (
   noticeSent.value
@@ -2592,6 +2602,11 @@ async function removeMaterial(item) {
 .pf-btn-light { background:#EAF0F8; color:#2f5f9e; font-weight:600; }
 .pf-btn-light:active { background:#DCE7F3; }
 .pf-btn-col .pf-btn-light { height:96rpx; font-size:31rpx; }
+/* 测试开关：右上小字灰，与「清空」同量级——测试期用，不抢正式按钮的注意力 */
+.pf-test-toggle { align-self:flex-end; margin:0 20rpx; padding:4rpx 12rpx; border:0; background:none;
+  font:inherit; color:#A0A6AD; font-size:23rpx; line-height:1.4; cursor:pointer;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.pf-test-toggle:active { color:#6A7480; }
 /* 会议当天：「再次提醒」浅蓝次级 + 「开始会议」蓝实心主按钮，按规则四 2:1 分宽。
    同高 120rpx（60px），主次靠颜色和宽度区分，不靠高度 */
 .pf-sub-row { display:flex; gap:16rpx; }
