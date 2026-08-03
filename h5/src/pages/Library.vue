@@ -12,8 +12,8 @@
 
       <!-- 年份筛选（客户端；三类数据均无服务端年份参数）。只一个年份时不显示，免冗余 -->
       <div v-if="years.length > 1" class="arch-years">
-        <div class="arch-year" :class="{ active: yearFilter === '' }" @click="setYear('')">全部</div>
-        <div v-for="y in years" :key="y" class="arch-year" :class="{ active: yearFilter === y }" @click="setYear(y)">{{ y }}年</div>
+        <div class="arch-year" :class="{ active: yearFilter === '' }" @click="setYear('')">全部 {{ curList.length }}</div>
+        <div v-for="y in years" :key="y" class="arch-year" :class="{ active: yearFilter === y }" @click="setYear(y)">{{ y }}年 {{ yearCounts[y] || 0 }}</div>
       </div>
 
       <!-- 纯轻列表（spec §5：只需知晓的历史信息＝透明底+分隔线，非白卡） -->
@@ -91,6 +91,20 @@ const years = computed(() => {
   curList.value.forEach(it => { const y = String(it.date || '').slice(0, 4); if (/^\d{4}$/.test(y)) ys.add(y) })
   return [...ys].sort((a, b) => b.localeCompare(a))
 })
+// 每个年份的条数（0803 用户定）：胶囊上直接写清楚，选之前就知道那年有多少
+const yearCounts = computed(() => {
+  const m = {}
+  curList.value.forEach(it => { const y = String(it.date || '').slice(0, 4); if (/^\d{4}$/.test(y)) m[y] = (m[y] || 0) + 1 })
+  return m
+})
+// 跨年份的页签默认只看最近一年（0803 用户定：几百条堆一起翻页也累）；
+// 只有一个年份时筛选条不显示，默认自然是全部
+function defaultYearFor(key) {
+  const ys = new Set()
+    ; (lists.value[key] || []).forEach(it => { const y = String(it.date || '').slice(0, 4); if (/^\d{4}$/.test(y)) ys.add(y) })
+  const arr = [...ys].sort((a, b) => b.localeCompare(a))
+  return arr.length > 1 ? arr[0] : ''
+}
 const items = computed(() => {
   const list = curList.value
   return yearFilter.value ? list.filter(it => String(it.date || '').startsWith(yearFilter.value)) : list
@@ -99,7 +113,10 @@ const items = computed(() => {
 // ── 翻页（0803 用户定：会议/接待/事项会累到几百条）──
 // 纯前端分页：四路数据本就一次性拉全量，这里只切显示；等哪天单页签上千条、
 // 首屏拉取本身变慢，再让后端出 page/size 接口，这层照样能接
-const PAGE_SIZE = 10
+// 一页 6 条（0803 用户定：不用往下翻才看得到翻页条）。为什么不是 7：
+// 标题两行的行（如「整理上半年会议、公示、接待和培训档案目录」）比一行的高约 16px，
+// 7 条全是两行时页码条会掉到 887px、跌出 844 视口；6 条最差也只到 794，稳在首屏内
+const PAGE_SIZE = 6
 const page = ref(1)
 const totalPages = computed(() => Math.max(1, Math.ceil(items.value.length / PAGE_SIZE)))
 const pageItems = computed(() => items.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
@@ -185,10 +202,13 @@ async function loadArchive() {
 
   lists.value = { committee: committeeItems, reception: receptionItems, learning: learningItems, done: doneItems }
   counts.value = { committee: committeeItems.length, reception: receptionItems.length, learning: learningItems.length, done: doneItems.length }
+  // 数据到位后才知道有几个年份 → 这时才能定默认年份（enter() 里 list 还是空的）
+  yearFilter.value = defaultYearFor(tab.value)
+  page.value = 1
   loading.value = false
 }
 
-function switchTab(t) { tab.value = t; yearFilter.value = ''; page.value = 1 }
+function switchTab(t) { tab.value = t; yearFilter.value = defaultYearFor(t); page.value = 1 }
 function setYear(y) { yearFilter.value = y; page.value = 1 }
 
 function openDetail(item) {
