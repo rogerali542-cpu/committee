@@ -272,7 +272,9 @@
         <div class="si-meet-card">
           <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
           <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}</div>
-          <div class="si-meet-meta2 si-meet-loc">{{ detail.location }}<template v-if="signinStats.total"> · 已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</template></div>
+          <!-- 已签到 x/7：外观是卡内普通灰字（0803 用户定：列表参会名单行删除、人数只留这里），
+               但保留可点开名单弹窗——主持人会中改签到状态的唯一入口，别做成死文本 -->
+          <div class="si-meet-meta2 si-meet-loc">{{ detail.location }}<span v-if="signinStats.total" class="si-meet-att" @click="rosterPopOpen = true"> · 已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span></div>
           <!-- 录音状态：灰点=未开始，蓝点呼吸=录音中/上传/识别中，暖橙点=已暂停（异常态专色，暂停恰是"需要留意"）。
                0803 设计师：录音状态只在这一行，控制只在底部条——原「会议录音」卡整张删除，
                上传/识别进度并入本行，异常（上传失败/识别失败）用下面的暖色提示行 + 行内重试 -->
@@ -301,8 +303,6 @@
             <i class="si-row-arr"></i>
           </button>
           <div v-if="!meetingTopics.length" class="mc-topics-empty">暂无会议议题</div>
-          <!-- 临时添加议题保留（原在"议题处理"页里，直进直出后挪到列表尾行，仅主持人） -->
-          <button v-if="isHost" type="button" class="mc-topic-add" @click="openAddTopic">＋ 临时添加议题</button>
         </div>
 
         <div class="si-rows mc-rows">
@@ -316,11 +316,7 @@
               <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
             </div>
           </div>
-          <button type="button" class="si-row" @click="rosterPopOpen = true">
-            <span class="si-row-k">参会名单</span>
-            <span class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
-            <i class="si-row-arr"></i>
-          </button>
+          <!-- 参会名单行删除（0803 用户定：与会议卡「已签到 x/7」重复；名单弹窗入口在卡内那段字上） -->
           <!-- 已上传的录音段：原录音卡里的「已录N段」列表降级成一行，展开看详情/删除（删除仅主任） -->
           <button v-if="recordings.length" type="button" class="si-row" @click="recListOpen = !recListOpen">
             <span class="si-row-k">会议录音（{{ recordings.length }} 段）</span>
@@ -333,12 +329,12 @@
               <span v-if="isChair" class="mc-seg-del" @click.stop="deleteRecording(item, idx)">删除</span>
             </div>
           </div>
-          <!-- 低频补救（0803 设计师）：录音出问题手动传文件补上，收进列表末尾，不与录音控制并列 -->
-          <button v-if="!isSelfRemote" type="button" class="si-row mc-upload-row" @click="chooseAudioFile">
-            <span class="si-row-k">＋ 上传录音文件</span>
+          <!-- 「＋ 上传录音文件」行已删（0803 用户定：用不到）；chooseAudioFile/onAudioFileChange 留在 JS 里备用 -->
+          <!-- 临时添加议题（仅主持人）：从议题白卡内移到轻列表末行，与「会议材料」同款左对齐带箭头（0803 设计师） -->
+          <button v-if="isHost" type="button" class="si-row" @click="openAddTopic">
+            <span class="si-row-k">＋ 临时添加议题</span>
             <i class="si-row-arr"></i>
           </button>
-          <input ref="audioFileInput" type="file" accept="audio/*" multiple style="display:none" @change="onAudioFileChange" />
         </div>
       </div>
 
@@ -4593,7 +4589,10 @@ async function returnToRecordingPage() {
 .mc-rec-err-txt { flex:1; min-width:0; font-size:26rpx; line-height:1.45; color:#9a5b12; }
 .mc-rec-err-act { flex-shrink:0; font-size:27rpx; font-weight:700; color:#9a5b12; }
 /* 低频补救行「＋ 上传录音文件」：压一档存在感，别抢常规行 */
-.mc-upload-row .si-row-k { color:#6B7684; font-weight:500; }
+/* 会议卡「已签到 x/7」：外观同普通灰字，用内边距+负外边距悄悄放大点击区（开名单弹窗的隐形入口） */
+.si-meet-att { display:inline-block; padding:16rpx 12rpx; margin:-16rpx -12rpx; cursor:pointer;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.si-meet-att:active { opacity:.6; }
 /* 轻列表里的录音段行：段名不用材料的蓝下划线（点整行看详情），删除仅主任、暖红字 */
 .mc-files .supp-file-name.mc-seg-name { color:#2F3740; text-decoration:none; }
 .mc-seg-del { flex-shrink:0; font-size:24rpx; color:#B24A3B; padding:8rpx 0 8rpx 16rpx; }
@@ -4611,10 +4610,6 @@ async function returnToRecordingPage() {
 .mc-topic-state { flex-shrink:0; font-size:26rpx; color:#8A9099; }
 .mc-topic-state.done { color:#2f5f9e; font-weight:600; }
 .mc-topics-empty { padding:30rpx; text-align:center; color:#9AA0A6; font-size:29rpx; }
-.mc-topic-add { display:block; width:100%; margin:0; padding:22rpx 30rpx; border:0; border-top:1px solid #F0F2F5;
-  background:none; font:inherit; text-align:center; color:#6b7078; font-size:28rpx; cursor:pointer;
-  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
-.mc-topic-add:active { background:#F6F8FA; }
 .mc-rows { margin-top:4rpx; }
 .mc-files { padding:4rpx 22rpx 10rpx; border-bottom:1px solid #EEF0F2; }
 /* 底部条按钮：主实心蓝 + 次浅蓝，2:1 分宽 */
