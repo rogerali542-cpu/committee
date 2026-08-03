@@ -284,9 +284,6 @@
           <div class="mc-rec" :class="{ on: recActive || mcRecBusy }">
             <span class="mc-rec-dot"></span>
             <span class="mc-rec-txt">{{ mcRecText }}</span>
-            <!-- 会中保存这段（0803 用户反馈：删了录音卡就没上传入口了）：只在暂停/已停止时出现，
-                 就地跟在状态文字后面，不另起卡片、也不挤占底部两颗主按钮 -->
-            <button v-if="mcCanSaveRec" type="button" class="mc-rec-act" @click="uploadRecordingStep">保存这段</button>
           </div>
           <button v-if="mcRecErrText" type="button" class="mc-rec-err" :disabled="!mcRecErrAction" @click="mcRecErrRetry">
             <span class="mc-rec-err-txt">⚠ {{ mcRecErrText }}</span>
@@ -339,6 +336,14 @@
               <i class="si-row-arr"></i>
             </button>
           </div>
+          <!-- 会中保存录音（0803 用户反馈补回、同日设计师提点后从卡内蓝字挪来这里）：
+               只在已暂停/已停止未传时出现；放列表行而不是卡内，是为了离底部两颗主按钮远一点，
+               不跟「继续录音」并列成两个动作。录音进行中不给——误点会打断整场 -->
+          <button v-if="mcCanSaveRec" type="button" class="si-row" @click="uploadRecordingStep">
+            <span class="si-row-k">保存当前录音</span>
+            <span class="si-row-v">{{ timeText }}</span>
+            <i class="si-row-arr"></i>
+          </button>
           <!-- 「＋ 上传录音文件」行已删（0803 用户定：用不到）；chooseAudioFile/onAudioFileChange 留在 JS 里备用 -->
           <!-- 临时添加议题（仅主持人）：从议题白卡内移到轻列表末行，与「会议材料」同款左对齐带箭头（0803 设计师） -->
           <button v-if="isHost" type="button" class="si-row" @click="openAddTopic">
@@ -4590,7 +4595,8 @@ async function returnToRecordingPage() {
    不如做成"上面是会议、下面是入口"的两段结构——列表贴住底部操作条，空白落在两段之间，
    读作分组间距。列表展开变长时自由空间为 0，auto 自动失效，照常滚动 */
 .si-rows { display:flex; flex-direction:column; margin-top:auto; margin-bottom:28rpx; }  /* 底部条上方留 ~14px，别连成一块 */
-.si-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:100rpx; margin:0; padding:0 22rpx;
+/* 104rpx≈54px：设计师给的可点行下限（0803） */
+.si-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:104rpx; margin:0; padding:0 22rpx;
   border:0; border-bottom:1px solid #EEF0F2; background:none; font:inherit; text-align:left;
   color:#3F4A57; font-size:30rpx; font-weight:500; cursor:pointer;
   touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
@@ -4619,11 +4625,7 @@ async function returnToRecordingPage() {
 .mc-rec-dot { flex-shrink:0; width:22rpx; height:22rpx; border-radius:50%; background:#C3CAD3; }
 .mc-rec.on .mc-rec-dot { background:#3567A4; animation:mcPulse 1.6s ease-in-out infinite; }
 .mc-rec-txt { font-size:31rpx; color:#61656C; font-weight:600; }
-/* 「保存这段」：状态行右端的蓝色文字按钮；内边距+负外边距把点击区放到 44px 以上，外观仍是一行字 */
-.mc-rec-act { flex-shrink:0; margin-left:auto; padding:26rpx 12rpx; margin-top:-26rpx; margin-bottom:-26rpx;
-  border:0; background:none; font-family:inherit; font-size:28rpx; font-weight:700; color:#2f5f9e;
-  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
-.mc-rec-act:active { opacity:.6; }
+
 .mc-rec.on .mc-rec-txt { color:#1F2937; }
 @keyframes mcPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
 @media (prefers-reduced-motion: reduce) { .mc-rec.on .mc-rec-dot { animation:none; } }
