@@ -2142,17 +2142,10 @@ async function removeMaterial(item) {
 /* 兜底 250px 按最高的 send 态（标题+两行勾选+主按钮）给：实测值没到位时宁可多留、别压内容；
    呼吸位 20→32px（0801 设计师：最后一行被条压掉过） */
 .detail-page.has-prep-footer .detail-body { padding-bottom:calc(var(--prep-footer-h, 250px) + 32px); }
-/* 0801 设计师二提「仍空 150px」：那一片不是 padding——通知人员收起后整页不满一屏，
-   .detail-body(flex:1 0 auto) 被撑满视口，内容末尾到钉死的操作条之间剩下的是视口余量，
-   单纯减 padding 消不掉。改成把这片余量挪走：.detail-body 在该模式下转成 flex 列，
-   .prep-more 用 margin-top:auto 吸走全部剩余空间——低频操作行于是恒定停在操作条上方 40px
-   （让位量已按条高精算），余量落到"白卡组 / 低频操作组"之间，读作分组间距而不是页面断成两截。
-   页面长到要滚时自由空间为 0，auto 自动失效，不影响长内容。
-   > * 的 flex-shrink:0 是防坑：本项目踩过"flex 子项被压缩 + overflow:hidden → 内容被裁"，
-   .notice-card 正好带 overflow:hidden。 */
-.detail-page.has-prep-footer .detail-body { display:flex; flex-direction:column; }
-.detail-page.has-prep-footer .detail-body > * { flex-shrink:0; }
-.detail-page.has-prep-footer .prep-more { margin-top:auto; }
+/* （0803 撤销 0801 的 margin-top:auto 方案）当时为了让低频列表贴住操作条，把视口余量
+   全部吸到列表上方——结果未发送态通知人员卡和「转为线下会议」之间凭空出一大段空白，
+   用户看着就是"中间为什么有个空"。设计师定稿改回自然文档流：列表 12px 直接衔接上方内容，
+   短页的余量落在列表之后（固定条上方），那是页面的自然结尾，不再折腾。 */
 
 /* Task banner */
 .task-banner { padding:10px 14px; border-radius:12px; margin-bottom:12px; }
@@ -2718,7 +2711,9 @@ async function removeMaterial(item) {
 /* 操作区(0725 用户定):等宽等高同款一排,危险项红字;参照 iOS/微信卡片操作区 */
 /* 低频操作（0801 设计师版）：名单下方的轻列表行——透明底 + 分隔线 + 灰字 + ›，
    不与底部主操作抢。「取消本次会议」不再涂红：红不在配色表，破坏性由二次确认承担 */
-.prep-more { margin:6rpx 0 0; }
+/* 上接卡片 12px（0803 设计师）。⚠ 块级流里与上方卡片的 margin-bottom(14rpx) 折叠取 max，
+   不是相加——所以这里直接给足 24rpx(≈12px)，别按"补差"算 */
+.prep-more { margin:24rpx 0 0; }
 /* 0801 设计师：文字看着太浅（比 #6b7280 还淡）。29rpx 的常规字重压不住这么大的行，
    加深到 #3F4A57 并上 500 字重——仍是灰系，不会跟底部蓝色主按钮抢注意力 */
 .prep-more-row { display:flex; align-items:center; justify-content:space-between; gap:16rpx;
