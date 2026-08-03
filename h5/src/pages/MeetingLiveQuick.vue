@@ -274,9 +274,10 @@
           <!-- 日期时间行、会议地点均已删（0803 用户定：人都到场了，几号几点、在哪开都不用再说）。
                只留「已签到 x/7」：外观是卡内普通灰字，但可点开名单弹窗——
                主持人会中改签到状态的唯一入口，别做成死文本 -->
-          <div v-if="signinStats.total" class="si-meet-meta2 si-meet-loc">
-            <span class="si-meet-att" @click="rosterPopOpen = true">已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total }}</span>
-          </div>
+          <button v-if="signinStats.total" type="button" class="si-meet-att" @click="rosterPopOpen = true">
+            <span class="si-meet-att-k">已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.total }}</span>
+            <i class="si-row-arr"></i>
+          </button>
           <!-- 录音状态：灰点=未开始/已暂停，蓝点呼吸=录音中/上传/识别中。
                0803 设计师：暂停是主动操作的常态、不是异常，点不再用暖橙（暖色一屏只留预警那一处）。
                状态只在这一行，控制只在底部条——原「会议录音」卡整张删除，上传/识别进度并入本行，
@@ -394,7 +395,9 @@
            唯一要做的就是处理轮到自己的那条 -->
       <template v-if="meetingPhase === 'recording' && !meetingEnded">
         <div class="mlq-endbar-space"></div>
-        <div class="mlq-endbar">
+        <!-- 有弹窗/弹层时整条淡出（0803 设计师）：遮罩本来就盖住了它（点击命中的是遮罩），
+             但实心蓝按钮透过 45% 黑罩仍然显色，看着像还能点 -->
+        <div class="mlq-endbar" :class="{ hushed: overlayOpen }">
           <template v-if="isChair">
             <button v-if="fieldMeetingEnded" class="mc-cta" @click="handleMeetingBottomAction">会后整理 →</button>
             <!-- 左：录音开关（会议开始时点一次的开关，状态自己说明进度）
@@ -940,7 +943,10 @@ const bottomTopicLabel = computed(() => {
 })
 function topicStateText(item) {
   if (!topicSelfDone(item)) {
-    if (item.id !== nextPendingTopicId.value) return '' // 未轮到：只留标题和箭头
+    // 0803 三改：未轮到的行原本留空，但「已处理 N/M」是按行状态算的，
+    // 空白行让人以为"没处理的也被算进去了"。补回灰字「待处理」——它不带颜色，
+    // 不会和下一条的蓝色动作词争"现在该办这条"的指向
+    if (item.id !== nextPendingTopicId.value) return '待处理'
     if (item.voteRequired) return '去表决'
     if (item.type === 'notice') return isHost.value ? '去通知' : '查看通知'
     return '去讨论'
@@ -1635,6 +1641,9 @@ function formatSigninDateTime(date, time) {
   return `${match[1]}年${Number(match[2])}月${Number(match[3])}日${timeText ? ` ${timeText}` : ''}`
 }
 const addTopicVisible = ref(false)
+// 有任何弹窗/弹层盖在页面上 → 底部条淡出（0803 设计师：遮罩盖住了但实心蓝仍显色，看着像能点）
+const overlayOpen = computed(() => !!addTopicVisible.value || !!sheetTopicId.value || !!rosterPopOpen.value
+  || !!recordingDetail.value || !!transcriptVisible.value || !!voiceOn.value)
 const newTopicForm = reactive({ title: '', type: 'discussion', decisionType: 'none', options: [], content: '' })
 
 // 选片高亮（this._transcribingRecordingId）改为响应式以驱动样式
@@ -4240,6 +4249,7 @@ async function returnToRecordingPage() {
    描边+浅底，分量比红色「开始录音」轻，不抢主操作。 */
 /* 0723 排版修整：上下留白加厚，按钮不再顶着底栏边缘 */
 .mlq-endbar { position:fixed; z-index:80; left:0; right:0; bottom:0; padding:22rpx 32rpx calc(22rpx + env(safe-area-inset-bottom)); background:rgba(255,255,255,.97); border-top:2rpx solid #ECEEF1; backdrop-filter:blur(8px); }
+.mlq-endbar.hushed { opacity:.12; pointer-events:none; transition:opacity .18s ease; }
 .mlq-endbar-space { height:190rpx; }  /* 占位，保证滚动到底时最后内容不被钉底栏盖住 */
 .fixed-end-field-btn { display:block; width:70%; margin:0 auto; height:92rpx; border:2rpx solid #B47A34; border-radius:16rpx; background:#FFFBF3; color:#8F4A06; font-size:30rpx; font-weight:750; font-family:inherit; }
 .fixed-end-field-btn:active { background:#F6E8D3; }
@@ -4689,10 +4699,14 @@ async function returnToRecordingPage() {
 .mc-rec-err-txt { flex:1; min-width:0; font-size:26rpx; line-height:1.45; color:#9a5b12; }
 .mc-rec-err-act { flex-shrink:0; font-size:27rpx; font-weight:700; color:#9a5b12; }
 /* 低频补救行「＋ 上传录音文件」：压一档存在感，别抢常规行 */
-/* 会议卡「已签到 x/7」：外观同普通灰字，用内边距+负外边距悄悄放大点击区（开名单弹窗的隐形入口） */
-.si-meet-att { display:inline-block; padding:16rpx 12rpx; margin:-16rpx -12rpx; cursor:pointer;
+/* 会议卡「已签到 x/7 ›」（0803 设计师）：既是状态也是入口——右侧给箭头明示可点，
+   整行 54px 可点开参会名单；原来是隐形点击区，用户不知道能点 */
+.si-meet-att { display:flex; align-items:center; gap:12rpx; width:100%; min-height:104rpx; box-sizing:border-box;
+  margin:0; padding:0; border:0; background:none; font:inherit; text-align:left; cursor:pointer;
   touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-meet-att:active { opacity:.6; }
+.si-meet-att-k { font-size:31rpx; color:#61656C; line-height:1.55; }
+.si-meet-att .si-row-arr { margin-left:2rpx; }
 /* 轻列表里的录音段行：段名不用材料的蓝下划线（点整行看详情），删除仅主任、暖红字 */
 .mc-seg-del { flex-shrink:0; font-size:24rpx; color:#B24A3B; padding:8rpx 0 8rpx 16rpx; }
 .mc-topics { background:#fff; border-radius:26rpx; padding:8rpx 0 6rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
@@ -4952,7 +4966,7 @@ async function returnToRecordingPage() {
 .qk-modal-btns { display:flex; align-items:center; gap:20rpx; margin-top:22rpx; }
 /* 0803 设计师：「添加」原是橙实心+胶囊圆角——橙是异常态专用色、圆角也与页面 12px 一套不符。
    改会议蓝实心 + 12px 圆角，高度守 54px；「取消」改无底灰字，不与主按钮争分量 */
-.qk-modal-btns .lp-primary-btn { flex:2; margin:0; min-height:104rpx; padding:0; font-size:30rpx; font-weight:700;
+.qk-modal-btns .lp-primary-btn { flex:1; margin:0; min-height:104rpx; padding:0; font-size:30rpx; font-weight:700;
   border-radius:12px; background:#3567A4; }
 .qk-modal-btns .lp-primary-btn:active { background:#2D598E; }
 .qk-modal-btns .lp-ghost-btn.qk-cancel-btn { flex:1; margin:0; min-height:104rpx; padding:0; font-size:29rpx;
