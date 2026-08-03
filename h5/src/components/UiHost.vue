@@ -196,11 +196,13 @@ function onSheetCancel() { resolveActionSheet({ tapIndex: -1, cancel: true }) }
 .ui-modal.caution .ui-modal-title { text-align: left; }
 .ui-modal.caution .ui-modal-content { text-align: left; margin-top: 16rpx; color: #4A5560; }
 .ui-modal.caution .ui-modal-actions { flex-direction: column; gap: 16rpx; margin-top: 36rpx; border-top: 0; }
-.ui-modal.caution .ui-modal-btn { box-sizing: border-box; min-height: 108rpx; padding: 0; border-radius: 999rpx; font-size: 33rpx; }
+/* 0803 设计师二改：圆角统一 10px（胶囊与直角混用像两个层级的控件）；
+   取消是退路，透明底+灰字即可，别给底色跟确认抢并列感 */
+.ui-modal.caution .ui-modal-btn { box-sizing: border-box; min-height: 108rpx; padding: 0; border-radius: 10px; font-size: 33rpx; }
 .ui-modal.caution .ui-modal-btn.confirm { order: -1; background: #f7e4c6; color: #9a5b12; font-weight: 700; }
 .ui-modal.caution .ui-modal-btn.confirm:active { background: #F0D8B2; }
-.ui-modal.caution .ui-modal-btn.cancel { border-right: 0; background: #F1F3F6; color: #4A5560; font-weight: 600; }
-.ui-modal.caution .ui-modal-btn.cancel:active { background: #E5E9EE; }
+.ui-modal.caution .ui-modal-btn.cancel { border-right: 0; background: transparent; color: #6A7480; font-weight: 600; }
+.ui-modal.caution .ui-modal-btn.cancel:active { background: #F2F3F5; }
 
 .ui-modal.aicard .ui-modal-content { font-size: 32rpx; font-weight: 500; color: #1f2329; line-height: 1.45; margin-top: 0; }
 .ui-modal-meta { text-align: center; white-space: pre-wrap; }
