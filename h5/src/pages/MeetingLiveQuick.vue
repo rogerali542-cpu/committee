@@ -4042,7 +4042,11 @@ async function returnToRecordingPage() {
 .meeting-stage-text { margin-top:10rpx; font-size:28rpx; line-height:1.55; color:#5f6570; }
 .meeting-stage-next { display:block; width:auto; min-width:340rpx; margin:24rpx auto 0; padding:22rpx 44rpx; border:0; border-radius:999rpx; background:var(--c-primary-dark,#A85800); color:#fff; font-size:30rpx; font-weight:700; box-shadow:0 6rpx 16rpx rgba(168,88,0,.20); }
 .meeting-stage-next[disabled] { opacity:.6; box-shadow:none; }
-.meeting-console { margin-top:18rpx; padding:28rpx; border-radius:22rpx; background:#fff; border:2rpx solid #E8EBEF; box-shadow:0 8rpx 24rpx rgba(31,35,41,.06); }
+/* 顶部内边距单列（0803 用户定）：步骤小字上下各 8px，与两侧 28rpx 解耦 */
+.meeting-console { margin-top:18rpx; padding:16rpx 28rpx 28rpx; border-radius:22rpx; background:#fff; border:2rpx solid #E8EBEF; box-shadow:0 8rpx 24rpx rgba(31,35,41,.06); }
+/* 步骤小字在本页不带自身 padding（外层已给 8px），下方用 margin 精确控 8px；
+   line-height 显式给定，免得默认行高的额外行距把 8px 又撑开 */
+.meeting-console .si-step-line { padding:0 6rpx; margin-bottom:16rpx; line-height:1.35; }
 .meeting-console-head { display:flex; align-items:flex-start; justify-content:space-between; gap:24rpx; }
 .meeting-console-title { font-size:34rpx; line-height:1.35; font-weight:800; color:#20242A; }
 .meeting-console-sub { margin-top:7rpx; max-width:470rpx; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:26rpx; color:#7A818B; }
