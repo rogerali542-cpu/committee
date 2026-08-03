@@ -212,7 +212,7 @@
         <div class="si-rows">
           <button v-if="signinStats.total" type="button" class="si-row" @click="siRosterOpen = !siRosterOpen">
             <span class="si-row-k">参会名单</span>
-            <span class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
+            <span v-if="!siRosterOpen" class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
             <i class="si-row-arr" :class="{ open: siRosterOpen }"></i>
           </button>
           <div v-if="siRosterOpen" class="si-roster-body">
@@ -226,7 +226,8 @@
             </div>
           </div>
           <button type="button" class="si-row" @click="siMeetOpen = !siMeetOpen">
-            <span class="si-row-k">查看议题{{ signinTopicCount ? '（' + signinTopicCount + ' 项）' : '' }}</span>
+            <!-- 展开态去动词（0803 设计师：内容已摊在眼前，「查看」多余） -->
+            <span class="si-row-k">{{ (siMeetOpen ? '议题' : '查看议题') + (signinTopicCount ? '（' + signinTopicCount + ' 项）' : '') }}</span>
             <i class="si-row-arr" :class="{ open: siMeetOpen }"></i>
           </button>
           <div v-if="siMeetOpen" class="si-meet-topics">
