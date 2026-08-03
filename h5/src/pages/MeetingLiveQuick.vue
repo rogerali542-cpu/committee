@@ -193,7 +193,9 @@
          主任进来自动签到（发起会议必须到场，见 maybeAutoSignChair），底部直接「开始录音 · 进入会议」；
          委员进来未签到，底部「现场签到 / 线上参加」，签完变浅蓝「已签到 · 进入会议」。 -->
     <template v-if="currentStep === 1">
-      <div class="signin-page">
+      <!-- si-roomy（0803 用户定）：名单/议题都收着时整页内容放大 20% 填空间；
+           任一展开就摘掉类恢复原大小——展开后内容长，密度优先 -->
+      <div class="signin-page" :class="{ 'si-roomy': !siRosterOpen && !siMeetOpen }">
         <div class="si-scroll-content">
         <div class="si-step-line">第 1 步 / 共 4 步 · 会议签到</div>
         <div class="si-meet-card">
@@ -4550,6 +4552,21 @@ async function returnToRecordingPage() {
 .si-cta-light { width:100%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
   background:#EAF0F8; color:#2f5f9e; font-size:33rpx; font-weight:600; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-cta-light:active { background:#DCE7F3; }
+/* ===== si-roomy：收起态整页放大 20%（0803 用户定，展开名单/议题即恢复）=====
+   用字号/尺寸逐项放大而不是 transform:scale——scale 会把文字渲染糊掉且不参与布局 */
+.si-roomy .si-step-line { font-size:32rpx; padding-top:26rpx; }
+.si-roomy .si-meet-card { padding:48rpx 40rpx; }
+.si-roomy .si-meet-title { font-size:43rpx; }
+.si-roomy .si-meet-meta2 { font-size:37rpx; margin-top:22rpx; }
+.si-roomy .si-self { margin-top:32rpx; gap:16rpx; }
+.si-roomy .si-self-check { width:53rpx; height:53rpx; font-size:31rpx; }
+.si-roomy .si-self-txt { font-size:37rpx; }
+.si-roomy .si-row { min-height:120rpx; font-size:36rpx; }
+.si-roomy .si-row-v { font-size:34rpx; }
+.si-roomy .si-row-arr { width:19rpx; height:19rpx; }
+.si-roomy .si-cta { height:130rpx; font-size:41rpx; }
+.si-roomy .si-cta-ghost { height:115rpx; font-size:37rpx; }
+.si-roomy .si-cta-light { height:130rpx; font-size:40rpx; }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
 /* 参会名单 */
 .signin-roster { width:88%; max-width:640rpx; margin-top:14rpx; background:#fff; border-radius:20rpx; padding:20rpx 26rpx 8rpx; box-shadow:0 6rpx 20rpx rgba(0,0,0,0.05); box-sizing:border-box; }
