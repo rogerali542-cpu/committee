@@ -950,16 +950,21 @@ public class CommitteeService {
     @Transactional
     public void markNoticeViewed(Long meetingId, Long topicId) {
         RecordTopic topic = requireTopic(meetingId, topicId);
-        if (topic.getType() != TopicType.notice) return;
+        // 0803：讨论类也用这套「我看过」留痕——会议进行页按"本人进过这条议题"算已处理
+        // （讨论不强制发表意见）。表决类不走这里，它的"我填完了"＝我投过票
+        if (topic.getType() != TopicType.notice && topic.getType() != TopicType.discussion) return;
         UserRoleEntity ur = SecurityUtils.getCurrentUserRole();
         if (ur == null) return;
         Set<Long> viewed = parseViewedBy(topic.getViewedByJson());
         viewed.add(ur.getId());
         topic.setViewedByJson(writeViewedBy(viewed));
-        List<Long> attendees = attendanceRepo.findByRecordId(topic.getRecord().getId()).stream()
-                .map(a -> a.getUserRole().getId()).collect(Collectors.toList());
-        if (!attendees.isEmpty() && viewed.containsAll(attendees)) {
-            topic.setNotified(true);
+        // 「全体已通报」只对通报类成立，讨论类不置 notified
+        if (topic.getType() == TopicType.notice) {
+            List<Long> attendees = attendanceRepo.findByRecordId(topic.getRecord().getId()).stream()
+                    .map(a -> a.getUserRole().getId()).collect(Collectors.toList());
+            if (!attendees.isEmpty() && viewed.containsAll(attendees)) {
+                topic.setNotified(true);
+            }
         }
         topicRepo.save(topic);
     }
@@ -3317,7 +3322,6 @@ public class CommitteeService {
             tv.setAbVotes(abV);
             tv.setVoted(countedVotes);
             tv.setOpinionCount((int) opinionRepo.countByTopicId(tp.getId()));
-            tv.setMyOpinionCount((int) opinionRepo.countByTopicIdAndUserRoleId(tp.getId(), ur.getId()));
             tv.setTotal(total);
             tv.setNeed(need);
             tv.setPassed(passed);

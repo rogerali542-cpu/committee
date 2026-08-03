@@ -641,8 +641,24 @@ watch(() => props.topic && props.topic.id, (id) => {
   pendingVote.value = null; pendingOption.value = null; voteSubmitting.value = false; localVoteValue.value = null; localVoteLabel.value = ''; localRetracted.value = false
   changeVoteOpen.value = false
   resetProxy()
-  if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions() }
+  if (id) { draft.value = ''; draftFromVoice.value = false; loadOpinions(); markDiscussionVisited() }
 }, { immediate: true })
+
+// 讨论类：进过这条议题就算本人处理完（0803 用户定：讨论不强制发表意见）。
+// 复用通报类的「我看过」留痕（后端 viewed_by_json），静默上报、每条只报一次；
+// 表决类不走这里——它的"我填完了"是我投过票
+const _visitedMarked = new Set()
+async function markDiscussionVisited() {
+  const t = props.topic
+  if (!t || t.voteRequired || t.type === 'notice') return
+  if (!props.interactive || !props.signedIn) return
+  if (t.viewedByMe || _visitedMarked.has(t.id)) return
+  _visitedMarked.add(t.id)
+  try {
+    await api.committeeNoticeView(props.meetingId, t.id)
+    emit('changed') // 列表右侧翻成「我已查看」、底部主线走到下一条
+  } catch (e) { _visitedMarked.delete(t.id) /* 失败可重试，不打扰用户 */ }
+}
 onBeforeUnmount(() => { cancelVoice(); clearInterval(aiProgTimer) })
 
 // 研究P1「已宣读降级」#8：委员本人显式确认「我已读」（只记自己，不再一人点就全体已通报）。

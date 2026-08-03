@@ -887,12 +887,14 @@ function topicBadgeDone(item) {
 }
 // 「我这条填完了没」（0803 定稿）：会议进行页的进度按本人是否表过态算，不看别人投没投、
 // 更不看票数够不够过半——那是会后统计的事，不该锁住主任的界面（与"不把 App 内确认当前提"同理）。
-// 表决类=我投过票；通报类=我点过「我已收到」或已宣读；讨论类=我留过意见（myOpinionCount 后端 0803 新增）
+// 表决类=我投过票；通报类=我点过「我已收到」或已宣读；
+// 讨论类=我进过这条议题（0803 用户定：讨论不强制发表意见，进过讨论页面就算完成，
+// 复用通报类的 viewedByMe 留痕，由 TopicSheet 打开时静默上报）
 function topicSelfDone(item) {
   if (!item) return false
   if (item.voteRequired) return !!item.myVote || item.mySelectedId != null
   if (item.type === 'notice') return !!item.viewedByMe || !!item.notified
-  return (item.myOpinionCount || 0) > 0
+  return !!item.viewedByMe || (item.myOpinionCount || 0) > 0
 }
 const allTopicsCompleted = computed(() => meetingTopics.value.length > 0 && meetingTopics.value.every(topicBadgeDone))
 const pendingTopicCount = computed(() => meetingTopics.value.filter(item => !topicBadgeDone(item)).length)
@@ -947,7 +949,7 @@ function topicStateText(item) {
   // 会中写「已表决 · 通过」会让人以为结果已定。点行进去仍可改
   if (item.voteRequired) return '我已表决'
   if (item.type === 'notice' || item.type === 'notify') return '我已收到'
-  return '我已填写'
+  return '我已查看'
 }
 function topicRowDone(item) {
   // 方案A：表决全程开放→一直「去表决」；会议结束后（或旧数据已 voteClosed）才「看结果」

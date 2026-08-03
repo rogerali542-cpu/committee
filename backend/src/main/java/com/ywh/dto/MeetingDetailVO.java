@@ -170,7 +170,6 @@ public class MeetingDetailVO {
             private Integer abVotes;
             private Integer voted;         // 已表决人数（含 multi_choice 的 selectedId 票）
             private Integer opinionCount;  // 议题意见数（角标用）
-            private Integer myOpinionCount; // 本人在该议题下的意见数（0803：会议进行页判定"我填完了没"）
             private Integer total;
             private Integer need;
             private Boolean passed;
