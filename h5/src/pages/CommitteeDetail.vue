@@ -1151,10 +1151,12 @@ function scheduledStartTime(d) {
 // 开始会议：固定使用快速模式，传统逐题表决入口不再开放
 async function startMeeting() {
   // 0717 用户定：没到原定开会时间就点「开始会议」，先确认一次再开——
-  // 提前开会是允许的（委员到齐了就开是常态），这里只防误点，不拦
+  // 提前开会是允许的（委员到齐了就开是常态），这里只防误点，不拦。
+  // 0801 用户定：距预定开始不超过 30 分钟就不算"提前"了——9:35 开 10:00 的会是正常到点开会，
+  // 再弹「会议时间未到」是把人当迟到防，只有提前超过半小时才确认一次。
   const d = detail.value || {}
   const scheduled = scheduledStartTime(d)
-  if (scheduled && Date.now() < scheduled.getTime()) {
+  if (scheduled && scheduled.getTime() - Date.now() > 30 * 60 * 1000) {
     const res = await showModal({
       title: '会议时间未到',
       content: '原定会议时间为 ' + fmtCnDate(d.meetingDate) + ' ' + fmtHm(d.meetingTime) + '，尚未到。确认现在开始吗？',
