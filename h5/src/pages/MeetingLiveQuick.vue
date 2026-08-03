@@ -233,15 +233,8 @@
             </template>
             <span v-else class="si-topic-empty">暂无议题</span>
           </div>
-          <!-- 列席：主任可添加/修改（居委、街道、物业等非委员到会者，进会议记录与纪要）；
-               委员只读——登记是主任职责，误改会动正式记录 -->
-          <button v-if="isChair" type="button" class="si-row" @click="editObservers">
-            <span class="si-row-k si-row-add">{{ observersText ? '列席人员：' + observersText : '＋ 添加列席人员' }}</span>
-            <i class="si-row-arr"></i>
-          </button>
-          <div v-else-if="observersText" class="si-row si-row-plain">
-            <span class="si-row-k">列席人员：{{ observersText }}</span>
-          </div>
+          <!-- 「添加列席人员」行已删（0803 设计师）：列席在发起会议时就定了，临时来个物业经理
+               到名单页里补更合适，不该占签到页一级入口（第 2 步的「登记列席」入口保留） -->
         </div>
         </div>
 
@@ -4474,8 +4467,11 @@ async function returnToRecordingPage() {
 /* 签到页：大签到按钮 + 下方签到情况名单 */
 /* ===== 步骤1 签到页：会议卡 + 名单(默认收起) + 底部大钮(拇指区) ===== */
 /* 签到步固定为一屏高、不整页滚：名单 flex 占据剩余空间内部滚动、签到按钮吸底，两者都不超视口（覆盖 live-page 的 inline overflow-y:auto） */
-.live-page.lp-signin { height:100dvh; min-height:100dvh; overflow:hidden !important; }
-.signin-page { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; padding:8rpx 0 0; overflow:hidden; }
+/* 0803 修「第1步/共4步被页头压住」：原 100dvh 在真机上比 #app-scroll 实际可视高度大
+   （地址栏伸缩差），外层多出几十像素滚动量，sticky 页头一吸顶、首行内容就滑进蓝条底下。
+   改按父容器 #app-scroll 的 100% 锁高，外层无从滚动，页头永远压不住内容 */
+.live-page.lp-signin { height:100%; min-height:0; overflow:hidden !important; }
+.signin-page { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; padding:16rpx 0 0; overflow:hidden; }
 .si-scroll-content { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:24rpx; padding-bottom:24rpx; }
 .si-scroll-content > * { flex-shrink:0; }
 /* 顶部精简会议卡 */
@@ -4509,8 +4505,11 @@ async function returnToRecordingPage() {
 .si-roster.open { display:flex; flex-direction:column; }
 /* 0803：名单展开在轻列表行下方，跟随列表流 */
 .si-roster-body { max-height:none; overflow:visible; padding:0 22rpx 10rpx; border-bottom:1px solid #EEF0F2; }
-/* 底部拇指区：跟随名单下方，避免首屏中段出现大片空白 */
-.si-bottom { flex:0 0 auto; z-index:180; display:flex; flex-direction:column; align-items:center; gap:20rpx; margin:0; padding:24rpx 0 calc(env(safe-area-inset-bottom) + 30rpx); background:rgba(255,255,255,.38); }
+/* 底部操作条（0803 设计师：原半透明底像按钮浮在半空）：实白通栏 + 顶部分隔线 + 上抛阴影，
+   负外边距抵掉页面 24rpx 内边距做满宽，贴住视口底 */
+.si-bottom { flex:0 0 auto; z-index:180; display:flex; flex-direction:column; align-items:center; gap:16rpx;
+  margin:0 -24rpx; padding:20rpx 24rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  background:#fff; border-top:1px solid #EDF0F3; box-shadow:0 -8rpx 20rpx rgba(20,42,58,.05); }
 /* ===== 0803 设计师重做（签到页）===== */
 /* 步骤小字：替代圆点阶段条 */
 .si-step-line { padding:6rpx 6rpx 0; color:#8A9099; font-size:27rpx; }
@@ -4520,8 +4519,11 @@ async function returnToRecordingPage() {
 .si-self-check { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; border:3rpx solid #C3CAD3; background:#fff; color:#fff; font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
 .si-self-check.on { background:#3567A4; border-color:#3567A4; }
 .si-self-txt { font-size:31rpx; color:#1F2937; font-weight:600; }
-/* 轻列表：透明底 + 分隔线；行是原生 button（div 长按变选字、吃 300ms 延迟，0801 踩过） */
-.si-rows { display:flex; flex-direction:column; }
+/* 轻列表：透明底 + 分隔线；行是原生 button（div 长按变选字、吃 300ms 延迟，0801 踩过）。
+   margin-top:auto（0803 设计师）：名单收起后这屏没多少内容，与其在中段留 400px 空白，
+   不如做成"上面是会议、下面是入口"的两段结构——列表贴住底部操作条，空白落在两段之间，
+   读作分组间距。列表展开变长时自由空间为 0，auto 自动失效，照常滚动 */
+.si-rows { display:flex; flex-direction:column; margin-top:auto; }
 .si-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:100rpx; margin:0; padding:0 22rpx;
   border:0; border-bottom:1px solid #EEF0F2; background:none; font:inherit; text-align:left;
   color:#3F4A57; font-size:30rpx; font-weight:500; cursor:pointer;
@@ -4531,20 +4533,19 @@ async function returnToRecordingPage() {
 .si-row-plain { cursor:default; }
 .si-row-plain:active { background:none; }
 .si-row-k { flex:1; min-width:0; }
-.si-row-add { color:#3567A4; }
 .si-row-v { flex-shrink:0; color:#6b7078; font-size:28rpx; }
 /* › 用 CSS 边框箭头（CLAUDE.md），展开态转 90° 变 ∨ */
 .si-row-arr { flex-shrink:0; display:inline-block; width:16rpx; height:16rpx;
   border-right:3rpx solid #B4BCC7; border-bottom:3rpx solid #B4BCC7; transform:rotate(-45deg); transition:transform .2s ease; }
 .si-row-arr.open { transform:rotate(45deg); }
 /* 底部按钮：会议蓝主操作（原橙色 #A85800 越权——暖橙是异常/例外专用，不当按钮主色） */
-.si-cta { width:92%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
+.si-cta { width:100%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
   background:#3567A4; color:#fff; font-size:34rpx; font-weight:700; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-cta:active { background:#2D598E; }
-.si-cta-ghost { width:92%; height:96rpx; box-sizing:border-box; margin:0 auto; padding:0; border:2rpx solid #C7D4E2; border-radius:20rpx;
+.si-cta-ghost { width:100%; height:96rpx; box-sizing:border-box; margin:0 auto; padding:0; border:2rpx solid #C7D4E2; border-radius:20rpx;
   background:#fff; color:#3F6078; font-size:31rpx; font-weight:600; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-cta-ghost:active { background:#F2F6FA; }
-.si-cta-light { width:92%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
+.si-cta-light { width:100%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
   background:#EAF0F8; color:#2f5f9e; font-size:33rpx; font-weight:600; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-cta-light:active { background:#DCE7F3; }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
