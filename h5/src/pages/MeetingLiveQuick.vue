@@ -284,6 +284,9 @@
           <div class="mc-rec" :class="{ on: recActive || mcRecBusy }">
             <span class="mc-rec-dot"></span>
             <span class="mc-rec-txt">{{ mcRecText }}</span>
+            <!-- 会中保存这段（0803 用户反馈：删了录音卡就没上传入口了）：只在暂停/已停止时出现，
+                 就地跟在状态文字后面，不另起卡片、也不挤占底部两颗主按钮 -->
+            <button v-if="mcCanSaveRec" type="button" class="mc-rec-act" @click="uploadRecordingStep">保存这段</button>
           </div>
           <button v-if="mcRecErrText" type="button" class="mc-rec-err" :disabled="!mcRecErrAction" @click="mcRecErrRetry">
             <span class="mc-rec-err-txt">⚠ {{ mcRecErrText }}</span>
@@ -1097,6 +1100,11 @@ const mcRecText = computed(() => {
   if ((recordings.value || []).length) return '已录 ' + recordings.value.length + ' 段'
   return '尚未开始录音'
 })
+// 会中保存录音（0803 用户反馈：录音卡删掉后上传按钮跟着没了，只剩「结束会议」时自动上传）。
+// 只在「已暂停 / 已停止未传」时出现——录音进行中不给，避免误点把会议录音打断；
+// 要中途存一段就是：暂停录音 → 保存这段 → 开始录音（转写时各段自动合并成一份）
+const mcCanSaveRec = computed(() => !mcRecBusy.value && !generatingMinutes.value && !isSelfRemote.value
+  && (isPaused.value || stoppedUnuploaded.value) && !freshRecEmpty.value)
 const mcRecErrText = computed(() => {
   if (mcRecBusy.value || generatingMinutes.value) return ''
   if (uploadErrorText.value && canUpload.value) return '录音上传失败，这段还在本机'
@@ -4604,6 +4612,11 @@ async function returnToRecordingPage() {
 .mc-rec-dot { flex-shrink:0; width:22rpx; height:22rpx; border-radius:50%; background:#C3CAD3; }
 .mc-rec.on .mc-rec-dot { background:#3567A4; animation:mcPulse 1.6s ease-in-out infinite; }
 .mc-rec-txt { font-size:31rpx; color:#61656C; font-weight:600; }
+/* 「保存这段」：状态行右端的蓝色文字按钮；内边距+负外边距把点击区放到 44px 以上，外观仍是一行字 */
+.mc-rec-act { flex-shrink:0; margin-left:auto; padding:26rpx 12rpx; margin-top:-26rpx; margin-bottom:-26rpx;
+  border:0; background:none; font-family:inherit; font-size:28rpx; font-weight:700; color:#2f5f9e;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.mc-rec-act:active { opacity:.6; }
 .mc-rec.on .mc-rec-txt { color:#1F2937; }
 @keyframes mcPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
 @media (prefers-reduced-motion: reduce) { .mc-rec.on .mc-rec-dot { animation:none; } }
