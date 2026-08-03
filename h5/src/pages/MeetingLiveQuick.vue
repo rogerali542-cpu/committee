@@ -294,7 +294,7 @@
           </button>
           <!-- 切屏提示（0803 设计师）：暂停恰恰是最容易切出去的时候，那时更要说话——
                录音中＝暖色警告（切出会断），暂停中＝中性告知（切出不影响），两态都不留空 -->
-          <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中请不要切出微信或锁屏，否则录音会中断</div>
+          <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中不要切出或锁屏</div>
           <div v-else-if="isPaused && !mcRecBusy" class="rec-bg-warn calm">已暂停，此时切出微信不影响这段录音</div>
         </div>
 
@@ -320,10 +320,11 @@
             <i class="si-row-arr" :class="{ open: matListOpen }"></i>
           </button>
           <div v-if="matListOpen && materials.length" class="mc-files">
-            <div class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
+            <button type="button" class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
               <span class="supp-file-name">{{ m.name }}</span>
               <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
-            </div>
+              <i class="si-row-arr"></i>
+            </button>
           </div>
           <!-- 参会名单行删除（0803 用户定：与会议卡「已签到 x/7」重复；名单弹窗入口在卡内那段字上） -->
           <!-- 已上传的录音段：原录音卡里的「已录N段」列表降级成一行，展开看详情/删除（删除仅主任） -->
@@ -332,11 +333,11 @@
             <i class="si-row-arr" :class="{ open: recListOpen }"></i>
           </button>
           <div v-if="recordings.length && recListOpen" class="mc-files">
-            <div class="supp-file" v-for="(item, idx) in recordingsChrono" :key="item.id" @click="openRecordingDetail(item, idx)">
-              <span class="supp-file-name mc-seg-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
-              <span class="supp-file-size">详情</span>
+            <button type="button" class="supp-file" v-for="(item, idx) in recordingsChrono" :key="item.id" @click="openRecordingDetail(item, idx)">
+              <span class="supp-file-name">第 {{ idx + 1 }} 段 · {{ fmtDur(item.durationSec) }}</span>
               <span v-if="isChair" class="mc-seg-del" @click.stop="deleteRecording(item, idx)">删除</span>
-            </div>
+              <i class="si-row-arr"></i>
+            </button>
           </div>
           <!-- 「＋ 上传录音文件」行已删（0803 用户定：用不到）；chooseAudioFile/onAudioFileChange 留在 JS 里备用 -->
           <!-- 临时添加议题（仅主持人）：从议题白卡内移到轻列表末行，与「会议材料」同款左对齐带箭头（0803 设计师） -->
@@ -4640,7 +4641,6 @@ async function returnToRecordingPage() {
   touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-meet-att:active { opacity:.6; }
 /* 轻列表里的录音段行：段名不用材料的蓝下划线（点整行看详情），删除仅主任、暖红字 */
-.mc-files .supp-file-name.mc-seg-name { color:#2F3740; text-decoration:none; }
 .mc-seg-del { flex-shrink:0; font-size:24rpx; color:#B24A3B; padding:8rpx 0 8rpx 16rpx; }
 .mc-topics { background:#fff; border-radius:26rpx; padding:8rpx 0 6rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
 .mc-topics-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:22rpx 30rpx 12rpx; }
@@ -4656,7 +4656,17 @@ async function returnToRecordingPage() {
 .mc-topic-state.next { color:#2f5f9e; font-weight:700; }
 .mc-topics-empty { padding:30rpx; text-align:center; color:#9AA0A6; font-size:29rpx; }
 .mc-rows { margin-top:4rpx; }
-.mc-files { padding:4rpx 22rpx 10rpx; border-bottom:1px solid #EEF0F2; }
+.mc-files { padding:0 22rpx; border-bottom:1px solid #EEF0F2; }
+/* 展开的材料/录音段行（0803 设计师）：原来是蓝色下划线链接，与页面其他列表行不是一套。
+   改深灰字 + 右侧箭头 + 行高 ≥54px，且用原生 button（div 长按选字、吃 300ms 延迟） */
+.mc-files .supp-file { display:flex; align-items:center; gap:16rpx; width:100%; min-height:104rpx; margin:0;
+  padding:14rpx 8rpx; box-sizing:border-box; border:0; border-bottom:1px solid #F2F4F6; border-radius:0;
+  background:none; font:inherit; text-align:left; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.mc-files .supp-file:last-child { border-bottom:0; }
+.mc-files .supp-file:active { background:#F6F8FA; }
+.mc-files .supp-file-name { flex:1; min-width:0; font-size:29rpx; font-weight:500; color:#2B2E33; text-decoration:none;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mc-files .supp-file-size { flex-shrink:0; font-size:25rpx; color:#8A9099; }
 /* 底部条按钮：主实心蓝 + 次浅蓝，2:1 分宽 */
 .mc-endrow { display:flex; gap:16rpx; }
 .mc-endrow .mc-cta { flex:2; }
