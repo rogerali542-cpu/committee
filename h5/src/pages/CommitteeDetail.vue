@@ -125,7 +125,7 @@
             <span class="sr-heading">通知记录</span>
             <!-- 0801 用户定：清空回到这一行右边，但做成不起眼的小字按钮——测试期复原状态要用，
                  日常又不该显眼到顺手就点（记录是凭据）。二次确认保留。 -->
-            <button type="button" class="sr-clear" @click="clearNotices">清空</button>
+            <button v-if="showTestTools" type="button" class="sr-clear" @click="clearNotices">清空</button>
           </div>
           <div class="sr-row" v-for="(r, i) in noticeLogRows" :key="i">
             <span class="sr-txt">{{ r.text }}</span>
@@ -392,7 +392,7 @@
       <div class="pf-after-send">
         <!-- 测试开关：只在「已发送、会议未到」出现，切到/切回「会议当天」预览开始会议按钮。
              纯本页显示态，不落库，刷新复原；真到会议当天自然消失 -->
-        <button v-if="footerStageBase === 'remind'" type="button" class="pf-test-toggle" @click="testForceStart = !testForceStart">{{ testForceStart ? '测试 · 切回实际日期' : '测试 · 预览会议当天' }}</button>
+        <button v-if="showTestTools && footerStageBase === 'remind'" type="button" class="pf-test-toggle" @click="testForceStart = !testForceStart">{{ testForceStart ? '测试 · 切回实际日期' : '测试 · 预览会议当天' }}</button>
         <!-- 0801 设计师定：底部按"这一刻该做什么"分三态，任何一态都只有一颗实心主按钮。
              ① 发送前：两个渠道勾选 + 蓝实心「发送通知」
              ② 已发送、会议未到：浅蓝次级「再次提醒 N 人」+「开始会议」并排——通知已经完成，
@@ -407,6 +407,7 @@
              （默认勾上），勾上就复制全文并打开微信。一个人都没选时发送按钮真锁死。 -->
         <div class="pf-btn-col">
           <!-- 勾选行用原生 button：div 在手机上长按变选字、还吃 300ms 点击延迟（0801 踩过） -->
+          <div v-if="footerStage === 'send' && noticeStale" class="pf-stale-hint">会议内容有修改，还没重新通知委员</div>
           <div v-if="footerStage === 'send'" class="pf-ch-group">
             <!-- 「转发」不叫「发到」：线上会议的召开方式也常是「微信工作群」，
                  一个是开会场所、一个是通知渠道，字面一样会混；转发也贴实际动作（复制+跳微信粘贴） -->
@@ -1345,8 +1346,16 @@ const isMeetingDay = computed(() => {
 // 测试用的状态开关（0801 用户定）：三态里「会议当天」要等真到日子才出现，测试没法等 12 天。
 // 已发送后底部露一个小字开关，把 remind 手动切到 start 预览/联调「开始会议」；只影响本页显示，
 // 不落库不改会议数据，刷新即复原。真到了会议当天开关自然消失。
+// 测试工具开关（0803 codex 审查点4）：预览会议当天/清空记录是测试辅助，正式构建不出现。
+// dev 环境恒开；正式包要临时用，在控制台 localStorage.setItem('test_tools','1') 后刷新
+const showTestTools = import.meta.env.DEV || !!getStorage('test_tools', '')
 const testForceStart = ref(false)
-const footerStageBase = computed(() => (isMeetingDay.value ? 'start' : (noticeSent.value ? 'remind' : 'send')))
+// 0803：已通知后又改了会议内容（名称/时间/地点/方式/议题）→ 后端置 noticeStale，
+// 底部回到「发送通知」态并给暖色提示；历史通知记录保留作凭据
+const noticeStale = computed(() => !!(detail.value && detail.value.noticeStale))
+const footerStageBase = computed(() => (
+  isMeetingDay.value ? 'start' : ((noticeSent.value && !noticeStale.value) ? 'remind' : 'send')
+))
 const footerStage = computed(() => (
   testForceStart.value && footerStageBase.value === 'remind' ? 'start' : footerStageBase.value
 ))
@@ -1509,10 +1518,17 @@ async function loadRecipients(force) {
   try {
     const members = await api.committeeMembers()
     const checkedMap = new Map(recipientList.value.map((x) => [x.userRoleId, x.checked]))
+    // 0803 修「重进页面后再次提醒默认全选」：已通知的会议按原送达名单恢复勾选——
+    // 首次只通知了部分委员，重进后不该悄悄变成提醒全体；后来新加入的委员也不被意外带上。
+    // 本次会话里用户手动勾过的（checkedMap）优先；未通知过的会议维持默认全选。
+    const dv = (detail.value && detail.value.delivery && detail.value.delivery.memberDeliveries) || []
+    const deliveredSet = new Set(dv.filter((d) => d && d.noticeDelivered).map((d) => Number(d.userRoleId)))
+    const useDelivered = noticeSent.value && deliveredSet.size > 0
     const list = (members || [])
       .map((m) => {
         const id = Number(m.userRoleId)
-        return { userRoleId: id, name: m.name || '委员', role: m.role || '', checked: checkedMap.has(id) ? checkedMap.get(id) : true }
+        const fallback = useDelivered ? deliveredSet.has(id) : true
+        return { userRoleId: id, name: m.name || '委员', role: m.role || '', checked: checkedMap.has(id) ? checkedMap.get(id) : fallback }
       })
       .filter((x) => x.userRoleId)
     if (!list.length) { recipientList.value = []; return false }
@@ -2638,6 +2654,9 @@ async function removeMaterial(item) {
 .pf-btn-light { background:#EAF0F8; color:#2f5f9e; font-weight:600; }
 .pf-btn-light:active { background:#DCE7F3; }
 .pf-btn-col .pf-btn-light { height:max(54px, calc(96rpx * (1 - var(--pf-shrink, 0)))); font-size:31rpx; }
+/* 内容已改、待重新通知的暖提示：异常态才用暖色（配色规矩） */
+.pf-stale-hint { margin:0 20rpx 4rpx; padding:12rpx 20rpx; border-radius:12rpx;
+  background:#f7e4c6; color:#9a5b12; font-size:27rpx; line-height:1.5; }
 /* 测试开关：右上小字灰，与「清空」同量级——测试期用，不抢正式按钮的注意力 */
 .pf-test-toggle { align-self:flex-end; margin:0 20rpx; padding:4rpx 12rpx; border:0; background:none;
   font:inherit; color:#A0A6AD; font-size:23rpx; line-height:1.4; cursor:pointer;

@@ -193,6 +193,7 @@ public class CommitteeService {
                 .userView(roleView)
                 .coreLocked(m.getStage() != MeetingStage.preparing || m.getNotifiedAt() != null)
                 .notifiedAt(m.getNotifiedAt() != null ? m.getNotifiedAt().toString() : null)
+                .noticeStale(m.getNoticeStale())
                 .notifiedByName(m.getNotifiedByName())
                 .notificationLogs(buildNotificationLogs(m.getId()))
                 .taskLevel((String) taskSummary.get("level"))
@@ -289,6 +290,13 @@ public class CommitteeService {
         if (m.getStage() != MeetingStage.preparing) {
             throw new IllegalArgumentException("仅准备阶段的会议可以编辑");
         }
+        // 0803 修「改了已通知的会议，旧通知状态没失效」：先拍快照，变更落定后比对。
+        // 名称/日期/时间/地点/方式/议题任一变了且此前已通知过 → noticeStale=true，
+        // 通知页回到"待重新通知"态（历史通知记录保留作凭据）。议题必须比内容，
+        // 编辑表单每次都会整包重传 topics，光看"传没传"会把无改动的保存也误标。
+        boolean wasNotified = m.getNotifiedAt() != null
+                || !notificationLogRepo.findByMeetingIdOrderBySentAtAsc(meetingId).isEmpty();
+        String beforeCore = coreContentFingerprint(m, meetingId);
         if (req.getTitle() != null) m.setTitle(req.getTitle());
         if (req.getMeetingDate() != null) m.setMeetingDate(req.getMeetingDate());
         if (req.getMeetingTime() != null) m.setMeetingTime(req.getMeetingTime());
@@ -333,7 +341,23 @@ public class CommitteeService {
             savePresetTopics(record, meetingTopics);
         }
         applyGeneratedNoticeDraft(m);
+        if (wasNotified && !coreContentFingerprint(m, meetingId).equals(beforeCore)) {
+            m.setNoticeStale(true);
+        }
         meetingRepo.save(m);
+    }
+
+    /** 通知内容指纹：名称/日期/时间/地点/方式/议题（标题+类型+表决方式）。用于判断"已通知后又改了内容"。 */
+    private String coreContentFingerprint(CommitteeMeeting m, Long meetingId) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(m.getTitle()).append('|').append(m.getMeetingDate()).append('|')
+          .append(m.getMeetingTime()).append('|').append(m.getLocation()).append('|')
+          .append(m.getMeetingMethod()).append('|');
+        recordRepo.findByMeetingId(meetingId).ifPresent(rec ->
+                topicRepo.findByRecordIdOrderBySortOrder(rec.getId()).forEach(t ->
+                        sb.append(t.getTitle()).append('#').append(t.getType()).append('#')
+                          .append(t.getDecisionType()).append(';')));
+        return sb.toString();
     }
 
     @Transactional
@@ -555,16 +579,29 @@ public class CommitteeService {
         UserRoleEntity initiator = SecurityUtils.getCurrentUserRole();
         LocalDateTime now = LocalDateTime.now();
         List<UserRoleEntity> members = resolveMeetingMembers(meeting.getCommunity().getId(), memberIds);
-        deliveryRepo.deleteByMeetingId(meetingId);
+        // 0803 修「再次提醒把已读状态清零」：原先每次发送都先 deleteByMeetingId 再整表重建，
+        // 委员的 noticeReadAt/materialReadAt 跟着没了，"已读人数"从有数突然归零。
+        // 改逐人 upsert：已有记录只置送达位、保留已读时间；本轮没选中的旧记录原样留着——
+        // 那是"当时确实通知过他"的凭据，不删。
+        List<MeetingDelivery> existing = deliveryRepo.findByMeetingId(meetingId);
+        Map<Long, MeetingDelivery> byRole = existing.stream()
+                .collect(Collectors.toMap(dd -> dd.getUserRole().getId(), dd -> dd, (a, b) -> a));
         List<MeetingDelivery> deliveries = members.stream()
-                .map(member -> MeetingDelivery.builder()
-                        .meeting(meeting)
-                        .userRole(member)
-                        .noticeDelivered(true)
-                        .materialDelivered(true)
-                        .build())
+                .map(member -> {
+                    MeetingDelivery d = byRole.get(member.getId());
+                    if (d == null) {
+                        return MeetingDelivery.builder()
+                                .meeting(meeting).userRole(member)
+                                .noticeDelivered(true).materialDelivered(true)
+                                .build();
+                    }
+                    d.setNoticeDelivered(true);
+                    d.setMaterialDelivered(true);
+                    return d;
+                })
                 .collect(Collectors.toList());
         deliveryRepo.saveAll(deliveries);
+        meeting.setNoticeStale(null);   // 重新通知完成，"内容已过时"标记解除
         markNotifiedIfComplete(meetingId);
         // 记录发送人：全部送达置 notifiedAt 后，同步记录当前主任/副主任"姓名·角色"（谁发的通知）
         if (initiator != null && meeting.getNotifiedAt() != null) {
@@ -610,6 +647,10 @@ public class CommitteeService {
                 .sentByName(initiator != null ? initiator.getRealName() + "·" + initiator.getRole() : null)
                 .channel("wechat")
                 .build());
+        if (Boolean.TRUE.equals(meeting.getNoticeStale())) {
+            meeting.setNoticeStale(null);   // 微信重发同样算重新通知
+            meetingRepo.save(meeting);
+        }
     }
 
     /** 清空会议通知记录：删通知历史 + 送达记录，重置 notifiedAt/notifiedByName，回到"未通知"状态。
@@ -622,6 +663,7 @@ public class CommitteeService {
         deliveryRepo.deleteByMeetingId(meetingId);
         m.setNotifiedAt(null);
         m.setNotifiedByName(null);
+        m.setNoticeStale(null);
         meetingRepo.save(m);
     }
 

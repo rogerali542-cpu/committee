@@ -76,6 +76,11 @@ public class CommitteeMeeting {
     @Column(name = "created_by")
     private Long createdBy;
 
+    // 通知内容已过时（0803）：已通知的会议其名称/时间/地点/方式/议题又被改过 → 置 true，
+    // 通知页回到"待重新通知"态；重新发送/微信留痕后清掉。可空列，ddl-auto update 自动加。
+    @Column(name = "notice_stale")
+    private Boolean noticeStale;
+
     // 通知完成时间（规则8）：非空表示已通知，重大字段应锁定，修改需重新通知
     @Column(name = "notified_at")
     private LocalDateTime notifiedAt;
