@@ -8,7 +8,7 @@
       </template>
       <template #right>
         <!-- 签到页不放「首页」胶囊（0803 设计师稿）：人都到会场了不该被引导离开；其余步骤保留 -->
-        <button v-if="currentStep !== 1" class="nav-home" @click="goHome">首页</button>
+        <button v-if="currentStep !== 1 && !(currentStep === 2 && meetingPhase === 'recording')" class="nav-home" @click="goHome">首页</button>
       </template>
     </PageNav>
 
@@ -165,7 +165,7 @@
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
     <!-- 阶段条：签到 → 议题表决 → 会议材料；录音作为会议记录辅助工具常驻。
          签到页（步骤1）不显示圆点阶段条——0803 设计师稿改为一行小字「第 1 步 / 共 4 步 · 会议签到」 -->
-    <div v-if="currentStep !== 1" class="lp-flow" :class="{ 'lp-flow--tight': currentStep === 2 && (recActive || isPaused) }">
+    <div v-if="currentStep !== 1 && !(currentStep === 2 && meetingPhase === 'recording')" class="lp-flow" :class="{ 'lp-flow--tight': currentStep === 2 && (recActive || isPaused) }">
       <div class="lp-flow-step" :class="flowStep > 1 ? 'done' : (flowStep === 1 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 1">✓</template><template v-else>1</template></span>
         <span class="lp-flow-label">会议签到</span>
@@ -264,32 +264,53 @@
 
     <!-- ========== 步骤2：录音 ========== -->
     <template v-else>
+      <!-- 0803 设计师骨架：一屏只有蓝（橙/绿/红标签全撤，异常态才用色）。
+           会议卡带录音状态行；议题直接摊开点行处理（不再"处理议题"整页切换）；
+           材料/名单收成末尾两行；录音控制全部在底部操作条 -->
       <div v-if="meetingPhase === 'recording'" class="meeting-console">
-        <div class="meeting-console-head">
-          <div>
-            <div class="meeting-console-title">会议进行中</div>
-            <div class="meeting-console-sub">{{ detail.title || '本次业委会会议' }}</div>
-            <div class="meeting-console-meta">{{ detail.meetingDate }} {{ detail.meetingTime }}<template v-if="detail.location"> · {{ detail.location }}</template></div>
-          </div>
-          <div v-if="isChair" class="meeting-console-roster" :class="{ ready: signinQuorum.ready }" @click="rosterPopOpen = true">
-            已签到 {{ signinStats.signedCount || 0 }}/{{ signinStats.expectedCount || 0 }} ›
+        <div class="si-step-line">第 2 步 / 共 4 步 · 会议进行</div>
+        <div class="si-meet-card">
+          <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
+          <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}</div>
+          <div class="si-meet-meta2 si-meet-loc">{{ detail.location }}<template v-if="signinStats.total"> · 已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</template></div>
+          <!-- 录音状态：灰点=未开始，蓝点呼吸=录音中，暖橙点=已暂停（异常态专色，暂停恰是"需要留意"） -->
+          <div class="mc-rec" :class="{ on: recActive, paused: isPaused }">
+            <span class="mc-rec-dot"></span>
+            <span class="mc-rec-txt">{{ recActive ? '录音中 ' + timeText : (isPaused ? '已暂停 ' + timeText : '尚未开始录音') }}</span>
           </div>
         </div>
-        <div class="meeting-console-topics">
-          <div class="mct-head">
-            <span class="mct-title">会议议题</span>
-            <span class="mct-count">共{{ meetingTopics.length }}项</span>
+
+        <div class="mc-topics">
+          <div class="mc-topics-head">
+            <span class="mc-topics-title">会议议题</span>
+            <span class="mc-topics-count">已处理 {{ resolvedTopicCount }} / {{ meetingTopics.length }}</span>
           </div>
-          <div class="mct-list">
-            <div class="mct-item" v-for="(t, i) in meetingTopics" :key="'mct-' + t.id">
-              <span class="mct-no">{{ i + 1 }}</span>
-              <span class="mct-name">{{ t.title }}</span>
-              <span class="mct-type" :class="topicActionType(t)">{{ topicActionName(t) }}</span>
+          <button type="button" class="mc-topic-row" v-for="(t, i) in meetingTopics" :key="'mc-' + t.id" @click="openTopicSheet(t)">
+            <span class="mc-topic-no">{{ i + 1 }}</span>
+            <span class="mc-topic-name">{{ t.title }}</span>
+            <span class="mc-topic-state" :class="{ done: topicRowDone(t) }">{{ topicStateText(t) }}</span>
+            <i class="si-row-arr"></i>
+          </button>
+          <div v-if="!meetingTopics.length" class="mc-topics-empty">暂无会议议题</div>
+          <!-- 临时添加议题保留（原在"议题处理"页里，直进直出后挪到列表尾行，仅主持人） -->
+          <button v-if="isHost" type="button" class="mc-topic-add" @click="openAddTopic">＋ 临时添加议题</button>
+        </div>
+
+        <div class="si-rows mc-rows">
+          <button v-if="materials.length" type="button" class="si-row" @click="matListOpen = !matListOpen">
+            <span class="si-row-k">会议材料（{{ materials.length }} 份）</span>
+            <i class="si-row-arr" :class="{ open: matListOpen }"></i>
+          </button>
+          <div v-if="matListOpen && materials.length" class="mc-files">
+            <div class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
+              <span class="supp-file-name">{{ m.name }}</span>
+              <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
             </div>
-            <div v-if="!meetingTopics.length" class="mct-empty">暂无会议议题</div>
           </div>
-          <button class="meeting-stage-next" :disabled="phaseChanging" @click="enterVotingPhase">
-            {{ phaseChanging ? '正在处理…' : '处理议题 ›' }}
+          <button type="button" class="si-row" @click="rosterPopOpen = true">
+            <span class="si-row-k">参会名单</span>
+            <span class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
+            <i class="si-row-arr"></i>
           </button>
         </div>
       </div>
@@ -326,8 +347,9 @@
       <!-- 录音中断预警：放在录音卡上方（不占卡内空间）；切出瞬间 JS 冻结无法当场提示，只能前置 -->
       <div v-if="recActive" class="rec-bg-warn"><span class="rec-bg-warn-ico">⚠</span> 录音中请不要切出微信或锁屏，否则录音会中断</div>
 
-      <!-- 会中辅助区：拆「会议录音」+「会议材料」两个子标题区 -->
-      <div class="supp-card" v-if="meetingPhase === 'recording'">
+      <!-- 录音明细（0803 骨架后降级为按需出现）：有段落/暂停待传/上传中才显示——
+           纯"未开始/正在录"由会议卡状态行+底部条表达，这卡不再常驻 -->
+      <div class="supp-card" v-if="meetingPhase === 'recording' && (recordings.length || isPaused || stoppedUnuploaded || uploading || polling)">
         <!-- ① 会议录音（0729 用户定：左栏=标题+「已录N段·展开」；右侧「继续录音」放大、纵向占满两行高度，
              既醒目又远离展开，避免和展开相互误点） -->
         <div class="supp-head recording-compact-head">
@@ -376,26 +398,18 @@
       </div>
 
       <!-- 会议材料：独立卡片（与会议录音分开）；份数紧跟标题，文件名蓝字下划线示可点 -->
-      <div class="supp-card" v-if="meetingPhase === 'recording'">
-        <!-- 展开只认右侧「展开」文字（0729 用户定：整卡可点易误触） -->
-        <div class="supp-head">
-          <span class="supp-title">会议材料<span v-if="materials.length">（共{{ materials.length }}份）</span></span>
-          <span v-if="materials.length" class="rec-list-toggle" @click="matListOpen = !matListOpen">{{ matListOpen ? '收起 ▲' : '展开 ▾' }}</span>
-        </div>
-        <div v-if="materials.length" class="supp-files">
-          <div v-if="matListOpen" class="rec-list-body">
-            <div class="supp-file" v-for="(m, idx) in materials" :key="idx" @click="previewMaterial(idx)">
-              <span class="supp-file-name">{{ m.name }}</span>
-              <span class="supp-file-size">{{ m.sizeText || '查看' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <!-- 底部操作条（0803 设计师）：未录音「开始录音」；录音中「暂停录音 | 结束会议」；
+           暂停/停录未传「继续录音 | 结束会议」；进过会后整理则整条变「会后整理」。
+           结束会议走 handleMeetingBottomAction（自带二次确认与无录音兜底） -->
       <template v-if="isChair && meetingPhase === 'recording' && !meetingEnded">
         <div class="mlq-endbar-space"></div>
         <div class="mlq-endbar">
-          <button class="fixed-end-field-btn" @click="handleMeetingBottomAction">{{ fieldMeetingEnded ? '会后整理 →' : '结束现场会议' }}</button>
+          <button v-if="fieldMeetingEnded" class="mc-cta" @click="handleMeetingBottomAction">会后整理 →</button>
+          <div v-else-if="recActive || isPaused || stoppedUnuploaded" class="mc-endrow">
+            <button class="mc-cta-light" :disabled="uploading || generatingMinutes" @click="onCircleTap">{{ recActive ? '暂停录音' : '继续录音' }}</button>
+            <button class="mc-cta" @click="handleMeetingBottomAction">结束会议</button>
+          </div>
+          <button v-else class="mc-cta" :disabled="uploading || generatingMinutes" @click="onCircleTap">开始录音</button>
         </div>
       </template>
 
@@ -894,6 +908,14 @@ function topicActionName(item) {
 // 行按钮的"完成感"：表决类只看「表决是否已结束」（0722 用户定：不再看本人是否投过——
 // 投过票但表决仍开着时若变「看结果」，想改票的人找不到入口；表决没结束就一直「去表决」，
 // 点进去既能改票也能看实时票数，表决结束后才变「看结果」，那时确实只能看）
+// 0803 骨架：议题行右侧状态文案——灰「待处理」/ 蓝「已表决 · 通过」等，不给底色
+const resolvedTopicCount = computed(() => meetingTopics.value.filter((t) => topicRowDone(t)).length)
+function topicStateText(item) {
+  if (!topicRowDone(item)) return '待处理'
+  if (item.voteRequired) return '已表决 · ' + (item.passed ? '通过' : '未通过')
+  if (item.type === 'notify') return '已通报'
+  return '已讨论'
+}
 function topicRowDone(item) {
   // 方案A：表决全程开放→一直「去表决」；会议结束后（或旧数据已 voteClosed）才「看结果」
   if (item.voteRequired) return !!item.voteClosed || meetingEnded.value
@@ -4558,6 +4580,50 @@ async function returnToRecordingPage() {
 .si-cta-light { width:100%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
   background:#EAF0F8; color:#2f5f9e; font-size:33rpx; font-weight:600; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
 .si-cta-light:active { background:#DCE7F3; }
+/* ===== 0803 会议进行页骨架 ===== */
+.mc-rec { display:flex; align-items:center; gap:14rpx; margin-top:26rpx; }
+.mc-rec-dot { flex-shrink:0; width:22rpx; height:22rpx; border-radius:50%; background:#C3CAD3; }
+.mc-rec.on .mc-rec-dot { background:#3567A4; animation:mcPulse 1.6s ease-in-out infinite; }
+.mc-rec.paused .mc-rec-dot { background:#D98012; }
+.mc-rec-txt { font-size:31rpx; color:#61656C; font-weight:600; }
+.mc-rec.on .mc-rec-txt { color:#1F2937; }
+@keyframes mcPulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+@media (prefers-reduced-motion: reduce) { .mc-rec.on .mc-rec-dot { animation:none; } }
+.mc-topics { background:#fff; border-radius:26rpx; padding:8rpx 0 6rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); }
+.mc-topics-head { display:flex; align-items:center; justify-content:space-between; gap:16rpx; padding:24rpx 30rpx 16rpx; }
+.mc-topics-title { font-size:32rpx; font-weight:700; color:#1F2024; }
+.mc-topics-count { font-size:27rpx; color:#6b7078; }
+.mc-topic-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:104rpx; margin:0; padding:14rpx 30rpx;
+  border:0; border-top:1px solid #F0F2F5; background:none; font:inherit; text-align:left; cursor:pointer; box-sizing:border-box;
+  touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; }
+.mc-topic-row:active { background:#F6F8FA; }
+.mc-topic-no { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; background:#f4f6f9; color:#4b5563;
+  font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.mc-topic-name { flex:1; min-width:0; font-size:30rpx; color:#2B2E33; line-height:1.5; word-break:break-word; }
+.mc-topic-state { flex-shrink:0; font-size:26rpx; color:#8A9099; }
+.mc-topic-state.done { color:#2f5f9e; font-weight:600; }
+.mc-topics-empty { padding:30rpx; text-align:center; color:#9AA0A6; font-size:29rpx; }
+.mc-topic-add { display:block; width:100%; margin:0; padding:22rpx 30rpx; border:0; border-top:1px solid #F0F2F5;
+  background:none; font:inherit; text-align:center; color:#6b7078; font-size:28rpx; cursor:pointer;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.mc-topic-add:active { background:#F6F8FA; }
+.mc-rows { margin-top:4rpx; }
+.mc-files { padding:4rpx 22rpx 10rpx; border-bottom:1px solid #EEF0F2; }
+/* 底部条按钮：主实心蓝 + 次浅蓝，2:1 分宽 */
+.mc-endrow { display:flex; gap:16rpx; }
+.mc-endrow .mc-cta { flex:2; }
+.mc-endrow .mc-cta-light { flex:1; }
+.mc-cta { display:block; width:100%; height:108rpx; box-sizing:border-box; margin:0; padding:0; border:0; border-radius:20rpx;
+  background:#3567A4; color:#fff; font-size:34rpx; font-weight:700; font-family:inherit;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.mc-cta:active { background:#2D598E; }
+.mc-cta:disabled { opacity:.5; }
+.mc-cta-light { display:block; height:108rpx; box-sizing:border-box; margin:0; padding:0 10rpx; border:0; border-radius:20rpx;
+  background:#EAF0F8; color:#2f5f9e; font-size:31rpx; font-weight:600; font-family:inherit;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.mc-cta-light:active { background:#DCE7F3; }
+.mc-cta-light:disabled { opacity:.5; }
+
 /* ===== si-roomy：收起态整页放大 20%（0803 用户定，展开名单/议题即恢复）=====
    用字号/尺寸逐项放大而不是 transform:scale——scale 会把文字渲染糊掉且不参与布局 */
 .si-roomy .si-step-line { font-size:32rpx; padding-top:26rpx; }
