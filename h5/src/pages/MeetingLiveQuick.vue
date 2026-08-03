@@ -299,7 +299,7 @@
           <button type="button" class="mc-topic-row" v-for="(t, i) in meetingTopics" :key="'mc-' + t.id" @click="openTopicSheet(t)">
             <span class="mc-topic-no">{{ i + 1 }}</span>
             <span class="mc-topic-name">{{ t.title }}</span>
-            <span class="mc-topic-state" :class="{ done: topicRowDone(t) }">{{ topicStateText(t) }}</span>
+            <span class="mc-topic-state" :class="{ next: t.id === nextPendingTopicId }">{{ topicStateText(t) }}</span>
             <i class="si-row-arr"></i>
           </button>
           <div v-if="!meetingTopics.length" class="mc-topics-empty">暂无会议议题</div>
@@ -879,12 +879,25 @@ function topicActionName(item) {
 // 行按钮的"完成感"：表决类只看「表决是否已结束」（0722 用户定：不再看本人是否投过——
 // 投过票但表决仍开着时若变「看结果」，想改票的人找不到入口；表决没结束就一直「去表决」，
 // 点进去既能改票也能看实时票数，表决结束后才变「看结果」，那时确实只能看）
-// 0803 骨架：议题行右侧状态文案——灰「待处理」/ 蓝「已表决 · 通过」等，不给底色
-const resolvedTopicCount = computed(() => meetingTopics.value.filter((t) => topicRowDone(t)).length)
+// 0803 设计师：议题行右侧一屏只留一处动作指向——下一条待办给蓝字动作词，
+// 其余待办不写字（只留箭头），已办写灰色结果。计数与「结束会议还有N项未处理」
+// 统一用 topicBadgeDone（会中就会推进；topicRowDone 是给弹层按钮用的"表决是否已锁"，
+// 会中恒为未完成，拿来当计数会一直卡在 0/N）
+const resolvedTopicCount = computed(() => meetingTopics.value.filter((t) => topicBadgeDone(t)).length)
+// 下一条待办 = 列表里第一条未处理的议题（会中随处理进度自动往下走）
+const nextPendingTopicId = computed(() => {
+  const next = meetingTopics.value.find((t) => !topicBadgeDone(t))
+  return next ? next.id : null
+})
 function topicStateText(item) {
-  if (!topicRowDone(item)) return '待处理'
-  if (item.voteRequired) return '已表决 · ' + (item.passed ? '通过' : '未通过')
-  if (item.type === 'notify') return '已通报'
+  if (!topicBadgeDone(item)) {
+    if (item.id !== nextPendingTopicId.value) return '' // 未轮到：只留标题和箭头
+    if (item.voteRequired) return '去表决'
+    if (item.type === 'notice') return isHost.value ? '去通知' : '查看通知'
+    return '去讨论'
+  }
+  if (item.voteRequired) return '已表决 · ' + (item.status === 'passed' ? '通过' : '未通过')
+  if (item.type === 'notice' || item.type === 'notify') return '已通报'
   return '已讨论'
 }
 function topicRowDone(item) {
@@ -4607,8 +4620,9 @@ async function returnToRecordingPage() {
 .mc-topic-no { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; background:#f4f6f9; color:#4b5563;
   font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
 .mc-topic-name { flex:1; min-width:0; font-size:30rpx; color:#2B2E33; line-height:1.5; word-break:break-word; }
+/* 已办结果=中性灰（记录，不是动作）；下一条待办=蓝色动作词，全屏唯一的"该你办这条" */
 .mc-topic-state { flex-shrink:0; font-size:26rpx; color:#8A9099; }
-.mc-topic-state.done { color:#2f5f9e; font-weight:600; }
+.mc-topic-state.next { color:#2f5f9e; font-weight:700; }
 .mc-topics-empty { padding:30rpx; text-align:center; color:#9AA0A6; font-size:29rpx; }
 .mc-rows { margin-top:4rpx; }
 .mc-files { padding:4rpx 22rpx 10rpx; border-bottom:1px solid #EEF0F2; }
