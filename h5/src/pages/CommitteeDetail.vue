@@ -1390,12 +1390,13 @@ const noticeLogRows = computed(() => {
     groups.push({ by: d.notifiedByName || '', at: String(d.notifiedAt || ''), channels: ['App 内'], count: 0 })
   }
   return groups.slice().reverse().map((g) => {
+    // 0803 用户定格式：已通知（App内 + 微信）· 张建国　＋右侧时间。
+    // 按渠道分支、不按人数分支——旧日志/后端没重启时 App 内那条没有 sentCount，
+    // 按人数分支会把整行退化成"已转发到微信工作群"，App 内通知被吞掉。
     const chs = CHANNEL_ORDER.filter((c) => g.channels.indexOf(c) >= 0).join(' + ')
-    // 人数只有 App 内送达有（发送当时定格在日志里）；纯微信留痕没有人数，不编数字
-    const head = g.count ? ('已通知 ' + g.count + ' 人') : '已转发到微信工作群'
     const name = String(g.by || '').split('·')[0].trim()
-    const parts = g.count ? [head, chs] : [head]
-    if (name) parts.push(name + '发送')
+    const parts = ['已通知（' + chs + '）']
+    if (name) parts.push(name)
     return { text: parts.join(' · '), when: fmtSendTimeShort(g.at) }
   })
 })
