@@ -571,12 +571,13 @@ public class CommitteeService {
             meeting.setNotifiedByName(initiator.getRealName() + "·" + initiator.getRole());
             meetingRepo.save(meeting);
         }
-        // 追加通知历史记录
+        // 追加通知历史记录（人数在发送当时定格：delivery 是"当前"状态，清空/重发后对不上历史）
         notificationLogRepo.save(MeetingNotificationLog.builder()
                 .meeting(meeting)
                 .sentAt(now)
                 .sentByName(initiator != null ? initiator.getRealName() + "·" + initiator.getRole() : null)
                 .channel("app")
+                .sentCount(deliveries.size())
                 .build());
 
         // 发起人（当前主任/副主任）发送会议通知时即自动"确认参会"，计入确认参会人数（自动为 1），无需再手动确认。
@@ -631,6 +632,7 @@ public class CommitteeService {
                     vo.setSentAt(l.getSentAt().toString());
                     vo.setSentByName(l.getSentByName());
                     vo.setChannel(l.getChannel() == null ? "app" : l.getChannel());
+                    vo.setSentCount(l.getSentCount());
                     return vo;
                 })
                 .collect(Collectors.toList());

@@ -91,11 +91,12 @@
             </div>
           </div>
           <div class="rcp-list page-rcp-list" v-if="recipientOpen">
-            <!-- 全选行：和成员行一样的勾选行，点击目标同构。全勾时 ✓，部分勾时 − （表示"有人没选上"） -->
+            <!-- 全选行：和成员行一样的勾选行，点击目标同构。全勾时 ✓，部分勾时 − （表示"有人没选上"）。
+                 文案写动作「全选/取消全选」——写「全体委员 · 7 人」跟标题行右侧的摘要字面重复 -->
             <div v-if="recipientList.length" class="rcp-item page-rcp-item rcp-all-item" @click="toggleRecipientAll">
               <div class="rcp-check" :class="{ on: recipientAllChecked, part: !recipientAllChecked && recipientSelectedCount > 0 }">{{ recipientAllChecked ? '✓' : (recipientSelectedCount > 0 ? '−' : '') }}</div>
               <div class="rcp-person">
-                <span class="rcp-name">全体委员 · {{ recipientList.length }} 人</span>
+                <span class="rcp-name">{{ recipientAllChecked ? '取消全选' : '全选' }}</span>
               </div>
             </div>
             <div v-for="m in recipientList" :key="m.userRoleId" class="rcp-item page-rcp-item" @click="toggleRecipient(m.userRoleId)">
@@ -127,8 +128,7 @@
             <button type="button" class="sr-clear" @click="clearNotices">清空</button>
           </div>
           <div class="sr-row" v-for="(r, i) in noticeLogRows" :key="i">
-            <span class="sr-who">{{ r.who }}</span>
-            <span class="sr-what">{{ r.what }}</span>
+            <span class="sr-txt">{{ r.text }}</span>
             <span class="sr-when">{{ r.when }}</span>
           </div>
         </div>
@@ -416,9 +416,13 @@
                改成原生 button（另配 touch-action:manipulation 去延迟、user-select:none 断长按选字）。
                ⚠ 只在「发送前」这一态出现；已发送后渠道选择收进弹层（openRemindSheet）。 -->
           <div v-if="footerStage === 'send'" class="pf-ch-group">
+            <!-- 0801 设计师：勾选组加一行小标题，两行勾选有了归属，不再直接贴着按钮 -->
+            <div class="pf-ch-caption">发送方式</div>
+            <!-- 「转发到微信工作群」不叫「发到」：线上会议的召开方式也常是「微信工作群」，
+                 一个是开会场所、一个是通知渠道，字面完全一样会混。转发也更贴实际动作（复制+跳微信粘贴） -->
             <button type="button" class="pf-also" :aria-pressed="chWechat ? 'true' : 'false'" @click="chWechat = !chWechat">
               <span class="pf-also-check" :class="{ on: chWechat }">{{ chWechat ? '✓' : '' }}</span>
-              <span class="pf-also-txt">发到微信工作群</span>
+              <span class="pf-also-txt">转发到微信工作群</span>
             </button>
             <button type="button" class="pf-also" :class="{ disabled: !recipientSelectedCount }" :aria-pressed="appChannelOn ? 'true' : 'false'" @click="toggleAppChannel">
               <span class="pf-also-check" :class="{ on: appChannelOn }">{{ appChannelOn ? '✓' : '' }}</span>
@@ -1332,8 +1336,9 @@ function fmtSendTimeShort(s) {
   const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/)
   return m ? (Number(m[2]) + '月' + Number(m[3]) + '日 ' + m[4] + ':' + m[5]) : ''
 }
-// 通知记录行（0801 设计师）：同一个人、同一分钟发出的多个渠道本来就是一次动作，
-// 拆成两行看着像发了两次 → 按「人 + 分钟」合并，渠道并列写。最新在前。
+// 通知记录行（0801 设计师二改）：同一个人、同一分钟发出的多个渠道本来就是一次动作，
+// 按「人 + 分钟」合并，最新在前。行文改「已通知 7 人 · 微信 + App 内 · 张建国发送」——
+// 原先「张建国·主任」打头，看不出他是发通知的人还是被通知的人。
 const CHANNEL_ORDER = ['微信', 'App 内']
 const noticeLogRows = computed(() => {
   const d = detail.value || {}
@@ -1345,25 +1350,30 @@ const noticeLogRows = computed(() => {
     const at = String(l.sentAt || '')
     const key = (l.sentByName || '') + '|' + at.slice(0, 16)
     let g = idx.get(key)
-    if (!g) { g = { by: l.sentByName || '', at, channels: [] }; idx.set(key, g); groups.push(g) }
+    if (!g) { g = { by: l.sentByName || '', at, channels: [], count: 0 }; idx.set(key, g); groups.push(g) }
     const ch = l.channel === 'wechat' ? '微信' : 'App 内'
     if (g.channels.indexOf(ch) < 0) g.channels.push(ch)
+    if (l.sentCount) g.count = Math.max(g.count, l.sentCount)
   })
   if (!groups.length && noticeSent.value) {
     // 只有 notifiedAt、没有明细日志的旧数据：也得给一条，别让"已通知"却查不到记录
-    groups.push({ by: d.notifiedByName || '', at: String(d.notifiedAt || ''), channels: ['App 内'] })
+    groups.push({ by: d.notifiedByName || '', at: String(d.notifiedAt || ''), channels: ['App 内'], count: 0 })
   }
-  return groups.slice().reverse().map((g) => ({
-    who: g.by || '业委会',
-    what: CHANNEL_ORDER.filter((c) => g.channels.indexOf(c) >= 0).join(' + '),
-    when: fmtSendTimeShort(g.at)
-  }))
+  return groups.slice().reverse().map((g) => {
+    const chs = CHANNEL_ORDER.filter((c) => g.channels.indexOf(c) >= 0).join(' + ')
+    // 人数只有 App 内送达有（发送当时定格在日志里）；纯微信留痕没有人数，不编数字
+    const head = g.count ? ('已通知 ' + g.count + ' 人') : '已转发到微信工作群'
+    const name = String(g.by || '').split('·')[0].trim()
+    const parts = g.count ? [head, chs] : [head]
+    if (name) parts.push(name + '发送')
+    return { text: parts.join(' · '), when: fmtSendTimeShort(g.at) }
+  })
 })
 // 已通知后再发：渠道收进底部弹层选（底部只留一颗次级按钮，不再常驻两行勾选）
 async function openRemindSheet() {
   if (mainSending.value || sendSubmitting.value) return
   const n = recipientSelectedCount.value
-  const items = [{ label: '发到微信工作群', selected: true }]
+  const items = [{ label: '转发到微信工作群', selected: true }]
   if (n) items.push({ label: 'App 内通知 ' + n + ' 位委员', selected: true })
   const res = await showActionSheet({
     title: noticeSent.value ? '再次提醒 · 选择渠道' : '发送通知 · 选择渠道',
@@ -2578,7 +2588,10 @@ async function removeMaterial(item) {
    ⚠ 必须是原生 <button>：见模板处注释，div 在手机上长按会被当选字、且吃 300ms 点击延迟。
    下面这组是配套的——button 的 UA 默认样式要清掉，触摸行为要显式声明。 */
 .pf-ch-group { display:flex; flex-direction:column; }
-.pf-also { display:flex; align-items:center; gap:14rpx; width:100%; min-height:88rpx; padding:0 6rpx;
+/* 组标题（0801 设计师）：15px 灰字，两行勾选有了归属，不再直接贴按钮 */
+.pf-ch-caption { padding:4rpx 6rpx 2rpx; color:#8A9099; font-size:30rpx; }
+/* 行高 54px（0801 设计师：48→54） */
+.pf-also { display:flex; align-items:center; gap:14rpx; width:100%; min-height:108rpx; padding:0 6rpx;
   margin:0; border:0; background:none; font:inherit; text-align:left; color:#3F4A57; font-size:29rpx;
   cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   -webkit-tap-highlight-color:transparent; }
@@ -2729,8 +2742,7 @@ async function removeMaterial(item) {
 .sr-row { display:flex; align-items:center; flex-wrap:wrap; gap:6rpx 16rpx;
   min-height:88rpx; padding:14rpx 22rpx; border-bottom:1px solid #EEF0F2; }
 .sr-row:first-of-type { border-top:1px solid #EEF0F2; }
-.sr-who { color:#1F2937; font-size:29rpx; font-weight:600; }
-.sr-what { color:#3F4A57; font-size:28rpx; }
+.sr-txt { color:#3F4A57; font-size:28rpx; }
 .sr-when { margin-left:auto; color:#8A9099; font-size:26rpx; white-space:nowrap; }
 /* 清空通知记录：弱化小按钮（灰描边胶囊），不与主操作抢视觉 */
 /* 通知记录：去底色，纯绿色文字、加大一号并加粗 */

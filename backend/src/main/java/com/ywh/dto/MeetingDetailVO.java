@@ -55,6 +55,7 @@ public class MeetingDetailVO {
         private String sentAt;
         private String sentByName;
         private String channel;
+        private Integer sentCount;   // 本次 App 内送达人数（0801，可空：微信留痕/旧数据没有）
     }
 
     // Delivery info
