@@ -1378,17 +1378,23 @@ const CHANNEL_ORDER = ['App 内', '微信']   // 0803：App 内是默认渠道�
 const noticeLogRows = computed(() => {
   const d = detail.value || {}
   const logs = d.notificationLogs || []
+  // 合并粒度（0803 修「再次提醒没出新记录」）：只把"同一人、相隔 ≤10 秒的连续日志"并成一行——
+  // 那才是同一次动作的两个渠道（App 内落档后紧跟微信留痕，前后不过几秒）。
+  // 原按"同一分钟"合并：同一分钟内再点一次「再次提醒」，新日志被并进上一行，看着像没发出去。
   const groups = []
-  const idx = new Map()
   logs.forEach((l) => {
     if (!l) return
     const at = String(l.sentAt || '')
-    const key = (l.sentByName || '') + '|' + at.slice(0, 16)
-    let g = idx.get(key)
-    if (!g) { g = { by: l.sentByName || '', at, channels: [], count: 0 }; idx.set(key, g); groups.push(g) }
+    const t = new Date(at.replace(' ', 'T')).getTime() || 0
     const ch = l.channel === 'wechat' ? '微信' : 'App 内'
-    if (g.channels.indexOf(ch) < 0) g.channels.push(ch)
-    if (l.sentCount) g.count = Math.max(g.count, l.sentCount)
+    const last = groups[groups.length - 1]
+    if (last && last.by === (l.sentByName || '') && t - last.t <= 10000) {
+      if (last.channels.indexOf(ch) < 0) last.channels.push(ch)
+      if (l.sentCount) last.count = Math.max(last.count, l.sentCount)
+      last.t = t
+    } else {
+      groups.push({ by: l.sentByName || '', at, t, channels: [ch], count: l.sentCount || 0 })
+    }
   })
   if (!groups.length && noticeSent.value) {
     // 只有 notifiedAt、没有明细日志的旧数据：也得给一条，别让"已通知"却查不到记录
