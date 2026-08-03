@@ -7,7 +7,8 @@
         <div class="mlq-back" @click="onNavBack">‹</div>
       </template>
       <template #right>
-        <button class="nav-home" @click="goHome">首页</button>
+        <!-- 签到页不放「首页」胶囊（0803 设计师稿）：人都到会场了不该被引导离开；其余步骤保留 -->
+        <button v-if="currentStep !== 1" class="nav-home" @click="goHome">首页</button>
       </template>
     </PageNav>
 
@@ -162,8 +163,9 @@
     <AiWorkingOverlay :active="generatingMinutes" :phase="overlayPhase" @confirm="onAiWorkDone" @close="onAiWorkClose" :audioDurSec="asrAudioDurSec" :audioFileSizeByte="asrFileSizeBytes" />
 
     <!-- 首屏（步骤条已删）：议题 + 签到/录音。撑满一屏高度，把参会名单顶到首屏之下（需要时往下拉才看到） -->
-    <!-- 阶段条：签到 → 议题表决 → 会议材料；录音作为会议记录辅助工具常驻 -->
-    <div class="lp-flow" :class="{ 'lp-flow--tight': currentStep === 2 && (recActive || isPaused) }">
+    <!-- 阶段条：签到 → 议题表决 → 会议材料；录音作为会议记录辅助工具常驻。
+         签到页（步骤1）不显示圆点阶段条——0803 设计师稿改为一行小字「第 1 步 / 共 4 步 · 会议签到」 -->
+    <div v-if="currentStep !== 1" class="lp-flow" :class="{ 'lp-flow--tight': currentStep === 2 && (recActive || isPaused) }">
       <div class="lp-flow-step" :class="flowStep > 1 ? 'done' : (flowStep === 1 ? 'on' : '')">
         <span class="lp-flow-dot"><template v-if="flowStep > 1">✓</template><template v-else>1</template></span>
         <span class="lp-flow-label">会议签到</span>
@@ -185,40 +187,30 @@
       </div>
     </div>
 
-    <!-- ========== 步骤1：签到页（顶部精简会议卡·点开看议题 → 参会名单·默认收起 → 底部大签到钮·拇指区） ========== -->
+    <!-- ========== 步骤1：签到页（0803 设计师重做） ==========
+         结构：一行步骤小字 → 会议卡（名称 / 时间·地点 / 本人签到状态）→ 轻列表
+         （参会名单·查看议题·列席人员，点行展开）→ 底部按角色一颗主按钮。
+         主任进来自动签到（发起会议必须到场，见 maybeAutoSignChair），底部直接「开始录音 · 进入会议」；
+         委员进来未签到，底部「现场签到 / 线上参加」，签完变浅蓝「已签到 · 进入会议」。 -->
     <template v-if="currentStep === 1">
       <div class="signin-page">
         <div class="si-scroll-content">
-        <!-- 顶部精简会议卡：名称/时间/地点。展开只认「查看议题」文字（0729 用户定：整卡可点易误触） -->
+        <div class="si-step-line">第 1 步 / 共 4 步 · 会议签到</div>
         <div class="si-meet-card">
-          <div class="si-meet-main">
-            <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
-            <div class="si-meet-meta">
-              <span class="si-meet-row">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}</span>
-              <span v-if="detail.location" class="si-meet-row">{{ detail.location }}</span>
-            </div>
+          <div class="si-meet-title">{{ detail.title || '本次会议' }}</div>
+          <div class="si-meet-meta2">{{ formatSigninDateTime(detail.meetingDate, detail.meetingTime) }}<template v-if="detail.location"> · {{ detail.location }}</template></div>
+          <div class="si-self">
+            <span class="si-self-check" :class="{ on: signedIn }">{{ signedIn ? '✓' : '' }}</span>
+            <span class="si-self-txt">{{ selfDisplayName }}（我）{{ signedIn ? '已签到' : '未签到' }}</span>
           </div>
-          <span class="si-meet-caret" @click="siMeetOpen = !siMeetOpen">{{ siMeetOpen ? '收起 ▲' : '查看议题 ▾' }}</span>
-        </div>
-        <div v-if="siMeetOpen" class="si-meet-topics">
-          <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
-            <div class="si-topic-item" v-for="(item, index) in detail.record.topics" :key="item.id">
-              <span class="si-topic-idx">{{ index + 1 }}</span>
-              <span class="si-topic-title">{{ item.title }}</span>
-            </div>
-          </template>
-          <span v-else class="si-topic-empty">暂无议题</span>
         </div>
 
-        <!-- 参会名单：默认收起，展开只认右侧「展开」文字（0729 用户定：整行可点易误触） -->
-        <div v-if="signinStats.total" class="si-roster" :class="{ open: siRosterOpen }">
-          <div class="si-roster-bar">
-            <span class="si-roster-title">参会名单</span>
-            <span class="si-roster-count">
-              <span class="si-roster-summary">已有{{ signinStats.signedCount || 0 }}人签到（{{ signinStats.remoteCount || 0 }}人线上参会）</span>
-            </span>
-            <span class="si-roster-caret" @click="siRosterOpen = !siRosterOpen">{{ siRosterOpen ? '收起 ▲' : '展开 ▾' }}</span>
-          </div>
+        <div class="si-rows">
+          <button v-if="signinStats.total" type="button" class="si-row" @click="siRosterOpen = !siRosterOpen">
+            <span class="si-row-k">参会名单</span>
+            <span class="si-row-v">已签到 {{ signinStats.signedCount || 0 }} / {{ signinStats.total }}</span>
+            <i class="si-row-arr" :class="{ open: siRosterOpen }"></i>
+          </button>
           <div v-if="siRosterOpen" class="si-roster-body">
             <div class="signin-roster-row" v-for="a in signinStats.list" :key="a.userRoleId">
               <span class="srr-name">{{ a.name }}</span>
@@ -228,13 +220,45 @@
               </span>
             </div>
           </div>
+          <button type="button" class="si-row" @click="siMeetOpen = !siMeetOpen">
+            <span class="si-row-k">查看议题{{ signinTopicCount ? '（' + signinTopicCount + ' 项）' : '' }}</span>
+            <i class="si-row-arr" :class="{ open: siMeetOpen }"></i>
+          </button>
+          <div v-if="siMeetOpen" class="si-meet-topics">
+            <template v-if="detail.record && detail.record.topics && detail.record.topics.length">
+              <div class="si-topic-item" v-for="(item, index) in detail.record.topics" :key="item.id">
+                <span class="si-topic-idx">{{ index + 1 }}</span>
+                <span class="si-topic-title">{{ item.title }}</span>
+              </div>
+            </template>
+            <span v-else class="si-topic-empty">暂无议题</span>
+          </div>
+          <!-- 列席：主任可添加/修改（居委、街道、物业等非委员到会者，进会议记录与纪要）；
+               委员只读——登记是主任职责，误改会动正式记录 -->
+          <button v-if="isChair" type="button" class="si-row" @click="editObservers">
+            <span class="si-row-k si-row-add">{{ observersText ? '列席人员：' + observersText : '＋ 添加列席人员' }}</span>
+            <i class="si-row-arr"></i>
+          </button>
+          <div v-else-if="observersText" class="si-row si-row-plain">
+            <span class="si-row-k">列席人员：{{ observersText }}</span>
+          </div>
         </div>
         </div>
 
-        <!-- 底部大签到按钮（si-bottom 用 margin-top:auto 吸底；名单展开占满剩余空间内部滚动，按钮不被挤走） -->
+        <!-- 底部（si-bottom 用 margin-top:auto 吸底）：每个角色/状态只有一颗主按钮 -->
         <div class="si-bottom">
-          <button class="lp-primary-btn signin-big-btn" @click="confirmSignIn">{{ signedIn ? '进入会议' : '现场签到' }}</button>
-          <button v-if="!signedIn && !isChair" class="signin-remote-btn" @click="confirmRemoteAttend">线上参加</button>
+          <template v-if="isChair">
+            <button class="si-cta" @click="chairEnterMeeting">开始录音 · 进入会议</button>
+          </template>
+          <template v-else-if="!signedIn">
+            <button class="si-cta" @click="confirmSignIn">现场签到</button>
+            <button class="si-cta-ghost" @click="confirmRemoteAttend">线上参加</button>
+          </template>
+          <template v-else>
+            <!-- 设计稿是灰色"已签到，等待主持人开始"死按钮——但委员必须能进第 2 步（表决/发言都在里面），
+                 锁死会把人挡在表决之外。折中：浅蓝可点，文案保留"已签到"状态感 -->
+            <button class="si-cta-light" @click="confirmSignIn">已签到 · 进入会议</button>
+          </template>
         </div>
       </div>
     </template>
@@ -547,15 +571,6 @@
           <button class="btn btn-ghost" @click="retryTopicVoice">重新输入</button>
           <button class="btn btn-primary" @click="confirmTopicVoice">确认</button>
         </div>
-      </div>
-    </div>
-
-    <!-- 签到 → 录音 跳转动画：签到成功后短暂全屏，勾选动画 + 提示，随后进入录音步 -->
-    <div v-if="signinFx" class="signin-fx">
-      <div class="signin-fx-card">
-        <div class="signin-fx-check">✓</div>
-        <span class="signin-fx-title">签到成功</span>
-        <span class="signin-fx-sub">正在进入录音…</span>
       </div>
     </div>
 
@@ -1357,12 +1372,6 @@ const rosterPopOpen = ref(false) // 点「已签到 N/M」胶囊弹出的签到�
 const matListOpen = ref(false)   // 会中优先展示录音和主流程，材料按需展开
 const siMeetOpen = ref(false)    // 签到页：会议卡是否展开(看议题)
 const siRosterOpen = ref(false)  // 签到页：参会名单是否展开
-const signinFx = ref(false)      // 签到→录音 跳转动画遮罩
-function playSigninFx() {
-  signinFx.value = true
-  setTimeout(() => { currentStep.value = 2; meetingPhase.value = 'recording'; persistQuickState() }, 220)
-  setTimeout(() => { signinFx.value = false }, 520)                     // 一闪而过，别停留
-}
 const extraOpen = ref(false)          // 「AI 额外发现」是否展开
 
 // 角色 / 资料 / 实时议题 / 录音列表
@@ -1790,6 +1799,7 @@ async function loadDetail() {
       resumeBgAiTask() // 切回本页时恢复后台生成的遮罩/完成态（内存 aiTask 还在时）
       reconcileMinutesState() // 内存任务丢失(硬跳/刷新)兜底：从服务端+本地durable标记重建"生成中/查看"入口
       maybeAutoRecognizePending() // 委员传的/中断丢任务的"待识别"段：主任端静默补识别（内部有忙时守卫）
+      maybeAutoSignChair() // 0803：主任进签到页即自动签到（发起会议必须到场）
     } else {
       clearQuickState()
     }
@@ -1909,6 +1919,43 @@ function getSelfAttendance(d) {
   return attendances.find(function (a) { return a.isSelf }) || null
 }
 
+// 本人显示名（签到卡状态行）：出席名单里的本人优先，还没拉到就用登录身份
+const selfDisplayName = computed(() => {
+  const self = selfAttendance.value
+  if (self && self.name) return self.name
+  const role = getStorage('activeRole', null)
+  return (role && role.realName) || '我'
+})
+const signinTopicCount = computed(() => ((detail.value && detail.value.record && detail.value.record.topics) || []).length)
+
+// 主任自动签到（0803 用户定）：发起会议的人必须到场，进签到页即视为到场，不用再点一下。
+// 只试一次；静默失败不打扰（底部按钮点下去还会兜底补签）。
+let _autoSignTried = false
+async function maybeAutoSignChair() {
+  if (_autoSignTried || !isChair.value || signedIn.value) return
+  if (!detail.value || detail.value.stage !== 'ongoing' || currentStep.value !== 1) return
+  _autoSignTried = true
+  try {
+    await api.committeeSelfAttend(meetingId.value, 'onsite', false)
+    signedIn.value = true
+    loadDetail()
+  } catch (e) { console.warn('[主任自动签到] 失败，等手动兜底：', e) }
+}
+
+// 主任底部主按钮：确保已签到 → 进入会议 → 顺手开录音（按钮文案就叫「开始录音 · 进入会议」，
+// 用户明确点了它，不违背 0721"不自动开始录音"——那条防的是没有明确意图的自动开录）。
+// 录音起不来（如拒了麦克风权限）不拦路：人已在第 2 步，头部还有手动「开始录音」。
+async function chairEnterMeeting() {
+  if (!signedIn.value) {
+    try {
+      await api.committeeSelfAttend(meetingId.value, 'onsite', false)
+      signedIn.value = true
+    } catch (e) { toast({ title: (e && e.message) || '签到失败，请重试', icon: 'none' }); return }
+  }
+  await enterLiveMeeting()
+  try { if (!recActive.value && !isPaused.value) toggleRecord() } catch (e) { console.warn('[进入会议] 录音未能自动开始：', e) }
+}
+
 async function confirmSignIn() {
   // 已签到（后端 signedIn=true）→ 直接进入录音步
   if (signedIn.value) {
@@ -1927,9 +1974,9 @@ async function confirmSignIn() {
     await api.committeeSelfAttend(meetingId.value, 'onsite', false)
     signedIn.value = true
     loadDetail()
-    playSigninFx()   // 播放「签到成功 → 进入录音」跳转动画，动画中途切到录音步
-    // 0721 用户定（方案A）：不再自动开始录音——主任进入后手动点「开始录音」，
-    // 与录音卡的显式按钮一致；忘了点由「处理议题/结束会议」的状态3提示兜底
+    // 0803 设计师版：签完留在签到页——卡片状态行翻成「已签到」、底部变浅蓝「已签到 · 进入会议」，
+    // 什么时候进由本人决定。原 playSigninFx 动画会中途自动切进第 2 步，与新设计冲突，删除调用。
+    toast({ title: '已签到', icon: 'success' })
   } catch (e) {
     toast({ title: e.message || '确认失败', icon: 'none' })
   }
@@ -3314,7 +3361,8 @@ async function confirmRemoteAttend() {
     await api.committeeSelfAttend(meetingId.value, 'remote', false)
     signedIn.value = true
     await loadDetail()
-    playSigninFx()
+    // 0803：与现场签到一致，留在签到页（原 playSigninFx 会自动切进第 2 步）
+    toast({ title: '已登记线上参会', icon: 'success' })
   } catch (e) {
     toast({ title: e.message || '确认失败', icon: 'none' })
   }
@@ -3882,7 +3930,6 @@ async function onNavBack() {
   if (currentStep.value === 2) {
     // 只返回签到页面查看会议信息，不撤销已经完成的签到。
     // 因此底部按钮会显示“进入会议”，再次进入也不会重复签到。
-    signinFx.value = false
     currentStep.value = 1
     persistQuickState()
     refreshAttendance()   // 只刷新名单/进度，不动步骤机
@@ -4440,7 +4487,8 @@ async function returnToRecordingPage() {
 /* 展开热区只在「查看议题」文字上：加内边距扩大点击区、右下偏移抵掉 padding 保持原位 */
 .si-meet-caret { position:absolute; right:20rpx; bottom:31rpx; min-width:116rpx; text-align:right; font-size:28rpx; color:#A85800; font-weight:700; padding:12rpx 14rpx; }
 .si-meet-caret:active { opacity:.6; }
-.si-meet-topics { background:#fff; border-radius:26rpx; padding:28rpx 34rpx; box-shadow:0 8rpx 28rpx rgba(0,0,0,0.06); margin-top:-4rpx; min-height:170rpx; box-sizing:border-box; }
+/* 0803：议题列表展开在轻列表行下方——去白卡壳，跟随列表流（原是独立白卡） */
+.si-meet-topics { background:none; border-radius:0; padding:4rpx 22rpx 8rpx; box-shadow:none; margin-top:0; min-height:0; box-sizing:border-box; border-bottom:1px solid #EEF0F2; }
 .si-topic-item { display:flex; align-items:flex-start; gap:18rpx; padding:24rpx 0; border-bottom:2rpx solid #F4F4F6; }
 .si-topic-item:last-child { border-bottom:0; }
 .si-topic-idx { flex-shrink:0; width:50rpx; height:50rpx; border-radius:50%; background:#FFF1E0; color:#E8890C; font-size:30rpx; font-weight:700; display:flex; align-items:center; justify-content:center; }
@@ -4459,14 +4507,46 @@ async function returnToRecordingPage() {
 .si-quorum-icon { width:34rpx; height:34rpx; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#D98012; color:#fff; font-size:23rpx; font-weight:800; flex-shrink:0; }
 /* 名单展开后跟随整页滚动，避免内部滚动区域的末尾被固定签到按钮遮挡。 */
 .si-roster.open { display:flex; flex-direction:column; }
-.si-roster-body { max-height:none; overflow:visible; padding-bottom:10rpx; border-top:2rpx solid #F2F2F4; }
+/* 0803：名单展开在轻列表行下方，跟随列表流 */
+.si-roster-body { max-height:none; overflow:visible; padding:0 22rpx 10rpx; border-bottom:1px solid #EEF0F2; }
 /* 底部拇指区：跟随名单下方，避免首屏中段出现大片空白 */
-.si-bottom { flex:0 0 auto; z-index:180; display:flex; flex-direction:column; align-items:center; gap:35rpx; margin:0; padding:24rpx 0 calc(env(safe-area-inset-bottom) + 30rpx); background:rgba(255,255,255,.38); }
-/* 方案B「通栏沉稳大按钮」：深橙实色通栏，无渐变/脉动/投影 */
-.signin-big-btn { width:65% !important; height:100rpx; box-sizing:border-box; max-width:none; margin:0 auto !important; background:#A85800 !important; color:#fff !important; font-size:40rpx !important; font-weight:700; letter-spacing:4rpx; padding:0 !important; border-radius:24rpx; box-shadow:0 10rpx 24rpx rgba(168,88,0,.28); }
-.signin-big-btn:active { filter:brightness(0.92); }
-.signin-remote-btn { width:65%; height:100rpx; box-sizing:border-box; margin:0 auto; padding:0; border:2rpx solid #88A9BF; border-radius:24rpx; background:#EFF5F9; color:#315F7D; font-size:36rpx; font-weight:700; letter-spacing:2rpx; box-shadow:0 5rpx 14rpx rgba(49,95,125,.10); }
-.signin-remote-btn:active { background:#E1EDF4; }
+.si-bottom { flex:0 0 auto; z-index:180; display:flex; flex-direction:column; align-items:center; gap:20rpx; margin:0; padding:24rpx 0 calc(env(safe-area-inset-bottom) + 30rpx); background:rgba(255,255,255,.38); }
+/* ===== 0803 设计师重做（签到页）===== */
+/* 步骤小字：替代圆点阶段条 */
+.si-step-line { padding:6rpx 6rpx 0; color:#8A9099; font-size:27rpx; }
+/* 会议卡：时间·地点一行 + 本人签到状态行 */
+.si-meet-meta2 { margin-top:18rpx; font-size:31rpx; color:#61656C; line-height:1.55; }
+.si-self { display:flex; align-items:center; gap:14rpx; margin-top:26rpx; }
+.si-self-check { flex-shrink:0; width:44rpx; height:44rpx; border-radius:50%; border:3rpx solid #C3CAD3; background:#fff; color:#fff; font-size:26rpx; font-weight:700; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
+.si-self-check.on { background:#3567A4; border-color:#3567A4; }
+.si-self-txt { font-size:31rpx; color:#1F2937; font-weight:600; }
+/* 轻列表：透明底 + 分隔线；行是原生 button（div 长按变选字、吃 300ms 延迟，0801 踩过） */
+.si-rows { display:flex; flex-direction:column; }
+.si-row { display:flex; align-items:center; gap:16rpx; width:100%; min-height:100rpx; margin:0; padding:0 22rpx;
+  border:0; border-bottom:1px solid #EEF0F2; background:none; font:inherit; text-align:left;
+  color:#3F4A57; font-size:30rpx; font-weight:500; cursor:pointer;
+  touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+.si-row:first-child { border-top:1px solid #EEF0F2; }
+.si-row:active { background:#F3F5F7; }
+.si-row-plain { cursor:default; }
+.si-row-plain:active { background:none; }
+.si-row-k { flex:1; min-width:0; }
+.si-row-add { color:#3567A4; }
+.si-row-v { flex-shrink:0; color:#6b7078; font-size:28rpx; }
+/* › 用 CSS 边框箭头（CLAUDE.md），展开态转 90° 变 ∨ */
+.si-row-arr { flex-shrink:0; display:inline-block; width:16rpx; height:16rpx;
+  border-right:3rpx solid #B4BCC7; border-bottom:3rpx solid #B4BCC7; transform:rotate(-45deg); transition:transform .2s ease; }
+.si-row-arr.open { transform:rotate(45deg); }
+/* 底部按钮：会议蓝主操作（原橙色 #A85800 越权——暖橙是异常/例外专用，不当按钮主色） */
+.si-cta { width:92%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
+  background:#3567A4; color:#fff; font-size:34rpx; font-weight:700; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.si-cta:active { background:#2D598E; }
+.si-cta-ghost { width:92%; height:96rpx; box-sizing:border-box; margin:0 auto; padding:0; border:2rpx solid #C7D4E2; border-radius:20rpx;
+  background:#fff; color:#3F6078; font-size:31rpx; font-weight:600; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.si-cta-ghost:active { background:#F2F6FA; }
+.si-cta-light { width:92%; height:108rpx; box-sizing:border-box; margin:0 auto; padding:0; border:0; border-radius:20rpx;
+  background:#EAF0F8; color:#2f5f9e; font-size:33rpx; font-weight:600; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.si-cta-light:active { background:#DCE7F3; }
 .signin-page-tip { font-size:28rpx; color:#8A8F98; }
 /* 参会名单 */
 .signin-roster { width:88%; max-width:640rpx; margin-top:14rpx; background:#fff; border-radius:20rpx; padding:20rpx 26rpx 8rpx; box-shadow:0 6rpx 20rpx rgba(0,0,0,0.05); box-sizing:border-box; }
@@ -4481,15 +4561,6 @@ async function returnToRecordingPage() {
 .srr-state.remote { color:#2676D9; background:#EAF2FF; }
 .srr-state.off { color:#C0392B; background:#FDECEA; }
 .srr-state.wait { color:#6b7078; background:#EDEEF0; }
-/* 签到成功 → 录音 的一闪而过动画（时长收短，别停留） */
-.signin-fx { position:fixed; inset:0; z-index:1200; background:rgba(255,255,255,0.94); display:flex; align-items:center; justify-content:center; animation:sfxFade .14s ease; }
-.signin-fx-card { display:flex; flex-direction:column; align-items:center; gap:18rpx; animation:sfxRise .24s cubic-bezier(.2,.8,.3,1); }
-.signin-fx-check { width:150rpx; height:150rpx; border-radius:50%; background:#3E9B34; color:#fff; font-size:92rpx; font-weight:700; display:flex; align-items:center; justify-content:center; animation:sfxPop .3s cubic-bezier(.2,1.3,.4,1); box-shadow:0 12rpx 36rpx rgba(62,155,52,0.35); }
-.signin-fx-title { font-size:40rpx; font-weight:700; color:#1a1a1a; }
-.signin-fx-sub { font-size:28rpx; color:#8A8F98; }
-@keyframes sfxFade { from { opacity:0; } to { opacity:1; } }
-@keyframes sfxRise { from { opacity:0; transform:translateY(20rpx); } to { opacity:1; transform:translateY(0); } }
-@keyframes sfxPop { 0% { transform:scale(0.3); opacity:0; } 60% { transform:scale(1.12); } 100% { transform:scale(1); opacity:1; } }
 /* 识别完成后的两键：继续上传录音(浅) / 生成会议纪要(深)——缩小、拉开间距 */
 /* 上下堆叠、居中、宽度 60%：主(生成纪要)实心在上，次(继续上传)描边在下 */
 .qk-two-btns { display:flex; flex-direction:column; align-items:center; gap:14rpx; margin-top:14rpx; padding:0; }
