@@ -1411,13 +1411,9 @@ const noticeLogRows = computed(() => {
 // 再次提醒（0803 用户定）：App 内通知已是默认动作，点了直接再发一轮，不再弹渠道选择。
 // 委员端负责去重与"确认参会后不再打扰"，这里只管发。
 async function remindNow() {
-  if (mainSending.value || sendSubmitting.value) return
-  const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
-  if (!ids.length) { toast({ title: '请先在「通知人员」里选择委员', icon: 'none' }); return }
-  mainSending.value = true
-  try {
-    await doSend(ids, { quietForward: true, successText: noticeSent.value ? '已再次提醒' : ('已通知 ' + ids.length + ' 位委员') })
-  } finally { mainSending.value = false }
+  // 0803 修：再次提醒原先只发 App 内——应与首次发送同一条流程（App 内 + 复制打开微信），
+  // 微信群里的委员同样需要再看到一次。直接复用 sendNoticeFlow，只换成功文案。
+  await sendNoticeFlow('remind')
 }
 
 const ONLINE_WAYS = ['微信工作群', '腾讯会议']   // 0801 用户定：删掉「电话」
@@ -1537,21 +1533,26 @@ async function openRecipients() {
 // 摘要行「7 人中未选任何人」就是原因说明。
 const chWechat = ref(true)
 const mainSending = ref(false)
-async function sendNoticeMain() {
+// 发送与再次提醒共用一条流程（0803）：App 内必发 + （勾了微信就）复制打开微信，只差成功文案。
+// chWechat 在再次提醒时沿用发送前的勾选状态——首次特意只发 App（敏感议题不进群）的会，
+// 提醒也不该突然把内容发进群。
+async function sendNoticeFlow(kind) {
   if (mainSending.value || sendSubmitting.value) return
   const ids = recipientList.value.filter((x) => x.checked).map((x) => x.userRoleId)
-  if (!ids.length) return   // 按钮已锁死，这里只是兜底
+  if (!ids.length) { toast({ title: '请先在「通知人员」里选择委员', icon: 'none' }); return }
   const wantWechat = chWechat.value
+  const successText = kind === 'remind' ? ('已再次提醒 ' + ids.length + ' 人') : ('已通知 ' + ids.length + ' 位委员')
   mainSending.value = true
   try {
     // 顺序：App 内先留档，再跳微信分享。反过来的话安卓会被拉去微信，回不来做第二步。
     // App 内没发出去就不去微信——通知没落档，先解决网络重试，别造成"发了"的错觉。
-    const ok = await doSend(ids, { quietForward: true, successText: '已通知 ' + ids.length + ' 位委员', silent: wantWechat })
+    const ok = await doSend(ids, { quietForward: true, successText, silent: wantWechat })
     if (!ok) return
-    // markNotified：这是一次明确的发送动作，微信这条也要进通知记录
+    // markNotified：这是一次明确的发送/提醒动作，微信这条也要进通知记录
     if (wantWechat) await openWechat({ markNotified: true })
   } finally { mainSending.value = false }
 }
+async function sendNoticeMain() { await sendNoticeFlow('first') }
 function toggleRecipient(id) {
   const it = recipientList.value.find((x) => x.userRoleId === id)
   if (it) it.checked = !it.checked
